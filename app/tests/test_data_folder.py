@@ -4,14 +4,15 @@
   python3 -B app/tests/test_data_folder.py [-v]
 
 Never packaged."""
-import json, os, shutil, stat, sys, tempfile, unittest
+import json, os, shutil, stat, sys, unittest
 from pathlib import Path
 from unittest import mock
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
-sys.path[:0] = [str(HERE.parent)]
+sys.path[:0] = [str(HERE.parent), str(HERE.parents[1])]
 import main  # noqa: E402
+from app.tests import shorttemp  # noqa: E402
 
 
 def library(folder):
@@ -22,7 +23,7 @@ def library(folder):
 
 class Lookup(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix='lastbook-lookup-')).resolve()
+        self.tmp = shorttemp.mkdtemp('lastbook-lookup-')
         self.home = self.tmp / 'home'
         self.home.mkdir()
         env = {k: v for k, v in os.environ.items() if k not in ('LASTBOOK_DATA', 'APPDATA', 'LOCALAPPDATA', 'USERPROFILE')}

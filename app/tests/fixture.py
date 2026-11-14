@@ -7,6 +7,7 @@ DATA = ROOT / 'derived' / 'app-build' / 'testdata'
 LIB = DATA / 'library-data'
 CANARY = b'CANARY-MUST-NEVER-BE-SERVED'
 MiB = 1024 * 1024
+LINKED = False   # True once a link from a served folder to a file outside the library is in place: Windows needs Developer Mode or an administrator for that
 
 
 def pattern(offset, n):
@@ -22,8 +23,28 @@ def write_pattern(path, size):
             f.write(pattern(off, min(MiB, size - off)))
 
 
+def link_out():
+    """The link the escape checks need: a served folder pointing at a file outside the library. Checked on every run, not remembered, so a machine that gains the right to make links (Developer Mode) gets it without deleting the fixture first, and a link that was removed or points somewhere else is put back."""
+    global LINKED
+    link, target = LIB / 'documents' / 'out.txt', DATA / 'outside-canary.txt'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not target.is_file():
+        target.write_bytes(CANARY)      # the 'ready' branch below does not rebuild the fixture: a deleted canary would leave a link that resolves to nothing
+    good = link.is_symlink() and os.path.isfile(link) and os.path.realpath(link) == os.path.realpath(target)
+    if not good:
+        try:
+            if link.is_symlink() or link.exists():
+                link.unlink()
+            os.symlink(target, link)
+            good = True
+        except OSError:
+            good = False    # Windows without the right: the address simply does not exist, and its test says so out loud
+    LINKED = good
+
+
 def ensure():
     if (DATA / 'ready').exists():
+        link_out()
         return DATA
     for d in ('videos', 'documents', 'pages', 'tools', 'logs', 'collections', 'transcripts', 'assets'):
         (LIB / d).mkdir(parents=True, exist_ok=True)
@@ -49,7 +70,7 @@ def ensure():
     (LIB / 'tools' / 'secret.txt').write_bytes(CANARY)
     (LIB / 'logs' / 'x.log').write_bytes(CANARY)
     (DATA / 'outside-canary.txt').write_bytes(CANARY)
-    os.symlink(DATA / 'outside-canary.txt', LIB / 'documents' / 'out.txt')
+    link_out()
     (LIB / 'documents' / 'hl.txt').write_bytes(CANARY)
     os.link(LIB / 'documents' / 'hl.txt', LIB / 'pages' / 'hl2.txt')
     (LIB / 'pages' / 's.html').write_text('<!doctype html><title>Saved</title><p>saved page</p>')

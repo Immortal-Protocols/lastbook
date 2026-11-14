@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, tempfile, threading, time, unittest, zipfile
+import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path[:0] = [str(HERE.parent), str(ROOT)]
 from engine.setup import api, download, hardware, install, manifest  # noqa: E402
+from app.tests import shorttemp  # noqa: E402
 
 ALLOWED = {'127.0.0.1'}     # an address, not 'localhost': Windows tries ::1 first, which the test server does not listen on
 MiB = 1024 * 1024
@@ -156,7 +157,7 @@ class Control:
 class Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.tmp_class = Path(tempfile.mkdtemp(prefix='lastbook-setup-srv-'))
+        cls.tmp_class = shorttemp.mkdtemp('lastbook-setup-srv-')
         cls.files = Files()
         cls.srv, cls.ctx, cls.base = start_server(cls.tmp_class, cls.files)
 
@@ -169,7 +170,7 @@ class Base(unittest.TestCase):
         F = self.files
         F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
         F.pace = 0
-        self.tmp = Path(tempfile.mkdtemp(prefix='lastbook-setup-')).resolve()
+        self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
         for d in ('Downloads', 'Documents', 'Desktop'):
             (self.home / d).mkdir(parents=True)

@@ -28,12 +28,16 @@ class AddressSearchTests(unittest.TestCase):
         self.temp.cleanup()
 
     def write_state(self, state, rows):
-        with sqlite3.connect(self.geo / 'addresses' / f'{state}.sqlite') as db:
+        db = sqlite3.connect(self.geo / 'addresses' / f'{state}.sqlite')
+        try:
             db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL)')
             db.execute('CREATE INDEX addr_num_norm ON addr(num,norm)')
             db.executemany('INSERT INTO addr VALUES(?,?,?,?,?,?,?,?)',
                            [(num, street, normalize(street), city, st, z, lat, lon)
                             for num, street, city, st, z, lat, lon in rows])
+            db.commit()
+        finally:
+            db.close()      # the `with` form commits but does not close, and Windows will not remove an open file
 
     def test_numeric_words_directions_and_qualifiers(self):
         for query in ('18001 9 mile rd Novi MI', '18001 Nine Mile Road Novi Michigan',
@@ -70,9 +74,13 @@ class AddressSearchTests(unittest.TestCase):
         empty = self.geo / 'empty'
         self.assertEqual(find_addresses('23001 Maple Ave', empty), [])
         empty.mkdir()
-        with sqlite3.connect(empty / 'addresses.sqlite') as db:
+        db = sqlite3.connect(empty / 'addresses.sqlite')
+        try:
             db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL)')
             db.execute("INSERT INTO addr VALUES('23001','Maple Avenue','maple ave','Kansas City','MO','64105',39.0997,-94.5786)")
+            db.commit()
+        finally:
+            db.close()      # as in write_state: the `with` form does not close, and Windows will not remove an open file
         self.assertEqual(find_addresses('23001 Maple Ave Kansas City MO', empty)[0]['lat'], 39.0997)
 
     def test_app_route_preserves_address_number(self):

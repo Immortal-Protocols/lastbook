@@ -381,7 +381,7 @@ class Both:
     def test_path_attacks(self):
         attacks = ['/../canary-root.txt', '/documents/../canary-root.txt', '/%2e%2e/canary-root.txt', '/documents/%2e%2e/%2e%2e/outside-canary.txt', '/canary-root.txt',
                    '/video-auth.json', '/documents/video-auth-copy.json', '/documents/x.info.json', '/documents/.hidden', '/tools/secret.txt', '/logs/x.log', '/catalog.json',
-                   '/search.sqlite', '/documents/out.txt', '/documents/hl.txt', '/pages/hl2.txt', '/zim/../canary-root.txt', '/zim/%2e%2e%2fcanary-root.txt/x', '/ui/../server.py',
+                   '/search.sqlite', '/documents/hl.txt', '/pages/hl2.txt', '/zim/../canary-root.txt', '/zim/%2e%2e%2fcanary-root.txt/x', '/ui/../server.py',
                    '/ui/%2e%2e/server.py', '/documents%2f..%2f..%2fcanary-root.txt', '/documents/..\\canary-root.txt', '/documents/plain.txt/../../canary-root.txt', '/assets/../tools/secret.txt']
         for t in attacks:
             for m in ('GET', 'HEAD'):
@@ -391,6 +391,15 @@ class Both:
         r = self.get('/?x=../canary-root.txt')
         self.assertEqual(r.status, 200)
         self.assertNotIn(fixture.CANARY, r.body)
+
+    def test_symlink_out_of_the_library_is_refused(self):
+        """A link to a file outside the library, in its own test: on a machine with no right to make links the fixture cannot build one, and a skip says so where an address that is simply absent would have looked like a pass."""
+        if not fixture.LINKED:
+            self.skipTest('no right to make symbolic links (Developer Mode on Windows)')
+        for method in ('GET', 'HEAD'):
+            r = call(self.b, method, '/documents/out.txt')
+            self.assertGreaterEqual(r.status, 400, method)
+            self.assertNotIn(fixture.CANARY, r.body, method)
 
     def test_hard_link_refused_but_plain_files_served(self):
         self.assertEqual(os.stat(fixture.LIB / 'documents' / 'hl.txt').st_nlink, 2)
@@ -574,16 +583,29 @@ class Both:
         (hidden / 'x.txt').write_bytes(fixture.CANARY)
         (fixture.LIB / 'courses' / 'c1' / '.git').mkdir(exist_ok=True)
         (fixture.LIB / 'courses' / 'c1' / '.git' / 'config').write_bytes(fixture.CANARY)
-        link = fixture.LIB / 'courses' / 'c1' / 'tools-link'
-        try:
-            if not link.is_symlink():
-                os.symlink(fixture.LIB / 'tools', link)    # a link inside a served folder to the library's real tools folder
-        except OSError:
-            pass                                           # Windows, with no right to make links: the address simply does not exist
-        for t in ('/courses/c1/tools/.Data/x.txt', '/courses/c1/.git/config', '/courses/c1/tools-link/secret.txt', '/tools/secret.txt', '/TOOLS/secret.txt', '/logs/x.log', '/courses/../tools/secret.txt', '/courses/c1/%2e%2e/%2e%2e/tools/secret.txt'):
+        for t in ('/courses/c1/tools/.Data/x.txt', '/courses/c1/.git/config', '/tools/secret.txt', '/TOOLS/secret.txt', '/logs/x.log', '/courses/../tools/secret.txt', '/courses/c1/%2e%2e/%2e%2e/tools/secret.txt'):
             r = self.get(t)
             self.assertGreaterEqual(r.status, 400, t)
             self.assertNotIn(fixture.CANARY, r.body, t)
+
+    def test_a_link_inside_a_served_folder_is_refused(self):
+        """A link from a served folder to the library's own tools folder, in its own test: it needs the right to make a link, so where that right is missing this says so instead of checking an address that is simply absent."""
+        link, target = fixture.LIB / 'courses' / 'c1' / 'tools-link', fixture.LIB / 'tools'
+        link.parent.mkdir(parents=True, exist_ok=True)
+        usable = lambda: link.is_symlink() and os.path.isfile(link / 'secret.txt')
+        why = 'the link does not resolve to the tools folder'
+        if not usable():
+            try:
+                if link.is_symlink() or link.exists():
+                    link.unlink()
+                os.symlink(target, link)
+            except OSError as e:
+                why = f'{type(e).__name__}: {e}'     # e.g. WinError 1314, no right to make links on Windows
+        if not usable():
+            self.skipTest(f'could not make a usable link to the tools folder ({why})')
+        r = self.get('/courses/c1/tools-link/secret.txt')
+        self.assertGreaterEqual(r.status, 400)
+        self.assertNotIn(fixture.CANARY, r.body)
 
     def test_page_with_a_connection_hint_loses_it(self):
         d = fixture.LIB / 'pages' / 'kinds'

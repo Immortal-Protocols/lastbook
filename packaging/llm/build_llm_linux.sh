@@ -1,10 +1,10 @@
 #!/bin/bash
-# Builds lastbook-llm for 64-bit Linux (Ubuntu 24.04 LTS, x86_64): llama.cpp at the pinned tag with Vulkan (NVIDIA, AMD and
-# Intel graphics through their drivers) and every x86-64 CPU variant as a fallback, linked to our runner with nothing that can
+# Builds lastbook-llm for 64-bit Linux (Ubuntu 24.04 LTS, x86_64 or aarch64): llama.cpp at the pinned tag with Vulkan (NVIDIA, AMD,
+# Intel and Arm graphics through their drivers) and every CPU variant of that architecture as a fallback, linked to our runner with nothing that can
 # open a socket (no RPC backend, no common library beyond the fitting and its log). Same layout as Windows: the program and
 # the llama.cpp libraries beside it, which it finds through RUNPATH $ORIGIN. fit.cpp passes C++ objects across libllama.so,
 # so one compiler and one C++ runtime (the system's libstdc++) build and run all of it.
-# Run on Ubuntu 24.04 x86_64 with:
+# Run on Ubuntu 24.04 x86_64 or aarch64 with:
 #   apt-get install build-essential git cmake ninja-build glslc libvulkan-dev spirv-headers
 #   bash packaging/llm/build_llm_linux.sh
 # W  Work folder (default derived/llm). llama.cpp is cloned into W/llama.cpp at the tag if it is not there.
@@ -18,7 +18,7 @@ W="$(realpath -m "${W:-$ROOT/derived/llm}")"
 L="$W/llama.cpp"
 B="$W/build-linux"
 O="$W/bin-linux"
-[ "$(uname -m)" = x86_64 ] || { echo "build on x86_64 Linux" >&2; exit 1; }
+case "$(uname -m)" in x86_64 | aarch64) ;; *) echo "build on x86_64 or aarch64 Linux" >&2; exit 1 ;; esac
 mkdir -p "$W" "$B" "$O"
 rm -f "$O"/*
 
@@ -34,7 +34,7 @@ cmake -S "$L" -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc
   -DCMAKE_SKIP_BUILD_RPATH=OFF -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_INSTALL_RPATH='$ORIGIN' -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--enable-new-dtags" -DCMAKE_MODULE_LINKER_FLAGS="-Wl,--enable-new-dtags" \
   -DCMAKE_C_FLAGS="$MAP" -DCMAKE_CXX_FLAGS="$MAP" > "$W/cmake-linux.log"
 # Only the libraries: the default target also builds llama.cpp's own app, which downloads. One library per CPU variant.
-CPUS="$(cmake --build "$B" --target help | grep -oE '^ggml-cpu-[a-z0-9_]+' | sort -u | tr '\n' ' ')"
+CPUS="$(cmake --build "$B" --target help | grep -oE '^ggml-cpu-[a-z0-9_.]+' | sort -u | tr '\n' ' ')"
 cmake --build "$B" -j "$(nproc)" --target llama ggml-vulkan $CPUS > "$W/build-linux.log"
 
 # fit_unused_win.cpp: GNU ld, like the Windows linker, wants every reference in fit.cpp resolved.
@@ -70,7 +70,7 @@ for f in "$O"/lastbook-llm "$O"/*.so*; do
   fi
   for d in $needs; do
     case "$d" in
-      libc.so.6|libm.so.6|libstdc++.so.6|libgcc_s.so.1|libgomp.so.1|libvulkan.so.1|ld-linux-x86-64.so.2|libpthread.so.0|libdl.so.2) ;;
+      libc.so.6|libm.so.6|libstdc++.so.6|libgcc_s.so.1|libgomp.so.1|libvulkan.so.1|ld-linux-x86-64.so.2|ld-linux-aarch64.so.1|libpthread.so.0|libdl.so.2) ;;
       *) [ -f "$O/$d" ] || { echo "$(basename "$f") needs $d, which is not beside it" >&2; bad=1; } ;;
     esac
   done

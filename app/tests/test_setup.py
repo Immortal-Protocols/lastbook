@@ -124,6 +124,13 @@ class TLSServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+    def handle_error(self, request, client_address):
+        """A client that pauses, cancels or is killed drops its connection, which is what these tests ask for. On Windows the
+        server's next read then raises ConnectionResetError, and the default handler prints a traceback into a passing run.
+        Anything else is still printed."""
+        if not isinstance(sys.exception(), ConnectionError):
+            super().handle_error(request, client_address)
+
 
 def certificate(folder):
     key, crt = folder / 'key.pem', folder / 'cert.pem'
@@ -708,6 +715,7 @@ class Jobs(Base):
         finally:
             child.kill()                      # SIGKILL on a Mac, TerminateProcess on Windows
             child.wait()
+            child.stderr.close()              # the pipe is ours to close: left open, it is a ResourceWarning in the output
         had = (work / 'Lastbook-Small.zip.part').stat().st_size
         self.files.pace = 0
         self.files.log.clear()
@@ -742,6 +750,7 @@ class Jobs(Base):
         finally:
             child.kill()                      # SIGKILL on a Mac, TerminateProcess on Windows
             child.wait()
+            child.stderr.close()              # the pipe is ours to close: left open, it is a ResourceWarning in the output
         s = self.setup(manifest=self.manifest())
         it = s.public_job()['items'][0]
         self.assertEqual((s.public_job()['state'], it['paused_from'], it['source']), ('paused', 'unpacking', 'download'))

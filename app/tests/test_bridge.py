@@ -1264,17 +1264,61 @@ class BufferTests(Both, unittest.TestCase):
         self.assertNotIn(('POST', '/api/chat'), by)
 
 
+def _windows_sockets(pid):
+    """This process's rows in `netstat -ano` (TCP and UDP, listening or connected). netstat ships with Windows."""
+    r = subprocess.run(['netstat', '-ano'], capture_output=True, encoding='oem', errors='replace')   # netstat writes the OEM code page
+    if r.returncode or 'TCP' not in r.stdout:
+        raise RuntimeError(f'netstat gave no usable output: {r.returncode} {r.stderr}')
+    return '\n'.join(line for line in r.stdout.splitlines()
+                     if line.split()[:1] in (['TCP'], ['UDP']) and line.split()[-1] == pid)
+
+
+def _windows_modules():
+    """Every DLL and the exe loaded into this process, as lower-case paths, from EnumProcessModulesEx (psapi)."""
+    import ctypes
+    from ctypes import wintypes
+    psapi, kernel32 = ctypes.WinDLL('psapi'), ctypes.WinDLL('kernel32')
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    psapi.EnumProcessModulesEx.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.HMODULE), wintypes.DWORD,
+                                           ctypes.POINTER(wintypes.DWORD), wintypes.DWORD]
+    psapi.GetModuleFileNameExW.argtypes = [wintypes.HANDLE, wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+    proc = kernel32.GetCurrentProcess()
+    needed, size = wintypes.DWORD(), 1024
+    while True:   # grow the array until every module fits: a module past the end would be dropped without a word
+        mods = (wintypes.HMODULE * size)()
+        if not psapi.EnumProcessModulesEx(proc, mods, ctypes.sizeof(mods), ctypes.byref(needed), 3):   # 3 = LIST_MODULES_ALL
+            raise ctypes.WinError()
+        if needed.value <= ctypes.sizeof(mods):
+            break
+        size = needed.value // ctypes.sizeof(wintypes.HMODULE)
+    name, paths = ctypes.create_unicode_buffer(1024), []
+    for m in mods[:needed.value // ctypes.sizeof(wintypes.HMODULE)]:
+        if psapi.GetModuleFileNameExW(proc, wintypes.HMODULE(m), name, len(name)):
+            paths.append(name.value)
+    return '\n'.join(paths).lower().replace('\\', '/')
+
+
 class WholeProcess(unittest.TestCase):
     def test_no_listening_socket_and_no_model(self):
         self.assertEqual(LISTENS, [])
         pid = str(os.getpid())
-        out = subprocess.run(['/usr/sbin/lsof', '-nP', '-a', '-p', pid, '-i'], capture_output=True, text=True).stdout
+        lsof = '/usr/sbin/lsof' if os.path.exists('/usr/sbin/lsof') else shutil.which('lsof')   # the system lsof first on a Mac
+        if lsof:
+            out = subprocess.run([lsof, '-nP', '-a', '-p', pid, '-i'], capture_output=True, text=True).stdout
+            files = subprocess.run([lsof, '-nP', '-p', pid], capture_output=True, text=True).stdout.lower()
+            how = 'lsof -i'
+        elif sys.platform == 'win32':
+            # No lsof on Windows. netstat covers the sockets; the loaded-module list covers the model runtime (onnxruntime.dll).
+            # A model file opened as plain data is not checked here; without the runtime loaded, nothing can use it.
+            out, files, how = _windows_sockets(pid), _windows_modules(), 'netstat -ano'
+        else:
+            self.skipTest('no lsof on this system, and not Windows: the process-level socket and file check cannot run here')
+        self.assertIn('python', files, 'the process file/module listing came back empty, so this check proved nothing')
         self.assertEqual(out.strip(), '', out)
-        files = subprocess.run(['/usr/sbin/lsof', '-nP', '-p', pid], capture_output=True, text=True).stdout.lower()
         for word in ('onnx', 'bge-small', 'derived/models'):
             self.assertNotIn(word, files)
         self.assertNotIn('onnxruntime.', ' '.join(k for k, v in sys.modules.items() if v is not None))
-        OBSERVED['lsof -i for this process'] = 'no rows' if not out.strip() else out
+        OBSERVED[f'{how} for this process'] = 'no rows' if not out.strip() else out
 
     def test_map_info_still_gives_what_the_ui_reads(self):
         info = server.map_info()

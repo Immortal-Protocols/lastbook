@@ -16,7 +16,7 @@ The README explains the layout and how to build the apps.
 ## Test
 
 ```bash
-python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics
+python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq
 ```
 
 Run these before you open a pull request (`test_topic_search` needs Node and is skipped without it). If you change the packaging, also run the build for your platform: it ends
@@ -27,7 +27,8 @@ against a library, so every id, page and encyclopedia path it cites still exists
 python3 tools/validate_topics.py --data /path/to/LastbookData      # or set LASTBOOK_DATA
 ```
 
-It reads the library's files directly and needs no server.
+It reads the library's files directly and needs no server. `tools/libq.py` takes the same `--data` and finds and reads
+the page you mean to cite: `python3 tools/libq.py --data /path/to/LastbookData search "boil water"`.
 
 ## Rules that keep Lastbook what it is
 

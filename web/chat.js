@@ -119,7 +119,13 @@ const Chat = (() => {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
-    if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
+    const lm = s.provider === 'lmstudio' ? s.lmstudio || {} : null;   // chosen in About; an engine without the choice leaves provider out
+    if (lm) {
+      el.innerHTML = s.online || lm.online ? `<span class="dotok"></span><span>LM Studio: ${esc(lm.model || s.model || '')}${still}</span>`
+        : `<span class="dotoff"></span><span>${esc(lm.error || 'LM Studio is not answering.')}<span class="long"> — search and reading still work</span></span>`;
+    } else if (s.provider === 'off') {
+      el.innerHTML = `<span class="dotoff"></span><span>Assistant is off<span class="long"> — search and reading still work</span></span>`;
+    } else if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
     } else {
@@ -129,22 +135,30 @@ const Chat = (() => {
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
     setupCard(s);
     clearTimeout(polling);
-    if (l && /checking|measuring|loading/.test(l.state) && $('#chatStatus')) polling = setTimeout(statusLine, 1000);
+    if (lm && !(s.online || lm.online) && $('#chatStatus')) polling = setTimeout(statusLine, 5000);   // LM Studio may be started any moment
+    else if (!lm && s.provider !== 'off' && l && /checking|measuring|loading/.test(l.state) && $('#chatStatus')) polling = setTimeout(statusLine, 1000);
   }
   // How to add the local AI, on a new chat when it is missing, wrong or off. The file comes from the website, outside the app.
   function setupCard(s) {
     const box = $('#aiSetup'), l = s.local; if (!box) return;
-    const show = !!l && !s.online && /absent|wrong|off|error/.test(l.state) && !(cur && cur.messages.length);
+    const lm = s.provider === 'lmstudio' && !s.online && !(s.lmstudio && s.lmstudio.online);   // LM Studio chosen in About, and not answering
+    const builtin = !s.provider || s.provider === 'builtin';                                    // no choice made yet is the built-in one, as before
+    const show = !(cur && cur.messages.length) && (lm || builtin && !!l && !s.online && /absent|wrong|off|error/.test(l.state));
     box.hidden = !show;
     if (!show) return;
-    box.innerHTML = l.state === 'off'
+    const lp = s.lmstudio && s.lmstudio.port;
+    box.innerHTML = lm
+      ? `<p>${esc((s.lmstudio && s.lmstudio.error) || `LM Studio is not answering. Start its local server${lp ? ` on port ${lp}` : ''} and load the model, then try again.`)}</p>
+         <div class="row"><button class="btn" data-ai="again">Try again</button><a class="btn plain" href="#/about">Change the assistant</a></div>`
+      : l.state === 'off'
       ? `<p>The local AI is turned off.</p><div class="row"><button class="btn" data-ai="on">Turn on</button></div>`
       : l.state === 'error' ? `<p>${esc(l.message || 'The local AI could not start.')}</p><div class="row"><button class="btn" data-ai="rescan">Look again</button></div>`
       : `<p><b>Add the local AI to get written answers.</b> It is about 17 GB, and runs on this computer only.</p>
          <div class="row"><a class="btn" href="/ui/setup.html#manage">Add the local AI</a><button class="btn plain" data-ai="rescan">Look again</button></div>
-         <p class="small">Already downloaded <code>${esc(l.file)}</code>? Put it in your <b>LastbookData</b> folder or Downloads, then Look again.</p>`;
+         <p class="small">Already downloaded <code>${esc(l.file)}</code>? Put it in the <b>models</b> folder inside your <b>LastbookData</b> folder, or in the model folder this computer is set to use, then Look again.</p>`;
     $$('[data-ai]', box).forEach(b => b.onclick = async () => {
       b.disabled = true;
+      if (b.dataset.ai === 'again') return statusLine();
       try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: b.dataset.ai }) }) } catch { }
       setTimeout(statusLine, 300);
     });
@@ -217,7 +231,7 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(m.state === 'starting' && status && status.provider === 'lmstudio' ? 'LM Studio is loading the model…' : STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
@@ -362,7 +376,7 @@ const Chat = (() => {
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
       const st = await getStatus();
-      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local && localLine(st.local)[1] });
+      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: /^(lmstudio|off)$/.test(st.provider) ? st.error : st.local && localLine(st.local)[1] });   // LM Studio and Off say why themselves
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();

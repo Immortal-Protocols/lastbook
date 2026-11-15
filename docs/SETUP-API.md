@@ -77,8 +77,10 @@ and the hosts Hugging Face redirects model downloads to (`cas-bridge.xethub.hf.c
   the AI does not read 17 GB a second time.
 - Space needed = download size + unpacked size + 2 GB, on the disk that holds the target. A zip is deleted once it is
   unpacked and checked. Setup refuses to start, with the numbers, when there is not enough room.
-- Manual downloads are recognized: a `Lastbook-*.zip` or the model file in Downloads, Documents or Desktop, or an existing
-  LastbookData anywhere `app/main.py` already looks, offered as *Use the file you already have*. A file is used only after its
+- Manual downloads are recognized: a `Lastbook-*.zip` or the model file in the folder setup would put LastbookData in, in
+  the selected library or its `models/` folder, or one the person chooses with the file picker; or an existing LastbookData
+  where `app/main.py` already looks (the remembered selection and the app's own data folder), offered as *Use the file you
+  already have*. Downloads, Documents and Desktop are not searched. A file is used only after its
   size and SHA-256 match the manifest.
 
 ## Engine interface: `/api/setup/*`

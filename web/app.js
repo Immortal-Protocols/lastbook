@@ -1060,6 +1060,112 @@ function localAbout(st) {
     : l.state === 'off' ? `The local AI is turned off. ${btn('on', 'Turn on')}`
     : `Local AI: ${esc(l.message || { absent: 'not added. Add it in Library and local AI (about 17 GB).', checking: 'checking the file…', measuring: 'checking this computer’s memory…' }[l.state] || l.state)} ${l.state === 'absent' ? '<a class="btn plain" href="/ui/setup.html#manage">Add the local AI</a>' : ''}${btn('rescan', 'Look again')}`;
 }
+// Which assistant answers: the built-in one, LM Studio on this computer, or none. An engine that has no such choice leaves
+// provider out of its status, and then the card stays exactly as it was. LM Studio is asked for nothing until it is chosen here.
+const AI = { pick: null, port: null, models: null, model: null, err: '', busy: false };   // what the person is doing in the card while About is open
+const PROVIDERS = [['builtin', 'Built-in'], ['lmstudio', 'LM Studio on this computer'], ['off', 'Off']];
+const reads = v => v ? 'Reads page images.' : 'Text only.';
+const lmsKind = m => `${m.loaded ? 'Loaded in LM Studio.' : 'Not loaded yet: LM Studio loads it at the first question, which can take a minute.'} ${reads(m.vision)}${m.context ? ` Context length ${m.context.toLocaleString()} tokens.` : ''}`;
+function aiPicked(st) { return AI.pick || st.provider || 'builtin' }   // not chosen yet: today's behaviour, which is the built-in one
+function aiIndex(st) {
+  const ix = st.index || {};
+  return ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : '';
+}
+function aiBuiltin(st) {
+  return localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.');
+}
+function aiLms(st) {
+  const lm = st.provider === 'lmstudio' ? st.lmstudio || {} : null, port = AI.port ?? (lm && lm.port) ?? 1234;
+  const now = lm && lm.model ? `In use: <b>${esc(lm.model)}</b> on port ${esc(lm.port ?? port)}. ${lm.online ? 'It is answering. ' + reads(lm.vision) : esc(lm.error || 'LM Studio is not answering.')}`
+    : lm ? esc(lm.error || 'No model is chosen yet.') : st.provider !== 'lmstudio' ? `${st.provider === 'off' ? 'The assistant stays off' : 'The built-in assistant stays in use'} until you choose a model.` : '';
+  const ms = AI.models || [], chosen = ms.find(m => m.id === AI.model) || ms[0];
+  const opt = m => `<option value="${esc(m.id)}"${chosen && m.id === chosen.id ? ' selected' : ''}>${esc(m.id)}${m.loaded ? ' (loaded)' : ''}</option>`;
+  return `<div class="ai-lms">
+    <p>Start the local server in LM Studio, then load a model or pick one here. Conversations stay on this computer.</p>
+    ${now ? `<p class="ai-now${lm && !lm.online ? ' bad' : ''}">${now}</p>` : ''}
+    <div class="ai-form">
+      <label class="ai-field"><span>Port</span><input id="lmsPort" type="number" inputmode="numeric" min="1" max="65535" step="1" value="${esc(port)}"></label>
+      <button type="button" class="btn plain" data-lms="find"${AI.busy ? ' disabled' : ''}>${AI.busy === 'find' ? 'Looking…' : 'Find models'}</button>
+    </div>
+    ${ms.length ? `<div class="ai-form">
+      <label class="ai-field grow"><span>Model</span><select id="lmsModel">${ms.map(opt).join('')}</select></label>
+      <button type="button" class="btn" data-lms="use"${AI.busy ? ' disabled' : ''}>${AI.busy === 'use' ? 'Saving…' : 'Use this model'}</button>
+    </div>
+    <p class="ai-kind" id="lmsKind">${chosen ? lmsKind(chosen) : ''}</p>` : ''}
+    <p class="ai-err" id="lmsErr" role="status"${AI.err ? '' : ' hidden'}>${esc(AI.err)}</p>
+  </div>`;
+}
+function aiCard(st) {
+  if (!('provider' in st)) return `<b>Assistant</b><small>${aiBuiltin(st)} ${aiIndex(st)}</small>`;   // an engine with no choice: as before
+  const p = aiPicked(st);
+  return `<b id="aiH">Assistant</b>
+    <div class="seg ai-pick" role="group" aria-labelledby="aiH">${PROVIDERS.map(([k, l]) => `<button type="button" data-prov="${k}" aria-pressed="${k === p}">${l}</button>`).join('')}</div>
+    ${p === 'lmstudio' ? aiLms(st) : `<small>${p === 'off' ? 'The assistant is off. Chat shows matching pages instead of written answers. Guides, search, videos and the map all work.' : aiBuiltin(st)}</small>`}
+    ${p !== 'lmstudio' && AI.err ? `<p class="ai-err" role="status">${esc(AI.err)}</p>` : ''}
+    ${aiIndex(st) ? `<small class="ai-ix">${aiIndex(st)}</small>` : ''}`;
+}
+function blindCard(st) {
+  return `<b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small>`;
+}
+async function aiPost(body) {
+  const r = await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let j = {}; try { j = await r.json() } catch { }
+  if (!r.ok) throw new Error(r.status === 404 && !(j.error && /port|model|LM Studio/.test(j.error)) ? 'This Lastbook cannot do that yet.' : j.error || 'Lastbook could not save that.');
+  return j;
+}
+function aiMount(st) {
+  const card = $('#aiCard'); if (!card) return;
+  const paint = () => {
+    const f = document.activeElement && card.contains(document.activeElement) ? document.activeElement : null;
+    const key = f && (f.id ? '#' + f.id : f.dataset.prov ? `[data-prov="${f.dataset.prov}"]` : f.dataset.lms ? `[data-lms="${f.dataset.lms}"]` : null);
+    card.innerHTML = aiCard(st);
+    const bc = $('#blindCard'); if (bc) bc.innerHTML = blindCard(st);
+    const back = key && $(key, card); if (back) back.focus({ preventScroll: true });
+  };
+  const find = async () => {
+    const port = +$('#lmsPort').value;
+    if (!Number.isInteger(port) || port < 1 || port > 65535) { AI.err = 'The port is a whole number from 1 to 65535. LM Studio uses 1234 unless you changed it.'; paint(); return }
+    AI.port = port; AI.busy = 'find'; AI.err = ''; paint();
+    try {
+      const j = await aiPost({ action: 'models', port });
+      if (j.ok === false || !Array.isArray(j.models)) { AI.models = null; AI.err = j.error || 'LM Studio did not answer on that port.' }
+      else {
+        AI.models = j.models.slice().sort((a, b) => (b.loaded ? 1 : 0) - (a.loaded ? 1 : 0));   // loaded first, otherwise in LM Studio's order
+        if (!AI.models.some(m => m.id === AI.model)) AI.model = ((st.lmstudio || {}).model && AI.models.some(m => m.id === st.lmstudio.model)) ? st.lmstudio.model : (AI.models[0] || {}).id;
+        if (!AI.models.length) AI.err = 'LM Studio has no models yet. Download one in LM Studio, then press Find models again.';
+      }
+    } catch (e) { AI.models = null; AI.err = e.message }
+    AI.busy = false; paint();
+  };
+  const save = async (body) => {
+    AI.busy = body.provider === 'lmstudio' ? 'use' : true; AI.err = ''; paint();
+    try {
+      const j = await aiPost({ action: 'provider', ...body });
+      if (j && typeof j === 'object' && 'provider' in j) st = j;
+      AI.pick = null; AI.models = null;   // saved: the card shows what is in use; Find models opens the list again
+    }
+    catch (e) { AI.err = e.message; if (body.provider !== 'lmstudio') AI.pick = null }   // the choice shown goes back to the one saved
+    AI.busy = false; paint();
+  };
+  card.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    if (b.dataset.prov) {
+      const p = b.dataset.prov;
+      if (p === 'lmstudio') { const again = aiPicked(st) === 'lmstudio'; AI.pick = st.provider === 'lmstudio' ? null : 'lmstudio'; AI.err = ''; paint(); if (!AI.models && !again) find(); return }
+      if (p === st.provider && !AI.pick) return;
+      AI.pick = p; return save({ provider: p });
+    }
+    if (b.dataset.lms === 'find') return find();
+    if (b.dataset.lms === 'use') { const m = $('#lmsModel').value, port = +$('#lmsPort').value; if (!m) return; AI.model = m; if (!Number.isInteger(port) || port < 1 || port > 65535) return find(); AI.port = port; return save({ provider: 'lmstudio', port, model: m }) }
+  });
+  card.addEventListener('change', e => {
+    if (e.target.id !== 'lmsModel') return;
+    AI.model = e.target.value;
+    const m = (AI.models || []).find(x => x.id === AI.model), k = $('#lmsKind');
+    if (m && k) k.textContent = lmsKind(m);
+  });
+  card.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lmsPort') { e.preventDefault(); find() } });
+}
 async function localAI(action) {
   try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch { }
   setTimeout(() => { if (location.hash.startsWith('#/about')) route() }, 400);
@@ -1072,14 +1178,15 @@ async function about() {
   const oldServer = s.zims === undefined;   // it still serves the reports; this code does not
   try { dl = await api('/api/download-status') } catch { }
   try { st = await fetch('/api/assistant/status').then(r => r.json()) } catch { }   // not api(): this answer names an error when no model is running, and still holds what is wanted
-  const ch = dl.channels && dl.channels.counts, ix = st.index || {};
+  const ch = dl.channels && dl.channels.counts;
+  Object.assign(AI, { pick: null, port: null, models: null, model: null, err: '', busy: false });
   main.innerHTML = `<h1>About this library</h1>
   <p class="lead">Public manuals, health guides, courses, videos and encyclopedias kept on this computer, so it works when the internet and phones don’t.</p>
   <div class="cards2" style="margin-top:16px">
    <div class="card"><b>What’s in it</b><small>${(s.pdfs || 0).toLocaleString()} PDF manuals (${(s.pdf_pages || 0).toLocaleString()} pages), ${(s.web_pages || 0).toLocaleString()} saved web pages, ${(s.videos || 0).toLocaleString()} downloaded videos and ${s.collections || 0} complete encyclopedias.</small></div>
    ${ch ? `<div class="card"><b>Still arriving</b><small>${ch.pending.toLocaleString()} more videos are queued and ${ch.downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.</small></div>` : ''}
-   <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
-   <div class="card"><b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small></div>
+   <div class="card ai-card" id="aiCard">${aiCard(st)}</div>
+   <div class="card" id="blindCard">${blindCard(st)}</div>
    ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
   </div>
   <h2>How sources are labelled</h2><ul>
@@ -1097,6 +1204,7 @@ async function about() {
   ${s.sources ? `<h2>Sources and credits</h2><p><a href="#/read/${encodeURIComponent(s.sources)}?${fromQ()}">Sources and permissions</a>: every publisher in this library, where it came from, and how to ask for something to be removed.</p>` : ''}
   ${IN_WINDOW ? '' : '<h2>Using it on a phone</h2><p>Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with <code>server.py --lan</code>. Phones need the access link shown in the terminal the first time.</p>'}
   ${oldServer ? '<h2>Other ways in</h2><p><a href="/reports/gap-closure-status.html" target="_blank">Gap closure report</a> · <a href="/reports/learning-pathways.html" target="_blank">Learning pathways report</a> · <a href="/reports/survival-tools-cart.html" target="_blank">Supplies planning</a></p>' : ''}`;
+  aiMount(st);
   if (IN_WINDOW && window.LBUpdate) LBUpdate.mount(main);   // Check for updates (web/update.js): only when the person asks
 }
 

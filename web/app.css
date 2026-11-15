@@ -618,6 +618,24 @@ a.card:active{opacity:.9}
 .card b{display:block;font:600 18.5px/1.25 var(--display)}
 .card small{display:block;color:var(--ink2);font-size:16px;margin-top:4px;line-height:1.45}
 .card .ico{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);margin-bottom:10px} .card .ico svg{width:22px;height:22px;stroke-width:1.9}
+/* About > Assistant: which assistant answers, and LM Studio's port and model */
+.ai-card .seg{display:flex;flex-wrap:nowrap;width:fit-content;max-width:100%;margin:12px 0 2px}
+.ai-card .seg button{flex:0 1 auto;line-height:1.25;padding-top:6px;padding-bottom:6px;white-space:nowrap}
+.ai-card .seg [data-prov=lmstudio]{white-space:normal}   /* a narrow card wraps a label inside its button, never the row */
+.ai-card .ai-ix{margin-top:10px;font-size:15px}
+.ai-lms{font-size:16px;color:var(--ink2);line-height:1.45}
+.ai-lms p{margin:10px 0 0}
+.ai-card .ai-now b{display:inline;font:600 16px/1.45 var(--font);color:var(--ink);overflow-wrap:anywhere}
+.ai-now.bad,.ai-err{color:var(--warn)}
+.ai-err{margin:10px 0 0;font-size:16px;line-height:1.45}
+.ai-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 10px;margin-top:12px}
+.ai-field{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600;color:var(--ink2)}
+.ai-field.grow{flex:1 1 220px;min-width:0}
+.ai-field input,.ai-field select{min-height:44px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--bg);color:var(--ink);padding:6px 14px;font-size:16px;font-weight:400;color-scheme:light dark}
+@media (min-width:640px){.ai-field input,.ai-field select{min-height:38px;font-size:15.5px}}
+.ai-field input{width:6.5em;font-variant-numeric:tabular-nums}
+.ai-field select{width:100%;min-width:0;text-overflow:ellipsis}
+.ai-kind{font-size:15px;color:var(--ink3)}
 .shelfrow{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r2);background:var(--paper);border:1px solid var(--line2);text-decoration:none;color:var(--ink);margin-bottom:8px}
 .shelfrow b{font-size:17px;font-weight:600}
 .shelfrow small{display:block;color:var(--ink2);font-size:15px}

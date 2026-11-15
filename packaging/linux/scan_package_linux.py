@@ -5,8 +5,9 @@
 Refused: test code, the old window, model libraries, the Mac and Windows shells, the remote_storage module, machine names (FILE: private
 words, one per line, kept out of this public script), /Users/... and /home/<name> paths, the household's area and working names in our
 own files (ship_edits.json), native code that is not x86-64 or that links a library from outside the package and the system, a socket in
-the local AI's runner, and in our own Python any network module outside the two ways out (setup's downloader and Check for updates) and
-the engine's request handler, which the app runs with no port. roots.pem must be there: without it setup downloads nothing.
+the local AI's runner, and in our own Python any network module outside the two ways out (setup's downloader and Check for updates),
+the engine's request handler, which the app runs with no port, and assistant.py, which talks to a model on this computer only.
+roots.pem must be there: without it setup downloads nothing.
 """
 import argparse
 import ast
@@ -33,7 +34,7 @@ NET_ALLOWED = {
     'opt/lastbook/server.py',                  # the engine's request handler; the app runs it through bridge.py and never opens its port
     'opt/lastbook/engine/setup/api.py',        # BaseHTTPRequestHandler for setup's routes, run the same way
     'opt/lastbook/engine/library.py',          # http.server's handler base, the same
-    'opt/lastbook/assistant.py',               # the server version's chat model; the app's chat is llm_local over pipes
+    'opt/lastbook/assistant.py',               # model_open: 127.0.0.1 only, no proxy or redirects (LM Studio when chosen, or port 19443)
 }
 SOCKET_CALLS = re.compile(r'^(socket|connect|bind|listen|accept4?|getaddrinfo|gethostbyname\w*|sendto|recvfrom|curl_\w+|SSL_\w+)$')
 SYSTEM_LIBS = re.compile(r'^(libc|libm|libdl|libpthread|librt|libstdc\+\+|libgcc_s|libgomp|libvulkan|ld-linux-x86-64|libz|libgstreamer-1\.0|libgstbase-1\.0|libglib-2\.0|libgobject-2\.0)\.so')

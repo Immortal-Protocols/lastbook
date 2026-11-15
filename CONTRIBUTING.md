@@ -16,7 +16,7 @@ The README explains the layout and how to build the apps.
 ## Test
 
 ```bash
-python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq
+python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq app.tests.test_lmstudio
 ```
 
 Run these before you open a pull request (`test_topic_search` needs Node and is skipped without it). If you change the packaging, also run the build for your platform: it ends
@@ -32,9 +32,14 @@ the page you mean to cite: `python3 tools/libq.py --data /path/to/LastbookData s
 
 ## Rules that keep Lastbook what it is
 
-**No network.** The app opens no port and makes no connection, with two exceptions, both started by the person and both
-through `engine/setup/download.py` to the hosts in `ALLOWED_HOSTS` only: setup's downloads, and the Check for updates
-button (`engine/update.py`, `downloads.lastbook.org` only).
+**No network.** The app opens no port and reaches nothing past this computer, with two exceptions, both started by the
+person and both through `engine/setup/download.py` to the hosts in `ALLOWED_HOSTS` only: setup's downloads, and the Check
+for updates button (`engine/update.py`, `downloads.lastbook.org` only).
+
+- The assistant may talk to a model server on this computer, and only through `assistant.model_open`: plain HTTP to
+  `127.0.0.1` or `[::1]`, never the name `localhost`, with no proxy and no redirects. That is LM Studio, only when the
+  person chooses it in About, or the model server at port 19443 when nothing is chosen and the built-in AI is not ready.
+  *Off* checks no port. No other module may open a connection to a model.
 
 - No telemetry, analytics, crash reporting, fonts or scripts from the web, or "phone home" of any kind. The one update check
   (`engine/update.py`) runs only when the person presses its button, and only says whether a newer version exists.

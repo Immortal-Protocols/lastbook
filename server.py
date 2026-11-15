@@ -1907,14 +1907,28 @@ class Handler(library.Handler):
             text, summary = assistant.run_tool(name, args, sess, extra)
             images = [p['image_url']['url'] for m in extra for p in m['content'] if isinstance(p, dict) and p.get('type') == 'image_url']
             return self.send_json({'text': text, 'summary': summary, 'sources': list(sess.sources.values()), 'images': images})
-        if rpath == '/api/assistant/local':   # the optional local AI: look again for the file, turn it on or off, stop it
-            if not assistant.LOCAL:
-                return self.send_json({'error': 'no local AI in this version'}, 404)
+        if rpath == '/api/assistant/local':   # which model answers, and the optional local AI: look again for the file, turn it on or off, stop it
             try:
                 n = int(self.headers.get('Content-Length') or 0)
-                action = json.loads(self.rfile.read(min(max(n, 0), 2000)) or b'{}').get('action')
+                body = json.loads(self.rfile.read(min(max(n, 0), 2000)) or b'{}')
+                action = body.get('action')
             except (ValueError, AttributeError):
-                action = None
+                body, action = {}, None
+            if action in ('provider', 'models') and self.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+                # as for setup: a phone the guide is shared with may not change the model or make this computer try its ports
+                return self.send_json({'error': 'The assistant is chosen on the computer that runs Lastbook.'}, 403)
+            if action == 'provider':     # Built-in, LM Studio on this computer, or Off: saved, and the status as it is now
+                try:
+                    assistant.set_provider(body.get('provider'), body.get('port'), body.get('model'))
+                except ValueError as e:
+                    return self.send_json({'error': str(e)}, 400)
+                return self.send_json(dict(assistant.model_status(), coverage=coverage()))
+            if action == 'models':       # what LM Studio has, asked only now that the person pressed Find models
+                port = body.get('port', assistant.lmstudio_settings()['port'])
+                found, why = assistant.lmstudio_models(port)
+                return self.send_json({'ok': True, 'models': found} if why is None else {'ok': False, 'error': why})
+            if not assistant.LOCAL:
+                return self.send_json({'error': 'no local AI in this version'}, 404)
             if action == 'rescan':
                 threading.Thread(target=assistant.LOCAL.discover, daemon=True).start()
             elif action in ('on', 'off'):
@@ -1922,7 +1936,7 @@ class Handler(library.Handler):
             elif action == 'stop':
                 assistant.LOCAL.stop('asked')
             else:
-                return self.send_json({'error': 'action is rescan, on, off or stop'}, 400)
+                return self.send_json({'error': 'action is provider, models, rescan, on, off or stop'}, 400)
             return self.send_json(assistant.LOCAL.status())
         if rpath != '/api/chat':
             return self.send_json({'error': 'not found'}, 404)
@@ -1953,8 +1967,9 @@ class Handler(library.Handler):
             except library.CLIENT_GONE:
                 gone[0] = True  # the person pressed Stop or left; stop calling the model
         st = assistant.model_status()
-        if not st['online']:
-            emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
+        if not st['online']:   # LM Studio and Off say why in a sentence; the model server's own error is a name, not for the person
+            emit({'type': 'error', 'error': 'model_unavailable',
+                  'text': st['error'] if st.get('provider') in ('lmstudio', 'off') and st.get('error') else 'The local assistant model is not running right now.'})
             return
         try:
             assistant.chat(msgs, about, emit, lambda: gone[0])

@@ -20,6 +20,13 @@ The previous interface on port 8879 is untouched and keeps running separately.
 
 - Model: `deepseek-v4.1-flash` at `http://127.0.0.1:19443` (called only by the server; override with
   `SURVIVAL_MODEL_BASE`, which must be a loopback address). The 19442 gateway is not used.
+- Or LM Studio on this computer, chosen in About (`POST /api/assistant/local` with `{"action": "provider", "provider":
+  "lmstudio", "port": 1234, "model": "<id>"}`; `{"action": "models", "port": 1234}` lists LM Studio's models). Requests go
+  only to `127.0.0.1:<port>`. The model's type from LM Studio's `/api/v0/models` decides whether `view_page` is offered,
+  and its loaded context length sets the prompt budget (8192 tokens when unknown, counted roughly as 3.5 characters a
+  token). `reasoning_effort` is sent only to the default model server. `"provider": "off"` means no model and no port
+  checked at all. Both actions answer this computer only; a phone gets 403. The choice is saved in
+  `derived/llm/state.json`; with no choice saved, everything works as before.
 - Every question is first searched with the shared retriever; the model then gets five read-only tools:
   `search_library`, `read_pages`, `view_page` (sends the page image — verified the model reads it),
   `get_timed_transcript`, `lookup_place`. Tools accept catalog ids only: no paths, URLs or shell input.
@@ -43,7 +50,8 @@ version above keeps using the model server at `SURVIVAL_MODEL_BASE` unless start
   default `--fit`) and its log. Build it with `bash packaging/llm/build_llm_macos.sh`, which refuses a binary with
   network calls or a folder of this Mac in it. Prompts go in as segments: Gemma's template markup with special tokens
   read, library and user text with them never read, so a document cannot start a turn of its own.
-- **Finding the model:** the file in `LastbookData/models/`, `LastbookData/`, Downloads, Documents or Desktop. It is
+- **Finding the model:** the file in `LastbookData/models/`, `LastbookData/`, or a folder named by `LASTBOOK_MODEL_DIR`;
+  never Downloads, Documents or Desktop unless that is the selected library (`llm_local.places`). It is
   checked once (size, then SHA-256, about 10 s on this Mac), then `lastbook-llm --measure` asks llama.cpp where it fits.
   It is offered when the computer's memory holds the measured need plus 2.5 GiB. On a Mac GPU and CPU share that memory;
   on Windows only the part not placed on the graphics card counts. There is no fixed 32 GB rule.
@@ -87,7 +95,7 @@ devices get 403. Network clients only get the app, its APIs, encyclopedias and l
 
 The library's bundled Python 3.12 (`library-data/runtime/...`), the library's own `tools/library.py`
 and vendored packages (libzim, bs4), poppler `pdftoppm` (page images), and in `derived/pylib`:
-onnxruntime, tokenizers, numpy. The model server at 19443 is needed only for Ask. No internet.
+onnxruntime, tokenizers, numpy. A model server (19443, or LM Studio when chosen) is needed only for Ask. No internet.
 
 ## What's where
 

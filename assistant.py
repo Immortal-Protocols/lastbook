@@ -1,10 +1,12 @@
 """Source-grounded assistant: hybrid retrieval + local DeepSeek with bounded, read-only library tools.
 
-Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model is only ever called server-side at
-MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
+Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model is only ever called server-side: the
+built-in local AI over pipes (llm_local.py), LM Studio's server on this computer when the person chooses it, or the
+model server at MODEL_URL; clients never see it. Every request goes through model_open(), which reaches no further
+than this computer. Tools can read the public survival library (catalog ids, pages, transcripts, map
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
-import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import base64, json, queue, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
 from engine.paths import ro_uri
 
@@ -32,6 +34,7 @@ S = None        # server module, set by init()
 INDEX = None    # retrieval.Index
 # The optional local AI (llm_local.py): on in the desktop app, off in the server version unless LASTBOOK_LOCAL_AI=1.
 # When it is installed and fits, it answers; otherwise a model server on this computer at BASE, if one runs.
+# The person's choice in About (provider(), below) comes first: LM Studio, or no model at all.
 LOCAL = None
 
 
@@ -45,7 +48,8 @@ def init(server_module, index):
 
 
 def local_on():
-    return LOCAL is not None and LOCAL.available()
+    """The built-in model answers: chosen (or nothing chosen yet), and found, checked and fitting this computer."""
+    return provider() in (None, 'builtin') and LOCAL is not None and LOCAL.available()
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -64,15 +68,209 @@ def model_open(req, timeout):
     return _opener.open(req, timeout=timeout)
 
 
+# ---------------------------------------------------------------- provider --
+# The person's choice of model, saved in derived/llm/state.json beside the local AI's own settings (so it moves with the
+# library): 'builtin' (llm_local's Gemma), 'lmstudio' (LM Studio's server on this computer), 'off', or no key at all,
+# which keeps the behaviour from before there was a choice. It is read on every call, never at import, so a change in
+# About applies to the next question.
+PROVIDERS = ('builtin', 'lmstudio', 'off')
+LMSTUDIO_PORT = 1234          # LM Studio's own default
+LMSTUDIO_CONTEXT = 8192       # prompt budget when LM Studio has not said how much context the loaded model holds
+OFF_REASON = 'The assistant is turned off. Choose Built-in or LM Studio in About to get written answers.'
+
+
+def _state():
+    """The saved settings. The desktop app's local AI holds the one copy in memory, so a save here never undoes one there."""
+    import llm_local
+    return (LOCAL if LOCAL is not None else llm_local.LOCAL).saved
+
+
+def _save_state():
+    import llm_local
+    llm_local._save(_state())
+
+
+def provider():
+    p = _state().get('provider')
+    return p if p in PROVIDERS else None
+
+
+def valid_port(v):
+    """A port number, or ValueError. Only a real int: True, '1234' and '1234@evil' are not ports."""
+    if type(v) is not int or not 1 <= v <= 65535:
+        raise ValueError('The port is a number from 1 to 65535.')
+    return v
+
+
+def lmstudio_settings():
+    """What was saved for LM Studio, with anything missing or damaged in the file replaced by a safe default."""
+    lm = _state().get('lmstudio')
+    lm = lm if isinstance(lm, dict) else {}
+    try:
+        port = valid_port(lm.get('port'))
+    except ValueError:
+        port = LMSTUDIO_PORT
+    model = lm.get('model') if isinstance(lm.get('model'), str) and lm.get('model') else None
+    ctx = lm.get('context') if type(lm.get('context')) is int and lm.get('context') > 0 else None
+    return {'port': port, 'model': model, 'vision': lm.get('vision') is True, 'context': ctx}
+
+
+def endpoint():
+    """Where the HTTP path sends a turn, decided now. LM Studio's live answer (from the last status check) wins over
+    what was saved when the model was picked: the person may have reloaded it with another context length."""
+    if provider() == 'lmstudio':
+        lm = lmstudio_settings()
+        live = _lm['info'] if _lm['port'] == lm['port'] and _lm['info'] and _lm['info']['id'] == lm['model'] else None
+        return {'lmstudio': True, 'base': f"http://127.0.0.1:{lm['port']}", 'model': lm['model'],
+                'vision': live['vision'] if live else lm['vision'],
+                'context': (live and live['context']) or lm['context'], 'loaded': live['loaded'] if live else None}
+    return {'lmstudio': False, 'base': BASE, 'model': MODEL, 'vision': True, 'context': None, 'loaded': None}
+
+
+def set_provider(choice, port=None, model=None):
+    """Save the person's choice. ValueError with a sentence for them when the choice is not one Lastbook knows."""
+    if choice not in PROVIDERS:
+        raise ValueError('Choose builtin, lmstudio or off.')
+    st = _state()
+    if choice == 'lmstudio':
+        lm = lmstudio_settings()
+        if port is not None:
+            lm['port'] = valid_port(port)
+        if model is not None:
+            if not isinstance(model, str) or not 0 < len(model) <= 200 or not model.isprintable():
+                raise ValueError('That is not a model name LM Studio gave.')
+            lm['model'] = model
+        if port is not None or model is not None:   # what LM Studio says about this model now: it decides images and length
+            found, _ = lmstudio_models(lm['port'])
+            info = next((m for m in found or [] if m['id'] == lm['model']), None)
+            lm['vision'] = bool(info and info['vision'])
+            lm['context'] = info and info['context']
+        st['lmstudio'] = lm
+    st['provider'] = choice
+    _save_state()
+    _lm['at'] = 0                                   # the next status check asks again
+    if LOCAL is not None:
+        if choice == 'builtin' and not LOCAL.enabled():
+            LOCAL.set_enabled(True)
+        elif choice != 'builtin':
+            LOCAL.stop('another model was chosen')  # give its memory back
+
+
+# ---------------------------------------------------------------- LM Studio --
+def _problem(e, port):
+    """One plain sentence for what went wrong talking to LM Studio."""
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code in (401, 403):
+            return "LM Studio asks for an API token. Turn off Require Authentication in LM Studio's server settings."
+        said = _said(e)
+        return f'LM Studio could not answer (error {e.code}{": " + said if said else ""}).'
+    reason = getattr(e, 'reason', e)
+    if isinstance(reason, ConnectionRefusedError):
+        return f'LM Studio is not answering on port {port}. Open LM Studio and start its server, or check the port.'
+    if isinstance(reason, (socket.timeout, TimeoutError)):
+        return f'LM Studio on port {port} took too long to answer.'
+    if isinstance(e, ValueError):
+        return f'Something answers on port {port}, but it is not LM Studio.'
+    return f'LM Studio is not answering on port {port} ({type(reason).__name__}).'
+
+
+def _said(e):
+    """The short reason LM Studio put in an error reply, if any."""
+    try:
+        err = json.loads(e.read(4000) or b'{}').get('error')
+    except (ValueError, AttributeError, OSError):
+        return ''
+    msg = err.get('message') if isinstance(err, dict) else err
+    return re.sub(r'\s+', ' ', msg).strip()[:200] if isinstance(msg, str) else ''
+
+
+def _get_json(url, timeout):
+    with model_open(url, timeout) as r:
+        return json.loads(r.read(2_000_000))
+
+
+def _lm_model(m):
+    """One model from any of LM Studio's lists, in one shape. Missing fields mean 'not known', never an error.
+    /api/v0/models: id, type llm|vlm|embeddings, state, max_context_length, loaded_context_length (when loaded), capabilities ['tool_use'].
+    /api/v1/models: key, type, capabilities {vision, trained_for_tool_use}, loaded_instances[].config.context_length.
+    /v1/models (any OpenAI-style server): id only."""
+    if not isinstance(m, dict):
+        return None
+    mid = m.get('id') or m.get('key')
+    kind = m.get('type')
+    if not isinstance(mid, str) or not mid or kind in ('embedding', 'embeddings') or (kind is None and 'embed' in mid.lower()):
+        return None
+    caps = m.get('capabilities')
+    loaded_ctx = m.get('loaded_context_length')
+    inst = m.get('loaded_instances')
+    if isinstance(inst, list) and inst and isinstance(inst[0], dict) and isinstance(inst[0].get('config'), dict):
+        loaded_ctx = inst[0]['config'].get('context_length', loaded_ctx)
+    loaded = m.get('state') == 'loaded' or bool(isinstance(inst, list) and inst)
+    vision = kind == 'vlm' or (isinstance(caps, dict) and caps.get('vision') is True)
+    tools = (isinstance(caps, list) and 'tool_use' in caps) or (isinstance(caps, dict) and caps.get('trained_for_tool_use') is True)
+    ctx = loaded_ctx if loaded and type(loaded_ctx) is int and loaded_ctx > 0 else None
+    return {'id': mid[:200], 'loaded': loaded, 'vision': vision, 'tools': tools, 'context': ctx}
+
+
+def lmstudio_models(port, timeout=3):
+    """LM Studio's models on this computer at port: ([{id, loaded, vision, tools, context}], None), loaded first,
+    or (None, a sentence for the person). Asks its own list first, which says which models read images; an older
+    LM Studio or another server answers only the OpenAI-style one."""
+    try:
+        port = valid_port(port)
+    except ValueError as e:
+        return None, str(e)
+    base = f'http://127.0.0.1:{port}'
+    for path in ('/api/v0/models', '/api/v1/models', '/v1/models'):
+        try:
+            got = _get_json(base + path, timeout)
+            rows = got.get('data', got.get('models')) if isinstance(got, dict) else None
+            if not isinstance(rows, list):
+                raise ValueError('no model list')
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                continue
+            return None, _problem(e, port)
+        except Exception as e:
+            return None, _problem(e, port)
+        out = [x for x in map(_lm_model, rows) if x]
+        return sorted(out, key=lambda x: not x['loaded']), None
+    return None, f'Something answers on port {port}, but it is not LM Studio.'
+
+
 # ------------------------------------------------------------------ status --
 _status = {'at': 0, 'online': False, 'error': None}
+_lm = {'at': 0, 'port': None, 'online': False, 'error': None, 'info': None}   # the last answer from LM Studio
+
+
+def _lmstudio_status():
+    lm = lmstudio_settings()
+    keep = 15 if _lm['online'] else 3      # not answering: the person may be starting LM Studio right now
+    if time.time() - _lm['at'] > keep or _lm['port'] != lm['port']:
+        found, why = lmstudio_models(lm['port'], timeout=2.5)
+        info = next((m for m in found or [] if m['id'] == lm['model']), None)
+        if why is None and not lm['model']:
+            why = 'Choose a model for LM Studio in About.'
+        elif why is None and not info:
+            why = f'LM Studio does not list the model {lm["model"]}. Choose another in About.'
+        _lm.update(at=time.time(), port=lm['port'], online=why is None, error=why, info=info)
+    ep = endpoint()
+    return {'port': lm['port'], 'model': lm['model'], 'vision': ep['vision'], 'context': ep['context'],
+            'loaded': ep['loaded'], 'online': _lm['online'], 'error': _lm['error']}
 
 
 def model_status():
     local = LOCAL.status() if LOCAL else None
+    index = dict(INDEX.status) if INDEX else {'state': 'off'}
+    p = provider()
+    if p == 'off':          # nothing is asked, not even whether a model server is there
+        return {'model': None, 'online': False, 'error': OFF_REASON, 'local': local, 'vision': False, 'provider': p, 'index': index}
+    if p == 'lmstudio':
+        lm = _lmstudio_status()
+        return {'model': lm['model'], 'online': lm['online'], 'error': lm['error'], 'local': local, 'vision': lm['vision'],
+                'provider': p, 'lmstudio': lm, 'index': index}
     if local_on():
-        return {'model': local['name'], 'online': True, 'error': None, 'local': local, 'vision': False,
-                'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+        return {'model': local['name'], 'online': True, 'error': None, 'local': local, 'vision': False, 'provider': p, 'index': index}
     if time.time() - _status['at'] > 15:
         try:
             with model_open(MODELS_URL, timeout=2.5) as r:
@@ -82,7 +280,7 @@ def model_status():
             _status.update(online=False, error=type(e).__name__)
         _status['at'] = time.time()
     return {'model': MODEL, 'online': _status['online'], 'error': _status['error'], 'local': local, 'vision': True,
-            'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+            'provider': p, 'index': index}
 
 
 # --------------------------------------------------------------- retrieval --
@@ -391,19 +589,30 @@ GROUPED = re.compile(r'\[\s*[SM]\d+(?:\s*[,;]\s*[SM]\d+)+\s*\]')   # how Gemma o
 SYSTEM_TEXT_ONLY = SYSTEM.replace(', view_page when a diagram or table matters', '').replace(
     'scanned pages without text (unless you view the page image)', 'pictures, diagrams or scanned pages without text')
 ROUND_TOKENS = 1800
+FIRST_WAIT = 600     # seconds LM Studio may take before the first word of a question: it may be loading the model first
+CHARS_PER_TOKEN = 3.5   # a rough average for English; the server's own tokenizer is not here to count with
+IMAGE_TOKENS = 1500     # what one page image is counted as against the budget
 
 
-def _http_round(msgs, tools, cancelled, wrote, set_state):
-    """One model turn from the model server at BASE. (content, {index: call}), 'stopped', or a sentence saying what failed."""
-    body = {'model': MODEL, 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': 'low'}
+def _http_round(msgs, tools, cancelled, wrote, set_state, ep=None, wait=180):
+    """One model turn from the model server at ep['base']. (content, {index: call}), 'stopped', or a sentence saying what failed."""
+    ep = ep or endpoint()
+    body = {'model': ep['model'], 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS}
+    if not ep['lmstudio']:
+        body['reasoning_effort'] = 'low'    # the default model server's own setting; LM Studio documents it only for another endpoint
     if tools:
         body['tools'] = tools
-    req = urllib.request.Request(MODEL_URL, json.dumps(body).encode(), {'Content-Type': 'application/json'})
+    req = urllib.request.Request(ep['base'] + '/v1/chat/completions', json.dumps(body).encode(), {'Content-Type': 'application/json'})
     try:
-        resp = model_open(req, timeout=180)
+        if ep['lmstudio']:
+            resp = _Answer(req, wait)
+            if not resp.opened(cancelled):
+                return 'stopped'
+        else:
+            resp = model_open(req, timeout=wait)
     except Exception as e:
-        return f'The local model is not responding ({type(e).__name__}).'
-    calls, content = {}, ''
+        return _round_problem(e, ep)
+    calls, content, shown = {}, '', [0]
     try:
         for raw in resp:
             if cancelled():
@@ -415,15 +624,23 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
             if data == '[DONE]':
                 break
             try:
-                ch = json.loads(data)['choices'][0]
-            except (ValueError, KeyError, IndexError):
+                got = json.loads(data)
+                if isinstance(got, dict) and got.get('error'):    # a server may report a failure inside the stream
+                    return _round_problem(None, ep, got['error'])
+                ch = got['choices'][0]
+            except (ValueError, KeyError, IndexError, TypeError):
                 continue
             dl = ch.get('delta') or {}
-            if dl.get('reasoning_content'):
+            if dl.get('reasoning_content') or dl.get('reasoning'):  # DeepSeek and most servers say reasoning_content; LM Studio says reasoning for some models
                 set_state('thinking')
             if dl.get('content'):
                 content += dl['content']
-                wrote(dl['content'])
+                visible = _no_think(content)
+                if visible is None:
+                    set_state('thinking')
+                elif len(visible) > shown[0]:
+                    wrote(visible[shown[0]:])
+                    shown[0] = len(visible)
             for tc in dl.get('tool_calls') or []:
                 c = calls.setdefault(tc.get('index', 0), {'id': '', 'name': '', 'args': ''})
                 c['id'] = tc.get('id') or c['id']
@@ -431,10 +648,120 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
                 c['name'] += f.get('name') or ''
                 c['args'] += f.get('arguments') or ''
     except (socket.timeout, urllib.error.URLError, ConnectionError) as e:
-        return f'The local model stopped responding ({type(e).__name__}).'
+        return f'{"LM Studio" if ep["lmstudio"] else "The local model"} stopped responding ({type(e).__name__}).'
     finally:
         resp.close()
-    return content, calls
+    return _no_think(content) or '', calls
+
+
+class _Answer:
+    """model_open and the lines of the answer, read on a thread of their own. LM Studio may say nothing for minutes while it
+    loads the model or reads a long prompt, and Stop must still be seen: between lines this yields b'' every 0.25 s, so the
+    caller looks at cancelled(). close() makes the thread hang up at its next line, which tells LM Studio to stop."""
+
+    def __init__(self, req, wait):
+        self.q, self.over = queue.Queue(), threading.Event()
+        threading.Thread(target=self._read, args=(req, wait), daemon=True, name='lmstudio-answer').start()
+
+    def _read(self, req, wait):
+        try:
+            with model_open(req, wait) as resp:
+                self.q.put(('open', None))
+                for raw in resp:
+                    if self.over.is_set():
+                        return
+                    self.q.put(('line', raw))
+            self.q.put(('end', None))
+        except Exception as e:
+            self.q.put(('error', e))
+
+    def _next(self):
+        try:
+            kind, v = self.q.get(timeout=0.25)
+        except queue.Empty:
+            return 'idle', None
+        if kind == 'error':
+            raise v
+        return kind, v
+
+    def opened(self, cancelled):
+        """True once the answer has begun, False if the person pressed Stop first; raises what model_open raised."""
+        while self._next()[0] == 'idle':
+            if cancelled():
+                self.close()
+                return False
+        return True
+
+    def __iter__(self):
+        while True:
+            kind, v = self._next()
+            if kind == 'end':
+                return
+            yield v if kind == 'line' else b''
+
+    def close(self):
+        self.over.set()
+
+
+def _no_think(text):
+    """The answer without a <think>…</think> block a server left in it; None while that block is still being written."""
+    s = text.lstrip()
+    if s and '<think>'.startswith(s):   # the tag itself may come in pieces
+        return None
+    if not s.startswith('<think>'):
+        return text
+    if '</think>' not in s:
+        return None
+    return s.split('</think>', 1)[1].lstrip()
+
+
+def _round_problem(e, ep, said=None):
+    """A sentence for a failed turn: e, an exception, or said, the error a server sent inside its stream."""
+    if said is not None:
+        msg = re.sub(r'\s+', ' ', str(said.get('message') if isinstance(said, dict) else said))[:200]
+        return f'{"LM Studio" if ep["lmstudio"] else "The local model"} could not answer ({msg}).'
+    if ep['lmstudio']:
+        return _problem(e, ep['base'].rsplit(':', 1)[1])
+    if isinstance(e, urllib.error.HTTPError):
+        return f'The local model could not answer (error {e.code}).'
+    return f'The local model is not responding ({type(e).__name__}).'
+
+
+def _tokens(msgs, tools):
+    """About how many tokens a request is: characters / CHARS_PER_TOKEN, plus a fixed count per image."""
+    chars, images = len(json.dumps(tools)) if tools else 0, 0
+    for m in msgs:
+        c = m.get('content')
+        for part in (c if isinstance(c, list) else [{'text': c or ''}]):
+            if part.get('type') == 'image_url':
+                images += 1
+            else:
+                chars += len(part.get('text') or '')
+        chars += len(json.dumps(m['tool_calls'])) if m.get('tool_calls') else 0
+        chars += 16      # the template's own markup around each message
+    return chars / CHARS_PER_TOKEN + images * IMAGE_TOKENS
+
+
+def _fit_http(msgs, tools, ctx):
+    """The messages, short enough for the context LM Studio loaded the model with, leaving room for the answer. The same
+    order as _fit_prompt: the oldest past questions and answers go first, then the longest tool results are shortened.
+    None if even that is too long."""
+    room = (ctx or LMSTUDIO_CONTEXT) - ROUND_TOKENS - 256
+    work = [dict(m) for m in msgs]
+    while _tokens(work, tools) > room:
+        # the latest question the person typed: a page image is sent as a 'user' message too, and must not count as one
+        last_user = max((i for i, m in enumerate(work) if m['role'] == 'user' and isinstance(m.get('content'), str)), default=-1)
+        old = [i for i, m in enumerate(work) if m['role'] in ('user', 'assistant') and i < last_user]
+        if old:   # a question goes with its answer, so the turns still alternate: some chat templates refuse anything else
+            i = old[0]
+            del work[i:i + (2 if work[i]['role'] == 'user' and i + 1 in old and work[i + 1]['role'] == 'assistant' else 1)]
+            continue
+        long = max((i for i, m in enumerate(work) if m['role'] in ('tool', 'system') and i > 0 and len(m.get('content') or '') > 1500),
+                   key=lambda i: len(work[i]['content']), default=None)
+        if long is None:
+            return None
+        work[long]['content'] = work[long]['content'][:len(work[long]['content']) // 2] + '\n[…shortened to fit]'
+    return work
 
 
 def _local_round(msgs, tools, cancelled, wrote, set_state):
@@ -485,6 +812,9 @@ def _fit_prompt(msgs, tools, llm_local):
 
 def chat(messages, about, emit, cancelled):
     """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early."""
+    if provider() == 'off':
+        emit({'type': 'error', 'error': 'model_unavailable', 'text': OFF_REASON})
+        return
     t0 = time.time()
     sess = Session()
     msgs = [{'role': 'system', 'content': SYSTEM}]
@@ -521,9 +851,19 @@ def chat(messages, about, emit, cancelled):
             state[0] = s
             emit({'type': 'state', 'state': s})
     local = local_on()
-    tools = [t for t in TOOLS if t['function']['name'] != 'view_page'] if local else TOOLS   # the local model reads text only
-    if local:
+    ep = None if local else endpoint()
+    if not (ep or {}).get('vision'):   # a model that reads text only is not offered page images: it would be sent pictures it cannot take
+        tools = [t for t in TOOLS if t['function']['name'] != 'view_page']
         msgs[0] = {'role': 'system', 'content': SYSTEM_TEXT_ONLY}
+    else:
+        tools = TOOLS
+    if ep and ep['lmstudio'] and not ep['model']:
+        emit({'type': 'error', 'error': 'model_unavailable', 'text': 'Choose a model for LM Studio in About.'})
+        return
+    if ep and ep['loaded'] is False:   # LM Studio loads it on the first question, which can take a minute or more
+        state[0] = 'starting'
+        emit({'type': 'state', 'state': 'starting', 'provider': 'lmstudio'})
+    if local:
         set_state('starting')
         shown = [None]
 
@@ -538,7 +878,13 @@ def chat(messages, about, emit, cancelled):
         if why:
             emit({'type': 'error', 'error': 'model_unavailable', 'text': why})
             return
-    first = {'at': None}
+    first, pinged = {'at': None}, [time.time()]
+
+    def still_wanted():   # Stop is seen only when a write to the page fails: while LM Studio says nothing, write a little now and then
+        if time.time() - pinged[0] >= 1:
+            pinged[0] = time.time()
+            emit({'type': 'wait'})
+        return cancelled()
 
     def wrote(piece):
         set_state('writing')
@@ -548,8 +894,18 @@ def chat(messages, about, emit, cancelled):
         last = rnd == MAX_ROUNDS
         if last:
             msgs.append({'role': 'system', 'content': 'Stop searching now. Write the answer using only the sources already retrieved, with their keys. If they are not enough, say what is missing under "Not found in the library:".'})
-        set_state('thinking' if rnd == 0 else 'reading')
-        got = (_local_round if local else _http_round)(msgs, None if last else tools, cancelled, wrote, set_state)
+        if not (rnd == 0 and ep and ep['loaded'] is False):   # 'starting' stays until LM Studio has loaded it and begins
+            set_state('thinking' if rnd == 0 else 'reading')
+        if local:
+            got = _local_round(msgs, None if last else tools, cancelled, wrote, set_state)
+        else:
+            sent = _fit_http(msgs, None if last else tools, ep['context']) if ep['lmstudio'] else msgs
+            if sent is None:
+                emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The question and its sources are too long for the model as LM Studio '
+                      'loaded it. Load it with a longer context length in LM Studio, or start a new chat.'})
+                return
+            got = _http_round(sent, None if last else tools, still_wanted if ep['lmstudio'] else cancelled, wrote, set_state, ep,
+                              FIRST_WAIT if ep['lmstudio'] and rnd == 0 else 180)
         if got in ('stopped', None):
             emit({'type': 'stopped'} if got else {'type': 'error', 'error': 'model_unavailable', 'text': 'The local model stopped responding.'})
             return
@@ -587,6 +943,10 @@ def chat(messages, about, emit, cancelled):
         emit({'type': 'sources', 'sources': list(sess.sources.values())})
         if content:  # text written before tool calls is discarded from the final answer
             emit({'type': 'reset'})
+        if ep and ep['loaded'] is False and provider() == 'lmstudio':   # LM Studio has loaded it for this question: ask once
+            _lm['at'] = 0                                                # what context length it was given
+            _lmstudio_status()
+            ep = endpoint()
     if not answer.strip():
         emit({'type': 'error', 'error': 'empty', 'text': 'The model did not produce an answer. The passages it found are listed below.',
               'sources': list(sess.sources.values())})

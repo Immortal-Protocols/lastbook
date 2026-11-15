@@ -58,10 +58,14 @@ other Linux distributions have not been validated for this release.
   (`app/shell_windows.py`), and WebKitGTK `URISchemeRequest` on Linux (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and output and opens no socket either.
 - **Two uses of the network, both started by the person.** (1) Setup's downloader (`engine/setup/`), when the person
   starts or resumes a download. (2) The update check (`engine/update.py`, `web/update.js`), when the person presses
-  the button. Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,
+  the button. Both go through `engine/setup/download.py`, the only module that reaches past this computer: HTTPS on port 443 only,
   to allow-listed hosts only (`downloads.lastbook.org` for packs, maps, the manifest and update information; Hugging Face's
   download hosts for the AI model; the update check accepts `downloads.lastbook.org` alone), no proxy from the system, and a
   redirect is followed only to another allowed host.
+- **A model on this computer only.** The assistant talks to a model server only on this computer, through
+  `assistant.model_open`: plain HTTP to `127.0.0.1` or `[::1]` (never the name `localhost`), no proxy, no redirects. That is LM Studio,
+  only when you choose it in About, or a model server at port 19443 when nothing is chosen and the built-in AI is not ready.
+  The built-in AI uses pipes, and *Off* checks no port.
 - **Pinned trust.** The downloader trusts only the root certificates in `engine/setup/roots.pem` (11 roots from Mozilla's
   bundle), never the system's trust store. The builds refuse to finish if those roots no longer cover the allowed hosts
   (`packaging/check_tls_roots.py`).
@@ -189,6 +193,15 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
   Setup downloads it directly from Hugging Face. The model is never part of the app or of this repository. The runner,
   `lastbook-llm`, is our own small program (`packaging/llm/lastbook_llm.cpp`) on llama.cpp tag b12032: Metal on a Mac,
   Vulkan with CPU fallbacks on Windows and Linux.
+- **LM Studio instead**: in About, the assistant can use *Built-in*, *LM Studio on this computer* or *Off*. Lastbook
+  talks to LM Studio's server on this computer (port 1234 unless you change it) only once you pick it there: pressing it
+  or Find models asks for its list of models, and while it is chosen Lastbook sends it your questions and checks that
+  list again when About or Chat shows whether it is answering. Only this computer can make the choice, not a phone the
+  guide is shared with. Lastbook goes no further than this computer: the address is always `127.0.0.1`, with no proxy
+  and no redirects (`assistant.model_open`). A text-only model is not offered page images, and the prompt is trimmed to
+  the context length LM Studio loaded the model with. If LM Studio's Require Authentication is on, turn it off: Lastbook
+  does not store tokens. *Off* means no model and no check of any port. The choice is kept in
+  `LastbookData/derived/llm/state.json`.
 - **Meaning-based search** uses BAAI's bge-small-en-v1.5 (ONNX) through onnxruntime, on Windows only; the Mac build uses
   keyword search.
 
@@ -209,10 +222,11 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
 ## Tests
 
 ```bash
-python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq
+python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq app.tests.test_lmstudio
 ```
 
-`test_bridge` needs a data folder (`LASTBOOK_DATA`); the others run without a library. `packaging/test_pack_tools.py SAMPLE
+`test_bridge` needs a data folder (`LASTBOOK_DATA`); the others run without a library. `test_lmstudio` talks to a small
+stand-in for LM Studio's server that it starts on a loopback port. `packaging/test_pack_tools.py SAMPLE
 WORK` checks the pack tools against a pack sample (`build_packs.py build <pack> --sample N`). The `mac_*` and `win_*`
 scripts in `app/tests/` drive a real build against a real data folder, and their paths are placeholders
 (`/path/to/lastbook`, `C:\Users\you\app-test`) to set for your own machine.

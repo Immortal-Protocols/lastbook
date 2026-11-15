@@ -1071,6 +1071,17 @@ function localAbout(st) {
     : l.state === 'off' ? `The local AI is turned off. ${btn('on', 'Turn on')}`
     : `Local AI: ${esc(l.message || { absent: 'not added. Add it in Library and local AI (about 17 GB).', checking: 'checking the file…', measuring: 'checking this computer’s memory…' }[l.state] || l.state)} ${l.state === 'absent' ? '<a class="btn plain" href="/ui/setup.html#manage">Add the local AI</a>' : ''}${btn('rescan', 'Look again')}`;
 }
+function assistantAbout(st) {
+  const l = st.local, running = l && /ready|stopped|loading/.test(l.state);
+  if (running) return localAbout(st);
+  const o = st.picker;
+  if (o && o.models && o.models.length) {
+    const blank = o.model ? '' : '<option value="" selected>Choose a model</option>';
+    const opts = blank + o.models.map(id => `<option value="${esc(id)}"${id === o.model ? ' selected' : ''}>${esc(id)}</option>`).join('');
+    return `Chat can use a model already on this computer. <span class="modelpick">${esc(o.label)} <select id="aboutModel" aria-label="${esc(o.label)} model">${opts}</select></span>`;
+  }
+  return localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.');
+}
 async function localAI(action) {
   try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch { }
   setTimeout(() => { if (location.hash.startsWith('#/about')) route() }, 400);
@@ -1089,7 +1100,7 @@ async function about() {
   <div class="cards2" style="margin-top:16px">
    <div class="card"><b>What’s in it</b><small>${(s.pdfs || 0).toLocaleString()} PDF manuals (${(s.pdf_pages || 0).toLocaleString()} pages), ${(s.web_pages || 0).toLocaleString()} saved web pages, ${(s.videos || 0).toLocaleString()} downloaded videos and ${s.collections || 0} complete encyclopedias.</small></div>
    ${ch ? `<div class="card"><b>Still arriving</b><small>${ch.pending.toLocaleString()} more videos are queued and ${ch.downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.</small></div>` : ''}
-   <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
+   <div class="card"><b>Assistant</b><small>${assistantAbout(st)} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
    <div class="card"><b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small></div>
    ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
   </div>
@@ -1109,6 +1120,13 @@ async function about() {
   ${IN_WINDOW ? '' : '<h2>Using it on a phone</h2><p>Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with <code>server.py --lan</code>. Phones need the access link shown in the terminal the first time.</p>'}
   ${oldServer ? '<h2>Other ways in</h2><p><a href="/reports/gap-closure-status.html" target="_blank">Gap closure report</a> · <a href="/reports/learning-pathways.html" target="_blank">Learning pathways report</a> · <a href="/reports/survival-tools-cart.html" target="_blank">Supplies planning</a></p>' : ''}`;
   if (IN_WINDOW && window.LBUpdate) LBUpdate.mount(main);   // Check for updates (web/update.js): only when the person asks
+  const pick = $('#aboutModel');
+  if (pick) pick.onchange = async () => {
+    if (!pick.value) return;
+    pick.disabled = true;
+    try { await fetch('/api/assistant/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: pick.value }) }) } catch { }
+    if (location.hash.startsWith('#/about')) route();
+  };
 }
 
 route();

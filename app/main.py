@@ -57,7 +57,14 @@ def remember(folder):
     settings = app_folders()[0] / 'settings.json'
     try:
         settings.parent.mkdir(parents=True, exist_ok=True)
-        settings.write_text(json.dumps({'library': str(folder)}), encoding='utf-8')
+        try:
+            data = json.loads(settings.read_text(encoding='utf-8'))
+            if not isinstance(data, dict):
+                data = {}
+        except (OSError, ValueError):
+            data = {}
+        data['library'] = str(folder)
+        settings.write_text(json.dumps(data), encoding='utf-8')
     except OSError as e:   # it still opens this time; it asks again next time
         print('could not remember the library:', e, flush=True)
 

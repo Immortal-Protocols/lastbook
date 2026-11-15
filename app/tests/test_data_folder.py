@@ -108,6 +108,15 @@ class Lookup(unittest.TestCase):
         self.assertIn('is not a Lastbook library', why)
         self.assertNotIn(str(self.tmp.parent), why)   # the folder's name, not its whole path
 
+    def test_remember_keeps_other_settings(self):
+        chosen = library(self.home / 'Documents' / 'Kept')
+        self.settings().parent.mkdir(parents=True)
+        self.settings().write_text(json.dumps({'assistant_model': 'gemma4:26b-a4b', 'library': '/old'}), encoding='utf-8')
+        main.remember(chosen)
+        data = json.loads(self.settings().read_text(encoding='utf-8'))
+        self.assertEqual(data['assistant_model'], 'gemma4:26b-a4b')
+        self.assertEqual(data['library'], str(chosen))
+
     def test_remembered_gone_searches_again(self):
         gone = library(self.tmp / 'usb' / 'LastbookData')
         main.remember(gone)

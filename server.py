@@ -1907,6 +1907,15 @@ class Handler(library.Handler):
             text, summary = assistant.run_tool(name, args, sess, extra)
             images = [p['image_url']['url'] for m in extra for p in m['content'] if isinstance(p, dict) and p.get('type') == 'image_url']
             return self.send_json({'text': text, 'summary': summary, 'sources': list(sess.sources.values()), 'images': images})
+        if rpath == '/api/assistant/model':   # choose one model the configured local server already lists
+            try:
+                n = int(self.headers.get('Content-Length') or 0)
+                model = json.loads(self.rfile.read(min(max(n, 0), 2000)) or b'{}').get('model')
+            except (ValueError, AttributeError):
+                model = None
+            if not assistant.set_assistant_model(model):
+                return self.send_json({'error': 'that model is not listed by the local server'}, 400)
+            return self.send_json(assistant.model_status())
         if rpath == '/api/assistant/local':   # the optional local AI: look again for the file, turn it on or off, stop it
             if not assistant.LOCAL:
                 return self.send_json({'error': 'no local AI in this version'}, 404)

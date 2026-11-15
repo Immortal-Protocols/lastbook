@@ -4,11 +4,10 @@ Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model i
 MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
-import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import base64, json, os, re, socket, sqlite3, sys, threading, time, urllib.error, urllib.request
+from pathlib import Path
 import retrieval
 from engine.paths import ro_uri
-
-import os
 LOOPBACK = re.compile(r'http://(127\.0\.0\.1|\[::1\]):\d+(/[^\s]*)?')
 
 
@@ -66,23 +65,114 @@ def model_open(req, timeout):
 
 # ------------------------------------------------------------------ status --
 _status = {'at': 0, 'online': False, 'error': None}
+_listed = {'at': 0.0, 'ids': None, 'error': None}
+
+
+def _settings_path():
+    """The same settings file app/main.py uses for the library folder."""
+    home = Path.home()
+    if sys.platform.startswith('linux'):
+        root = Path(os.environ.get('XDG_CONFIG_HOME') or home / '.config')
+    elif sys.platform == 'win32':
+        root = Path(os.environ.get('APPDATA') or home / 'AppData' / 'Roaming')
+    else:
+        root = home / 'Library' / 'Application Support'
+    return root / 'Lastbook' / 'settings.json'
+
+
+def _read_settings():
+    try:
+        data = json.loads(_settings_path().read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_settings(data):
+    path = _settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + '.tmp')
+    tmp.write_text(json.dumps(data), encoding='utf-8')
+    os.replace(tmp, path)
+
+
+def picker_label(base=None):
+    """Ollama's usual port gets that name. Any other loopback server is just the model server."""
+    return 'Ollama' if (base or BASE).rsplit(':', 1)[-1] == '11434' else 'Model'
+
+
+def listed_models(force=False):
+    """Model ids from the loopback server at BASE. ([], error) when it is not running. Cached for a few seconds."""
+    now = time.time()
+    if not force and _listed['ids'] is not None and now - _listed['at'] < 15:
+        return _listed['ids'], _listed['error']
+    ids, error = [], None
+    try:
+        with model_open(MODELS_URL, timeout=2.5) as r:
+            for item in json.load(r).get('data') or []:
+                name = item.get('id') if isinstance(item, dict) else None
+                if isinstance(name, str) and name and len(name) <= 200:
+                    ids.append(name)
+    except Exception as e:
+        error = type(e).__name__
+    _listed.update(at=now, ids=ids, error=error)
+    return ids, error
+
+
+def active_model(ids):
+    """The listed model Chat should call, or None when the startup model is not listed and nobody has chosen one."""
+    saved = _read_settings().get('assistant_model')
+    if isinstance(saved, str) and saved in ids:
+        return saved
+    if MODEL in ids:
+        return MODEL
+    return None
+
+
+def model_picker(force=False):
+    """The menu of models on the configured server, or None when that server lists none."""
+    ids, _error = listed_models(force)
+    if not ids:
+        return None
+    return {'models': ids, 'model': active_model(ids), 'label': picker_label()}
+
+
+def set_assistant_model(model):
+    """Remember one model the configured server already lists. False when it does not list that id."""
+    ids, _error = listed_models(force=True)
+    if not isinstance(model, str) or model not in ids:
+        return False
+    data = _read_settings()
+    data['assistant_model'] = model
+    _write_settings(data)
+    _listed['at'] = 0
+    _status['at'] = 0
+    return True
+
+
+def http_target():
+    """(chat URL, model id) for this turn. A chosen listed model replaces the startup model."""
+    ids, _error = listed_models()
+    return MODEL_URL, (active_model(ids) if ids else None) or MODEL
 
 
 def model_status():
     local = LOCAL.status() if LOCAL else None
+    index = dict(INDEX.status) if INDEX else {'state': 'off'}
     if local_on():
-        return {'model': local['name'], 'online': True, 'error': None, 'local': local, 'vision': False,
-                'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+        return {'model': local['name'], 'online': True, 'error': None, 'local': local, 'vision': False, 'index': index}
+    picker = model_picker()
+    if picker and picker['model']:
+        return {'model': picker['model'], 'online': True, 'error': None, 'local': local, 'vision': True,
+                'index': index, 'picker': picker}
+    if picker:
+        return {'model': MODEL, 'online': False, 'error': f'{MODEL} not listed', 'local': local, 'vision': True,
+                'index': index, 'picker': picker}
     if time.time() - _status['at'] > 15:
-        try:
-            with model_open(MODELS_URL, timeout=2.5) as r:
-                ids = [m['id'] for m in json.load(r).get('data', [])]
-            _status.update(online=MODEL in ids, error=None if MODEL in ids else f'{MODEL} not listed')
-        except Exception as e:
-            _status.update(online=False, error=type(e).__name__)
+        _status.update(online=False, error=_listed['error'] or f'{MODEL} not listed')
         _status['at'] = time.time()
     return {'model': MODEL, 'online': _status['online'], 'error': _status['error'], 'local': local, 'vision': True,
-            'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+            'index': index}
 
 
 # --------------------------------------------------------------- retrieval --
@@ -395,10 +485,11 @@ ROUND_TOKENS = 1800
 
 def _http_round(msgs, tools, cancelled, wrote, set_state):
     """One model turn from the model server at BASE. (content, {index: call}), 'stopped', or a sentence saying what failed."""
-    body = {'model': MODEL, 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': 'low'}
+    url, model = http_target()
+    body = {'model': model, 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': 'low'}
     if tools:
         body['tools'] = tools
-    req = urllib.request.Request(MODEL_URL, json.dumps(body).encode(), {'Content-Type': 'application/json'})
+    req = urllib.request.Request(url, json.dumps(body).encode(), {'Content-Type': 'application/json'})
     try:
         resp = model_open(req, timeout=180)
     except Exception as e:
@@ -419,7 +510,7 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
             except (ValueError, KeyError, IndexError):
                 continue
             dl = ch.get('delta') or {}
-            if dl.get('reasoning_content'):
+            if dl.get('reasoning_content') or dl.get('reasoning'):
                 set_state('thinking')
             if dl.get('content'):
                 content += dl['content']

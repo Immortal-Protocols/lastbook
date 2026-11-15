@@ -119,13 +119,25 @@ const Chat = (() => {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
-    if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
+    const menu = s.picker && s.picker.models && s.picker.models.length && !(l && /ready|stopped|loading/.test(l.state));
+    if (menu) {
+      const blank = s.picker.model ? '' : '<option value="" selected>Choose a model</option>';
+      const opts = blank + s.picker.models.map(id => `<option value="${esc(id)}"${id === s.picker.model ? ' selected' : ''}>${esc(id)}</option>`).join('');
+      el.innerHTML = `<span class="${s.online ? 'dotok' : 'dotoff'}"></span><label class="modelpick">${esc(s.picker.label)} <select id="assistantModel" aria-label="${esc(s.picker.label)} model">${opts}</select></label><span class="long">${still}</span>`;
+    } else if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
     } else {
       el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
         : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
     }
+    const pick = $('#assistantModel');
+    if (pick) pick.onchange = async () => {
+      if (!pick.value) return;
+      pick.disabled = true;
+      try { await fetch('/api/assistant/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: pick.value }) }) } catch { }
+      statusLine();
+    };
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
     setupCard(s);
     clearTimeout(polling);

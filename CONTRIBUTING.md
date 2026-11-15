@@ -21,7 +21,13 @@ python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test
 
 Run these before you open a pull request. If you change the packaging, also run the build for your platform: it ends
 with a package scan, and that scan must pass. If you change a guide in `content/`, run `tools/validate_topics.py`
-against a library, so every id, page and encyclopedia path it cites still exists.
+against a library, so every id, page and encyclopedia path it cites still exists:
+
+```bash
+python3 tools/validate_topics.py --data /path/to/LastbookData      # or set LASTBOOK_DATA
+```
+
+It reads the library's files directly and needs no server.
 
 ## Rules that keep Lastbook what it is
 

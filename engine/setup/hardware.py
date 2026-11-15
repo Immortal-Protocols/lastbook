@@ -265,27 +265,34 @@ def measure_ai(llm_local, model_path, timeout=180):
         return None
     if not fit:
         return None
-    j = llm_local.judge(fit)
+    j = llm_local.judge(fit, Path(model_path).stat().st_size)
     return {'fits': bool(j['fits']), 'needs_bytes': int(j['needs']), 'estimate': False,
             'why': j.get('why') or f'Measured on this computer: the local AI needs about {_gb(j["needs"])} of memory, and it fits.'}
+
+
+def ram_bytes():
+    """This computer's memory, or None when it cannot be read."""
+    try:
+        name = os_name()
+        return _sysctl('hw.memsize') if name == 'macos' else _windows_ram() if name == 'windows' else _linux_ram()
+    except Exception as e:
+        print('setup: memory detection:', type(e).__name__, e, flush=True)
+        return None
 
 
 def detect(extra_disks=()):
     """Everything but the AI's fit, which the caller adds (estimate_ai or measure_ai)."""
     name = os_name()
-    ram, gpus, unified = None, [], False
+    ram, gpus, unified = ram_bytes(), [], False
     try:
         if name == 'macos':
-            ram = _sysctl('hw.memsize')
             unified = arch() == 'arm64'
             chip = _sysctl('machdep.cpu.brand_string', 'str')
             if chip:
                 gpus = [{'name': chip, 'vram_bytes': 0}]     # Apple silicon: the graphics share the one memory
         elif name == 'windows':
-            ram = _windows_ram()
             gpus = _windows_gpus()
         elif name == 'linux':
-            ram = _linux_ram()
             gpus = _linux_gpus()
     except Exception as e:      # a strange driver must not stop setup: it then estimates from what it has
         print('setup: hardware detection:', type(e).__name__, e, flush=True)

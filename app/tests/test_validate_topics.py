@@ -74,6 +74,8 @@ class Validate(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn('good.json: 2 references checked', out)
         self.assertIn('ERRORS 0', out)
+        code, out = self.run_tool(f, '--data', str(self.data))                  # the option may come after the files
+        self.assertEqual(code, 0, out)
 
     def test_data_folder_from_the_environment(self):
         f = self.topic('env.json', learn=[{'doc': 'doc-water', 'label': 'The whole manual'}])

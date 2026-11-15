@@ -10,22 +10,21 @@ Encyclopedia (ZIM) paths are looked up in the ZIM files themselves, under librar
 is asked of a server and no port is used. A ZIM file that is not in this library counts as an error, because the guide
 would point at nothing here; a smaller pack may hold fewer ZIM files than the guides cite.
 """
-import json, os, sys, urllib.parse
+import argparse, json, os, sys, urllib.parse
 from pathlib import Path
 HERE = Path(__file__).resolve().parents[1]
 
 
 def library(args):
     """(the library-data folder, the topic files named). Exits with a plain message when there is no library to check against."""
-    data = None
-    if args[:1] == ['--data']:
-        if len(args) < 2: sys.exit('--data needs a folder: the one that holds library-data/')
-        data, args = args[1], args[2:]
-    data = Path(data or os.environ.get('LASTBOOK_DATA') or HERE)
-    lib = data / 'library-data'
+    ap = argparse.ArgumentParser(description='Check curated topic files against a library.')
+    ap.add_argument('--data', help='the data folder, the one that holds library-data/ (default: LASTBOOK_DATA, then this source tree)')
+    ap.add_argument('files', nargs='*', type=Path, help='topic files to check (default: every file in content/topics/)')
+    a = ap.parse_args(args)
+    lib = Path(a.data or os.environ.get('LASTBOOK_DATA') or HERE) / 'library-data'
     if not (lib / 'catalog.json').is_file():
         sys.exit(f'No library at {lib} (no catalog.json). Pass --data or set LASTBOOK_DATA to the folder that holds library-data/.')
-    return lib, [Path(f) for f in args]
+    return lib, a.files
 
 
 def items(t):

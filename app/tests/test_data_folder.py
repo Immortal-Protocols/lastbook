@@ -250,7 +250,7 @@ class Lookup(unittest.TestCase):
         import llm_local
         data = self.home / 'Downloads' / 'LastbookData'
         (data / 'models').mkdir(parents=True)
-        outside = self.home / 'Downloads' / llm_local.FILE
+        outside = self.home / 'Downloads' / llm_local.MODELS[0]['file']
         outside.write_bytes(b'not selected')
         original_stat = Path.stat
 
@@ -270,6 +270,27 @@ class Lookup(unittest.TestCase):
             local.runner = self.tmp / 'runner'
             local.discover()
             self.assertEqual(local.state, 'absent')
+
+    def test_discovery_finds_the_smaller_model_when_that_is_the_one_present(self):
+        import hashlib
+        import llm_local
+        body = b'small model'
+        models = tuple({'id': i, 'title': i, 'name': i, 'file': i + '.gguf', 'size': n, 'sha256': hashlib.sha256(b'x' * n).hexdigest(),
+                        'memory_bytes': n, 'source': ''} for i, n in (('big', 40), ('small', len(body))))
+        models[1]['sha256'] = hashlib.sha256(body).hexdigest()
+        folder = self.tmp / 'models'
+        folder.mkdir()
+        (folder / 'small.gguf').write_bytes(body)
+        with mock.patch.object(llm_local, 'MODELS', models), \
+                mock.patch.object(llm_local, 'places', return_value=[folder]), \
+                mock.patch.object(llm_local, '_load', return_value={}), \
+                mock.patch.object(llm_local, '_save'), \
+                mock.patch.object(llm_local.Local, '_measure'):
+            local = llm_local.Local()
+            local.runner = self.tmp / 'runner'
+            local.discover()
+            self.assertEqual(local.path, folder / 'small.gguf')
+            self.assertEqual(local.status()['file'], 'small.gguf')
 
     def test_explicit_model_directory_is_kept(self):
         import llm_local

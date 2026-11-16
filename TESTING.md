@@ -10,9 +10,14 @@ This is an experimental, private testing copy of [Lastbook](https://github.com/I
 - The real Small library was downloaded and verified against the publisher's SHA-256. That library is not committed or bundled in the app package.
 - Actual Omarchy / Hyprland desktop behavior remains unverified. The nested compositor test hit protocol-version mismatches; this is not a successful application test.
 - This initial package does **not** include the local AI runner. Do not expect generated AI answers. The intended scope is the library, search, maps, and media.
-- Independent final review and full desktop/media testing remain open. Treat this as a test build, not an upstream release.
+- Independent Fable review (claude-fable-5-2) of `7bdb1b6`: **OK for private testing**. It found no build breaker, new network path, or unsafe pacman step. Full desktop/media testing remains open. Treat this as a test build, not an upstream release.
 
 ## Install the test package
+
+Before installing, note these two limits from the independent review:
+
+- **Untick “Local AI” in setup.** Setup may still suggest the roughly 17 GB AI model, but this package has no AI runner, so the download would be wasted.
+- **Python upgrades.** The package requires Python 3.14. When Arch moves to Python 3.15, pacman will refuse the full system upgrade while this package is installed. Run `sudo pacman -R lastbook`, upgrade the system, then install a rebuilt package. Your library and settings stay in place.
 
 Use an x86_64 Omarchy machine with Python **3.14**. The package declares that Python ABI dependency; do not force it onto another Python minor version.
 

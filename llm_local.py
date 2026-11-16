@@ -49,6 +49,15 @@ def runner_path():
     return next((p for p in here if p.is_file()), None)
 
 
+def _ram_bytes():
+    """This computer's memory via the setup probe, or None when it cannot be read."""
+    try:
+        from engine.setup.hardware import ram_bytes
+        return ram_bytes()
+    except Exception:
+        return None
+
+
 def places():
     """The selected library and an explicitly configured model folder only."""
     out = [paths.DATA / 'models', paths.DATA]
@@ -163,7 +172,8 @@ class Local:
                 self.state, self.message = 'error', 'This copy of Lastbook has no local AI runtime.'
                 return
             self.state, self.pct, self.message = 'absent', None, ''
-        found, wrong = None, None
+        found, wrong, model = None, None, None
+        cands = []
         for m in MODELS:
             for folder in places():
                 p = folder / m['file']
@@ -174,11 +184,16 @@ class Local:
                 except OSError:
                     continue
                 if size == m['size']:
-                    found = p
+                    cands.append((m, p))
                     break
                 wrong = wrong or (p, size, m)
-            if found:
-                break
+        if cands:
+            # Both files can sit on one computer; setup offered the one that fits the
+            # memory. Apply setup's own rule here (the largest found that fits, else the
+            # smallest), so the runtime honors what setup chose instead of the first file.
+            ram = _ram_bytes()
+            fitting = [c for c in cands if ram and c[0]['memory_bytes'] + RESERVE <= ram]
+            model, found = (fitting or cands[-1:])[0]
         if not found:
             with self.lock:
                 self.model = wrong[2] if wrong else self.model
@@ -192,7 +207,7 @@ class Local:
                     self.state = 'absent'
             return
         with self.lock:
-            self.model = m
+            self.model = model
         stamp = _stamp(found)
         if self.saved.get('checked') != stamp:
             if not self._check(found):

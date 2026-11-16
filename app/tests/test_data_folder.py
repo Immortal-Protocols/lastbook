@@ -252,6 +252,33 @@ class Lookup(unittest.TestCase):
             self.assertEqual(local.path, folder / 'small.gguf')
             self.assertEqual(local.status()['file'], 'small.gguf')
 
+    def test_discovery_honors_memory_when_both_models_are_present(self):
+        import hashlib
+        import llm_local
+        big_body, small_body = b'b' * 40, b's'
+        models = tuple({'id': i, 'title': i, 'name': i, 'file': i + '.gguf', 'size': n,
+                        'sha256': hashlib.sha256(body).hexdigest(), 'memory_bytes': mem, 'source': ''}
+                       for i, n, body, mem in (('big', len(big_body), big_body, 32 * 2 ** 30), ('small', len(small_body), small_body, 5)))
+        folder = self.tmp / 'models'
+        folder.mkdir()
+        (folder / 'big.gguf').write_bytes(big_body)
+        (folder / 'small.gguf').write_bytes(small_body)
+
+        def run(ram):
+            with mock.patch.object(llm_local, 'MODELS', models), \
+                    mock.patch.object(llm_local, 'places', return_value=[folder]), \
+                    mock.patch.object(llm_local, '_load', return_value={}), \
+                    mock.patch.object(llm_local, '_save'), \
+                    mock.patch.object(llm_local.Local, '_measure'), \
+                    mock.patch.object(llm_local, '_ram_bytes', return_value=ram):
+                local = llm_local.Local()
+                local.runner = self.tmp / 'runner'
+                local.discover()
+                return local
+
+        self.assertEqual(run(8 * 2 ** 30).path, folder / 'small.gguf')
+        self.assertEqual(run(64 * 2 ** 30).path, folder / 'big.gguf')
+
     def test_explicit_model_directory_is_kept(self):
         import llm_local
         chosen = self.home / 'Documents' / 'Models'

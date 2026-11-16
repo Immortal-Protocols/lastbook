@@ -36,8 +36,10 @@ binaries = []
 hidden = ['server', 'retrieval', 'assistant', 'llm_local', 'engine.paths', 'engine.library', 'engine.saved_pages', 'engine.address_search', 'bridge', 'shell_macos', 'PyObjCTools.AppHelper']
 # The optional local AI's runner (packaging/llm/build_llm_macos.sh), in Contents/Frameworks/llm/. The model itself never ships.
 LLM = ROOT / 'derived' / 'llm' / 'bin-mac'
-binaries += [(str(LLM / 'lastbook-llm'), 'llm')]
-datas += [(str(LLM / 'LICENSE-llama.cpp.txt'), 'llm')]
+if (LLM / 'lastbook-llm').is_file():
+    binaries += [(str(LLM / 'lastbook-llm'), 'llm')]
+    if (LLM / 'LICENSE-llama.cpp.txt').is_file():
+        datas += [(str(LLM / 'LICENSE-llama.cpp.txt'), 'llm')]
 datas += [(str(SHIP / 'setup' / 'manifest-v1.json'), 'setup')]   # what first-run setup can install
 hidden += collect_submodules('engine.setup')
 datas += [(str(ROOT / 'engine' / 'setup' / 'roots.pem'), 'engine/setup')]   # the only roots setup's downloader trusts
@@ -64,7 +66,7 @@ pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [('X utf8', None, 'OPTION')], exclude_binaries=True, name='Lastbook', console=False, argv_emulation=False, target_arch='arm64', codesign_identity=None, entitlements_file=None)
 coll = COLLECT(exe, a.binaries, a.datas, name='Lastbook')
 ICON = Path(SPECPATH) / 'Lastbook.icns'
-app = BUNDLE(coll, name='Lastbook.app', icon=str(ICON) if ICON.exists() else None, bundle_identifier='local.lastbook.desktop', version='1.1.8', info_plist={
+app = BUNDLE(coll, name='Lastbook.app', icon=str(ICON) if ICON.exists() else None, bundle_identifier='local.lastbook.desktop', version=os.environ.get('LASTBOOK_VERSION', '1.1.8'), info_plist={
     'CFBundleDisplayName': 'Lastbook',
     'CFBundleName': 'Lastbook',
     'LSApplicationCategoryType': 'public.app-category.reference',

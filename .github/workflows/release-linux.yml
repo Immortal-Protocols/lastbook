@@ -1,0 +1,128 @@
+name: Release Linux
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Release version, for example 1.2.0
+        required: true
+        type: string
+      build_local_ai:
+        description: Build the optional local AI runner
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      LASTBOOK_PACKS_MANIFEST_B64:
+        required: false
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, for example 1.2.0
+        required: true
+        type: string
+      build_local_ai:
+        description: Build the optional local AI runner
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: echo "version=${INPUT_VERSION#v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Linux ${{ matrix.arch }} (${{ matrix.deb_arch }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+            deb_arch: amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            deb_arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      LASTBOOK_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 python3-venv python3-pil dpkg-dev binutils file gcc pkg-config \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev rpm curl xz-utils
+
+      - name: Build the local AI runner
+        if: ${{ inputs.build_local_ai }}
+        run: |
+          sudo apt-get install -y build-essential git cmake ninja-build glslc libvulkan-dev spirv-headers
+          bash packaging/llm/build_llm_linux.sh
+
+      - name: Prepare the release manifest
+        env:
+          MANIFEST_B64: ${{ secrets.LASTBOOK_PACKS_MANIFEST_B64 }}
+          MANIFEST_URL: ${{ vars.LASTBOOK_PACKS_MANIFEST_URL }}
+        run: |
+          mkdir -p derived/release
+          if [ -n "${MANIFEST_B64:-}" ]; then
+            printf '%s' "$MANIFEST_B64" | base64 -d > derived/release/manifest-v1.json
+          elif [ -n "${MANIFEST_URL:-}" ]; then
+            curl -fsSL "$MANIFEST_URL" -o derived/release/manifest-v1.json
+          fi
+          if [ -s derived/release/manifest-v1.json ]; then
+            echo "LASTBOOK_ALLOW_EMPTY_MANIFEST=0" >> "$GITHUB_ENV"
+          else
+            rm -f derived/release/manifest-v1.json
+            echo "LASTBOOK_ALLOW_EMPTY_MANIFEST=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build the .deb
+        env:
+          LASTBOOK_BUILD_OUT: ${{ github.workspace }}/build/linux-${{ matrix.arch }}
+          LASTBOOK_LLM: ${{ github.workspace }}/derived/llm/bin-linux
+          LASTBOOK_CLEAN: "1"
+        run: bash packaging/linux/build_app_linux.sh
+
+      - name: Build the RPM, portable tarball and AppImage
+        run: |
+          OUT="$PWD/build/linux-${{ matrix.arch }}"
+          bash packaging/linux/build_rpm.sh "$OUT/root" "$LASTBOOK_VERSION" "${{ matrix.deb_arch }}" "$OUT"
+          bash packaging/linux/build_tarball.sh "$OUT/root" "$LASTBOOK_VERSION" "${{ matrix.arch }}" "$OUT"
+          bash packaging/linux/build_appimage.sh "$OUT/root" "$LASTBOOK_VERSION" "${{ matrix.arch }}" "$OUT"
+
+      - name: Collect artifacts
+        run: |
+          OUT="$PWD/build/linux-${{ matrix.arch }}"
+          mkdir -p dist
+          cp "$OUT"/Lastbook_*_*.deb dist/
+          cp "$OUT"/*.rpm dist/
+          cp "$OUT"/*.tar.xz dist/
+          cp "$OUT"/Lastbook-*.AppImage dist/
+          (cd dist && sha256sum * > "SHA256SUMS-linux-${{ matrix.arch }}.txt")
+          ls -lh dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14

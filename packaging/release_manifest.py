@@ -3,12 +3,13 @@
 
   python3 -I -B packaging/release_manifest.py [--packs derived/release/manifest-v1.json] [--out derived/release/setup/manifest-v1.json]
                                               [--measure /path/to/the.gguf] [--small-from derived/release/1.0.0-20261104-1507]
+                                              [--allow-empty]
 
 Packs come from derived/release/manifest-v1.json, which session publish-packs writes for each verified pack. The model entry comes
 from llm_local.py's constants (file, size, SHA-256, revision), so the two cannot drift. memory_bytes is llama.cpp's measure of
 the model and its context (device + host bytes from lastbook-llm --measure): MEASURED_MEMORY below, or measured again with --measure.
 --small-from builds the Small pack's entry from a release folder's SHA256SUMS.txt when the packs file has none (before
-publish-packs has written it). Every URL must be on an allowed host (engine/setup/download.py) or the build stops.
+publish-packs has written it). --allow-empty writes a manifest with no packs instead of stopping, for CI builds. Every URL must be on an allowed host (engine/setup/download.py) or the build stops.
 The packaging spec bundles the output as setup/manifest-v1.json.
 """
 import argparse
@@ -68,6 +69,8 @@ def main():
     ap.add_argument('--out', default=str(ROOT / 'derived' / 'release' / 'setup' / 'manifest-v1.json'))
     ap.add_argument('--measure', help='a copy of the model file to measure memory_bytes from')
     ap.add_argument('--small-from', help='a release folder holding Lastbook-Small.zip and SHA256SUMS.txt')
+    ap.add_argument('--allow-empty', action='store_true',
+                    help='write a manifest with no packs when the packs file is missing or empty (CI builds before publish-packs)')
     a = ap.parse_args()
     try:
         src = json.loads(Path(a.packs).read_text(encoding='utf-8'))
@@ -83,7 +86,9 @@ def main():
             except (OSError, ValueError):
                 pass
     if not packs:
-        sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
+        if not a.allow_empty:
+            sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
+        print(f'warning: no packs in {a.packs}; writing a manifest with no packs (--allow-empty)', file=sys.stderr)
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),
            'address_indexes': list(src.get('address_indexes') or []),
            'models': [model_entry(measure(a.measure) if a.measure else MEASURED_MEMORY)]}

@@ -16,6 +16,8 @@
 #          vulkan-headers\                    github.com/KhronosGroup/Vulkan-Headers, tag vulkan-sdk-1.4.350.1 (8864cdc8)
 #          spirv-headers\                     github.com/KhronosGroup/SPIRV-Headers, tag vulkan-sdk-1.4.350.1 (ad9184e7)
 # W      Work folder (default derived/llm). llama.cpp is cloned into W\llama.cpp at the tag if it is not there.
+# VULKAN_LIB Optional path to vulkan-1.lib from the Vulkan SDK. When set, the build uses it instead of reading the exports of
+#            C:\Windows\System32\vulkan-1.dll (which CI machines and build servers often do not have).
 # Output: W/bin-win/lastbook-llm.exe and the DLLs beside it.
 #
 # With Smart App Control on (the Alienware), Windows may refuse to run build-win\Release\vulkan-shaders-gen.exe, a helper
@@ -45,11 +47,15 @@ rm -f "$O"/*
 # library is made here, from the names that DLL exports.
 VK="$B/vulkan-1"
 mkdir -p "$VK"
-( cd "$VK" && gendef - /c/Windows/System32/vulkan-1.dll > vulkan-1.def 2>/dev/null ) || true
-if ! grep -q vkCreateInstance "$VK/vulkan-1.def" 2>/dev/null; then
-  echo "could not read the exports of vulkan-1.dll (is a GPU driver with Vulkan installed?)" >&2; exit 1
+if [ -n "${VULKAN_LIB:-}" ] && [ -f "$(cygpath -u "$VULKAN_LIB")" ]; then
+  cp "$(cygpath -u "$VULKAN_LIB")" "$VK/libvulkan-1.dll.a"
+else
+  ( cd "$VK" && gendef - /c/Windows/System32/vulkan-1.dll > vulkan-1.def 2>/dev/null ) || true
+  if ! grep -q vkCreateInstance "$VK/vulkan-1.def" 2>/dev/null; then
+    echo "could not read the exports of vulkan-1.dll (is a GPU driver with Vulkan installed?); set VULKAN_LIB to vulkan-1.lib" >&2; exit 1
+  fi
+  llvm-dlltool -m i386:x86-64 -d "$VK/vulkan-1.def" -D vulkan-1.dll -l "$VK/libvulkan-1.dll.a"
 fi
-llvm-dlltool -m i386:x86-64 -d "$VK/vulkan-1.def" -D vulkan-1.dll -l "$VK/libvulkan-1.dll.a"
 
 # SPIRV-Headers is headers only. ggml-vulkan looks for its CMake files but does not add its include folder (the Vulkan SDK
 # would have it), so the folder goes into the C++ flags below.

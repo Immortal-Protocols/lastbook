@@ -1,7 +1,18 @@
 #!/bin/bash
-# Builds Lastbook_<version>_amd64.deb for Ubuntu 24.04 LTS, x86_64. Run inside Ubuntu 24.04 x86_64 (a container is fine) from a checkout:
+# Builds Lastbook_<version>_<arch>.deb for Ubuntu 24.04 LTS, x86_64 or aarch64. Run inside Ubuntu 24.04 of the same architecture
+# (a container is fine) from a checkout:
 #   apt-get install -y python3 python3-venv python3-pil dpkg-dev binutils   (the script installs them itself when run as root)
 #   bash packaging/linux/build_app_linux.sh
+#
+# Environment:
+#   LASTBOOK_VERSION             package version (default 1.1.9)
+#   LASTBOOK_BUILD_OUT           exact output folder (default derived/app-build/linux/<date-time>)
+#   LASTBOOK_BUILD_ROOT          parent for timestamped output (default derived/app-build/linux)
+#   LASTBOOK_CLEAN=1             remove LASTBOOK_BUILD_OUT before building
+#   LASTBOOK_LLM                 local AI runner folder (default derived/llm/bin-linux)
+#   LASTBOOK_PACKS               packs manifest (default derived/release/manifest-v1.json)
+#   LASTBOOK_ALLOW_EMPTY_MANIFEST=1  write an empty setup manifest when LASTBOOK_PACKS is missing
+#   SKIP_TLS_GATE=1              skip the roots.pem gate (not for releases)
 #
 # What the .deb holds (nothing is written outside these at install, and nothing at all at removal but these):
 #   /opt/lastbook/            lastbook.py (the launcher), app/ (main, bridge, shell_linux), server.py and the engine, web/ and content/ as they
@@ -14,22 +25,29 @@
 # storage live in their home folder (~/.local/share/Lastbook, ~/.config/Lastbook, ~/.cache/Lastbook) and the package never touches them.
 # Each build gets derived/app-build/linux/<date-time>/; derived/app-build/linux/latest.deb points at the newest good one.
 set -euo pipefail
-HERE="$(dirname "$(realpath "$0")")"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$(dirname "$(dirname "$HERE")")"
 APP_VERSION="${LASTBOOK_VERSION:-1.1.9}"
-BUILD="$ROOT/derived/app-build/linux"
-OUT="$BUILD/$(date +%Y%m%d-%H%M%S)"
+BUILD="${LASTBOOK_BUILD_ROOT:-$ROOT/derived/app-build/linux}"
+OUT="${LASTBOOK_BUILD_OUT:-$BUILD/$(date +%Y%m%d-%H%M%S)}"
+OUT="$(realpath -m "$OUT")"
 STAGE="$OUT/root"
 OPT="$STAGE/opt/lastbook"
-LLM="$ROOT/derived/llm/bin-linux"
-DEB="$OUT/Lastbook_${APP_VERSION}_amd64.deb"
+LLM="${LASTBOOK_LLM:-$ROOT/derived/llm/bin-linux}"
+PACKS="${LASTBOOK_PACKS:-$ROOT/derived/release/manifest-v1.json}"
+case "$(uname -m)" in
+  x86_64) DEB_ARCH=amd64 ;;
+  aarch64|arm64) DEB_ARCH=arm64 ;;
+  *) echo "build on x86_64 or aarch64" >&2; exit 1 ;;
+esac
+DEB="$OUT/Lastbook_${APP_VERSION}_${DEB_ARCH}.deb"
 export PYTHONDONTWRITEBYTECODE=1
 
-[ "$(uname -m)" = x86_64 ] || { echo "build on x86_64" >&2; exit 1; }
+if [ "${LASTBOOK_CLEAN:-0}" = 1 ]; then rm -rf "$OUT"; fi
 OS="$(. /etc/os-release; echo "$ID $VERSION_ID")"
 [ "$OS" = "ubuntu 24.04" ] || { echo "build on Ubuntu 24.04 (this is $OS): the wheels must match its python3" >&2; exit 1; }
 if [ "$(id -u)" = 0 ] && ! { python3 -c 'import venv, PIL' 2>/dev/null && pkg-config --exists gstreamer-base-1.0; }; then
-  apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-venv python3-pil dpkg-dev binutils file gcc pkg-config libgstreamer1.0-dev >/dev/null
+  apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-venv python3-pil dpkg-dev binutils file gcc pkg-config libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev >/dev/null
 fi
 PYV="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
 [ "$PYV" = 3.12 ] || { echo "python3 is $PYV, not 3.12" >&2; exit 1; }
@@ -37,7 +55,11 @@ mkdir -p "$OPT"
 
 # web/ and content/ as they ship, and what setup can install (the same steps as the Mac and Windows builds)
 python3 -I -B "$ROOT/packaging/ship_app_files.py" "$OUT/ship"
-python3 -I -B "$ROOT/packaging/release_manifest.py" --packs "$ROOT/derived/release/manifest-v1.json" --out "$OUT/ship/setup/manifest-v1.json"
+MANIFEST_ARGS=(--packs "$PACKS" --out "$OUT/ship/setup/manifest-v1.json")
+if [ ! -f "$PACKS" ] && [ "${LASTBOOK_ALLOW_EMPTY_MANIFEST:-0}" = 1 ]; then
+  MANIFEST_ARGS+=(--allow-empty)
+fi
+python3 -I -B "$ROOT/packaging/release_manifest.py" "${MANIFEST_ARGS[@]}"
 if [ "${SKIP_TLS_GATE:-}" != 1 ]; then   # release gate: every download host verifies through engine/setup/roots.pem only
   python3 -I -B "$ROOT/packaging/check_tls_roots.py" || { echo "TLS roots gate failed: refresh engine/setup/roots.pem (packaging/setup_roots.py)" >&2; exit 1; }
 fi
@@ -102,7 +124,7 @@ SIZE_KB="$(du -sk --exclude=DEBIAN "$STAGE" | cut -f1)"
 cat > "$STAGE/DEBIAN/control" <<CTRL
 Package: lastbook
 Version: $APP_VERSION
-Architecture: amd64
+Architecture: $DEB_ARCH
 Maintainer: Lastbook <noreply@lastbook.org>
 Installed-Size: $SIZE_KB
 Depends: python3 (>= 3.12), python3 (<< 3.13), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gir1.2-soup-3.0, libwebkit2gtk-4.1-0 (>= 2.40), libgstreamer1.0-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav, libgomp1
@@ -118,8 +140,15 @@ Description: Offline survival library
  in their home folder and are never removed with the package.
 CTRL
 dpkg-deb --root-owner-group -Zxz --build "$STAGE" "$DEB" >/dev/null
-python3 -I -B "$HERE/scan_package_linux.py" "$DEB" --terms-file "$ROOT/derived/app-build/scan-terms.txt" | tee "$OUT/scan.txt"
-ln -sfn "$(basename "$OUT")/$(basename "$DEB")" "$BUILD/latest.deb"
+SCAN_ARGS=()
+if [ -f "$ROOT/derived/app-build/scan-terms.txt" ]; then
+  SCAN_ARGS+=(--terms-file "$ROOT/derived/app-build/scan-terms.txt")
+fi
+python3 -I -B "$HERE/scan_package_linux.py" "$DEB" "${SCAN_ARGS[@]}" | tee "$OUT/scan.txt"
+mkdir -p "$BUILD"
+if [[ "$OUT" == "$BUILD"/* ]]; then
+  ln -sfn "$(basename "$OUT")/$(basename "$DEB")" "$BUILD/latest.deb"
+fi
 echo "Built $LLM_NOTE: $DEB"
 ls -l "$DEB"
 sha256sum "$DEB" | tee "$DEB.sha256"

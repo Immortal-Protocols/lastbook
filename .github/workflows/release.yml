@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (defaults to the tag, or today's date)
+        required: false
+        type: string
+      build_local_ai:
+        description: Build the optional local AI runner
+        required: false
+        type: boolean
+        default: true
+      publish:
+        description: Create a GitHub release from the built files
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          V="${INPUT_VERSION:-}"
+          if [ -z "$V" ] && [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          [ -n "$V" ] || V="$(date -u +%Y.%m.%d)"
+          echo "version=${V#v}" >> "$GITHUB_OUTPUT"
+
+  linux:
+    name: Linux
+    needs: version
+    uses: ./.github/workflows/release-linux.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      build_local_ai: ${{ github.event_name == 'push' && true || inputs.build_local_ai }}
+    secrets: inherit
+
+  macos:
+    name: macOS
+    needs: version
+    uses: ./.github/workflows/release-macos.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      build_local_ai: ${{ github.event_name == 'push' && true || inputs.build_local_ai }}
+    secrets: inherit
+
+  windows:
+    name: Windows
+    needs: version
+    uses: ./.github/workflows/release-windows.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit
+
+  publish:
+    name: Publish GitHub release
+    needs: [version, linux, macos, windows]
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Write checksums
+        run: |
+          cd dist
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          ls -lh
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', needs.version.outputs.version) }}
+          name: Lastbook ${{ needs.version.outputs.version }}
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false

@@ -36,7 +36,7 @@ NET_ALLOWED = {
     'opt/lastbook/assistant.py',               # the server version's chat model; the app's chat is llm_local over pipes
 }
 SOCKET_CALLS = re.compile(r'^(socket|connect|bind|listen|accept4?|getaddrinfo|gethostbyname\w*|sendto|recvfrom|curl_\w+|SSL_\w+)$')
-SYSTEM_LIBS = re.compile(r'^(libc|libm|libdl|libpthread|librt|libstdc\+\+|libgcc_s|libgomp|libvulkan|ld-linux-x86-64|libz|libgstreamer-1\.0|libgstbase-1\.0|libglib-2\.0|libgobject-2\.0)\.so')
+SYSTEM_LIBS = re.compile(r'^(libc|libm|libdl|libpthread|librt|libstdc\+\+|libgcc_s|libgomp|libvulkan|ld-linux-x86-64|ld-linux-aarch64|libz|libgstreamer-1\.0|libgstbase-1\.0|libglib-2\.0|libgobject-2\.0)\.so')
 
 
 def bad_name(name):
@@ -73,6 +73,7 @@ def main():
         subprocess.run(['dpkg-deb', '-x', str(a.deb), str(root)], check=True)
         control = subprocess.run(['dpkg-deb', '-f', str(a.deb)], capture_output=True, text=True, check=True).stdout
         print(control.split('\nDescription')[0])
+        expected_elf = 'AArch64' if re.search(r'^Architecture:\s*arm64\s*$', control, re.M) else 'X86-64'
         packaged = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() or p.is_symlink()}
         for rel in sorted(packaged):
             p = root / rel
@@ -111,8 +112,8 @@ def main():
             if data[:4] == b'\x7fELF':
                 n_elf += 1
                 head = subprocess.run(['readelf', '-h', str(p)], capture_output=True, text=True).stdout
-                if 'X86-64' not in head:
-                    problems.append(f'not x86-64: {rel}')
+                if expected_elf not in head:
+                    problems.append(f'not {expected_elf}: {rel}')
                 dyn = subprocess.run(['readelf', '-d', str(p)], capture_output=True, text=True).stdout
                 beside = {q.name for q in p.parent.iterdir()}
                 for lib in re.findall(r'\(NEEDED\)\s+Shared library: \[([^\]]+)\]', dyn):

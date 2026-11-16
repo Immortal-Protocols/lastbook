@@ -1,0 +1,180 @@
+name: Release Windows
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Release version, for example 1.2.0
+        required: true
+        type: string
+    secrets:
+      LASTBOOK_PACKS_MANIFEST_B64:
+        required: false
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, for example 1.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: echo "version=${INPUT_VERSION#v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Windows x64 exe
+    needs: version
+    runs-on: windows-2022
+    env:
+      LASTBOOK_VERSION: ${{ needs.version.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          check-latest: true
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r packaging/requirements_app.txt
+
+      - name: Stamp the release version
+        run: |
+          python - <<'PY'
+          import os, pathlib, re
+          path = pathlib.Path('packaging/lastbook_setup.py')
+          text = path.read_text(encoding='utf-8')
+          text = re.sub(r"^VERSION = .*$", f"VERSION = {os.environ['LASTBOOK_VERSION']!r}", text, count=1, flags=re.M)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Fetch the WebView2 runtime files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '1.0.3856.49'
+          $zip = Join-Path $env:RUNNER_TEMP 'webview2.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'webview2'
+          Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$version" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $wanted = @{
+            '8219a3135436c147f8eb02fb831e99596103eebc18b6d7b794ca93f4c67018a2' = 'Microsoft.Web.WebView2.Core.dll'
+            'c48f8d729dc531288d2c53a6241effe7922ed1b947850b2442008a945c098c48' = 'Microsoft.Web.WebView2.WinForms.dll'
+            'eb5335edeaa6f2122c044e82aab2351dc8c9b4e0fe5e578c71922fb61be285e7' = 'WebView2Loader.dll'
+          }
+          New-Item -ItemType Directory -Force 'app\webview2' | Out-Null
+          Get-ChildItem -Recurse -File $dir | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($wanted.ContainsKey($hash)) {
+              Copy-Item $_.FullName (Join-Path 'app\webview2' $wanted[$hash]) -Force
+            }
+          }
+          $found = @(Get-ChildItem 'app\webview2' -File)
+          if ($found.Count -ne 3) {
+            throw "expected 3 WebView2 files, found: $($found.Name -join ', ')"
+          }
+          $found | Format-Table Name, Length
+
+      - name: Build the local AI runner
+        run: |
+          TOOLS="$PWD/tools"
+          mkdir -p "$TOOLS"
+          curl -fsSL -o "$TOOLS/llvm-mingw.zip" \
+            "https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/llvm-mingw-20261020-ucrt-x86_64.zip"
+          powershell -NoProfile -NonInteractive -Command \
+            "Expand-Archive -Path '$(cygpath -w "$TOOLS/llvm-mingw.zip")' -DestinationPath '$(cygpath -w "$TOOLS")' -Force"
+          curl -fsSL -o "$TOOLS/ninja.zip" \
+            "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-win.zip"
+          powershell -NoProfile -NonInteractive -Command \
+            "Expand-Archive -Path '$(cygpath -w "$TOOLS/ninja.zip")' -DestinationPath '$(cygpath -w "$TOOLS")' -Force"
+          if ! command -v nproc >/dev/null 2>&1; then
+            printf '#!/bin/sh\necho 2\n' > "$TOOLS/nproc"
+            chmod +x "$TOOLS/nproc"
+          fi
+          git clone --depth 1 --branch vulkan-sdk-1.4.350.1 \
+            https://github.com/KhronosGroup/Vulkan-Headers.git "$TOOLS/vulkan-headers"
+          git clone --depth 1 --branch vulkan-sdk-1.4.350.1 \
+            https://github.com/KhronosGroup/SPIRV-Headers.git "$TOOLS/spirv-headers"
+          choco install -y vulkan-sdk --no-progress
+          VULKAN_ROOT="$(find /c/VulkanSDK -maxdepth 1 -mindepth 1 -type d | sort | tail -1)"
+          VULKAN_LIB="$VULKAN_ROOT/Lib/vulkan-1.lib"
+          [ -f "$VULKAN_LIB" ] || VULKAN_LIB="$(find "$VULKAN_ROOT" -name vulkan-1.lib | head -1)"
+          GLSLC="$(find "$VULKAN_ROOT" -name glslc.exe | head -1)"
+          [ -n "$VULKAN_LIB" ] || { echo "vulkan-1.lib not found in $VULKAN_ROOT" >&2; exit 1; }
+          [ -n "$GLSLC" ] || { echo "glslc.exe not found in $VULKAN_ROOT" >&2; exit 1; }
+          mkdir -p "$TOOLS/msys/ucrt64/bin"
+          cp "$GLSLC" "$TOOLS/msys/ucrt64/bin/glslc.exe"
+          export TOOLS="$(cygpath -w "$TOOLS")"
+          export VULKAN_LIB="$(cygpath -w "$VULKAN_LIB")"
+          bash packaging/llm/build_llm_windows.sh
+
+      - name: Prepare the release manifest
+        env:
+          MANIFEST_B64: ${{ secrets.LASTBOOK_PACKS_MANIFEST_B64 }}
+          MANIFEST_URL: ${{ vars.LASTBOOK_PACKS_MANIFEST_URL }}
+        run: |
+          mkdir -p derived/release
+          if [ -n "${MANIFEST_B64:-}" ]; then
+            printf '%s' "$MANIFEST_B64" | base64 -d > derived/release/manifest-v1.json
+          elif [ -n "${MANIFEST_URL:-}" ]; then
+            curl -fsSL "$MANIFEST_URL" -o derived/release/manifest-v1.json
+          fi
+          if [ -s derived/release/manifest-v1.json ]; then
+            echo "ALLOW_EMPTY_MANIFEST=0" >> "$GITHUB_ENV"
+          else
+            rm -f derived/release/manifest-v1.json
+            echo "ALLOW_EMPTY_MANIFEST=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build the app folder
+        run: |
+          export PY="$(cygpath -w "$(command -v python)")"
+          export OUT="$(cygpath -w "$PWD/build-app")"
+          export LLM="$(cygpath -w "$PWD/derived/llm/bin-win")"
+          export PACKS="$(cygpath -w "$PWD/derived/release/manifest-v1.json")"
+          bash packaging/build_app_windows.sh
+
+      - name: Build the installer
+        run: |
+          export PY="$(cygpath -w "$(command -v python)")"
+          export DIST="$(cygpath -w "$PWD/build-app/dist/Lastbook")"
+          export OUT="$(cygpath -w "$PWD/build-setup")"
+          export CLANG="$(cygpath -w "$PWD/tools/llvm-mingw-20261020-ucrt-x86_64/bin/clang.exe")"
+          export STAMP="$(date -u +%Y%m%d-%H%M%S)"
+          bash packaging/build_setup_windows.sh
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          cp "build-setup/Lastbook-${LASTBOOK_VERSION}-Setup.exe" dist/
+          powershell -NoProfile -NonInteractive -Command \
+            "Compress-Archive -Path 'build-app\dist\Lastbook' -DestinationPath 'dist\Lastbook-${LASTBOOK_VERSION}-windows-x64.zip' -Force"
+          (cd dist && sha256sum * > SHA256SUMS-windows-x64.txt)
+          ls -lh dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14

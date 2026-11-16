@@ -6,7 +6,7 @@ This is an experimental, private testing copy of [Lastbook](https://github.com/I
 
 - The native x86_64 Arch package built successfully with Python 3.14.10.
 - The required TLS-root check and both package-content scans passed.
-- The repository test suite ran 324 tests successfully, with 4 skipped, at test build 2. This was a host-side test run, not proof of all features on Omarchy.
+- The repository test suite ran 329 tests successfully, with 4 skipped, at test build 3. This was a host-side test run, not proof of all features on Omarchy.
 - The real Small library was downloaded and verified against the publisher's SHA-256. That library is not committed or bundled in the app package.
 - Actual Omarchy / Hyprland desktop behavior remains unverified. The nested compositor test hit protocol-version mismatches; this is not a successful application test.
 - This initial package does **not** include the local AI runner. Do not expect generated AI answers. The intended scope is the library, search, maps, and media.
@@ -16,12 +16,12 @@ This is an experimental, private testing copy of [Lastbook](https://github.com/I
 
 Before installing, note these two limits from the independent review:
 
-- **Local AI is not offered.** Since test build 2, setup hides the Local AI download because this package has no AI runner. If you use test build 1, untick “Local AI” in setup yourself.
+- **Local AI is not included.** Since test build 3, setup cannot download the AI model by any route, and shows “Not in this version”. If you use an older build, untick “Local AI” in setup yourself.
 - **Python upgrades.** The package requires Python 3.14. When Arch moves to Python 3.15, pacman will refuse the full system upgrade while this package is installed. Run `sudo pacman -R lastbook`, upgrade the system, then install a rebuilt package. Your library and settings stay in place.
 
 Use an x86_64 Omarchy machine with Python **3.14**. The package declares that Python ABI dependency; do not force it onto another Python minor version.
 
-Download the `.pkg.tar.zst` file and its `.sha256` companion from the newest prerelease, currently [omarchy-test-2](https://github.com/jonnyace/lastbook-omarchy/releases/tag/omarchy-test-2). In a clean Arch container, that package installed with pacman, contained the fix, and removed cleanly. From the download directory:
+Download the `.pkg.tar.zst` file and its `.sha256` companion from the newest prerelease, currently [omarchy-test-3](https://github.com/jonnyace/lastbook-omarchy/releases/tag/omarchy-test-3). In a clean Arch container, that package installed with pacman, gave the correct update message without going online, and removed cleanly. From the download directory:
 
 ```bash
 sha256sum -c lastbook-1.1.9-1-x86_64.pkg.tar.zst.sha256
@@ -54,7 +54,7 @@ Follow [the native Arch build instructions](packaging/linux/arch/README.md). The
 
 ## Updates and removal
 
-Use this testing repository for updates. The inherited in-app update screen may still refer to Ubuntu / a `.deb`, which is not an Arch update route. Do not install that package on Omarchy.
+Use this testing repository for updates. Since test build 3, **Check for updates** says to update the way you installed it. Older test builds may still point to the Ubuntu `.deb`; do not install that package on Omarchy.
 
 ```bash
 sudo pacman -R lastbook

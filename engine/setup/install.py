@@ -100,7 +100,7 @@ def _member_parts(info, top_optional=False):
     return parts
 
 
-MAP_FIXED = {'map-set.json', 'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'library-data/geography/resources/atlas.sqlite'}
+MAP_FIXED = {'map-set.json', 'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'derived/geo/detail-cells.json', 'library-data/geography/resources/atlas.sqlite'}
 MAP_DIRS = {'', 'derived', 'derived/geo', 'library-data', 'library-data/geography', 'library-data/geography/resources'}
 MAP_SQLITE = re.compile(r'derived/geo/[A-Za-z0-9._-]+\.sqlite')
 SQLITE_SIDES = ('-wal', '-shm', '-journal')     # SQLite's own files beside a database: they move with it, or the new one could be damaged

@@ -488,6 +488,23 @@ class Unpacking(Base):
 
 
 class Jobs(Base):
+    def test_no_model_start_without_runner(self):
+        """Without the runner, a direct start with the AI is refused, and a saved job from a build that had it resumes without the model."""
+        with mock.patch.object(self.llm, 'runner_path', return_value=None):
+            r = self.setup().start('small', True)
+        self.assertEqual(r.get('code'), 'unavailable', r)
+        s = self.setup()
+        s.start('small', True)
+        with s.lock:
+            saved = json.loads(json.dumps(s.job))
+        self.wait(s)
+        self.assertIn('model', [i['kind'] for i in saved['items']])
+        with mock.patch.object(self.llm, 'runner_path', return_value=None):
+            job = self.setup()._checked_job(saved)
+        self.assertIsNotNone(job)
+        self.assertEqual([i['kind'] for i in job['items']], ['pack'])
+        self.assertIsNone(job['plan']['model'])
+
     def test_first_run_end_to_end(self):
         s = self.setup()
         st = s.state()
@@ -888,6 +905,14 @@ class Manage(Base):
         (lib / 'library-data' / 'catalog.json').write_text('{}')
         self.assertEqual(self.setup('manage', current=lib).start(repair=True)['code'], 'unavailable')
         self.assertEqual(self.setup().start(repair=True)['code'], 'nothing')
+
+    def test_repair_skips_model_without_runner(self):
+        """A repair from a build without the runner checks the library only; it never fetches the model again."""
+        lib = self.installed_library()
+        with mock.patch.object(self.llm, 'runner_path', return_value=None):
+            s = self.setup('manage', current=lib)
+            self.assertEqual([i['kind'] for i in s.start(repair=True)['items']], ['pack'])
+            self.assertEqual(self.wait(s)['state'], 'done')
 
     def test_remove_ai(self):
         lib = self.installed_library()

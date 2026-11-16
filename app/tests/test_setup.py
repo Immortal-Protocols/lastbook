@@ -275,6 +275,19 @@ class Allowlist(unittest.TestCase):
                 self.assertEqual(m.model()['id'], want, ram)
         self.assertEqual(m.model('big')['id'], 'big')
 
+    def test_model_fit_counts_a_discrete_gpu(self):
+        # wonderdawg's PR 9 case: 16 GiB of RAM plus a 12 GiB dedicated card runs the 26B; RAM alone would pick the E4B.
+        def model(mid, memory):
+            return {'id': mid, 'file': mid + '.gguf', 'url': 'https://huggingface.co/m', 'size': 1, 'sha256': '1' * 64,
+                    'memory_bytes': memory, 'available': True}
+        GiB = 2 ** 30
+        m = manifest.Manifest(bundled=manifest.validate({'version': 1, 'published': '2026-11-15', 'packs': [
+            {'id': 'small', 'available': True, 'installed_bytes': 5, 'files': [{'name': 'a.zip', 'url': 'https://downloads.lastbook.org/a.zip', 'size': 1, 'sha256': '0' * 64}]}],
+            'models': [model('big', 19 * GiB), model('small', 6 * GiB)]}), remote=None)
+        for gpu_bytes, want in ((12 * GiB, 'big'), (0, 'small')):
+            with mock.patch.object(hardware, 'ai_machine', lambda gpu_bytes=gpu_bytes: {'ram_bytes': 16 * GiB, 'gpu_bytes': gpu_bytes}):
+                self.assertEqual(m.model()['id'], want, gpu_bytes)
+
     def test_fetched_manifest_keeps_bundled_entries(self):
         bundled = manifest.validate({'version': 1, 'published': '2026-11-12', 'packs': [
             {'id': 'small', 'available': True, 'installed_bytes': 5, 'files': [{'name': 'a.zip', 'url': 'https://downloads.lastbook.org/a.zip', 'size': 1, 'sha256': '0' * 64}]}],

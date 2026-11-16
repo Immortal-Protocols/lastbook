@@ -58,6 +58,25 @@ def _ram_bytes():
         return None
 
 
+def _fit_facts():
+    """(ram_bytes, dedicated gpu bytes) for the one fit rule, via the setup probe; RAM alone when the setup package is not here."""
+    try:
+        from engine.setup.hardware import ai_machine
+        ai = ai_machine()
+        return ai['ram_bytes'], ai['gpu_bytes']
+    except Exception:
+        return _ram_bytes(), 0
+
+
+def _in_ram(memory_bytes, gpu_bytes):
+    """The part of a model's memory that must sit in RAM, via the setup probe's rule; RAM alone when the setup package is not here."""
+    try:
+        from engine.setup.hardware import in_ram_bytes
+        return in_ram_bytes(memory_bytes, gpu_bytes)
+    except Exception:
+        return memory_bytes + RESERVE
+
+
 def places():
     """The selected library and an explicitly configured model folder only."""
     out = [paths.DATA / 'models', paths.DATA]
@@ -191,8 +210,8 @@ class Local:
             # Both files can sit on one computer; setup offered the one that fits the
             # memory. Apply setup's own rule here (the largest found that fits, else the
             # smallest), so the runtime honors what setup chose instead of the first file.
-            ram = _ram_bytes()
-            fitting = [c for c in cands if ram and c[0]['memory_bytes'] + RESERVE <= ram]
+            ram, gpu_bytes = _fit_facts()
+            fitting = [c for c in cands if ram and _in_ram(c[0]['memory_bytes'], gpu_bytes) <= ram]
             model, found = (fitting or cands[-1:])[0]
         if not found:
             with self.lock:

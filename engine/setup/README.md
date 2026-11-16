@@ -1,46 +1,32 @@
-# engine/setup: first-run setup, engine side
+# `engine/setup`: configuração inicial e manutenção (lado do motor)
 
-The contract is `docs/SETUP-API.md`. This package fills it in.
+O contrato da API está documentado em [docs/SETUP-API.md](../../docs/SETUP-API.md). Este pacote implementa toda a lógica de configuração inicial e gestão da biblioteca do **Último Livro** (fork brasileiro do **Lastbook**).
 
-| File | What it does |
+| Arquivo | O que faz |
 |---|---|
-| `download.py` | The only module in Lastbook that opens a network connection. It uses HTTPS on port 443 to `ALLOWED_HOSTS` (and `*.hf.co`) and takes no proxy: it uses `http.client`, which never reads proxy settings. A redirect is followed only to an allowed address. A download resumes with Range. The ETag is compared here, because R2 ignores If-Range. The SHA-256 is computed while the file streams in. |
-| `roots.pem` | The only root certificates the downloader trusts: 11 roots from Mozilla's bundle, those the allowed hosts' chains end in, plus their siblings. The system's trust store is never used. Rebuild with `packaging/setup_roots.py <certifi cacert.pem>`. The package scans require it. |
-| `manifest.py` | Loads the bundled `setup/manifest-v1.json`, plus one fetch of `https://downloads.lastbook.org/manifest-v1.json` when setup opens. The fetched copy is used only if it validates and every URL is allowed. |
-| `hardware.py` | Reads the OS, processor type, RAM, unified memory, GPUs and VRAM (DXGI through ctypes on Windows) and free space per disk. It estimates whether the AI fits, or measures it with `lastbook-llm --measure` and `llm_local.judge`. |
-| `install.py` | Checks a zip before writing anything: zip-slip, absolute paths, links, case clashes, encryption and the size against `installed_bytes`. Unpacks so that a stopped unpack can resume. Does the one-rename switch, keeps the old library, and rolls back if the new one does not open. |
-| `api.py` | Handles `/api/setup/*`, runs the job (`job.json`, pause, resume, cancel and retry), recognizes files already on the computer, makes the recommendation, and provides setup mode's `SetupServer` for the bridge. |
+| `download.py` | Único módulo do aplicativo autorizado a abrir conexões de rede. Faz HTTPS na porta 443 apenas para `ALLOWED_HOSTS` (e `*.hf.co`), sem usar proxy do sistema (usa `http.client`). Redirecionamentos só são seguidos para endereços permitidos. Suporta retomada com HTTP `Range`, comparação direta de `ETag` (para buckets R2 que ignoram `If-Range`) e cálculo de SHA-256 em streaming durante o download. |
+| `roots.pem` | Único conjunto de certificados raiz aceitos pelo baixador (11 raízes extraídas do bundle da Mozilla cobrindo os hosts permitidos). O repositório de certificados do sistema nunca é usado. Reconstrua com `packaging/setup_roots.py <certifi cacert.pem>`. As verificações de empacotamento exigem esse arquivo. |
+| `manifest.py` | Carrega `setup/manifest-v1.json` empacotado e opcionalmente consulta uma única vez `https://downloads.lastbook.org/manifest-v1.json` ao abrir o setup online, aceitando a cópia remota apenas após validação estrita de esquema e URLs permitidas. Aceita índices estaduais com sigla de 2 letras (`[A-Z]{2}`). |
+| `hardware.py` | Lê sistema operacional, arquitetura, RAM, memória unificada, GPUs/VRAM (DXGI via `ctypes` no Windows; `sysctl` e `/proc`/`/sys` no macOS e Linux) e espaço livre em disco (incluindo fallback via `/Volumes` no macOS quando PyObjC não está presente). Estima ou mede (`lastbook-llm --measure` + `llm_local.judge`) se o modelo de IA cabe. |
+| `install.py` | Valida arquivos `.zip` antes de gravar qualquer byte no disco: proteção contra zip-slip, caminhos absolutos, links simbólicos, colisões de caixa, criptografia e limite de tamanho frente a `installed_bytes`. Desempacota permitindo retomada, executa troca atômica com backup `.old-*` e reverte automaticamente se a nova biblioteca falhar ao abrir. |
+| `api.py` | Implementa `/api/setup/*`, gerencia a fila de tarefas (`job.json`, pausa, retomada, cancelamento e nova tentativa), detecta pacotes/mapas/modelos já presentes no computador, calcula recomendações e fornece `SetupServer` para a ponte quando ainda não há biblioteca instalada. |
 
-## How it runs
+## Como funciona
 
-- **Setup mode.** `app/main.py` finds no library. It opens the window on `SetupServer` through the bridge, with no socket. The page is `web/setup.html` at `/`. The job downloads into `<parent>/LastbookData.setup/downloads/` and unpacks into `.../unpack/LastbookData`. Then it writes `pending.json`. `finish` remembers the target in `settings.json` and relaunches: `execv` on a Mac, a new process on Windows. On the next start, `api.startup()` makes the switch before the engine opens anything. After the engine starts, `api.opened()` marks the model checked (`llm_local.mark_checked`), records the old library and removes the work folder.
-- **Normal mode.** `server.py` hands `/api/setup/` to `api.handle()`. `main.py` configures a manage-mode `Setup` for that. The setup page is at `/ui/setup.html`, and `bridge.top_url_ok` allows it as a top page. An upgrade is staged the same way and switches on relaunch, so nothing is renamed while files are open. Adding only the AI moves the model into the open library and marks it checked at once.
-- Only this computer gets answers: the bridge, or loopback when running as `server.py`.
+- **Modo setup (primeira execução):** `app/main.py` não encontra biblioteca existente e abre a janela em `SetupServer` pela ponte em memória, sem abrir portas. A página `web/setup.html` é servida em `/`. Downloads vão para `<pasta-pai>/LastbookData.setup/downloads/` e são desempacotados em `.../unpack/LastbookData`. Ao concluir, grava `pending.json`, salva a pasta alvo em `settings.json` e reinicia o aplicativo (`execv` no macOS/Linux ou novo processo no Windows). Na inicialização seguinte, `api.startup()` conclui a troca antes de abrir qualquer arquivo da biblioteca.
+- **Modo manutenção (biblioteca já instalada):** `server.py` encaminha `/api/setup/` para `api.handle()`. A página é acessada em `/ui/setup.html`. Upgrades e trocas de mapa estadual são preparados da mesma forma e aplicados ao reiniciar. A inclusão ou remoção apenas da IA local é feita diretamente na biblioteca aberta.
+- Somente a própria máquina local recebe respostas (`403` para clientes externos na rede local).
 
-## Routes added beyond the contract table
+## Testes do setup
 
-- `POST /api/setup/pick` returns `{path, free_bytes, disk}` from the system's folder picker, or `{path: null, cancelled: true}`. A chosen folder can be the install place (`start {folder}`) or something to `use`: a LastbookData folder, a folder holding one, or a folder holding a pack zip.
-- `POST /api/setup/remove-ai` deletes the model file from the open library.
-- `POST /api/setup/start {repair: true, ai}` re-checks every file against `pack-manifest.tsv` and the model's SHA-256, and fetches again only what is wrong (the whole pack zip, then switches as an upgrade does).
-- `POST /api/setup/delete-old {path}` deletes a `LastbookData.old-*` that setup itself moved aside. These are listed in `state.current.old`.
-- `state.recommend` also carries `folder` and `need_bytes` (per pack). Each `found` entry is `{kind: library|pack|model, path, name, id, size, size_ok}`.
-
-## Tests
-
-The tests use a local HTTPS test server, which exists only in the test file. It can cut the connection, send corrupt bytes, change the ETag, ignore Range and redirect to bad hosts. The tests also cover kill and restart mid-download and mid-unpack, unpack guards, switching, rollback, upgrades, recommendations, and the bridge:
+Os testes usam um servidor HTTPS local em memória definido apenas no arquivo de testes (`app/tests/test_setup.py`), simulando quedas de conexão, bytes corrompidos, mudança de ETag, servidores que ignoram `Range`, redirecionamentos inválidos, interrupção no meio da extração e limites de disco:
 
 ```bash
-derived/app-build/mac-venv/bin/python -W ignore -B app/tests/test_setup.py
+python3 -B -m unittest app.tests.test_setup -v
 ```
 
-The full-disk case uses a 3 MB disk image (`hdiutil`, macOS):
+Caso queira exercitar também o cenário de disco cheio em macOS (`hdiutil` com imagem de 3 MB):
 
 ```bash
-LASTBOOK_FULL_DISK=1 derived/app-build/mac-venv/bin/python -W ignore -B app/tests/test_setup.py FullDisk
-```
-
-The bundled manifest is built from `derived/release/manifest-v1.json` (publish-packs), plus the model constants in `llm_local.py`:
-
-```bash
-derived/app-build/mac-venv/bin/python -I -B packaging/release_manifest.py --small-from derived/release/1.0.0-20261104-1507
+LASTBOOK_FULL_DISK=1 python3 -B -m unittest app.tests.test_setup.FullDisk -v
 ```

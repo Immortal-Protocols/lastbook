@@ -1,15 +1,15 @@
-## What this changes
+## O que este PR altera
 
-<!-- One or two sentences. Link the issue if there is one. -->
+<!-- Uma ou duas frases objetivas. Vincule a issue, se houver. -->
 
-## How I checked it
+## Como foi verificado
 
-<!-- Tests you ran, builds, and screenshots for anything you can see (light and dark, Mac and/or Windows). -->
+<!-- Testes executados, builds e capturas de tela para alterações visuais (modos claro e escuro). -->
 
-## Checklist
+## Lista de verificação
 
-- [ ] The unit tests pass (`python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq`).
-- [ ] No new network access: no port, socket, web address in `web/`, telemetry, automatic update check or new allowed host. Network use only through `engine/setup/download.py`.
-- [ ] No personal or household details: no home area, coordinates, user or machine names, LAN addresses, keys or tokens.
-- [ ] Guide changes cite real pages in the library, and `tools/validate_topics.py` passes.
-- [ ] Any new dependency is offline-only and listed in `THIRD_PARTY_NOTICES.md` with its licence.
+- [ ] Os testes unitários passam (`python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq`).
+- [ ] Nenhum novo acesso à rede: nenhuma porta aberta, socket, endereço web em `web/`, telemetria, checagem automática de atualização ou novo host não aprovado. Uso de rede somente via `engine/setup/download.py`.
+- [ ] Nenhum dado pessoal ou residencial: sem regiões privadas, coordenadas residenciais, nomes de usuário/máquina, endereços de rede local, chaves ou tokens.
+- [ ] Alterações nos guias citam páginas reais da biblioteca e `tools/validate_topics.py` passa.
+- [ ] Qualquer nova dependência funciona offline e foi listada em `THIRD_PARTY_NOTICES.md` com sua licença.

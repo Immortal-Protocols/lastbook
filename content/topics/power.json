@@ -1,9 +1,9 @@
 {
  "id": "power",
  "mode": "now",
- "title": "Power is out — light, phones & power",
- "short": "Outages, generators, batteries and gas safety",
- "intro": "Help for the first hours and days without electricity: safe lighting, keeping phones charged, running a generator or battery station without poisoning or shocking anyone, power-dependent medical needs, and what to do if you smell gas.",
+ "title": "Faltou energia — iluminação, celulares e elétrica",
+ "short": "Apagões, geradores, baterias e segurança com gás",
+ "intro": "Ajuda para as primeiras horas e dias sem eletricidade: iluminação segura, recarga de celulares, uso seguro de geradores ou bancos de bateria sem intoxicação nem choque, equipamentos médicos dependentes de energia e o que fazer se sentir cheiro de gás. Atenção no Brasil: a rede elétrica residencial é de 127 V ou 220 V em 60 Hz (padrão ABNT NBR 14136 / NBR 5410) — confira sempre a tensão antes de ligar equipamentos ou seguir manuais norte-americanos de 120 V.",
  "keywords": [
   "power outage",
   "blackout",
@@ -23,247 +23,275 @@
   "backfeed",
   "CPAP",
   "oxygen",
-  "medical device"
+  "medical device",
+  "falta de energia",
+  "queda de energia",
+  "apagao",
+  "apagão",
+  "sem luz",
+  "eletricidade",
+  "energia",
+  "gerador",
+  "monoxido de carbono",
+  "monóxido de carbono",
+  "lanterna",
+  "velas",
+  "carregar celular",
+  "bateria",
+  "solar",
+  "power bank",
+  "vazamento de gas",
+  "vazamento de gás",
+  "cheiro de gas",
+  "cheiro de gás",
+  "disjuntor",
+  "quadro de luz",
+  "127v",
+  "220v",
+  "cpap",
+  "oxigenio",
+  "oxigênio",
+  "aparelho medico"
  ],
  "choices": [
   {
    "id": "first-hours",
-   "label": "The power just went out",
-   "hint": "Lights out, fridge off, no idea how long it will last",
+   "label": "Acabou de faltar luz",
+   "hint": "Sem iluminação, geladeira desligada, sem previsão de retorno",
    "read": [
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "FEMA: what to do during and after an outage",
-     "note": "One-page FEMA sheet (2023): flashlights not candles, keep fridge and freezer closed, carbon monoxide warnings, unplugging against surges, and when to throw out food and medicine."
+     "label": "FEMA: o que fazer durante e depois de uma queda de energia",
+     "note": "Ficha FEMA (2023): usar lanternas em vez de velas, manter geladeira e freezer fechados, alertas de monóxido de carbono, tirar aparelhos da tomada contra surtos na volta da rede e descarte de alimentos/remédios."
     },
     {
      "doc": "cecc1671ae4d02",
      "page": 14,
-     "label": "Are You Ready: power outage checklist",
-     "note": "FEMA's 2020 guide: use only flashlights, avoid candles, backup charging such as a car charger, and never run the car in a garage."
+     "label": "Checklist de falta de energia",
+     "note": "Guia FEMA (2020): apenas lanternas (sem velas), carregador veicular reserva e nunca deixar o carro ligado na garagem."
     },
     {
      "doc": "e4bfed4b6afd6d",
      "page": 1,
-     "label": "Keeping food safe while the power is out",
-     "note": "FDA fact sheet: thermometers, keeping doors closed, how long the fridge and freezer stay cold, and checking food once power returns. See also the Food section."
+     "label": "Manter alimentos seguros durante a falta de energia",
+     "note": "Ficha técnica FDA: termômetros, portas fechadas, quanto tempo geladeira e freezer seguram e avaliação quando a luz voltar. Veja também o guia de Alimentos."
     }
    ]
   },
   {
    "id": "food-link",
-   "label": "Cooking and keeping food safe without power",
-   "hint": "Fridge and freezer, camp stoves and grills — in the food guide",
+   "label": "Cozinhar e conservar comida sem energia",
+   "hint": "Geladeira, freezer, fogareiro e churrasqueira — no guia de alimentação",
    "goto": "food/cook"
   },
   {
    "id": "generator",
-   "label": "I want to run a generator safely",
-   "hint": "Portable generator, extension cords, refuelling, CO alarm",
+   "label": "Quero operar um gerador com segurança",
+   "hint": "Gerador portátil, extensões adequadas, reabastecimento, detector de CO",
    "read": [
     {
      "doc": "equipment-b463000c0e14b4ad",
      "page": 9,
-     "label": "Generator carbon monoxide danger (Honda manual)",
-     "note": "Model-specific Honda EU2200i manual, but the CO rules apply widely: outside only, far from windows and doors, never in a garage, and CO alarm placement."
+     "label": "Perigo de monóxido de carbono em geradores (manual Honda)",
+     "note": "Manual específico do modelo Honda EU2200i, mas as regras de CO valem para qualquer gerador a combustível: somente ao ar livre, longe de janelas e portas, nunca em garagem."
     },
     {
      "doc": "equipment-b463000c0e14b4ad",
      "page": 10,
-     "label": "Shock hazards: wet conditions and house connections",
-     "note": "Keep the generator dry; do not connect it to a building's wiring unless a qualified electrician installed an isolation switch."
+     "label": "Risco de choque elétrico: umidade e ligação na rede da casa",
+     "note": "Mantenha o gerador seco; jamais ligue na tomada ou no quadro da casa sem chave reversora/transferência instalada por eletricista qualificado (evita retorno de tensão na rede)."
     },
     {
      "doc": "equipment-b463000c0e14b4ad",
      "page": 11,
-     "label": "Fire, burns and refuelling with care",
-     "note": "Hot exhaust and muffler, distance from buildings, and refuelling only with the engine off and cooled, outdoors, in an approved gasoline container."
+     "label": "Incêndio, queimaduras e reabastecimento seguro",
+     "note": "Escapamento quente, distância de construções e abastecimento somente com motor desligado e frio, ao ar livre, usando galão homologado."
     },
     {
      "doc": "d2213d245d582c",
      "page": 1,
-     "label": "U.S. Fire Administration generator one-pager",
-     "note": "Short English flyer (catalog title is Spanish): use outdoors, have CO alarms, not in wet areas, heavy-duty cords, don't refuel while running."
+     "label": "Resumo da U.S. Fire Administration sobre geradores",
+     "note": "Folheto curto: usar fora de casa, ter alarme de CO, não molhar, usar cabos de bitola adequada e nunca abastecer ligado."
     }
    ]
   },
   {
    "id": "batteries-solar",
-   "label": "Charging phones from batteries, a car or solar",
-   "hint": "Power bank, battery station, solar panels, car charger",
+   "label": "Carregar celulares com baterias, carro ou energia solar",
+   "hint": "Power bank / battery pack, estação portátil, painel solar, carregador veicular",
    "read": [
     {
      "doc": "cecc1671ae4d02",
      "page": 14,
-     "label": "Backup charging and car-charging safety",
-     "note": "Keep devices charged, have backup charging such as a car charger, and do not leave a car running in a garage or near the home."
+     "label": "Recarga reserva e segurança ao carregar no carro",
+     "note": "Manter celulares carregados, usar carregador veicular reserva e nunca deixar o carro ligado dentro de garagem ou perto de janelas."
     },
     {
      "doc": "2c619f4fe19187",
      "page": 1,
-     "label": "Spare phone batteries and solar or hand-crank chargers",
-     "note": "FEMA alerts fact sheet suggests extra batteries and car, solar-powered or hand-crank chargers so you keep receiving warnings."
+     "label": "Baterias extras e carregadores solares ou à manivela",
+     "note": "Ficha FEMA de alertas recomenda baterias extras e carregadores veiculares, solares ou à manivela para continuar recebendo avisos da Defesa Civil."
     },
     {
      "doc": "89c91ae1008675d0",
      "page": 15,
-     "label": "Looking after a home solar and battery system",
-     "note": "Plain-language checks for appliances, wiring and batteries, including ventilation and the battery fuse. Written for small stand-alone systems in Belize (2023)."
+     "label": "Manutenção de sistema solar residencial com baterias",
+     "note": "Verificações simples de cabos, fusível da bateria e ventilação em sistemas isolados (off-grid, manual de Belize 2023)."
     },
     {
      "doc": "e02dc81261aae7",
      "page": 358,
-     "label": "Signs a lithium battery may catch fire",
-     "note": "Emergency Response Guidebook 2024: what thermal runaway is and warning signs such as swelling, leaking, odor or burn marks. Written for responders."
+     "label": "Sinais de que uma bateria de lítio pode pegar fogo",
+     "note": "Guia de Resposta a Emergências 2024: o que é embalamamento térmico (thermal runaway) e sinais como inchaço, vazamento, odor ou marcas de queimado."
     }
    ]
   },
   {
    "id": "medical",
-   "label": "Someone needs power for medicine or a medical device",
-   "hint": "CPAP, oxygen, power wheelchair, refrigerated medicine",
+   "label": "Alguém precisa de energia para remédio ou aparelho médico",
+   "hint": "CPAP, concentrador de oxigênio, cadeira motorizada, insulina refrigerada",
    "read": [
     {
      "doc": "e629b2983d95e4",
      "page": 4,
-     "label": "Red Cross: list everything that needs electricity",
-     "note": "Inventory devices like CPAP or power wheelchairs and refrigerated medicines, and plan battery or generator backup and where you would go."
+     "label": "Cruz Vermelha: listar tudo o que depende de eletricidade",
+     "note": "Mapear equipamentos (CPAP, oxigênio, cadeira) e remédios refrigerados, planejar bateria/gerador reserva e para onde se deslocar se a falta de luz persistir."
     },
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "Refrigerated medicines after a day without power",
-     "note": "FEMA advice on replacing refrigerated medications and calling your doctor or pharmacist; also talk to your doctor before an outage."
+     "label": "Medicamentos refrigerados após um dia sem energia",
+     "note": "FEMA: orientação sobre substituir medicamentos que perderam refrigeração e combinar alternativas antes com médico ou farmacêutico."
     },
     {
      "doc": "cecc1671ae4d02",
      "page": 14,
-     "label": "Backup and relocation plans for life-sustaining devices",
-     "note": "Are You Ready: take inventory of power-dependent medical equipment and make backup plans, including relocation."
+     "label": "Plano reserva e remoção para aparelhos de suporte à vida",
+     "note": "Are You Ready: manter cadastro e plano de transferência caso a energia não volte a tempo."
     }
    ]
   },
   {
    "id": "gas",
-   "label": "I smell gas or need to shut off utilities",
-   "hint": "Rotten-egg smell, hissing, after an earthquake, breaker panel",
+   "label": "Sinto cheiro de gás ou preciso desligar o quadro/registro",
+   "hint": "Cheiro de ovo podre, chiado, vazamento no botijão ou gás encanado, disjuntor",
    "read": [
     {
      "doc": "ed5bac0a81b009",
      "page": 177,
-     "label": "CERT: when and how to shut off the gas",
-     "note": "Gas meter inside vs outside, the non-sparking wrench, automatic quake shutoff valves, and why only a licensed technician turns gas back on."
+     "label": "CERT: quando e como fechar o registro de gás",
+     "note": "Medidor interno versus externo, chave adequada sem faísca e por que somente técnico qualificado ou a concessionária deve religar gás canalizado."
     },
     {
      "doc": "0dfdf1fb4b178f",
      "page": 14,
-     "label": "If you smell gas: get out first",
-     "note": "Older FEMA Are You Ready section: open a window, get everyone out, shut off at the outside valve if you can, call from a neighbor's home."
+     "label": "Se sentir cheiro de gás: saia primeiro",
+     "note": "Guia FEMA antigo: abrir portas/janelas, evacuar todos, não acionar interruptores nem faíscas, fechar o registro externo se for seguro e ligar de fora (Bombeiros 193 / concessionária)."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 175,
-     "label": "Shutting off electricity at the breaker panel",
-     "note": "CERT steps for breakers and fuses, when to call a licensed electrician, and never wading into water to reach the panel."
+     "label": "Desligar a eletricidade no quadro de disjuntores",
+     "note": "Passos CERT para disjuntores gerais/parciais, quando chamar eletricista e nunca pisar em água para alcançar o quadro."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 66,
-     "label": "After an earthquake: checking gas and propane",
-     "note": "FEMA P-530 checklist: where to check for gas smell, turning the meter valve, and what to do about shifted propane tanks."
+     "label": "Após impacto ou tremor: inspecionar gás encanado e botijões/cilindros",
+     "note": "Lista FEMA P-530: onde verificar vazamento, fechamento de válvula e cuidados com cilindros de gás deslocados."
     }
    ]
   },
   {
    "id": "long-outage",
-   "label": "The outage could last days or weeks",
-   "hint": "Planning, heat or cold, staying put or leaving",
+   "label": "A falta de energia pode durar dias ou semanas",
+   "hint": "Planejamento, calor ou frio extremo, ficar ou sair de casa",
    "read": [
     {
      "doc": "e629b2983d95e4",
      "page": 5,
-     "label": "Planning to stay home two weeks or leave",
-     "note": "Red Cross planning for extended outages: where you'll go if power sources won't last, a support network, and plans to stay or go."
+     "label": "Planejar para permanecer duas semanas ou sair",
+     "note": "Cruz Vermelha: para onde ir se baterias e combustível não durarem, rede de apoio de vizinhos e plano de saída."
     },
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "Staying cool or warm when the power is out",
-     "note": "FEMA tips for extreme heat or winter outages, going to an alternate location, and why multiple disasters can happen at once."
+     "label": "Controlar o calor ou o frio sem energia elétrica",
+     "note": "Dicas FEMA para extremos climáticos sem ar-condicionado ou aquecimento e uso de abrigos locais."
     },
     {
      "doc": "equipment-b463000c0e14b4ad",
      "page": 67,
-     "label": "Stored gasoline goes bad",
-     "note": "Honda manual (model-specific) explains that gasoline can deteriorate within weeks to months and how storage conditions matter."
+     "label": "Gasolina estocada perde qualidade com o tempo",
+     "note": "Manual Honda (específico do modelo): explica que a gasolina degrada em semanas/meses (especialmente etanol/gasolina brasileira) e como armazená-la."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Generator exhaust contains carbon monoxide you cannot see or smell and it can kill in minutes; never run a generator inside a house, garage, basement or any enclosed or partly enclosed space.",
+   "text": "Os gases do escapamento de geradores contêm monóxido de carbono invisível e sem cheiro que mata em minutos; nunca ligue um gerador dentro de casa, garagem, porão ou área semifechada.",
    "doc": "equipment-b463000c0e14b4ad",
    "page": 9
   },
   {
-   "text": "If you suspect carbon monoxide poisoning, get to fresh air and seek medical attention immediately.",
+   "text": "Se suspeitar de intoxicação por monóxido de carbono, vá imediatamente para o ar livre e procure socorro médico (SAMU 192 / Bombeiros 193).",
    "doc": "equipment-b463000c0e14b4ad",
    "page": 9
   },
   {
-   "text": "Use generators, camp stoves and charcoal grills outdoors at least 20 feet from windows, doors and garages; never heat the home with a gas stove, oven, grill or dryer.",
+   "text": "Use geradores, fogareiros e churrasqueiras a carvão ao ar livre a pelo menos 6 metros (20 pés) de janelas, portas e garagens; nunca aqueça ambientes com fogão a gás ou forno.",
    "doc": "18bf4604bf28c4",
    "page": 2
   },
   {
-   "text": "Do not connect a generator to a building's electrical system unless an isolation switch was installed by a qualified electrician.",
+   "text": "Não conecte um gerador à instalação elétrica da casa sem chave seccionadora/transferência instalada por eletricista qualificado (conforme NBR 5410).",
    "doc": "equipment-b463000c0e14b4ad",
    "page": 10
   },
   {
-   "text": "Improper connections can backfeed current into utility lines, which may electrocute utility workers; standby connections must be made by a qualified electrician.",
+   "text": "Ligações improvisadas podem gerar retorno de tensão na rede da rua (backfeed), eletrocutando eletricistas da distribuidora; conexões prediais exigem profissional habilitado.",
    "doc": "equipment-b463000c0e14b4ad",
    "page": 56
   },
   {
-   "text": "For a home standby generator: never connect it to a building unless a licensed electrician has installed an approved transfer switch (Generac manual, model-specific).",
+   "text": "Para gerador estacionário residencial: nunca conecte ao imóvel sem chave de transferência homologada instalada por profissional habilitado (manual Generac).",
    "doc": "manual-84b9686f64977869",
    "page": 6
   },
   {
-   "text": "Do not refuel a running generator; let it cool, refuel outdoors, and store gasoline only in an approved container.",
+   "text": "Não reabasteça um gerador funcionando; espere esfriar, abasteça ao ar livre e armazene gasolina apenas em recipiente homologado.",
    "doc": "equipment-b463000c0e14b4ad",
    "page": 11
   },
   {
-   "text": "If you turn off the gas for any reason, a qualified professional must turn it back on; never do it yourself.",
+   "text": "Se fechar o registro geral de gás encanado por segurança, apenas a concessionária ou técnico habilitado deve religá-lo.",
    "doc": "0dfdf1fb4b178f",
    "page": 14
   },
   {
-   "text": "If the gas meter is inside and you smell gas, evacuate and call 9-1-1; do not try to shut it off from inside if gas may be in the air. Use a flashlight, not a candle.",
+   "text": "Se o medidor de gás ficar dentro do imóvel e você sentir cheiro de gás, saia imediatamente e chame o Corpo de Bombeiros (193); use apenas lanterna, jamais vela ou fósforo.",
    "doc": "ed5bac0a81b009",
    "page": 177
   },
   {
-   "text": "Do not enter a flooded basement or wade into standing water to shut off electricity; notify a licensed electrician or the utility in an electrical emergency.",
+   "text": "Não entre em cômodo alagado nem pise em água empoçada para desligar disjuntores; acione a concessionária de energia ou o Corpo de Bombeiros (193).",
    "doc": "ed5bac0a81b009",
    "page": 175
   },
   {
-   "text": "Charging batteries give off explosive hydrogen gas: no smoking, sparks or open flames nearby, and never lay metal objects on a battery.",
+   "text": "Baterias em carga liberam gás hidrogênio explosivo: não fume, não produza faíscas ou chamas por perto e nunca encoste objetos metálicos sobre os polos.",
    "doc": "47e8a442a2b343f0",
    "page": 13
   },
   {
-   "text": "Damaged, swollen, leaking or recalled lithium batteries are more likely to catch fire through thermal runaway, which can spread to nearby materials.",
+   "text": "Baterias de lítio danificadas, estufadas ou vazando têm alto risco de incêndio rápido (thermal runaway) e propagação para materiais próximos.",
    "doc": "e02dc81261aae7",
    "page": 358
   },
   {
-   "text": "It is advisable to have a skilled technician install a stand-alone solar system; reversed polarity can damage components.",
+   "text": "Recomenda-se técnico capacitado para instalar sistemas solares isolados; inverter a polaridade pode danificar inversor e controlador.",
    "doc": "89c91ae1008675d0",
    "page": 18
   }
@@ -272,83 +300,83 @@
   {
    "doc": "18bf4604bf28c4",
    "page": 1,
-   "label": "FEMA power outage sheet: the basics",
-   "note": "Why outages are dangerous and the short list: generators outside, charged phones, medical device plan, unplug to avoid surges."
+   "label": "Ficha FEMA de falta de energia: o essencial",
+   "note": "Principais riscos de apagões e lista rápida: geradores fora de casa, celulares carregados, plano para aparelhos médicos e desligar eletrônicos da tomada."
   },
   {
    "doc": "cecc1671ae4d02",
    "page": 14,
-   "label": "Power outage supplies: a flashlight per person",
-   "note": "Inventory what runs on electricity, battery-powered smoke and CO detectors, and at least one flashlight with spare batteries per household member."
+   "label": "Itens para queda de energia: uma lanterna por pessoa",
+   "note": "Listar o que depende de luz, detectores a pilha de fumaça e CO e ao menos uma lanterna com pilhas extras por morador."
   },
   {
    "doc": "0dfdf1fb4b178f",
    "page": 14,
-   "label": "Learn your gas and water shut-offs before you need them",
-   "note": "Older FEMA guide: contact your gas company about your meter, practice without actually turning it off, and label the water valve."
+   "label": "Conhecer os registros de gás e água antes da emergência",
+   "note": "Identificar o registro geral de gás/GLP e de água da casa, deixar etiquetado e instruir os moradores."
   },
   {
    "doc": "0dfdf1fb4b178f",
    "page": 15,
-   "label": "Teach everyone to shut off the electricity",
-   "note": "Locating the circuit box and switching off individual circuits before the main breaker."
+   "label": "Ensinar todos a desligar os disjuntores",
+   "note": "Localizar o quadro de distribuição (QDC), desligar circuitos individuais antes do disjuntor geral e saber a tensão (127 V / 220 V) de cada circuito."
   },
   {
    "doc": "ed5bac0a81b009",
    "page": 176,
-   "label": "Gas and carbon monoxide detectors",
-   "note": "CERT on natural gas and CO hazards, and where to place gas and CO detectors in the home."
+   "label": "Detectores de gás e monóxido de carbono",
+   "note": "CERT sobre riscos de gás e CO e onde posicionar detectores na residência."
   },
   {
    "doc": "e629b2983d95e4",
    "page": 4,
-   "label": "Plan power backup for medical needs",
-   "note": "Red Cross guide for older adults; the device inventory and backup planning helps any household with power-dependent needs."
+   "label": "Planejar energia reserva para aparelhos médicos",
+   "note": "Guia Cruz Vermelha: inventário de aparelhos e nobreaks/baterias ajuda qualquer família com necessidades médicas contínuas."
   },
   {
    "doc": "equipment-b463000c0e14b4ad",
    "page": 60,
-   "label": "Generator maintenance schedule (Honda EU2200i)",
-   "note": "Model-specific schedule for oil, air filter, spark plug and spark arrester; check your own generator's manual."
+   "label": "Cronograma de manutenção do gerador (Honda EU2200i)",
+   "note": "Tabela específica do modelo para troca de óleo, filtro de ar e vela; consulte sempre o manual do seu gerador."
   }
  ],
  "learn": [
   {
    "doc": "d0fbb2e051cd46",
    "page": 22,
-   "label": "FEMA hazard sheets 2024: power outage",
-   "note": "Same FEMA outage advice inside the full 2024 set of hazard information sheets, alongside earthquake, flood, wildfire and tsunami."
+   "label": "Fichas de riscos FEMA 2024: falta de energia",
+   "note": "Orientações de falta de energia dentro do conjunto de fichas 2024."
   },
   {
    "doc": "equipment-b463000c0e14b4ad",
-   "label": "Honda EU2200i generator owner's manual",
-   "note": "Full 2024 manual for one popular inverter generator: safety, fuel, operation, maintenance, storage. Model-specific; follow your own unit's manual."
+   "label": "Manual do proprietário do gerador Honda EU2200i",
+   "note": "Manual completo 2024 (em inglês, padrão 120 V / 60 Hz): segurança, combustível, operação, manutenção e armazenamento."
   },
   {
    "doc": "video-XOBl14kLx4o",
-   "label": "Honda video: how the CO-MINDER shut-off works",
-   "note": "Manufacturer video on the carbon monoxide shut-off feature of Honda generators. Model-specific; no transcript."
+   "label": "Vídeo Honda: como funciona o desligamento por CO-MINDER (em inglês)",
+   "note": "Vídeo do fabricante sobre o sensor de monóxido de carbono. Específico do modelo; sem transcrição."
   },
   {
    "doc": "manual-84b9686f64977869",
-   "label": "Generac home standby generator manual",
-   "note": "Owner's manual for 10–26 kW air-cooled standby generators, including safety warnings about transfer switches and backfeed. Model-specific."
+   "label": "Manual de gerador estacionário residencial Generac",
+   "note": "Manual de 10–26 kW refrigerados a ar, incluindo avisos sobre chave de transferência e retorno na rede (padrão EUA; no Brasil siga 127/220 V e NBR 5410)."
   },
   {
    "doc": "1693406275fcc129",
-   "label": "EPA Power Resilience Guide (2023)",
-   "note": "Written for water utilities, but explains generator sizing, fuel planning, connections and maintenance in plain terms."
+   "label": "Guia EPA de Resiliência Energética (2023)",
+   "note": "Escrito para estações de água, explica dimensionamento de geradores, reserva de combustível e manutenção."
   },
   {
    "doc": "1b589c901d3982",
-   "label": "Power Outage Ready Business Toolkit",
-   "note": "FEMA toolkit aimed at organizations; useful for thinking through extended outages."
+   "label": "Toolkit de preparo empresarial para falta de energia",
+   "note": "Material FEMA para organizações; útil para planejar apagões prolongados."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Carbon_monoxide_poisoning",
    "title": "Carbon monoxide poisoning",
-   "label": "Encyclopedia: carbon monoxide poisoning",
-   "note": "Medical encyclopedia article on symptoms, causes and prevention of CO poisoning."
+   "label": "Enciclopédia: intoxicação por monóxido de carbono",
+   "note": "Artigo médico sobre sintomas, causas e prevenção da intoxicação por CO (em inglês)."
   }
  ],
  "related": [

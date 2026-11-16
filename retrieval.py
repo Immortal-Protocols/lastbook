@@ -81,8 +81,8 @@ def norm_ws(s):
 
 
 def readable(text):
-    """Skip table/spreadsheet debris and non-English runs that match every query by accident."""
-    words = re.findall(r"[A-Za-z][a-z']+", text)
+    """Skip table/spreadsheet debris and gibberish runs that match every query by accident."""
+    words = re.findall(r"[A-Za-zÀ-ÿ][a-zà-ÿ']+", text)
     if len(words) < 12:
         return False
     letters = sum(len(w) for w in words)
@@ -90,7 +90,11 @@ def readable(text):
     return letters / max(1, len(text)) > 0.55 and common / len(words) > 0.18
 
 
-COMMON = set('the a an of to and in is are be for on with as by or that this it from at not can if your you use when should may will water have has which all but more they their each must after before into out other than any one two do does'.split())
+COMMON = set(
+    'the a an of to and in is are be for on with as by or that this it from at not can if your you use when should may will water have has which all but more they their each must after before into out other than any one two do does '
+    'de a o que e do da em um para com não nao uma os no se na por mais as dos como mas foi ao ele das tem à seu sua ou ser quando muito há nos já está eu também só pelo pela até isso ela entre era depois sem mesmo aos ter seus quem nas me esse eles estão você tinha foram essa num nem suas meu às minha têm numa pelos elas havia seja qual será nós tenho lhe deles essas esses pelas este fosse dele tu te vocês vos lhes meus minhas teu tua teus tuas nosso nossa nossos nossas dela delas esta estes estas aquele aquela aqueles aquelas isto aquilo água agua pode deve usar'
+    .split()
+)
 
 
 def chunks_of(text):
@@ -162,7 +166,7 @@ class Index:
         self.active = None
         self.status = {'state': 'starting' if AVAILABLE else 'off', 'chunks': 0, 'docs': 0, 'pending': None, 'rate': None}
         if not AVAILABLE:
-            self.status['note'] = 'Meaning-based search is off: no model in this library. Keyword search still works.'
+            self.status['note'] = 'Busca semântica desativada: nenhum modelo nesta biblioteca. A busca por palavras-chave continua funcionando.'
         self._load()
 
     def _db(self):

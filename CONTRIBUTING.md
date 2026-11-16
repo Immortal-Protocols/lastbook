@@ -1,74 +1,58 @@
-# Contributing to Lastbook
+# Contribuindo com o Último Livro (Lastbook)
 
-Thank you for helping. Lastbook is meant for the day the internet is gone, so what matters most is that it works offline,
-stays correct, and never sends anything anywhere.
+Obrigado por ajudar. Este projeto é a adaptação brasileira do **Lastbook** (<https://github.com/Immortal-Protocols/lastbook>, <https://lastbook.org>) e foi feito para o dia em que não houver internet — portanto, o mais importante é que funcione offline, permaneça correto e nunca envie dados para lugar nenhum.
 
-## Set up
+## Configuração do ambiente
 
-1. Clone the repository and make a virtual environment with Python 3.11 or later.
-2. Install the requirements for your platform: `packaging/requirements_macos.txt` (Mac) or
-   `packaging/requirements_app.txt` (Windows).
-3. Get a data folder: run `python app/main.py` and let setup download the Small pack, or unzip a pack from lastbook.org.
-   Point the app at it with `--data` or `LASTBOOK_DATA`.
+1. Clone o repositório e crie um ambiente virtual com Python 3.11 ou superior.
+2. Instale as dependências da sua plataforma: `packaging/requirements_macos.txt` (macOS) ou `packaging/requirements_app.txt` (Windows).
+3. Obtenha uma pasta de dados (`LastbookData`): execute `python3 app/main.py` e deixe a configuração baixar o pacote Small, ou descompacte um pacote de <https://lastbook.org>. Aponte o aplicativo para ela com `--data` ou `LASTBOOK_DATA`.
 
-The README explains the layout and how to build the apps.
+O [README.md](README.md) explica a estrutura do projeto e como compilar os aplicativos.
 
-## Test
+## Testes
 
 ```bash
 python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_validate_topics app.tests.test_libq
 ```
 
-Run these before you open a pull request (`test_topic_search` needs Node and is skipped without it). If you change the packaging, also run the build for your platform: it ends
-with a package scan, and that scan must pass. If you change a guide in `content/`, run `tools/validate_topics.py`
-against a library, so every id, page and encyclopedia path it cites still exists:
+Execute os testes acima antes de abrir um pull request (`test_topic_search` requer `node` no `PATH` e é ignorado sem ele). Se você alterar o empacotamento, execute também o build da sua plataforma: ele termina com uma varredura de pacote que precisa passar. Se alterar um guia em `content/`, rode `tools/validate_topics.py` contra uma biblioteca real para garantir que cada `id`, página e caminho de enciclopédia citado ainda exista:
 
 ```bash
-python3 tools/validate_topics.py --data /path/to/LastbookData      # or set LASTBOOK_DATA
+python3 tools/validate_topics.py --data /caminho/para/LastbookData   # ou defina LASTBOOK_DATA
 ```
 
-It reads the library's files directly and needs no server. `tools/libq.py` takes the same `--data` and finds and reads
-the page you mean to cite: `python3 tools/libq.py --data /path/to/LastbookData search "boil water"`.
+O script lê os arquivos da biblioteca diretamente, sem precisar de servidor. `tools/libq.py` aceita o mesmo `--data` para localizar e ler a página exata que você deseja citar: `python3 tools/libq.py --data /caminho/para/LastbookData search "boil water"`.
 
-## Rules that keep Lastbook what it is
+## Regras que mantêm o projeto fiel à sua proposta
 
-**No network.** The app opens no port and makes no connection, with two exceptions, both started by the person and both
-through `engine/setup/download.py` to the hosts in `ALLOWED_HOSTS` only: setup's downloads, and the Check for updates
-button (`engine/update.py`, `downloads.lastbook.org` only).
+**Sem rede.** O aplicativo não abre porta de escuta nem faz conexões, com duas exceções — ambas iniciadas pela própria pessoa e ambas passando por `engine/setup/download.py` apenas para os hosts em `ALLOWED_HOSTS`: os downloads da tela de configuração e o botão *Verificar atualizações* (`engine/update.py`, somente `downloads.lastbook.org`).
 
-- No telemetry, analytics, crash reporting, fonts or scripts from the web, or "phone home" of any kind. The one update check
-  (`engine/update.py`) runs only when the person presses its button, and only says whether a newer version exists.
-- Our own pages (`web/`) contain no web address. The build fails if they do.
-- A new dependency must work fully offline, and must not open a socket or start a server. Say in the pull request what
-  it is, its licence, and why it is needed, and add it to `THIRD_PARTY_NOTICES.md`.
-- The local AI runner stays socket-free: no RPC backend, no HTTP server, no download code.
+- Nada de telemetria, analytics, envio de relatórios de falha, fontes ou scripts carregados da web ou qualquer comunicação oculta. A verificação única de atualização (`engine/update.py`) só roda quando alguém clica no botão e apenas informa se existe versão mais nova.
+- Nossas próprias páginas em `web/` não contêm endereços web externos (`https?://`). O build falha se houver algum.
+- Qualquer nova dependência deve funcionar totalmente offline, sem abrir sockets nem iniciar servidores. Informe no pull request o que ela é, sua licença e por que é necessária, e adicione-a ao [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- O executor da IA local permanece sem sockets: sem backend RPC, sem servidor HTTP e sem código de download.
 
-**General wording, no household.** Lastbook began as one household's library. The shipped guides use general wording, and
-nothing shared may name a real person's home, street, coordinates, machines or accounts.
+**Linguagem geral, sem dados pessoais ou residenciais.** O Lastbook original começou como uma biblioteca doméstica. Os guias distribuídos usam termos gerais, e nada compartilhado pode citar casas reais, ruas, coordenadas, máquinas ou contas pessoais.
 
-- Write guides for any reader in any place. Name a region only when the source is about that region.
-- Never commit `web/home-area.json`, a private word list, real coordinates of a home, user or machine names, LAN
-  addresses, keys or tokens. Test paths use placeholders such as `/path/to/lastbook` and `C:\Users\you\app-test`.
-- To keep your own words out of a build, put them in a local copy of `packaging/ship_edits.json` (`forbidden`) and do not
-  commit it.
+- Escreva guias pensando em qualquer leitor. Só cite uma região quando a fonte ou adaptação tratar especificamente daquela região.
+- Nunca faça commit de `web/home-area.json`, listas privadas de palavras, coordenadas reais de residências, nomes de usuário/máquina, endereços de rede local, chaves ou tokens. Caminhos em testes e exemplos usam marcadores genéricos como `/caminho/para/LastbookData` ou `C:\Users\you\app-test`.
+- Para manter seus próprios termos fora de um build local, coloque-os em uma cópia local de `packaging/ship_edits.json` (`forbidden`) sem incluí-la em commits.
 
-**Sources first.** A guide card points at a real page of a real source in the library, with its page number. If the
-library does not cover something, record that in `content/gaps.json` instead of writing advice from memory.
+**Fontes em primeiro lugar.** Cada cartão de guia aponta para uma página real de uma fonte real na biblioteca, com seu número de página. Se a biblioteca não cobrir algum assunto, registre em `content/gaps.json` em vez de escrever orientações de memória.
 
-**Plain words.** Interface text is short, concrete and calm. Many readers will be stressed, tired, or reading in a second
-language.
+**Palavras simples.** O texto da interface deve ser curto, concreto e sereno. Muitos leitores estarão estressados, cansados ou consultando em uma situação de urgência.
 
 ## Pull requests
 
-- Keep each change small and about one thing, and say what you checked and how.
-- Screenshots help for any change you can see, in light and dark mode, on Mac and on Windows if you can.
-- Be ready to explain anything that touches setup, the bridge, the scans or the downloader. These keep people's libraries
-  safe and their computers private.
+- Mantenha cada alteração pequena e focada em um assunto, explicando o que foi testado e como.
+- Capturas de tela ajudam em qualquer mudança visual, nos modos claro e escuro (macOS, Windows e Linux quando possível).
+- Esteja pronto para explicar qualquer alteração que toque em configuração (`engine/setup/`), ponte (`app/bridge.py`), varreduras de segurança ou no baixador (`download.py`). Esses pontos protegem as bibliotecas e a privacidade dos usuários.
 
-## Reporting a security or privacy problem
+## Reportando falhas de segurança ou privacidade
 
-Do not open a public issue. Email hello@lastbook.org with what you found and how to reproduce it.
+Não abra uma issue pública. Para questões ligadas ao projeto original Lastbook, envie e-mail para `hello@lastbook.org` com os detalhes encontrados e como reproduzir.
 
-## Code of conduct
+## Código de conduta
 
-Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+Todos os participantes seguem o [Código de Conduta](CODE_OF_CONDUCT.md).

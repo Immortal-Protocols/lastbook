@@ -30,16 +30,23 @@ CLAIMS = ROOT / 'derived/packs/state-claims'        # a worker owns a state by m
 TABLE = ROOT / 'derived/packs/STATE-MAPS.md'
 MANIFEST = ROOT / 'derived/release/manifest-v1.json'
 BASE = 'https://downloads.lastbook.org'
-KEEP = {'CA', 'RI'}
-FIRST = ['CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI']
-NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='California', CO='Colorado', CT='Connecticut', DE='Delaware',
-             DC='District of Columbia', FL='Florida', GA='Georgia', HI='Hawaii', ID='Idaho', IL='Illinois', IN='Indiana', IA='Iowa', KS='Kansas',
-             KY='Kentucky', LA='Louisiana', ME='Maine', MD='Maryland', MA='Massachusetts', MI='Michigan', MN='Minnesota', MS='Mississippi',
-             MO='Missouri', MT='Montana', NE='Nebraska', NV='Nevada', NH='New Hampshire', NJ='New Jersey', NM='New Mexico', NY='New York',
-             NC='North Carolina', ND='North Dakota', OH='Ohio', OK='Oklahoma', OR='Oregon', PA='Pennsylvania', PR='Puerto Rico', RI='Rhode Island',
-             SC='South Carolina', SD='South Dakota', TN='Tennessee', TX='Texas', UT='Utah', VT='Vermont', VA='Virginia', WA='Washington',
-             WV='West Virginia', WI='Wisconsin', WY='Wyoming')
-INCLUDES = 'Local streets, buildings, terrain and crops, plus water, help and resource points'
+KEEP = {'CA', 'RI', 'SP'}
+FIRST_BR = ['SP', 'MG', 'RJ', 'BA', 'PR', 'RS', 'PE', 'CE', 'PA', 'SC', 'GO', 'DF']
+FIRST = FIRST_BR + ['CA', 'TX', 'FL', 'NY', 'IL', 'OH', 'GA', 'NC', 'MI']
+BR_NAMES = dict(AC='Acre', AL='Alagoas', AP='Amapá', AM='Amazonas', BA='Bahia', CE='Ceará', DF='Distrito Federal',
+                ES='Espírito Santo', GO='Goiás', MA='Maranhão', MT='Mato Grosso', MS='Mato Grosso do Sul',
+                MG='Minas Gerais', PA='Pará', PB='Paraíba', PR='Paraná', PE='Pernambuco', PI='Piauí',
+                RJ='Rio de Janeiro', RN='Rio Grande do Norte', RS='Rio Grande do Sul', RO='Rondônia',
+                RR='Roraima', SC='Santa Catarina', SP='São Paulo', SE='Sergipe', TO='Tocantins')
+US_NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='California', CO='Colorado', CT='Connecticut', DE='Delaware',
+                DC='District of Columbia', FL='Florida', GA='Georgia', HI='Hawaii', ID='Idaho', IL='Illinois', IN='Indiana', IA='Iowa', KS='Kansas',
+                KY='Kentucky', LA='Louisiana', ME='Maine', MD='Maryland', MA='Massachusetts', MI='Michigan', MN='Minnesota', MS='Mississippi',
+                MO='Missouri', MT='Montana', NE='Nebraska', NV='Nevada', NH='New Hampshire', NJ='New Jersey', NM='New Mexico', NY='New York',
+                NC='North Carolina', ND='North Dakota', OH='Ohio', OK='Oklahoma', OR='Oregon', PA='Pennsylvania', PR='Puerto Rico', RI='Rhode Island',
+                SC='South Carolina', SD='South Dakota', TN='Tennessee', TX='Texas', UT='Utah', VT='Vermont', VA='Virginia', WA='Washington',
+                WV='West Virginia', WI='Wisconsin', WY='Wyoming')
+NAMES = {**US_NAMES, **BR_NAMES}
+INCLUDES = 'Ruas locais, edificações, relevo e cultivos, além de pontos de água, ajuda e recursos'
 ALLOWED = {f'derived/geo/{n}.sqlite' for n in ('national', 'map', 'water', 'terrain', 'buildings', 'crops', 'places')} | {
     'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'library-data/geography/resources/atlas.sqlite', 'map-set.json'}
 STORED = {'derived/geo/terrain.sqlite'}     # tiles are already compressed

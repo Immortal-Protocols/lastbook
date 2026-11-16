@@ -1,9 +1,9 @@
 {
  "id": "land",
  "mode": "learn",
- "title": "Find safe land and natural resources",
- "short": "Local hazards, soil, water sources, wild plants and finding your way",
- "intro": "A learning track for understanding the ground you live on: which natural hazards threaten it, whether its soil and water can be used, why wild plants need great caution, and how to read maps and navigate. The app's separate offline Maps page shows places; this track explains what the map data can and cannot tell you.",
+ "title": "Avaliar terrenos seguros e recursos naturais",
+ "short": "Riscos locais, solo, fontes de água, plantas silvestres e orientação",
+ "intro": "Uma trilha de aprendizagem para entender o terreno onde você vive: quais riscos naturais o ameaçam, se o solo e a água podem ser aproveitados, por que plantas silvestres exigem muita cautela e como ler mapas e navegar. A página separada de Mapas offline do aplicativo mostra lugares; esta trilha explica o que os dados do mapa podem ou não informar (no Brasil, consulte também cartas do IBGE e mapeamentos de risco da Defesa Civil 199 e do SGB/CPRM).",
  "keywords": [
   "land",
   "hazard",
@@ -31,186 +31,227 @@
   "GNIS",
   "OpenStreetMap",
   "GIS",
-  "coast"
+  "coast",
+  "terreno",
+  "terra",
+  "risco natural",
+  "deslizamento",
+  "encosta",
+  "enchente",
+  "inundacao",
+  "inundação",
+  "queimada",
+  "terremoto",
+  "liquefacao",
+  "liquefação",
+  "tsunami",
+  "litoral",
+  "solo",
+  "fonte de agua",
+  "fonte de água",
+  "nascente",
+  "poco",
+  "poço",
+  "agua da chuva",
+  "água da chuva",
+  "forrageamento",
+  "plantas silvestres",
+  "plantas toxicas",
+  "plantas tóxicas",
+  "PANCs",
+  "cogumelos",
+  "mapa",
+  "bussola",
+  "bússola",
+  "topografico",
+  "topográfico",
+  "navegacao",
+  "navegação",
+  "orientacao",
+  "orientação",
+  "IBGE",
+  "CPRM",
+  "SGB",
+  "SIG"
  ],
  "choices": [
   {
    "id": "coast",
-   "label": "I live near the beach or low-lying coast",
-   "hint": "Canals, harbors, low coastal ground",
+   "label": "Moro perto da praia ou em área costeira baixa",
+   "hint": "Canais, portos, baixadas litorâneas e áreas de ressaca",
    "read": [
     {
      "doc": "9681a68ebd07f5",
      "page": 97,
-     "label": "Which coastal areas face the most tsunami risk",
-     "note": "CERT annex describing tsunamis and the areas at greater risk: near the shoreline, low elevation and along rivers that feed the ocean."
+     "label": "Quais áreas costeiras enfrentam maior risco de tsunami ou inundação marinha",
+     "note": "Anexo do CERT descrevendo tsunamis e áreas mais vulneráveis: próximo à linha da costa, baixa altitude e ao longo de rios que deságuam no oceano."
     },
     {
      "doc": "a7a60dbbb26052",
      "page": 2,
-     "label": "Learn your tsunami zone and warning signs",
-     "note": "FEMA sheet on evacuation zone maps and routes, natural warning signs, and what to do during and after a tsunami."
+     "label": "Conheça a zona de inundação e os sinais de alerta",
+     "note": "Ficha da FEMA sobre mapas de áreas de evacuação e rotas, sinais naturais de alerta e o que fazer durante e após o evento."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 16,
-     "label": "Why loose wet soil shakes more and can liquefy",
-     "note": "FEMA explanation of how soft soils amplify shaking, how saturated sand can act like quicksand, and how tsunamis form."
+     "label": "Por que solos soltos e encharcados amplificam tremores e podem sofrer liquefação",
+     "note": "Explicação da FEMA sobre como solos moles ampliam vibrações, como areia saturada pode perder sustentação e como tsunamis se formam."
     }
    ]
   },
   {
    "id": "quake",
-   "label": "How serious is earthquake risk here?",
-   "hint": "Southern California faults, older homes",
+   "label": "Qual é a gravidade do risco sísmico aqui?",
+   "hint": "Falhas geológicas (guia originalmente da Califórnia), construções antigas e estabilidade do solo",
    "read": [
     {
      "doc": "5cd0b4e41cc479",
      "page": 95,
-     "label": "California's faults and expected losses",
-     "note": "FEMA supplement on the San Andreas system and the many California faults that lie mostly on land under homes."
+     "label": "Falhas geológicas da Califórnia e perdas esperadas (referência do guia)",
+     "note": "Suplemento da FEMA sobre falhas sísmicas nos EUA; no Brasil grandes terremotos são raros, mas os critérios estruturais ajudam a avaliar construções frágeis e recalques."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 29,
-     "label": "Find your home's earthquake weak points",
-     "note": "Introduces quick checks of home vulnerabilities and which fixes are cheap and high priority versus jobs for professionals."
+     "label": "Identifique os pontos fracos da sua moradia",
+     "note": "Apresenta checagens rápidas de vulnerabilidades construtivas e diferencia reparos simples e prioritários de serviços que exigem engenharia."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 13,
-     "label": "What earthquakes can damage and trigger",
-     "note": "CERT annex on earthquake impacts and the other hazards they can set off, such as fires, landslides and tsunamis."
+     "label": "O que tremores podem danificar e desencadear",
+     "note": "Anexo do CERT sobre impactos sísmicos e perigos associados, como incêndios, deslizamentos e tsunamis."
     }
    ]
   },
   {
    "id": "flood-fire",
-   "label": "What about floods, landslides or wildfire?",
-   "hint": "Storm runoff, hillsides, brush areas",
+   "label": "E quanto a enchentes, deslizamentos ou queimadas?",
+   "hint": "Enxurradas, encostas e morros, áreas de vegetação seca",
    "read": [
     {
      "doc": "dee61b224a1299",
      "page": 2,
-     "label": "Know your flood risk and flood maps",
-     "note": "FEMA flood sheet pointing to FEMA's Flood Map Service Center and describing what to do before, during and after a flood."
+     "label": "Conheça seu risco e mapas de inundação",
+     "note": "Ficha da FEMA sobre áreas inundáveis e ações antes, durante e depois (no Brasil, verifique cartas de suscetibilidade do SGB/CPRM e alertas da Defesa Civil 199)."
     },
     {
      "doc": "2aadecc420798e",
      "page": 1,
-     "label": "What landslides and mudflows are",
-     "note": "FEMA sheet describing landslides and mudflows, their speed, causes and warning steps."
+     "label": "O que são deslizamentos e corridas de lama",
+     "note": "Ficha da FEMA explicando deslizamentos em encostas, velocidade, causas (chuvas intensas, cortes em taludes) e sinais prévios."
     },
     {
      "doc": "d0fbb2e051cd46",
      "page": 32,
-     "label": "Wildfire basics and defense zones",
-     "note": "FEMA 2024 wildfire sheet on what wildfires are, when risk rises, and setting up defense zones around a home."
+     "label": "Noções básicas de incêndios florestais e faixas de defesa",
+     "note": "Ficha FEMA 2024 sobre queimadas e incêndios em vegetação, épocas críticas e aceiros/zonas defensáveis ao redor da casa."
     }
    ]
   },
   {
    "id": "water-source",
-   "label": "Is there water on or near this land I could use?",
-   "hint": "Springs, wells, streams, rain from the roof",
+   "label": "Há água no terreno ou por perto que eu possa usar?",
+   "hint": "Nascentes, minas d'água, poços, riachos e água da chuva no telhado",
    "read": [
     {
      "doc": "med-ea4055db35ff180d",
      "page": 12,
-     "label": "Surface water versus groundwater",
-     "note": "Hesperian page explaining that surface water must be treated before drinking and how groundwater can still be contaminated."
+     "label": "Água superficial versus água subterrânea",
+     "note": "Página da Hesperian explicando que toda água superficial precisa de tratamento antes de beber e como águas subterrâneas também podem se contaminar."
     },
     {
      "doc": "med-ea4055db35ff180d",
      "page": 21,
-     "label": "Questions to ask before trusting a spring",
-     "note": "How to find a spring's true source and look for signs of surface contamination nearby."
+     "label": "Perguntas a fazer antes de confiar em uma nascente",
+     "note": "Como localizar a verdadeira surgência da nascente e observar sinais de contaminação superficial ou fossas por perto."
     },
     {
      "doc": "med-ea4055db35ff180d",
      "page": 23,
-     "label": "Collecting rainwater from a roof",
-     "note": "Which roof materials are suitable or toxic, clean containers, and ground catchments that need treatment."
+     "label": "Captação de água da chuva pelo telhado",
+     "note": "Quais materiais de telhado são adequados ou tóxicos, reservatórios limpos e por que água captada no solo exige tratamento."
     }
    ]
   },
   {
    "id": "wild-plants",
-   "label": "Can I eat wild plants I find?",
-   "hint": "Foraging, berries, mushrooms",
+   "label": "Posso comer plantas silvestres que encontrar?",
+   "hint": "Coleta, frutos silvestres, PANCs e cogumelos",
    "read": [
     {
      "doc": "5b0efa0b70cb98",
      "page": 42,
-     "label": "Common myths about poisonous plants",
-     "note": "Army survival manual (2018) page on why plant toxicity varies and why look-alikes such as poison hemlock and wild carrot fool people."
+     "label": "Mitos comuns sobre plantas venenosas",
+     "note": "Página do manual de sobrevivência (2018) sobre variação da toxicidade e sósias perigosas. No Brasil, espécies nativas e PANCs só devem ser consumidas com identificação botânica segura."
     },
     {
      "doc": "5b0efa0b70cb98",
      "page": 78,
-     "label": "Why to avoid wild mushrooms",
-     "note": "Warning that there is no field test for mushrooms and some are hard even for experts, plus other plant toxin cautions."
+     "label": "Por que evitar cogumelos silvestres",
+     "note": "Alerta de que não existe teste de campo para cogumelos e muitos são difíceis até para especialistas, além de outros cuidados com toxinas vegetais."
     }
    ]
   },
   {
    "id": "maps",
-   "label": "How do I read a map or use a compass?",
-   "hint": "Topographic maps, bearings, scale",
+   "label": "Como ler um mapa ou usar uma bússola?",
+   "hint": "Cartas topográficas (como as do IBGE), azimutes, escala",
    "read": [
     {
      "doc": "bf9e99715ecdde",
      "page": 1,
-     "label": "Map symbols, scale and direction",
-     "note": "USGS two-page primer on topographic map colours, scale and taking a bearing with a compass."
+     "label": "Símbolos de mapa, escala e direção",
+     "note": "Introdução de duas páginas (USGS) sobre cores em mapas topográficos, escala e leitura de azimute com bússola."
     },
     {
      "doc": "78a5c135618251",
-     "label": "Using a compass with a USGS topographic map",
-     "note": "USGS page covering orienting map and compass, magnetic declination and finding direction."
+     "label": "Usando uma bússola com mapa topográfico",
+     "note": "Página do USGS sobre orientação de mapa e bússola, declinação magnética e determinação de rumo."
     },
     {
      "doc": "11c57afd0384b8",
      "page": 1,
-     "label": "What topographic map symbols mean",
-     "note": "USGS guide to contour lines and standard symbols on topographic maps."
+     "label": "O que significam os símbolos de cartas topográficas",
+     "note": "Guia do USGS sobre curvas de nível e simbologia padrão, cujos princípios também se aplicam às cartas do IBGE e da DSG."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Surface water from rivers, streams, lakes and ponds is often contaminated and should not be drunk unless treated first.",
+   "text": "Águas superficiais de rios, córregos, lagos e açudes frequentemente estão contaminadas e não devem ser bebidas sem tratamento prévio.",
    "doc": "med-ea4055db35ff180d",
    "page": 12
   },
   {
-   "text": "Roofs made of lead, asbestos or tar contain toxic chemicals that make collected rainwater unsafe to drink.",
+   "text": "Telhados com chumbo, amianto ou piche/asfalto contêm substâncias tóxicas que tornam a água da chuva captada imprópria para beber.",
    "doc": "med-ea4055db35ff180d",
    "page": 23
   },
   {
-   "text": "There is no field test to tell if an unknown mushroom is edible; some wild mushrooms are hard even for experts to identify.",
+   "text": "Não existe teste de campo para saber se um cogumelo desconhecido é comestível; muitos cogumelos silvestres são difíceis de identificar até por especialistas.",
    "doc": "5b0efa0b70cb98",
    "page": 78
   },
   {
-   "text": "Many poisonous plants look like edible ones; boiling removes many poisons but not all.",
+   "text": "Muitas plantas venenosas se parecem com plantas comestíveis; ferver remove parte das toxinas, mas não todas.",
    "doc": "5b0efa0b70cb98",
    "page": 42
   },
   {
-   "text": "Some earthquake strengthening projects can be done yourself, but others may need a contractor, architect or engineer.",
+   "text": "Alguns reforços estruturais podem ser feitos por você, mas outros exigem mestre de obras, arquiteto ou engenheiro habilitado.",
    "doc": "5cd0b4e41cc479",
    "page": 29
   },
   {
-   "text": "In a tsunami warning, go to high ground as far inland as possible and do not wait.",
+   "text": "Em alerta de tsunami, siga imediatamente para terreno alto e o mais distante possível da costa, sem esperar.",
    "doc": "a7a60dbbb26052",
    "page": 1
   },
   {
-   "text": "Former industrial sites and old gas stations may need expert help to assess soil before use.",
+   "text": "Antigas áreas industriais, oficinas e postos de combustíveis desativados podem exigir avaliação técnica especializada do solo antes de plantar ou ocupar.",
    "doc": "coastal-growing-0e2825ce7a278c7c5e86",
    "page": 5
   }
@@ -218,212 +259,212 @@
  "prepare": [
   {
    "doc": "d0fbb2e051cd46",
-   "label": "FEMA one-page sheets for every major hazard",
-   "note": "2024 set of two-page sheets covering earthquake, flood, landslide, tsunami, wildfire, heat, power outage and more."
+   "label": "Fichas de uma página da FEMA para cada grande risco",
+   "note": "Conjunto de 2024 cobrindo terremoto, enchente, deslizamento, tsunami, incêndio florestal, calor extremo, apagão e mais."
   },
   {
    "doc": "5cd0b4e41cc479",
    "page": 23,
-   "label": "Make an earthquake plan",
-   "note": "FEMA page on Drop, Cover and Hold On, making a household plan and first aid preparation."
+   "label": "Faça um plano para tremores",
+   "note": "Página da FEMA sobre Abaixe-se, Proteja-se e Segure-se, plano familiar e preparo de primeiros socorros."
   },
   {
    "doc": "coastal-growing-0e2825ce7a278c7c5e86",
    "page": 3,
-   "label": "Research a site's past use before using its soil",
-   "note": "UC guide on clues, records and online databases for learning a property's history."
+   "label": "Pesquise o histórico de uso do terreno antes de usar o solo",
+   "note": "Guia da UC sobre pistas no terreno, registros e bases públicas para descobrir o histórico de contaminação de uma área (no Brasil, consulte órgãos ambientais estaduais e prefeituras)."
   },
   {
    "doc": "506033947edccf",
-   "label": "Assess wildfire risk as a community",
-   "note": "US Fire Administration page on writing a Community Wildfire Protection Plan, including smoke, post-fire flooding and evacuation."
+   "label": "Avalie o risco de incêndio florestal em comunidade",
+   "note": "Página sobre planos comunitários de prevenção a incêndios florestais e queimadas, incluindo fumaça, alagamentos pós-queimada e evacuação."
   },
   {
    "doc": "d571edf1e80fbf",
-   "label": "Rip currents and beach hazards",
-   "note": "National Weather Service hub page for rip current and beach safety materials."
+   "label": "Correntes de retorno e perigos em praias",
+   "note": "Página do Serviço Meteorológico dos EUA (NWS) com materiais de segurança em praias e correntes de retorno (atenção também aos avisos do Corpo de Bombeiros no Brasil)."
   }
  ],
  "learn": [
   {
    "doc": "5cd0b4e41cc479",
-   "label": "Earthquake Safety at Home (FEMA P-530, 2020)",
-   "note": "Full FEMA guide: how earthquakes and soils behave, securing your home, retrofits, surviving and recovering, and regional supplements."
+   "label": "Segurança contra Terremotos em Casa (FEMA P-530, 2020)",
+   "note": "Guia completo da FEMA: como tremores e solos se comportam, fixação na residência, reforços estruturais, sobrevivência, recuperação e suplementos regionais."
   },
   {
    "doc": "9681a68ebd07f5",
-   "label": "CERT Basic Training Hazard Annexes (2019)",
-   "note": "FEMA community responder annexes on earthquake, tsunami, flood, wildfire and other hazards."
+   "label": "Anexos de Riscos do Treinamento Básico CERT (2019)",
+   "note": "Anexos comunitários da FEMA sobre terremoto, tsunami, enchente, incêndio florestal e outros desastres."
   },
   {
    "doc": "med-ea4055db35ff180d",
-   "label": "Hesperian: Protecting Community Water",
-   "note": "2012 chapter on judging water safety, protecting wells and springs, rainwater, storage and treatment."
+   "label": "Hesperian: Protegendo a Água da Comunidade",
+   "note": "Capítulo de 2012 sobre avaliação da segurança da água, proteção de poços e nascentes, água da chuva, armazenamento e tratamento."
   },
   {
    "doc": "eng-5a131eb5010e45d7",
    "page": 374,
-   "label": "How good are your soils? Field and lab evaluation",
-   "note": "SARE chapter on assessing soil health in the field and with laboratory tests."
+   "label": "Quão bom é o seu solo? Avaliação em campo e em laboratório",
+   "note": "Capítulo da SARE sobre avaliação da saúde do solo em campo e com análises laboratoriais (no Brasil, procure análises agronômicas via EMATER/Embrapa)."
   },
   {
    "doc": "8bb952fd2f238b",
    "page": 109,
-   "label": "Poisonous plants chapter (historical Army manual)",
-   "note": "Older FM 21-76 Army survival manual chapter on how plants poison by eating, contact and absorption."
+   "label": "Capítulo de plantas venenosas (manual militar histórico)",
+   "note": "Capítulo antigo do manual FM 21-76 sobre como plantas envenenam por ingestão, contato e absorção."
   },
   {
    "doc": "c15a248ad9ae45",
-   "label": "Wilderness navigation lesson",
-   "note": "Great Smoky Mountains Institute lesson plan for learning map and compass through a group course; written for students."
+   "label": "Aula de navegação em área natural",
+   "note": "Plano de aula do Great Smoky Mountains Institute para aprender mapa e bússola em percurso em grupo; escrito para estudantes."
   },
   {
    "doc": "732be4c2e3848d",
-   "label": "Map and compass (US Forest Service, 1965)",
-   "note": "Historical Forest Service booklet on planning trips with maps and using a compass; scan quality is uneven."
+   "label": "Mapa e bússola (US Forest Service, 1965)",
+   "note": "Livreto histórico sobre planejamento de deslocamentos com mapas e uso da bússola; qualidade de digitalização irregular."
   },
   {
    "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Soil_liquefaction",
    "title": "Soil liquefaction",
-   "label": "Encyclopedia: soil liquefaction",
-   "note": "Wikipedia article on how saturated loose soils lose strength during shaking."
+   "label": "Enciclopédia: liquefação do solo",
+   "note": "Artigo da Wikipédia (em inglês) sobre como solos soltos saturados perdem resistência durante abalos sísmicos."
   }
  ],
  "route": [
   {
-   "title": "Step 1: Learn which hazards affect your area",
-   "goal": "Get a plain overview of earthquakes, tsunamis, floods, landslides and wildfire so you know what to look into for your own place.",
+   "title": "Etapa 1: Descubra quais riscos afetam a sua região",
+   "goal": "Ter uma visão clara de enchentes, deslizamentos, incêndios/queimadas, terremotos e tsunamis para saber o que investigar no seu local (no Brasil, consulte também mapas do SGB/CPRM e alertas da Defesa Civil 199).",
    "read": [
     {
      "doc": "d0fbb2e051cd46",
      "page": 1,
-     "label": "FEMA hazard sheets overview",
-     "note": "Start of FEMA's 2024 set of short sheets, one per hazard."
+     "label": "Visão geral das fichas de risco da FEMA",
+     "note": "Início do conjunto de fichas curtas da FEMA (2024), uma para cada tipo de risco."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 13,
-     "label": "Earthquake impacts and triggered hazards",
-     "note": "CERT annex introduction to earthquakes and what they set off."
+     "label": "Impactos sísmicos e riscos desencadeados",
+     "note": "Introdução do anexo do CERT sobre terremotos e os eventos secundários que podem provocar."
     }
    ]
   },
   {
-   "title": "Step 2: Understand ground shaking, liquefaction and tsunami on the coast",
-   "goal": "See why soft, wet, low-lying coastal ground behaves differently and why distance from shore and elevation matter.",
+   "title": "Etapa 2: Entenda amplificação sísmica, liquefação e risco costeiro",
+   "goal": "Ver por que terrenos litorâneos baixos, úmidos e moles se comportam de modo diferente e por que altitude e distância do mar importam.",
    "read": [
     {
      "doc": "5cd0b4e41cc479",
      "page": 16,
-     "label": "Soil amplification, liquefaction and tsunamis",
-     "note": "FEMA explanation in plain words with a beach-sand comparison."
+     "label": "Amplificação do solo, liquefação e tsunamis",
+     "note": "Explicação simples da FEMA usando a comparação com areia de praia encharcada."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 97,
-     "label": "Who is at greatest tsunami risk",
-     "note": "CERT annex listing higher-risk coastal areas and tsunami impacts."
+     "label": "Quem corre maior risco de tsunami",
+     "note": "Anexo do CERT listando áreas costeiras mais vulneráveis e impactos."
     },
     {
      "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Soil_liquefaction",
      "title": "Soil liquefaction",
-     "label": "More on liquefaction",
-     "note": "Wikipedia background, more technical."
+     "label": "Mais sobre liquefação",
+     "note": "Contexto enciclopédico da Wikipédia, mais técnico."
     }
    ]
   },
   {
-   "title": "Step 3: Check a site's soil before using it",
-   "goal": "Learn how to read clues of past contamination and how soil health is assessed in the field and lab.",
+   "title": "Etapa 3: Avalie o solo do terreno antes de cultivá-lo ou ocupá-lo",
+   "goal": "Aprender a identificar indícios de contaminação passada e como a saúde do solo é avaliada em campo e em laboratório.",
    "read": [
     {
      "doc": "coastal-growing-0e2825ce7a278c7c5e86",
      "page": 3,
-     "label": "Site history and test holes",
-     "note": "UC guide on investigating past land uses and digging to see debris."
+     "label": "Histórico da área e sondagens exploratórias",
+     "note": "Guia da UC sobre investigação de usos anteriores do terreno e abertura de pequenas trincheiras para checar entulho."
     },
     {
      "doc": "eng-5a131eb5010e45d7",
      "page": 374,
-     "label": "Evaluating soil health",
-     "note": "SARE chapter on field observations and laboratory tests."
+     "label": "Avaliando a saúde do solo",
+     "note": "Capítulo da SARE sobre observações em campo e análises laboratoriais."
     }
    ]
   },
   {
-   "title": "Step 4: Judge possible water sources",
-   "goal": "Tell surface water from groundwater, recognise contamination risks, and know which sources always need treatment.",
+   "title": "Etapa 4: Avalie possíveis fontes de água",
+   "goal": "Diferenciar água superficial de água subterrânea, reconhecer riscos de contaminação e saber quais fontes sempre exigem tratamento.",
    "read": [
     {
      "doc": "med-ea4055db35ff180d",
      "page": 12,
-     "label": "Protecting water sources",
-     "note": "Hesperian page on surface water, groundwater and watersheds."
+     "label": "Protegendo fontes de água",
+     "note": "Página da Hesperian sobre água superficial, subterrânea e bacias hidrográficas."
     },
     {
      "doc": "med-ea4055db35ff180d",
      "page": 14,
-     "label": "What makes wells unsafe",
-     "note": "Where not to dig a well and simple ways shallow wells get contaminated."
+     "label": "O que torna poços inseguros",
+     "note": "Onde não cavar um poço e como poços rasos são contaminados facilmente."
     },
     {
      "doc": "med-ea4055db35ff180d",
      "page": 23,
-     "label": "Rainwater collection",
-     "note": "Suitable roofs, clean containers and ground catchments."
+     "label": "Captação de água da chuva",
+     "note": "Telhados adequados, recipientes limpos e superfícies de captação no solo."
     }
    ]
   },
   {
-   "title": "Step 5: Treat wild plants with caution",
-   "goal": "Understand why wild plant foods are risky without expert identification, and why mushrooms are avoided.",
+   "title": "Etapa 5: Tenha máxima cautela com plantas silvestres",
+   "goal": "Entender por que coletar plantas nativas ou desconhecidas sem identificação especializada é arriscado e por que evitar cogumelos silvestres.",
    "read": [
     {
      "doc": "5b0efa0b70cb98",
      "page": 42,
-     "label": "Poisonous plant myths and look-alikes",
-     "note": "Army ATP 3-50.21 (2018) cautions on toxicity and misidentification."
+     "label": "Mitos sobre plantas venenosas e sósias",
+     "note": "Alertas do manual ATP 3-50.21 (2018) sobre toxicidade e erros de identificação; no Brasil, atenção redobrada com espécies nativas e PANCs."
     },
     {
      "doc": "5b0efa0b70cb98",
      "page": 78,
-     "label": "Mushroom warning and plant toxins",
-     "note": "Why there is no field test for mushrooms, and other toxin cautions."
+     "label": "Alerta sobre cogumelos e toxinas vegetais",
+     "note": "Por que não há teste seguro de campo para cogumelos e outros cuidados com toxinas."
     }
    ]
   },
   {
-   "title": "Step 6: Read maps and use a compass",
-   "goal": "Read symbols, scale and contour lines, and take a bearing with map and compass.",
+   "title": "Etapa 6: Leia mapas e use uma bússola",
+   "goal": "Interpretar símbolos, escala e curvas de nível e tirar azimutes com mapa e bússola (inclusive cartas topográficas do IBGE/DSG).",
    "read": [
     {
      "doc": "bf9e99715ecdde",
      "page": 1,
-     "label": "USGS map and compass primer",
-     "note": "Two pages on symbols, scale and direction."
+     "label": "Introdução a mapas e bússola do USGS",
+     "note": "Duas páginas sobre símbolos, escala e direção."
     },
     {
      "doc": "78a5c135618251",
-     "label": "Compass with a topographic map",
-     "note": "USGS methods, declination and finding direction."
+     "label": "Bússola com mapa topográfico",
+     "note": "Métodos do USGS, declinação magnética e determinação de direção."
     },
     {
      "doc": "11c57afd0384b8",
      "page": 1,
-     "label": "Topographic map symbols",
-     "note": "USGS guide to contours and map symbols."
+     "label": "Símbolos de cartas topográficas",
+     "note": "Guia do USGS para curvas de nível e simbologia de mapas."
     }
    ]
   },
   {
-   "title": "Step 7: Use gazetteers and map datasets (advanced)",
-   "goal": "Know what the library's place-name and map datasets contain and that they need conversion or GIS software before use.",
+   "title": "Etapa 7: Use gazetteers e conjuntos de dados cartográficos (avançado)",
+   "goal": "Entender o que contêm as bases de topônimos e mapas da biblioteca (como GNIS nos EUA ou bases do IBGE e OpenStreetMap no Brasil) e saber que exigem conversão ou software SIG/GIS.",
    "read": [
     {
      "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Geographic_Names_Information_System",
      "title": "Geographic Names Information System",
-     "label": "What GNIS is",
-     "note": "Wikipedia article on the US federal gazetteer of place names."
+     "label": "O que é o GNIS",
+     "note": "Artigo da Wikipédia (em inglês) sobre o gazetteer federal dos EUA de nomes geográficos."
     }
    ]
   }

@@ -20,7 +20,7 @@ requests, and adds a few read-only endpoints:
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
-import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
+import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, unicodedata, urllib.parse, zlib
 from array import array
 from pathlib import Path
 
@@ -105,13 +105,13 @@ def catalog():
 
 
 TRUST = [  # (pattern on publisher+collection, label shown to people, ranking weight)
-    (r'World Health|WHO\b|ICRC|IFRC|Red Cross|Médecins|MSF|UNICEF|Sphere|St John Ambulance|CAWST', 'International health & humanitarian guidance', 1.5),
-    (r'Hesperian|Where There Is No|Where Women|Book for Midwives|Community Guide to Environmental|Health Actions|Workers\' Guide', 'Hesperian community health guide', 1.45),
-    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of', 'Government guidance', 1.4),
-    (r'National Center for Home Food Preservation|Extension|University|UC |College|Agricultural|Food Hero|UWyo', 'University / extension service', 1.35),
-    (r'MIT|OpenStax|OpenCourseWare|NIST', 'Course or textbook', 1.1),
-    (r'Kiwix|Wikipedia|Wikibooks|Appropedia|MDWiki', 'Community-written encyclopedia', 1.0),
-    (r'Coalcracker|Corporals Corner|Canterbury|Primitive Technology|creator-', 'Hobbyist demonstration video', 0.8),
+    (r'World Health|WHO\b|OMS\b|OPAS|PAHO|ICRC|IFRC|Red Cross|Cruz Vermelha|Médecins|MSF|Médicos Sem Fronteiras|UNICEF|Sphere|St John Ambulance|CAWST', 'Orientação internacional de saúde e ajuda humanitária', 1.5),
+    (r'Hesperian|Onde Não Há Médico|Where There Is No|Where Women|Book for Midwives|Community Guide to Environmental|Health Actions|Workers\' Guide', 'Guia comunitário de saúde Hesperian', 1.45),
+    (r'Ministério da Saúde|SUS\b|SAMU|Anvisa|Fiocruz|Instituto Butantan|Butantan|Defesa Civil|CEMADEN|CENAD|Corpo de Bombeiros|Embrapa|ANA\b|Agência Nacional de Águas|INMET|IBGE|CPRM|SGB|ANM\b|IBAMA|ICMBio|FUNASA|ABNT|FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of', 'Orientação governamental e defesa civil', 1.4),
+    (r'National Center for Home Food Preservation|Extension|University|Universidade|USP|Unicamp|UFRJ|UFMG|UFRGS|UFSC|UFPR|UFV|ESALQ|SENAR|EMATER|EPAGRI|IAC|UC |College|Agricultural|Food Hero|UWyo', 'Universidade / extensão rural', 1.35),
+    (r'MIT|OpenStax|OpenCourseWare|NIST|MEC|CAPES', 'Curso ou livro-texto', 1.1),
+    (r'Kiwix|Wikipedia|Wikipédia|Wikibooks|Wikilivros|Appropedia|MDWiki', 'Enciclopédia colaborativa', 1.0),
+    (r'Coalcracker|Corporals Corner|Canterbury|Primitive Technology|creator-', 'Vídeo demonstrativo amador', 0.8),
 ]
 
 
@@ -121,14 +121,14 @@ def trust(r):
         if re.search(rx, s):
             return label, w
     if r.get('equipment_class') or r.get('model'):
-        return 'Manufacturer manual (model-specific)', 1.05
-    return 'Reference', 1.0
+        return 'Manual do fabricante (modelo específico)', 1.05
+    return 'Referência', 1.0
 
 
 def kind_label(r):
     k = r['kind']
-    return {'pdf': 'PDF', 'html': 'Saved web page', 'video': 'Video', 'transcript': 'Transcript', 'pptx': 'Slides',
-            'zim': 'Encyclopedia', 'metadata': 'Video details'}.get(k, k)
+    return {'pdf': 'PDF', 'html': 'Página web salva', 'video': 'Vídeo', 'transcript': 'Transcrição', 'pptx': 'Slides',
+            'zim': 'Enciclopédia', 'metadata': 'Detalhes do vídeo'}.get(k, k)
 
 
 def year_of(r):
@@ -254,10 +254,17 @@ def topics_resolved():
 
 
 # ------------------------------------------------------------------ search ----
-STOP = set('a an and are as at be but by can do does for from get got have help how i if in into is it its me my need '
-           'no not of on or our please should so some that the their them then there these they this to up us was we '
-           'what when where which who why will with without you your'.split())
-# Everyday words -> words the manuals actually use. Each group is OR-ed; groups are AND-ed.
+STOP = set(
+    'a an and are as at be but by can do does for from get got have help how i if in into is it its me my need '
+    'no not of on or our please should so some that the their them then there these they this to up us was we '
+    'what when where which who why will with without you your '
+    'ao aos as com como da das de dela delas dele deles do dos e em entre era essa essas esse esses esta estas '
+    'este estes eu foi for mais mas me mesmo meu meus minha minhas na nas no nos nossa nossas nosso nossos '
+    'num numa o os ou para pela pelas pelo pelos por qual quando quem se sem sera seu seus so sua suas tambem '
+    'te tem tinha uma umas um uns voce voces'
+    .split()
+)
+# Everyday words -> words the manuals actually use (PT-BR and EN). Each group is OR-ed; groups are AND-ed.
 SYN = {
     'cut': ['wound', 'wounds', 'laceration', 'bleeding'], 'cuts': ['wound', 'wounds', 'laceration'],
     'bleed': ['bleeding', 'haemorrhage', 'hemorrhage'], 'bleeding': ['haemorrhage', 'hemorrhage', 'blood loss'],
@@ -297,9 +304,113 @@ SYN = {
     'knot': ['knots'], 'rope': ['ropes', 'knots'], 'pump': ['pumps'], 'well': ['wells', 'borehole'],
     'rain': ['rainwater'], 'gas': ['natural gas', 'propane', 'gas leak'], 'leak': ['leaks', 'leaking'],
     'carbon': ['monoxide'], 'co': ['carbon monoxide'], 'mold': ['mould'], 'rats': ['rodents', 'rodent'], 'mosquito': ['mosquitoes'],
+    # Português (PT-BR) -> termos em PT-BR e equivalentes nos manuais
+    'agua': ['water', 'potavel', 'drinking', 'potable', 'purify', 'boil'],
+    'ferver': ['boil', 'boiling', 'fervura', 'fervida'],
+    'purificar': ['purify', 'purification', 'disinfect', 'cloro', 'water', 'tratamento'],
+    'cloro': ['bleach', 'chlorine', 'hipoclorito', 'agua sanitaria', 'desinfeccao'],
+    'filtro': ['filter', 'filtration', 'filtragem', 'filtracao'],
+    'chuva': ['rain', 'rainwater', 'cisterna', 'captacao'],
+    'poco': ['well', 'wells', 'borehole', 'cisterna', 'artesiano'],
+    'corte': ['cut', 'wound', 'wounds', 'laceration', 'bleeding', 'ferimento', 'ferida', 'sangramento'],
+    'ferimento': ['wound', 'wounds', 'cut', 'laceration', 'lesao'],
+    'sangramento': ['bleeding', 'hemorrhage', 'haemorrhage', 'hemorragia', 'blood loss'],
+    'hemorragia': ['hemorrhage', 'haemorrhage', 'bleeding', 'sangramento'],
+    'queimadura': ['burn', 'burns', 'scald'],
+    'queimado': ['burn', 'burns'],
+    'fratura': ['fracture', 'fractures', 'broken', 'osso', 'tala'],
+    'quebrado': ['broken', 'fracture', 'conserto', 'reparo'],
+    'osso': ['bone', 'bones', 'fracture', 'fratura'],
+    'torcao': ['sprain', 'sprains', 'strain', 'entorse'],
+    'desmaio': ['unconscious', 'fainting', 'unresponsive', 'sincope', 'inconsciente'],
+    'inconsciente': ['unconscious', 'unresponsive', 'recovery position'],
+    'engasgo': ['choking', 'choke', 'airway', 'asfixia'],
+    'rcp': ['cpr', 'resuscitation', 'chest compressions', 'reanimacao'],
+    'infarto': ['heart attack', 'cardiac', 'chest pain', 'coracao'],
+    'febre': ['fever', 'temperature', 'fevers'],
+    'diarreia': ['diarrhea', 'diarrhoea', 'dehydration', 'desidratacao', 'soro'],
+    'desidratacao': ['dehydration', 'oral rehydration', 'soro caseiro', 'diarrhea'],
+    'vomito': ['vomit', 'vomiting'],
+    'remedio': ['medicine', 'medicines', 'medication', 'medicamento', 'farmaco'],
+    'remedios': ['medicines', 'medication', 'medicamentos'],
+    'analgesico': ['painkiller', 'analgesic', 'paracetamol', 'pain', 'dor'],
+    'infeccao': ['infection', 'infected', 'infections'],
+    'cobra': ['snake', 'snakebite', 'snakes', 'serpente', 'peconhento'],
+    'picada': ['bite', 'bites', 'sting', 'stings', 'mordida', 'peconhento'],
+    'alergia': ['allergy', 'allergic', 'anaphylaxis', 'anafilaxia'],
+    'dente': ['tooth', 'teeth', 'dental', 'odontologico'],
+    'parto': ['birth', 'childbirth', 'labor', 'delivery', 'obstetrico'],
+    'gravida': ['pregnant', 'pregnancy', 'gestante'],
+    'bebe': ['baby', 'newborn', 'infant', 'recem nascido'],
+    'crianca': ['child', 'children', 'kid', 'pediatrico'],
+    'idoso': ['elderly', 'older'],
+    'estresse': ['stress', 'anxiety', 'mental health', 'ansiedade'],
+    'depressao': ['depressed', 'depression', 'mental health'],
+    'apagao': ['blackout', 'outage', 'power outage', 'queda de energia', 'sem luz'],
+    'energia': ['power', 'electricity', 'outage', 'eletricidade', 'solar', 'generator'],
+    'eletricidade': ['electricity', 'electric', 'power'],
+    'luz': ['light', 'lighting', 'flashlight', 'lantern', 'lanterna', 'energia'],
+    'lanterna': ['flashlight', 'torch', 'lantern'],
+    'gerador': ['generator', 'generators'],
+    'bateria': ['battery', 'batteries', 'pilha'],
+    'comida': ['food', 'cooking', 'spoilage', 'alimento', 'alimentos'],
+    'alimento': ['food', 'alimentos', 'nutricao'],
+    'cozinhar': ['cook', 'cooking', 'stove', 'fogao'],
+    'fogao': ['stove', 'stoves', 'cooking'],
+    'geladeira': ['fridge', 'refrigerator', 'refrigerated', 'refrigerador'],
+    'estragado': ['spoiled', 'spoilage', 'unsafe food'],
+    'conserva': ['canning', 'canned', 'pickling', 'preserve', 'conservacao'],
+    'frio': ['cold', 'hypothermia', 'hipotermia'],
+    'hipotermia': ['hypothermia', 'cold'],
+    'calor': ['heat', 'heat stroke', 'heat exhaustion', 'hyperthermia', 'insolacao'],
+    'insolacao': ['heat stroke', 'heat', 'hyperthermia'],
+    'fumaca': ['smoke', 'air quality', 'wildfire smoke'],
+    'terremoto': ['earthquake', 'earthquakes', 'seismic'],
+    'enchente': ['flood', 'flooding', 'floods', 'inundacao', 'alagamento'],
+    'inundacao': ['flood', 'flooding', 'enchente', 'alagamento'],
+    'deslizamento': ['landslide', 'mudslide', 'desmoronamento', 'encosta'],
+    'incendio': ['fire', 'fires', 'wildfire', 'fogo', 'queimada'],
+    'fogo': ['fire', 'fires', 'incendio', 'fogueira'],
+    'banheiro': ['toilet', 'toilets', 'latrine', 'sanitation', 'latrina', 'fossa'],
+    'fezes': ['faeces', 'feces', 'excreta', 'latrine'],
+    'urina': ['urine'],
+    'esgoto': ['sewage', 'sewer', 'wastewater', 'excreta', 'saneamento'],
+    'lixo': ['trash', 'garbage', 'refuse', 'waste', 'residuos'],
+    'abrigo': ['shelter', 'shelters', 'sheltering'],
+    'barraca': ['tent', 'tents', 'tarp', 'shelter', 'lona'],
+    'plantar': ['grow', 'growing', 'planting', 'sowing', 'cultivo', 'horta'],
+    'horta': ['garden', 'gardening', 'vegetable', 'hortalicas', 'plantar'],
+    'semente': ['seed', 'seeds', 'seed saving', 'sementes'],
+    'sementes': ['seeds', 'seed', 'seed saving'],
+    'solo': ['soil', 'soils', 'compost', 'adubo', 'compostagem'],
+    'batata': ['potato', 'potatoes'],
+    'galinha': ['chickens', 'chicken', 'poultry', 'aves'],
+    'cabra': ['goat', 'goats', 'caprinos'],
+    'abelha': ['bees', 'beekeeping', 'honey bee', 'apicultura'],
+    'radioamador': ['ham', 'amateur radio', 'radio'],
+    'celular': ['phone', 'telephone', 'cell phone', 'mobile'],
+    'mapa': ['map', 'maps', 'navigation'],
+    'bussola': ['compass', 'navigation', 'bearing'],
+    'perdido': ['lost', 'navigation'],
+    'consertar': ['fix', 'repair', 'repairs', 'reparo', 'manutencao'],
+    'reparo': ['repair', 'repairs', 'maintenance', 'conserto'],
+    'motor': ['engine', 'engines', 'small engine'],
+    'solda': ['weld', 'welding', 'soldagem'],
+    'madeira': ['wood', 'woodworking', 'timber', 'lumber', 'marcenaria'],
+    'faca': ['knife', 'knives', 'sharpening', 'afiar'],
+    'afiar': ['sharpen', 'sharpening'],
+    'no': ['knot', 'knots', 'nos'],
+    'corda': ['rope', 'ropes', 'knots'],
+    'bomba': ['pump', 'pumps'],
+    'gas': ['gas', 'natural gas', 'propane', 'gas leak', 'glp', 'botijao'],
+    'vazamento': ['leak', 'leaks', 'leaking'],
+    'monoxido': ['carbon', 'carbon monoxide'],
+    'mofo': ['mold', 'mould', 'bolor'],
+    'rato': ['rats', 'rodents', 'rodent', 'roedores'],
+    'mosquito': ['mosquito', 'mosquitoes', 'dengue', 'aedes'],
 }
-CLINICAL = re.compile(r'surg|clinical|district hospital|essential drugs|tuberculosis|obstetric|cholera epidemic|measles epidemic|anaesth|war surgery', re.I)
-GENERAL = re.compile(r'first aid|emergency|basic|household|home|beginner|guide|handbook|where there is no', re.I)
+CLINICAL = re.compile(r'surg|clinical|district hospital|essential drugs|tuberculosis|obstetric|cholera epidemic|measles epidemic|anaesth|war surgery|cirurg|cl[ií]nic|hospitalar|medicamentos essenciais', re.I)
+GENERAL = re.compile(r'first aid|emergency|basic|household|home|beginner|guide|handbook|where there is no|primeiros socorros|emerg[eê]ncia|b[aá]sico|guia|manual|onde n[aã]o h[aá]', re.I)
 KIND_FILTERS = {'read': ('pdf', 'html', 'pptx'), 'video': ('video', 'transcript'), 'all': None}
 
 
@@ -310,19 +421,27 @@ def fts_expr(groups):
 
 
 PHRASES = [  # everyday phrases -> one idea, checked before single words
-    (r"power (cut|outage|failure)|no (power|electricity)|lights? (are )?out|blackout", ['outage', 'blackout', 'power outage']),
-    (r"(phone|cell|mobile)( is| was)? (dead|flat|out of battery)|(dead|flat) (phone|battery)", [['phone', 'phones', 'cell phone'], ['charge', 'charging', 'charger', 'power bank']]),
-    (r"(water|tap) (is )?(off|not working|stopped)|no (running )?water", ['water']),
-    (r"toilet (is )?(not working|won'?t flush|broken)|can'?t flush", ['latrine', 'toilet', 'excreta']),
-    (r"heart attack", ['heart attack', 'chest pain']),
-    (r"(passed|blacked) out|fainted", ['unconscious', 'fainting', 'unresponsive']),
-    (r"food (went|gone|is) bad|spoiled food", ['spoilage', 'food safety']),
-    (r"can'?t breathe|not breathing|stopped breathing", ['breathing', 'resuscitation', 'airway']),
+    (r"power (cut|outage|failure)|no (power|electricity)|lights? (are )?out|blackout|falta de (luz|energia)|sem (luz|energia)|acabou a (luz|energia)|queda de energia|apagao", ['outage', 'blackout', 'power outage', 'energia']),
+    (r"(phone|cell|mobile)( is| was)? (dead|flat|out of battery)|(dead|flat) (phone|battery)|celular (sem bateria|descarregado|morto)", [['phone', 'phones', 'cell phone', 'celular'], ['charge', 'charging', 'charger', 'power bank', 'carregar']]),
+    (r"(water|tap) (is )?(off|not working|stopped)|no (running )?water|sem agua|falta d'?agua|agua (desligada|cortada|suja)", ['water', 'agua']),
+    (r"toilet (is )?(not working|won'?t flush|broken)|can'?t flush|banheiro (entupido|nao funciona|quebrado)|vaso entupido|sem descarga", ['latrine', 'toilet', 'excreta', 'banheiro']),
+    (r"heart attack|ataque cardiaco|infarto|dor no peito", ['heart attack', 'chest pain', 'infarto']),
+    (r"(passed|blacked) out|fainted|desmaiou|perdeu os sentidos|perdeu a consciencia", ['unconscious', 'fainting', 'unresponsive', 'desmaio']),
+    (r"food (went|gone|is) bad|spoiled food|comida estragada|alimento estragado", ['spoilage', 'food safety', 'comida']),
+    (r"can'?t breathe|not breathing|stopped breathing|nao consegue respirar|parou de respirar|sem ar", ['breathing', 'resuscitation', 'airway', 'respiracao']),
+    (r"agua sanitaria|agua de lavadeira|candida", ['bleach', 'chlorine', 'hipoclorito', 'cloro']),
+    (r"nao para de sangrar|sangrando muito|hemorragia", ['bleeding', 'hemorrhage', 'haemorrhage', 'sangramento']),
+    (r"primeiros socorros", ['first aid', 'primeiros socorros']),
+    (r"soro caseiro", ['oral rehydration', 'dehydration', 'soro']),
 ]
 
 
+def _fold_text(s):
+    return ''.join(ch for ch in unicodedata.normalize('NFKD', s or '') if not unicodedata.combining(ch)).lower()
+
+
 def query_groups(q):
-    q = q.lower().replace('\u2019', "'")
+    q = _fold_text(q).replace('\u2019', "'")
     phrase_groups = []
     for rx, g in PHRASES:
         if re.search(rx, q):
@@ -334,9 +453,11 @@ def query_groups(q):
     groups = []
     for w in content:
         g = [w] + SYN.get(w, [])
-        if w.endswith('s') and len(w) > 4 and w[:-1] not in g:
+        if w.endswith('oes') and len(w) > 5 and (w[:-3] + 'ao') not in g:
+            g.append(w[:-3] + 'ao')
+        elif w.endswith('s') and len(w) > 4 and w[:-1] not in g:
             g.append(w[:-1])
-        groups.append(g)
+        groups.append(list(dict.fromkeys(g)))
     groups = phrase_groups + groups
     content = [g[0] for g in phrase_groups] + content
     return content, groups
@@ -391,7 +512,7 @@ def find(q, kind='all', limit=30):
         title = r['title'].lower()
         tb = sum(1 for g in groups if any(x in title for x in g)) / len(groups)
         s = d['score'] * w * (1 + tb)
-        if re.search(r'Spanish|español|\bkit de\b', r['title'] + r.get('notes', ''), re.I):
+        if re.search(r'Spanish|español', r['title'] + r.get('notes', ''), re.I):
             s *= 0.5
         if CLINICAL.search(r['title'] + ' ' + r.get('collection', '')) and not CLINICAL.search(q):
             s *= 0.6  # written for surgeons/clinicians; still found, but after general guidance
@@ -417,18 +538,18 @@ def clean_snip(s):
 
 # ------------------------------------------------------------------ shelves ----
 SHELVES = [
-    ('health', 'Health & first aid', r'medic|first-aid|care|health|dent|mental|obstet|midwi|clinic|surg'),
-    ('water', 'Water & sanitation', r'water|rain|sanit|wash|hygien'),
-    ('food', 'Food: growing, keeping & cooking', r'agri|food|seed|crop|garden(?!-power)|livestock|dairy|ferment|bee|farm|soil|grow|irrigat|oil-crop|grain'),
-    ('safety', 'Disasters, safety & outdoors', r'survival|shelter|disaster|prepar|safety|hazard|wildfire|knot|weather|polar|defen|radiolog|rescue|fire'),
-    ('power', 'Power & energy', r'energy|power|solar|generator|offgrid|battery|inverter|charge-controller'),
-    ('comms', 'Radio, communication & navigation', r'communic|radio|navigation'),
-    ('repair', 'Tools, repair & equipment', r'engine|mower|tractor|vehicle|hvac|compressor|bicycle|aerial|backhoe|bearing|sharpen|weld|repair|equipment|seal|pump|snow|motorcycle|truck|car|marine|forklift|workshop|hand-tool'),
-    ('making', 'Making things & materials', r'manufact|craft|glass|ceram|textil|wood|paper|metal|materials|machin|leather|amate|lime|refractor|typeset|mill|mineral|production|raw-material'),
-    ('build', 'Building & infrastructure', r'civil|infrastructure|building'),
-    ('community', 'Community, teaching & recovery', r'communit|educat|teach|accessib|recover|accountab|organiz|continuity|inventory'),
-    ('science', 'Science, maths & engineering courses', r'math|physic|chemistr|biolog|astronom|earth|ecolog|science|engineer|control|metrolog|quality|thermo|electromag|circuit|microelec|comput|digital|space|aviation|aircraft|laborator|measurement'),
-    ('creators', 'Bushcraft & primitive-skills videos', r'^creator-'),
+    ('health', 'Saúde e primeiros socorros', r'medic|first-aid|care|health|dent|mental|obstet|midwi|clinic|surg'),
+    ('water', 'Água e saneamento', r'water|rain|sanit|wash|hygien'),
+    ('food', 'Alimentos: cultivo, preparo e conservação', r'agri|food|seed|crop|garden(?!-power)|livestock|dairy|ferment|bee|farm|soil|grow|irrigat|oil-crop|grain'),
+    ('safety', 'Desastres, segurança e campo', r'survival|shelter|disaster|prepar|safety|hazard|wildfire|knot|weather|polar|defen|radiolog|rescue|fire'),
+    ('power', 'Energia e eletricidade', r'energy|power|solar|generator|offgrid|battery|inverter|charge-controller'),
+    ('comms', 'Rádio, comunicação e navegação', r'communic|radio|navigation'),
+    ('repair', 'Ferramentas, reparos e equipamentos', r'engine|mower|tractor|vehicle|hvac|compressor|bicycle|aerial|backhoe|bearing|sharpen|weld|repair|equipment|seal|pump|snow|motorcycle|truck|car|marine|forklift|workshop|hand-tool'),
+    ('making', 'Ofício, produção e materiais', r'manufact|craft|glass|ceram|textil|wood|paper|metal|materials|machin|leather|amate|lime|refractor|typeset|mill|mineral|production|raw-material'),
+    ('build', 'Construção e infraestrutura', r'civil|infrastructure|building'),
+    ('community', 'Comunidade, ensino e recuperação', r'communit|educat|teach|accessib|recover|accountab|organiz|continuity|inventory'),
+    ('science', 'Ciências, matemática e engenharia', r'math|physic|chemistr|biolog|astronom|earth|ecolog|science|engineer|control|metrolog|quality|thermo|electromag|circuit|microelec|comput|digital|space|aviation|aircraft|laborator|measurement'),
+    ('creators', 'Vídeos de mato e técnicas primitivas', r'^creator-'),
 ]
 
 
@@ -450,7 +571,7 @@ def shelves():
         counts.setdefault(shelf_of(r), {'read': 0, 'video': 0})
         counts[shelf_of(r)]['video' if r['kind'] == 'video' else 'read'] += 1
     return [{'id': s, 'title': t, **counts.get(s, {'read': 0, 'video': 0})} for s, t, _ in SHELVES] + \
-        [{'id': 'other', 'title': 'Other references', **counts.get('other', {'read': 0, 'video': 0})}]
+        [{'id': 'other', 'title': 'Outras referências', **counts.get('other', {'read': 0, 'video': 0})}]
 
 
 def shelf(sid, kind='all', q='', offset=0, limit=40):
@@ -477,21 +598,21 @@ def collection_items(name, offset=0, limit=60):
 
 # ------------------------------------------------------------------ videos ----
 VROWS = [  # (id, title, exact catalog categories) — practical first, hobby channels and courses after
-    ('health', 'First aid & health', 'first-aid medical care-continuity'),
-    ('water', 'Water & sanitation', 'water-safety-planning water-treatment rainwater water-sanitation water-sampling sanitary-inspection pumps'),
-    ('food', 'Growing & preserving food', 'food-preservation agriculture food-growing seed-saving grain-mill-assembly grain-mill-maintenance grain-mill-operation'),
-    ('power', 'Power, generators & solar', 'generator generators offgrid-power'),
-    ('outdoors', 'Shelter, fire & outdoor skills', 'field-survival fire-and-shelter knots weather communications-navigation'),
-    ('repair', 'Tools, engines & repair', 'small-engine-repair lawn-mower garden-power-equipment snow-blower woodworking welding welding-equipment sharpening workshop milling-layout-and-fit bearing-maintenance seals-installation road-vehicles marine heavy-ag-machinery machining-tool-geometry measurement'),
-    ('making', 'Making things by hand', 'craft-manufacturing-including-ceramics-and-textiles glass-manufacturing-processes refractory-installation refractory-process-control typesetting-printing-binding bark-to-amate-paper'),
+    ('health', 'Primeiros socorros e saúde', 'first-aid medical care-continuity'),
+    ('water', 'Água e saneamento', 'water-safety-planning water-treatment rainwater water-sanitation water-sampling sanitary-inspection pumps'),
+    ('food', 'Cultivo e conservação de alimentos', 'food-preservation agriculture food-growing seed-saving grain-mill-assembly grain-mill-maintenance grain-mill-operation'),
+    ('power', 'Energia, geradores e solar', 'generator generators offgrid-power'),
+    ('outdoors', 'Abrigo, fogo e técnicas de campo', 'field-survival fire-and-shelter knots weather communications-navigation'),
+    ('repair', 'Ferramentas, motores e reparos', 'small-engine-repair lawn-mower garden-power-equipment snow-blower woodworking welding welding-equipment sharpening workshop milling-layout-and-fit bearing-maintenance seals-installation road-vehicles marine heavy-ag-machinery machining-tool-geometry measurement'),
+    ('making', 'Produção artesanal e materiais', 'craft-manufacturing-including-ceramics-and-textiles glass-manufacturing-processes refractory-installation refractory-process-control typesetting-printing-binding bark-to-amate-paper'),
     ('coalcracker', 'Coalcracker Bushcraft', 'creator-coalcracker-bushcraft'),
     ('corporals', 'Corporals Corner', 'creator-corporals-corner'),
     ('canterbury', 'Dave Canterbury', 'creator-david-canterbury'),
     ('primitive', 'Primitive Technology', 'creator-primitive-technology'),
-    ('courses', 'Courses, lectures & more', ''),
+    ('courses', 'Cursos, aulas e mais', ''),
 ]
-VROW_NOTE = {'coalcracker': 'Hobbyist channel', 'corporals': 'Hobbyist channel', 'canterbury': 'Hobbyist channel',
-             'primitive': 'Hobbyist channel — no narration', 'courses': 'University lectures (MIT and others)'}
+VROW_NOTE = {'coalcracker': 'Canal amador', 'corporals': 'Canal amador', 'canterbury': 'Canal amador',
+             'primitive': 'Canal amador — sem narração', 'courses': 'Aulas universitárias (MIT e outras)'}
 
 
 def vrow_of(r):
@@ -530,7 +651,7 @@ def videos_home():
     for r in catalog()['by_id'].values():
         if r['kind'] == 'video':
             rows.setdefault(vrow_of(r), []).append(r)
-    res = [{'id': 'guides', 'title': 'Picked for the guides', 'note': 'Chosen to go with the survival guides', 'count': len(guide_videos()), 'items': guide_videos()[:16]}]
+    res = [{'id': 'guides', 'title': 'Selecionados para os guias', 'note': 'Escolhidos para acompanhar os guias práticos', 'count': len(guide_videos()), 'items': guide_videos()[:16]}]
     for vid, title, _ in VROWS:
         rs = sorted(rows.get(vid, []), key=vsort)
         if VROW_NOTE.get(vid, '').startswith('Hobbyist'):
@@ -563,7 +684,7 @@ def videos_list(row, q='', length='', sort='', offset=0, limit=48):
         rs.sort(key=lambda r: r['title'].lower())
     elif row != 'guides':
         rs.sort(key=vsort)
-    title = dict((v[0], v[1]) for v in VROWS).get(row, 'Picked for the guides' if row == 'guides' else 'All videos')
+    title = dict((v[0], v[1]) for v in VROWS).get(row, 'Selecionados para os guias' if row == 'guides' else 'Todos os vídeos')
     return {'title': title, 'note': VROW_NOTE.get(row), 'total': len(rs), 'items': [vcard(r) for r in rs[offset:offset + limit]],
             'more': len(rs) > offset + limit}
 
@@ -605,9 +726,14 @@ def page_texts(r):
 
 
 def png_bytes(rgb):
-    """8-bit RGB array to PNG with the standard library, so the package does not need Pillow."""
-    h, w = rgb.shape[:2]
-    raw = b''.join(b'\0' + rgb[y, :, :3].tobytes() for y in range(h))
+    """8-bit RGB array or PdfBitmap to PNG with the standard library, so the package does not need Pillow or numpy."""
+    if hasattr(rgb, 'buffer'):
+        w, h, stride = rgb.width, rgb.height, rgb.stride
+        buf = memoryview(rgb.buffer)
+        raw = b''.join(b'\0' + bytes(buf[y * stride:y * stride + w * 3]) for y in range(h))
+    else:
+        h, w = rgb.shape[:2]
+        raw = b''.join(b'\0' + rgb[y, :, :3].tobytes() for y in range(h))
 
     def chunk(kind, data):
         return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
@@ -627,7 +753,7 @@ def render_page(r, n, width):
                 page = pdf[n - 1]
                 # width is the longer side, as pdftoppm -scale-to did
                 bitmap = page.render(scale=width / max(page.get_size()), rev_byteorder=True)
-                data = png_bytes(bitmap.to_numpy())
+                data = png_bytes(bitmap)
             finally:
                 pdf.close()
         tmp = CACHE / f".{r['id']}-{n}-{width}-{threading.get_ident()}.tmp"
@@ -1042,21 +1168,21 @@ TILE_POI = {'hospital', 'clinic', 'doctors', 'pharmacy', 'chemist', 'fire_statio
             'shelter', 'community_centre', 'supermarket', 'doityourself', 'hardware', 'spring'}
 
 
-HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharmacy': 'Pharmacy', 'chemist': 'Pharmacy',
-        'dentist': 'Dentist', 'fire_station': 'Fire station', 'police': 'Police', 'drinking_water': 'Drinking water tap',
-        'fountain': 'Fountain (not necessarily drinkable)', 'water_tower': 'Water tower', 'water_works': 'Water works',
-        'spring': 'Spring (untested)', 'toilet': 'Public toilet', 'shelter': 'Shelter (structure)',
-        'community_centre': 'Community centre', 'town_hall': 'Town hall', 'school': 'School', 'library': 'Library',
-        'supermarket': 'Supermarket', 'convenience': 'Convenience store', 'doityourself': 'Hardware / DIY store',
-        'hardware': 'Hardware store', 'garden_centre': 'Garden centre', 'post_office': 'Post office',
-        'camp_site': 'Campsite', 'veterinary': 'Vet', 'nursing_home': 'Care home', 'fuel': 'Fuel station',
-        'car_repair': 'Car repair', 'bicycle_shop': 'Bicycle shop', 'wastewater_plant': 'Wastewater plant',
-        'comms_tower': 'Communications tower', 'park': 'Park', 'courthouse': 'Courthouse',
-        'college': 'College', 'university': 'University', 'kindergarten': 'Kindergarten', 'beach': 'Beach',
-        'embassy': 'Embassy', 'mineral': 'Recorded mineral / mine', 'oil_gas_well': 'Recorded oil / gas well',
-        'boat_launch': 'Boating facility', 'fish_stocking': 'Fish-stocking record',
-        'dam': 'Dam (National Inventory of Dams)', 'reservoir': 'Reservoir', 'lake': 'Lake or pond', 'pond': 'Pond',
-        'orchard': 'Orchard', 'vineyard': 'Vineyard', 'berries': 'Berry field', 'perennial_veg': 'Asparagus field'}
+HELP = {'hospital': 'Hospital', 'clinic': 'Clínica / UBS', 'doctors': 'Médico / Posto de saúde', 'pharmacy': 'Farmácia', 'chemist': 'Farmácia',
+        'dentist': 'Dentista', 'fire_station': 'Corpo de Bombeiros', 'police': 'Polícia', 'drinking_water': 'Ponto de água potável',
+        'fountain': 'Chafariz / fonte (nem sempre potável)', 'water_tower': 'Caixa d’água / reservatório elevado', 'water_works': 'Estação de tratamento de água',
+        'spring': 'Nascente (não tratada)', 'toilet': 'Banheiro público', 'shelter': 'Abrigo',
+        'community_centre': 'Centro comunitário', 'town_hall': 'Prefeitura / Câmara', 'school': 'Escola', 'library': 'Biblioteca',
+        'supermarket': 'Supermercado', 'convenience': 'Mercadinho / conveniência', 'doityourself': 'Loja de materiais / construção',
+        'hardware': 'Loja de ferragens', 'garden_centre': 'Floricultura / viveiro', 'post_office': 'Correios',
+        'camp_site': 'Área de camping', 'veterinary': 'Veterinário', 'nursing_home': 'Casa de repouso', 'fuel': 'Posto de combustível',
+        'car_repair': 'Oficina mecânica', 'bicycle_shop': 'Bicicletaria', 'wastewater_plant': 'Estação de tratamento de esgoto',
+        'comms_tower': 'Torre de comunicação', 'park': 'Parque', 'courthouse': 'Fórum / Tribunal',
+        'college': 'Faculdade', 'university': 'Universidade', 'kindergarten': 'Creche / pré-escola', 'beach': 'Praia',
+        'embassy': 'Embaixada', 'mineral': 'Registro mineral / mina', 'oil_gas_well': 'Poço de petróleo / gás',
+        'boat_launch': 'Rampa para embarcações', 'fish_stocking': 'Local de pesca',
+        'dam': 'Barragem', 'reservoir': 'Reservatório', 'lake': 'Lago ou lagoa', 'pond': 'Açude / lagoa',
+        'orchard': 'Pomar', 'vineyard': 'Vinhedo', 'berries': 'Frutas vermelhas', 'perennial_veg': 'Cultivo perene'}
 
 
 CROP_KINDS = {'orchard', 'vineyard', 'berries', 'perennial_veg'}
@@ -1136,13 +1262,13 @@ def _resource_summary(cls, detail):
             'orchard': ('crop',), 'vineyard': ('crop',), 'berries': ('crop',), 'perennial_veg': ('crop',), 'lake': ('water_type', 'state'), 'pond': ('water_type', 'state')}.get(cls, ())
     out = [str(detail.get(k)) for k in keys if detail.get(k)]
     if detail.get('not_drinking_water'):
-        out.insert(0, 'NOT drinking water')
+        out.insert(0, 'NÃO é água potável')
     if detail.get('area_acres'):
-        out.insert(0, f"{detail['area_acres']:,} acres")
+        out.insert(0, f"{detail['area_acres'] * 0.404686:,.1f} ha")
     if detail.get('crop_acres'):
-        out.append(f"about {round(detail['crop_acres']):,} acres in this block")
+        out.append(f"cerca de {round(detail['crop_acres'] * 0.404686):,} ha neste bloco")
     if detail.get('normal_storage_af'):
-        out.append(f"{int(float(detail['normal_storage_af'])):,} acre-ft stored")
+        out.append(f"{int(float(detail['normal_storage_af']) * 1233.48):,} m³ armazenados")
     return ' · '.join(out)
 
 
@@ -1325,10 +1451,10 @@ def haversine(la1, lo1, la2, lo2):
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     d = 2 * R * math.asin(math.sqrt(a))
     b = (math.degrees(math.atan2(math.sin(dl) * math.cos(p2), math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl))) + 360) % 360
-    return d, ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][int((b + 22.5) // 45) % 8]
+    return d, ['norte', 'nordeste', 'leste', 'sudeste', 'sul', 'sudoeste', 'oeste', 'noroeste'][int((b + 22.5) // 45) % 8]
 
 
-WATER_WORDS = {'lake', 'lakes', 'reservoir', 'res', 'dam', 'pond', 'ponds'}
+WATER_WORDS = {'lake', 'lakes', 'reservoir', 'res', 'dam', 'pond', 'ponds', 'lago', 'lagos', 'lagoa', 'lagoas', 'represa', 'reservatorio', 'barragem', 'acude'}
 
 
 def near_bonus(near, lat, lon):
@@ -1380,14 +1506,14 @@ def water_places(q, limit=10, near=None):
         text = (name + ' ' + (d.get('other_names') or '')).lower()
         score = (sum(w in text for w in words) * 2 + (core[0] in text) + (kind != 'dam') + (name.lower() == q.lower().strip()) * 3
                  + math.log10(float(d.get('area_acres') or d.get('surface_acres') or 1) + 1) / 3 + near_bonus(near, lat, lon))
-        where = ', '.join(x for x in (d.get('county') and d['county'] + ' County', d.get('state')) if x)
-        extra = f" · also called {d['other_names']}" if d.get('other_names') else ''
+        where = ', '.join(x for x in (d.get('county'), d.get('state')) if x)
+        extra = f" · também chamado de {d['other_names']}" if d.get('other_names') else ''
         away = ''
         if near:
             km = haversine(near[0], near[1], lat, lon)[0]
-            away = f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby'
-        out.append((score, {'name': name, 'kind': {'dam': 'Dam', 'reservoir': 'Reservoir', 'lake': 'Lake'}[kind],
-                            'detail': (where or 'United States') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
+            away = f" · a {km:,.0f} km" if km >= 1 else ' · próximo'
+        out.append((score, {'name': name, 'kind': {'dam': 'Barragem', 'reservoir': 'Reservatório', 'lake': 'Lago'}[kind],
+                            'detail': (where or 'Brasil') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
     out.sort(key=lambda t: -t[0])
     return [o for _, o in out[:limit]]
 
@@ -1415,13 +1541,13 @@ def places(q, limit=20, near=None):
             full = bool(rows)
     rows = list(dict.fromkeys(rows))
     def norm(t):
-        return ' '.join(re.sub(r'\bsaint\b', 'st', re.sub(r'[^\w ]+', ' ', t.lower())).split())
+        return ' '.join(re.sub(r'\b(saint|sao)\b', 's', re.sub(r'[^\w ]+', ' ', _fold_text(t))).split())
     ql = norm(q)
     nat = national_mapdb()
     size = {}
 
     def importance(r):
-        # GNIS has no population: use OpenStreetMap's city/town tag near the same point so the big Springfield comes first
+        # GNIS has no population: use OpenStreetMap's city/town tag near the same point so the big city comes first
         if nat is None or norm(r[0]) != ql or len(size) > 80:
             return 3
         k = (round(r[3], 2), round(r[4], 2))
@@ -1441,12 +1567,12 @@ def places(q, limit=20, near=None):
             continue
         seen.add(k)
         out.append({'name': name, 'kind': kind, 'detail': detail, 'lat': lat, 'lon': lon, 'source': src,
-                    'onMap': bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
+                    'onMap': bool(pack_info()) or nat is not None or (-33.8 < lat < 5.3 and -74.0 < lon < -34.7)})
         if len(out) >= limit:
             break
     water = water_places(q, near=near)
     if water:  # a query that names a water word puts lakes and dams first; otherwise towns lead
-        out = (water + out) if set(w.lower() for w in re.findall(r'\w+', q)) & WATER_WORDS else (out[:8] + water + out[8:])
+        out = (water + out) if set(w for w in re.findall(r'\w+', _fold_text(q))) & WATER_WORDS else (out[:8] + water + out[8:])
     return out[:limit + len(water)]
 
 
@@ -1545,43 +1671,40 @@ def map_info():
     meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db else {}
     geo = []
     for rel, label, status in [
-        ('geography/openstreetmap/socal-latest-free.gpkg.zip', 'Southern California streets, buildings, water and places (OpenStreetMap)', 'Shown on this map'),
-        ('geography/openstreetmap/socal-latest.osm.pbf', 'Southern California raw OpenStreetMap data', 'Coastline taken from it for the map; the rest needs conversion'),
-        ('geography/openstreetmap/california-latest.osm.pbf', 'All of California raw OpenStreetMap data', 'Covered by the national map'),
-        ('geography/openstreetmap/us-latest.osm.pbf', 'United States roads, waterways and places (OpenStreetMap)', ('Shown on this map — ' if national_status().get('state') == 'complete' else 'Converting — ') + format(national_status().get('features',0), ',') + ' features (buildings come from Microsoft, below)'),
-        ('geography/openstreetmap/us-virgin-islands-latest.osm.pbf', 'US Virgin Islands raw OpenStreetMap data', 'Raw data — needs conversion before it can be viewed'),
-        ('geography/census-gazetteers/2025_Gaz_zcta_national_.zip', '', ''),
+        ('geography/openstreetmap/brazil-latest.osm.pbf', 'Vias, rios e locais do Brasil (OpenStreetMap)', ('Exibido neste mapa — ' if national_status().get('state') == 'complete' else 'Convertendo — ') + format(national_status().get('features', 0), ',') + ' elementos'),
+        ('geography/openstreetmap/socal-latest-free.gpkg.zip', 'Ruas, edificações, água e locais (OpenStreetMap)', 'Exibido neste mapa'),
+        ('geography/openstreetmap/us-latest.osm.pbf', 'Vias, rios e locais (OpenStreetMap)', ('Exibido neste mapa — ' if national_status().get('state') == 'complete' else 'Convertendo — ') + format(national_status().get('features', 0), ',') + ' elementos'),
     ]:
         p = LIB / rel
         if p.exists() and label:
             geo.append({'label': label, 'status': status, 'path': rel, 'bytes': p.stat().st_size})
-    geo.append({'label': 'US place names (USGS GNIS) and Census 2025 ZIP-code and county centres', 'status': 'Used by "Find a place", together with named lakes, reservoirs and dams', 'path': 'geography/geographic-names/'})
+    geo.append({'label': 'Nomes de localidades, municípios e CEPs', 'status': 'Usado na busca de locais no mapa, junto com lagos, represas e barragens', 'path': 'geography/geographic-names/'})
     if WATERDB.exists():
         try:
             w = dict(sqlite3.connect(ro_uri(WATERDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
             nid = json.loads(w.get('nid', '{}'))
             states = [k[4:] for k in w if k.startswith('nhd:')]
             if nid:
-                geo.append({'label': 'Dams (US Army Corps of Engineers National Inventory of Dams)', 'status': f"{nid['records']:,} dams · data updated {nid['data_last_updated']}"})
-            geo.append({'label': 'Lakes, reservoirs and ponds (USGS National Hydrography Dataset, final 2023 edition)',
-                        'status': f'{len(states)} of 56 states and territories imported' if states else 'Downloading / importing'})
+                geo.append({'label': 'Barragens e reservatórios', 'status': f"{nid['records']:,} barragens · atualizado em {nid['data_last_updated']}"})
+            geo.append({'label': 'Lagos, represas e açudes',
+                        'status': f'{len(states)} unidades federativas importadas' if states else 'Importando'})
         except (sqlite3.Error, ValueError):
             pass
     if TERRAINDB.exists():
-        geo.append({'label': 'Elevation: shaded relief, contour lines, spot heights and 3D (USGS 3DEP, 30 m)', 'status': 'Whole US and territories'})
+        geo.append({'label': 'Relevo: sombreado, curvas de nível, altitude e 3D (30 m)', 'status': 'Cobertura nacional'})
     if CROPDB.exists():
         try:
             c = json.loads(dict(sqlite3.connect(ro_uri(CROPDB), uri=True).execute('SELECT key,value FROM meta').fetchall()).get('built', '{}'))
-            geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
-                        'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
+            geo.append({'label': f"Pomares, vinhedos e cultivos perenes ({c.get('year', '')})",
+                        'status': f"{c.get('cells', 0):,} blocos mapeados em {c.get('states', 0)} estados"})
         except (sqlite3.Error, ValueError):
             pass
     if BLDGDB.exists():
         try:
             m = dict(sqlite3.connect(ro_uri(BLDGDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
             n, h = m.get('buildings'), m.get('osm_heights')
-            geo.append({'label': 'Building outlines for the whole US, plus heights for 3D (Microsoft Global ML Building Footprints, 2026 release, ODbL; OpenStreetMap is used where its outlines are complete)',
-                        'status': (f"{int(n):,} buildings, shown from street level zoom" + (f" · {int(h):,} OpenStreetMap buildings with measured heights in 3D" if h else '')) if n else 'Converting'})
+            geo.append({'label': 'Contornos de edificações e alturas para 3D (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)',
+                        'status': (f"{int(n):,} edificações, visíveis no nível de rua" + (f" · {int(h):,} edificações OpenStreetMap com altura medida em 3D" if h else '')) if n else 'Convertendo'})
         except (sqlite3.Error, ValueError):
             pass
     detail = None
@@ -1589,18 +1712,17 @@ def map_info():
         try:
             m = dict(sqlite3.connect(ro_uri(AERIAL_DETAIL), uri=True).execute('SELECT key,value FROM meta').fetchall())
             detail = [float(v) for v in m['bbox'].split(',')] if m.get('bbox') else None
-            geo.append({'label': 'Full-detail aerial photos, 30-60 cm (USGS NAIP Plus: USDA NAIP and high-resolution orthoimagery)',
-                        'status': m.get('area', '') + ('' if m.get('built') else ' · downloading')})
+            geo.append({'label': 'Imagens aéreas detalhadas (30-60 cm)',
+                        'status': m.get('area', '') + ('' if m.get('built') else ' · baixando')})
         except (sqlite3.Error, ValueError, KeyError):
             pass
     rev = None
     if AERIAL_COAST.exists():
         try:
             m = dict(sqlite3.connect(ro_uri(AERIAL_COAST), uri=True).execute('SELECT key,value FROM meta').fetchall())
-            # zoom 17+ photo URLs carry this, so browsers (which keep photo tiles a week) fetch a rebuilt layer afresh
             rev = (m.get('rev') or '') + ('' if m.get('built') else '.building')
-            geo.append({'label': 'Sharpest aerial photos, 25 cm, 2024-25 (NOAA coastal mapping, public domain)',
-                        'status': m.get('area', '') + ('' if m.get('built') else ' · building')})
+            geo.append({'label': 'Imagens aéreas costeiras de alta resolução (25 cm)',
+                        'status': m.get('area', '') + ('' if m.get('built') else ' · gerando')})
         except (sqlite3.Error, ValueError):
             pass
     tdetail = None
@@ -1608,12 +1730,12 @@ def map_info():
         try:
             m = dict(sqlite3.connect(ro_uri(TERRAIN_DETAIL), uri=True).execute('SELECT key,value FROM meta').fetchall())
             tdetail = [float(v) for v in m['circle'].split(',')] if m.get('circle') else None
-            geo.append({'label': 'Detailed elevation from 1 m lidar: relief, 5 ft contours, exact heights (USGS 3DEP)',
-                        'status': m.get('area', '') + ('' if m.get('built') else ' · building')})
+            geo.append({'label': 'Relevo detalhado (1 m): curvas de nível e altitudes exatas',
+                        'status': m.get('area', '') + ('' if m.get('built') else ' · gerando')})
         except (sqlite3.Error, ValueError, KeyError):
             pass
     if AERIALDB.exists():
-        geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
+        geo.append({'label': 'Imagens aéreas / satélite', 'status': 'Zoom 0-15 nacional · baixando'})
     pack = pack_info()
     extra = {'aerial': has_aerial()}
     if pack:
@@ -1624,20 +1746,20 @@ def map_info():
 
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
-    area = 'the area this map details' if have['bounds'] else 'the whole US'
-    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
+    area = 'a área detalhada deste mapa' if have['bounds'] else 'todo o país'
+    out = [{'label': 'Vias principais, cidades e grandes cursos d’água (OpenStreetMap, base nacional)', 'status': 'Exibidos em todos os níveis de zoom'}]
     if have['detail']:
-        out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
+        out.append({'label': f'Ruas, locais e pontos de apoio (OpenStreetMap) para {area}', 'status': 'Os detalhes de ruas terminam no limite desta área.' if have['bounds'] else 'Exibidos ao aproximar o zoom'})
     else:
-        out.append({'label': 'No street detail or help points', 'status': 'This download has only the base map. Hospitals, water taps and side streets are not in it.'})
+        out.append({'label': 'Sem detalhes de ruas ou pontos de apoio', 'status': 'Este pacote contém apenas o mapa base. Hospitais, pontos de água e ruas locais não estão incluídos.'})
     if PLACEDB.exists():
-        out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
+        out.append({'label': 'Nomes de locais (municípios, localidades e CEPs)', 'status': 'Usado pela busca de lugares no mapa'})
     if TERRAINDB.exists():
-        out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
+        out.append({'label': 'Relevo e altitude', 'status': 'Relevo sombreado. Curvas de nível apenas onde há detalhamento.' if have['detail'] else 'Relevo sombreado em escalas amplas'})
     if BLDGDB.exists():
-        out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
+        out.append({'label': 'Contornos de edificações (Microsoft Building Footprints, ODbL; OpenStreetMap)', 'status': f'Para {area}, exibidos no nível de rua'})
     if CROPDB.exists():
-        out.append({'label': 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
+        out.append({'label': 'Pomares, vinhedos e cultivos perenes', 'status': f'Para {area}'})
     return out
 
 
@@ -1840,7 +1962,7 @@ class Handler(library.Handler):
         return bool(m and secrets.compare_digest(m.group(1), LAN_KEY))
 
     def deny(self):
-        body = b'<!doctype html><meta name=viewport content="width=device-width"><title>Lastbook</title><p style="font:18px system-ui;padding:24px">This guide is shared on this network only with an access link. Ask the person running it for the link shown when it started.</p>'
+        body = b'<!doctype html><meta name=viewport content="width=device-width"><title>\xc3\x9altimo Livro</title><p style="font:18px system-ui;padding:24px">Este guia \xc3\xa9 compartilhado na rede local apenas com um link de acesso. Pe\xc3\xa7a o link exibido ao iniciar o servidor.</p>'
         self.send_response(403)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
@@ -1954,13 +2076,13 @@ class Handler(library.Handler):
                 gone[0] = True  # the person pressed Stop or left; stop calling the model
         st = assistant.model_status()
         if not st['online']:
-            emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
+            emit({'type': 'error', 'error': 'model_unavailable', 'text': 'O modelo de assistente local não está em execução no momento.'})
             return
         try:
             assistant.chat(msgs, about, emit, lambda: gone[0])
         except Exception as e:
             traceback.print_exc()
-            emit({'type': 'error', 'error': 'internal', 'text': f'The assistant stopped on an internal error ({type(e).__name__}).'})
+            emit({'type': 'error', 'error': 'internal', 'text': f'O assistente parou devido a um erro interno ({type(e).__name__}).'})
 
     def do_GET(self):
         try:

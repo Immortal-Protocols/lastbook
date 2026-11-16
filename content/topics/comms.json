@@ -1,9 +1,9 @@
 {
  "id": "comms",
  "mode": "now",
- "title": "Communicate & find your way",
- "short": "Family contact, emergency radio, ham radio, map and compass",
- "intro": "Ways to reach family and get official warnings when phones and internet are down or overloaded, what you need to know before using two-way radios, and how to find your way with a map and compass or signal for help.",
+ "title": "Comunicar-se e orientar-se sem internet ou celular",
+ "short": "Contato familiar, rádio de emergência, radioamador/PX, mapa e bússola",
+ "intro": "Formas de localizar familiares e receber alertas oficiais quando telefonia e internet falharem ou congestionarem, normas básicas antes de transmitir em rádios e como navegar com mapa e bússola ou sinalizar socorro. Atenção no Brasil: o órgão regulador de rádio é a Anatel (Serviço Radioamador/COER e Rádio do Cidadão PX na faixa de 11 m — walkie-talkies FRS/GMRS dos EUA não seguem a regulamentação brasileira); alertas oficiais vêm pela Defesa Civil (SMS 40199 / Defesa Civil Alerta) e rádio AM/FM a pilhas.",
  "keywords": [
   "phone down",
   "no signal",
@@ -27,193 +27,219 @@
   "navigation",
   "signal",
   "whistle",
-  "rescue"
+  "rescue",
+  "comunicacao",
+  "comunicação",
+  "sem sinal",
+  "sem internet",
+  "sms",
+  "plano familiar",
+  "radio",
+  "rádio",
+  "defesa civil",
+  "40199",
+  "alerta",
+  "radioamador",
+  "anatel",
+  "coer",
+  "px",
+  "faixa do cidadao",
+  "walkie talkie",
+  "meshtastic",
+  "bussola",
+  "bússola",
+  "mapa",
+  "orientacao",
+  "navegacao",
+  "apito",
+  "resgate",
+  "sinalizar"
  ],
  "choices": [
   {
    "id": "phones-down",
-   "label": "Phones or internet are down or overloaded",
-   "hint": "Calls won't connect, need to find family",
+   "label": "Celulares ou internet caíram ou estão congestionados",
+   "hint": "Ligações não completam, precisa localizar familiares",
    "read": [
     {
      "doc": "d0fbb2e051cd46",
      "page": 29,
-     "label": "FEMA: save calls for emergencies, use texts",
-     "note": "FEMA 2024 sheet notes phone systems are often down or busy after disasters and suggests text messages or social media to reach family."
+     "label": "FEMA: deixar chamadas para emergência e priorizar SMS/mensagens",
+     "note": "Ficha FEMA 2024: após desastres as redes de voz congestionam; mensagens de texto curtas têm mais chance de passar."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 60,
-     "label": "After an earthquake: text rather than call",
-     "note": "FEMA P-530: stay off the phone except for emergencies, use text messaging, and contact your out-of-area safety contact."
+     "label": "Após grande incidente: prefira mensagens de texto a ligações",
+     "note": "FEMA P-530: liberar linhas para emergências e acionar o contato familiar fora da área atingida."
     },
     {
      "doc": "cecc1671ae4d02",
      "page": 18,
-     "label": "Using your family communication plan",
-     "note": "Are You Ready: the out-of-state point of contact, two ways to reach them, wallet cards and practicing the plan."
+     "label": "Usar o plano familiar de comunicação",
+     "note": "Are You Ready: contato de referência em outro estado/cidade, dois canais de contato, cartões na carteira e revisão periódica."
     }
    ]
   },
   {
    "id": "alerts-radio",
-   "label": "I need official warnings and news",
-   "hint": "NOAA Weather Radio, emergency alerts, battery or crank radio",
+   "label": "Preciso receber alertas oficiais e notícias",
+   "hint": "Rádio AM/FM (radiodifusão) a pilha ou manivela, alertas da Defesa Civil, NOAA (EUA)",
    "read": [
     {
      "doc": "2c619f4fe19187",
      "page": 2,
-     "label": "NOAA Weather Radio and local alert sign-ups",
-     "note": "FEMA fact sheet: what NOAA Weather Radio broadcasts, SAME receivers, opt-in text alerts and reverse-911 systems."
+     "label": "Alertas de rádio e cadastros locais de emergência",
+     "note": "Ficha FEMA: no Brasil, cadastre seu CEP por SMS para 40199 (Defesa Civil), acompanhe alertas Cell Broadcast e use rádio AM/FM a pilhas ou manivela (o sistema NOAA Weather Radio atua apenas nos EUA)."
     },
     {
      "doc": "2c619f4fe19187",
      "page": 1,
-     "label": "How emergency alerts reach your phone",
-     "note": "Wireless Emergency Alerts need no sign-up; also EAS broadcasts and keeping spare batteries or chargers."
+     "label": "Como os alertas de emergência chegam ao celular sem cadastro",
+     "note": "Tecnologia Cell Broadcast (usada também no Defesa Civil Alerta no Brasil) e necessidade de baterias reservas e rádio portátil."
     },
     {
      "doc": "4bd70335aa10ef",
      "page": 3,
-     "label": "NOAA Weather Radio frequencies and reception",
-     "note": "NWS brochure: seven frequencies from 162.400 to 162.550 MHz, about 40-mile range, and testing reception where you'll use it."
+     "label": "Frequências de rádio meteorológico NOAA (referência EUA) e alcance VHF",
+     "note": "Folheto NWS: faixas VHF de 162,400–162,550 MHz (~64 km de alcance nos EUA) e testes de recepção em área fechada."
     }
    ]
   },
   {
    "id": "ham",
-   "label": "Ham (amateur) radio — can I use it?",
-   "hint": "Licensing, ARES, getting started",
+   "label": "Radioamador — posso utilizar em emergência?",
+   "hint": "Licenciamento Anatel/COER, RENER, primeiros passos",
    "read": [
     {
      "doc": "1403f321ea0a31",
-     "label": "Ham vs GMRS vs FRS: licensing and range",
-     "note": "TACDA overview: ham operators must pass a test and get an FCC license; GMRS needs a license too; FRS does not. Points to local clubs."
+     "label": "Radioamador vs PX / GMRS / FRS: licenças e alcance",
+     "note": "Resumo TACDA (regras dos EUA/FCC): radioamadores exigem exame e licença (no Brasil: COER junto à Anatel e RENER para emergências); entenda as diferenças entre faixas."
     },
     {
      "doc": "46dad12e12e2fe",
-     "label": "Beginner's guide to ham radio",
-     "note": "The Prepared (2017 prepper site): radio types compared, the FCC license and test, and starter equipment. Not an official source."
+     "label": "Guia para iniciantes em radioamadorismo",
+     "note": "Artigo explicativo sobre tipos de equipamentos, faixas de VHF/UHF e ondas curtas (HF) e equipamentos iniciais (baseado na legislação dos EUA; consulte a Anatel no Brasil)."
     },
     {
      "doc": "a922465bee681e",
      "page": 18,
-     "label": "ARRL: using your license for emergency service",
-     "note": "How licensed hams join emergency communication groups (ARES) and the ARRL's emergency training courses."
+     "label": "ARRL: usar sua estação para serviço de emergência",
+     "note": "Como radioamadores licenciados integram redes voluntárias de emergência (nos EUA ARES; no Brasil, RENER — Rede Nacional de Emergência de Radioamadores)."
     }
    ]
   },
   {
    "id": "local-radio",
-   "label": "Talking with neighbors without phones",
-   "hint": "FRS/GMRS walkie-talkies, CB, neighborhood radio plans",
+   "label": "Falar com vizinhos sem usar telefonia",
+   "hint": "Walkie-talkies homologados Anatel, Rádio Cidadão (PX), Meshtastic",
    "read": [
     {
      "doc": "4f6b406c191181",
      "page": 47,
-     "label": "FRS and GMRS radios for neighborhoods",
-     "note": "ARES Manual (2015): license rules, channel-number confusion between brands, alkaline battery backup and coverage testing. GMRS license term stated here may be outdated."
+     "label": "Rádios portáteis para coordenação de bairro",
+     "note": "Manual ARES (2015): alinhamento de canais entre vizinhos, pilhas alcalinas reservas e testes práticos de alcance. Atenção: no Brasil use equipamentos homologados pela Anatel ou faixa PX (11 m); FRS/GMRS seguem regras dos EUA."
     },
     {
      "doc": "4f6b406c191181",
      "page": 46,
-     "label": "Working with neighbors and CERT groups",
-     "note": "How neighborhood groups and licensed hams can plan local communications together."
+     "label": "Articulação entre vizinhos, Defesa Civil e radioamadores",
+     "note": "Como associações de bairro e radioamadores planejam comunicação local de contingência."
     },
     {
      "doc": "54221d8bbd84d45b",
-     "label": "Meshtastic: text over a LoRa mesh",
-     "note": "Getting-started page for low-power LoRa radios that pass text messages without cell or internet service. Requires compatible hardware."
+     "label": "Meshtastic: mensagens de texto em malha LoRa sem internet",
+     "note": "Guia inicial para rádios LoRa de baixa potência que trocam texto sem torre celular ou internet (no Brasil observe a faixa ISM homologada AU915 MHz)."
     }
    ]
   },
   {
    "id": "navigate",
-   "label": "Find my way with a map and compass",
-   "hint": "No GPS or phone, reading a topo map, taking a bearing",
+   "label": "Orientar-se com mapa e bússola",
+   "hint": "Sem GPS nem celular, leitura de carta topográfica e azimute",
    "read": [
     {
      "doc": "bf9e99715ecdde",
      "page": 1,
-     "label": "USGS: finding your way with map and compass",
-     "note": "Map scale, symbols, bearings and why the compass points to magnetic, not true, north."
+     "label": "USGS: orientação com mapa e bússola",
+     "note": "Escala, símbolos, azimute e declinação magnética (diferença entre norte magnético e norte verdadeiro, importante no Brasil conforme carta IBGE/DSG)."
     },
     {
      "doc": "5b0efa0b70cb98",
      "page": 161,
-     "label": "Finding direction from the sun and shadows",
-     "note": "Army ATP 3-50.21 (2018): using the sun and shadows to find north; following pages cover stars and other methods."
+     "label": "Encontrar direção pelo sol e pelas sombras",
+     "note": "Manual Army ATP 3-50.21 (2018): método das sombras e estrelas. Atenção no Brasil (Hemisfério Sul): ao meio-dia solar a sombra aponta para o SUL (sol ao Norte), inverso dos exemplos norte-americanos."
     },
     {
      "doc": "5b0efa0b70cb98",
      "page": 168,
-     "label": "Walking a compass bearing with steering marks",
-     "note": "Army method for dead reckoning: sight a landmark on your bearing, close the compass, walk to it, repeat."
+     "label": "Caminhar seguindo um azimute na bússola por pontos de referência",
+     "note": "Método prático: mirar um marco visível na direção desejada, fechar a bússola, caminhar até ele e repetir."
     },
     {
      "doc": "video-0cF0ovA3FtY",
-     "label": "Video: how to use a compass (REI)",
-     "note": "Seven-minute captioned beginner video on the parts of a baseplate compass and taking a bearing."
+     "label": "Vídeo: como usar uma bússola de placa (REI, em inglês)",
+     "note": "Tutorial de 7 min (legendas) para iniciantes sobre partes da bússola e leitura de azimute."
     }
    ]
   },
   {
    "id": "signal",
-   "label": "Signal for help or rescue",
-   "hint": "Trapped, lost, need to be seen or heard",
+   "label": "Sinalizar pedido de ajuda ou resgate",
+   "hint": "Preso em escombros, perdido, precisa ser visto ou ouvido",
    "read": [
     {
      "doc": "d0fbb2e051cd46",
      "page": 9,
-     "label": "Trapped after an earthquake: text, bang, whistle",
-     "note": "FEMA: send a text or bang on a pipe or wall, cover your mouth, and use a whistle instead of shouting."
+     "label": "Preso sob escombros: enviar mensagem, bater em cano, usar apito",
+     "note": "FEMA: enviar SMS, bater ritmicamente em cano ou parede, cobrir nariz/boca contra poeira e usar apito em vez de gritar."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 32,
-     "label": "CERT: protect your airway and signal rescuers",
-     "note": "If trapped, bang on an object or blow a whistle; yelling is a last resort."
+     "label": "CERT: proteger vias aéreas e sinalizar aos bombeiros",
+     "note": "Se soterrado ou preso, bater em objetos rígidos ou soprar apito; gritar só em último caso."
     },
     {
      "doc": "8bb952fd2f238b",
      "page": 200,
-     "label": "Army signaling techniques (historical FM 21-76)",
-     "note": "1992 Army manual, superseded: getting attention with fire, light, contrast and patterns. Military context; wilderness focus."
+     "label": "Técnicas militares de sinalização (histórico FM 21-76)",
+     "note": "Manual de 1992 sobre chamar atenção com luz, contraste, espelho e fogo em área aberta."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Ham radio operators must pass a test and obtain an FCC license (Technician, General or Extra).",
+   "text": "Para operar em faixas de radioamador é necessário exame e licenciamento oficial (no Brasil, COER e autorização pela Anatel; nos exemplos do manual, licença FCC).",
    "doc": "1403f321ea0a31"
   },
   {
-   "text": "You need an FCC license to communicate on ham radio (the article says the test can be prepared for in days).",
+   "text": "Não transmita em frequências de radioamador sem licença — salvo perigo imediato à vida sem outro meio de comunicação disponível.",
    "doc": "46dad12e12e2fe"
   },
   {
-   "text": "FRS radios may be used without a license, but transmitting on GMRS radios requires a license.",
+   "text": "Faixas e regras variam por país: nos EUA FRS é livre e GMRS exige licença; no Brasil use apenas rádios homologados pela Anatel (como faixa do cidadão PX 11 m ou radiocomunicadores de uso restrito permitidos).",
    "doc": "4f6b406c191181",
    "page": 47
   },
   {
-   "text": "FCC rules allow an amateur station in distress to use any means at its disposal to attract attention and get help (the rule as printed in the ARES manual).",
+   "text": "Normas de radiocomunicação permitem que uma estação em situação real de perigo use qualquer meio disponível para pedir socorro.",
    "doc": "c91b2af6713df7",
    "page": 70
   },
   {
-   "text": "NOAA Weather Radio usually reaches about 40 miles; buildings and valleys can block it, so test a receiver where you will use it.",
+   "text": "Transmissões em VHF têm alcance típico de dezenas de quilômetros em linha de visada (~64 km no sistema NOAA dos EUA); prédios e morros bloqueiam o sinal, então teste antes.",
    "doc": "4bd70335aa10ef",
    "page": 3
   },
   {
-   "text": "A compass points to magnetic north, not true north; the difference varies by place and changes over time.",
+   "text": "A bússola aponta para o norte magnético, não o norte geográfico; a declinação magnética no Brasil varia muito entre regiões e muda com os anos.",
    "doc": "bf9e99715ecdde",
    "page": 1
   },
   {
-   "text": "If trapped, shout only as a last resort — it can make you inhale dangerous dust; tap on a pipe or wall or use a whistle.",
+   "text": "Se ficar preso em desabamento, grite apenas em último recurso para não inalar poeira tóxica; bata em canos/paredes ou use um apito.",
    "doc": "9681a68ebd07f5",
    "page": 17
   }
@@ -222,91 +248,91 @@
   {
    "doc": "e74ed9511d24c6",
    "page": 1,
-   "label": "FEMA fill-in family communication plan",
-   "note": "Two-page form for household phone numbers, school and work plans, an out-of-town contact and meeting places."
+   "label": "Plano familiar de comunicação (para preencher)",
+   "note": "Formulário de duas páginas para anotar telefones da família, escolas, contato em outra cidade e pontos de encontro."
   },
   {
    "doc": "ed5bac0a81b009",
    "page": 25,
-   "label": "CERT: family check-in contact and meeting places",
-   "note": "Pick two meeting places and an out-of-state check-in contact, carry wallet cards, and practice."
+   "label": "CERT: contato fora da região e pontos de encontro",
+   "note": "Escolher dois pontos de encontro e um contato externo, andar com cartões impressos na carteira e combinar tudo com a família."
   },
   {
    "doc": "5cd0b4e41cc479",
    "page": 25,
-   "label": "Earthquake communication plan and emergency radio",
-   "note": "FEMA P-530: a primary safety contact outside the shaking area, contact lists, and a solar or wind-up emergency radio."
+   "label": "Plano de comunicação e rádio portátil de emergência",
+   "note": "FEMA P-530: contato principal fora da área afetada, agenda impressa em papel e rádio AM/FM a pilha, solar ou manivela."
   },
   {
    "doc": "e629b2983d95e4",
    "page": 5,
-   "label": "Plan more than one way to get in touch",
-   "note": "Red Cross: local and out-of-area helpers for communication, and texts, email or internet calls as alternatives."
+   "label": "Planejar mais de um meio de contato",
+   "note": "Cruz Vermelha: contatos locais e externos, além de SMS, e-mail ou mensagens quando chamadas de voz falharem."
   },
   {
    "doc": "db4d9783fca34b",
    "page": 2,
-   "label": "Kit: radio with NOAA tone alerts, whistle, maps",
-   "note": "FEMA 2024 supply list including a battery or crank NOAA radio, whistle, phone charger and local maps."
+   "label": "Kit: rádio a pilha/manivela, apito e mapas impressos",
+   "note": "Checklist FEMA 2024 incluindo rádio portátil, apito de sinalização, carregadores portáteis e mapas físicos da região."
   },
   {
    "doc": "c91b2af6713df7",
    "page": 6,
-   "label": "ARES: what a ham does first in an emergency",
-   "note": "ARRL field guide for licensed hams: make sure your own family is safe before responding, then check in."
+   "label": "ARES: o que um radioamador faz primeiro em uma emergência",
+   "note": "Guia para radioamadores: garantir primeiro a segurança da própria família antes de se apresentar na rede de emergência."
   }
  ],
  "learn": [
   {
    "doc": "4f6b406c191181",
-   "label": "ARES Manual (2015)",
-   "note": "ARRL's manual for the Amateur Radio Emergency Service: organization, FCC rule definitions, working with agencies and neighbors."
+   "label": "Manual ARES (2015)",
+   "note": "Manual da ARRL para serviço de emergência em radioamadorismo (organização e regras FCC dos EUA)."
   },
   {
    "doc": "c91b2af6713df7",
-   "label": "ARES Field Resources Manual (2019)",
-   "note": "Pocket reference for licensed emergency communicators: checklists, go-kit, message handling and FCC rules."
+   "label": "Manual de Campo ARES (2019)",
+   "note": "Guia de bolso para operadores licenciados: checklists, estação portátil e tráfego de mensagens."
   },
   {
    "doc": "a922465bee681e",
    "label": "ARRL Quickstart Guide",
-   "note": "Booklet for new hams on antennas, FM repeaters, operating practices and a first station. Contains advertising."
+   "note": "Livreto introdutório sobre antenas, repetidoras FM, operação prática e primeira estação."
   },
   {
    "doc": "ham-reference-50110f1fd49f96af",
-   "label": "ARRL U.S. amateur band chart",
-   "note": "One-page chart of which frequencies each U.S. license class may use."
+   "label": "Tabela de faixas de radioamador dos EUA (ARRL)",
+   "note": "Referência norte-americana; no Brasil consulte o plano de faixas oficial da Anatel."
   },
   {
    "zim": "zim/wikibooks_en_all_maxi_2026-04.zim/FCC_Technician_Class_Exam_Study_Guide_-_2014-2018/Subelement_T1_Group_A",
    "title": "FCC Technician Class Exam Study Guide - 2014-2018/Subelement T1 Group A",
-   "label": "Wikibooks: Technician license rules study guide",
-   "note": "Study notes on FCC amateur rules for the entry-level license. Written for the 2014–2018 question pool, so check current rules."
+   "label": "Wikibooks: Guia de estudo da licença FCC (EUA)",
+   "note": "Notas de estudo sobre legislação FCC de 2014–2018 (em inglês); no Brasil aplicam-se os exames COER da Anatel."
   },
   {
    "doc": "e0d32d475cba9e",
-   "label": "TACDA: civil defense communications",
-   "note": "Overview of CB, FRS, GMRS and ham options for emergencies. Older chapter; some channel and rule details may be outdated."
+   "label": "TACDA: comunicações de defesa civil",
+   "note": "Visão geral de faixa do cidadão (PX/CB), walkie-talkies e radioamador em emergências."
   },
   {
    "doc": "78a5c135618251",
-   "label": "USGS: using a compass with a topographic map",
-   "note": "How to orient a USGS topo map and take bearings, including declination."
+   "label": "USGS: uso da bússola com carta topográfica",
+   "note": "Como orientar carta topográfica e traçar azimutes descontando declinação magnética."
   },
   {
    "doc": "c15a248ad9ae45",
-   "label": "Wilderness Navigation lesson",
-   "note": "Great Smoky Mountains Institute teaching unit; page 9 gives a step-by-step for taking a bearing and pacing distance."
+   "label": "Aula prática de navegação em trilhas",
+   "note": "Unidade didática com passo a passo na página 9 para tirar azimute e medir distância por contagem de passos."
   },
   {
    "doc": "5b0efa0b70cb98",
-   "label": "Army ATP 3-50.21 Survival (2018)",
-   "note": "Current Army survival manual; chapter 7 covers movement, finding direction and navigation methods."
+   "label": "Manual US Army ATP 3-50.21 Sobrevivência (2018)",
+   "note": "Capítulo 7 aborda deslocamento, direção e navegação terrestre."
   },
   {
    "doc": "433d02ed3ce4d9",
-   "label": "Coast Guard navigation and piloting",
-   "note": "Boat Crew Handbook (2017) on charts, compasses and piloting on the water."
+   "label": "Navegação costeira e cartas náuticas (Guarda Costeira)",
+   "note": "Manual (2017) sobre cartas náuticas, bússolas e pilotagem na água."
   }
  ],
  "related": [

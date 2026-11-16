@@ -23,6 +23,16 @@ class AddressSearchTests(unittest.TestCase):
             ('23001', 'Maple Avenue', 'Kansas City', 'MO', '64105', 39.0997, -94.5786),
             ('21', 'W 9 ST', 'Example', 'CA', '90001', 34.01, -118.01),
         ])
+        self.write_state('SP', [
+            ('1000', 'Avenida Paulista', 'São Paulo', 'SP', '01310100', -23.5649, -46.6519),
+            ('1500', 'Rua Augusta', 'São Paulo', 'SP', '01304001', -23.5567, -46.6601),
+        ])
+        self.write_state('PR', [
+            ('250', 'Rua das Flores', 'Curitiba', 'PR', '80010000', -25.4320, -49.2710),
+        ])
+        self.write_state('SC', [
+            ('420', 'Rua 15 de Novembro', 'Blumenau', 'SC', '89010000', -26.9187, -49.0660),
+        ])
 
     def tearDown(self):
         self.temp.cleanup()
@@ -88,6 +98,34 @@ class AddressSearchTests(unittest.TestCase):
         with patch.object(server, 'HERE', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
             self.assertEqual(server.places('18003 nine mile'), [])
             lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None)
+
+    def test_brazilian_addresses_and_cep(self):
+        self.assertFalse(is_address_query('01310-100'))
+        self.assertFalse(is_address_query('01310100'))
+        self.assertFalse(is_address_query('São Paulo SP'))
+        self.assertTrue(is_address_query('Av. Paulista, 1000'))
+
+        for query in (
+            'Av. Paulista, 1000, São Paulo, SP, 01310-100',
+            'Avenida Paulista 1000 Sao Paulo SP 01310100',
+            '1000 Avenida Paulista Sao Paulo SP',
+            'Av. Paulista, 1000, São Paulo',
+        ):
+            with self.subTest(query=query):
+                result = find_addresses(query, self.geo)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['name'], 'Avenida Paulista, 1000')
+                self.assertEqual(result[0]['detail'], 'São Paulo, SP, 01310-100')
+                self.assertEqual(result[0]['lat'], -23.5649)
+
+        pr = find_addresses('Rua das Flores 250 Curitiba Paraná', self.geo)
+        self.assertEqual(len(pr), 1)
+        self.assertEqual(pr[0]['name'], 'Rua das Flores, 250')
+        self.assertEqual(pr[0]['detail'], 'Curitiba, PR, 80010-000')
+
+        sc = find_addresses('Rua Quinze de Novembro, 420, Blumenau, SC', self.geo)
+        self.assertEqual(len(sc), 1)
+        self.assertEqual(sc[0]['name'], 'Rua 15 de Novembro, 420')
 
 
 if __name__ == '__main__':

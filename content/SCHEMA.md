@@ -1,59 +1,56 @@
-# Curated topic files (`content/topics/<id>.json`)
+# Arquivos de tópicos curados (`content/topics/<id>.json`)
 
-Each file is one "need" in the app. The app shows, in order:
-1. the title and a one-sentence intro,
-2. **choices** ("What's happening?") — the person taps one situation and sees 1–4 recommended readings for it,
-3. **limits** — when the source itself says to stop, get help, or that a professional/trained person is needed,
-4. **prepare** — readings for getting ready before it happens,
-5. **learn** — full manuals, videos, encyclopedia articles for deeper study,
-6. for learning tracks, an ordered **route** of beginner-to-advanced steps.
+Cada arquivo representa uma "necessidade" no aplicativo (**Último Livro**, fork brasileiro do **Lastbook**). O aplicativo exibe, nesta ordem:
+1. o título (`title`) e uma introdução curta em uma frase (`intro`),
+2. **choices** ("O que está acontecendo?") — a pessoa toca em uma situação e vê de 1 a 4 leituras recomendadas para ela,
+3. **limits** — quando a própria fonte indica parar, buscar ajuda profissional ou acionar socorro especializado,
+4. **prepare** — leituras para se preparar antes que o problema aconteça,
+5. **learn** — manuais completos, vídeos e artigos de enciclopédia para estudo aprofundado,
+6. em trilhas de aprendizagem (`mode: "learn"`), um roteiro ordenado (**route**) de etapas do nível iniciante ao avançado (`"Etapa 1: ..."`).
 
-Source facts (publisher, edition, date, file type, page count, video length, transcript) are filled in
-automatically from `catalog.json` — do not copy them into the topic file.
+Dados bibliográficos das fontes (editor/órgão, edição, data, tipo de arquivo, número de páginas, duração do vídeo, transcrição) são preenchidos automaticamente a partir de `catalog.json` — não os copie para dentro do arquivo de tópico.
 
 ```json
 {
   "id": "water",
-  "mode": "now",                     // "now" = urgent need, "learn" = longer-term learning track
-  "title": "Get safe drinking water",
-  "short": "Treat, store and find water",
-  "intro": "One or two plain sentences in your own words. Describe what this section helps with; do not give procedures.",
-  "keywords": ["water", "boil", "bleach", "purify", "filter", "thirsty", "drinking"],
+  "mode": "now",                     // "now" = necessidade urgente, "learn" = trilha de estudo mais longa
+  "title": "Obter água potável segura",
+  "short": "Tratar, armazenar e encontrar água",
+  "intro": "Uma ou duas frases diretas com suas próprias palavras. Descreva em que esta seção ajuda; não dê procedimentos passo a passo aqui.",
+  "keywords": ["water", "boil", "bleach", "purify", "água", "ferver", "agua sanitaria", "potável"],
   "choices": [
     {
       "id": "unsafe",
-      "label": "Tap water is off or might be unsafe",
-      "hint": "Boil-water notice, earthquake, flood, broken main",
+      "label": "Faltou água da rede ou ela pode estar contaminada",
+      "hint": "Aviso de fervura, enchente, enxurrada, rompimento de adutora",
       "read": [
         {"doc": "<catalog id>", "page": 9,
-         "label": "Short action-style headline of what the page helps with",
-         "note": "What the reader will find on that page, <= 30 words, describing (not prescribing)."}
+         "label": "Título curto orientado à ação do que a página resolve",
+         "note": "O que o leitor encontrará nessa página, em até ~30 palavras, descrevendo (sem prescrever)."}
       ]
     }
   ],
   "limits": [
-    {"text": "Faithful short paraphrase of a limit/warning/when-to-get-help statement from the source.",
+    {"text": "Paráfrase curta e fiel de um limite, alerta ou critério de quando buscar socorro extraído da fonte.",
      "doc": "<catalog id>", "page": 12}
   ],
   "prepare": [ {"doc": "...", "page": 21, "label": "...", "note": "..."} ],
   "learn":   [ {"doc": "...", "label": "...", "note": "..."},
-               {"zim": "zim/<file>.zim/<Article_path>", "title": "Article title", "label": "...", "note": "..."} ],
+               {"zim": "zim/<arquivo>.zim/<Caminho_do_artigo>", "title": "Title original no ZIM", "label": "...", "note": "..."} ],
   "route": [
-    {"title": "Step 1: ...", "goal": "What the step is for, in plain words",
+    {"title": "Etapa 1: ...", "goal": "Objetivo da etapa em linguagem simples",
      "read": [ {"doc": "...", "page": 3, "label": "...", "note": "..."} ]}
   ],
   "related": ["sanitation", "food"]
 }
 ```
 
-Rules
-- Every `doc` must be a real catalog id (not a `metadata-video-*` id). `page` is the PDF *file* page (1-based) as used by
-  `libq.py page`; omit it for html/video/whole-document references. Verify each page by reading it.
-- Use a video's own id (`video-...`) for videos. Prefer videos with captions/transcripts and reputable publishers.
-- `label`/`note`/`intro`/`hint` are plain-language descriptions written for a stressed non-expert. They may describe what a
-  page contains, but must not add steps, doses, quantities or advice that the page does not say.
-- `limits` must be traceable to the cited page. Paraphrase faithfully; keep any quote under 15 words.
-- Medical, chemical (bleach, fuels, pesticides), electrical and gas items: prefer current WHO/CDC/EPA/FEMA/Red Cross/
-  Hesperian/MSF/USDA/extension sources; mention in `note` if a source is old (e.g. 1980s civil defense) or written for
-  health workers or trained responders.
-- Favour fewer, better items: 1–4 readings per choice, 3–8 in prepare, 4–10 in learn.
+## Regras
+
+- Todo `doc` precisa ser um identificador real do catálogo (nunca um id `metadata-video-*`). `page` é a página do *arquivo* PDF (começando em 1), como usada por `tools/libq.py page`; omita em referências HTML, vídeos ou documentos inteiros. Verifique cada página lendo-a antes de citar.
+- Para vídeos, use o próprio id de vídeo (`video-...`). Dê preferência a vídeos com legendas/transcrição e de instituições confiáveis.
+- `label`/`note`/`intro`/`hint` são descrições em linguagem simples pensadas para um leigo sob estresse. Podem descrever o que a página contém, mas não devem inventar passos, doses, quantidades ou recomendações que não constem da fonte ou de notas regulatórias explícitas da adaptação brasileira.
+- `limits` deve ser rastreável à página citada. Parafraseie com fidelidade; mantenha qualquer citação literal curta (abaixo de 15 palavras).
+- Itens médicos, químicos (água sanitária/hipoclorito, combustíveis, defensivos), elétricos e de gás: priorize fontes atuais de referência internacional/técnica (OMS/WHO, CDC, EPA, FEMA, Cruz Vermelha, Hesperian, MSF, USDA, extensão rural) acompanhadas, quando aplicável na adaptação brasileira, dos equivalentes e serviços nacionais (SUS, Ministério da Saúde, Anvisa, Defesa Civil 199, Bombeiros 193, SAMU 192, CVV 188, Disque-Intoxicação 0800-722-6001, Embrapa, ABNT). Indique em `note` se uma fonte for antiga (ex.: defesa civil da década de 1980) ou voltada a profissionais de saúde ou socorristas treinados.
+- Prefira menos itens, porém melhores: 1–4 leituras por opção em `choices`, 3–8 em `prepare`, 4–10 em `learn`.
+- Em forks traduzidos, preserve sempre `id`, `mode`, `doc`, `page`, `zim`, `related` e mantenha as palavras-chave em inglês em `keywords` junto às entradas em português (com e sem acento).

@@ -452,7 +452,7 @@ class Setup:
                 return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
             requested_address = address_id
             address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
-            if address_id in ('base', 'us'):
+            if address_id in ('base', 'us', 'br'):
                 address_id = next(iter(cur.get('address_indexes', [])), None)
             addresses = self.manifest.address_index(address_id) if address_id else None
             if not addresses or not addresses['available']:

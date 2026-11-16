@@ -337,19 +337,13 @@
      "doc": "med-2e83e22162a9a006",
      "page": 348,
      "label": "First steps for any poisoning",
-     "note": "IFRC 2025 steps: stop the exposure, find out what was taken and how much, reach a poison centre or EMS and follow them. Says not to make the person vomit."
+     "note": "IFRC 2025 steps: stop the exposure, find out what was taken and how much, reach a poison centre or EMS and follow them. Do not make the person vomit."
     },
     {
      "doc": "med-2e83e22162a9a006",
      "page": 347,
-     "label": "Signs of poisoning, and what not to give",
-     "note": "IFRC 2025 lists signs such as burns around the mouth, chemical-smelling breath, drowsiness and confusion, and says not to give milk, water or charcoal unless a poison expert says so."
-    },
-    {
-     "doc": "med-443ae5cfaa6ecc68",
-     "page": 46,
-     "label": "Chart: signs and actions by type of chemical",
-     "note": "Hesperian (2020 advance chapter) chart for corrosives and fuels; pesticides follow on page 47 and medicine overdoses on page 48. Its advice on water and charcoal differs from IFRC 2025."
+     "label": "Do not induce vomiting or give milk, water or charcoal",
+     "note": "IFRC 2025: do not induce vomiting, and do not give milk, water or activated charcoal unless a poison centre or poison expert says to. Also lists signs of poisoning."
     }
    ]
   },

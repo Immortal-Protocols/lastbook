@@ -13,7 +13,7 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 
 | Platform | Version | Status |
 |---|---|---|
-| macOS (Apple Silicon, macOS 14 or later) | 1.1.8 | Live on lastbook.org, signed |
+| macOS (Apple Silicon, macOS 14 or later) | 1.1.10 | Live on lastbook.org, signed |
 | Windows (64-bit, Windows 10 or later) | 1.1.8 | Live on lastbook.org, Authenticode signed |
 | Linux (Ubuntu 24.04 LTS, x86_64) | 1.1.9 | Ubuntu package; installation instructions below |
 

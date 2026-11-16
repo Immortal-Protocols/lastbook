@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, tempfile, threading, time, unittest, zipfile
+import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, tempfile, threading, time, types, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -1271,6 +1271,16 @@ class Recommend(Base):
         self.assertEqual(hardware._apple_silicon_linux(tree), 'Apple MacBook Pro (13-inch, M1, 2020)')
         (tree / 'compatible').write_bytes(b'raspberrypi,5-model-b\0brcm,bcm2712\0')
         self.assertIsNone(hardware._apple_silicon_linux(tree))
+
+    def test_no_ai_offer_without_runner(self):
+        """A build without the local AI runner must not offer the model download, however much memory there is."""
+        s = self.setup()
+        s._llm = types.SimpleNamespace(runner_path=lambda: None)
+        fit = s.ai_fit(self.hw(64 * 2 ** 30, 10 ** 12))
+        self.assertFalse(fit['fits'])
+        self.assertIn('local AI', fit['why'])
+        s._llm = types.SimpleNamespace(runner_path=lambda: Path('/opt/lastbook/llm/lastbook-llm'))
+        self.assertTrue(s.ai_fit(self.hw(64 * 2 ** 30, 10 ** 12))['fits'])
 
     def test_pack_and_ai_by_space(self):
         s = self.setup()

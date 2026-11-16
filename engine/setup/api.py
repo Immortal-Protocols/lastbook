@@ -341,6 +341,9 @@ class Setup:
         m = self.manifest.model()
         if not m:
             return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why': 'No local AI is offered for this version.'}
+        llm = self.llm()
+        if not llm or not llm.runner_path():     # a build without the runner cannot use the model, so it is not offered
+            return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why': 'This copy of Lastbook has no local AI runtime.'}
         if self.ai_measure:
             return self.ai_measure
         path = self._model_path_here()

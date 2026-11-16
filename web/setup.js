@@ -104,7 +104,8 @@
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState();
-  const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const mapIncluded = m => m && (m.id === mapNow() || (mapNow() === 'us' && m.kind === 'state'));
+  const mapAdds = () => { const m = mapById(choice.map); return m && !mapIncluded(m) ? m : null };
   function packSummary(p) {
     const text = p.summary || '';
     if (p.id !== 'medium' || !maps().length) return text;
@@ -262,7 +263,7 @@
     main.querySelectorAll('[data-pack-summary]').forEach(el => { el.textContent = packSummary(packById(el.dataset.packSummary)) });
     const selected = selectedState();
     const option = m => {
-      const a = addressById(m.id), included = now === 'us' || m.id === now;
+      const a = addressById(m.id), included = mapIncluded(m);
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
@@ -273,15 +274,15 @@
     for (const m of maps()) { const c = m.country || 'United States'; (groups[c] = groups[c] || []).push(m) }
     const opts = Object.entries(groups).map(([country, ms]) => country === 'United States' ? ms.map(option).join('') : `<optgroup label="${esc(country)}">${ms.map(option).join('')}</optgroup>`).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = now === 'us' || selected === now;
-    const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
-    const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
-    const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
+    const included = mapIncluded(sel);
+    const bytes = (sel && !included ? packDl(sel) : 0) + (a ? packDl(a) : 0);
+    const disk = (sel && !included ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
+    const unavailable = selected && (addresses().length || sel?.kind === 'region') && !addressById(selected)?.available;
+    let hint = !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${included && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
     if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your area map is already included.') + ' Street-address search is not available for this area yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
-      ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your area for offline street-address search.</p>' : ''}
+      ${now === 'us' ? '<p class="s-mapnote">All includes every US state map. Choosing a region outside the US replaces the installed map.</p>' : ''}
       <label class="s-maplabel" for="mapSel">Choose your state or region</label>
       <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select an area</option>${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;

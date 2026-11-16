@@ -29,6 +29,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -1459,32 +1460,39 @@ def us_set(src, dest):
     clone(GEO / 'socal-cells.json', geo / 'socal-cells.json')
 
 
-def fetch_region_gpkg(spec):
+def fetch_region_gpkg(url):
     """The region's GeoPackage, downloaded and unzipped once into derived/packs/maps/region-source/. Only the build machine does this."""
-    url = spec['extract']
-    folder = OUT / 'maps' / 'region-source'
+    name = Path(urllib.parse.urlsplit(url).path).name
+    folder = OUT / 'maps' / 'region-source' / name.removesuffix('.zip')
+    gpkg = folder / 'source.gpkg'
+    if gpkg.is_file():
+        return gpkg
     folder.mkdir(parents=True, exist_ok=True)
-    gpkg = next(folder.glob('*.gpkg'), None)
-    if gpkg is None:
-        zipped = folder / url.rstrip('/').split('/')[-1]
-        if not zipped.exists():
-            print(f'downloading {url}', flush=True)
-            urllib.request.urlretrieve(url, zipped)
-        with zipfile.ZipFile(zipped) as z:
-            z.extractall(folder)
-        gpkg = next(folder.glob('*.gpkg'))
+    with tempfile.TemporaryDirectory(dir=folder) as work:
+        archive = Path(work) / name
+        print(f'downloading {url}', flush=True)
+        urllib.request.urlretrieve(url, archive)
+        with zipfile.ZipFile(archive) as z:
+            members = [entry for entry in z.infolist() if entry.filename.endswith('.gpkg')]
+            if len(members) != 1:
+                raise ValueError(f'{name}: expected one GeoPackage, found {len(members)}')
+            staged = Path(work) / 'source.gpkg'
+            with z.open(members[0]) as src, staged.open('wb') as dst:
+                shutil.copyfileobj(src, dst)
+        staged.replace(gpkg)
     return gpkg
 
 
 def region_set(dest, code):
     """A non-US region (a "state" elsewhere): its box of a Geofabrik OpenStreetMap extract, as map.sqlite alone, with detail-cells.json."""
     spec = REGION_SPECS.REGIONS[code]
-    gpkg = fetch_region_gpkg(spec)
+    sources = spec['extracts'] if 'extracts' in spec else [spec['extract']]
+    gpkg, *others = [fetch_region_gpkg(url) for url in sources]
     geo = dest / 'derived' / 'geo'
     geo.mkdir(parents=True, exist_ok=True)
     box = spec['bbox']
     subprocess.run([sys.executable, '-I', '-B', str(PROJECT / 'tools' / 'build_map.py'), str(gpkg), str(geo / 'map.sqlite'),
-                    ','.join(f'{v:.6f}' for v in box), spec['source']], check=True)
+                    ','.join(f'{v:.6f}' for v in box), spec['source'], *map(str, others)], check=True)
     db = sqlite3.connect(f'file:{geo}/map.sqlite?immutable=1', uri=True)
     features = db.execute('SELECT count(*) FROM feat').fetchone()[0]
     cells = sorted(r[0] for r in db.execute('SELECT DISTINCT CAST((minx+180)/0.05 AS INT)*100000+CAST((miny+90)/0.05 AS INT) FROM feat_idx WHERE maxx-minx<0.05'))
@@ -1499,7 +1507,7 @@ def build_map(name):
     if dest.exists():
         shutil.rmtree(dest)
     os.makedirs(dest)
-    if re.fullmatch(r'[a-z]{2}-[a-z0-9]{1,3}', name):
+    if name in REGION_SPECS.REGIONS:
         region_set(dest, name)
     else:
         src = geo_source()

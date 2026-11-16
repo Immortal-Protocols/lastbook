@@ -1642,7 +1642,12 @@ def map_info():
     extra = {'aerial': has_aerial()}
     if pack:
         extra.update(map_contents())
-        geo = pack_datasets(extra)
+        region = detail_cells()
+        if region:
+            extra['region'] = region.get('name')
+            geo = [{'label': 'Regional streets, buildings, water and help points', 'status': meta.get('source', 'OpenStreetMap contributors')}]
+        else:
+            geo = pack_datasets(extra)
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
 
 

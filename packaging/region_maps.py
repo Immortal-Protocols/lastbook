@@ -30,12 +30,8 @@ TABLE = ROOT / 'derived/packs/REGION-MAPS.md'
 sys.path.insert(0, str(ROOT / 'packaging'))
 sys.path.insert(0, str(ROOT / 'derived/release'))
 import scan_pack as S            # noqa: E402
-import state_maps as SM          # noqa: E402  (log, sha_file, web_text, upload, public_sha)
 import region_specs              # noqa: E402
 
-MANIFEST = SM.MANIFEST
-BASE = SM.BASE
-R = SM.R
 INCLUDES = 'Local streets, buildings, water and places to get help'
 ALLOWED = {'derived/geo/map.sqlite', 'derived/geo/detail-cells.json', 'derived/geo/national-status.json', 'map-set.json'}
 
@@ -112,19 +108,20 @@ def make_zip(d, out):
 
 def list_in_manifest(ctx, entry):
     """Like state_maps.list_in_manifest, but regions are appended after the states already listed (no state order to preserve)."""
-    m = json.loads(MANIFEST.read_text())
+    import state_maps as SM
+    m = json.loads(SM.MANIFEST.read_text())
     packs, models = json.dumps(m['packs']), json.dumps(m.get('models'))
     m['maps'] = [x for x in m.get('maps', []) if x['id'] != entry['id']] + [entry]
     assert json.dumps(m['packs']) == packs and json.dumps(m.get('models')) == models
-    tmp = MANIFEST.with_suffix('.maps-tmp')
+    tmp = SM.MANIFEST.with_suffix('.maps-tmp')
     tmp.write_text(json.dumps(m, indent=1) + '\n')
-    os.replace(tmp, MANIFEST)
-    data = MANIFEST.read_bytes()
-    st, _, out = R.s3(ctx, 'PUT', 'manifest-v1.json', body=data, headers={'content-type': 'application/json; charset=utf-8'})
+    os.replace(tmp, SM.MANIFEST)
+    data = SM.MANIFEST.read_bytes()
+    st, _, out = SM.R.s3(ctx, 'PUT', 'manifest-v1.json', body=data, headers={'content-type': 'application/json; charset=utf-8'})
     if st != 200:
         sys.exit(f'manifest upload HTTP {st}')
     for _ in range(10):
-        got, _n = SM.public_sha(f'{BASE}/manifest-v1.json')
+        got, _n = SM.public_sha(f'{SM.BASE}/manifest-v1.json')
         if got == hashlib.sha256(data).hexdigest():
             return
         time.sleep(3)
@@ -141,6 +138,7 @@ def write_table(res):
 
 
 def one_region(ctx, code, res):
+    import state_maps as SM
     d = MAPS / code
     t0 = time.time()
     while shutil.disk_usage(ROOT).free < 5e9:      # the extract and its build
@@ -162,7 +160,7 @@ def one_region(ctx, code, res):
     SM.log(code, 'zipped', size)
     key = f'maps/{z.name}'
     SM.upload(ctx, z, key)
-    url = f'{BASE}/{key}'
+    url = f'{SM.BASE}/{key}'
     got, n = SM.public_sha(url)
     if got != sha or n != size:
         sys.exit(f'{code}: public copy differs ({got} {n})')
@@ -187,7 +185,17 @@ def one_region(ctx, code, res):
 
 def main():
     args = sys.argv[1:]
-    ctx = R.Context()
+    if args[:1] == ['--zip-only']:
+        if not args[1:] or any(code not in regions() for code in args[1:]):
+            sys.exit('usage: region_maps.py --zip-only <built region> ...')
+        ZIPS.mkdir(parents=True, exist_ok=True)
+        for code in args[1:]:
+            archive = ZIPS / f'Lastbook-Map-{code}.zip'
+            make_zip(MAPS / code, archive)
+            print(archive)
+        return
+    import state_maps as SM  # release-only tools and bucket access
+    ctx = SM.R.Context()
     todo = regions() if args == ['--order'] else args
     res = json.loads(RESULTS.read_text()) if RESULTS.exists() else {}
     for code in todo:

@@ -50,7 +50,6 @@ The data holds more classes than `web/map.js` has layers for (`tools/build_map.p
 |---|---|
 | `school` | 13,862 |
 | `fountain` | 4,971 |
-| `dentist` | 2,769 |
 | `post_office` | 2,224 |
 | `car_repair` | 1,444 |
 | `park` | 1,102 |

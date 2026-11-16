@@ -89,19 +89,52 @@
   }
 
   /* state maps (docs/SETUP-API.md, State maps). The person picks the state; Lastbook never looks for where it is */
-  const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));   // by name, as people look for theirs
+  const BR_STATES = [
+    ['AC', 'Acre'], ['AL', 'Alagoas'], ['AP', 'Amapá'], ['AM', 'Amazonas'], ['BA', 'Bahia'], ['CE', 'Ceará'],
+    ['DF', 'Distrito Federal'], ['ES', 'Espírito Santo'], ['GO', 'Goiás'], ['MA', 'Maranhão'], ['MT', 'Mato Grosso'],
+    ['MS', 'Mato Grosso do Sul'], ['MG', 'Minas Gerais'], ['PA', 'Pará'], ['PB', 'Paraíba'], ['PR', 'Paraná'],
+    ['PE', 'Pernambuco'], ['PI', 'Piauí'], ['RJ', 'Rio de Janeiro'], ['RN', 'Rio Grande do Norte'],
+    ['RS', 'Rio Grande do Sul'], ['RO', 'Rondônia'], ['RR', 'Roraima'], ['SC', 'Santa Catarina'],
+    ['SP', 'São Paulo'], ['SE', 'Sergipe'], ['TO', 'Tocantins']
+  ];
+  const BR_BY_ID = Object.fromEntries(BR_STATES);
+  const normUF = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const isBrEntry = (entry, id) => {
+    const name = BR_BY_ID[id];
+    if (!name || !entry) return false;
+    const t = normUF(entry.title).replace(/\s*\([a-z]{2}\)\s*$/, '').trim();
+    return t === normUF(name);
+  };
+  const savedUF = () => { try { const u = localStorage.getItem('ultimolivro_uf'); return u && BR_BY_ID[u] ? u : '' } catch { return '' } };
+  const saveUF = id => { try { if (id && BR_BY_ID[id]) localStorage.setItem('ultimolivro_uf', id) } catch { } };
+  const maps = () => {
+    const remote = new Map(((S.manifest && S.manifest.maps) || []).filter(m => isBrEntry(m, m.id)).map(m => [m.id, m]));
+    return BR_STATES.map(([id, name]) => {
+      const rm = remote.get(id);
+      if (rm) return { ...rm, title: `${name} (${id})` };
+      return { id, title: `${name} (${id})`, kind: 'state', available: true, installed_bytes: 0, download_bytes: 0, files: [], baseOnly: true };
+    }).sort((a, b) => String(a.title).localeCompare(String(b.title), 'pt-BR'));   // by name, as people look for theirs
+  };
   const mapById = id => maps().find(m => m.id === id);
   const mapName = id => (id === 'us' || id === 'br') ? 'todo o Brasil' : (mapById(id) || {}).title || id;
   /* the detailed map the library will have once the chosen pack is in: the person's state map, or the one the pack carries */
   const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
   const packMap = id => { const p = packById(id) || {}; return 'map' in p ? p.map || null : PACK_MAP[id] || null };
   const mapNow = () => { const c = cur() || {}; return choice.pack && choice.pack !== c.pack ? packMap(choice.pack) : (c.map && c.map !== 'base' ? c.map : packMap(c.pack)) };
-  const selectedState = () => choice.map || (mapNow() !== 'us' && mapNow() !== 'br' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
-  const addresses = () => (S.manifest && S.manifest.address_indexes) || [];
+  const selectedState = () => {
+    const mn = mapNow();
+    const curAddr = ((cur() || {}).address_indexes || []).find(id => BR_BY_ID[id]);
+    return (choice.map && BR_BY_ID[choice.map] ? choice.map : '') || (mn && BR_BY_ID[mn] ? mn : '') || curAddr || savedUF() || '';
+  };
+  const addresses = () => ((S.manifest && S.manifest.address_indexes) || []).filter(a => isBrEntry(a, a.id));
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState();
-  const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' && mapNow() !== 'br' ? mapById(choice.map) : null;
+  const mapAdds = () => {
+    const id = choice.map || selectedState();
+    const m = id && id !== mapNow() && mapNow() !== 'us' && mapNow() !== 'br' ? mapById(id) : null;
+    return m && !m.baseOnly ? m : null;
+  };
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
   const asData = p => /[\\/]LastbookData[\\/]?$/i.test(p) ? p.replace(/[\\/]$/, '') : String(p).replace(/[\\/]$/, '') + SEP + DATA;
@@ -251,19 +284,25 @@
     if (!box) return;
     const selected = selectedState();
     const opts = maps().map(m => {
-      const a = addressById(m.id), included = now === 'us' || now === 'br' || m.id === now;
+      const a = addressById(m.id), included = m.baseOnly || now === 'us' || now === 'br' || m.id === now;
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
-      const details = off ? 'em breve' : bytes ? size(bytes) + ' de download' : 'incluído';
+      const details = off ? 'em breve' : bytes ? size(bytes) + ' de download' : m.baseOnly ? 'mapa base incluído' : 'incluído';
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
     }).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = now === 'us' || now === 'br' || selected === now;
+    const mapIncluded = !sel || sel.baseOnly || now === 'us' || now === 'br' || selected === now;
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Selecione seu estado (UF) para continuar.' : bytes ? `${size(bytes)} de download · ${size(disk)} no disco${mapIncluded && a ? '. Seu mapa já está incluído; apenas o índice de endereços será baixado.' : ''}` : 'O mapa do seu estado e o índice de endereços disponível já estão incluídos.';
+    let hint = !sel
+      ? 'Selecione seu estado (UF) para continuar.'
+      : sel.baseOnly && !a
+        ? `Estado selecionado: ${esc(sel.title)}. O mapa base do Brasil já está incluído no pacote.`
+        : bytes
+          ? `${size(bytes)} de download · ${size(disk)} no disco${mapIncluded && a ? '. Seu mapa já está incluído; apenas o índice de endereços será baixado.' : ''}`
+          : 'O mapa do seu estado e o índice de endereços disponível já estão incluídos.';
     if (unavailable) hint = (bytes ? `${size(bytes)} de download · ${size(disk)} no disco.` : 'O mapa do seu estado já está incluído.') + ' A busca de endereços por rua ainda não está disponível para este estado.';
     box.innerHTML = `<h2>${ico('map')}Seu mapa local</h2>
       <p class="s-mapnote">Ruas locais, construções, água e pontos de apoio. Disponível offline.</p>
@@ -271,7 +310,7 @@
       <label class="s-maplabel" for="mapSel">Escolha seu estado (UF)</label>
       <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Selecione um estado (UF)</option>${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;
-    $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
+    $('#mapSel').onchange = e => { choice.map = e.target.value; saveUF(choice.map); shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
   }
   function summary() {
     const { dl, need } = plan(), d = diskFor(folder), free = d ? d.free_bytes : null;

@@ -75,6 +75,26 @@ class UpdateTest(unittest.TestCase):
         self.assertEqual(update._ver('10.0.26200'), (10, 0, 26200))     # five-digit Windows builds must compare
         self.assertGreater(update._ver('10.0.26200'), update._ver('10.0'))
 
+    def test_arch_package_is_updated_by_its_package_manager(self):
+        """The site's Linux entry is the Ubuntu .deb. An Arch package must not be offered it, or judged by Ubuntu's version, and asks nothing online."""
+        u = update.Updater('https://127.0.0.1:1/app-v1.json', allowed=ALLOWED, context=self.ctx, key='arch', version='1.1.9')
+        s = u.check()
+        self.assertEqual(s['state'], 'package_manager')
+        self.assertIn('Arch', s['message'])
+        self.assertIsNone(u.thread)      # no check was started, so nothing reached the network
+
+    def test_linux_key_follows_the_package_channel(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(update.sys, 'platform', 'linux'), \
+                mock.patch.object(update.sys, 'frozen', True, create=True), mock.patch.object(update.sys, '_MEIPASS', d, create=True):
+            self.assertEqual(update.platform_key(), 'linux')               # a .deb built before CHANNEL existed
+            (Path(d) / 'CHANNEL').write_text('deb\n')
+            self.assertEqual(update.platform_key(), 'linux')
+            (Path(d) / 'CHANNEL').write_text('arch\n')
+            self.assertEqual(update.platform_key(), 'arch')
+            (Path(d) / 'CHANNEL').write_text('something else\n')
+            self.assertEqual(update.platform_key(), 'linux')
+
     def test_product_reaches_only_downloads_lastbook_org(self):
         u = update.Updater(key='mac', version='1.0.0')
         self.assertEqual((u.allowed, u.url), ({'downloads.lastbook.org'}, 'https://downloads.lastbook.org/app-v1.json'))

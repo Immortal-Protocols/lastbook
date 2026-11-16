@@ -124,11 +124,21 @@ class LinuxPackaging(unittest.TestCase):
         write(vendor, 'example/tests/test_unused.py', '# removed like Debian wheel tests\n')
         return source, ship, vendor
 
-    def stage(self, source, ship, vendor, llm=None, dest=None):
+    def stage(self, source, ship, vendor, llm=None, dest=None, **kw):
         spec = importlib.util.spec_from_file_location('stage_linux', LINUX / 'stage_linux.py')
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        module.stage(source, ship, vendor, self.plugin, dest or self.base / 'staged', '0.0.1', llm)
+        module.stage(source, ship, vendor, self.plugin, dest or self.base / 'staged', '0.0.1', llm, **kw)
+
+    def test_stager_records_package_channel(self):
+        inputs = self.staging_inputs()
+        self.stage(*inputs)
+        self.assertEqual((self.base / 'staged/opt/lastbook/CHANNEL').read_text(), 'deb\n')
+        self.stage(*inputs, dest=self.base / 'arch', channel='arch')
+        self.assertEqual((self.base / 'arch/opt/lastbook/CHANNEL').read_text(), 'arch\n')
+        with self.assertRaisesRegex(ValueError, 'channel'):
+            self.stage(*inputs, dest=self.base / 'bad', channel='flatpak')
+        self.assertFalse((self.base / 'bad').exists())
 
     def test_stager_layout_and_clean_destination(self):
         inputs = self.staging_inputs()

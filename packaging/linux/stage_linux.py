@@ -58,9 +58,14 @@ def vendor_kept(rel):
                 or rel.parts[:2] == ('numpy', 'f2py') or '_tests' in rel.name)
 
 
-def stage(source, ship, vendor, plugin, dest, version, llm=None):
+CHANNELS = ('deb', 'arch')     # how the package is installed and updated; engine/update.py reads opt/lastbook/CHANNEL
+
+
+def stage(source, ship, vendor, plugin, dest, version, llm=None, channel='deb'):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+~_-]*', version):
         raise ValueError('invalid package version')
+    if channel not in CHANNELS:
+        raise ValueError(f'unknown package channel {channel!r}; expected one of {", ".join(CHANNELS)}')
     source, ship, vendor = (checked(p, directory=True) for p in (source, ship, vendor))
     plugin = checked(plugin)
     dest = Path(os.path.abspath(dest))
@@ -114,6 +119,7 @@ def stage(source, ship, vendor, plugin, dest, version, llm=None):
     copy_file(source / 'packaging/linux/lastbook.py', opt / 'lastbook.py')
     copy_file(plugin, opt / 'gst/libgstlastbooksrc.so')
     (opt / 'VERSION').write_text(version + '\n', encoding='utf-8')
+    (opt / 'CHANNEL').write_text(channel + '\n', encoding='utf-8')
     launcher = dest / 'usr/bin/lastbook'
     launcher.parent.mkdir(parents=True)
     launcher.write_text('#!/bin/sh\nexec /usr/bin/python3 -I -B /opt/lastbook/lastbook.py "$@"\n', encoding='utf-8')
@@ -143,9 +149,10 @@ def main():
     for name in ('source', 'ship', 'vendor', 'plugin', 'stage'):
         ap.add_argument('--' + name, type=Path, required=True)
     ap.add_argument('--version', required=True)
+    ap.add_argument('--channel', choices=CHANNELS, default='deb')
     ap.add_argument('--llm', type=Path)
     a = ap.parse_args()
-    stage(a.source, a.ship, a.vendor, a.plugin, a.stage, a.version, a.llm)
+    stage(a.source, a.ship, a.vendor, a.plugin, a.stage, a.version, a.llm, a.channel)
 
 
 if __name__ == '__main__':

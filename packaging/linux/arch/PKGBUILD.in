@@ -35,7 +35,7 @@ package() {
   local source_root="$srcdir/lastbook/source"
   /usr/bin/python3 -I -B "$source_root/packaging/linux/stage_linux.py" \
     --source "$source_root" --ship "$srcdir/lastbook/ship" --vendor "$srcdir/vendor" \
-    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" || return 1
+    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" --channel arch || return 1
   install -Dm644 "$source_root/LICENSE" "$pkgdir/usr/share/licenses/lastbook/LICENSE" || return 1
   install -Dm644 "$source_root/THIRD_PARTY_NOTICES.md" "$pkgdir/usr/share/doc/lastbook/THIRD_PARTY_NOTICES.md" || return 1
   # Required even with --nocheck: the same payload rules as the Debian build.

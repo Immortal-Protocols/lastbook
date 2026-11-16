@@ -90,7 +90,7 @@
   {
    "id": "bleeding",
    "label": "Bleeding, a cut or a wound",
-   "hint": "Heavy bleeding, deep cut, dirty wound, wound getting red or swollen",
+   "hint": "Heavy bleeding, deep cut, tourniquet, dirty wound, wound getting red or swollen",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -201,7 +201,7 @@
   {
    "id": "breathing",
    "label": "Not breathing, unconscious or choking",
-   "hint": "Collapsed, not responding, gasping, food stuck in throat, drowning",
+   "hint": "Collapsed or fainted, not responding, can't breathe, gasping, food stuck in throat, drowning",
    "read": [
     {
      "doc": "med-2e83e22162a9a006",

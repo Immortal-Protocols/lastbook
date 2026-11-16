@@ -69,7 +69,7 @@
   /* ------------------------------------------------------------ state */
   let S = null;           // GET state
   let view = 'choose';
-  let choice = { pack: null, ai: false, map: null };   // map: the selected state code
+  let choice = { pack: null, ai: false, model: null, map: null };   // map: the selected state code
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
@@ -78,8 +78,21 @@
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
-  const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
+  const models = () => ((S.manifest && S.manifest.models) || []).filter(m => m.available !== false);
+  const modelById = id => models().find(m => m.id === id);
+  const MODEL_NOTE = {
+    'gemma-4-26b-a4b': 'Maior precisão e capacidade de síntese. Recomendado para computadores com 24 GB ou mais de memória.',
+    'gemma-4-e4b': 'Alternativa compacta de 4B com ótimo domínio de português. Recomendada para computadores de 12 GB a 16 GB.',
+  };
+  const aiFitFor = m => (S.hardware && S.hardware.ai_models && m && S.hardware.ai_models[m.id]) || (S.hardware && S.hardware.ai) || { fits: false };
+  const aiFits = m => {
+    const list = m ? [m] : models();
+    return list.some(x => !!aiFitFor(x).fits);
+  };
+  const selectedModel = () => (choice.ai ? (modelById(choice.model) || models().find(m => aiFits(m)) || models()[0] || null) : null);
+  const model = () => selectedModel() || models()[0] || null;
   const cur = () => S.current || null;
+  const curModels = () => { const c = cur(); return c ? (c.models || (c.model ? [c.model] : [])) : [] };
   const packById = id => packs().find(p => p.id === id);
   function packNeedsInstall(pack) {
     if (!pack) return false;
@@ -139,8 +152,7 @@
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
   const asData = p => /[\\/]LastbookData[\\/]?$/i.test(p) ? p.replace(/[\\/]$/, '') : String(p).replace(/[\\/]$/, '') + SEP + DATA;
   /* a file already on this computer, of the right size, for a pack or the model: setup uses it instead of downloading */
-  const foundFor = (kind, id) => (S.found || []).find(f => f.kind === kind && (f.size_ok !== false) && (kind === 'model' || f.id === id || f.pack === id));
-  const aiFits = () => !!(S.hardware && S.hardware.ai && S.hardware.ai.fits);
+  const foundFor = (kind, id) => (S.found || []).find(f => f.kind === kind && (f.size_ok !== false) && (id ? (f.id === id || f.pack === id) : kind === 'model'));
 
   function diskFor(path) {
     const ds = (S.hardware && S.hardware.disks) || [];
@@ -163,8 +175,8 @@
       need += (got ? 0 : packDl(p)) + (p.installed_bytes || 0);
       if (p.id === c.pack) need += c.map_bytes || 0;
     }
-    const m = model();
-    if (choice.ai && m && !c.model && aiFits()) { const got = foundFor('model'); if (!got) { dl += m.size || 0; need += m.size || 0 } else need += m.size || 0 }
+    const m = selectedModel();
+    if (choice.ai && m && !curModels().includes(m.id) && aiFits(m)) { const got = foundFor('model', m.id); if (!got) dl += m.size || 0; need += m.size || 0 }
     const mp = mapAdds();
     if (mp) { const got = foundFor('map', mp.id); if (!got) dl += packDl(mp); need += (got ? 0 : packDl(mp)) + (mp.installed_bytes || 0) }
     const a = addressAdds();
@@ -182,8 +194,10 @@
       const rec = S.recommend || {};
       const small = packById('small');
       choice.pack = small && small.available !== false ? 'small' : null;
-      choice.ai = !!rec.ai && aiFits();
-      if (cur()) { choice.pack = cur().pack; choice.ai = !!cur().model }
+      const defModel = (rec.ai_model && modelById(rec.ai_model)) || models().find(m => aiFits(m)) || models()[0] || null;
+      choice.model = (cur() && cur().model) || (defModel && defModel.id) || null;
+      choice.ai = cur() ? !!cur().model : (!!rec.ai && !!(defModel && aiFits(defModel)));
+      if (cur()) choice.pack = cur().pack;
     }
     const j = S.job;
     if (j && j.state && j.state !== 'done' && !(j.state === 'failed' && errCode(j.error) === 'cancelled')) view = 'job';
@@ -217,15 +231,15 @@
     return `<section class="s-pc" aria-label="Este computador">${tiles.map(t => `<div class="s-tile">${t[0]}<b>${t[1]}</b><small>${t[2]}</small></div>`).join('')}</section>`;
   }
   function recommendLine() {
-    const r = S.recommend || {}, p = packById(r.pack);
+    const r = S.recommend || {}, p = packById(r.pack), recModel = r.ai_model ? modelById(r.ai_model) : models().find(m => aiFits(m));
     if (!p) return r.why ? `<p class="s-rec bad">${ico('warn')}<span>${esc(r.why)}</span></p>` : '';
-    const what = `${esc(p.title)}${r.ai && aiFits() ? ' com a IA local' : ''}`;
+    const what = `${esc(p.title)}${r.ai && recModel && aiFits(recModel) ? ` com ${esc(recModel.title || 'IA local')}` : ''}`;
     return `<p class="s-rec">${ico('ok')}<span><b>Sugerido: ${what}.</b> ${esc(r.why || '')}</span></p>`;
   }
 
   /* ---- choose */
   function chooseView() {
-    const c = cur(), m = model();
+    const c = cur(), ms = models(), curMs = curModels();
     const packCards = packs().map(p => {
       const update = c && c.pack === p.id && packNeedsInstall(p);
       const off = p.available === false, here = c && c.pack === p.id && !update, rec = (S.recommend || {}).pack === p.id && !c;
@@ -237,18 +251,32 @@
         <span class="s-sizes">${off ? 'Ainda não disponível para download' : here ? 'Neste computador' : `<span>${foundFor('pack', p.id) ? 'Já baixado' : size(packDl(p)) + ' de download'}</span><span>${size(p.installed_bytes)} no disco</span>`}</span></span></label>`;
     }).join('');
     let ai = '';
-    if (m && m.available !== false) {
-      const has = c && c.model;
-      ai = aiFits() || has
-        ? `<label class="s-opt s-ai"><input type="checkbox" id="aiBox"${choice.ai || has ? ' checked' : ''}${has ? ' disabled' : ''}>
-            <span class="s-opt-in"><span class="s-opt-h"><b>IA local</b>${has ? '<span class="s-badge here">Instalada</span>' : (S.recommend || {}).ai && !c ? '<span class="s-badge rec">Sugerida</span>' : '<span class="s-badge">Opcional</span>'}</span>
-            <small>Responde a perguntas a partir da biblioteca, em linguagem simples. Funciona offline.</small>
-            <span class="s-sizes">${has ? 'Neste computador' : foundFor('model') ? '<span>Já baixada</span>' : `<span>Cerca de ${size(m.size)} de download</span>`}</span></span></label>`
-        : `<div class="s-opt s-ai off" role="group" aria-label="IA local"><span class="s-opt-in"><span class="s-opt-h"><b>IA local</b><span class="s-badge later">Não cabe neste computador</span></span>
-            <small>${esc((S.hardware.ai && S.hardware.ai.why) || 'Este computador não tem memória suficiente para ela.')}</small></span></div>`;
+    if (ms.length) {
+      const selM = selectedModel(), recId = (S.recommend || {}).ai_model || (ms.find(x => aiFits(x)) || {}).id;
+      const aiCards = ms.map(m => {
+        const has = curMs.includes(m.id), fits = aiFits(m), rec = !c && (S.recommend || {}).ai && recId === m.id;
+        const off = !fits && !has, checked = choice.ai && selM && selM.id === m.id;
+        const alt = m.id === 'gemma-4-e4b' && !rec && !has;
+        const badge = has ? '<span class="s-badge here">Instalado</span>' : rec ? '<span class="s-badge rec">Sugerido</span>' : off ? '<span class="s-badge later">Não cabe neste computador</span>' : alt ? '<span class="s-badge">Alternativa 4B</span>' : '<span class="s-badge">Opcional</span>';
+        const desc = MODEL_NOTE[m.id] || (fits ? 'Responde a perguntas a partir da biblioteca, em português e offline.' : (aiFitFor(m).why || 'Este computador não tem memória suficiente para este modelo.'));
+        return `<label class="s-opt s-ai${off ? ' off' : ''}">
+          <input type="radio" name="aiModel" value="${esc(m.id)}"${checked ? ' checked' : ''}${off ? ' disabled' : ''}>
+          <span class="s-opt-in"><span class="s-opt-h"><b>${esc(m.title || m.name || 'IA local')}</b>${badge}</span>
+          <small>${esc(off ? (aiFitFor(m).why || desc) : desc)}</small>
+          <span class="s-sizes">${has ? 'Neste computador' : off ? '' : foundFor('model', m.id) ? '<span>Já baixado</span>' : `<span>Cerca de ${size(m.size)} de download</span>`}</span></span></label>`;
+      }).join('');
+      const noneChecked = !choice.ai;
+      ai = `<div class="s-opts" role="radiogroup" aria-label="Modelo de IA local">
+        ${aiCards}
+        <label class="s-opt s-ai">
+          <input type="radio" name="aiModel" value=""${noneChecked ? ' checked' : ''}>
+          <span class="s-opt-in"><span class="s-opt-h"><b>Sem IA local</b></span>
+          <small>${c && curMs.length ? 'Mantém apenas o que já está instalado sem baixar outro modelo.' : 'A biblioteca, os guias, vídeos, busca por palavras e mapas continuam funcionando offline.'}</small></span>
+        </label>
+      </div>`;
     }
     const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · não corresponde ao arquivo publicado e não será usado</small></span></div>`
-      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? 'Uma biblioteca do Último Livro' : f.kind === 'model' ? 'O arquivo da IA local' : (packById(f.id) ? 'Biblioteca ' + packById(f.id).title : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
+      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? 'Uma biblioteca do Último Livro' : f.kind === 'model' ? ((modelById(f.id) || {}).title || 'O arquivo da IA local') : (packById(f.id) ? 'Biblioteca ' + packById(f.id).title : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
         <button class="btn plain" data-use="${i}">Usar o arquivo que você já tem</button></div>`).join('');
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span>Biblioteca e IA local</span></button>` : ''}
@@ -260,7 +288,7 @@
       <section id="mapBox" class="s-map-panel" aria-label="Seu mapa local"></section>
       <h2 id="packH">Biblioteca</h2>
       <div class="s-opts" role="radiogroup" aria-labelledby="packH">${packCards}</div>
-      ${ai ? `<h2>IA local</h2>${ai}` : ''}
+      ${ai ? `<h2>IA local (opcional)</h2>${ai}` : ''}
       <section class="s-sum" id="sum" aria-live="polite"></section>
       <div class="s-go">
         <button class="btn big" id="start"></button>
@@ -269,7 +297,7 @@
       </div>
       <p class="s-note" id="haveNote" hidden></p>`;
     main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { choice.pack = r.value; shortfall = null; mapSection(); summary() });
-    const box = $('#aiBox'); if (box && !box.disabled) box.onchange = () => { choice.ai = box.checked; shortfall = null; summary() };
+    main.querySelectorAll('input[name=aiModel]').forEach(r => r.onchange = () => { choice.ai = !!r.value; if (r.value) choice.model = r.value; shortfall = null; summary() });
     main.querySelectorAll('[data-use]').forEach(b => b.onclick = () => useFile((S.found || [])[+b.dataset.use].path, b));
     $('#start').onclick = start;
     if ($('#toManage')) $('#toManage').onclick = () => go('manage');
@@ -325,8 +353,9 @@
       : `<p class="s-nothing">${c ? 'Isto é o que você tem agora.' : 'Escolha uma biblioteca.'}</p>${c ? '' : folderRow()}`;
     const b = $('#start');
     b.disabled = !need || !!short || mapMissing();
-    const newPack = c && packNeedsInstall(packById(choice.pack)), newAi = c && choice.ai && !c.model, newMap = c && mapAdds(), newAddresses = c && addressAdds();
-    const parts = [newPack && packById(choice.pack).title, newAi && 'a IA local', newMap && `o mapa ${newMap.title}`, newAddresses && !newMap && 'busca de endereços offline'].filter(Boolean);
+    const mSel = selectedModel();
+    const newPack = c && packNeedsInstall(packById(choice.pack)), newAi = c && choice.ai && mSel && !curModels().includes(mSel.id) && aiFits(mSel), newMap = c && mapAdds(), newAddresses = c && addressAdds();
+    const parts = [newPack && packById(choice.pack).title, newAi && (mSel.title || 'a IA local'), newMap && `o mapa ${newMap.title}`, newAddresses && !newMap && 'busca de endereços offline'].filter(Boolean);
     b.textContent = mapMissing() ? 'Escolha seu estado (UF) para continuar' : !c ? 'Baixar e instalar' : parts.length ? 'Obter ' + parts.join(parts.length > 2 ? ', ' : ' e ').replace(/, ([^,]*)$/, ' e $1') : 'Nada a adicionar';
     if (newPack && choice.pack === c.pack && !mapMissing()) b.textContent = 'Baixar e instalar atualização';
     const ch = $('#chFolder'); if (ch) ch.onclick = pickFolder;
@@ -363,7 +392,7 @@
     try {
       const r = await call('use', { path });
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'O arquivo da IA local será usado. Não é necessário baixá-lo.'; return }
+      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; if (r.model) choice.model = r.model; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'O arquivo da IA local será usado. Não é necessário baixá-lo.'; return }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
@@ -373,7 +402,9 @@
   async function start() {
     if (mapMissing()) { $('#mapSel')?.focus(); return }
     const b = $('#start'); b.disabled = true;
-    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
+    const mSel = selectedModel();
+    const wantAi = !!choice.ai && !!mSel && aiFits(mSel) && !curModels().includes(mSel.id);
+    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: wantAi, model: wantAi ? mSel.id : null, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
     if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'A configuração não pôde iniciar.'; return }
     S.job = r; go('job'); poll();
@@ -381,7 +412,12 @@
 
   /* ---- manage */
   function manageView() {
-    const c = cur(), p = packById(c.pack), m = model();
+    const c = cur(), p = packById(c.pack), curMs = curModels();
+    const installedM = c.model ? (modelById(c.model) || model()) : null;
+    const fittingMs = models().filter(x => aiFits(x));
+    const bestM = fittingMs[0] || model();
+    const m = installedM || bestM;
+    const altModels = c.model ? fittingMs.filter(x => x.id !== c.model && !curMs.includes(x.id)) : [];
     const libraryUpdate = p && p.available !== false && packNeedsInstall(p);
     const o = [].concat(c.old || [])[0], old = o ? (typeof o === 'string' ? { path: o } : o) : null;   // the engine lists the paths it moved aside
     const larger = packs().filter(x => (x.installed_bytes || 0) > ((p && p.installed_bytes) || 0));
@@ -390,8 +426,8 @@
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>Biblioteca ${esc(p ? p.title : c.pack || '')}</b><small>${libraryUpdate ? 'Edição atualizada disponível · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Atualizar ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Obter ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} em breve</span>` : '<span class="s-badge here">A maior</span>'}</div>
-        ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>IA local</b><small>${c.model ? 'Neste computador · ' + size(m.size) : aiFits() ? 'Não instalada · cerca de ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Não compatível com este computador.')}</small></span>
-          ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remover</button><button class="btn plain" id="rmNo">Manter</button></span>` : '<button class="btn plain" id="rmAi">Remover</button>') : aiFits() ? `<button class="btn" id="addAi">Adicionar</button>` : ''}</div>` : ''}
+        ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>IA local</b><small>${installedM ? `${installedM.title ? esc(installedM.title) + ' · ' : ''}Neste computador · ${size(installedM.size)}` : fittingMs.length ? `Não instalada · ${fittingMs.map(x => `${esc(x.title || 'IA local')} (${size(x.size)})`).join(' ou ')}` : esc((aiFitFor(m).why) || (S.hardware.ai && S.hardware.ai.why) || 'Não compatível com este computador.')}</small></span>
+          ${installedM ? `<span class="s-confirm">${altModels.length && !confirmRemove ? '<button class="btn plain" id="chgAi">Trocar modelo</button>' : ''}${!CAN.removeAi ? '' : confirmRemove ? '<button class="btn danger" id="rmYes">Remover</button><button class="btn plain" id="rmNo">Manter</button>' : '<button class="btn plain" id="rmAi">Remover</button>'}</span>` : fittingMs.length ? `<button class="btn" id="addAi">Adicionar</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
           return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Mapa detalhado: ' + esc(mapName(mNow)) : 'Mapa detalhado'}</b><small>${mNow ? (mNow === 'us' || mNow === 'br' ? 'Ruas locais e relevo em todo o país' : 'Ruas locais, construções e relevo') : 'Nenhum ainda. Adicione o do seu estado (UF).'}</small></span>
           <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Escolher estado (UF)' : 'Adicionar busca de endereços'}</button></div>` })() : ''}
@@ -400,10 +436,11 @@
       ${computer()}
       ${CAN.repair ? `<div class="s-go left"><button class="btn plain" id="repair">${ico('repair')}Verificar e reparar</button></div>` : ''}
       <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
-    if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
-    if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
-    if ($('#mapCh')) $('#mapCh').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; choice.map = null; go('choose'); const m = $('#mapSel'); if (m) m.focus() };
-    if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; go('choose') };
+    if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; if (c.model) choice.model = c.model; go('choose') };
+    if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; if (c.model) choice.model = c.model; go('choose') };
+    if ($('#mapCh')) $('#mapCh').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; if (c.model) choice.model = c.model; choice.map = null; go('choose'); const m = $('#mapSel'); if (m) m.focus() };
+    if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; choice.model = bestM ? bestM.id : null; go('choose') };
+    if ($('#chgAi')) $('#chgAi').onclick = () => { choice.pack = c.pack; choice.ai = true; choice.model = altModels[0].id; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
     if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', 'A IA local foi removida.');   // the engine stops the AI first
@@ -411,7 +448,7 @@
     if ($('#oldNo')) $('#oldNo').onclick = () => { confirmOld = false; manageView(); $('#rmOld').focus() };
     if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', 'A biblioteca antiga está sendo excluída.', { path: old.path });
     if ($('#repair')) $('#repair').onclick = async () => {
-      const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
+      const r = await call('start', { repair: true, ai: !!c.model, model: c.model || null }).catch(e => ({ error: e.message }));
       if (!r || r.error) { note = (r && r.error) || 'Não foi possível iniciar o reparo.'; manageView(); return }
       repair = { fixed: false }; S.job = r; go('job'); poll();
     };
@@ -468,7 +505,7 @@
       <ol class="s-steps" aria-label="Etapas">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.kind === 'model' ? 'IA local' : it.kind === 'map' ? `Mapa ${(mapById(it.id) || it).title || it.id}` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library|biblioteca/i.test(it.title) ? it.title : 'Biblioteca ' + it.title;
+  const itemTitle = it => it.kind === 'model' ? ((modelById(it.id) || {}).title ? 'IA local (' + modelById(it.id).title + ')' : 'IA local') : it.kind === 'map' ? `Mapa ${(mapById(it.id) || it).title || it.id}` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library|biblioteca/i.test(it.title) ? it.title : 'Biblioteca ' + it.title;
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);

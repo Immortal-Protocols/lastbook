@@ -260,13 +260,20 @@ class Setup:
                 revision = ''
         except (OSError, ValueError, AttributeError):
             pack, revision = None, ''
-        m = self.manifest.model()
-        model = None
-        if m:
+        installed_models = []
+        for m in self.manifest.current.get('models', []):
             p = self.current / 'models' / m['file']
             if p.is_file() and p.stat().st_size == m['size']:
-                model = m['id']
-        return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', [])}
+                installed_models.append(m['id'])
+        pref = None
+        llm = self.llm()
+        if llm and hasattr(llm, '_load'):
+            try:
+                pref = (llm._load() or {}).get('model_id')
+            except Exception:
+                pref = None
+        model = pref if pref in installed_models else (installed_models[0] if installed_models else None)
+        return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'models': installed_models, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', [])}
 
     def address_indexes(self):
         if not self.current:
@@ -300,9 +307,9 @@ class Setup:
         for p in self.manifest.current['packs']:
             for f in p['files']:
                 files[f['name']] = ('pack', p['id'], f['size'])
-        m = self.manifest.model()
-        if m:
-            files[m['file']] = ('model', m['id'], m['size'])
+        for m in self.manifest.current.get('models', []):
+            if m.get('available', True):
+                files[m['file']] = ('model', m['id'], m['size'])
         for kind, key in (('map', 'maps'), ('addresses', 'address_indexes')):
             for x in self.manifest.current.get(key, []):
                 for f in x['files']:
@@ -329,38 +336,38 @@ class Setup:
         return out
 
     def _model_path_here(self):
-        m = self.manifest.model()
-        if not m:
-            return None
         for f in self.found():
             if f['kind'] == 'model' and f.get('size_ok'):
-                return f['path']
-        return None
+                return f['path'], f['id']
+        return None, None
 
     def ai_fit(self, hw):
-        m = self.manifest.model()
-        if not m:
-            return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why': 'No local AI is offered for this version.'}
+        models = [m for m in self.manifest.current.get('models', []) if m.get('available', True)]
+        if not models:
+            return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why': 'No local AI is offered for this version.'}, {}
+        fits_by_id = {m['id']: hardware.estimate_ai(hw['ram_bytes'], hw['gpus'], hw['unified_memory'], m['memory_bytes']) for m in models}
+        path, mid = self._model_path_here()
         if self.ai_measure:
-            return self.ai_measure
-        path = self._model_path_here()
-        if path and not self.measuring and self.llm():
+            measured_id, res = self.ai_measure
+            fits_by_id[measured_id] = res
+        elif path and not self.measuring and self.llm():
             self.measuring = True
-            threading.Thread(target=self._measure, args=(path,), daemon=True, name='setup-measure').start()
-        return hardware.estimate_ai(hw['ram_bytes'], hw['gpus'], hw['unified_memory'], m['memory_bytes'])
+            threading.Thread(target=self._measure, args=(path, mid), daemon=True, name='setup-measure').start()
+        primary = next((fits_by_id[m['id']] for m in models if fits_by_id[m['id']]['fits']), fits_by_id[models[0]['id']])
+        return primary, fits_by_id
 
-    def _measure(self, path):
+    def _measure(self, path, mid=None):
         try:
             r = hardware.measure_ai(self.llm(), path)
             if r:
-                self.ai_measure = r
+                self.ai_measure = (mid or (self.manifest.model() or {}).get('id'), r)
         except Exception:
             traceback.print_exc()
 
     def hardware(self):
         extra = [self.default_parent] + ([self.current.parent] if self.current else [])
         hw = hardware.detect(extra)
-        hw['ai'] = self.ai_fit(hw)
+        hw['ai'], hw['ai_models'] = self.ai_fit(hw)
         return hw
 
     def recommend(self, hw):
@@ -368,11 +375,12 @@ class Setup:
         packs = [p for p in available if p['id'] == 'small']
         parent = self.current.parent if self.current else self.default_parent
         free, total = hardware.disk_of(parent)
-        model = self.manifest.model()
+        models = [m for m in self.manifest.current.get('models', []) if m.get('available', True)]
+        fits_by_id = hw.get('ai_models') or {}
         need = {p['id']: install.need_bytes(p, None) for p in available}
         map_need = {x['id']: _map_need(x, ()) for x in self.manifest.current.get('maps', []) if x['available']}
         if not packs:
-            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'why': 'No library is ready to download yet.'}
+            return {'pack': None, 'ai': False, 'ai_model': None, 'folder': str(parent), 'need_bytes': need, 'why': 'No library is ready to download yet.'}
         margin = _margin(total)
         choice, folder, elsewhere = None, parent, None
         for p in packs:        # the disk that holds the home folder (or the open library) whenever anything fits there
@@ -389,13 +397,16 @@ class Setup:
                     break
         if not choice:
             small = packs[-1]
-            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need,
+            return {'pack': None, 'ai': False, 'ai_model': None, 'folder': str(parent), 'need_bytes': need,
                     'why': f'The smallest library, {small["title"]}, needs {_gb(need[small["id"]])} free, and this computer has {_gb(free)} free.'}
         if elsewhere:
             home_free = free
             free, margin = elsewhere['free_bytes'], _margin(elsewhere['total_bytes'])
         left = free - need[choice['id']]
-        ai = bool(model and hw['ai']['fits'] and left >= model['size'] + margin)
+        fitting_mem = [m for m in models if (fits_by_id.get(m['id']) or hw['ai'])['fits']]
+        picked = next((m for m in fitting_mem if left >= m['size'] + margin), None)
+        ai = bool(picked)
+        model = models[0] if models else None
         if elsewhere:
             name = elsewhere.get('name') or Path(elsewhere['path']).name or elsewhere['path']
             why = (f'This computer’s own disk has {_gb(home_free)} free, not enough for any library, so {choice["title"]} goes on {name}. '
@@ -404,11 +415,11 @@ class Setup:
             why = 'Small is selected to get started. You can choose a larger library.'
         if self.default_why and not elsewhere and not self.current:
             why = self.default_why + ' ' + why
-        if model and hw['ai']['fits'] and not ai:
+        if fitting_mem and not ai:
             why += ' The local AI fits this computer’s memory, but not on the disk as well.'
-        elif model and not hw['ai']['fits']:
+        elif model and not fitting_mem:
             why += ' ' + hw['ai']['why']
-        return {'pack': choice['id'], 'ai': ai, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why}
+        return {'pack': choice['id'], 'ai': ai, 'ai_model': picked['id'] if picked else None, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why}
 
     def state(self):
         self.manifest.fetch_once()
@@ -429,7 +440,7 @@ class Setup:
             return p.parent if p.name == DATA_NAME else p
         return self.current.parent if self.current else self.default_parent
 
-    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None):
+    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, model_id=None):
         if repair:
             return self._start_repair(ai)
         with self.lock:
@@ -444,8 +455,8 @@ class Setup:
             same_revision = pack and (not pack.get('revision') or pack['revision'] == cur.get('content_revision', ''))
             if pack and self.mode == 'manage' and cur.get('pack') == pack['id'] and same_revision and not folder:
                 pack = None        # the same library again: only the AI is wanted
-            model = self.manifest.model() if ai else None
-            if ai and not model:
+            model = self.manifest.model(model_id) if (ai or model_id) else None
+            if (ai or model_id) and not model:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
             mp = self.manifest.map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
@@ -466,7 +477,8 @@ class Setup:
             parent = target.parent
             if addresses and addresses['id'] in cur.get('address_indexes', []) and target == self.current:
                 addresses = None
-            if model and cur.get('model') and target == self.current:
+            cur_models = cur.get('models') or ([cur['model']] if cur.get('model') else [])
+            if model and model['id'] in cur_models and target == self.current:
                 model = None       # already here, and an upgrade in place carries it over
             if mp and not pack and cur.get('map') == mp['id']:
                 mp = None          # this state's map is the one here already
@@ -551,7 +563,7 @@ class Setup:
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             if not pack or not pack['available']:
                 return {'error': 'Lastbook cannot tell which library this is, so it cannot repair it. Download a library instead.', 'code': 'unavailable'}
-            model = self.manifest.model() if (ai or cur['model']) else None
+            model = self.manifest.model(cur.get('model')) if (ai or cur.get('model')) else None
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model')}
@@ -679,9 +691,9 @@ class Setup:
             lib = p if install.is_library(p) else p / DATA_NAME
             if not install.is_library(lib):
                 known = {f['name'] for pk in self.manifest.current['packs'] for f in pk['files']}
-                model = self.manifest.model()
-                if model:
-                    known.add(model['file'])
+                for model in self.manifest.current.get('models', []):
+                    if model.get('file'):
+                        known.add(model['file'])
                 inside = sorted(c for c in p.iterdir() if c.name in known and c.is_file()) if p.is_dir() else []
                 if inside:          # the person explicitly chose this folder
                     return self.use(str(inside[0]))
@@ -725,14 +737,14 @@ class Setup:
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
                 return self.public_job() or {'job': None, 'noted': True}
-        m = self.manifest.model()
-        if m and name == m['file']:
-            if p.stat().st_size != m['size']:
-                return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'code': 'size'}
-            self.sources[name] = str(p)
-            if self.mode == 'manage':
-                return self.start(None, True, None, {name: str(p)}, explicit=True)
-            return self.public_job() or {'job': None, 'noted': True}
+        for m in self.manifest.current.get('models', []):
+            if name == m['file']:
+                if p.stat().st_size != m['size']:
+                    return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'code': 'size'}
+                self.sources[name] = str(p)
+                if self.mode == 'manage':
+                    return self.start(None, True, None, {name: str(p)}, explicit=True, model_id=m['id'])
+                return self.public_job() or {'job': None, 'noted': True, 'model': m['id']}
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
 
     def finish(self):
@@ -765,14 +777,14 @@ class Setup:
 
     def remove_ai(self):
         """Manage mode: the model file goes from the open library. The library itself is not touched."""
-        m = self.manifest.model()
-        if self.mode != 'manage' or not self.current or not m:
+        models = self.manifest.current.get('models', [])
+        if self.mode != 'manage' or not self.current or not models:
             return {'error': 'There is no local AI in this library to remove.', 'code': 'nothing'}
         with self.lock:
             if self.job and self.job['state'] in ACTIVE:
                 return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
-        p = self.current / 'models' / m['file']
-        if not p.is_file():
+        present = [self.current / 'models' / m['file'] for m in models if (self.current / 'models' / m['file']).is_file()]
+        if not present:
             return {'error': 'There is no local AI in this library to remove.', 'code': 'nothing'}
         llm = self.llm()
         local = getattr(llm, 'LOCAL', None) if llm else None
@@ -781,14 +793,17 @@ class Setup:
                 local.stop('removed')
         except Exception:
             traceback.print_exc()
-        size = p.stat().st_size
-        try:
-            p.unlink()
-        except OSError as e:
-            return {'error': f'Lastbook could not remove the model file ({type(e).__name__}). Quit anything using it, then try again.', 'code': 'folder'}
+        freed = 0
+        for p in present:
+            size = p.stat().st_size
+            try:
+                p.unlink()
+            except OSError as e:
+                return {'error': f'Lastbook could not remove the model file ({type(e).__name__}). Quit anything using it, then try again.', 'code': 'folder'}
+            freed += size
         if local is not None and getattr(local, '_started', False):
             threading.Thread(target=local.discover, daemon=True).start()
-        return {'ok': True, 'freed_bytes': size}
+        return {'ok': True, 'freed_bytes': freed}
 
     def delete_old(self, path):
         s = self._settings()
@@ -1229,7 +1244,15 @@ def _default():
 ROUTES = {
     ('GET', 'state'): lambda s, b: s.state(),
     ('GET', 'job'): lambda s, b: s.public_job(),
-    ('POST', 'start'): lambda s, b: s.start(b.get('pack'), bool(b.get('ai')), b.get('folder'), repair=bool(b.get('repair')), map_id=b.get('map') or None, address_id=b.get('address_id') or None),
+    ('POST', 'start'): lambda s, b: s.start(
+        b.get('pack'),
+        bool(b.get('ai') or b.get('model')),
+        b.get('folder'),
+        repair=bool(b.get('repair')),
+        map_id=b.get('map') or None,
+        address_id=b.get('address_id') or None,
+        model_id=b.get('model') or (b.get('ai') if isinstance(b.get('ai'), str) else None),
+    ),
     ('POST', 'pause'): lambda s, b: s.pause(),
     ('POST', 'resume'): lambda s, b: s.resume(),
     ('POST', 'cancel'): lambda s, b: s.cancel(),

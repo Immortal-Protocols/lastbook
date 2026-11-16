@@ -30,12 +30,21 @@ BASE = 'https://downloads.lastbook.org'     # live since 12 Nov 2026; packs and 
 SMALL_SUMMARY = 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'
 
 
-def model_entry(memory_bytes):
-    rev = re.search(r'revision ([0-9a-f]{40})', llm_local.SOURCE).group(1)
-    repo = llm_local.SOURCE.split(',')[0].strip()
-    return {'id': 'gemma-4-26b-a4b', 'title': 'Gemma 4 26B A4B', 'file': llm_local.FILE,
-            'url': f'https://huggingface.co/{repo}/resolve/{rev}/{llm_local.FILE}?download=true',
-            'size': llm_local.SIZE, 'sha256': llm_local.SHA256, 'memory_bytes': int(memory_bytes), 'available': True}
+def model_entry(memory_bytes, spec=None):
+    spec = spec or llm_local.MODELS[0]
+    rev = re.search(r'revision ([0-9a-f]{40})', spec['source']).group(1)
+    repo = spec['source'].split(',')[0].strip()
+    return {'id': spec['id'], 'title': spec.get('title') or spec['name'], 'file': spec['file'],
+            'url': f'https://huggingface.co/{repo}/resolve/{rev}/{spec["file"]}?download=true',
+            'size': spec['size'], 'sha256': spec['sha256'], 'memory_bytes': int(memory_bytes), 'available': True}
+
+
+def model_entries(measured_26b):
+    out = []
+    for i, spec in enumerate(llm_local.MODELS):
+        mem = measured_26b if i == 0 else spec['memory_bytes']
+        out.append(model_entry(mem, spec))
+    return out
 
 
 def measure(gguf):
@@ -86,13 +95,13 @@ def main():
         sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),
            'address_indexes': list(src.get('address_indexes') or []),
-           'models': [model_entry(measure(a.measure) if a.measure else MEASURED_MEMORY)]}
+           'models': model_entries(measure(a.measure) if a.measure else MEASURED_MEMORY)}
     if manifest.validate(out) is None:
         bad = [f.get('url') for p in packs for f in p.get('files', []) if not download.url_allowed(f.get('url'))]
         sys.exit('the manifest does not pass engine/setup/manifest.validate' + (f'; addresses not allowed: {bad}' if bad else ''))
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(out, indent=1) + '\n', encoding='utf-8')
-    print(f'{a.out}: {len(out["maps"])} maps, {len(packs)} packs ({", ".join(p["id"] + ("" if p.get("available") else " later") for p in packs)}), 1 model')
+    print(f'{a.out}: {len(out["maps"])} maps, {len(packs)} packs ({", ".join(p["id"] + ("" if p.get("available") else " later") for p in packs)}), {len(out["models"])} models')
 
 
 if __name__ == '__main__':

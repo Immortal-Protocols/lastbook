@@ -26,6 +26,40 @@ SIZE = 16_947_541_728
 SHA256 = 'f2c28b3dc4776931ac6f879e11f203dec637ea0f14267a86ec8f6165f63f293f'
 NAME = 'Gemma 4 26B A4B (Unsloth 4-bit, UD-Q4_K_M)'
 SOURCE = 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a94ffccb261841'
+
+MODELS = [
+    {
+        'id': 'gemma-4-26b-a4b',
+        'title': 'Gemma 4 26B A4B (Completo)',
+        'name': NAME,
+        'file': FILE,
+        'size': SIZE,
+        'sha256': SHA256,
+        'source': SOURCE,
+        'memory_bytes': 18_160_150_464 + 867_233_792,
+        'summary': 'Maior precisão e capacidade de síntese. Recomendado para computadores com 24 GB ou mais de memória.',
+    },
+    {
+        'id': 'gemma-4-e4b',
+        'title': 'Gemma 4 E4B (Compacto 4B)',
+        'name': 'Gemma 4 E4B (Unsloth 4-bit, Q4_K_M)',
+        'file': 'gemma-4-E4B-it-Q4_K_M.gguf',
+        'size': 4_977_171_584,
+        'sha256': '85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87',
+        'source': 'unsloth/gemma-4-E4B-it-GGUF, revision bfc15c382204943c3a8fff0c750b94ae2364d7a3',
+        'memory_bytes': 6_500_000_000,
+        'summary': 'Leve e rápido (~5 GB), com ótimo domínio de português. Ideal para computadores de 12 GB a 16 GB de memória.',
+    },
+]
+
+
+def model_spec(file_or_id=None):
+    if not file_or_id:
+        return MODELS[0]
+    for spec in MODELS:
+        if file_or_id in (spec['id'], spec['file']):
+            return spec
+    return None
 CTX = 16384               # tokens the model holds: the system prompt, sources, the conversation and the answer
 RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook beyond what llama.cpp measures for the model
 IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds without a question before the model is stopped, to give its memory back
@@ -81,11 +115,13 @@ def _stamp(p):
 
 def mark_checked(path, sha256):
     """For setup: it has just checked this file's SHA-256 while downloading it, so the AI need not read it again.
-    sha256 is the digest setup computed; it must be the published one, or nothing is recorded."""
+    sha256 is the digest setup computed; it must match one of the published models, or nothing is recorded."""
     p = Path(path)
-    if p.name != FILE or p.stat().st_size != SIZE or str(sha256).lower() != SHA256:
+    spec = model_spec(p.name)
+    if not spec or p.stat().st_size != spec['size'] or str(sha256).lower() != spec['sha256']:
         raise ValueError('not the model file')
     LOCAL.saved['checked'] = _stamp(p)
+    LOCAL.saved['model_id'] = spec['id']
     _save(LOCAL.saved)
 
 
@@ -108,6 +144,7 @@ class Local:
         self.lock = threading.RLock()
         self.gen_lock = threading.Lock()       # one answer at a time: the model holds one conversation
         self.state, self.pct, self.message = 'absent', None, ''
+        self.spec = MODELS[0]
         self.path, self.fit, self.ready_info = None, None, None
         self.proc, self.events, self.last_used = None, None, 0
         self.next_id = 0
@@ -120,7 +157,9 @@ class Local:
     def status(self):
         with self.lock:
             fit = self.fit or {}
-            return {'name': NAME, 'file': FILE, 'size': SIZE, 'state': self.state, 'pct': self.pct, 'message': self.message,
+            spec = self.spec or MODELS[0]
+            return {'name': spec['name'], 'title': spec['title'], 'model_id': spec['id'], 'file': spec['file'], 'size': spec['size'],
+                    'state': self.state, 'pct': self.pct, 'message': self.message,
                     'found_at': self.path and _folder_name(self.path), 'enabled': self.enabled(), 'runtime': bool(self.runner),
                     'needs_bytes': fit.get('needs'), 'ram_total': fit.get('ram_total'), 'placement': fit.get('placement'),
                     'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]]}
@@ -154,42 +193,56 @@ class Local:
                 self.state, self.message = 'error', 'Esta cópia do Último Livro não tem o runtime da IA local.'
                 return
             self.state, self.pct, self.message = 'absent', None, ''
-        found, wrong = None, None
-        for folder in places():
-            p = folder / FILE
-            try:
-                if not p.is_file():
+        pref_id = self.saved.get('model_id')
+        pref = model_spec(pref_id)
+        candidates = ([pref] if pref else []) + [m for m in MODELS if not pref or m['id'] != pref['id']]
+        found, wrong, spec = None, None, self.spec or MODELS[0]
+        for cand in candidates:
+            for folder in places():
+                p = folder / cand['file']
+                try:
+                    if not p.is_file():
+                        continue
+                    size = p.stat().st_size
+                except OSError:
                     continue
-                size = p.stat().st_size
-            except OSError:
-                continue
-            if size == SIZE:
-                found = p
+                if size == cand['size']:
+                    found, spec = p, cand
+                    break
+                wrong = wrong or (p, size, cand)
+            if found:
                 break
-            wrong = wrong or (p, size)
         if not found:
             with self.lock:
                 if wrong:
-                    p, size = wrong
-                    done = size < SIZE
+                    p, size, cand = wrong
+                    self.spec = cand
+                    done = size < cand['size']
                     self.state = 'wrong'
-                    self.message = (f'O arquivo em {_folder_name(p)} tem {_gb(size)} de {_gb(SIZE)}. ' +
+                    self.message = (f'O arquivo em {_folder_name(p)} tem {_gb(size)} de {_gb(cand["size"])}. ' +
                                     ('O download pode não ter terminado.' if done else 'Não é o arquivo que o Último Livro espera.'))
                 else:
                     self.state = 'absent'
             return
         stamp = _stamp(found)
         if self.saved.get('checked') != stamp:
-            if not self._check(found):
+            if not self._check(found, spec):
                 return
             self.saved['checked'] = stamp
+            self.saved['model_id'] = spec['id']
+            _save(self.saved)
+        elif self.saved.get('model_id') != spec['id']:
+            self.saved['model_id'] = spec['id']
             _save(self.saved)
         with self.lock:
+            self.spec = spec
             self.path = found
         self._measure()
 
-    def _check(self, p):
+    def _check(self, p, spec=None):
+        spec = spec or self.spec or MODELS[0]
         with self.lock:
+            self.spec = spec
             self.state, self.pct, self.message = 'checking', 0, ''
         h = hashlib.sha256()
         done = 0
@@ -198,12 +251,12 @@ class Local:
                 while chunk := f.read(8 * 2**20):
                     h.update(chunk)
                     done += len(chunk)
-                    self.pct = int(done * 100 / SIZE)
+                    self.pct = int(done * 100 / spec['size'])
         except OSError as e:
             with self.lock:
                 self.state, self.pct, self.message = 'wrong', None, f'O Último Livro não conseguiu ler o arquivo do modelo ({type(e).__name__}).'
             return False
-        if h.hexdigest() != SHA256:
+        if h.hexdigest() != spec['sha256']:
             with self.lock:
                 self.state, self.pct = 'wrong', None
                 self.message = f'O arquivo em {_folder_name(p)} tem o tamanho certo, mas conteúdo diferente. Baixe novamente.'
@@ -226,7 +279,7 @@ class Local:
                 if out is not None:
                     print('local AI: measure output:', out.stdout[-2000:], out.stderr[-3000:], flush=True)
                 return
-            self.fit = judge(fit)
+            self.fit = judge(fit, (self.spec or MODELS[0])['size'])
             print('local AI: fit', json.dumps(self.fit), flush=True)
             if self.fit['fits']:
                 self.state, self.message = 'stopped', ''
@@ -408,7 +461,7 @@ class Local:
 LOCAL = Local()
 
 
-def judge(fit):
+def judge(fit, model_size=None):
     """Does the whole of it fit this computer? llama.cpp's fit places the model on the graphics memory it finds and counts
     the rest as the computer's own memory, which it takes to be unlimited. So the computer's own memory is checked here:
     on a Mac the two are one memory; on Windows the part placed on the graphics card is not in it."""
@@ -418,7 +471,7 @@ def judge(fit):
     unified = sys.platform == 'darwin'
     # Windows: weights left in the mapped file (not on a graphics card, not repacked) are outside llama.cpp's count, yet in use
     # while answering. Measured with no GPU: the fit said 9.6 GB, the program held 16.5 to 26 GB.
-    mapped = 0 if unified else max(0, SIZE - sum(m.get('model') or 0 for m in fit.get('memory') or []))
+    mapped = 0 if unified else max(0, (model_size or SIZE) - sum(m.get('model') or 0 for m in fit.get('memory') or []))
     in_ram = dev + host if unified else host + mapped
     needs = in_ram + RESERVE
     placement = [{'device': m.get('desc') or m.get('name'), 'bytes': m['model'] + m['context'] + m['compute'], 'free': m.get('free')} for m in devices]

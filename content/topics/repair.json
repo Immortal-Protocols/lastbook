@@ -1,9 +1,9 @@
 {
  "id": "repair",
  "mode": "learn",
- "title": "Repair and build",
- "short": "Hand tools, sharpening, home fixes, woodworking, engines, welding, simple structures",
- "intro": "A step-by-step learning track for fixing and making things with a modest home or garage workshop. It starts with workshop safety and hand tools, then moves through sharpening, simple home and plumbing repairs, woodworking, small engines, metalwork and building simple structures from plans.",
+ "title": "Consertar e construir",
+ "short": "Ferramentas manuais, afiação, reparos domésticos, marcenaria, pequenos motores, solda e estruturas simples",
+ "intro": "Um roteiro passo a passo para consertar e construir coisas com uma oficina simples em casa. Começa pela segurança na oficina e ferramentas manuais, passando por afiação, reparos hidráulicos básicos, marcenaria, pequenos motores a gasolina, metalurgia/soldagem e construção de estruturas simples a partir de plantas. Atenção: manuais norte-americanos usam medidas em polegadas/pés e roscas NPT; no Brasil use métricas (mm/cm), roscas BSP e normas ABNT (NBR 5410, NBR 5626).",
  "keywords": [
   "repair",
   "fix",
@@ -34,204 +34,230 @@
   "cold frame",
   "plans",
   "safety",
-  "PPE"
+  "PPE",
+  "conserto",
+  "consertar",
+  "reparo",
+  "ferramentas",
+  "oficina",
+  "afiar",
+  "formao",
+  "serrote",
+  "machado",
+  "hidraulica",
+  "hidráulica",
+  "torneira",
+  "vaso sanitario",
+  "marcenaria",
+  "carpintaria",
+  "bancada",
+  "motor",
+  "rocadeira",
+  "gerador",
+  "carburador",
+  "solda",
+  "soldagem",
+  "construir",
+  "composteira",
+  "estufa",
+  "epi"
  ],
  "choices": [
   {
    "id": "first-tools",
-   "label": "Which tools should I learn first, and how?",
-   "hint": "Starting a basic tool kit",
+   "label": "Quais ferramentas aprender primeiro e como usar?",
+   "hint": "Montar um jogo básico de ferramentas",
    "read": [
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 13,
-     "label": "Guide to choosing and using common hand tools",
-     "note": "Introduction to the Army/Navy TM 9-243 manual, which has a chapter per tool type with types, use, care and safety. Historical manual."
+     "label": "Guia para escolher e usar ferramentas manuais comuns",
+     "note": "Introdução ao manual Army/Navy TM 9-243, com capítulos por tipo de ferramenta cobrindo uso, conservação e segurança (manual histórico)."
     },
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 16,
-     "label": "Good tool habits",
-     "note": "Keeping tools stored, complete and in good condition, and not using damaged tools."
+     "label": "Bons hábitos com ferramentas",
+     "note": "Manter ferramentas limpas, completas e bem guardadas, e nunca usar ferramentas trincadas ou folgadas."
     },
     {
      "doc": "mfg2-7e54a5d6ccd6e584",
      "page": 11,
-     "label": "Safe use of hand tools outdoors",
-     "note": "US Forest Service page on sharp tools, protective gear, inspecting handles and carrying tools safely."
+     "label": "Uso seguro de ferramentas de corte ao ar livre",
+     "note": "Serviço Florestal dos EUA: inspeção de cabos, EPIs, lâminas afiadas e transporte seguro."
     }
    ]
   },
   {
    "id": "dull",
-   "label": "My blades and edge tools are dull",
-   "hint": "Chisels, axes, saws, knives, hoes",
+   "label": "Minhas lâminas e ferramentas perderam o fio",
+   "hint": "Formões, machados, serrotes, facas, enxadas",
    "read": [
     {
      "doc": "mfg2-7e54a5d6ccd6e584",
      "page": 49,
-     "label": "How sharpening and honing work",
-     "note": "Forest Service page on filing, the wire edge and honing, with a reminder to wear gloves."
+     "label": "Como funciona a afiação com lima e pedra",
+     "note": "Uso de lima, eliminação de rebarba e assentamento do fio com pedra, com aviso para usar luvas de proteção."
     },
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 189,
-     "label": "Grinders and sharpening stones",
-     "note": "TM 9-243 chapter on types of grinders and stones, how to use them and their care."
+     "label": "Esmeris e pedras de afiar",
+     "note": "Capítulo do manual TM 9-243 sobre tipos de rebolo e pedras, uso correto e manutenção."
     },
     {
      "doc": "video-GN4yr7vp4I4",
-     "label": "Video: preparing and sharpening a chisel",
-     "note": "Paul Sellers (furniture maker) demonstrates getting a new chisel truly sharp; captions available."
+     "label": "Vídeo: preparando e afiando um formão (Paul Sellers, em inglês)",
+     "note": "Demonstração de marceneiro (com legendas) deixando um formão novo realmente afiado."
     }
    ]
   },
   {
    "id": "plumbing",
-   "label": "A tap drips or the toilet keeps running",
-   "hint": "Basic plumbing fixes",
+   "label": "Uma torneira está pingando ou a caixa acoplada não para de encher",
+   "hint": "Reparos hidráulicos básicos",
    "read": [
     {
      "doc": "eng-cc45c31a68f597a7",
      "page": 354,
-     "label": "Repairing a standard washer faucet",
-     "note": "US Navy Utilitiesman (2014) steps for shutting off water, replacing the washer and checking the valve seat."
+     "label": "Conserto de torneira comum com vedante (carrapeta)",
+     "note": "Manual Utilitiesman (2014): fechar registro, substituir borracha vedante e checar a sede da válvula."
     },
     {
      "doc": "eng-cc45c31a68f597a7",
      "page": 350,
-     "label": "Fixing a toilet tank that keeps running",
-     "note": "Explains common faults in the fill valve, float and stopper and what to check first."
+     "label": "Consertar caixa de descarga vazando continuamente",
+     "note": "Explica falhas comuns na boia, válvula de enchimento e obturador (válvula de saída)."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 177,
-     "label": "Find and label your gas shutoff",
-     "note": "CERT manual page on gas shutoff valves, automatic earthquake shutoffs and who may turn gas back on."
+     "label": "Localizar e etiquetar o registro de gás",
+     "note": "Manual CERT sobre registro de gás e por que somente profissional qualificado deve religar gás canalizado."
     }
    ]
   },
   {
    "id": "engine",
-   "label": "My mower, tiller or generator won't start",
-   "hint": "Small gasoline engines",
+   "label": "Meu cortador de grama, roçadeira ou gerador não liga",
+   "hint": "Pequenos motores a gasolina 4 tempos / 2 tempos",
    "read": [
     {
      "doc": "equipment-be25c3a8d8c92c7d",
      "page": 15,
-     "label": "Engine will not start: causes and fixes",
-     "note": "Honda GX engine manual troubleshooting table: fuel valve, choke, switch, oil level, fuel and stale gasoline."
+     "label": "Motor não pega: causas e soluções",
+     "note": "Tabela de falhas Honda GX: registro de combustível, afogador, interruptor, nível de óleo e gasolina velha (no Brasil, gasolina com etanol vence ainda mais rápido)."
     },
     {
      "doc": "video-Pb4he2F4ZEw",
-     "label": "Video: hidden carburetor fuel filter screen",
-     "note": "Repair channel (donyboy73) showing a small fuel screen inside some small-engine carburetors; captions available."
+     "label": "Vídeo: telinha oculta de filtro no carburador (em inglês)",
+     "note": "Canal de manutenção (legendas) mostrando microtela entupida dentro de carburadores pequenos."
     },
     {
      "doc": "video-yBU86SYFjQE",
-     "label": "Video: cleaning a lawn mower carburetor",
-     "note": "Repair channel demonstration on a Briggs & Stratton engine that will not stay running after storage; captions available."
+     "label": "Vídeo: limpeza de carburador após tempo parado (em inglês)",
+     "note": "Demonstração em motor Briggs & Stratton que morre após ficar guardado (legendas)."
     }
    ]
   },
   {
    "id": "weld",
-   "label": "I want to learn welding",
-   "hint": "Stick or MIG welding, metal repairs",
+   "label": "Quero aprender soldagem elétrica",
+   "hint": "Eletrodo revestido ou MIG, reparos em aço",
    "read": [
     {
      "doc": "eng-7101623c5f0a1152",
      "page": 70,
-     "label": "Welding safety: eye and face protection",
-     "note": "Navy Steelworker manual section on why welding mishaps happen and the helmets and goggles used. Historical manual."
+     "label": "Segurança em soldagem: proteção ocular e facial",
+     "note": "Manual histórico Navy Steelworker sobre riscos de arco elétrico, máscaras e óculos de solda."
     },
     {
      "doc": "manual-5ade034087acdc5b",
      "page": 6,
-     "label": "Manufacturer's welding hazard list",
-     "note": "Miller welder manual safety pages on fumes, fire, containers that held fuel, clothing and confined spaces."
+     "label": "Lista de riscos do fabricante de máquinas de solda",
+     "note": "Manual Miller sobre fumos tóxicos, incêndio, recipientes que contiveram combustível, roupas adequadas e espaços confinados."
     },
     {
      "doc": "video-4MKuUICV6-c",
-     "label": "Video: stick welding for beginners",
-     "note": "Weld.com introduction to shielded metal arc (stick) welding and electrodes; captions available."
+     "label": "Vídeo: solda com eletrodo revestido para iniciantes (em inglês)",
+     "note": "Introdução prática à solda SMAW (eletrodo) e escolha de eletrodos (legendas)."
     }
    ]
   },
   {
    "id": "build",
-   "label": "I want to build a bench, bin or small structure",
-   "hint": "Workbench, compost bins, cold frame",
+   "label": "Quero construir uma bancada, composteira ou pequena estrutura",
+   "hint": "Bancada de marceneiro, composteira em três compartimentos, estufa fria",
    "read": [
     {
      "doc": "eng-f547be2abcd61da0",
      "page": 1,
-     "label": "Plan: carpenter's workbench (1952)",
-     "note": "LSU AgCenter/USDA drawing of an 8-foot carpenter's bench with drawer; image-only, open the page to view."
+     "label": "Projeto: bancada de marceneiro (1952)",
+     "note": "Desenho técnico de bancada de ~2,4 m (8 pés) com gaveta (somente imagem; medidas originais em polegadas/pés)."
     },
     {
      "doc": "eng-9415fc58b55ed367",
      "page": 1,
-     "label": "Plan: three-bin compost structure (1990)",
-     "note": "LSU AgCenter drawing with materials and bin sizes for a three-bin compost pile; image-only."
+     "label": "Projeto: composteira de três baias (1990)",
+     "note": "Planta com dimensões e materiais para estrutura de compostagem em três compartimentos (somente imagem)."
     },
     {
      "doc": "eng-1119bce64d71b642",
      "page": 1,
-     "label": "Plan: plastic-covered cold frame and greenhouse",
-     "note": "LSU AgCenter drawing of a small cold frame unit and greenhouse framing; image-only."
+     "label": "Projeto: estufa pequena coberta com plástico",
+     "note": "Desenho de pequena estrutura/viveiro coberta com filme plástico (somente imagem)."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "If you are not trained to lock out and tag out a machine, do not clear jams or debris inside it yourself; get a trained person.",
+   "text": "Se você não tem treinamento em bloqueio e etiquetagem (LOTO) de máquinas, não tente desobstruir ou limpar partes internas por conta própria; chame pessoa habilitada.",
    "doc": "med-187cde78ec741eb1",
    "page": 2
   },
   {
-   "text": "Most machine injuries are very serious and should be treated by a health worker right away.",
+   "text": "Acidentes com máquinas geralmente causam lesões graves e devem ser atendidos imediatamente por serviço médico (SAMU 192 / hospital).",
    "doc": "med-187cde78ec741eb1",
    "page": 13
   },
   {
-   "text": "Engine exhaust contains poisonous carbon monoxide: never run an engine indoors or without good ventilation.",
+   "text": "O escapamento de motores libera monóxido de carbono venenoso: nunca ligue motores em locais fechados ou sem ventilação abundante.",
    "doc": "equipment-be25c3a8d8c92c7d",
    "page": 2
   },
   {
-   "text": "Gasoline is highly flammable and explosive; stop the engine and let it cool before handling fuel.",
+   "text": "Gasolina e etanol são altamente inflamáveis e explosivos; desligue o motor e espere esfriar completamente antes de reabastecer.",
    "doc": "equipment-be25c3a8d8c92c7d",
    "page": 8
   },
   {
-   "text": "The manufacturer says only qualified persons should install, operate, maintain and repair welding equipment.",
+   "text": "Fabricantes determinam que apenas pessoas qualificadas instalem, operem, mantenham e consertem equipamentos de soldagem elétrica.",
    "doc": "manual-5ade034087acdc5b",
    "page": 5
   },
   {
-   "text": "Do not weld on containers that held combustibles, or closed tanks, drums or pipes, unless properly prepared to standards.",
+   "text": "Nunca solde nem corte tambores, tanques ou canos fechados que contiveram combustíveis ou inflamáveis — risco extremo de explosão.",
    "doc": "manual-5ade034087acdc5b",
    "page": 6
   },
   {
-   "text": "Only a licensed technician should turn natural gas back on after it has been shut off.",
+   "text": "Apenas técnico autorizado ou a concessionária deve religar gás encanado após fechamento por emergência.",
    "doc": "ed5bac0a81b009",
    "page": 177
   },
   {
-   "text": "Installing flexible water and gas connections on a water heater: a licensed plumber is recommended and may be required.",
+   "text": "Instalação de ligações flexíveis de água quente e gás deve ser feita por instalador qualificado conforme normas técnicas (ABNT NBR).",
    "doc": "5cd0b4e41cc479",
    "page": 33
   },
   {
-   "text": "These farm plans are conceptual, may not meet current codes, and do not replace competent design help.",
+   "text": "Os projetos rurais históricos são apenas conceituais, podem não atender às normas técnicas atuais nem substituem projeto de engenheiro ou arquiteto.",
    "doc": "eng-9415fc58b55ed367",
    "page": 2
   },
   {
-   "text": "You need training to use a crosscut saw; felling standing trees is more advanced and hazardous work.",
+   "text": "Operar serras de traçar ou derrubar árvores em pé exige treinamento específico devido ao risco elevado de acidente fatal.",
    "doc": "mfg2-7e54a5d6ccd6e584",
    "page": 11
   }
@@ -240,248 +266,248 @@
   {
    "doc": "med-4453675fb0dcc5d9",
    "page": 3,
-   "label": "Protect your eyes",
-   "note": "Hesperian Workers' Guide page on safety glasses, goggles and face shields and rinsing eyes after chemical or dust exposure."
+   "label": "Proteger os olhos na oficina",
+   "note": "Guia Hesperian para Trabalhadores sobre óculos de segurança, viseiras e lavagem ocular após poeira ou respingo químico."
   },
   {
    "doc": "med-683f49e28486c712",
    "page": 1,
-   "label": "Dust from sanding, grinding and cutting",
-   "note": "Why workshop dust is harmful, how it travels home on clothes, and signs there is too much dust."
+   "label": "Poeira de lixamento, esmerilhamento e corte",
+   "note": "Por que poeira de oficina prejudica os pulmões, como vai para casa na roupa e necessidade de máscara PFF2/N95."
   },
   {
    "doc": "eng-cea09c7220cd4bd0",
    "page": 17,
-   "label": "Power tool safety rules",
-   "note": "TM 9-243 list of rules for inspecting, plugging in, using and clearing power tools and cords."
+   "label": "Regras de segurança para ferramentas elétricas",
+   "note": "TM 9-243: inspeção de cabos, aterramento/tensão correta (127 V / 220 V), desligar da tomada antes de trocar lâminas."
   },
   {
    "doc": "5cd0b4e41cc479",
    "page": 32,
-   "label": "Strap your water heater",
-   "note": "FEMA page explaining why unbraced water heaters cause fires and leaks in earthquakes and that strapping kits exist."
+   "label": "Fixar aquecedores e reservatórios pesados",
+   "note": "Evitar tombamento, incêndio e ruptura de canos."
   },
   {
    "doc": "equipment-be25c3a8d8c92c7d",
    "page": 7,
-   "label": "Small engine maintenance schedule",
-   "note": "Honda GX engine manual table of oil, air cleaner and other checks, plus maintenance safety notes."
+   "label": "Cronograma de manutenção de pequenos motores",
+   "note": "Manual Honda GX: troca de óleo, filtro de ar e inspeções periódicas."
   },
   {
    "doc": "mfg2-cb2a3ad19507d419",
-   "label": "Maintaining an ax",
-   "note": "Forest Service chapter on caring for an ax head and handle, honing and cleaning after use."
+   "label": "Conservação de machados",
+   "note": "Cuidados com cabeça, cunha do cabo, afiação e proteção contra ferrugem."
   }
  ],
  "learn": [
   {
    "doc": "eng-cea09c7220cd4bd0",
    "label": "Tools and Their Uses (TM 9-243)",
-   "note": "Military manual covering measuring tools, hammers, wrenches, saws, files, planes, pipe tools and more; historical, check modern safety practice."
+   "note": "Manual militar abrangendo instrumentos de medição, martelos, chaves, serras, limas, plainas e chaves de cano (histórico; confira normas atuais de EPI)."
   },
   {
    "doc": "mfg2-7e54a5d6ccd6e584",
-   "label": "Handtools for Trail Work (US Forest Service, 2005)",
-   "note": "Saws, axes, grubbing, digging and brushing tools, sharpening and replacing handles."
+   "label": "Ferramentas Manuais para Manejo em Trilhas (US Forest Service, 2005)",
+   "note": "Serrotes, machados, ferramentas de escavação, afiação e troca de cabos."
   },
   {
    "doc": "eng-cc45c31a68f597a7",
-   "label": "Utilitiesman Basic: pumps, compressors and plumbing (US Navy, 2014)",
-   "note": "Large training manual on pipe, fittings, fixtures, water heaters and drains; written for military trainees."
+   "label": "Utilitiesman Basic: bombas, compressores e hidráulica (US Navy, 2014)",
+   "note": "Manual extenso de tubulações, conexões, louças e esgotos (padrão americano em polegadas; no Brasil usam-se medidas métricas e roscas BSP)."
   },
   {
    "doc": "eng-42d38799b35ced71",
    "label": "Wood Handbook (USDA Forest Service, 2021)",
-   "note": "Reference on wood properties, drying, fasteners and decay; advanced."
+   "note": "Referência avançada sobre propriedades da madeira, secagem, fixadores e durabilidade."
   },
   {
    "doc": "eng-7101623c5f0a1152",
-   "label": "Steelworker Volume 1: Metals and Welding (US Navy)",
-   "note": "Metals, heat treatment, cutting, gas and arc welding and safety; historical, check modern safety practice."
+   "label": "Steelworker Volume 1: Metais e Soldagem (US Navy)",
+   "note": "Metais, tratamento térmico, corte e soldagem a gás/arco (histórico)."
   },
   {
    "doc": "eng-bf541a1af196373d",
    "label": "Machinery Repairman (US Navy)",
-   "note": "Toolrooms, measuring, layout and benchwork, then machine tools; later chapters are advanced. Historical."
+   "note": "Metrologia, bancada e usinagem básica a avançada (histórico)."
   },
   {
    "doc": "video-syLzcxqLLIA",
-   "label": "Video: exploring hand tool woodworking",
-   "note": "Paul Sellers talks through working wood mainly with hand tools; about 30 minutes, captions available."
+   "label": "Vídeo: marcenaria com ferramentas manuais (Paul Sellers, em inglês)",
+   "note": "Aula de ~30 min (legendas) demonstrando trabalho em madeira sem máquinas pesadas."
   },
   {
    "doc": "video-DEDHR-Nst6E",
-   "label": "Video: MIG welding basics (Miller)",
-   "note": "Manufacturer video on welding in flat, horizontal, vertical and overhead positions, practising on scrap and safety gear."
+   "label": "Vídeo: noções de solda MIG (Miller, em inglês)",
+   "note": "Posições de soldagem, treino em sucata e EPIs."
   },
   {
    "doc": "eng-9f4dc094f379d06b",
-   "label": "Rural Structures in the Tropics (FAO)",
-   "note": "Design and construction of simple rural buildings and materials; written for tropical developing regions."
+   "label": "Construções Rurais nos Trópicos (FAO)",
+   "note": "Projeto e materiais de construções rurais simples adaptados a climas tropicais."
   }
  ],
  "route": [
   {
-   "title": "Step 1: Set up a safe workspace and protective gear",
-   "goal": "Learn why machines and tools injure people and which protective gear you need before you start.",
+   "title": "Etapa 1: Montar oficina segura e separar EPIs",
+   "goal": "Entender como ferramentas e máquinas machucam e quais equipamentos de proteção usar sempre.",
    "read": [
     {
      "doc": "med-187cde78ec741eb1",
      "page": 1,
-     "label": "How machine injuries happen and are prevented",
-     "note": "Hesperian Workers' Guide (2015) introduction to guards, training and maintenance."
+     "label": "Como acidentes com máquinas acontecem e como evitar",
+     "note": "Guia Hesperian (2015): proteções mecânicas, treinamento e manutenção."
     },
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 15,
-     "label": "Tool safety and safety equipment",
-     "note": "TM 9-243 safety chapter on tool habits, power tools and protective equipment."
+     "label": "Segurança com ferramentas e EPIs",
+     "note": "Capítulo TM 9-243 sobre organização e equipamentos de proteção individual."
     },
     {
      "doc": "med-4453675fb0dcc5d9",
      "page": 3,
-     "label": "Eye protection",
-     "note": "Choosing and using safety glasses, goggles and face shields."
+     "label": "Proteção dos olhos",
+     "note": "Escolha e uso correto de óculos de ampla visão e protetor facial."
     }
    ]
   },
   {
-   "title": "Step 2: Choose, use and care for hand tools",
-   "goal": "Get comfortable measuring, marking and using basic hand tools, and keep them in good condition.",
+   "title": "Etapa 2: Escolher, usar e conservar ferramentas manuais",
+   "goal": "Dominar medição, marcação e manuseio de ferramentas manuais básicas.",
    "read": [
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 19,
-     "label": "Reading rules and tape measures",
-     "note": "TM 9-243 chapter on reading fractions of an inch on a rule or tape."
+     "label": "Leitura de réguas e trenas",
+     "note": "Manual americano foca frações de polegada — excelente para trabalhar com peças importadas, comparando sempre com milímetros/centímetros no Brasil."
     },
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 121,
-     "label": "Hammers: types, use, care and handle repair",
-     "note": "Example of the manual's per-tool chapters."
+     "label": "Martelos: tipos, uso, cuidados e troca de cabo",
+     "note": "Exemplo didático dos capítulos por ferramenta."
     },
     {
      "doc": "eng-cea09c7220cd4bd0",
      "page": 271,
-     "label": "Saws: types, use and care",
-     "note": "Chapter on handsaws and other saws."
+     "label": "Serrotes e serras: tipos, uso e conservação",
+     "note": "Capítulo completo sobre serras manuais."
     }
    ]
   },
   {
-   "title": "Step 3: Sharpen and maintain edge tools",
-   "goal": "Understand how an edge is ground and honed, and keep axes, chisels and saws sharp and well handled.",
+   "title": "Etapa 3: Afiar lâminas e conservar cabos de madeira",
+   "goal": "Compreender geometria de corte, afiação correta e encabamento seguro de machados e enxadas.",
    "read": [
     {
      "doc": "mfg2-7e54a5d6ccd6e584",
      "page": 49,
-     "label": "Tools for sharpening",
-     "note": "Forest Service pages on files, grinders and whetstones."
+     "label": "Ferramentas de afiação",
+     "note": "Limas, esmeris e pedras de afiar."
     },
     {
      "doc": "mfg2-7e54a5d6ccd6e584",
      "page": 53,
-     "label": "Replacing tool handles",
-     "note": "Grain direction, wedges and rehandling steps for axes and other tools."
+     "label": "Substituição de cabos de ferramentas",
+     "note": "Sentido das fibras da madeira, cunhas e encaixe firme em machados e picaretas."
     },
     {
      "doc": "video-u0jAlXmfquo",
-     "label": "Video: sharpening a handsaw quickly",
-     "note": "Paul Sellers shows how he sharpens a new saw; captions available."
+     "label": "Vídeo: como afiar um serrote manualmente (em inglês)",
+     "note": "Paul Sellers demonstra travamento e limagem rápida de dentes (legendas)."
     }
    ]
   },
   {
-   "title": "Step 4: Basic home repairs and plumbing",
-   "goal": "Know where your shutoffs are, fix common leaks, and secure the water heater for earthquakes.",
+   "title": "Etapa 4: Reparos hidráulicos e registros domésticos",
+   "goal": "Saber fechar todos os registros, corrigir vazamentos simples e proteger instalações.",
    "read": [
     {
      "doc": "ed5bac0a81b009",
      "page": 177,
-     "label": "Utility shutoffs",
-     "note": "CERT pages on gas shutoff and when only professionals should restore service."
+     "label": "Registros gerais da residência",
+     "note": "CERT sobre fechamento emergencial de gás e limites de segurança."
     },
     {
      "doc": "eng-cc45c31a68f597a7",
      "page": 354,
-     "label": "Faucet washer repair",
-     "note": "Navy Utilitiesman step list for a standard washer faucet."
+     "label": "Reparo de vedante em torneira",
+     "note": "Passo a passo de desmontagem e troca de borracha vedante."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 33,
-     "label": "Bracing a water heater",
-     "note": "FEMA drawings for strapping a water heater at a corner or along a wall."
+     "label": "Fixação de reservatórios térmicos",
+     "note": "Desenhos de amarração segura contra tombamento."
     }
    ]
   },
   {
-   "title": "Step 5: Woodworking and simple structures from plans",
-   "goal": "Learn about lumber and joinery, then read simple plans for a workbench, compost bins or a cold frame.",
+   "title": "Etapa 5: Marcenaria e pequenas estruturas a partir de plantas",
+   "goal": "Aprender nomenclatura de madeira e encaixes e interpretar plantas de bancada ou composteira.",
    "read": [
     {
      "doc": "eng-306fa1ae699bb9e4",
      "page": 9,
-     "label": "Lumber and light wood framing",
-     "note": "Navy Engineering Aid (1982, historical) chapter on lumber terms, sizes, grades and framing members."
+     "label": "Madeira serrada e estruturas leves",
+     "note": "Manual Navy (1982) sobre termos de carpintaria e encaixes estruturais."
     },
     {
      "doc": "video-aBodzmUGtdw",
-     "label": "Video: mortise and tenon joint",
-     "note": "Paul Sellers demonstrates a classic woodworking joint by hand; captions available."
+     "label": "Vídeo: encaixe espiga e fura manual (em inglês)",
+     "note": "Paul Sellers ensina junta estrutural tradicional com ferramentas manuais (legendas)."
     },
     {
      "doc": "eng-9415fc58b55ed367",
      "page": 1,
-     "label": "Three-bin compost structure plan",
-     "note": "LSU AgCenter 1990 drawing; read the disclaimer page that follows it."
+     "label": "Planta de composteira de três baias",
+     "note": "Desenho técnico; leia também o termo de isenção na página 2."
     }
    ]
   },
   {
-   "title": "Step 6: Small engines and garden equipment",
-   "goal": "Do routine maintenance on mowers, tillers and generators and work through the common reasons an engine will not start.",
+   "title": "Etapa 6: Pequenos motores e equipamentos de jardim",
+   "goal": "Fazer manutenção preventiva de roçadeiras, cortadores e geradores e diagnosticar falha na partida.",
    "read": [
     {
      "doc": "equipment-be25c3a8d8c92c7d",
      "page": 7,
-     "label": "Maintenance schedule and safety",
-     "note": "Honda GX engine manual; match the manual to your own engine model."
+     "label": "Tabela de manutenção e segurança",
+     "note": "Manual Honda GX; confira sempre o manual exato do seu motor."
     },
     {
      "doc": "equipment-be25c3a8d8c92c7d",
      "page": 15,
-     "label": "Troubleshooting a no-start engine",
-     "note": "Table of possible causes and corrections."
+     "label": "Diagnóstico quando o motor não pega",
+     "note": "Tabela de causas prováveis e soluções."
     },
     {
      "doc": "video-UnbBYaO25Gg",
-     "label": "Video: lawn mower maintenance (Honda)",
-     "note": "Manufacturer maintenance video for a Honda mower; no captions."
+     "label": "Vídeo: manutenção de cortador de grama Honda (em inglês)",
+     "note": "Vídeo do fabricante sem transcrição."
     }
    ]
   },
   {
-   "title": "Step 7: Metalwork and welding, safety first",
-   "goal": "Only after the safety steps: learn welding hazards and protective clothing, then basic stick or MIG practice on scrap.",
+   "title": "Etapa 7: Metalurgia e soldagem, segurança em primeiro lugar",
+   "goal": "Somente após dominar EPIs e prevenção de incêndio: conhecer riscos de solda e treino básico em sucata.",
    "read": [
     {
      "doc": "eng-7101623c5f0a1152",
      "page": 72,
-     "label": "Welding gloves and protective clothing",
-     "note": "Navy Steelworker pages on gauntlets, flame-resistant clothing and what not to wear."
+     "label": "Luvas e vestimenta de proteção para solda",
+     "note": "Roupas resistentes a chamas, avental de raspa e materiais proibidos (como sintéticos que derretem)."
     },
     {
      "doc": "manual-5ade034087acdc5b",
      "page": 5,
-     "label": "Arc welding hazards from the manufacturer",
-     "note": "Miller manual safety section on electric shock, grounding and qualified persons."
+     "label": "Riscos na soldagem a arco segundo o fabricante",
+     "note": "Manual Miller sobre choque elétrico, aterramento e qualificação necessária."
     },
     {
      "doc": "video-8veisgOaHUg",
-     "label": "Video: running a straight weld bead",
-     "note": "Weld.com beginner lesson; captions available."
+     "label": "Vídeo: fazendo um cordão de solda reto (em inglês)",
+     "note": "Aula inicial Weld.com com legendas disponíveis."
     }
    ]
   }

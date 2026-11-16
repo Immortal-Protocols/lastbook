@@ -1267,7 +1267,7 @@ def geo_source():
     """Clones of the map files with their write-ahead logs merged in, so that nothing is lost and the originals are never opened."""
     src = OUT / 'maps' / 'source'
     os.makedirs(src, exist_ok=True)
-    for name in GEO_FILES + ['atlas', 'profiles']:
+    for name in GEO_FILES + ['atlas'] + (['profiles'] if (GEO / 'profiles.sqlite').exists() else []):
         path = LIB / 'geography/resources/atlas.sqlite' if name == 'atlas' else GEO / f'{name}.sqlite'
         dest = src / f'{name}.sqlite'
         if dest.exists():
@@ -1286,6 +1286,21 @@ def geo_source():
 
 
 def state_box(src, code):
+    ctx = PROJECT / 'web/geographic-context.json'
+    if ctx.is_file():
+        for f in json.loads(ctx.read_text(encoding='utf-8')).get('features', []):
+            if (f.get('properties') or {}).get('sigla') == code:
+                pts = []
+                def walk(c):
+                    if c and isinstance(c[0], (int, float)):
+                        pts.append(c)
+                    elif isinstance(c, list):
+                        for x in c:
+                            walk(x)
+                walk((f.get('geometry') or {}).get('coordinates', []))
+                if pts:
+                    lons, lats = [p[0] for p in pts], [p[1] for p in pts]
+                    return min(lons) - .15, min(lats) - .15, max(lons) + .15, max(lats) + .15
     db = sqlite3.connect(f'file:{src}/profiles.sqlite?immutable=1', uri=True)
     blank = {'CT': '09'}.get(code, '-')     # Connecticut's ZIPs carry its 2022 planning-region county codes and no state
     row = db.execute("SELECT min(lon),min(lat),max(lon),max(lat),count(*) FROM zcta WHERE state=? OR (coalesce(state,'')='' AND substr(county,1,2)=?)", (code, blank)).fetchone()
@@ -1466,7 +1481,7 @@ def build_map(name):
     os.makedirs(dest)
     if name == 'base':
         base_set(src, dest)
-    elif name == 'us':
+    elif name in ('us', 'br'):
         us_set(src, dest)
     elif re.fullmatch(r'[A-Z]{2}', name):
         state_set(src, dest, name)

@@ -1,18 +1,18 @@
 ---
-name: Feature request
-about: An idea that would make Lastbook more useful
+name: Sugestão de melhoria (Feature request)
+about: Uma ideia para tornar o Último Livro / Lastbook mais útil
 title: ''
 labels: enhancement
 ---
 
-**The need**
-Who needs this, and in what situation? For example: "When the power is out and I am trying to …".
+**A necessidade**
+Para quem é essa melhoria e em qual situação? Por exemplo: "Quando faltar energia e eu precisar de…".
 
-**The idea**
-What Lastbook could do. Rough is fine.
+**A ideia**
+O que o Último Livro poderia fazer (pode ser um rascunho simples).
 
-**Sources**
-For new guide content: which manuals, videos or other sources in the library cover it, with page numbers if you have them.
+**Fontes**
+Para novos conteúdos nos guias: quais manuais, vídeos ou outras fontes confiáveis da biblioteca tratam do assunto (com números de página, se tiver).
 
-**Offline**
-Lastbook has to work with no internet and must never send data anywhere. Does the idea fit that?
+**Funcionamento offline**
+O Último Livro precisa funcionar sem internet e nunca pode enviar dados para fora. A sua proposta respeita essa regra?

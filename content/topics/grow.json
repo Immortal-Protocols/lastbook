@@ -1,9 +1,9 @@
 {
  "id": "grow",
  "mode": "learn",
- "title": "Grow staple food",
- "short": "Containers, beds, soil, water, staple crops and seed saving",
- "intro": "A step-by-step learning track for growing food over months and years, starting with a few containers or a small bed and building toward storable staple crops and saved seed. Readings lean on University of California extension guides for coastal Southern California, with general manuals for the parts UC does not cover.",
+ "title": "Cultivar alimentos básicos em casa",
+ "short": "Vasos, canteiros, solo, rega, culturas calóricas e guarda de sementes",
+ "intro": "Um roteiro passo a passo para cultivar alimentos ao longo de meses e anos, começando em poucos vasos ou em um pequeno canteiro e avançando para culturas calóricas armazenáveis e produção própria de sementes. As leituras baseiam-se em guias técnicos da Universidade da Califórnia (UC) e manuais gerais; no Brasil, consulte também orientações regionais da Embrapa Hortaliças e EMATER e ajuste calendários de plantio em 6 meses para as estações do Hemisfério Sul.",
  "keywords": [
   "grow",
   "garden",
@@ -31,200 +31,233 @@
   "irrigation",
   "pests",
   "Los Angeles",
-  "Southern California"
+  "Southern California",
+  "horta",
+  "cultivar",
+  "plantar",
+  "verduras",
+  "hortalicas",
+  "hortaliças",
+  "sementes",
+  "plantio",
+  "composto",
+  "compostagem",
+  "solo",
+  "terra",
+  "batata",
+  "batata doce",
+  "feijao",
+  "feijão",
+  "abobora",
+  "abóbora",
+  "milho",
+  "mandioca",
+  "graos",
+  "grãos",
+  "guardar sementes",
+  "crioula",
+  "polinizacao aberta",
+  "hibrida",
+  "vaso",
+  "canteiro",
+  "rega",
+  "irrigacao",
+  "irrigação",
+  "pragas",
+  "embrapa"
  ],
  "choices": [
   {
    "id": "small-space",
-   "label": "I only have a patio, balcony or a little yard",
-   "hint": "Pots, buckets, a small raised bed",
+   "label": "Só tenho varanda, laje ou um pequeno quintal",
+   "hint": "Vasos, baldes, pequenos canteiros elevados",
    "read": [
     {
      "doc": "coastal-growing-84be1f504ea1d4902487",
      "page": 1,
-     "label": "How deep each kind of vegetable needs its pot",
-     "note": "UC handout listing soil depths for shallow, medium and deep-rooted vegetables, container mix options and small tomato varieties for 5-gallon pots."
+     "label": "Profundidade ideal de vaso para cada tipo de hortaliça",
+     "note": "Tabela UC listando profundidade do substrato para culturas rasas, médias e profundas, misturas para vasos e variedades pequenas para baldes de ~20 litros."
     },
     {
      "doc": "med-2ca695c9db63d020",
      "page": 33,
-     "label": "Growing food in small city spaces",
-     "note": "Hesperian page on growing upward on supports and in buckets, bags and other containers with drainage holes, with crops that suit containers."
+     "label": "Produzir alimentos em pequenos espaços urbanos",
+     "note": "Hesperian sobre cultivo vertical em suportes, baldes, sacos e recipientes com furos de drenagem e culturas ideais para vasos."
     },
     {
      "zim": "zim/appropedia_en_all_maxi_2026-02.zim/Container_gardening",
      "title": "Container gardening",
-     "label": "Short overview of container gardening",
-     "note": "Appropedia article on moving containers for sun and shelter and on greens and dwarf tomatoes for balconies."
+     "label": "Resumo sobre horta em recipientes",
+     "note": "Artigo Appropedia (em inglês) sobre mover vasos buscando sol/proteção, folhosas e tomates anões em sacadas."
     }
    ]
   },
   {
    "id": "when-to-plant",
-   "label": "What can I plant now in coastal Southern California?",
-   "hint": "Los Angeles, coastal Ventura and Orange counties",
+   "label": "O que plantar nesta época do ano?",
+   "hint": "Tabelas originais da Califórnia — inverta 6 meses para as estações do Brasil",
    "read": [
     {
      "doc": "coastal-growing-6c1e6263ed3907b61d56",
      "page": 1,
-     "label": "Month-by-month vegetable planting chart for Southern California",
-     "note": "UC Ventura County one-page colour chart for coastal Southern California. It is an image only: open the PDF and read the colours, the text is not searchable."
+     "label": "Tabela mês a mês de plantio de hortaliças (referência Califórnia)",
+     "note": "Tabela em cores (imagem digitalizada) para clima mediterrâneo do Hemisfério Norte. No Brasil, ajuste 6 meses para estações opostas e consulte Embrapa/EMATER."
     },
     {
      "doc": "coastal-growing-2bf5bc7fde86306a742c",
      "page": 1,
-     "label": "October planting list for Los Angeles County (historical)",
-     "note": "Older UC column (about 2000) listing cool-season crops to sow or transplant in October. Use for planting ideas only, not its chemical or preserving advice."
+     "label": "Lista de outono (outubro no Hemisfério Norte; equivalente a abril no Brasil)",
+     "note": "Coluna antiga listando hortaliças de clima ameno/frio; use apenas como ideia de sucessão de outono."
     },
     {
      "doc": "coastal-growing-7e742f7e7ec7d1b6ee65",
-     "label": "Potato planting months by California region",
-     "note": "UC IPM table gives approximate South Coast potato planting windows and says to check locally with a Master Gardener program."
+     "label": "Janelas de plantio de batata por região climática",
+     "note": "Tabela UC IPM; no Brasil o plantio varia conforme altitude e chuvas (Consulte o zoneamento Embrapa / EMATER local)."
     }
    ]
   },
   {
    "id": "soil-unknown",
-   "label": "I don't know if my soil is safe or good",
-   "hint": "Old house, lead paint, former parking lot, hard clay or sand",
+   "label": "Não sei se o solo do quintal é bom ou seguro",
+   "hint": "Casa antiga, tinta com chumbo, antigo estacionamento, barro duro ou areia",
    "read": [
     {
      "doc": "coastal-growing-0e2825ce7a278c7c5e86",
      "page": 3,
-     "label": "Check your site's history before growing food",
-     "note": "UC guide on clues to past contamination, such as old peeling paint, parking lots and auto shops, and where to look up a site's history."
+     "label": "Verificar o histórico do terreno antes de plantar comida",
+     "note": "Guia UC sobre sinais de contaminação anterior (tinta descascando antiga, oficinas, entulho) e investigação do terreno."
     },
     {
      "doc": "coastal-growing-0e2825ce7a278c7c5e86",
      "page": 7,
-     "label": "Options when soil is doubtful: mixing, pH, raised beds",
-     "note": "Describes working existing soil, raised beds filled with clean soil and their drawbacks, and when replacing soil is needed."
+     "label": "Opções para solo duvidoso: correção, pH e canteiros elevados",
+     "note": "Descreve manejo do solo existente, canteiros elevados preenchidos com terra limpa e quando é necessário substituir o solo."
     },
     {
      "doc": "med-2ca695c9db63d020",
      "page": 35,
-     "label": "Signs that city soil may be contaminated",
-     "note": "Hesperian page on site history, chemical smells, soil near painted walls, testing and growing in containers on top of sealed soil."
+     "label": "Sinais de que o solo urbano pode estar contaminado",
+     "note": "Hesperian sobre cheiros químicos, solo junto a paredes antigas, análise laboratorial e cultivo em vasos isolados sobre piso."
     }
    ]
   },
   {
    "id": "calories",
-   "label": "I want crops that actually fill people up",
-   "hint": "Potatoes, sweet potatoes, dry beans, squash, corn",
+   "label": "Quero culturas calóricas que realmente alimentem",
+   "hint": "Batata, batata-doce, feijão seco, abóbora, milho (no Brasil também mandioca)",
    "read": [
     {
      "doc": "coastal-growing-7e742f7e7ec7d1b6ee65",
-     "label": "Growing potatoes from certified seed pieces",
-     "note": "UC IPM page on site, soil, planting dates, certified seed pieces (not grocery potatoes), hilling, watering and harvest."
+     "label": "Cultivo de batata a partir de batata-semente certificada",
+     "note": "Guia UC IPM sobre solo, amontoa, rega e colheita (não plantar batata comum de mercado pelo risco de pragas/vírus)."
     },
     {
      "doc": "coastal-growing-61ed997967489e5abeb1",
      "page": 2,
-     "label": "Growing sweet potatoes from slips",
-     "note": "UC Sacramento guide on certified disease-free slips, warm soil and sun needs, and why slips can be hard to get in California. Sacramento is hotter than the coast."
+     "label": "Cultivo de batata-doce por ramas sadias",
+     "note": "Guia sobre mudas livres de doenças, exigência de calor e sol — cultura excelente e rústica para grande parte do Brasil."
     },
     {
      "zim": "zim/appropedia_en_all_maxi_2026-02.zim/Three_sisters_agriculture",
      "title": "Three sisters agriculture",
-     "label": "Corn, beans and squash grown together",
-     "note": "Appropedia article on the traditional companion planting of corn, beans and squash; parts are flagged by the wiki as needing verification."
+     "label": "Consórcio tradicional milho, feijão e abóbora (Três Irmãs)",
+     "note": "Artigo Appropedia (em inglês) sobre consórcio clássico de milho, feijão trepador e abóbora cobrindo o solo."
     }
    ]
   },
   {
    "id": "save-seed",
-   "label": "I want to save my own seed",
-   "hint": "Heirloom, open-pollinated or hybrid (F1)?",
+   "label": "Quero colher e guardar minhas próprias sementes",
+   "hint": "Semente crioula / polinização aberta ou híbrida (F1)?",
    "read": [
     {
      "doc": "coastal-growing-740c0243d587fcafebe3",
      "page": 1,
-     "label": "Chart: which vegetables are easy to save seed from",
-     "note": "UC Master Gardener chart of annual or biennial, self- or cross-pollinated, isolation distance, seed life and ease of saving for common vegetables."
+     "label": "Tabela: quais hortaliças são fáceis de multiplicar semente",
+     "note": "Tabela indicando ciclo anual/bienal, autopolinização vs cruzada, distância de isolamento e viabilidade das sementes."
     },
     {
      "doc": "eng-866c68545e73a8ef",
      "page": 30,
-     "label": "Why seed saved from hybrids does not come true",
-     "note": "FAO explanation of F1 hybrids versus open-pollinated varieties and why hybrid offspring are not used as next season's seed."
+     "label": "Por que semente retirada de híbrido (F1) não repete a planta",
+     "note": "Explicação da FAO sobre variedades crioulas/polinização aberta versus híbridos F1 comerciais."
     },
     {
      "doc": "video-wbgYx8UFV00",
-     "label": "Video: seed-saving terms in under two minutes",
-     "note": "Oregon State University Food Hero clip explaining heirloom, open-pollinated and hybrid, and checking the seed packet."
+     "label": "Vídeo: termos sobre sementes em menos de 2 min (em inglês)",
+     "note": "Clipe explicando diferença entre semente crioula (heirloom), polinização aberta e híbrida no rótulo do pacote."
     }
    ]
   },
   {
    "id": "bugs",
-   "label": "Something is eating my plants",
-   "hint": "Holes in leaves, wilting, spots",
+   "label": "Algo está comendo ou doente nas minhas plantas",
+   "hint": "Furos nas folhas, murcha, manchas",
    "read": [
     {
      "doc": "med-2ca695c9db63d020",
      "page": 20,
-     "label": "Is it a pest, a friend, or harmless?",
-     "note": "Hesperian page on checking crops regularly, questions to ask about damage, and insects that help control pests."
+     "label": "É praga, inseto benéfico ou inofensivo?",
+     "note": "Hesperian sobre inspeção frequente das folhas e identificação de inimigos naturais que controlam pragas."
     },
     {
      "doc": "med-2ca695c9db63d020",
      "page": 22,
-     "label": "Physical ways to control pests",
-     "note": "Describes encouraging birds and beneficial insects, scaring birds, and simple traps, from a sustainable farming chapter."
+     "label": "Formas físicas e naturais de controlar pragas",
+     "note": "Como atrair pássaros e insetos predadores, barreiras físicas e armadilhas simples sem agrotóxicos pesados."
     },
     {
      "doc": "eng-582d9d6be8c29785",
      "page": 14,
-     "label": "Scouting for pests and keeping records",
-     "note": "SARE bulletin page on regularly scouting fields, looking for beneficial insects and sampling all areas."
+     "label": "Monitoramento de pragas e anotações de campo",
+     "note": "Boletim SARE sobre observar canteiros regularmente, procurar insetos úteis e registrar ocorrências."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Urban soil is often contaminated by past uses such as industry, dumping, traffic and lead paint; lead is especially risky for young children who may swallow soil.",
+   "text": "Solos urbanos podem conter contaminação antiga (indústria, entulho, fumaça de trânsito antigo, tinta com chumbo); risco especial se crianças pequenas colocarem terra na boca.",
    "doc": "coastal-growing-0e2825ce7a278c7c5e86",
    "page": 1
   },
   {
-   "text": "UC Cooperative Extension does not test soil; the guide suggests using a soil lab and asking it questions before sampling.",
+   "text": "Extensão rural geralmente não analisa metais pesados diretamente; use laboratório credenciado de análise de solo quando houver suspeita.",
    "doc": "coastal-growing-0e2825ce7a278c7c5e86",
    "page": 4
   },
   {
-   "text": "Former industrial or manufacturing land and old gas station sites may need expert help to assess before growing food.",
+   "text": "Terrenos ex-industriais ou antigos postos de combustível exigem avaliação técnica antes de plantar alimentos diretamente no chão.",
    "doc": "coastal-growing-0e2825ce7a278c7c5e86",
    "page": 5
   },
   {
-   "text": "Fresh manure carries germs that cause illness; keep it away from waterways and wash hands and clothes after handling it.",
+   "text": "Esterco fresco carrega patógenos; mantenha longe de minas/córregos e lave bem mãos e roupas após manusear.",
    "doc": "med-2ca695c9db63d020",
    "page": 10
   },
   {
-   "text": "Uncomposted manure can carry pathogens; the guide describes required waiting intervals between applying raw manure and harvest.",
+   "text": "Esterco não compostado pode transmitir doenças; respeite intervalos de segurança entre aplicação e colheita (ou prefira esterco bem curtido).",
    "doc": "coastal-growing-7faf0e1254afe98b605e",
    "page": 73
   },
   {
-   "text": "Signs of pesticide poisoning may appear right away or hours, days or years later; people may be exposed without knowing it.",
+   "text": "Sinais de intoxicação por agrotóxicos podem surgir na hora ou horas/dias depois; exposição silenciosa também ocorre.",
    "doc": "med-b87c43e8650e9d77",
    "page": 5
   },
   {
-   "text": "Pesticides are more dangerous to children than adults; amounts that make adults sick may kill babies and children.",
+   "text": "Agrotóxicos são muito mais perigosos para crianças do que para adultos; doses que apenas enjoam adultos podem matar crianças.",
    "doc": "med-b87c43e8650e9d77",
    "page": 6
   },
   {
-   "text": "Sweet potatoes only crop well in warm areas and are injured by temperatures below 50°F; the guide is written for hotter Sacramento, not the coast.",
+   "text": "Batata-doce exige calor para produzir bem e sofre injúria em temperaturas abaixo de 10 °C (50 °F).",
    "doc": "coastal-growing-61ed997967489e5abeb1",
    "page": 1
   },
   {
-   "text": "Do not plant grocery store potatoes; use seed pieces certified free of pests and diseases.",
+   "text": "Não plante batata comum de supermercado; utilize batata-semente certificada livre de vírus e doenças do solo.",
    "doc": "coastal-growing-7e742f7e7ec7d1b6ee65"
   }
  ],
@@ -232,225 +265,225 @@
   {
    "doc": "coastal-growing-84be1f504ea1d4902487",
    "page": 2,
-   "label": "Saving water with containers",
-   "note": "UC tips on container type and colour, larger pots, self-watering inserts, reusing household water and mulch."
+   "label": "Economizar água em vasos e jardineiras",
+   "note": "Dicas sobre tipo/cor do vaso, cobertura morta (palhada), vasos autoirrigáveis e reuso seguro de água."
   },
   {
    "doc": "coastal-growing-0e2825ce7a278c7c5e86",
    "page": 9,
-   "label": "Good habits for any urban garden",
-   "note": "Removing debris, mulching paths to keep dust off crops, wearing gloves and washing produce, plus local rules for community gardens."
+   "label": "Bons hábitos em hortas urbanas",
+   "note": "Cobrir caminhos com cobertura vegetal contra poeira contaminada, usar luvas e lavar bem os vegetais."
   },
   {
    "doc": "med-e7a8569d25995a83",
    "page": 15,
-   "label": "Start a compost bin or worm box",
-   "note": "Hesperian page on choosing a compost method for your space and composting kitchen scraps with earthworms."
+   "label": "Montar uma composteira ou minhocário",
+   "note": "Hesperian sobre compostagem caseira e vermicompostagem com restos orgânicos de cozinha."
   },
   {
    "doc": "video-v-acl0zDaJQ",
-   "label": "Video: sowing seeds in trays and pots",
-   "note": "Oregon State University Food Hero demonstration of seeding several vegetables and herbs."
+   "label": "Vídeo: semeadura em bandejas e vasos (em inglês)",
+   "note": "Demonstração prática de preparo de mudas de hortaliças e ervas."
   },
   {
    "doc": "video-pOlYpWXdga4",
-   "label": "Video: storing seed cool, dark and dry",
-   "note": "Short Food Hero clip on labelled envelopes, airtight containers, optional silica gel and refrigerator storage."
+   "label": "Vídeo: conservar sementes em local fresco, escuro e seco (em inglês)",
+   "note": "Clipe sobre envelopes identificados, potes herméticos, sílica e guarda refrigerada."
   },
   {
    "doc": "d99052758961b3",
-   "label": "Plain-language overview of gardening for preparedness",
-   "note": "The Prepared article (secondary source) on starting small, why a first garden will not feed a family, and links to basics."
+   "label": "Visão geral realista de horta para autossuficiência",
+   "note": "Artigo explicando por que começar pequeno e por que uma primeira horta dificilmente alimenta sozinha uma família inteira."
   }
  ],
  "learn": [
   {
    "doc": "med-2ca695c9db63d020",
-   "label": "Hesperian: Sustainable Farming chapter",
-   "note": "Whole 2012 chapter on soil, green manures, compost, water, pests, seed saving, food storage and city growing, written for communities."
+   "label": "Hesperian: Capítulo de Agricultura Sustentável",
+   "note": "Capítulo completo (2012) sobre solo, adubação verde, composto, água, pragas, sementes e hortas urbanas comunitárias."
   },
   {
    "doc": "eng-5a131eb5010e45d7",
    "label": "Building Soils for Better Crops (SARE)",
-   "note": "Large university-authored soil manual; see Chapter 13 on composts and Chapter 22 on urban gardens and farms."
+   "note": "Manual completo de manejo de solo; veja Capítulo 13 (composto) e Capítulo 22 (hortas e agricultura urbana)."
   },
   {
    "doc": "coastal-growing-7faf0e1254afe98b605e",
-   "label": "California Urban Agriculture Food Safety Guide",
-   "note": "UC 2018 guide to hygiene, water, soil, manure and compost safety for urban growers; law summaries may be out of date."
+   "label": "Guia de Segurança Sanitária na Agricultura Urbana",
+   "note": "Guia UC 2018 sobre higiene, qualidade da água, esterco e composto para hortas urbanas."
   },
   {
    "doc": "video--5JZmKMprJY",
-   "label": "Video: planning a seed-saving garden (UW Extension)",
-   "note": "About 30-minute University of Wisconsin Extension talk on pollination, isolation and choosing what to save; captions available."
+   "label": "Vídeo: planejar uma horta para produção de sementes (em inglês)",
+   "note": "Palestra de ~30 min (legendas) sobre polinização, isolamento de variedades e colheita de sementes."
   },
   {
    "doc": "video-ZJQsUshlemI",
-   "label": "Video: planning your garden for seed saving (Illinois Extension)",
-   "note": "University of Illinois Extension webinar on open-pollinated, heirloom and hybrid seed, pollination and isolation."
+   "label": "Vídeo: planejar variedades pensando em sementes (em inglês)",
+   "note": "Webinar explicando polinização aberta, crioulas e híbridos F1."
   },
   {
    "doc": "video-HWD8NQaI0T4",
-   "label": "Video: worm composting systems",
-   "note": "University of Wyoming Extension short on red wigglers and simple bucket and bin worm compost systems."
+   "label": "Vídeo: sistemas de compostagem com minhocas (em inglês)",
+   "note": "Tutorial sobre minhoca californiana e montagem simples de minhocário em baldes."
   },
   {
    "doc": "video-BxADBpfi4z8",
-   "label": "Video: long beginner gardening class",
-   "note": "Community class by a Master Gardener covering square-foot beds, seed starting, pests and compost; not an extension publication."
+   "label": "Vídeo: aula longa de jardinagem e horta para iniciantes (em inglês)",
+   "note": "Aula prática cobrindo canteiros intensivos, sementeira, pragas e composto."
   },
   {
    "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Seed_saving",
    "title": "Seed saving",
-   "label": "Encyclopedia: seed saving",
-   "note": "Wikipedia background on saving seed and other planting material such as tubers and cuttings."
+   "label": "Enciclopédia: guarda de sementes",
+   "note": "Artigo da Wikipédia (em inglês) sobre seleção e conservação de sementes, tubérculos e mudas."
   }
  ],
  "route": [
   {
-   "title": "Step 1: Start with a few containers or one small bed",
-   "goal": "Pick a sunny spot, match pot depth to the crop, and grow something easy so you learn the basics with little cost.",
+   "title": "Etapa 1: Começar com poucos vasos ou um canteiro pequeno",
+   "goal": "Escolher local ensolarado, acertar a profundidade do vaso e ganhar experiência com custo baixo.",
    "read": [
     {
      "doc": "coastal-growing-84be1f504ea1d4902487",
      "page": 1,
-     "label": "Soil depth for each vegetable",
-     "note": "UC table of container depths for shallow, medium and deep-rooted crops plus container mix choices."
+     "label": "Profundidade do solo por hortaliça",
+     "note": "Tabela UC para raízes rasas, médias e profundas e mistura leve de substrato."
     },
     {
      "doc": "med-2ca695c9db63d020",
      "page": 33,
-     "label": "Adapting growing to small spaces",
-     "note": "Hesperian ideas for vertical growing and containers with drainage on balconies and rooftops."
+     "label": "Adaptar o cultivo a espaços pequenos",
+     "note": "Ideias Hesperian para cultivo vertical e recipientes bem drenados."
     }
    ]
   },
   {
-   "title": "Step 2: Learn local timing for coastal Southern California",
-   "goal": "Know which crops go in during the cool season and which wait for warm weather where you live.",
+   "title": "Etapa 2: Aprender o calendário sazonal da sua região",
+   "goal": "Saber quais culturas preferem clima ameno/inverno e quais exigem calor e chuvas no local onde você mora (lembrando o ajuste de 6 meses dos guias do Hemisfério Norte).",
    "read": [
     {
      "doc": "coastal-growing-6c1e6263ed3907b61d56",
      "page": 1,
-     "label": "Southern California vegetable planting schedule",
-     "note": "UC Ventura County colour chart by month; image-only, so view the page rather than search it."
+     "label": "Calendário de plantio (imagem Califórnia — adaptar +6 meses para o Brasil)",
+     "note": "Gráfico por cores; consulte a Embrapa / EMATER estadual para o calendário exato do seu bioma brasileiro."
     },
     {
      "doc": "coastal-growing-2bf5bc7fde86306a742c",
      "page": 1,
-     "label": "An October list for Los Angeles County (historical)",
-     "note": "Older UC column of cool-season crops to sow or transplant; check against the current chart."
+     "label": "Exemplo de lista de plantio de outono",
+     "note": "Culturas de estação amena para semear ou transplantar no outono (abril no Brasil)."
     }
    ]
   },
   {
-   "title": "Step 3: Check and build your soil, and make compost",
-   "goal": "Find out whether the ground is safe, then improve it with organic matter and your own compost.",
+   "title": "Etapa 3: Avaliar e melhorar o solo e fazer composto",
+   "goal": "Verificar se o terreno é seguro e enriquecer com matéria orgânica e compostagem própria.",
    "read": [
     {
      "doc": "coastal-growing-0e2825ce7a278c7c5e86",
      "page": 3,
-     "label": "Site history and simple soil checks",
-     "note": "UC guide on investigating past land uses and digging test holes for debris."
+     "label": "Histórico do terreno e testes simples no solo",
+     "note": "Investigar uso passado e verificar drenagem e entulhos."
     },
     {
      "doc": "med-e7a8569d25995a83",
      "page": 18,
-     "label": "How to tell if your compost is working",
-     "note": "Hesperian troubleshooting list for compost that smells, stays wet, does not heat or attracts flies."
+     "label": "Como saber se a composteira está funcionando",
+     "note": "Solução de problemas comuns: mau cheiro, excesso de umidade, falta de aquecimento ou moscas."
     },
     {
      "doc": "eng-5a131eb5010e45d7",
      "page": 216,
-     "label": "Making and using composts (in depth)",
-     "note": "SARE chapter on how composting works, temperatures and using finished compost."
+     "label": "Preparo e uso de composto (aprofundado)",
+     "note": "Capítulo SARE sobre biologia da compostagem, temperatura e aplicação nos canteiros."
     }
    ]
   },
   {
-   "title": "Step 4: Water well and use less of it",
-   "goal": "Keep roots evenly moist without waste, using mulch, the right containers and simple drip ideas.",
+   "title": "Etapa 4: Irrigar bem desperdiçando menos água",
+   "goal": "Manter raízes úmidas com economia, usando cobertura morta (palhada) e gotejamento simples.",
    "read": [
     {
      "doc": "coastal-growing-84be1f504ea1d4902487",
      "page": 2,
-     "label": "Water-saving tips for containers",
-     "note": "UC list covering container materials, size, colour, self-watering inserts, reused water and mulch."
+     "label": "Economia de água em vasos",
+     "note": "Material, tamanho e cor dos recipientes, cobertura morta e reuso cuidadoso."
     },
     {
      "doc": "eng-5a131eb5010e45d7",
      "page": 276,
-     "label": "Drip irrigation basics",
-     "note": "SARE page noting drip suits small high-value plots and can run from a raised water container."
+     "label": "Noções básicas de irrigação por gotejamento",
+     "note": "Vantagens do gotejamento alimentado por caixa/reservatório elevado sem bomba elétrica."
     },
     {
      "zim": "zim/appropedia_en_all_maxi_2026-02.zim/Water_saving_tips_for_the_home_gardener",
      "title": "Water saving tips for the home gardener",
-     "label": "Home gardener water-saving tips",
-     "note": "Appropedia collection of tips on plant choice and watering for dry climates."
+     "label": "Dicas de economia de água na horta doméstica",
+     "note": "Escolha de espécies e técnicas de rega para períodos secos (em inglês)."
     }
    ]
   },
   {
-   "title": "Step 5: Grow staple calorie crops",
-   "goal": "Trial potatoes, sweet potatoes, dry beans and squash so you learn what yields in your conditions before relying on it.",
+   "title": "Etapa 5: Cultivar alimentos básicos energéticos",
+   "goal": "Testar batata, batata-doce, feijão e abóbora (e mandioca conforme a região) para aprender o que rende no seu quintal antes de depender deles.",
    "read": [
     {
      "doc": "coastal-growing-7e742f7e7ec7d1b6ee65",
-     "label": "Potatoes: planting, hilling, watering, harvest",
-     "note": "UC IPM cultural guide including South Coast planting months and certified seed pieces."
+     "label": "Batata: plantio, amontoa, rega e colheita",
+     "note": "Práticas de cultivo com batata-semente certificada."
     },
     {
      "doc": "coastal-growing-61ed997967489e5abeb1",
      "page": 3,
-     "label": "Sweet potatoes: setting slips and care",
-     "note": "UC Sacramento guide on soil warmth, planting slips, watering and mulch; written for a hotter area."
+     "label": "Batata-doce: preparo de leiras e plantio de ramas",
+     "note": "Cultivo em clima quente com bom aproveitamento de água e sol."
     },
     {
      "zim": "zim/appropedia_en_all_maxi_2026-02.zim/Three_sisters_agriculture",
      "title": "Three sisters agriculture",
-     "label": "Corn, beans and squash together",
-     "note": "Appropedia overview of the three sisters method; wiki marks some claims as needing verification."
+     "label": "Consórcio milho, feijão e abóbora",
+     "note": "Visão geral do cultivo consorciado (em inglês)."
     }
    ]
   },
   {
-   "title": "Step 6: Manage pests without harming yourself",
-   "goal": "Watch plants closely, tell pests from helpers, and prevent problems before reaching for chemicals.",
+   "title": "Etapa 6: Controlar pragas sem colocar a saúde em risco",
+   "goal": "Observar plantas de perto, distinguir pragas de insetos aliados e prevenir desequilíbrios.",
    "read": [
     {
      "doc": "med-2ca695c9db63d020",
      "page": 19,
-     "label": "Natural (integrated) pest management",
-     "note": "Hesperian introduction to keeping crops, pests and soil life in balance and keeping plants healthy."
+     "label": "Manejo ecológico (integrado) de pragas",
+     "note": "Introdução Hesperian ao equilíbrio entre solo vivo, plantas fortes e predadores naturais."
     },
     {
      "doc": "eng-582d9d6be8c29785",
-     "label": "A whole-farm approach to managing pests",
-     "note": "SARE 16-page bulletin on ecological pest management, crop health, rotation and scouting."
+     "label": "Abordagem sistêmica no manejo de pragas",
+     "note": "Boletim SARE sobre rotação de culturas, diversidade e controle ecológico."
     }
    ]
   },
   {
-   "title": "Step 7: Save seed and scale up",
-   "goal": "Choose open-pollinated varieties, save and store seed properly, and plan larger plantings with rotation and records.",
+   "title": "Etapa 7: Guardar sementes e ampliar a produção",
+   "goal": "Escolher variedades de polinização aberta (crioulas), conservar bem as sementes e planejar rotação de culturas.",
    "read": [
     {
      "doc": "med-2ca695c9db63d020",
      "page": 26,
-     "label": "Selecting and saving seeds",
-     "note": "Hesperian page on picking strong, locally adapted plants for seed and keeping varieties apart."
+     "label": "Selecionar e armazenar sementes",
+     "note": "Escolher plantas saudáveis adaptadas ao local e evitar cruzamento indesejado."
     },
     {
      "doc": "coastal-growing-740c0243d587fcafebe3",
      "page": 1,
-     "label": "Seed-saving chart by crop",
-     "note": "UC Master Gardener chart of pollination type, isolation distance, seed life and ease."
+     "label": "Tabela de guarda de sementes por cultura",
+     "note": "Tipo de polinização, isolamento mínimo e duração média da semente."
     },
     {
      "doc": "eng-6acf955cac65c875",
-     "label": "Crop Rotation on Organic Farms (planning manual)",
-     "note": "SARE manual for planning rotations on larger plots, written for farmers in the Northeast US."
+     "label": "Rotação de culturas em propriedades orgânicas",
+     "note": "Manual SARE de planejamento de rotação para áreas maiores."
     }
    ]
   }

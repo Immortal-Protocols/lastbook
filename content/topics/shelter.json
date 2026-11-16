@@ -1,9 +1,9 @@
 {
  "id": "shelter",
  "mode": "now",
- "title": "Stay warm, cool and sheltered",
- "short": "Heat, cold, smoke, carbon monoxide, damaged homes and outdoor shelter",
- "intro": "Find guidance for keeping people at a safe temperature and under cover when the power is out, the air is smoky, or home is damaged or unsafe. It also points to safe heating and generator use, because the fixes people grab first can poison or burn them. For treating someone already ill from heat or cold, see the first-aid topic.",
+ "title": "Manter-se protegido do calor, frio, fumaça e em abrigo seguro",
+ "short": "Calor e frio extremos, fumaça, monóxido de carbono, casa danificada e abrigo externo",
+ "intro": "Orientações para manter as pessoas em temperatura segura e protegidas quando falta energia, o ar está cheio de fumaça de queimada ou a casa sofreu danos. Também alerta sobre aquecedores improvisados e geradores, porque soluções apressadas dentro de casa podem causar incêndio ou intoxicação fatal. Para atendimento médico de quem já passou mal por calor ou frio, veja o guia de primeiros socorros.",
  "keywords": [
   "shelter",
   "heat",
@@ -39,267 +39,301 @@
   "tarp",
   "lean-to",
   "camping",
-  "outdoors"
+  "outdoors",
+  "abrigo",
+  "calor",
+  "onda de calor",
+  "resfriamento",
+  "ventilador",
+  "ar condicionado",
+  "frio",
+  "geada",
+  "inverno",
+  "hipotermia",
+  "aquecer",
+  "aquecedor",
+  "gerador",
+  "monoxido de carbono",
+  "monóxido de carbono",
+  "lareira",
+  "velas",
+  "falta de energia",
+  "queimada",
+  "incendio florestal",
+  "incêndio florestal",
+  "fumaca",
+  "fumaça",
+  "qualidade do ar",
+  "pff2",
+  "mascara",
+  "máscara",
+  "evacuar",
+  "abrigar no local",
+  "casa danificada",
+  "vazamento de gas",
+  "abrigo comunitario",
+  "lona",
+  "acampamento"
  ],
  "choices": [
   {
    "id": "heat",
-   "label": "It's dangerously hot and the power or AC is out",
-   "hint": "Heat wave, no air conditioning, older people or babies at home",
+   "label": "Está um calor perigoso e faltou luz ou ar-condicionado",
+   "hint": "Onda de calor, idosos ou bebês em casa sem refrigeração",
    "read": [
     {
      "doc": "1c0d7a149286b5",
      "page": 2,
-     "label": "Stay safe in extreme heat",
-     "note": "FEMA sheet on keeping the home cool, finding air-conditioned places, warning about fans in high heat, and signs and actions for heat cramps, exhaustion and stroke."
+     "label": "Segurança no calor extremo",
+     "note": "Ficha FEMA: como manter a casa fresca, buscar locais públicos climatizados, limites dos ventiladores no calor extremo e sinais de câimbra, exaustão e insolação."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 26,
-     "label": "What to do during a heat wave",
-     "note": "CERT 2019 annex: window reflectors and shades, public cool places, the limits of electric fans, clothing, checking on neighbours and drinking fluids."
+     "label": "O que fazer durante uma onda de calor",
+     "note": "Anexo CERT 2019: persianas/cortinas bloqueando sol nas janelas, locais frescos, roupas leves, hidratar e checar vizinhos idosos."
     },
     {
      "doc": "475720b524a372",
      "page": 1,
-     "label": "NWS heat safety tips and heat alerts",
-     "note": "National Weather Service sheet on heat watches and warnings, slowing down, light clothing and drinking water; next page has the heat index chart."
+     "label": "Dicas e alertas de calor extremo (NWS)",
+     "note": "Reduzir esforço físico, roupas claras e hidratação; página seguinte traz tabela de sensação térmica/índice de calor."
     },
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "Keeping cool when the power is out",
-     "note": "FEMA power outage sheet, including staying cool in extreme heat without power and finding air-conditioned places."
+     "label": "Manter o frescor durante falta de energia",
+     "note": "Ficha FEMA de apagão com recomendações para ondas de calor sem energia elétrica."
     }
    ]
   },
   {
    "id": "cold",
-   "label": "It's freezing and the heat is out",
-   "hint": "Winter storm, no heating, staying warm overnight",
+   "label": "Está muito frio e sem aquecimento",
+   "hint": "Frente fria intensa, geada, sem energia ou aquecedor durante a noite",
    "read": [
     {
      "doc": "f6becaef71ffd5",
-     "label": "Stay safe during winter weather",
-     "note": "Ready.gov page on preparing a home for cold, avoiding carbon monoxide, never heating with a gas stove or oven, and signs and actions for frostbite and hypothermia."
+     "label": "Segurança durante frio intenso",
+     "note": "Ready.gov: isolar janelas e frestas, evitar monóxido de carbono, nunca aquecer com forno ou fogão a gás e sinais de hipotermia e congelamento."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 121,
-     "label": "Keeping warm safely in a winter storm",
-     "note": "CERT 2019 annex: closing off unused rooms, never using outdoor heaters or generators inside, and kerosene heater ventilation and refuelling."
+     "label": "Aquecer-se com segurança em tempestades de inverno",
+     "note": "Anexo CERT 2019: fechar cômodos não usados, nunca usar aquecedores externos, churrasqueiras ou geradores dentro de casa."
     },
     {
      "doc": "4c096c3377a13d",
      "page": 2,
-     "label": "Winter storm: prepare, survive, recognise",
-     "note": "FEMA sheet on preparing the home, carbon monoxide, checking on neighbours, and recognising frostbite and hypothermia."
+     "label": "Frio extremo: preparar, proteger e reconhecer riscos",
+     "note": "Ficha FEMA: preparar o imóvel, risco de CO, verificar vizinhos e reconhecer hipotermia."
     },
     {
      "doc": "med-2e83e22162a9a006",
      "page": 461,
-     "label": "First aid for someone who is too cold",
-     "note": "IFRC 2025 guidance on warming a person with hypothermia and avoiding burns. Full first aid is in the hurt topic."
+     "label": "Primeiros socorros para quem está em hipotermia",
+     "note": "FICV 2025: como reaquecer gradualmente evitando queimaduras. Veja o guia completo em Ferimentos e doenças."
     }
    ]
   },
   {
    "id": "co",
-   "label": "Using a generator, heater, grill or stove for power or heat",
-   "hint": "Power outage, space heater, camp stove, headache or dizziness indoors",
+   "label": "Usando gerador, aquecedor, churrasqueira ou fogareiro",
+   "hint": "Queda de energia, aquecedor portátil, dor de cabeça ou tontura dentro de casa",
    "read": [
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "Avoid carbon monoxide poisoning in an outage",
-     "note": "FEMA: generators, camp stoves and charcoal grills only outdoors and away from openings, never heat the home with a stove, oven, grill or dryer, and install CO alarms."
+     "label": "Evitar intoxicação por monóxido de carbono no apagão",
+     "note": "FEMA: geradores, fogareiros e churrasqueiras a carvão apenas ao ar livre e longe de aberturas; nunca usar fogão ou forno para aquecer a casa."
     },
     {
      "doc": "f6becaef71ffd5",
-     "label": "Generator safety",
-     "note": "Ready.gov section on where to run a generator, CO detectors, keeping it dry, extension cords and refuelling only after it cools."
+     "label": "Segurança com geradores",
+     "note": "Ready.gov: onde posicionar geradores, detector de CO, manter seco, cabos adequados e reabastecer somente após esfriar."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 60,
-     "label": "If your CO alarm sounds or you smell gas",
-     "note": "CERT 2019 annex: move to fresh air and call for help from there; never run a generator indoors or in a garage."
+     "label": "Se o alarme de CO tocar ou sentir cheiro de gás",
+     "note": "Anexo CERT 2019: ir imediatamente para o ar livre e chamar socorro (Bombeiros 193 / SAMU 192) de fora; nunca operar gerador em garagem ou cômodo fechado."
     },
     {
      "doc": "med-2e83e22162a9a006",
      "page": 353,
-     "label": "Signs of carbon monoxide poisoning",
-     "note": "IFRC 2025 explains that CO is colourless and odourless, where it comes from, and its typical symptoms."
+     "label": "Sinais de intoxicação por monóxido de carbono",
+     "note": "FICV 2025 explica que o CO é incolor e inodoro, suas fontes comuns e sintomas (cefaleia, náusea, tontura, confusão)."
     }
    ]
   },
   {
    "id": "smoke",
-   "label": "Wildfire smoke or bad air outside",
-   "hint": "Smoky sky, ash falling, air quality alert, asthma",
+   "label": "Fumaça de queimadas ou ar muito poluído lá fora",
+   "hint": "Céu encoberto por fumaça, fuligem caindo, alerta de ar seco/queimada, asma",
    "read": [
     {
      "doc": "a90ff7e6f3cf01",
-     "label": "Protect yourself from wildfire smoke",
-     "note": "Ready.gov: N95 masks, a closed-off clean-air room with a portable air cleaner, HVAC recirculate settings, and when to evacuate or go to a community building."
+     "label": "Proteger-se da fumaça de queimadas e incêndios florestais",
+     "note": "Ready.gov: máscaras PFF2/N95, cômodo vedado de ar limpo com purificador portátil, modo recircular no ar-condicionado e quando evacuar."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 32,
-     "label": "Seek clean air and protect your breathing",
-     "note": "CERT 2019 on deciding whether to stay or leave, covering mouth and nose, and sealing an inside room until contaminated air clears."
+     "label": "Buscar ar limpo e proteger a respiração",
+     "note": "CERT 2019: decidir entre ficar ou sair, proteger nariz e boca e vedar cômodo interno até a nuvem de fumaça ou químicos passar."
     },
     {
      "doc": "8e7f6a8861354c",
-     "label": "Why smoke and particles harm health",
-     "note": "National Weather Service page on particle pollution (including smoke) and ozone and the breathing and heart problems they can cause."
+     "label": "Por que fumaça e material particulado prejudicam a saúde",
+     "note": "Página NWS sobre material particulado (fumaça de queimadas) e ozônio, e seus efeitos respiratórios e cardíacos."
     }
    ]
   },
   {
    "id": "damaged",
-   "label": "Home is damaged – is it safe to stay?",
-   "hint": "After earthquake, fire or storm: cracks, gas smell, downed lines",
+   "label": "A casa foi danificada — é seguro permanecer nela?",
+   "hint": "Após tempestade, destelhamento, deslizamento, enchente ou incêndio: rachaduras, cheiro de gás, fios caídos",
    "read": [
     {
      "doc": "cecc1671ae4d02",
      "page": 31,
-     "label": "Before you go back inside a damaged home",
-     "note": "FEMA Are You Ready? on structural damage signs, gas smells, wet appliances, wiring and getting a qualified inspection."
+     "label": "Antes de entrar novamente em um imóvel danificado",
+     "note": "Guia FEMA: sinais de dano estrutural, cheiro de gás, eletrodomésticos molhados, fiação comprometida e necessidade de vistoria da Defesa Civil / engenheiro."
     },
     {
      "doc": "9681a68ebd07f5",
      "page": 18,
-     "label": "After an earthquake: check, protect, inspect",
-     "note": "CERT 2019 annex: protective clothing, small fires, spills, when to get everyone out of the home, and aftershocks."
+     "label": "Após impacto ou abalo estrutural: verificar, proteger, inspecionar",
+     "note": "Anexo CERT 2019: calçado/roupa de proteção, pequenos focos de fogo, vazamentos e quando evacuar todos imediatamente."
     },
     {
      "doc": "af57f977ae75ec",
      "page": 2,
-     "label": "Returning after a wildfire",
-     "note": "National Weather Service sheet: return only when officials say so, check for damage and gas, stay out of unsafe buildings, use flashlights not candles."
+     "label": "Retornar após incêndio florestal",
+     "note": "Ficha NWS: voltar apenas após liberação oficial (Defesa Civil / Bombeiros), inspecionar estrutura e gás, e usar lanterna em vez de velas."
     },
     {
      "doc": "5e162f84b8d790",
-     "label": "Going to a mass care shelter",
-     "note": "Ready.gov on what community shelters provide, bringing your own kit and cleaning supplies, pets, and how to find open shelters."
+     "label": "Ir para um abrigo comunitário / ponto de acolhimento",
+     "note": "Ready.gov: o que abrigos costumam oferecer, o que levar (kit próprio, documentos, remédios, itens de higiene) e cuidados com animais de estimação."
     }
    ]
   },
   {
    "id": "inplace",
-   "label": "Told to stay inside or shelter in place",
-   "hint": "Chemical release, contaminated air, stay-at-home order",
+   "label": "Orientação para permanecer fechado dentro de casa",
+   "hint": "Vazamento químico industrial, fumaça tóxica, ordem da Defesa Civil",
    "read": [
     {
      "doc": "5e162f84b8d790",
-     "label": "How to shelter in place",
-     "note": "Ready.gov steps: bring everyone in, close windows and vents, turn off air systems, go to an interior room and seal it with plastic and tape."
+     "label": "Como fazer o confinamento seguro em ambiente interno",
+     "note": "Ready.gov: recolher todos para dentro, fechar portas, janelas e frestas, desligar ar-condicionado/exaustores e vedar cômodo interno com plástico e fita."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 33,
-     "label": "Types of sheltering",
-     "note": "CERT 2019 on shelter-in-place, staying home for up to two weeks, and mass care shelters."
+     "label": "Tipos de abrigo em emergências",
+     "note": "CERT 2019: confinamento breve (shelter-in-place), permanência prolongada em casa e abrigos coletivos."
     },
     {
      "doc": "cecc1671ae4d02",
      "page": 9,
-     "label": "Assess the situation, then decide to stay or go",
-     "note": "FEMA Are You Ready? on taking a few seconds to judge danger and whether to stay or change location; key actions for specific hazards follow."
+     "label": "Avaliar o cenário antes de decidir ficar ou evacuar",
+     "note": "Guia FEMA sobre ponderar o risco imediato antes de permanecer ou sair de casa."
     }
    ]
   },
   {
    "id": "outdoors",
-   "label": "Need a shelter outdoors",
-   "hint": "Can't stay inside, camping out, only a tarp or poncho",
+   "label": "Preciso montar abrigo ao ar livre",
+   "hint": "Impossível permanecer na casa, apenas uma lona ou poncho",
    "read": [
     {
      "doc": "5b0efa0b70cb98",
      "page": 137,
-     "label": "Choose a safe shelter site",
-     "note": "US Army survival manual (2018) checklist: protection from wind and rain, no dead trees above, away from flash-flood and slide areas. Written for soldiers."
+     "label": "Escolher um terreno seguro para abrigo",
+     "note": "Manual militar US Army (2018): proteção contra vento e chuva, sem galhos/árvores secas acima, longe de leitos de enxurrada e encostas instáveis."
     },
     {
      "doc": "5b0efa0b70cb98",
      "page": 138,
-     "label": "Quick shelters from what you have",
-     "note": "Immediate-action shelters from walls, vehicles, tarps, plastic or space blankets, and natural cover."
+     "label": "Abrigos rápidos com o que há disponível",
+     "note": "Abrigos imediatos usando muros, veículos, lonas, plásticos ou mantas térmicas e proteção natural."
     },
     {
      "doc": "5b0efa0b70cb98",
      "page": 139,
-     "label": "Build a poncho or tarp lean-to",
-     "note": "Step-by-step lean-to with a tarp or poncho, rope and stakes, facing its back to the wind; tents and A-frames follow."
+     "label": "Montar abrigo inclinado (lean-to) com lona ou poncho",
+     "note": "Passo a passo com lona, corda e estacas, posicionado de costas para o vento; variações em A seguem nas páginas."
     },
     {
      "doc": "video-4M-f61tbWH4",
-     "label": "Video: 4 ways to set up a tarp shelter",
-     "note": "REI demonstration (about 5 minutes, captions) of A-frame and other tarp setups. A gear store video for camping, not an emergency agency."
+     "label": "Vídeo: 4 formas de montar abrigo com lona (REI, em inglês)",
+     "note": "Demonstração prática (~5 min, legendas) de montagens em A e outras configurações com lona de acampamento."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Use generators and fuel only outdoors, at least 20 feet from windows, doors and attached garages; carbon monoxide is colourless and odourless and can kill.",
+   "text": "Use geradores e combustíveis apenas ao ar livre, a pelo menos 6 metros (20 pés) de janelas, portas e garagens; o monóxido de carbono é incolor, inodoro e mata.",
    "doc": "f6becaef71ffd5"
   },
   {
-   "text": "Never use a gas stovetop, oven, grill or dryer to heat your home, and never leave a vehicle running in a garage, even with the door open.",
+   "text": "Nunca use fogão a gás, forno ou churrasqueira para aquecer a casa, e jamais deixe carro ligado na garagem mesmo com o portão aberto.",
    "doc": "18bf4604bf28c4",
    "page": 2
   },
   {
-   "text": "If your carbon monoxide alarm sounds or you smell gas, move to fresh air immediately, call for help from there and stay until emergency personnel arrive.",
+   "text": "Se o alarme de monóxido de carbono tocar ou sentir cheiro de gás, saia imediatamente para local aberto e acione socorro (Bombeiros 193 / SAMU 192) de fora.",
    "doc": "9681a68ebd07f5",
    "page": 60
   },
   {
-   "text": "Never use heaters designed for outdoor use inside; keep kerosene heaters ventilated, refuel them outside and keep them at least three feet from things that can burn.",
+   "text": "Nunca use aquecedores projetados para área externa dentro de casa; se usar aquecedores a querosene homologados, mantenha ventilação e ao menos 1 metro (3 pés) livre de inflamáveis.",
    "doc": "9681a68ebd07f5",
    "page": 121
   },
   {
-   "text": "Do not rely on electric fans when it is over 95°F outside: they can increase the risk of heat illness.",
+   "text": "Acima de 35 °C (95 °F), não confie só no ventilador elétrico: vento muito quente pode acelerar a sobrecarga térmica corporal.",
    "doc": "1c0d7a149286b5",
    "page": 2
   },
   {
-   "text": "Heat stroke (very high temperature, red hot dry skin, confusion, unconsciousness): call 9-1-1 or get the person to a hospital immediately.",
+   "text": "Insolação/intermação (temperatura corporal muito alta, pele quente, confusão mental, perda de consciência): ligue SAMU (192) / Bombeiros (193) ou leve imediatamente ao hospital.",
    "doc": "1c0d7a149286b5",
    "page": 2
   },
   {
-   "text": "People on fluid-restricted diets (for example, with kidney disease) should consult their doctor before drinking more fluids in heat.",
+   "text": "Pessoas com restrição médica de líquidos (ex.: doença renal ou cardíaca avançada) devem consultar médico antes de aumentar muito a ingestão no calor.",
    "doc": "9681a68ebd07f5",
    "page": 27
   },
   {
-   "text": "A body temperature below 95°F is an emergency.",
+   "text": "Temperatura corporal abaixo de 35 °C (95 °F) é emergência de hipotermia.",
    "doc": "f6becaef71ffd5"
   },
   {
-   "text": "Evacuate immediately if authorities tell you to. If trapped by wildfire, call 9-1-1 and give your location, but emergency response may be delayed or impossible.",
+   "text": "Evacue imediatamente se a Defesa Civil ou Bombeiros determinarem. Se cercado por fogo de queimada, ligue 193 / 199 informando sua posição.",
    "doc": "a90ff7e6f3cf01"
   },
   {
-   "text": "People with asthma, COPD or other lung conditions should take precautions in poor air quality because it can worsen symptoms.",
+   "text": "Pessoas com asma, DPOC ou doenças cardíacas devem redobrar precauções com fumaça de queimadas.",
    "doc": "a90ff7e6f3cf01"
   },
   {
-   "text": "Do not enter a building with signs of structural damage, a gas smell, floodwater around it, or fire damage not yet inspected; have a qualified inspector check a damaged home.",
+   "text": "Não entre em imóvel com rachaduras estruturais graves, cheiro de gás, área alagada ou dano por incêndio sem vistoria técnica (Defesa Civil / engenheiro).",
    "doc": "cecc1671ae4d02",
    "page": 31
   },
   {
-   "text": "If there are major cracks in the chimney or foundation, or the home has moved, get everyone out of the home.",
+   "text": "Se houver trincas graves na fundação, muros/pilares deslocados ou estalos contínuos na estrutura, retire todos da casa imediatamente.",
    "doc": "9681a68ebd07f5",
    "page": 18
   },
   {
-   "text": "If experts or local officials tell you to evacuate, leave. Older people and those with access and functional needs may need to leave well before official notice.",
+   "text": "Ao receber ordem oficial de evacuação, saia sem esperar; idosos e pessoas com mobilidade reduzida devem sair com antecedência.",
    "doc": "ed5bac0a81b009",
    "page": 32
   }
@@ -308,77 +342,77 @@
   {
    "doc": "e629b2983d95e4",
    "page": 6,
-   "label": "Smoke and carbon monoxide alarms, power for medical devices",
-   "note": "American Red Cross (2020): CO and smoke alarms on every floor and near bedrooms, backup power plans, and learning to shut off utilities."
+   "label": "Alarmes de fumaça/CO e energia reserva médica",
+   "note": "Cruz Vermelha (2020): detectores em quartos e corredores, plano de energia para aparelhos médicos e saber fechar registros."
   },
   {
    "doc": "1c0d7a149286b5",
    "page": 2,
-   "label": "Get your home ready for heat",
-   "note": "FEMA list: drapes, weather-stripping, window reflectors, insulation, attic ventilation, and finding cool places in your community in advance."
+   "label": "Preparar a residência para ondas de calor",
+   "note": "FEMA: cortinas térmicas, vedação de frestas, ventilação de forro/telhado e mapear locais públicos climatizados próximos."
   },
   {
    "doc": "a90ff7e6f3cf01",
-   "label": "Prepare a clean-air room and N95 masks for wildfire season",
-   "note": "Ready.gov: a room you can close off, a portable air cleaner, N95 masks, alerts, evacuation routes and a go bag."
+   "label": "Preparar cômodo de ar limpo e máscaras PFF2/N95 para época de queimadas",
+   "note": "Ready.gov: quarto fácil de vedar, purificador portátil, máscaras PFF2/N95, rotas de saída e mochila de fuga."
   },
   {
    "doc": "db4d9783fca34b",
    "page": 2,
-   "label": "Kit items for sheltering: dust mask, plastic sheeting, duct tape",
-   "note": "FEMA checklist including items for sealing a room, a radio, flashlight and first aid kit; first page adds sleeping bags or blankets and clothing."
+   "label": "Itens do kit para abrigo e vedação: máscara, lona e fita larga",
+   "note": "Checklist FEMA incluindo plástico e fita adesiva para vedar janelas, rádio a pilha, lanterna, kit médico e agasalhos/cobertores."
   },
   {
    "doc": "4c096c3377a13d",
    "page": 2,
-   "label": "Get ready for cold weather",
-   "note": "FEMA: insulation, caulking and weather stripping, protecting pipes, testing alarms, and supplies for several days without power."
+   "label": "Preparo para frentes frias intensas",
+   "note": "FEMA: vedar portas/janelas, proteger encanamentos expostos contra geada e manter suprimentos para vários dias sem luz."
   },
   {
    "doc": "5cd0b4e41cc479",
    "page": 23,
-   "label": "Shoes and a flashlight by every bed",
-   "note": "FEMA Earthquake Safety at Home (2020) planning list, including drop-cover-hold-on practice and checking tsunami zones."
+   "label": "Calçados fechados e lanterna ao lado da cama",
+   "note": "Guia FEMA P-530 (2020): planejamento simples para sair seguro no escuro sem pisar em vidros ou entulho."
   }
  ],
  "learn": [
   {
    "doc": "cecc1671ae4d02",
    "label": "FEMA Are You Ready? (2020)",
-   "note": "In-depth citizen preparedness guide covering hazards, sheltering, evacuation plans, supplies and recovering after disasters."
+   "note": "Guia aprofundado de preparação (em inglês) sobre desastres, abrigamento, evacuação, suprimentos e recuperação."
   },
   {
    "doc": "9681a68ebd07f5",
-   "label": "CERT Basic Training Hazard Annexes (2019)",
-   "note": "Hazard-by-hazard annexes (earthquake, extreme heat, fire and wildfire, floods, winter storm, tsunami and more) with before, during and after actions."
+   "label": "Anexos de Riscos CERT Basic Training (2019)",
+   "note": "Anexos por tipo de risco (calor extremo, incêndios, enchentes, tempestades de frio, terremotos) com medidas antes, durante e depois."
   },
   {
    "doc": "5cd0b4e41cc479",
    "label": "FEMA Earthquake Safety at Home (2020)",
-   "note": "How to secure your space, find home weak points, plan, and recover after an earthquake; includes a California supplement."
+   "note": "Como reforçar móveis e objetos na casa, identificar vulnerabilidades estruturais e recuperar após desastres."
   },
   {
    "doc": "5b0efa0b70cb98",
-   "label": "US Army ATP 3-50.21 Survival (2018)",
-   "note": "Current military field survival manual; chapter 6 covers clothing, shelter sites, tarp and natural shelters, and insulation."
+   "label": "Manual de Sobrevivência US Army ATP 3-50.21 (2018)",
+   "note": "Manual militar completo; capítulo 6 trata de vestimenta em camadas, escolha de local e montagem de abrigos naturais e com lona."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Carbon_monoxide_poisoning",
    "title": "Carbon monoxide poisoning",
-   "label": "Encyclopedia: Carbon monoxide poisoning (MDWiki)",
-   "note": "Medical encyclopedia article on CO sources, symptoms and prevention."
+   "label": "Enciclopédia: intoxicação por monóxido de carbono (MDWiki)",
+   "note": "Artigo médico sobre fontes de CO, sintomas e prevenção (em inglês)."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Heat_stroke",
    "title": "Heat stroke",
-   "label": "Encyclopedia: Heat stroke (MDWiki)",
-   "note": "Medical encyclopedia article on heat stroke, who is at risk and prevention."
+   "label": "Enciclopédia: insolação / intermação (MDWiki)",
+   "note": "Artigo médico sobre fatores de risco, prevenção e tratamento da hipertermia grave (em inglês)."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Hypothermia",
    "title": "Hypothermia",
-   "label": "Encyclopedia: Hypothermia (MDWiki)",
-   "note": "Medical encyclopedia article on causes, stages and prevention of dangerous cold."
+   "label": "Enciclopédia: hipotermia (MDWiki)",
+   "note": "Artigo médico sobre causas, estágios e prevenção da hipotermia (em inglês)."
   }
  ],
  "related": [

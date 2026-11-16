@@ -1,9 +1,9 @@
 {
  "id": "preserve",
  "mode": "learn",
- "title": "Preserve and store food",
- "short": "Canning, drying, freezing, pickling and fermenting safely",
- "intro": "A beginner's path through tested home food preservation, mostly from the USDA and the National Center for Home Food Preservation. It explains why botulism and acidity decide which method is safe, before moving on to canners, drying, freezing, pickling and fermenting.",
+ "title": "Conservar e armazenar alimentos com segurança",
+ "short": "Conservas em vidro, desidratação, congelamento, picles e fermentação",
+ "intro": "Um roteiro inicial sobre conservação segura de alimentos em casa, baseado nos guias científicos do USDA e do National Center for Home Food Preservation (NCHFP). Explica primeiro por que o botulismo e a acidez (pH) definem qual método é seguro, antes de abordar autoclaves/panelas de pressão específicas para conservas, desidratação, congelamento, conservas ácidas (picles) e fermentação.",
  "keywords": [
   "preserve",
   "canning",
@@ -25,127 +25,151 @@
   "pickles",
   "fermenting",
   "sauerkraut",
-  "food storage"
+  "food storage",
+  "conservar",
+  "conserva",
+  "conservas",
+  "vidros",
+  "esterilizar",
+  "banho maria",
+  "panela de pressao",
+  "autoclave",
+  "botulismo",
+  "acidez",
+  "ph",
+  "desidratar",
+  "desidratador",
+  "secar alimentos",
+  "charque",
+  "congelar",
+  "congelamento",
+  "branqueamento",
+  "picles",
+  "fermentar",
+  "fermentacao",
+  "fermentação",
+  "chucrute",
+  "armazenamento"
  ],
  "choices": [
   {
    "id": "method",
-   "label": "Which method suits my food?",
-   "hint": "Fruit, vegetables, meat, tomatoes",
+   "label": "Qual método serve para o meu alimento?",
+   "hint": "Frutas, legumes/hortaliças, carnes, tomate",
    "read": [
     {
      "doc": "31a7235cab119ccb",
      "page": 8,
-     "label": "Food acidity decides pressure canner or boiling-water canner",
-     "note": "USDA Complete Guide to Home Canning (2015), Guide 1: low-acid versus acid foods, tomatoes and figs, and why low-acid foods need higher temperatures."
+     "label": "A acidez do alimento define autoclave/pressão versus banho-maria",
+     "note": "Guia USDA (2015), Guia 1: alimentos de baixa acidez versus ácidos, tomate/figo e por que alimentos pouco ácidos exigem temperaturas acima de 100 °C sob pressão."
     }
    ]
   },
   {
    "id": "lowacid",
-   "label": "Canning vegetables, meat, beans or soup",
-   "hint": "Low-acid foods",
+   "label": "Conserva de legumes, carnes, feijão ou sopas em vidro",
+   "hint": "Alimentos de baixa acidez (alto risco de botulismo se feitos errado)",
    "read": [
     {
      "doc": "a8defaa10a263bba",
      "page": 5,
-     "label": "For safety's sake: why low-acid foods need a pressure canner",
-     "note": "USDA Complete Guide (2015) introduction on botulism risk, boiling suspect low-acid food before eating, and the checklist for when home-canned food may be eaten unboiled."
+     "label": "Por segurança: por que alimentos pouco ácidos exigem pressure canner",
+     "note": "Guia USDA (2015) sobre risco fatal de botulismo, fervura obrigatória antes do consumo em casos duvidosos e critérios estritos."
     },
     {
      "doc": "7b1d42bb203e3a2f",
      "page": 3,
-     "label": "Before using a pressure canner: altitude, trapped air, gauge checks",
-     "note": "NCHFP fact sheet: avoiding outdated canners, venting for 10 minutes, and when a dial gauge needs calibrating."
+     "label": "Antes de usar pressure canner: altitude, purga de ar e calibração",
+     "note": "Ficha NCHFP: evitar equipamentos antigos sem segurança, purgar vapor por 10 minutos e aferir o manômetro."
     },
     {
      "doc": "video-qoFj2Gxy3LA",
-     "label": "Video: Pressure Canning 101 (UMN Extension, 8 min)",
-     "note": "Steps for using a pressure canner and why pressure cookers are not recommended for canning."
+     "label": "Vídeo: Conservas sob pressão 101 (UMN Extension, 8 min, em inglês)",
+     "note": "Passos com pressure canner própria e por que panelas de pressão domésticas comuns não devem ser usadas para esterilizar conservas de baixa acidez."
     }
    ]
   },
   {
    "id": "jarcheck",
-   "label": "Is this jar safe to eat?",
-   "hint": "Bulging lid, leaking, odd smell, unsure how it was canned",
+   "label": "Este vidro de conserva está seguro para comer?",
+   "hint": "Tampa estufada, vazando, cheiro estranho ou origem incerta",
    "read": [
     {
      "doc": "31a7235cab119ccb",
      "page": 26,
-     "label": "Storing canned food and spotting spoilage",
-     "note": "USDA Guide 1: storage temperatures and places to avoid, checking lids for vacuum, and signs of spoilage; continues on the next page."
+     "label": "Guardar conservas e identificar sinais de deterioração",
+     "note": "Guia USDA 1: temperatura ideal, conferência de vácuo na tampa metálica e sinais de alteração (páginas seguintes)."
     },
     {
      "doc": "31a7235cab119ccb",
      "page": 27,
-     "label": "Handling and detoxifying suspected botulism jars",
-     "note": "USDA Guide 1: treat suspect low-acid jars as toxic, how to bag or detoxify them, and cleaning surfaces with a bleach solution while wearing gloves."
+     "label": "Como descartar e descontaminar vidros suspeitos de botulismo",
+     "note": "Guia USDA 1: tratar vidro suspeito de baixa acidez como material tóxico, ensacamento/desintoxicação e limpeza com água sanitária usando luvas."
     },
     {
      "doc": "99dd5e2cc78a16a0",
-     "label": "Clostridium botulinum: the CDC discard advice",
-     "note": "NCHFP page noting CDC advice to discard any home-canned food that might contain botulism toxin, plus the USDA boiling caution."
+     "label": "Clostridium botulinum: orientação CDC de descarte",
+     "note": "Página NCHFP reforçando o descarte imediato de qualquer conserva caseira suspeita de botulismo."
     }
    ]
   },
   {
    "id": "nopower",
-   "label": "Preserving without much power",
-   "hint": "Sun drying, fermenting, dry storage",
+   "label": "Conservar com pouca ou nenhuma energia elétrica",
+   "hint": "Secagem ao sol, fermentação, estoque seco",
    "read": [
     {
      "doc": "d34b594740923db4",
-     "label": "Sun drying: which foods are safe to dry outdoors",
-     "note": "NCHFP: fruits can be sun-dried in hot, dry, breezy weather; vegetables (except vine-dried beans) and meats are not recommended outdoors."
+     "label": "Secagem ao sol: quais alimentos são seguros secar ao ar livre",
+     "note": "NCHFP: frutas aceitam sol em clima quente, seco e ventilado; hortaliças (exceto grãos secos na vagem) e carnes não são recomendadas ao ar livre sem controle."
     },
     {
      "doc": "563dd6789e6214f2",
-     "label": "Containers, covers and weights for fermenting",
-     "note": "NCHFP: crock and food-grade plastic or glass sizes, keeping vegetables under brine, and not using garbage bags as liners."
+     "label": "Recipientes, tampas e pesos para fermentação",
+     "note": "NCHFP: potes de vidro, cerâmica sem chumbo ou plástico alimentício, manter vegetais submersos na salmoura e não usar sacos de lixo."
     },
     {
      "doc": "f8cf7fa69fd15ac1",
-     "label": "Packaging and storing dried foods",
-     "note": "NCHFP: cooling, insect-proof containers, small packages, and storage conditions for dried food."
+     "label": "Embalagem e guarda de alimentos desidratados",
+     "note": "NCHFP: resfriar completamente antes de embalar, potes herméticos contra insetos e local fresco e escuro."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Pressure canning is the only recommended method for meat, poultry, seafood and vegetables; using boiling-water canners for them risks botulism.",
+   "text": "Esterilização em equipamento de pressão adequado (pressure canner/autoclave) é o único método seguro para carnes, aves, pescados e hortaliças de baixa acidez (ex.: palmito, milho, feijão); usar banho-maria traz risco grave de botulismo.",
    "doc": "a8defaa10a263bba",
    "page": 5
   },
   {
-   "text": "Even a taste of food containing botulinum toxin can be fatal.",
+   "text": "Mesmo provar uma pequena gota de alimento com toxina botulínica pode ser fatal.",
    "doc": "a8defaa10a263bba",
    "page": 5
   },
   {
-   "text": "CDC recommends discarding any home-canned food that might contain botulism toxin.",
+   "text": "Recomenda-se descartar qualquer conserva caseira suspeita de conter toxina do botulismo sem sequer prová-la.",
    "doc": "99dd5e2cc78a16a0"
   },
   {
-   "text": "Suspect low-acid jars should be treated as containing botulinum toxin; contact with the toxin, even through skin, can be fatal.",
+   "text": "Vidros suspeitos de baixa acidez devem ser manipulados com luvas e descartados com segurança; a toxina pode ser absorvida até pela pele lesionada.",
    "doc": "31a7235cab119ccb",
    "page": 27
   },
   {
-   "text": "Do not change vinegar, food or water proportions in pickle recipes, or use vinegar of unknown acidity; use only tested recipes.",
+   "text": "Não altere proporções de vinagre, água e alimentos em receitas de picles, nem use vinagre sem acidez declarada; use apenas receitas testadas (vinagre ≥ 5% acidez nas tabelas USDA).",
    "doc": "f6fb003a0c35d70b"
   },
   {
-   "text": "Open-kettle canning and processing jars in ovens, microwaves or dishwashers are not recommended.",
+   "text": "Envase a quente sem processamento térmico posterior (open-kettle) ou processar vidros em forno comum, micro-ondas ou lava-louças NÃO é seguro.",
    "doc": "eee926a5f91df0aa"
   },
   {
-   "text": "Vegetables (except vine-dried beans) and meats are not recommended for drying outdoors; dry them indoors with controlled heat.",
+   "text": "Hortaliças (exceto grãos maduros) e carnes não devem ser secas apenas ao sol; use secagem controlada com temperatura adequada (e cura com sal quando aplicável).",
    "doc": "d34b594740923db4"
   },
   {
-   "text": "Outdated pressure canners should not be used, and dial gauges should be calibrated, for example if dropped or submerged.",
+   "text": "Equipamentos antigos sem válvula de segurança calibrada não devem ser usados, e manômetros de ponteiro exigem aferição periódica.",
    "doc": "7b1d42bb203e3a2f",
    "page": 3
   }
@@ -153,212 +177,212 @@
  "prepare": [
   {
    "doc": "b7eddc925dc2b7c5",
-   "label": "Recommended jars and lids",
-   "note": "NCHFP/USDA guidance on which jars and lids to use for home canning."
+   "label": "Vidros e tampas recomendados para conservas",
+   "note": "Orientação NCHFP/USDA sobre tipos de vidro resistente a choque térmico e tampas com vedação confiável."
   },
   {
    "doc": "31a7235cab119ccb",
    "page": 17,
-   "label": "Choosing between a boiling-water canner and a pressure canner",
-   "note": "USDA Guide 1: types and capacities of canners, why small pressure saucepans are not recommended, and typical processing times."
+   "label": "Escolher entre banho-maria e pressure canner",
+   "note": "Guia USDA 1: capacidade e características dos equipamentos, por que panelas de pressão comuns pequenas não substituem canners e tempos típicos."
   },
   {
    "doc": "video-K0NjS_cJdFY",
-   "label": "Video: getting a dial-gauge pressure canner tested (UC ANR, 4 min)",
-   "note": "Shows how an extension office tests a dial gauge against a master gauge."
+   "label": "Vídeo: como testar manômetro de canner (em inglês)",
+   "note": "Demonstração de conferência de ponteiro contra manômetro padrão."
   },
   {
    "doc": "3bc114d3d8a89fc9",
-   "label": "Choosing a food dehydrator",
-   "note": "NCHFP: how dehydrators work and features to look for, such as an adjustable thermostat and enclosed heating element."
+   "label": "Como escolher um desidratador de alimentos",
+   "note": "NCHFP: termostato ajustável, circulação de ar e resistência protegida."
   },
   {
    "doc": "4d6322e80565247b",
-   "label": "Freezer management and keeping an inventory",
-   "note": "NCHFP (So Easy to Preserve): filling and rotating the freezer, posting an inventory, and keeping it at 0 °F with a thermometer."
+   "label": "Organizar o freezer e manter lista do estoque",
+   "note": "NCHFP: rotação PEPS (primeiro que entra, primeiro que sai) e manter temperatura a -18 °C (0 °F)."
   }
  ],
  "learn": [
   {
    "doc": "31a7235cab119ccb",
-   "label": "USDA Complete Guide to Home Canning, Guide 1: Principles",
-   "note": "40-page core guide (2015 revision): safety, acidity, altitude, jars, canners, cooling, storage, spoilage and a glossary."
+   "label": "USDA Complete Guide to Home Canning, Guia 1: Princípios",
+   "note": "Guia essencial de 40 páginas (2015, em inglês): segurança, acidez, altitude, vidros, equipamentos, resfriamento e sinais de deterioração."
   },
   {
    "doc": "2018b3d9c821d6a7",
-   "label": "USDA Complete Guide, Guide 6: Fermented Foods and Pickled Vegetables",
-   "note": "Tested recipes and procedures for sauerkraut, fermented and fresh-pack pickles and relishes (2015 revision)."
+   "label": "USDA Complete Guide, Guia 6: Alimentos Fermentados e Picles",
+   "note": "Receitas testadas para chucrute, picles fermentados e conservas em vinagre (2015)."
   },
   {
    "doc": "a8defaa10a263bba",
-   "label": "USDA Complete Guide: introduction and table of contents",
-   "note": "Front section of the 2015 guide with safety cautions, altitude information and the full recipe index."
+   "label": "USDA Complete Guide: introdução e sumário completo",
+   "note": "Seção inicial com avisos de segurança, tabelas de altitude e índice de receitas."
   },
   {
    "doc": "video-XGNrYnGc3PU",
-   "label": "Video webinar: Food Preservation @ Home, Pressure Canning (SDSU Extension, 1 hr)",
-   "note": "Extension class on pressure canning principles and equipment, with authored captions."
+   "label": "Webinário em vídeo: Conservas sob pressão (1 h, em inglês)",
+   "note": "Aula de extensão rural sobre princípios e segurança (com legendas)."
   },
   {
    "doc": "video-XmB_WEdU1kU",
-   "label": "Video webinar: Food Preservation @ Home, Water Bath Canning (SDSU Extension, 53 min)",
-   "note": "Extension class on boiling-water canning of high-acid foods."
+   "label": "Webinário em vídeo: Conservas em banho-maria (53 min, em inglês)",
+   "note": "Aula sobre envase em água fervente para alimentos naturalmente ácidos."
   },
   {
    "doc": "video-7hB5oXYsTuQ",
-   "label": "Video: Preserving the Bounty FAQs (URI Extension, 66 min)",
-   "note": "Extension educators answer common home preservation questions across methods."
+   "label": "Vídeo: Dúvidas frequentes de conservação de alimentos (66 min, em inglês)",
+   "note": "Especialistas respondem dúvidas práticas de todos os métodos."
   },
   {
    "doc": "3f96a831fbf09a59",
-   "label": "NCHFP: Crafting Kombucha at Home, FAQ",
-   "note": "Four-page question-and-answer sheet on making kombucha, equipment and safety."
+   "label": "NCHFP: Preparo seguro de Kombucha em casa (FAQ)",
+   "note": "Perguntas e respostas de segurança, higiene e equipamentos."
   },
   {
    "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Home_canning",
    "title": "Home canning",
-   "label": "Encyclopedia: home canning",
-   "note": "Background on the history and methods of home canning."
+   "label": "Enciclopédia: conservas caseiras em vidro",
+   "note": "História e métodos de processamento térmico doméstico (em inglês)."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Botulism",
    "title": "Botulism",
-   "label": "Encyclopedia: botulism",
-   "note": "Medical overview of botulism, including foodborne cases, symptoms and treatment."
+   "label": "Enciclopédia: botulismo (MDWiki)",
+   "note": "Visão médica sobre botulismo alimentar, sintomas e urgência de tratamento (em inglês)."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Fermentation_in_food_processing",
    "title": "Fermentation in food processing",
-   "label": "Encyclopedia: fermentation in food processing",
-   "note": "How microbes preserve and transform foods such as sauerkraut and pickles."
+   "label": "Enciclopédia: fermentação de alimentos",
+   "note": "Como bactérias ácido-láticas conservam alimentos como chucrute e picles (em inglês)."
   }
  ],
  "route": [
   {
-   "title": "Step 1: Learn why tested methods matter",
-   "goal": "Understand that preservation methods are chosen by science, and that old family or internet methods can be dangerous.",
+   "title": "Etapa 1: Entender por que métodos testados importam",
+   "goal": "Compreender que a conservação segura depende de ciência e que receitas antigas de internet ou família podem ser arriscadas.",
    "read": [
     {
      "doc": "video-NU8nal9D2QI",
-     "label": "Video: Unsafe outdated food preservation methods (UMN Extension, 5 min)",
-     "note": "Why recipes from family, newspapers or the internet may be unsafe, and examples of outdated methods."
+     "label": "Vídeo: Métodos antigos e inseguros de conserva (5 min, em inglês)",
+     "note": "Por que receitas antigas sem base científica oferecem risco."
     },
     {
      "doc": "video-Webb6LKRKNo",
-     "label": "Video: How to preserve food at home safely (Utah State Extension, 8 min)",
-     "note": "Five research-based guidelines, starting with using current tested recipes and approved canning methods."
+     "label": "Vídeo: Como conservar alimentos com segurança (8 min, em inglês)",
+     "note": "Cinco diretrizes baseadas em pesquisa científica."
     }
    ]
   },
   {
-   "title": "Step 2: Understand botulism and acidity",
-   "goal": "Know how botulism grows in sealed jars and why low-acid and acid foods are treated differently.",
+   "title": "Etapa 2: Entender o botulismo e a acidez (pH)",
+   "goal": "Saber como o Clostridium botulinum se desenvolve em frascos fechados e por que pH 4,6 divide os métodos.",
    "read": [
     {
      "doc": "31a7235cab119ccb",
      "page": 6,
-     "label": "Ensuring safe canned foods: how botulism grows",
-     "note": "USDA Guide 1: spores, the conditions that let them produce toxin, and why processing times matter."
+     "label": "Segurança nas conservas: como cresce o botulismo",
+     "note": "Guia USDA 1: esporos, condições anaeróbicas de produção de toxina e papel do tempo/temperatura."
     },
     {
      "doc": "31a7235cab119ccb",
      "page": 8,
-     "label": "Food acidity and processing methods",
-     "note": "USDA Guide 1: the pH 4.6 line, which foods fall on each side, and acidifying tomatoes and figs."
+     "label": "Acidez dos alimentos e métodos de processamento",
+     "note": "Linha de corte em pH 4,6 e acidificação obrigatória de tomate e figo."
     },
     {
      "doc": "video-ON8FEyVHE30",
-     "label": "Video: Botulism survivor urges safe canning (Utah State Extension, 10 min)",
-     "note": "A survivor describes the mistakes that led to her botulism poisoning from home-canned vegetables."
+     "label": "Vídeo: Sobrevivente de botulismo alerta sobre erros em conservas (10 min, em inglês)",
+     "note": "Relato real dos erros cometidos em conserva caseira de hortaliças."
     }
    ]
   },
   {
-   "title": "Step 3: Boiling-water canning for acid foods",
-   "goal": "Learn the equipment and steps for canning fruit, jams, pickles and acidified tomatoes.",
+   "title": "Etapa 3: Banho-maria (água fervente) para alimentos ácidos",
+   "goal": "Aprender equipamentos e etapas para frutas, geleias, picles e tomates acidificados.",
    "read": [
     {
      "doc": "b5b429f9de6c9f77",
      "page": 2,
-     "label": "NCHFP: Using boiling water canners",
-     "note": "What a water-bath canner is, sizing it to your burner, and the step-by-step process continuing on the following pages."
+     "label": "NCHFP: Uso de banho-maria fervente",
+     "note": "Dimensionamento da panela e procedimento passo a passo."
     },
     {
      "doc": "video-OHT0N0mXUD8",
-     "label": "Video: Boiling water canning method (UMN Extension, 8 min)",
-     "note": "Which foods are safe for this method and a review of each step."
+     "label": "Vídeo: Método em água fervente (8 min, em inglês)",
+     "note": "Quais alimentos são seguros neste método e revisão das etapas."
     }
    ]
   },
   {
-   "title": "Step 4: Pressure canning for low-acid foods",
-   "goal": "Learn to use a pressure canner correctly for vegetables, meats, beans and soups.",
+   "title": "Etapa 4: Autoclave / pressure canner para alimentos de baixa acidez",
+   "goal": "Usar corretamente o processamento sob pressão para vegetais, carnes, feijões e sopas.",
    "read": [
     {
      "doc": "7b1d42bb203e3a2f",
      "page": 3,
-     "label": "NCHFP: Before using a pressure canner",
-     "note": "Outdated canners, altitude, venting trapped air and calibrating dial gauges; the steps follow on page 4."
+     "label": "NCHFP: Antes de usar a pressure canner",
+     "note": "Correção por altitude, purga de vapor e conferência de manômetro."
     },
     {
      "doc": "31a7235cab119ccb",
      "page": 21,
-     "label": "USDA: Using pressure canners step by step",
-     "note": "USDA Guide 1 procedure for water level, venting, pressurizing, timing and cooling."
+     "label": "USDA: Passo a passo do processamento sob pressão",
+     "note": "Nível de água, purga, pressão alvo, tempo e resfriamento natural."
     },
     {
      "doc": "video-qoFj2Gxy3LA",
-     "label": "Video: Pressure Canning 101 (UMN Extension, 8 min)",
-     "note": "Safe use of modern pressure canners, and why pressure cookers should not be used for canning."
+     "label": "Vídeo: Conservas sob pressão 101 (8 min, em inglês)",
+     "note": "Uso seguro e por que panelas de pressão comuns não devem ser usadas para este fim."
     },
     {
      "doc": "video-5XLcDKpv9r0",
-     "label": "Video: Avoiding 10 canning mistakes (Utah State Extension, 6 min)",
-     "note": "Common errors such as making up recipes, with explanations of why each is risky."
+     "label": "Vídeo: Evitar 10 erros comuns em conservas (6 min, em inglês)",
+     "note": "Erros como improvisar receitas e por que cada um traz perigo."
     }
    ]
   },
   {
-   "title": "Step 5: Store, check and judge canned food",
-   "goal": "Store jars well and recognize when a jar must be thrown out.",
+   "title": "Etapa 5: Armazenar, inspecionar e avaliar vidros prontos",
+   "goal": "Guardar vidros corretamente e reconhecer imediatamente quando descartar.",
    "read": [
     {
      "doc": "31a7235cab119ccb",
      "page": 26,
-     "label": "Reprocessing unsealed jars and storing canned food",
-     "note": "USDA Guide 1: what to do with jars that did not seal, storage conditions, and inspecting jars before use."
+     "label": "Reprocessar vidros sem vácuo e armazenar conservas",
+     "note": "O que fazer se a tampa não vedar nas primeiras 24 h e inspeção antes do consumo."
     },
     {
      "doc": "31a7235cab119ccb",
      "page": 27,
-     "label": "Handling suspected spoiled jars safely",
-     "note": "USDA Guide 1: bagging or detoxifying suspect jars and cleaning contaminated surfaces."
+     "label": "Manejo seguro de vidros com suspeita de estragados",
+     "note": "Descontaminação de vidros suspeitos e superfícies."
     }
    ]
   },
   {
-   "title": "Step 6: Freezing, drying, pickling and fermenting",
-   "goal": "Add methods that need less equipment or no canner at all.",
+   "title": "Etapa 6: Congelamento, secagem, picles e fermentação",
+   "goal": "Dominar métodos que dispensam autoclaves ou canners.",
    "read": [
     {
      "doc": "1c6c08a60992fb80",
-     "label": "Freezing: blanching vegetables",
-     "note": "NCHFP: why blanching matters before freezing, and how to water-blanch with the right water-to-vegetable ratio."
+     "label": "Congelamento: branqueamento de hortaliças",
+     "note": "Por que o branqueamento prévio preserva textura, cor e sabor no freezer."
     },
     {
      "doc": "67c78e9ae6862f0e",
-     "label": "How long frozen foods keep their quality",
-     "note": "NCHFP table of approximate freezer storage times at 0 °F by food type."
+     "label": "Quanto tempo os alimentos congelados mantêm a qualidade",
+     "note": "Tabela NCHFP de duração média a -18 °C (0 °F) por tipo de alimento."
     },
     {
      "doc": "d34b594740923db4",
-     "label": "Drying: sun drying fruits",
-     "note": "NCHFP: conditions needed, which foods are suitable outdoors, and which should be dried indoors."
+     "label": "Desidratação: secagem de frutas ao sol",
+     "note": "Condições climáticas necessárias e alimentos que exigem desidratador interno."
     },
     {
      "doc": "f6fb003a0c35d70b",
-     "label": "Pickling: general information and acidity cautions",
-     "note": "NCHFP: types of pickles and why acid levels and tested proportions are critical for safety."
+     "label": "Picles: princípios gerais e cuidados com a acidez",
+     "note": "Tipos de picles e por que proporções exatas de sal e vinagre garantem segurança."
     }
    ]
   }

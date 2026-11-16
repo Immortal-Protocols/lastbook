@@ -1,103 +1,103 @@
 {
  "water": {
   "missing": [
-   "No current CDC or EPA page on disinfecting drinking water. Every bleach dose here assumes 5–6% bleach, and today's stronger US bleach labels are not covered.",
-   "No guidance on choosing certified filters or tablets, storing water in large barrels, or treating pool or spa water.",
-   "No local water utility's boil-water notice material."
+   "Não há página oficial do Ministério da Saúde/FUNASA ou da Anvisa aqui sobre desinfecção com água sanitária padrão brasileira (2,0% a 2,5% de cloro ativo). Os manuais em inglês assumem alvejante de 5–6% (nos manuais dos EUA que pedem 2 gotas/L a 5–6%, dobrar a dose ao usar água sanitária brasileira de 2,0–2,5%; a orientação padrão no Brasil para 2,0–2,5% já é de 2 gotas/L e 4 gotas/L em água turva, aguardando 30 min).",
+   "Não há orientação sobre escolha de filtros certificados (padrão Inmetro), pastilhas purificadoras, armazenamento em caixas-d'água/tambores ou tratamento de água de piscina.",
+   "Não há comunicados ou boletins locais de concessionárias de saneamento estaduais/municipais (Sabesp, Cedae, Copasa, Sanepar etc.) sobre fervura de água."
   ],
   "disagree": [
-   "Sources give different bleach drop counts. Each card states the bleach strength its own source assumes — follow one source's method fully rather than mixing them."
+   "As fontes trazem dosagens diferentes em gotas de hipoclorito/água sanitária por diferirem na concentração de base (2,0–2,5% no Brasil vs. 5–6% ou 8,25% nos EUA). Cada guia indica a concentração assumida — siga integralmente o método de uma mesma fonte sem misturar tabelas."
   ]
  },
  "sanitation": {
   "missing": [
-   "No US (CDC, FEMA or Red Cross) guide to bucket or bag emergency toilets, or to cleaning up sewage backups. The closest are a Norwegian civil-protection guide, WHO notes written for camps and a 1987 book.",
-   "Almost no sanitation videos."
+   "Não há guia brasileiro (Ministério da Saúde, FUNASA ou Defesa Civil) específico sobre banheiros secos/emergenciais de balde ou limpeza após refluxo de esgoto e enchentes urbanas. Os itens mais próximos são um guia norueguês de proteção civil, notas da OMS para acampamentos e um livro de 1987.",
+   "Quase não há vídeos sobre saneamento emergencial."
   ]
  },
  "food": {
   "missing": [
-   "No USDA FSIS “Keeping Food Safe During an Emergency” or FoodKeeper chart.",
-   "No current guide to long-term bulk storage (grains, oxygen absorbers).",
-   "No CDC carbon monoxide fact sheet in English (the US Fire Administration generator flyer here is in Spanish)."
+   "Não há tabelas da Anvisa (RDC 216) ou guias domésticos equivalentes ao USDA FSIS “Keeping Food Safe During an Emergency” / FoodKeeper.",
+   "Não há guia atualizado sobre armazenamento de grãos a longo prazo (feijão, arroz, milho, absorvedores de oxigênio).",
+   "Não há folheto da Defesa Civil ou Anvisa em português sobre intoxicação por monóxido de carbono (o folheto da US Fire Administration sobre geradores está em espanhol)."
   ]
  },
  "preserve": {
   "missing": [
-   "The book “So Easy to Preserve” is not in the library; NCHFP web pages and the USDA canning guide are."
+   "Não há material da Embrapa Agroindústria de Alimentos nem o livro “So Easy to Preserve”; os procedimentos vêm das páginas da NCHFP e do guia do USDA."
   ]
  },
  "hurt": {
   "missing": [
-   "No simple mass-casualty triage method (such as START) written for the public.",
-   "No stand-alone psychological first aid guide.",
-   "No agency videos on heat illness, carbon monoxide or burns.",
-   "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available."
+   "Não há método simples de triagem de múltiplas vítimas (como START) ou protocolo brasileiro (SAMU 192 / Corpo de Bombeiros 193) voltado ao público leigo.",
+   "Não há guia independente de primeiros socorros psicológicos.",
+   "Não há vídeos de órgãos públicos sobre insolação/intermação, monóxido de carbono ou queimaduras.",
+   "O manual comunitário “New Where There Is No Doctor” está incompleto nesta cópia (faltam capítulos de saúde mental, idosos, desastres e medicamentos)."
   ],
   "disagree": [
-   "Heat stroke: the CERT manual says give no fluids; New Where There Is No Doctor says give drinks once the person is alert. Follow trained help if you can reach it.",
-   "CPR: the 2025 Red Cross/Red Crescent guidelines say checking for a pulse is unreliable for first aiders; New Where There Is No Doctor says to check for a pulse.",
-   "Poisoning: this guide follows the 2025 Red Cross/Red Crescent guidelines: do not induce vomiting, and give no milk, water or charcoal unless a poison centre says to. The First Aid chapter of New Where There Is No Doctor (2020) instead advises water and activated charcoal for most poisons."
+   "Insolação/hipertermia grave: o manual CERT diz para não dar líquidos; “New Where There Is No Doctor” recomenda oferecer líquidos assim que a pessoa estiver alerta. Se houver atendimento disponível, acione o SAMU (192) ou Bombeiros (193).",
+   "RCP (reanimação cardiopulmonar): as diretrizes 2025 da Cruz Vermelha/Crescente Vermelho afirmam que checar pulso não é confiável para socorristas leigos; “New Where There Is No Doctor” manda checar pulso.",
+   "Intoxicação/envenenamento: este guia segue as diretrizes 2025 da Cruz Vermelha (não provocar vômito e não dar leite, água ou carvão ativado sem orientação médica); o capítulo de primeiros socorros de “New Where There Is No Doctor” (2020) sugere água e carvão ativado na maioria dos casos. No Brasil, ligue para o Disque-Intoxicação da Anvisa (0800-722-6001) ou CIATox."
   ]
  },
  "health": {
   "missing": [
-   "The full WHO mhGAP mental-health guide is only here in Arabic; the English item is a one-page update.",
-   "No pharmacy or compounding manual; medicine references (MSF Essential Drugs) are written for clinicians."
+   "O guia completo OMS mhGAP de saúde mental está disponível aqui apenas em árabe; o item em inglês é uma atualização de uma página.",
+   "Não há bulário ou guia brasileiro (Anvisa/RENAME/SUS) nem manual de farmácia ou manipulação; as referências de medicamentos (MSF Essential Drugs) são voltadas a profissionais de saúde."
   ]
  },
  "shelter": {
   "missing": [
-   "No EPA or CDC wildfire smoke health guide and no Air Quality Index explainer.",
-   "Most outdoor-shelter videos are hobbyist channels without captions."
+   "Não há guia de saúde brasileiro (Ministério da Saúde / IBAMA / Defesa Civil) sobre fumaça de queimadas nem explicação sobre o Índice de Qualidade do Ar (IQAr).",
+   "A maioria dos vídeos sobre abrigos ao ar livre vem de canais independentes sem legendas."
   ],
   "disagree": [
-   "Heat stroke: CERT says no fluids; New Where There Is No Doctor says drinks once alert."
+   "Insolação/hipertermia grave: CERT diz sem líquidos; “New Where There Is No Doctor” recomenda líquidos se a pessoa estiver alerta."
   ]
  },
  "power": {
   "missing": [
-   "No manual for EcoFlow, Jackery or similar battery power stations.",
-   "Nothing from FDA or health agencies on keeping CPAP or oxygen machines running in an outage beyond Red Cross/FEMA planning advice.",
-   "No local utility's material on gas meters, seismic shut-off valves or planned power shut-offs."
+   "Não há manuais sobre redes residenciais brasileiras (127 V / 220 V em 60 Hz, normas ABNT NBR 14136 e NBR 5410) nem manuais de estações de energia portáteis (EcoFlow, Jackery etc.).",
+   "Não há orientação da Anvisa ou Ministério da Saúde sobre manter equipamentos médicos (CPAP, concentradores de oxigênio) ligados em falta de energia além do planejamento básico FEMA/Cruz Vermelha.",
+   "Não há material de distribuidoras brasileiras nem sobre desligamentos programados, válvulas de gás ou registros prediais."
   ]
  },
  "energy": {
   "missing": [
-   "Micro-hydro and wind material is mostly old or utility-scale."
+   "O material sobre micro-hidrelétrica e eólica é em grande parte antigo ou voltado à escala de concessionárias, e usa padrões elétricos norte-americanos (120 V / NEC) que diferem do padrão brasileiro (127 V / 220 V em 60 Hz, NBR 5410)."
   ]
  },
  "comms": {
   "missing": [
-   "No text of the FCC amateur radio rules (Part 97) or current GMRS licence guidance; the ham study guide covers the 2014–2018 question pool.",
-   "No modern civilian land-navigation manual."
+   "Não há texto das normas da Anatel (Serviço Radioamador COER, Rádio do Cidadão/PX faixa 11 m ou Faixa do Cidadão) nem orientação sobre alertas da Defesa Civil (SMS 40199 / Cell Broadcast); o material regulatório aqui refere-se às regras dos EUA (FCC Part 97 / GMRS, banco de questões 2014–2018).",
+   "Não há manual civil moderno de orientação e navegação terrestre em português."
   ],
   "disagree": [
-   "Sources disagree on the GMRS licence term (ARES 2015 vs TACDA)."
+   "As fontes divergem sobre o prazo de validade da licença GMRS dos EUA (ARES 2015 vs. TACDA); no Brasil, consulte sempre as regras vigentes da Anatel."
   ]
  },
  "disaster": {
   "missing": [
-   "No California tsunami inundation maps or local tsunami zone guide.",
-   "No EPA/CDC wildfire smoke guide."
+   "Não há mapas nem guias brasileiros da Defesa Civil (199) / CEMADEN sobre deslizamentos de encosta, rompimento de barragens, enxurradas urbanas ou sirenes de alerta; os mapas disponíveis são de tsunami da Califórnia.",
+   "Não há guia sobre fumaça de incêndios florestais e queimadas."
   ]
  },
  "grow": {
   "missing": [
-   "No current coastal Southern California planting calendar in text form (the UC Ventura chart is a scanned image).",
-   "No extension guides for dry beans, winter squash or home-scale grains; the sweet potato guide is for hotter Sacramento."
+   "Não há calendário de plantio brasileiro (Embrapa Hortaliças / EMATER) adaptado a biomas tropicais/subtropicais e estações do Hemisfério Sul (o calendário aqui é para a Califórnia).",
+   "Não há guias de extensão para feijão seco, abóboras ou grãos em escala doméstica adaptados ao clima brasileiro."
   ]
  },
  "land": {
   "missing": [
-   "No California Geological Survey liquefaction or fault-zone maps, tsunami inundation maps or FEMA flood maps.",
-   "No regional guide to edible or poisonous wild plants."
+   "Não há mapas geológicos ou de risco do Serviço Geológico do Brasil (CPRM/SGB), IBGE ou Defesa Civil sobre áreas de deslizamento e inundação.",
+   "Não há guia regional de plantas alimentícias não convencionais (PANCs) ou plantas tóxicas nativas do Brasil."
   ]
  },
  "repair": {
   "missing": [
-   "No general home-repair guide (drywall, outlets, doors and windows); plumbing comes from a Navy manual.",
-   "No modern welding safety standard (ANSI Z49.1 / OSHA); the Steelworker manual is historical."
+   "Não há guia geral de reparos residenciais adaptado à construção brasileira (alvenaria, telhados, instalações NBR 5410 e NBR 5626); a parte hidráulica vem de um manual da Marinha dos EUA com medidas em polegadas/NPT.",
+   "Não há norma moderna de segurança em soldagem (ABNT/NR ou ANSI Z49.1); o manual Steelworker é histórico."
   ]
  }
 }

@@ -203,12 +203,23 @@ def disk_name(path):
                 return None
             return f'{label.value or "Local Disk"} ({root[:2]})'
         if sys.platform == 'darwin':
-            import Foundation
             p = Path(path)
             while not p.exists() and p.parent != p:
                 p = p.parent
-            ok, name, _ = Foundation.NSURL.fileURLWithPath_(str(p)).getResourceValue_forKey_error_(None, Foundation.NSURLVolumeLocalizedNameKey, None)
-            return str(name) if ok and name else None
+            try:
+                import Foundation
+                ok, name, _ = Foundation.NSURL.fileURLWithPath_(str(p)).getResourceValue_forKey_error_(None, Foundation.NSURLVolumeLocalizedNameKey, None)
+                if ok and name:
+                    return str(name)
+            except ImportError:
+                pass
+            dev = os.stat(p).st_dev
+            for v in Path('/Volumes').iterdir():
+                try:
+                    if os.stat(v).st_dev == dev:
+                        return v.name
+                except OSError:
+                    pass
     except Exception:
         return None
     return None

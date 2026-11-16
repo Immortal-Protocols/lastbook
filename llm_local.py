@@ -151,7 +151,7 @@ class Local:
                 self.state, self.message = 'off', ''
                 return
             if not self.runner:
-                self.state, self.message = 'error', 'This copy of Lastbook has no local AI runtime.'
+                self.state, self.message = 'error', 'Esta cópia do Último Livro não tem o runtime da IA local.'
                 return
             self.state, self.pct, self.message = 'absent', None, ''
         found, wrong = None, None
@@ -173,8 +173,8 @@ class Local:
                     p, size = wrong
                     done = size < SIZE
                     self.state = 'wrong'
-                    self.message = (f'The file in {_folder_name(p)} is {_gb(size)} of {_gb(SIZE)}. ' +
-                                    ('The download may not have finished.' if done else 'It is not the file Lastbook expects.'))
+                    self.message = (f'O arquivo em {_folder_name(p)} tem {_gb(size)} de {_gb(SIZE)}. ' +
+                                    ('O download pode não ter terminado.' if done else 'Não é o arquivo que o Último Livro espera.'))
                 else:
                     self.state = 'absent'
             return
@@ -201,12 +201,12 @@ class Local:
                     self.pct = int(done * 100 / SIZE)
         except OSError as e:
             with self.lock:
-                self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
+                self.state, self.pct, self.message = 'wrong', None, f'O Último Livro não conseguiu ler o arquivo do modelo ({type(e).__name__}).'
             return False
         if h.hexdigest() != SHA256:
             with self.lock:
                 self.state, self.pct = 'wrong', None
-                self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
+                self.message = f'O arquivo em {_folder_name(p)} tem o tamanho certo, mas conteúdo diferente. Baixe novamente.'
             return False
         return True
 
@@ -222,7 +222,7 @@ class Local:
             print('local AI: measuring failed:', type(e).__name__, e, flush=True)
         with self.lock:
             if not fit:
-                self.state, self.message = 'error', 'The local AI program could not read the model file.'
+                self.state, self.message = 'error', 'O programa da IA local não conseguiu ler o arquivo do modelo.'
                 if out is not None:
                     print('local AI: measure output:', out.stdout[-2000:], out.stderr[-3000:], flush=True)
                 return
@@ -245,7 +245,7 @@ class Local:
                 self.last_used = time.time()
                 return None
             if self.state not in ('stopped', 'loading', 'error') or not self.path or not (self.fit or {}).get('fits'):
-                return self.message or 'The local AI is not set up on this computer.'
+                return self.message or 'A IA local não está configurada neste computador.'
             if self.state != 'loading':
                 self._spawn()
         t0 = time.time()
@@ -255,14 +255,14 @@ class Local:
                     self.last_used = time.time()
                     return None
                 if self.state != 'loading':
-                    return self.message or 'The local AI did not start.'
+                    return self.message or 'A IA local não iniciou.'
             if cancelled():
                 return 'stopped'
             if on_wait:
                 on_wait(self.pct)
             time.sleep(0.25)
         self.stop('took too long to start')
-        return 'The local AI took too long to start.'
+        return 'A IA local demorou demais para iniciar.'
 
     def _spawn(self):
         import queue
@@ -321,7 +321,7 @@ class Local:
                         self.state, self.message = 'stopped', ''
                     else:                      # twice in a row: it would fail the same way again
                         self.state = 'error'
-                        self.message = self.message or 'The local AI could not start. Look again after closing other programs.'
+                        self.message = self.message or 'A IA local não conseguiu iniciar. Tente verificar novamente após fechar outros programas.'
 
     def stop(self, why=''):
         with self.lock:
@@ -366,7 +366,7 @@ class Local:
             with self.lock:
                 proc, events = self.proc, self.events
                 if not proc or self.state != 'ready':
-                    raise RuntimeError(self.message or 'The local AI is not running.')
+                    raise RuntimeError(self.message or 'A IA local não está em execução.')
                 self.next_id += 1
                 rid = self.next_id
                 self.last_used = time.time()
@@ -377,7 +377,7 @@ class Local:
             try:
                 proc.stdin.write((json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8'))
             except OSError:
-                raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
+                raise RuntimeError('A IA local parou inesperadamente. Pergunte novamente para reiniciá-la.')
             sent_cancel = False
             import queue
             while True:
@@ -393,7 +393,7 @@ class Local:
                     continue
                 kind = ev.get('ev')
                 if kind == 'exit':
-                    raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
+                    raise RuntimeError('A IA local parou inesperadamente. Pergunte novamente para reiniciá-la.')
                 if ev.get('id') != rid:
                     continue
                 if kind == 'tok':
@@ -422,16 +422,16 @@ def judge(fit):
     in_ram = dev + host if unified else host + mapped
     needs = in_ram + RESERVE
     placement = [{'device': m.get('desc') or m.get('name'), 'bytes': m['model'] + m['context'] + m['compute'], 'free': m.get('free')} for m in devices]
-    placement.append({'device': 'memory' if unified else 'computer memory', 'bytes': host + mapped})
+    placement.append({'device': 'memória' if unified else 'memória do computador', 'bytes': host + mapped})
     out = {'status': fit.get('status'), 'ram_total': total, 'device_bytes': dev, 'host_bytes': host, 'needs': int(needs),
            'model_bytes': dev + host, 'placement': placement, 'host_overrides': fit.get('host_overrides'), 'n_gpu_layers': fit.get('n_gpu_layers')}
     if fit.get('status') != 'fits':
         out['fits'] = False
-        out['why'] = 'The model does not fit this computer’s graphics memory together with its own memory.'
+        out['why'] = 'O modelo não cabe na memória de vídeo junto com a memória deste computador.'
     elif total and needs > total:
         out['fits'] = False
-        out['why'] = (f'The model needs about {_gb(in_ram)} of this computer’s memory, plus room for everything else, '
-                      f'and this computer has {_gb(total)}.')
+        out['why'] = (f'O modelo precisa de cerca de {_gb(in_ram)} da memória deste computador, além de espaço para o restante, '
+                      f'e este computador tem {_gb(total)}.')
     else:
         out['fits'] = True
     return out
@@ -696,17 +696,17 @@ def _folder_name(p):
     folder = p.parent if p.suffix == '.gguf' else p
     try:
         rel = folder.relative_to(home)
-        return str(rel) if str(rel) != '.' else 'your home folder'
+        return str(rel) if str(rel) != '.' else 'sua pasta pessoal'
     except ValueError:
         return folder.name or str(folder)
 
 
 def _plain_error(ev):
     code = ev.get('code')
-    return {'too_long': 'The question and its sources were too long for the local AI. Start a new chat or ask a shorter question.',
-            'load': 'The local AI could not load the model file.',
-            'context': 'There was not enough free memory to start the local AI. Close other programs and ask again.',
-            'model_file': 'The local AI could not read the model file.'}.get(code, ev.get('msg') or 'The local AI failed.')
+    return {'too_long': 'A pergunta e as fontes ficaram longas demais para a IA local. Inicie uma nova conversa ou faça uma pergunta mais curta.',
+            'load': 'A IA local não conseguiu carregar o arquivo do modelo.',
+            'context': 'Não havia memória livre suficiente para iniciar a IA local. Feche outros programas e pergunte novamente.',
+            'model_file': 'A IA local não conseguiu ler o arquivo do modelo.'}.get(code, ev.get('msg') or 'A IA local falhou.')
 
 
 def _quiet():

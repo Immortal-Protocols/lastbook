@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Security or privacy problem
+  - name: Problema de segurança ou privacidade (Lastbook upstream)
     url: mailto:hello@lastbook.org
-    about: Please email us instead of opening a public issue.
+    about: Para questões de segurança/privacidade ligadas ao projeto original Lastbook, envie e-mail em vez de abrir issue pública.

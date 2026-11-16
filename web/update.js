@@ -12,14 +12,14 @@
 
   function view(s) {
     const btn = (t) => `<button class="btn plain" data-upd="check">${t}</button>`;
-    const ver = s.current ? `Version ${E(s.current)}.` : 'This copy has no version number (it was not built as an app).';
+    const ver = s.current ? `Versão ${E(s.current)}.` : 'Esta cópia não possui número de versão (não foi compilada como aplicativo).';
     switch (s.state) {
-      case 'checking': return `${ver} Checking for updates…`;
-      case 'up_to_date': return `${ver} Lastbook is up to date. ${btn('Check again')}`;
-      case 'available': return `${ver} Version ${E(s.version)} is available. Download it from ${E(s.website)}. Your library, local AI and chats stay. ${btn('Check again')}`;
-      case 'not_published': return `${ver} No update information yet. ${btn('Try again')}`;
-      case 'too_old_os': case 'error': return `${ver} ${E(s.message)} ${btn('Try again')}`;
-      default: return `${ver} ${btn('Check for updates')}`;
+      case 'checking': return `${ver} Verificando atualizações…`;
+      case 'up_to_date': return `${ver} O Último Livro está atualizado. ${btn('Verificar novamente')}`;
+      case 'available': return `${ver} A versão ${E(s.version)} está disponível. Baixe em ${E(s.website)}. Sua biblioteca, IA local e conversas são mantidas. ${btn('Verificar novamente')}`;
+      case 'not_published': return `${ver} Ainda não há informações de atualização. ${btn('Tentar novamente')}`;
+      case 'too_old_os': case 'error': return `${ver} ${E(s.message)} ${btn('Tentar novamente')}`;
+      default: return `${ver} ${btn('Verificar atualizações')}`;
     }
   }
 
@@ -31,7 +31,7 @@
 
   async function refresh(el) {
     if (!el.isConnected) return;
-    try { paint(el, await call('state')) } catch { el.textContent = 'Lastbook could not ask about updates.' }
+    try { paint(el, await call('state')) } catch { el.textContent = 'O Último Livro não conseguiu consultar atualizações.' }
   }
 
   async function check(el) {
@@ -39,11 +39,11 @@
       const s = await call('check');
       if (s.error && !s.state) { el.textContent = s.error; return }
       paint(el, s);
-    } catch { el.textContent = 'Lastbook could not ask about updates.' }
+    } catch { el.textContent = 'O Último Livro não conseguiu consultar atualizações.' }
   }
 
   window.LBUpdate = {
-    card: () => '<div class="card"><b>Lastbook app</b><small id="updBox">…</small></div>',
+    card: () => '<div class="card"><b>Aplicativo Último Livro</b><small id="updBox">…</small></div>',
     mount(root) {
       const el = root.querySelector('#updBox'); if (!el) return;
       el.addEventListener('click', e => { if (e.target.closest('[data-upd]')) check(el) });

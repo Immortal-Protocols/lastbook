@@ -1,9 +1,9 @@
 {
  "id": "water",
  "mode": "now",
- "title": "Get safe drinking water",
- "short": "Treat, find and store water",
- "intro": "Readings for when tap water is off or may be unsafe: how to treat water, where to find water already in your home, and how to store it. It also points to warnings about water that boiling or bleach cannot fix.",
+ "title": "Conseguir água potável segura",
+ "short": "Tratar, encontrar e armazenar água",
+ "intro": "Leituras para quando faltar água da rua ou ela puder estar contaminada: como tratar água, onde encontrar água já dentro de casa e como armazenar. Também destaca alertas sobre contaminações que fervura ou água sanitária não removem. Atenção no Brasil: a água sanitária comum regularizada pela Anvisa tem de 2,0% a 2,5% de cloro ativo (a recomendação padrão do Ministério da Saúde é de 2 gotas por litro de água filtrada/coada, aguardando 30 minutos; os manuais em inglês abaixo assumem alvejante a 5–6%, portanto dobre o número de gotas ao seguir tabelas norte-americanas).",
  "keywords": [
   "water",
   "drinking water",
@@ -22,270 +22,298 @@
   "storage",
   "earthquake",
   "flood",
-  "contaminated"
+  "contaminated",
+  "agua",
+  "água",
+  "agua potavel",
+  "água potável",
+  "ferver",
+  "ferver agua",
+  "fervura",
+  "agua sanitaria",
+  "água sanitária",
+  "hipoclorito",
+  "cloro",
+  "purificar",
+  "desinfetar",
+  "filtrar",
+  "filtro",
+  "pastilhas",
+  "caixa d'agua",
+  "caixa dagua",
+  "chuva",
+  "agua da chuva",
+  "cisterna",
+  "poco",
+  "poço",
+  "sede",
+  "armazenar",
+  "enchente",
+  "alagamento",
+  "contaminada"
  ],
  "choices": [
   {
    "id": "unsafe",
-   "label": "Tap water is off or might be unsafe",
-   "hint": "Boil-water notice, earthquake, flood, broken main",
+   "label": "Faltou água da rua ou ela pode estar contaminada",
+   "hint": "Aviso de fervura, enchente, deslizamento, cano rompido",
    "read": [
     {
      "doc": "f7ff53bcaae9cc",
      "page": 13,
-     "label": "Ways to treat water of uncertain quality",
-     "note": "FEMA/Red Cross booklet (2004). When to treat water, why to let particles settle or strain first, and boiling instructions. Says boiling and bleach do not remove chemicals."
+     "label": "Formas de tratar água de qualidade incerta",
+     "note": "Livreto FEMA/Cruz Vermelha (2004). Quando tratar água, por que deixar partículas decantarem ou coar antes e instruções de fervura. Explica que ferver e usar cloro não removem produtos químicos."
     },
     {
      "doc": "e4bfed4b6afd6d",
      "page": 2,
-     "label": "Keep water safe during and after a flood",
-     "note": "FDA fact sheet (2007): use unexposed bottled water, how to boil or bleach cloudy water, and what to do if your well was flooded."
+     "label": "Manter a água segura durante e após uma enchente",
+     "note": "Ficha técnica da FDA (2007): usar água engarrafada intacta, como ferver ou clorar água turva e o que fazer se um poço tiver sido alagado."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 71,
-     "label": "After an earthquake: check for water leaks and shut the main valve",
-     "note": "FEMA P-530 Earthquake Safety at Home (2020) checklist page: where to look for leaking pipes and where the home's main water valve usually is."
+     "label": "Após tremor/deslizamento: verificar vazamentos e fechar o registro geral",
+     "note": "Lista de verificação FEMA P-530 (2020): onde procurar vazamentos em tubulações e onde normalmente fica o registro principal de água da casa."
     }
    ]
   },
   {
    "id": "boil",
-   "label": "I can boil water",
-   "hint": "Stove, camp stove, grill or fire is available",
+   "label": "Consigo ferver a água",
+   "hint": "Fogão a gás, fogareiro, churrasqueira ou fogo disponível",
    "read": [
     {
      "doc": "med-953dfe1df69e0773",
      "page": 23,
-     "label": "How long to boil water, and how to fix the taste",
-     "note": "Hesperian, New Where There Is No Doctor (2017): rolling boil time, longer time in high mountains, and shaking cooled water to improve taste. Also covers bleach on the same page."
+     "label": "Quanto tempo ferver a água e como melhorar o gosto",
+     "note": "Hesperian, New Where There Is No Doctor (2017): tempo de fervura intensa, maior tempo em altitude elevada e como agitar a água fria para melhorar o sabor. Também traz dosagem de cloro na mesma página."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 13,
-     "label": "Boiling: the FEMA/Red Cross method",
-     "note": "FEMA/Red Cross booklet (2004) calls boiling the safest method and describes boil time, cooling, and pouring between containers for taste."
+     "label": "Fervura: método FEMA/Cruz Vermelha",
+     "note": "Livreto FEMA/Cruz Vermelha (2004) aponta a fervura como o método mais seguro e descreve tempo de fervura, resfriamento e aeração entre recipientes para melhorar o gosto."
     },
     {
      "doc": "med-3a93d7d4c97d404d",
      "page": 2,
-     "label": "WHO: boiling, chlorine, and their limits",
-     "note": "WHO emergency technical note (2013) on boiling and chemical disinfection; notes some parasites such as cryptosporidium resist chlorine."
+     "label": "OMS: fervura, cloro e seus limites",
+     "note": "Nota técnica de emergência da OMS (2013) sobre fervura e desinfecção química; alerta que alguns parasitas, como o Cryptosporidium, resistem ao cloro."
     }
    ]
   },
   {
    "id": "bleach",
-   "label": "I have household bleach",
-   "hint": "Plain, unscented liquid bleach",
+   "label": "Tenho água sanitária / hipoclorito de sódio",
+   "hint": "Água sanitária comum, sem perfume e sem detergente/alvejante aditivado",
    "read": [
     {
      "doc": "f7ff53bcaae9cc",
      "page": 14,
-     "label": "Bleach drops per gallon and the smell test",
-     "note": "FEMA/Red Cross booklet (2004). Gives a dose for bleach of 5.25–6% strength (stated on page 13), the waiting time, and what to do if no chlorine smell remains."
+     "label": "Gotas de cloro e teste de cheiro",
+     "note": "Livreto FEMA/Cruz Vermelha (2004). Traz dose para alvejante dos EUA a 5,25–6% (indicado na p. 13), tempo de espera e o que fazer se não houver cheiro residual de cloro. No Brasil, água sanitária comum tem 2,0–2,5% (padrão Ministério da Saúde: 2 gotas/L, esperar 30 min; dobre a dose se usar tabelas de 5–6%)."
     },
     {
      "doc": "med-953dfe1df69e0773",
      "page": 23,
-     "label": "Bleach chart for 1 liter up to a 200-liter barrel",
-     "note": "Hesperian (2017) chart for 5% bleach. Says to read the label for the percent of chlorine, use more if weaker, and avoid bleach with soap or perfume."
+     "label": "Tabela de cloro para volumes de 1 litro até 200 litros",
+     "note": "Tabela Hesperian (2017) para solução a 5%. Orienta ler o rótulo para conferir o teor de cloro ativo (no Brasil 2,0–2,5%), usar o dobro se mais fraca e evitar produtos com sabão ou perfume."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 135,
-     "label": "CERT manual: bleach amounts for clear and cloudy water",
-     "note": "FEMA CERT Participant Manual (2019): boiling, tablets, or non-perfumed bleach, with drop counts for clear versus cloudy water and a re-dose step."
+     "label": "Manual CERT: quantidades de cloro para água limpa e água turva",
+     "note": "Manual CERT FEMA (2019): fervura, pastilhas ou água sanitária sem perfume, com contagem de gotas para água límpida versus turva (ajuste proporcional para 2,0–2,5% no Brasil) e repetição da dose."
     },
     {
      "doc": "med-ea4055db35ff180d",
      "page": 36,
-     "label": "How much chlorine to use, and what 'free chlorine' means",
-     "note": "Hesperian Community Guide to Environmental Health (2012). Explains why water should smell slightly of chlorine, and doubling the dose for cloudy water. Sources differ on drop counts; each states its bleach strength."
+     "label": "Quanto cloro usar e o que significa 'cloro livre'",
+     "note": "Guia Comunitário de Saúde Ambiental Hesperian (2012). Explica por que a água deve manter leve odor de cloro e por que dobrar a dose em água turva."
     }
    ]
   },
   {
    "id": "filter",
-   "label": "I have a filter, tablets, or only sunlight",
-   "hint": "Camping filter, purification tablets, clear bottles",
+   "label": "Tenho filtro, pastilhas ou apenas luz solar",
+   "hint": "Filtro de barro/vela ou portátil, pastilhas de cloro, garrafas PET transparentes",
    "read": [
     {
      "doc": "2bcf93d0ed97f2",
-     "label": "Filter, then disinfect: collecting and purifying natural water",
-     "note": "National Park Service page. Says filtration by itself does not purify water and must be followed by boiling or chemical treatment."
+     "label": "Filtrar e depois desinfetar: coleta e purificação de água natural",
+     "note": "Página do National Park Service. Alerta que a filtragem simples não elimina todos os patógenos (especialmente vírus) e deve ser seguida de fervura ou tratamento químico."
     },
     {
      "doc": "med-3a93d7d4c97d404d",
      "page": 3,
-     "label": "Picture guide: treating water with chlorine tablets",
-     "note": "WHO technical note (2013) diagram for clear versus dirty water with tablets; says tablet number depends on container size and tablet strength, so check the maker's instructions."
+     "label": "Guia ilustrado: tratamento de água com pastilhas de cloro",
+     "note": "Diagrama da nota técnica da OMS (2013) para água clara versus turva com pastilhas; a quantidade depende do volume do recipiente e da concentração da pastilha."
     },
     {
      "doc": "med-953dfe1df69e0773",
      "page": 24,
-     "label": "Sunlight disinfection with clear bottles",
-     "note": "Hesperian (2017): how to use clear plastic bottles in full sun, how long to leave them, and why it works best near the equator."
+     "label": "Desinfecção solar (SODIS) com garrafas transparentes",
+     "note": "Hesperian (2017): como expor garrafas plásticas transparentes ao sol forte (especialmente eficaz no clima tropical brasileiro), tempo de exposição e cuidados."
     },
     {
      "doc": "video-Kb_6eXF8kVE",
-     "label": "Video: how backcountry water filters work (REI, 4 min)",
-     "note": "Explains which germs filters remove and why viruses may need boiling or chemical treatment as well."
+     "label": "Vídeo: como funcionam filtros portáteis de água (REI, 4 min, em inglês)",
+     "note": "Explica quais microrganismos os filtros retêm e por que vírus podem exigir fervura ou tratamento químico adicional."
     }
    ]
   },
   {
    "id": "inhome",
-   "label": "Find water already inside the house",
-   "hint": "Water heater, pipes, ice",
+   "label": "Encontrar água já disponível dentro de casa",
+   "hint": "Caixa-d'água, aquecedor/boiler, encanamento, gelo",
    "read": [
     {
      "doc": "f7ff53bcaae9cc",
      "page": 12,
-     "label": "Hidden water sources in your home",
-     "note": "FEMA/Red Cross booklet (2004): using water in the hot-water tank, pipes and ice; which sources not to drink (toilet tank, radiators, waterbeds, pools); shutting the main valve."
+     "label": "Fontes ocultas de água dentro da residência",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): uso da água do reservatório térmico/boiler, tubulações e gelo; o que NÃO beber (caixa acoplada de vaso sanitário, radiadores, piscinas) e fechamento do registro geral."
     },
     {
      "doc": "0dfdf1fb4b178f",
      "page": 27,
-     "label": "Table of safe and unsafe water sources at home",
-     "note": "Older FEMA Are You Ready? guide. Safe/unsafe table, notes that pool and spa water can be used for hygiene only, and how to drain pipes and the water heater."
+     "label": "Tabela de fontes domésticas seguras e inseguras",
+     "note": "Guia FEMA antigo: tabela de fontes seguras/inseguras, observação de que água de piscina serve apenas para higiene/descarga e como drenar canos e reservatórios."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 26,
-     "label": "Your water heater as an emergency water source",
-     "note": "FEMA P-530 (2020): typical water heater capacity, usable if it was strapped and is not damaged; suggests storing purification tablets."
+     "label": "Aquecedor de acumulação (boiler) como reserva de emergência",
+     "note": "FEMA P-530 (2020): capacidade típica de reservatórios e cuidados de verificação antes de drenar."
     },
     {
      "doc": "5cd0b4e41cc479",
      "page": 75,
-     "label": "After an earthquake: check the water heater first",
-     "note": "FEMA P-530 (2020) checklist: signs of damage, shutting off gas, water and power, and saving drained water if it is clean."
+     "label": "Após acidente estrutural: inspecionar tubulações e reservatórios",
+     "note": "Checklist FEMA P-530 (2020): sinais de dano, corte de gás, água e energia, e aproveitamento da água drenada se estiver limpa."
     }
    ]
   },
   {
    "id": "outside",
-   "label": "Get water from rain, a stream, pool or well",
-   "hint": "No stored water left",
+   "label": "Coletar água da chuva, rio, piscina ou poço",
+   "hint": "Sem água armazenada restante",
    "read": [
     {
      "doc": "f7ff53bcaae9cc",
      "page": 12,
-     "label": "Emergency outdoor water sources",
-     "note": "FEMA/Red Cross booklet (2004) lists rain, streams, ponds and springs, which to avoid, that seawater needs distilling, and not to drink flood water."
+     "label": "Fontes externas de água em emergência",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): chuva, córregos, lagos e nascentes; quais evitar; água do mar exige destilação; nunca beber água de enchente."
     },
     {
      "doc": "med-ea4055db35ff180d",
      "page": 24,
-     "label": "Make collected rainwater safe to drink",
-     "note": "Hesperian (2012): cleaning roofs and tanks, letting first rains run through, covering and screening, and adding chlorine or a filter."
+     "label": "Como tornar segura a água de chuva coletada",
+     "note": "Hesperian (2012): limpeza de telhados e cisternas, descarte da primeira chuva, telas e tampas, e aplicação de cloro ou filtro."
     },
     {
      "doc": "e4bfed4b6afd6d",
      "page": 2,
-     "label": "If your well has been flooded",
-     "note": "FDA fact sheet (2007): a flooded well should be tested and disinfected; contact the local or state health department."
+     "label": "Se o seu poço ou cisterna sofreu alagamento",
+     "note": "Ficha técnica FDA (2007): um poço alagado deve ser testado e desinfetado; acione a Vigilância Sanitária ou a Secretaria de Saúde local."
     },
     {
      "doc": "c6155c3ed58c35",
      "page": 13,
-     "label": "Using roof, river or water-heater water for washing",
-     "note": "Norwegian civil protection guide: such water may be badly contaminated and unsuitable after chemical releases or fallout; check with authorities first."
+     "label": "Uso de água de telhado, rio ou reservatório apenas para lavagem",
+     "note": "Guia norueguês de proteção civil: essa água pode estar fortemente contaminada após vazamentos químicos; consulte a Defesa Civil antes."
     }
    ]
   },
   {
    "id": "chemical",
-   "label": "Water may contain fuel, chemicals or sewage",
-   "hint": "Odd smell or color, spill, flood water, industrial area",
+   "label": "Suspeita de combustível, produtos químicos ou esgoto na água",
+   "hint": "Cheiro ou cor estranha, vazamento, água de enchente, área industrial",
    "read": [
     {
      "doc": "med-ea4055db35ff180d",
      "page": 29,
-     "label": "Why filtering and disinfecting will not remove toxic chemicals",
-     "note": "Hesperian (2012): settle or filter, then disinfect, for germs only. States water with toxic chemicals is never safe for drinking, bathing or washing clothes."
+     "label": "Por que filtrar e desinfetar não remove produtos químicos tóxicos",
+     "note": "Hesperian (2012): decantar/filtrar e desinfetar atua apenas contra microrganismos. Água com químicos tóxicos nunca é segura para beber, tomar banho ou lavar roupas."
     },
     {
      "doc": "med-304a093a918ce1d6",
      "page": 16,
-     "label": "Toxic pollution in water: what it is and how it is found",
-     "note": "Hesperian (2012): chemicals from industry, mining and nature are usually invisible; lab testing is how they are detected."
+     "label": "Poluição química na água: o que é e como é detectada",
+     "note": "Hesperian (2012): químicos industriais, de mineração ou naturais geralmente são invisíveis; exigem análise laboratorial."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 14,
-     "label": "Distillation: the one home method listed for salts and chemicals",
-     "note": "FEMA/Red Cross booklet (2004) describes distilling with a pot, lid and hanging cup and says it removes heavy metals, salts and most other chemicals."
+     "label": "Destilação: método caseiro citado para sais e produtos químicos",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): descreve a destilação improvisada com panela, tampa e xícara suspensa para remover metais pesados, sais e a maioria dos químicos."
     }
    ]
   },
   {
    "id": "keepclean",
-   "label": "Keep treated water clean once you have it",
-   "hint": "Containers, dippers, how much per person",
+   "label": "Manter limpa a água já tratada",
+   "hint": "Recipientes, pegadores limpos, quantidade diária por pessoa",
    "read": [
     {
      "doc": "med-953dfe1df69e0773",
      "page": 25,
-     "label": "Stop stored water from getting dirty again",
-     "note": "Hesperian (2017): pouring or using a clean dipper, cleaning containers, covers, and the usual daily amount for drinking and cooking."
+     "label": "Evitar que a água armazenada volte a contaminar",
+     "note": "Hesperian (2017): despejar sem tocar a borda, higienização de galões/recipientes, tampas e consumo diário habitual para beber e cozinhar."
     },
     {
      "doc": "med-3a93d7d4c97d404d",
      "page": 3,
-     "label": "WHO: storing treated water and handwashing",
-     "note": "WHO technical note (2013): covered, cool, dark storage, wide-neck containers with lids, and fitting a tap to avoid hands touching water."
+     "label": "OMS: armazenamento de água tratada e higiene das mãos",
+     "note": "Nota técnica OMS (2013): armazenamento tampado, em local fresco e escuro, e preferência por recipientes com torneira para evitar contato com as mãos."
     },
     {
      "doc": "med-9691a9d4a1231acf",
      "page": 1,
-     "label": "How much water people need in emergencies",
-     "note": "WHO technical note on minimum water quantities for survival and how needs vary with climate and health (based on Sphere standards)."
+     "label": "Quanta água uma pessoa precisa em emergências",
+     "note": "Nota técnica da OMS sobre volumes mínimos para sobrevivência e variação conforme calor e estado de saúde (padrão Projeto Esfera)."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Boiling or chlorination kills most germs but does not remove heavy metals, salts, or most other chemicals.",
+   "text": "Ferver ou clorar elimina a maioria dos microrganismos, mas não remove metais pesados, sais ou a maioria dos produtos químicos.",
    "doc": "f7ff53bcaae9cc",
    "page": 13
   },
   {
-   "text": "Water that contains toxic chemicals is never safe for drinking, bathing, or washing clothes; home treatment methods do not make it safe.",
+   "text": "Água contaminada por produtos químicos tóxicos nunca é segura para beber, tomar banho ou lavar roupas; métodos caseiros não a tornam potável.",
    "doc": "med-ea4055db35ff180d",
    "page": 29
   },
   {
-   "text": "Do not drink flood water, or water from toilet tanks, radiators, waterbeds, or pools and spas.",
+   "text": "Não beba água de enchente nem água de vasos sanitários, radiadores ou piscinas.",
    "doc": "f7ff53bcaae9cc",
    "page": 12
   },
   {
-   "text": "If the gas was turned off to drain the water heater, a professional is needed to turn it back on.",
+   "text": "Se o registro de gás central foi fechado para drenar um aquecedor a gás, chame técnico habilitado antes de religar.",
    "doc": "f7ff53bcaae9cc",
    "page": 12
   },
   {
-   "text": "If bleach-treated water still has no slight bleach smell after a second dose, throw it out and find another source.",
+   "text": "Se a água tratada com água sanitária não apresentar cheiro leve de cloro mesmo após a segunda dose, descarte-a e procure outra fonte.",
    "doc": "f7ff53bcaae9cc",
    "page": 14
   },
   {
-   "text": "A flooded well should be tested and disinfected; contact your local or state health department for advice.",
+   "text": "Poço ou cisterna atingidos por enchente devem ser analisados e desinfetados; procure a Vigilância Sanitária ou a Secretaria de Saúde local.",
    "doc": "e4bfed4b6afd6d",
    "page": 2
   },
   {
-   "text": "Some parasites, notably cryptosporidium, are resistant to chlorine.",
+   "text": "Alguns parasitas, especialmente o Cryptosporidium, resistem ao cloro.",
    "doc": "med-3a93d7d4c97d404d",
    "page": 2
   },
   {
-   "text": "Collected rain or river water may be unsuitable after chemical releases or nuclear fallout; seek information from authorities first.",
+   "text": "Água de chuva ou rio coletada pode ser imprópria após acidentes químicos ou cinzas; aguarde orientação da Defesa Civil ou órgãos ambientais.",
    "doc": "c6155c3ed58c35",
    "page": 13
   }
@@ -294,98 +322,98 @@
   {
    "doc": "cecc1671ae4d02",
    "page": 20,
-   "label": "How much water to keep per person (Ready.gov)",
-   "note": "FEMA Are You Ready? guide (2020): water per person per day, and suggested numbers of days to keep on hand."
+   "label": "Quanta água reservar por pessoa",
+   "note": "Guia FEMA Are You Ready? (2020): volume diário recomendado por pessoa (mínimo ~3,8 L a 4 L/dia para beber e higiene) e dias de reserva."
   },
   {
    "doc": "f7ff53bcaae9cc",
    "page": 9,
-   "label": "Who needs more water, and why not to ration it",
-   "note": "FEMA/Red Cross booklet (2004): daily needs, extra for heat, children, nursing mothers and sick people, and a two-week storage goal."
+   "label": "Quem precisa de mais água e por que não racionar água potável",
+   "note": "Livreto FEMA/Cruz Vermelha (2004): necessidades extras no calor brasileiro, para crianças, lactantes e doentes, e meta de estoque."
   },
   {
    "doc": "f7ff53bcaae9cc",
    "page": 10,
-   "label": "Choosing and preparing containers for stored water",
-   "note": "FEMA/Red Cross booklet (2004): bottled versus home-filled water, which containers to avoid; page 11 covers cleaning, filling, labeling and replacing."
+   "label": "Escolha e preparo de recipientes para armazenar água",
+   "note": "Livreto FEMA/Cruz Vermelha (2004): água envasada versus galões domésticos, quais plásticos evitar e higiene/troca periódica."
   },
   {
    "doc": "ed5bac0a81b009",
    "page": 26,
-   "label": "CERT tips: which plastic bottles to use and when to replace",
-   "note": "FEMA CERT manual (2019): look for recycling symbol 1, avoid milk jugs and glass, store cool and dark, replace every six months."
+   "label": "Dicas CERT: quais garrafas plásticas usar e quando trocar",
+   "note": "Manual CERT (2019): procurar código de reciclagem 1 (PET) ou galões alimentícios novos, evitar vidro e embalagens de leite, guardar no escuro e renovar a cada 6 meses."
   },
   {
    "doc": "5cd0b4e41cc479",
    "page": 32,
-   "label": "Strap your water heater before an earthquake",
-   "note": "FEMA P-530 (2020): why unstrapped heaters fail, fire and carbon monoxide risks, and that a strapped heater is an emergency water source."
+   "label": "Fixar reservatórios térmicos/boilers e caixa-d'água",
+   "note": "FEMA P-530 (2020): por que reservatórios mal apoiados rompem e cuidados com vazamentos e reserva limpa."
   },
   {
    "doc": "med-ea4055db35ff180d",
    "page": 23,
-   "label": "Collecting rainwater from a roof",
-   "note": "Hesperian (2012): which roofs are safe to collect from, keeping barrels clean, and tanks above or below ground."
+   "label": "Captação de água de chuva por telhados",
+   "note": "Hesperian (2012): quais telhados são seguros (evitar amianto/tinta com chumbo), limpeza de calhas e cisternas fechadas."
   },
   {
    "doc": "cecc1671ae4d02",
    "page": 21,
-   "label": "Add a water purification system to your kit",
-   "note": "FEMA Are You Ready? (2020) list of extra kit items, including a water purification system and hand sanitizer."
+   "label": "Incluir filtro ou purificador no kit de emergência",
+   "note": "Guia FEMA (2020): lista de itens essenciais para reserva doméstica, incluindo purificação de água e álcool em gel."
   }
  ],
  "learn": [
   {
    "doc": "med-3a93d7d4c97d404d",
-   "label": "WHO: emergency treatment of drinking water at home",
-   "note": "Four-page WHO/WEDC technical note (2013) on aeration, settling, filters, boiling, chlorine, sunlight and safe storage."
+   "label": "OMS: tratamento doméstico de água em emergências",
+   "note": "Nota técnica OMS/WEDC (2013, 4 páginas) sobre aeração, decantação, filtração, fervura, cloração, SODIS e armazenamento seguro."
   },
   {
    "doc": "med-ea4055db35ff180d",
-   "label": "Hesperian: Protecting Community Water (full chapter)",
-   "note": "Plain-language chapter on testing, wells, springs, rainwater, filters (cloth, charcoal, slow sand), sunlight and chlorine."
+   "label": "Hesperian: Protegendo a Água da Comunidade (capítulo completo)",
+   "note": "Capítulo em linguagem acessível sobre análise, poços, nascentes, captação de chuva, filtros de pano/carvão/areia lenta, luz solar e cloro."
   },
   {
    "doc": "med-f23a61430c6e8cc0",
-   "label": "WHO: cleaning and disinfecting water tanks",
-   "note": "Technical note on a four-step method for cleaning storage tanks and tankers before use. Written for responders."
+   "label": "OMS: limpeza e desinfecção de reservatórios e caixas-d'água",
+   "note": "Nota técnica sobre limpeza em quatro etapas de reservatórios e caminhões-pipa (voltada a equipes de resposta)."
   },
   {
    "doc": "med-7dfe05843f324a5d",
-   "label": "WHO: cleaning and disinfecting wells",
-   "note": "Technical note on repairing and disinfecting hand-dug wells after floods or earthquakes. Written for responders."
+   "label": "OMS: limpeza e desinfecção de poços",
+   "note": "Nota técnica sobre recuperação e desinfecção de poços escavados após enchentes (voltada a equipes de resposta)."
   },
   {
    "doc": "operations-33db295a385d7514",
-   "label": "WHO Water Safety Plan Manual (2023)",
-   "note": "How water suppliers assess and manage risks from source to tap. Technical, for those running a water system."
+   "label": "Manual OMS de Planos de Segurança da Água (2023)",
+   "note": "Como sistemas de abastecimento gerenciam riscos da captação à torneira. Conteúdo técnico para operadores."
   },
   {
    "doc": "med-99953e703fef507a",
-   "label": "MSF Public Health Engineering in Precarious Situations",
-   "note": "Field manual (2010 edition) on water supply, treatment, sanitation and waste for humanitarian engineers."
+   "label": "MSF: Engenharia de Saúde Pública em Situações Precárias",
+   "note": "Manual de campo (2010) sobre abastecimento de água, tratamento, saneamento e resíduos."
   },
   {
    "doc": "pump-97f27e54f6236045",
-   "label": "FAO Water Lifting Devices: contents",
-   "note": "Entry point to an FAO manual on pumps and water-lifting methods, including hand, wind and solar power."
+   "label": "FAO: Dispositivos para Elevação de Água — sumário",
+   "note": "Manual da FAO sobre bombas e métodos de bombeamento manual, eólico e solar."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Portable_water_purification",
    "title": "Portable water purification",
-   "label": "Encyclopedia: portable water purification",
-   "note": "Overview of boiling, filters, chemical and UV methods and what each removes."
+   "label": "Enciclopédia: purificação portátil de água",
+   "note": "Visão geral de fervura, filtros, métodos químicos e UV e o que cada método remove (artigo em inglês)."
   },
   {
    "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Rainwater_harvesting",
    "title": "Rainwater harvesting",
-   "label": "Encyclopedia: rainwater harvesting",
-   "note": "Background on collecting and storing rainwater, quality concerns and system types."
+   "label": "Enciclopédia: captação de água da chuva",
+   "note": "Fundamentos sobre coleta e armazenamento de água pluvial, qualidade e tipos de sistemas (artigo em inglês)."
   },
   {
    "doc": "video-sqYPXxbjH_w",
-   "label": "Video: rainwater harvesting demonstration trailer (Texas A&M AgriLife)",
-   "note": "Extension agent walks through rain barrels, screens, overflows and other collection setups."
+   "label": "Vídeo: demonstração prática de captação de água de chuva (Texas A&M, em inglês)",
+   "note": "Extensionista apresenta cisternas, telas de retenção de folhas, ladrões e sistemas de captação."
   }
  ],
  "related": [

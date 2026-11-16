@@ -1,28 +1,27 @@
 ---
-name: Bug report
-about: Something in Lastbook does not work as it should
+name: Relato de bug (Bug report)
+about: Algo no Último Livro / Lastbook não está funcionando como esperado
 title: ''
 labels: bug
 ---
 
-**What happened**
-What you did, what you expected, and what you saw instead.
+**O que aconteceu**
+O que você fez, o que esperava que acontecesse e o que aconteceu de fato.
 
-**Steps to reproduce**
+**Passos para reproduzir**
 1.
 2.
 3.
 
-**Your computer**
-- Lastbook version (About page):
-- System: macOS / Windows, and its version
-- Library: Small / Medium / All, or your own
-- Local AI on or off:
+**Seu computador**
+- Versão (página Sobre):
+- Sistema operacional: macOS / Windows / Linux e versão
+- Biblioteca: Small / Medium / All ou própria
+- IA local ativada ou desativada:
 
-**Screenshots or log**
-If you can, add a screenshot or the last lines of `LastbookData/derived/logs/lastbook.log`.
+**Capturas de tela ou log**
+Se puder, anexe uma captura de tela ou as últimas linhas de `LastbookData/derived/logs/lastbook.log`.
 
-Before you post, remove anything personal: your name, your home area or address, folder paths with your user name,
-and the names of your computers.
+Antes de enviar, remova qualquer dado pessoal: seu nome, região ou endereço residencial, caminhos de pasta contendo seu nome de usuário e nomes dos seus computadores.
 
-A security or privacy problem? Don't post it here. Email hello@lastbook.org.
+Problema de segurança ou privacidade? Não publique aqui. Para questões do projeto original Lastbook, envie e-mail para `hello@lastbook.org`.

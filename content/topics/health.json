@@ -1,9 +1,9 @@
 {
  "id": "health",
  "mode": "learn",
- "title": "Care for health over time without a doctor",
- "short": "Examining the sick, medicines, chronic illness, teeth, pregnancy, mental health, disability",
- "intro": "A beginner's path for looking after a household's health for weeks or months when doctors, pharmacies and clinics are hard to reach. It starts with how to use the main village-health books and moves on to medicines, long-term conditions, teeth, pregnancy, stress and caring for people with disabilities. Knowing when to get skilled help is part of every step.",
+ "title": "Cuidar da saúde ao longo do tempo sem médico",
+ "short": "Avaliar doentes, medicamentos, doenças crônicas, dentes, gestação, saúde mental e deficiência",
+ "intro": "Um roteiro inicial para cuidar da saúde da casa durante semanas ou meses quando médicos, farmácias e UBS/UPAs estão difíceis de acessar. No Brasil, busque o SUS (UBS/UPA/SAMU 192) e, para apoio emocional, o CVV (188) sempre que disponíveis. Começa por como consultar os manuais comunitários principais e avança para medicamentos, doenças crônicas, saúde bucal, gestação, estresse e cuidado de idosos ou pessoas com deficiência. Saber quando procurar ajuda profissional faz parte de cada etapa.",
  "keywords": [
   "health",
   "doctor",
@@ -42,276 +42,338 @@
   "caregiver",
   "pressure sores",
   "Where There Is No Doctor",
-  "Hesperian"
+  "Hesperian",
+  "saude",
+  "saúde",
+  "medico",
+  "médico",
+  "sus",
+  "ubs",
+  "upa",
+  "samu",
+  "doente",
+  "doenca",
+  "doença",
+  "examinar",
+  "febre",
+  "temperatura",
+  "pulso",
+  "remedio",
+  "remédio",
+  "medicamento",
+  "antibiotico",
+  "antibiótico",
+  "dose",
+  "farmacia",
+  "farmácia",
+  "diabetes",
+  "glicemia",
+  "insulina",
+  "pressao alta",
+  "pressão alta",
+  "hipertensao",
+  "hipertensão",
+  "coracao",
+  "coração",
+  "avc",
+  "dente",
+  "dor de dente",
+  "dentista",
+  "abscesso",
+  "gravidez",
+  "gestacao",
+  "gestação",
+  "parto",
+  "parteira",
+  "trabalho de parto",
+  "saude mental",
+  "saúde mental",
+  "estresse",
+  "ansiedade",
+  "depressao",
+  "depressão",
+  "suicidio",
+  "suicídio",
+  "cvv",
+  "188",
+  "trauma",
+  "luto",
+  "deficiencia",
+  "deficiência",
+  "idoso",
+  "idosos",
+  "cuidador",
+  "escara",
+  "ulcera de pressao"
  ],
  "choices": [
   {
    "id": "start",
-   "label": "Someone is sick and I don't know where to start",
-   "hint": "Fever, pain, not eating, getting weaker",
+   "label": "Alguém está doente e não sei por onde começar",
+   "hint": "Febre, dor, sem apetite, ficando mais fraco",
    "read": [
     {
      "doc": "clinical-e11235e28035e4ac",
      "page": 1,
-     "label": "Questions to ask a sick person",
-     "note": "Where There Is No Doctor (2025) on asking what bothers the person, how it began, and writing down findings for a health worker."
+     "label": "Perguntas para fazer a uma pessoa doente",
+     "note": "Where There Is No Doctor (2025): perguntar o que incomoda, como começou e anotar os achados para enviar a um profissional de saúde."
     },
     {
      "doc": "clinical-fe3d008bfe1dd1a2",
      "page": 4,
-     "label": "Signs of dangerous illness",
-     "note": "A numbered list of signs that mean the person is probably too sick to treat at home, with page references for what to do until help comes."
+     "label": "Sinais de doença grave",
+     "note": "Lista numerada de sinais que indicam quadro grave demais para tratar só em casa, com páginas explicando o que fazer enquanto aguarda socorro."
     },
     {
      "doc": "clinical-fe3d008bfe1dd1a2",
      "page": 5,
-     "label": "When and how to look for medical help",
-     "note": "Seeking help at the first dangerous sign, bringing a health worker to the person, and sending a written patient report."
+     "label": "Quando e como buscar ajuda médica",
+     "note": "Buscar ajuda ao primeiro sinal de perigo, trazer profissional até o paciente e enviar relato clínico por escrito."
     }
    ]
   },
   {
    "id": "medicine",
-   "label": "Should I give a medicine or antibiotic?",
-   "hint": "Leftover pills, unknown brand, antibiotics, expired medicine",
+   "label": "Devo dar um medicamento ou antibiótico?",
+   "hint": "Resto de remédio em casa, embalagem desconhecida, antibiótico, remédio vencido",
    "read": [
     {
      "doc": "clinical-ec4fa543bb6ce0c8",
      "page": 1,
-     "label": "Medicines can kill: rules for safe use",
-     "note": "Where There Is No Doctor (2025) guidelines: use medicine only when needed, know its precautions, use the right dose, and ask a health worker when in doubt."
+     "label": "Medicamentos podem matar: regras para uso seguro",
+     "note": "Orientações Where There Is No Doctor (2025): usar só quando necessário, conhecer contraindicações, usar a dose exata e consultar profissional em caso de dúvida."
     },
     {
      "doc": "clinical-ec4fa543bb6ce0c8",
      "page": 2,
-     "label": "The most dangerous misuses of medicine",
-     "note": "Medicines commonly misused in ways that cause deaths, including injections and antibiotics for problems they do not help."
+     "label": "Os usos indevidos mais perigosos de medicamentos",
+     "note": "Erros comuns que causam óbitos, incluindo injeções desnecessárias e antibióticos para problemas em que não funcionam."
     },
     {
      "doc": "clinical-96bc1472fc13d771",
      "page": 1,
-     "label": "What antibiotics are and how to tell them apart",
-     "note": "The main antibiotic groups, their generic and brand names, and why each has dangers."
+     "label": "O que são antibióticos e como diferenciá-los",
+     "note": "Principais classes de antibióticos, nomes genéricos e comerciais (atenção aos nomes internacionais) e por que cada um apresenta riscos."
     }
    ]
   },
   {
    "id": "chronic",
-   "label": "Diabetes, high blood pressure or heart disease",
-   "hint": "Running low on prescriptions, no clinic visits, insulin without a fridge",
+   "label": "Diabetes, pressão alta ou doença do coração",
+   "hint": "Ficando sem receita ou remédio contínuo, sem consulta, insulina sem geladeira",
    "read": [
     {
      "doc": "med-a840a35b017c5748",
      "page": 3,
-     "label": "Diabetes danger signs and long-term harm",
-     "note": "Hesperian on signs of dangerously high blood sugar and the damage unmanaged diabetes causes."
+     "label": "Sinais de perigo no diabetes e danos a longo prazo",
+     "note": "Hesperian sobre sinais de glicemia muito alta e complicações do diabetes não controlado."
     },
     {
      "doc": "med-f0d080c42e81de5f",
      "page": 7,
-     "label": "When blood pressure is too high or an emergency",
-     "note": "Hesperian on blood pressure numbers, very high blood pressure with warning signs, and why it must be lowered gradually in a clinic."
+     "label": "Quando a pressão arterial está alta demais ou é emergência",
+     "note": "Hesperian sobre valores de pressão, picos com sintomas de alerta e por que a redução rápida exige ambiente hospitalar."
     },
     {
      "doc": "med-f0d080c42e81de5f",
      "page": 13,
-     "label": "Blood pressure medicines: take them every day",
-     "note": "Why these medicines work only when taken daily, common side effects, and asking a health worker before stopping."
+     "label": "Remédios para pressão: tomar todos os dias",
+     "note": "Por que só funcionam com uso diário, efeitos colaterais comuns e necessidade de falar com profissional antes de interromper."
     },
     {
      "doc": "e629b2983d95e4",
      "page": 6,
-     "label": "Plan for medical devices and medicines that need power",
-     "note": "American Red Cross (2020) planning for power to run medical devices or keep medicines cold, and registries for people who need help evacuating."
+     "label": "Planejar aparelhos médicos e remédios que dependem de energia",
+     "note": "Cruz Vermelha (2020): plano de bateria/energia para aparelhos médicos ou refrigeração de medicamentos (como insulina) e cadastro prévio para evacuação."
     }
    ]
   },
   {
    "id": "teeth",
-   "label": "Toothache, swollen face or broken tooth",
-   "hint": "Cavity, abscess, knocked-out tooth, bleeding gums",
+   "label": "Dor de dente, rosto inchado ou dente quebrado",
+   "hint": "Cárie, abscesso, dente que caiu com a raiz, gengiva sangrando",
    "read": [
     {
      "doc": "clinical-8743f84f6741a54e",
      "page": 9,
-     "label": "Tooth abscess: signs and treatment",
-     "note": "Where There Is No Dentist (2024) on signs of an abscess and how it is treated; draining requires sterile tools and skill."
+     "label": "Abscesso dentário: sinais e cuidados",
+     "note": "Where There Is No Dentist (2024): sinais de abscesso e tratamento; drenagem exige instrumentos estéreis e treinamento."
     },
     {
      "doc": "clinical-8743f84f6741a54e",
      "page": 13,
-     "label": "Tooth knocked out",
-     "note": "What to do when a tooth is knocked out of the mouth."
+     "label": "Dente avulsionado (arrancado por pancada)",
+     "note": "O que fazer quando um dente sai inteiro da boca."
     },
     {
      "doc": "clinical-8743f84f6741a54e",
      "page": 24,
-     "label": "Problems too serious to treat yourself",
-     "note": "Introduction to serious mouth and jaw problems that should be sent to a more experienced dental worker, starting with a broken jaw."
+     "label": "Problemas graves demais para tratar por conta própria",
+     "note": "Introdução a quadros graves de boca e mandíbula que precisam de dentista ou cirurgião experiente, começando por fratura de mandíbula."
     }
    ]
   },
   {
    "id": "pregnant",
-   "label": "Someone is pregnant or in labor",
-   "hint": "No prenatal care, labor starting, bleeding after birth",
+   "label": "Alguém está grávida ou em trabalho de parto",
+   "hint": "Sem pré-natal, contrações começando, sangramento após o parto",
    "read": [
     {
      "doc": "med-c8a380e07e30f3e3",
      "page": 19,
-     "label": "Danger signs in labor and birth",
-     "note": "Hesperian list of labor danger signs that need medical help, and supplies to prepare for a safe birth."
+     "label": "Sinais de perigo no trabalho de parto e nascimento",
+     "note": "Hesperian: lista de sinais de alarme que exigem hospital/maternidade e materiais para preparar um parto seguro."
     },
     {
      "doc": "clinical-8dc56ea4c7868623",
      "page": 2,
-     "label": "Problems that cannot be treated at home",
-     "note": "A Book for Midwives (2026): severe hemorrhage, eclampsia and a prolapsed cord need a medical center; do not learn procedures only from reading."
+     "label": "Complicações que não podem ser tratadas em casa",
+     "note": "A Book for Midwives (2026): hemorragia grave, eclâmpsia e prolapso de cordão exigem centro médico; não execute procedimentos apenas por leitura."
     },
     {
      "doc": "clinical-8dc56ea4c7868623",
      "page": 7,
-     "label": "Getting a woman to medical help fast",
-     "note": "Why to decide quickly, and planning transport with the family and community before an emergency."
+     "label": "Levar a gestante rapidamente ao atendimento médico",
+     "note": "Por que decidir rápido salva vidas e como combinar transporte comunitário antes de uma emergência."
     }
    ]
   },
   {
    "id": "mind",
-   "label": "Stress, fear, grief or someone in crisis",
-   "hint": "Can't sleep, panic, hopeless, talking about suicide, after a disaster",
+   "label": "Estresse, medo, luto ou crise emocional",
+   "hint": "Insônia, pânico, desesperança, falas sobre suicídio após um desastre",
    "read": [
     {
      "doc": "med-0faf49d8c0bd8eb2",
      "page": 8,
-     "label": "How to offer emotional support",
-     "note": "Promoting Community Mental Health (Hesperian, 2025): asking, listening more than talking, and offering empathy."
+     "label": "Como oferecer apoio emocional",
+     "note": "Promoting Community Mental Health (Hesperian, 2025): perguntar, ouvir mais do que falar e acolher com empatia."
     },
     {
      "doc": "med-2e83e22162a9a006",
      "page": 486,
-     "label": "Supporting someone after a traumatic event",
-     "note": "IFRC 2025: listen, be empathetic, keep in contact and connect the person to other resources. A brief introduction, not formal psychological first aid training."
+     "label": "Apoiar alguém após um evento traumático",
+     "note": "FICV 2025: escutar, demonstrar empatia, manter contato e conectar a redes de apoio (no Brasil, CAPS/SUS ou CVV 188). Introdução breve."
     },
     {
      "doc": "med-323535ddfa576a04",
      "page": 7,
-     "label": "If someone may be considering suicide",
-     "note": "Hesperian (2025): take them seriously, ask directly, stay calm, and get others involved so you are not helping alone."
+     "label": "Se alguém estiver pensando em suicídio",
+     "note": "Hesperian (2025): levar a sério, perguntar diretamente, manter a calma, envolver outras pessoas e acionar CVV (188) / SAMU (192) / CAPS."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 144,
-     "label": "Normal stress reactions to disaster",
-     "note": "CERT 2019 on common disaster stress reactions in survivors and helpers, including vicarious trauma and burnout."
+     "label": "Reações normais de estresse após desastres",
+     "note": "CERT 2019 sobre reações esperadas em atingidos e voluntários, incluindo exaustão emocional e estresse secundário."
     }
    ]
   },
   {
    "id": "care",
-   "label": "Caring for an older or disabled person",
-   "hint": "Bedbound, wheelchair user, dementia, caregiver worn out",
+   "label": "Cuidar de idoso ou pessoa com deficiência",
+   "hint": "Acamado, cadeirante, demência, cuidador exausto",
    "read": [
     {
      "doc": "med-f65faa1b8cb4c8f9",
      "page": 1,
-     "label": "Preventing pressure (bed) sores",
-     "note": "Disabled Village Children (Hesperian) on what pressure sores are and who is most at risk; following pages cover prevention and care."
+     "label": "Prevenir lesões por pressão (escaras)",
+     "note": "Disabled Village Children (Hesperian) explica o que são escaras e quem corre mais risco; páginas seguintes cobrem prevenção e curativos."
     },
     {
      "doc": "clinical-5312980049ba6680",
      "page": 1,
-     "label": "Health problems of older people",
-     "note": "Where There Is No Doctor (2025) summary of common problems in older people with page links: vision, weakness and eating, swollen feet."
+     "label": "Problemas de saúde comuns em idosos",
+     "note": "Where There Is No Doctor (2025): resumo com links de páginas sobre visão, fraqueza, alimentação e pernas inchadas."
     },
     {
      "doc": "med-d60d65e8fbbab512",
      "page": 1,
-     "label": "Support for caregivers",
-     "note": "A Health Handbook for Women with Disabilities (Hesperian, 2007) chapter for families and others who assist, including caregiver stress."
+     "label": "Apoio a cuidadores",
+     "note": "Manual Hesperian (2007) para familiares e acompanhantes, incluindo prevenção da sobrecarga do cuidador."
     },
     {
      "doc": "e629b2983d95e4",
      "page": 5,
-     "label": "Build a support network for an older adult",
-     "note": "American Red Cross (2020): identifying helpers, planning to stay home two weeks or evacuate, and what to do if caregivers cannot come."
+     "label": "Montar uma rede de apoio para a pessoa idosa",
+     "note": "Cruz Vermelha (2020): mapear vizinhos/familiares de confiança, planejar permanência em casa por duas semanas ou retirada segura."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Part of informed self-care is knowing your limits: the book points out when to see or get advice from a health worker or doctor.",
+   "text": "Parte do autocuidado informado é conhecer seus limites: os manuais indicam quando procurar um médico ou serviço de saúde (SUS/UBS/UPA/SAMU 192).",
    "doc": "clinical-e2b88f3bfc5cbf33",
    "page": 8
   },
   {
-   "text": "A person with one or more signs of dangerous illness (such as heavy blood loss, coughing blood, cannot be woken, no urine for 12 hours, high fever that won't come down) is probably too sick to treat at home: seek skilled medical help as soon as possible.",
+   "text": "Alguém com sinais de doença grave (perda intensa de sangue, tosse com sangue, inconsciência, 12 horas sem urinar, febre alta que não cede) precisa de atendimento médico qualificado o quanto antes.",
    "doc": "clinical-fe3d008bfe1dd1a2",
    "page": 4
   },
   {
-   "text": "Never use a dangerous medicine for a mild illness. Use medicines only when necessary, use the right dose, stop if it causes problems, and ask a health worker when in doubt.",
+   "text": "Nunca use um medicamento forte ou arriscado para doença leve. Use só quando necessário, na dose certa, suspenda se causar reação e consulte profissional na dúvida.",
    "doc": "clinical-ec4fa543bb6ce0c8",
    "page": 1
   },
   {
-   "text": "Expired medicines can be dangerous, some (such as tetracyclines) especially so; keep all medicines out of reach of children because any medicine in large doses can be poisonous.",
+   "text": "Medicamentos vencidos podem ser perigosos (especialmente alguns como tetraciclinas); mantenha todos os remédios fora do alcance de crianças.",
    "doc": "clinical-660fbc63f3545bd0",
    "page": 2
   },
   {
-   "text": "MSF Essential Drugs is a practical manual intended for physicians, pharmacists, nurses and health auxiliaries, not for self-treatment.",
+   "text": "MSF Essential Drugs é um manual técnico para médicos, farmacêuticos e enfermeiros, não para automedicação.",
    "doc": "med-903c9aef19e87be8",
    "page": 6
   },
   {
-   "text": "MSF Clinical Guidelines are designed for medical professionals in curative care at dispensaries and primary hospitals.",
+   "text": "MSF Clinical Guidelines destina-se a profissionais de saúde em clínicas e hospitais.",
    "doc": "med-fe020d4fcf31e31a",
    "page": 5
   },
   {
-   "text": "Very high blood pressure with headache, blurred vision, chest pain, shortness of breath or seizures can be an emergency: take the person to a clinic or hospital. Lowering blood pressure too quickly can cause harm.",
+   "text": "Pressão arterial muito alta acompanhada de dor de cabeça forte, visão turva, dor no peito, falta de ar ou convulsão é emergência: leve a hospital/UPA. Baixar a pressão rápido demais em casa pode causar dano.",
    "doc": "med-f0d080c42e81de5f",
    "page": 7
   },
   {
-   "text": "Do not just stop blood pressure medicine because of side effects; ask a health worker about another medicine. Stop and talk to a health worker if a rash or swelling appears.",
+   "text": "Não interrompa o remédio de pressão por conta própria devido a efeitos colaterais; converse com médico/UBS. Pare e busque atendimento se surgir alergia ou inchaço.",
    "doc": "med-f0d080c42e81de5f",
    "page": 13
   },
   {
-   "text": "A person with signs of very high blood sugar (severe thirst, extreme weakness or confusion, weight loss) should be tested and treated fast; very high blood sugar can kill.",
+   "text": "Pessoa com sinais de glicemia muito alta (sede extrema, fraqueza intensa ou confusão, perda de peso) precisa de exame e tratamento rápido; pode ser fatal.",
    "doc": "med-a840a35b017c5748",
    "page": 3
   },
   {
-   "text": "Dental workers must know their limits and do only what they know how to do; some problems are too serious and should go to a more experienced dental worker.",
+   "text": "Atendimento odontológico improvisado deve respeitar limites estritos; problemas graves na boca ou face exigem cirurgião-dentista.",
    "doc": "clinical-8743f84f6741a54e",
    "page": 1
   },
   {
-   "text": "Severe hemorrhage, eclampsia or a prolapsed cord cannot be treated at home. Procedures in A Book for Midwives that you have not been trained to do should be learned from someone experienced, not from reading.",
+   "text": "Hemorragia grave, eclâmpsia ou prolapso de cordão não se tratam em casa. Procedimentos obstétricos não devem ser tentados apenas pela leitura de livros.",
    "doc": "clinical-8dc56ea4c7868623",
    "page": 2
   },
   {
-   "text": "Labor danger signs (very long labor, blood pressure 160/110 or higher, fever with fast pulse, sideways baby, cord coming first) need medical help.",
+   "text": "Sinais de alarme no parto (trabalho de parto muito longo, pressão ≥ 160/110, febre com pulso rápido, bebê atravessado, cordão à frente) exigem maternidade urgente.",
    "doc": "med-c8a380e07e30f3e3",
    "page": 19
   },
   {
-   "text": "If someone talks about suicide or death, take it seriously and ask directly; you do not have to help them alone – involve others and connect them with care.",
+   "text": "Se alguém falar em suicídio ou morte, leve a sério e pergunte com calma; não carregue isso sozinho — envolva familiares e ligue CVV (188) ou SAMU (192).",
    "doc": "med-323535ddfa576a04",
    "page": 7
   },
   {
-   "text": "Psychological first aid is delivered by people who have received appropriate training; it does not require professional mental health qualifications.",
+   "text": "Primeiros socorros psicológicos devem ser oferecidos com capacitação prévia adequada, respeitando os próprios limites de atuação.",
    "doc": "med-2e83e22162a9a006",
    "page": 129
   },
   {
-   "text": "If someone behaves unusually aggressively or strangely, consider that it may be a physical health emergency; your own safety comes first in any crisis.",
+   "text": "Comportamento agressivo ou estranho repentino pode ser uma emergência clínica física; sua segurança pessoal vem sempre em primeiro lugar.",
    "doc": "med-323535ddfa576a04",
    "page": 1
   }
@@ -320,223 +382,223 @@
   {
    "doc": "clinical-660fbc63f3545bd0",
    "page": 1,
-   "label": "Plan a family medicine kit",
-   "note": "Where There Is No Doctor (2025) on why each family should have a home medicine kit, how much to keep, and caring for it (next page)."
+   "label": "Planejar o kit doméstico de medicamentos",
+   "note": "Where There Is No Doctor (2025): por que manter reserva básica, quantidades recomendadas e armazenamento seguro (página seguinte)."
   },
   {
    "doc": "clinical-fe3d008bfe1dd1a2",
    "page": 6,
-   "label": "Print the patient report form",
-   "note": "A blank form for recording a sick person's signs to send with a messenger to a health worker."
+   "label": "Imprimir ficha de acompanhamento do paciente",
+   "note": "Modelo em branco para registrar sinais do doente e enviar por mensageiro a um profissional de saúde."
   },
   {
    "doc": "18bf4604bf28c4",
    "page": 2,
-   "label": "Medicines and medical devices in a power outage",
-   "note": "FEMA (2023) sheet: plan with your doctor for powered medical devices and refrigerated medicines, and when to replace medicines kept warm."
+   "label": "Medicamentos e equipamentos médicos na falta de energia",
+   "note": "Ficha FEMA (2023): planejar com seu médico aparelhos elétricos e remédios refrigerados (insulina etc.), e quando descartar remédios que esquentaram."
   },
   {
    "doc": "e629b2983d95e4",
    "page": 5,
-   "label": "Disaster planning for older adults and caregivers",
-   "note": "American Red Cross (2020) booklet on support networks, staying home or evacuating, power needs and documents."
+   "label": "Planejamento de emergências para idosos e cuidadores",
+   "note": "Livreto Cruz Vermelha (2020) sobre rede de apoio, ficar em casa ou evacuar, necessidades de energia e documentos/receitas."
   },
   {
    "doc": "clinical-e43618811c630265",
    "page": 9,
-   "label": "Clean teeth well without toothpaste",
-   "note": "Where There Is No Dentist (2024) on a cleaning method people can learn at home; toothpaste is not necessary."
+   "label": "Higiene bucal eficaz mesmo sem creme dental",
+   "note": "Where There Is No Dentist (2024): técnica de escovação correta; o creme dental ajuda, mas não é indispensável se faltar."
   },
   {
    "doc": "med-a840a35b017c5748",
    "page": 2,
-   "label": "Living healthily with diabetes",
-   "note": "Hesperian on what people with diabetes can do themselves: food, exercise, teeth, feet, stress and rest, and the early signs of diabetes."
+   "label": "Viver com saúde tendo diabetes",
+   "note": "Hesperian sobre alimentação, atividade física, cuidados com pés e dentes, sono/estresse e sinais iniciais."
   },
   {
    "doc": "med-323535ddfa576a04",
    "page": 3,
-   "label": "Know your support lines before a crisis",
-   "note": "Hesperian (2025, US-focused) on warmlines and hotlines for peer and professional support, and how a crisis can overwhelm someone."
+   "label": "Ter em mãos telefones de apoio antes de uma crise",
+   "note": "Hesperian (2025, texto original focado nos EUA) sobre linhas de escuta e crise. No Brasil: CVV 188, CAPS/SUS e SAMU 192."
   }
  ],
  "learn": [
   {
    "doc": "clinical-e2b88f3bfc5cbf33",
-   "label": "Where There Is No Doctor (2025): contents and introduction",
-   "note": "Start here: the table of contents and how the book is meant to be used, including when to seek help. All chapters of this 2025 edition are in the library."
+   "label": "Where There Is No Doctor (2025): sumário e introdução",
+   "note": "Comece por aqui: sumário completo e instruções de uso do livro, incluindo quando buscar atendimento médico."
   },
   {
    "doc": "clinical-d5fa69d5756dae1f",
-   "label": "Where There Is No Doctor: Green Pages (medicines)",
-   "note": "Uses, doses and precautions for the medicines mentioned in the book, grouped by use. Read the precautions; doses are by age or weight."
+   "label": "Where There Is No Doctor: Páginas Verdes (medicamentos)",
+   "note": "Indicações, doses por idade/peso e precauções dos medicamentos citados no livro."
   },
   {
    "doc": "med-27894636f99b2041",
-   "label": "New Where There Is No Doctor: contents",
-   "note": "Planned contents of Hesperian's new book (advance chapters 2015–2020). Only some chapters are in the library, e.g. first aid, heart, belly and diarrhea, diabetes, pregnancy, children."
+   "label": "New Where There Is No Doctor: sumário",
+   "note": "Sumário da edição atualizada da Hesperian (capítulos preliminares 2015–2020). Nem todos os capítulos estão presentes nesta cópia."
   },
   {
    "doc": "clinical-adf7e76078ea5681",
    "label": "Where There Is No Dentist (2024)",
-   "note": "Front matter and contents. Part 1 is prevention; Part 2 (treating problems) is mainly for health workers."
+   "note": "Apresentação e sumário. A Parte 1 foca prevenção; a Parte 2 destina-se principalmente a profissionais/técnicos de saúde bucal."
   },
   {
    "doc": "clinical-df8e3c124e75be2c",
-   "label": "A Book for Midwives (2026 edition)",
-   "note": "Contents of Hesperian's midwifery book. Written for midwives and birth attendants; many skills in it need training and supervised practice."
+   "label": "A Book for Midwives (edição 2026)",
+   "note": "Sumário do livro da Hesperian para parteiras e profissionais; exige formação e prática supervisionada."
   },
   {
    "doc": "med-38945e48ce6b835c",
    "label": "Promoting Community Mental Health (Hesperian, 2025)",
-   "note": "Contents of a practical, US-oriented guide to stress, anxiety, trauma, grief, crisis support and support groups for non-professionals."
+   "note": "Sumário do guia sobre estresse, ansiedade, trauma, luto e apoio comunitário para leigos."
   },
   {
    "doc": "med-2883a38b5d8e0b34",
    "label": "Disabled Village Children (Hesperian)",
-   "note": "Large guide to disabilities in children, therapy, aids and community rehabilitation; many chapters also help adults."
+   "note": "Amplo guia sobre deficiências na infância, reabilitação e adaptações domiciliares úteis também a adultos."
   },
   {
    "doc": "med-fe020d4fcf31e31a",
-   "label": "MSF Clinical Guidelines (December 2024)",
-   "note": "Diagnosis and treatment manual for medical professionals at clinics and primary hospitals. Reference for clinicians, not self-treatment."
+   "label": "Diretrizes Clínicas MSF (dezembro de 2024)",
+   "note": "Manual de diagnóstico e tratamento de Médicos Sem Fronteiras para uso profissional."
   },
   {
    "doc": "med-e85fab191a13185e",
-   "label": "WHO mhGAP Intervention Guide 2.0 (Arabic edition)",
-   "note": "WHO guide for non-specialist health-care providers on mental, neurological and substance use conditions. This copy is in Arabic; the English edition is not in the library."
+   "label": "Guia de Intervenção OMS mhGAP 2.0 (cópia em árabe)",
+   "note": "Guia técnico da OMS para saúde mental na atenção primária. Nesta biblioteca está apenas em árabe."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Hypertension",
    "title": "Hypertension",
-   "label": "Encyclopedia: High blood pressure (MDWiki)",
-   "note": "Medical encyclopedia article on causes, risks and treatment of high blood pressure, for background reading."
+   "label": "Enciclopédia: Hipertensão arterial (MDWiki)",
+   "note": "Artigo médico informativo sobre causas, riscos e tratamento da pressão alta (em inglês)."
   }
  ],
  "route": [
   {
-   "title": "Step 1: Learn how to use Where There Is No Doctor",
-   "goal": "Know what the main book covers, how to find things fast, and that it tells you when to seek help.",
+   "title": "Etapa 1: Aprender a consultar Where There Is No Doctor",
+   "goal": "Entender o que o livro principal cobre, como localizar assuntos rápido e os avisos de quando buscar médico.",
    "read": [
     {
      "doc": "clinical-e2b88f3bfc5cbf33",
      "page": 8,
-     "label": "Introduction: self-care and knowing your limits",
-     "note": "Why the book was written, who it is for, and its promise to say when to seek help as well as what to do meanwhile."
+     "label": "Introdução: autocuidado e limites",
+     "note": "Por que o livro foi escrito e seu compromisso de indicar quando procurar assistência médica."
     },
     {
      "doc": "clinical-e2b88f3bfc5cbf33",
      "page": 1,
-     "label": "Table of contents",
-     "note": "Chapter-by-chapter list of what is discussed; continues over the next pages."
+     "label": "Sumário completo",
+     "note": "Lista de capítulos e temas abordados nas páginas seguintes."
     }
    ]
   },
   {
-   "title": "Step 2: Examine a sick person and recognise danger",
-   "goal": "Ask the right questions, look carefully, and spot the signs that mean home care is not enough.",
+   "title": "Etapa 2: Examinar uma pessoa doente e reconhecer perigo",
+   "goal": "Fazer as perguntas certas, observar com atenção e detectar sinais que exigem atendimento fora de casa.",
    "read": [
     {
      "doc": "clinical-e11235e28035e4ac",
      "page": 2,
-     "label": "Look at general condition before touching",
-     "note": "What skin colour, weight, breathing and alertness can tell you, with links to dehydration and shock."
+     "label": "Observar o estado geral antes de examinar",
+     "note": "O que cor da pele, peso, respiração e nível de consciência revelam, com referências sobre desidratação e choque."
     },
     {
      "doc": "clinical-fe3d008bfe1dd1a2",
      "page": 4,
-     "label": "Signs of dangerous illness",
-     "note": "The list to memorise: signs that mean skilled medical help is needed as soon as possible."
+     "label": "Sinais de doença grave",
+     "note": "A lista essencial de alarme para buscar auxílio médico imediato."
     }
    ]
   },
   {
-   "title": "Step 3: Use medicines carefully",
-   "goal": "Understand the risks of medicines, misuse of antibiotics, and how to read dose information.",
+   "title": "Etapa 3: Usar medicamentos com cautela",
+   "goal": "Compreender riscos dos remédios, uso indevido de antibióticos e leitura de doses.",
    "read": [
     {
      "doc": "clinical-ec4fa543bb6ce0c8",
      "page": 1,
-     "label": "Right and wrong uses of modern medicines",
-     "note": "Five guidelines for using any medicine and the warning that medicines can kill."
+     "label": "Usos certos e errados dos medicamentos modernos",
+     "note": "Cinco regras básicas de segurança e o alerta sobre riscos fatais de erro medicamentoso."
     },
     {
      "doc": "clinical-d5fa69d5756dae1f",
      "page": 2,
-     "label": "How to read doses in the Green Pages",
-     "note": "Explains fractions of tablets, dosing by weight, and dose ranges before you look up any medicine."
+     "label": "Como ler doses nas Páginas Verdes",
+     "note": "Explica frações de comprimido, cálculo por peso e faixas de dosagem."
     }
    ]
   },
   {
-   "title": "Step 4: Manage long-term conditions",
-   "goal": "Keep diabetes and high blood pressure under control when care and supplies are disrupted.",
+   "title": "Etapa 4: Controlar doenças crônicas",
+   "goal": "Manter diabetes e hipertensão controlados quando consultas ou remédios falharem.",
    "read": [
     {
      "doc": "med-a840a35b017c5748",
      "page": 2,
-     "label": "Can you be healthy with diabetes?",
-     "note": "Self-management basics and early signs of diabetes."
+     "label": "É possível ter saúde com diabetes?",
+     "note": "Noções básicas de autocontrole e sinais iniciais."
     },
     {
      "doc": "med-f0d080c42e81de5f",
      "page": 11,
-     "label": "Living with high blood pressure or heart problems",
-     "note": "Hesperian encouragement on food, movement and family support; pages before and after cover ways to lower blood pressure and medicines."
+     "label": "Conviver com pressão alta ou problemas cardíacos",
+     "note": "Orientações práticas da Hesperian sobre alimentação, atividade física e apoio familiar."
     }
    ]
   },
   {
-   "title": "Step 5: Teeth, pregnancy and birth",
-   "goal": "Prevent dental problems and know the limits of home care in pregnancy and birth.",
+   "title": "Etapa 5: Dentes, gestação e parto",
+   "goal": "Prevenir problemas dentários e conhecer os limites absolutos do cuidado domiciliar na gestação e parto.",
    "read": [
     {
      "doc": "clinical-b378b0f215a74866",
      "page": 1,
-     "label": "Care of the teeth and gums",
-     "note": "Where There Is No Doctor (2025) on preventing cavities and gum disease; the next page shows a toothbrush made from a twig."
+     "label": "Cuidado dos dentes e gengivas",
+     "note": "Where There Is No Doctor (2025): prevenção de cáries e doença periodontal."
     },
     {
      "doc": "clinical-615238591a0cdeef",
      "page": 7,
-     "label": "Words to midwives: keep learning safely",
-     "note": "A Book for Midwives (2026) on learning from experienced midwives, training and practice, not only from books."
+     "label": "Conselhos às parteiras: aprender com segurança",
+     "note": "A Book for Midwives (2026) sobre aprender com profissionais experientes e prática supervisionada."
     }
    ]
   },
   {
-   "title": "Step 6: Mental health and stress",
-   "goal": "Support yourself and others through stress, grief and crisis, and know when more help is needed.",
+   "title": "Etapa 6: Saúde mental e estresse",
+   "goal": "Apoiar a si mesmo e aos demais diante de estresse, luto e crise.",
    "read": [
     {
      "doc": "med-0faf49d8c0bd8eb2",
      "page": 27,
-     "label": "Recognising depression",
-     "note": "Hesperian (2025) on how depression differs from sadness, its signs, and taking talk of suicide seriously."
+     "label": "Reconhecer a depressão",
+     "note": "Hesperian (2025): diferença entre tristeza e depressão, sinais de alerta e prevenção do suicídio (CVV 188)."
     },
     {
      "doc": "ed5bac0a81b009",
      "page": 146,
-     "label": "Self-care for helpers",
-     "note": "CERT 2019 everyday ways to reduce your own stress and how loved ones can support a helper."
+     "label": "Autocuidado para quem ajuda",
+     "note": "CERT 2019: maneiras práticas de aliviar o próprio estresse durante crises prolongadas."
     }
    ]
   },
   {
-   "title": "Step 7: Care for people with disabilities and older adults",
-   "goal": "Help people who need daily assistance stay healthy, and support the caregivers.",
+   "title": "Etapa 7: Cuidar de idosos e pessoas com deficiência",
+   "goal": "Prevenir complicações comuns em pessoas acamadas ou dependentes e apoiar quem cuida.",
    "read": [
     {
      "doc": "med-f65faa1b8cb4c8f9",
      "page": 1,
-     "label": "Pressure sores",
-     "note": "Why sores form in people who cannot move themselves, and who is at risk; prevention follows."
+     "label": "Lesões por pressão (escaras)",
+     "note": "Por que surgem em quem não se movimenta sozinho e como prevenir."
     },
     {
      "doc": "med-d60d65e8fbbab512",
      "page": 1,
-     "label": "Support for caregivers",
-     "note": "Hesperian chapter for families and others who assist; an older (2007) book but still practical."
+     "label": "Apoio aos cuidadores",
+     "note": "Capítulo Hesperian (2007) com orientações práticas para famílias cuidadoras."
     }
    ]
   }

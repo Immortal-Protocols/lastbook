@@ -1,9 +1,9 @@
 {
  "id": "food",
  "mode": "now",
- "title": "Keep food safe and cook without power",
- "short": "Fridge and freezer in an outage, safe cooking, emergency food",
- "intro": "Readings for when the power or gas is out: how long fridge and freezer food stays safe, what to throw away, how to cook without burning or poisoning anyone, and how to make stored food last.",
+ "title": "Manter os alimentos seguros e cozinhar sem energia",
+ "short": "Geladeira e freezer sem luz, preparo seguro e alimentos de reserva",
+ "intro": "Leituras para quando faltar energia elétrica ou gás: quanto tempo a comida da geladeira e do freezer permanece segura, o que descartar, como cozinhar sem causar incêndio nem intoxicação por monóxido de carbono e como fazer os suprimentos durarem.",
  "keywords": [
   "food",
   "fridge",
@@ -22,204 +22,229 @@
   "emergency food",
   "baby formula",
   "flood",
-  "hungry"
+  "hungry",
+  "comida",
+  "alimento",
+  "alimentos",
+  "geladeira",
+  "freezer",
+  "congelador",
+  "falta de energia",
+  "sem luz",
+  "apagao",
+  "apagão",
+  "estragado",
+  "descartar",
+  "cozinhar",
+  "fogareiro",
+  "churrasqueira",
+  "gerador",
+  "monoxido de carbono",
+  "monóxido de carbono",
+  "enlatados",
+  "conserva",
+  "racao",
+  "formula infantil",
+  "fórmula infantil",
+  "enchente",
+  "fome"
  ],
  "choices": [
   {
    "id": "outage",
-   "label": "The power is out: fridge and freezer",
-   "hint": "Is the food still safe? How long will it last?",
+   "label": "Faltou luz: geladeira e freezer",
+   "hint": "A comida ainda está boa? Por quanto tempo aguenta?",
    "read": [
     {
      "doc": "e4bfed4b6afd6d",
      "page": 1,
-     "label": "How long the fridge and freezer stay cold, and checking food after",
-     "note": "FDA fact sheet (2007): keep doors closed, hours a fridge and a full or half-full freezer hold, dry ice, and how to judge food when power returns."
+     "label": "Quanto tempo geladeira e freezer mantêm o frio e como avaliar depois",
+     "note": "Ficha técnica FDA (2007): manter as portas fechadas, horas de conservação em geladeira e freezer cheio/meio cheio, gelo seco e avaliação quando a luz voltar."
     },
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "Ready.gov power outage sheet: during and after",
-     "note": "FEMA sheet (2023): fridge and freezer times, the 'when in doubt, throw it out' rule, and what to do about refrigerated medicines."
+     "label": "Guia Ready.gov de falta de energia: durante e depois",
+     "note": "Ficha FEMA (2023): tempos máximos de geladeira/freezer, a regra 'na dúvida, jogue fora' e cuidados com medicamentos refrigerados."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 7,
-     "label": "Which food to eat first when the electricity goes off",
-     "note": "FEMA/Red Cross booklet (2004): order of using fridge, freezer, then shelf foods, and posting a freezer list to limit opening."
+     "label": "Quais alimentos consumir primeiro quando a eletricidade cai",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): ordem entre geladeira, freezer e despensa, e lista colada na porta para abrir o mínimo possível."
     },
     {
      "doc": "0dfdf1fb4b178f",
      "page": 30,
-     "label": "Keeping a freezer cold with dry ice",
-     "note": "Older FEMA Are You Ready? guide: finding other cold storage, dry ice amounts, and wearing heavy gloves to handle it."
+     "label": "Manter o freezer frio com gelo seco",
+     "note": "Guia FEMA antigo: buscar refrigeração alternativa, quantidades de gelo seco e uso de luvas grossas ao manusear."
     }
    ]
   },
   {
    "id": "throwout",
-   "label": "Deciding what to throw out",
-   "hint": "Warm meat, swollen cans, odd smell",
+   "label": "Decidir o que jogar fora",
+   "hint": "Carne morna, lata estufada, cheiro estranho",
    "read": [
     {
      "doc": "e4bfed4b6afd6d",
      "page": 1,
-     "label": "Temperature and time rules for perishable food",
-     "note": "FDA fact sheet (2007): which foods to discard after time above 40 °F, and that you cannot rely on appearance or odor."
+     "label": "Regras de temperatura e tempo para alimentos perecíveis",
+     "note": "Ficha técnica FDA (2007): quais alimentos descartar após tempo acima de 4 °C (40 °F) e por que aparência e cheiro não são confiáveis."
     },
     {
      "doc": "0dfdf1fb4b178f",
      "page": 29,
-     "label": "Do's and don'ts for managing food supplies",
-     "note": "Older FEMA Are You Ready? guide: damaged cans, abnormal food, food left at room temperature, refreezing thawed food."
+     "label": "O que fazer e o que evitar com o estoque de alimentos",
+     "note": "Guia FEMA antigo: latas amassadas/estufadas, alimento suspeito em temperatura ambiente e quando se pode ou não recongelar."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 5,
-     "label": "Storage tips and throwing out swollen or dented cans",
-     "note": "FEMA/Red Cross booklet (2004): inspecting food for spoilage and discarding swollen, dented or corroded cans."
+     "label": "Dicas de armazenamento e descarte de latas estufadas ou enferrujadas",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): inspeção de sinais de deterioração e descarte de latas danificadas."
     },
     {
      "doc": "99dd5e2cc78a16a0",
-     "label": "Home-canned food you are unsure about",
-     "note": "National Center for Home Food Preservation: botulism toxin risk, the CDC advice to discard suspect home-canned food, and when it is safe to eat."
+     "label": "Conservas caseiras duvidosas",
+     "note": "National Center for Home Food Preservation: risco de toxina botulínica (botulismo), recomendação do CDC de descartar qualquer conserva caseira suspeita e critérios de segurança."
     }
    ]
   },
   {
    "id": "flood",
-   "label": "Food got wet in a flood",
-   "hint": "Pantry, cans or garden touched flood water",
+   "label": "Os alimentos molharam em uma enchente",
+   "hint": "Despensa, latas ou horta tiveram contato com água de enchente",
    "read": [
     {
      "doc": "e4bfed4b6afd6d",
      "page": 2,
-     "label": "What to discard and how to save sealed cans after a flood",
-     "note": "FDA fact sheet (2007): which containers cannot be saved, cleaning and sanitizing undamaged cans and pouches, and sanitizing dishes."
+     "label": "O que descartar e como higienizar latas lacradas após enchente",
+     "note": "Ficha técnica FDA (2007): embalagens que nunca podem ser aproveitadas (papelão, tampa de rosca), lavagem e desinfecção com água sanitária de latas metálicas intactas e utensílios."
     },
     {
      "doc": "1f738924576334",
      "page": 9,
-     "label": "After a hurricane or flood: food and garden",
-     "note": "FEMA hurricane guide (2020): throwing out food not kept cold or touched by floodwater, including food from a flooded garden."
+     "label": "Após tempestade ou enchente: alimentos e horta",
+     "note": "Guia FEMA (2020): descarte de alimentos fora da temperatura segura ou atingidos pela água da enchente, incluindo hortaliças de hortas alagadas."
     }
    ]
   },
   {
    "id": "cook",
-   "label": "Cooking without power or gas",
-   "hint": "Camp stove, grill, fireplace, canned food",
+   "label": "Cozinhar sem energia elétrica ou sem gás encanado",
+   "hint": "Fogareiro portátil, churrasqueira, fogão a lenha, enlatados",
    "read": [
     {
      "doc": "18bf4604bf28c4",
      "page": 2,
-     "label": "Avoid carbon monoxide: where stoves, grills and generators can go",
-     "note": "FEMA power outage sheet (2023): use generators, camp stoves and charcoal grills outdoors, distance from openings, never heat the home with a stove or oven."
+     "label": "Evitar monóxido de carbono: onde usar fogareiros, churrasqueiras e geradores",
+     "note": "Ficha FEMA (2023): usar geradores, fogareiros e churrasqueiras a carvão somente ao ar livre, longe de janelas e portas; nunca aquecer a casa com forno ou fogão a gás."
     },
     {
      "doc": "1f738924576334",
      "page": 7,
-     "label": "Never use generators, grills or camp stoves inside",
-     "note": "FEMA hurricane guide (2020): includes partly enclosed areas, and how far from doors, windows and vents to keep them."
+     "label": "Nunca usar geradores, churrasqueiras ou fogareiros dentro de casa",
+     "note": "Guia FEMA (2020): inclui varandas fechadas e garagens, e a distância mínima de portas, janelas e entradas de ar."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 8,
-     "label": "How to cook if the power goes out",
-     "note": "FEMA/Red Cross booklet (2004): fireplace indoors, grill and camp stove outdoors, warming food, and eating or heating canned food safely."
+     "label": "Como cozinhar se faltar energia",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): lareira ventilada, churrasqueira/fogareiro ao ar livre, aquecimento de porções e consumo seguro de enlatados."
     },
     {
      "doc": "0dfdf1fb4b178f",
      "page": 30,
-     "label": "Alternative cooking and heating food in the can",
-     "note": "Older FEMA Are You Ready? guide: outdoor-only grills and stoves, and removing the label, cleaning and opening a can before heating."
+     "label": "Cozimento alternativo e aquecimento de latas",
+     "note": "Guia FEMA antigo: churrasqueiras/fogareiros só fora de casa e cuidados ao retirar rótulo, lavar e abrir a lata antes de aquecer."
     }
    ]
   },
   {
    "id": "lowfood",
-   "label": "Food is running low",
-   "hint": "Making stores last, staying strong",
+   "label": "A comida está acabando",
+   "hint": "Fazer os estoques renderem e manter a força",
    "read": [
     {
      "doc": "f7ff53bcaae9cc",
      "page": 8,
-     "label": "When food supplies are low, and nutrition tips",
-     "note": "FEMA/Red Cross booklet (2004): who should not have food rationed, avoiding salty food when water is short, and daily fluid and meal advice."
+     "label": "Quando os suprimentos estão baixos e dicas de nutrição",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): quem não deve racionar comida, por que evitar alimentos muito salgados se faltar água e orientações diárias."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 6,
-     "label": "How long common stored foods keep",
-     "note": "FEMA/Red Cross booklet (2004) shelf-life list: foods to use within six months, within a year, or that store indefinitely."
+     "label": "Validade média de alimentos estocados",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): lista de alimentos para consumir em até 6 meses, 1 ano ou de conservação prolongada."
     },
     {
      "doc": "med-953dfe1df69e0773",
      "page": 5,
-     "label": "Prepare and store food so it doesn't make you sick",
-     "note": "Hesperian (2017): handwashing, cooking, covering food, reheating leftovers, pests, and a clay-pot cooler that needs no power."
+     "label": "Preparar e guardar comida sem adoecer",
+     "note": "Hesperian (2017): higiene das mãos, cozimento completo, proteção contra moscas/roedores, reaquecimento de sobras e resfriador artesanal em pote de barro sem eletricidade."
     }
    ]
   },
   {
    "id": "special",
-   "label": "Feeding babies or people with special diets",
-   "hint": "Formula, elderly, illness, allergies",
+   "label": "Alimentar bebês ou pessoas com dietas especiais",
+   "hint": "Fórmula infantil, idosos, doentes, alergias alimentares",
    "read": [
     {
      "doc": "e4bfed4b6afd6d",
      "page": 1,
-     "label": "Infant formula when water may be unsafe",
-     "note": "FDA fact sheet (2007): prefer ready-to-feed formula that needs no water; mix powder or concentrate with bottled water if tap water may be contaminated."
+     "label": "Fórmula infantil quando a água pode não ser segura",
+     "note": "Ficha técnica FDA (2007): dar preferência a fórmulas líquidas prontas se disponíveis; se usar fórmula em pó, preparar com água mineral segura ou fervida."
     },
     {
      "doc": "f7ff53bcaae9cc",
      "page": 5,
-     "label": "Special diets, babies, the elderly and pets",
-     "note": "FEMA/Red Cross booklet (2004): planning for allergies, liquid formula for nursing mothers, foods for ill or elderly people, can opener and pet food."
+     "label": "Dietas especiais, bebês, idosos e animais de estimação",
+     "note": "Livreto FEMA/Cruz Vermelha (2004): cuidados com alergias, aleitamento, alimentos macios para doentes/idosos, abridor de latas e ração."
     },
     {
      "doc": "0dfdf1fb4b178f",
      "page": 29,
-     "label": "Baby formula and food hygiene during an emergency",
-     "note": "Older FEMA Are You Ready? guide: use pre-prepared canned formula and not powdered formula with treated water."
+     "label": "Fórmula para bebês e higiene alimentar em emergências",
+     "note": "Guia FEMA antigo: preferência por fórmula pronta e riscos de usar água tratada quimicamente em pó para lactentes."
     }
    ]
   }
  ],
  "limits": [
   {
-   "text": "Throw away refrigerated food that has been at 40 °F or higher for more than 4 hours, or that has an unusual odor, color or texture.",
+   "text": "Descarte alimentos refrigerados que ficaram a 4 °C (40 °F) ou mais por mais de 4 horas, ou com cheiro, cor ou textura estranhos.",
    "doc": "18bf4604bf28c4",
    "page": 2
   },
   {
-   "text": "Discard perishable food that has been above 40 °F for 2 hours or more; you cannot rely on appearance or odor.",
+   "text": "Descarte alimentos perecíveis que ficaram acima de 4 °C (40 °F) por 2 horas ou mais; não confie apenas na aparência ou no cheiro.",
    "doc": "e4bfed4b6afd6d",
    "page": 1
   },
   {
-   "text": "Use generators, camp stoves and charcoal grills only outdoors, at least 20 feet from windows, doors or garages; never heat a home with a gas stove, oven, grill or dryer.",
+   "text": "Use geradores, fogareiros e churrasqueiras a carvão apenas ao ar livre, a pelo menos 6 metros (20 pés) de janelas, portas ou garagens; nunca aqueça a casa com fogão a gás, forno ou churrasqueira.",
    "doc": "18bf4604bf28c4",
    "page": 2
   },
   {
-   "text": "Replace refrigerated medicines if the power is out a day or more unless the label says otherwise; call a doctor or pharmacist if you depend on them.",
+   "text": "Substitua medicamentos refrigerados se faltar luz por um dia ou mais, salvo instrução diferente na bula; consulte médico ou farmacêutico.",
    "doc": "18bf4604bf28c4",
    "page": 2
   },
   {
-   "text": "Do not eat any food that may have touched flood water unless it is in a waterproof container that can be cleaned.",
+   "text": "Não coma nenhum alimento que possa ter tido contato com água de enchente, salvo enlatados herméticos de metal devidamente lavados e desinfetados.",
    "doc": "e4bfed4b6afd6d",
    "page": 2
   },
   {
-   "text": "Food can be rationed safely for healthy adults, but not for children and pregnant women; water should not be rationed.",
+   "text": "Adultos saudáveis toleram redução temporária de comida, mas crianças e gestantes não devem racionar; água jamais deve ser racionada.",
    "doc": "f7ff53bcaae9cc",
    "page": 8
   },
   {
-   "text": "CDC advice is to discard any home-canned food that might contain botulism toxin.",
+   "text": "A orientação médica/CDC é descartar qualquer conserva caseira suspeita de conter toxina do botulismo.",
    "doc": "99dd5e2cc78a16a0"
   }
  ],
@@ -227,84 +252,84 @@
   {
    "doc": "f7ff53bcaae9cc",
    "page": 4,
-   "label": "Build an emergency food supply from your own shelves",
-   "note": "FEMA/Red Cross booklet (2004): a two-week goal, familiar foods, and foods that need no refrigeration, water or cooking."
+   "label": "Montar um estoque de emergência com itens da própria despensa",
+   "note": "Livreto FEMA/Cruz Vermelha (2004): meta para duas semanas, alimentos já habituais e opções sem refrigeração nem cozimento."
   },
   {
    "doc": "e4bfed4b6afd6d",
    "page": 1,
-   "label": "Get ready before an outage: thermometers, ice and coolers",
-   "note": "FDA fact sheet (2007): appliance thermometers, freezing water containers, grouping freezer food, coolers, and where to find ice."
+   "label": "Preparo prévio: termômetros, gelo e caixas térmicas",
+   "note": "Ficha técnica FDA (2007): termômetro na geladeira/freezer, congelar garrafas d'água como gelo reserva e uso de caixas térmicas."
   },
   {
    "doc": "cecc1671ae4d02",
    "page": 20,
-   "label": "Ready.gov kit basics: food, can opener and cooking tools",
-   "note": "FEMA Are You Ready? guide (2020); page 22 covers keeping canned food cool, rotating stock and throwing out damaged cans."
+   "label": "Básico do kit: alimentos, abridor manual e utensílios",
+   "note": "Guia FEMA (2020): guardar enlatados em local fresco, girar o estoque por validade e descartar latas danificadas."
   },
   {
    "doc": "18bf4604bf28c4",
    "page": 2,
-   "label": "Prepare now: carbon monoxide alarms and supplies",
-   "note": "FEMA power outage sheet (2023): smoke and CO alarms with battery backup, a plan for medicines and medical devices, and supplies for several days."
+   "label": "Prevenir antes: detectores de fumaça/CO a pilha e reservas",
+   "note": "Ficha FEMA (2023): alarmes de fumaça e monóxido de carbono com bateria, plano para medicamentos e suprimentos para vários dias."
   },
   {
    "doc": "ed5bac0a81b009",
    "page": 27,
-   "label": "CERT kit: choosing food that needs no cooking",
-   "note": "FEMA CERT manual (2019): nonperishable food needing no refrigeration and little water, avoiding salty foods, checking dates twice a year."
+   "label": "Kit CERT: escolher alimentos que não exigem cozimento",
+   "note": "Manual CERT (2019): alimentos não perecíveis que pedem pouca ou nenhuma água, evitar excesso de sal e conferir validade semestralmente."
   },
   {
    "doc": "db4d9783fca34b",
    "page": 1,
-   "label": "Ready.gov supply checklist (printable)",
-   "note": "FEMA checklist (2024) including mess kits, paper plates, infant formula and pet food among extra items."
+   "label": "Checklist de suprimentos (para imprimir)",
+   "note": "Checklist FEMA (2024): inclui utensílios, pratos descartáveis, fórmula infantil e ração para animais."
   }
  ],
  "learn": [
   {
    "doc": "f7ff53bcaae9cc",
-   "label": "FEMA/Red Cross: Food and Water in an Emergency (full booklet)",
-   "note": "16-page booklet (FEMA 477, August 2004) on food and water supplies, outages, cooking and water treatment."
+   "label": "FEMA/Cruz Vermelha: Alimentos e Água em Emergências (livreto completo)",
+   "note": "Livreto de 16 páginas (FEMA 477, 2004, em inglês) sobre estoque de comida e água, apagões, cozimento e purificação."
   },
   {
    "doc": "cecc1671ae4d02",
-   "label": "Are You Ready? An In-Depth Guide to Citizen Preparedness (2020)",
-   "note": "FEMA's current general preparedness guide covering kits, plans, hazards and recovery."
+   "label": "Are You Ready? Guia Completo de Preparação Cidadã (2020)",
+   "note": "Guia geral da FEMA (em inglês) cobrindo kits, planos familiares, riscos naturais e recuperação."
   },
   {
    "doc": "d0fbb2e051cd46",
-   "label": "FEMA hazard information sheets (2024 set)",
-   "note": "One-page-per-hazard sheets, including power outage, earthquake and flood, with prepare-survive-after steps."
+   "label": "Fichas informativas de riscos FEMA (conjunto 2024)",
+   "note": "Fichas resumidas de uma página por ocorrência (falta de luz, enchente, sismo etc.)."
   },
   {
    "doc": "e4bfed4b6afd6d",
-   "label": "FDA: Food and Water Safety During Hurricanes, Power Outages, and Floods",
-   "note": "Two-page FDA consumer fact sheet (December 2007)."
+   "label": "FDA: Segurança de Alimentos e Água em Tempestades, Apagões e Enchentes",
+   "note": "Ficha informativa ao consumidor da FDA (dezembro de 2007, 2 páginas)."
   },
   {
    "doc": "ec27c9c3c6b74c",
    "page": 81,
-   "label": "Kearny: Food chapter (living on stored whole grains)",
-   "note": "Nuclear War Survival Skills (1987 civil-defense book): minimum food needs and preparing staples such as whole-grain wheat and corn. Dated; written for fallout sheltering."
+   "label": "Kearny: capítulo sobre Alimentação (sobreviver com grãos inteiros estocados)",
+   "note": "Livro histórico Nuclear War Survival Skills (1987): necessidades nutricionais mínimas e preparo de grãos básicos como milho e trigo. Antigo."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Carbon_monoxide_poisoning",
    "title": "Carbon monoxide poisoning",
-   "label": "Encyclopedia: carbon monoxide poisoning",
-   "note": "Medical overview of symptoms, causes such as indoor fuel burning, and treatment."
+   "label": "Enciclopédia: intoxicação por monóxido de carbono",
+   "note": "Visão médica sobre sintomas, causas como queima de combustível em ambiente fechado e tratamento (artigo em inglês)."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Food_safety",
    "title": "Food safety",
-   "label": "Encyclopedia: food safety",
-   "note": "Background on foodborne hazards, safe handling and storage."
+   "label": "Enciclopédia: segurança alimentar",
+   "note": "Fundamentos sobre contaminação de alimentos, manipulação segura e armazenamento (artigo em inglês)."
   },
   {
    "zim": "zim/wikipedia_en_all_nopic_2026-06.zim/Foodborne_illness",
    "title": "Foodborne illness",
-   "label": "Encyclopedia: foodborne illness",
-   "note": "Causes, symptoms and prevention of food poisoning."
+   "label": "Enciclopédia: doenças transmitidas por alimentos",
+   "note": "Causas, sintomas e prevenção de intoxicações alimentares (artigo em inglês)."
   }
  ],
  "related": [

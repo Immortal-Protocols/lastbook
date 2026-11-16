@@ -1,114 +1,76 @@
-# How the offline map is put together
+# Como o mapa offline é montado
 
-A guide for anyone who wants to improve the map: add a kind of place, show one that is already in the data, or extend
-coverage. It says which files the app reads, what builds each one, and where the gaps are. Everything here was read from
-the code and from one installed state map, without running the app; where something could not be found in this
-repository, it says so.
+Guia técnico para quem deseja aprimorar o mapa do **Último Livro** (fork brasileiro do **Lastbook**, <https://github.com/Immortal-Protocols/lastbook> / <https://lastbook.org>): adicionar novos tipos de locais, exibir categorias já existentes nos dados ou ampliar a cobertura territorial. Descreve quais arquivos o aplicativo lê, qual ferramenta constrói cada banco, o que mudou na versão brasileira e onde ficam eventuais lacunas.
 
-The map follows the same rules as the rest of Lastbook (see [CONTRIBUTING.md](../CONTRIBUTING.md)). The app draws only
-from files on the computer and never asks the network for a tile, a place or an address. The build tools in `tools/` are
-different: they run on a build machine, and several of them download public data. They are never part of the app.
+O mapa segue as mesmas regras do restante do aplicativo (veja [CONTRIBUTING.md](../CONTRIBUTING.md)). Em execução, o aplicativo lê apenas arquivos locais no computador e nunca consulta a rede para obter tiles, locais ou endereços (também bloqueia `navigator.geolocation` por privacidade). Já as ferramentas de construção em `tools/` rodam em uma máquina de build/curadoria e não são empacotadas no aplicativo final.
 
-## What the app reads
+## O que o aplicativo lê
 
-A map set lives in the data folder. `map-set.json` at its top lists the files and their sizes.
+Um conjunto de mapas fica na pasta de dados (`LastbookData`). O arquivo `map-set.json` na raiz lista os arquivos e tamanhos conferidos na instalação.
 
-| File | Tables | What it holds | Read by |
+| Arquivo | Tabelas | Conteúdo | Lido por |
 |---|---|---|---|
-| `derived/geo/national.sqlite` | `feat`, `feat_idx`, `poi`, `meta` | Roads, water and land shapes, and the place pins | `server.py` (`national_mapdb`) |
-| `derived/geo/map.sqlite` | the same four | The original detailed street map of Southern California; it had no rows in the state map checked | `server.py` (`mapdb`) |
-| `derived/geo/water.sqlite` | `resource`, `spatial`, `feat`, `feat_idx` | Dams, reservoirs, lakes and ponds | `server.py` |
-| `derived/geo/crops.sqlite` | `resource`, `spatial`, `tile` | Orchards, vineyards and berries | `server.py` |
-| `derived/geo/terrain.sqlite` | `tile` | Elevation tiles for relief, contours and the 3D view | `server.py` |
-| `derived/geo/buildings.sqlite` | `bldg` | Building outlines | `server.py` |
-| `derived/geo/places.sqlite` | `place`, `place_fts` | The place finder: towns, ZIP codes, counties, named places | `server.py` (`/api/places`) |
-| `library-data/geography/resources/atlas.sqlite` | `resource`, `spatial` | Natural resource records. The state map checked held minerals only; the fish, boating and well layers are labelled California in `web/map.js` | `server.py` |
-| `derived/geo/addresses/` | one index per state | Street addresses for address search | `engine/address_search.py` |
+| `derived/geo/national.sqlite` | `feat`, `feat_idx`, `poi`, `meta` | Vias, corpos d'água, formas territoriais e pinos de locais | `server.py` (`national_mapdb`) |
+| `derived/geo/map.sqlite` | as mesmas quatro | Mapa detalhado local (no upstream: Sul da Califórnia; em builds brasileiros: recorte regional configurado) | `server.py` (`mapdb`) |
+| `derived/geo/water.sqlite` | `resource`, `spatial`, `feat`, `feat_idx` | Barragens, reservatórios, lagos e açudes | `server.py` |
+| `derived/geo/crops.sqlite` | `resource`, `spatial`, `tile` | Cultivos e cobertura agrícola | `server.py` |
+| `derived/geo/terrain.sqlite` | `tile` | Tiles de elevação para relevo, curvas de nível e visão 3D | `server.py` |
+| `derived/geo/buildings.sqlite` | `bldg` | Contornos de edificações | `server.py` |
+| `derived/geo/places.sqlite` | `place`, `place_fts` | Buscador de localidades: municípios/bairros, CEPs/códigos postais e locais nomeados | `server.py` (`/api/places`) |
+| `library-data/geography/resources/atlas.sqlite` | `resource`, `spatial` | Registros de recursos naturais (no pacote exemplo dos EUA do upstream, minerais e camadas da Califórnia) | `server.py` |
+| `derived/geo/addresses/` | um índice SQLite por estado/UF | Endereços com numeração e CEP para busca offline | `engine/address_search.py` |
 
-Two kinds of table carry the things a person can tap:
+Dois tipos de tabelas guardam os pontos que a pessoa pode tocar no mapa:
 
-- `poi(id, cls, name, lon, lat)`: a point with a class, such as `hospital` or `fuel`.
-- `resource(id, source_id, kind, name, lat, lon, detail, source, origin)` with its `spatial` index: a record with a kind,
-  a line of detail and the name of its source.
+- `poi(id, cls, name, lon, lat)`: ponto categorizado por classe OpenStreetMap, como `hospital` ou `fuel`.
+- `resource(id, source_id, kind, name, lat, lon, detail, source, origin)` com índice `spatial`: registro temático com classe, detalhe e nome da fonte.
 
-## How a place gets onto the map
+## Como um tipo de local aparece no mapa
 
-1. A row with a class (`poi.cls`) or a kind (`resource.kind`) is in one of the files above.
-2. The class is named in a layer in `web/map.js` (`LAYERS`: id, label, symbol, colour, classes, group).
-3. The engine reports which classes a map set really holds (`map_contents` in `server.py`), and the app offers only the
-   layers that have something to show.
+1. Existe uma linha com `poi.cls` ou `resource.kind` em um dos arquivos SQLite acima.
+2. Essa classe é mapeada em uma camada em `web/map.js` (`LAYERS`: `id`, `label`, `symbol`, `colour`, `classes`, `group`).
+3. O servidor informa quais classes existem de fato no conjunto instalado (`map_contents` em `server.py`), e a interface mostra somente as camadas que possuem registros.
 
-A class that is in the data but in no layer has no entry in the Layers panel, so it cannot be switched on. The engine
-already has a plain name for several of them (`HELP` in `server.py`: School, Dentist, Vet, Care home, Post office).
+Uma classe presente nos dados mas sem entrada em `LAYERS` não aparece no painel de camadas (embora `HELP` em `server.py` já traduza diversos nomes amigáveis como Escola, Dentista, Veterinário, Casa de repouso, Correios).
 
-### Places that are in the data and not shown
+### Classes frequentemente presentes no OSM que não têm camada dedicada
 
-The data holds more classes than `web/map.js` has layers for (`tools/build_map.py` lists the ones it keeps as
-`POI_KEEP`). In one state map checked on 15 November 2026 (77,356 pins), these classes had rows and no layer:
+Nos pacotes gerados por `tools/build_map.py` (`POI_KEEP`), há categorias como `school`, `fountain`, `dentist`, `post_office`, `car_repair`, `park`, `veterinary`, `college`, `university`, `garden_centre`, `nursing_home` e `water_works`. Para exibi-las, basta adicionar a entrada correspondente em `LAYERS` de `web/map.js` mantendo justificativa clara de utilidade em emergências.
 
-| Class | Rows |
-|---|---|
-| `school` | 13,862 |
-| `fountain` | 4,971 |
-| `dentist` | 2,769 |
-| `post_office` | 2,224 |
-| `car_repair` | 1,444 |
-| `park` | 1,102 |
-| `veterinary` | 1,102 |
-| `college` | 468 |
-| `university` | 362 |
-| `garden_centre` | 176 |
-| `nursing_home` | 49 |
-| `water_works` | 3 |
+## O que constrói cada arquivo
 
-Showing one of these needs no new data: add a layer line in `web/map.js` and say in the pull request why the kind helps
-someone in an emergency. The comment in `map.js` about retired layers shows that some kinds were left out on purpose,
-so ask before adding many.
-
-## What builds each file
-
-| File | Built by | From |
+| Arquivo | Ferramenta | Origem no projeto original (upstream EUA) / observação BR |
 |---|---|---|
-| `map.sqlite` | `tools/build_map.py`, then `tools/build_coast.py` for the ocean | An OpenStreetMap regional extract (ODbL) |
-| `water.sqlite` | `tools/build_water.py` (`nid`, then `nhd`) | USACE National Inventory of Dams, USGS National Hydrography Dataset |
-| `crops.sqlite` | `tools/build_crops.py` | USDA Cropland Data Layer |
-| `terrain.sqlite` | `tools/build_terrain.py` | USGS 3DEP elevation |
-| `buildings.sqlite` | `tools/build_buildings.py`, `tools/build_osm_heights.py` | Microsoft building footprints (ODbL), OpenStreetMap heights |
-| `places.sqlite` | `tools/build_places.py` | USGS GNIS, Census gazetteers, named OpenStreetMap places |
-| address indexes | `tools/build_addresses.py`, then `packaging/address_indexes.py` | Overture Maps addresses |
-| a state map | `packaging/build_packs.py map <ST>`, published by `packaging/state_maps.py` | The base map, then every row inside the state's box |
+| `map.sqlite` | `tools/build_map.py` + `tools/build_coast.py` | Extrato regional do OpenStreetMap (ODbL) — compatível diretamente com extratos `.osm.pbf`/`.gpkg` do Brasil (Geofabrik South America / Brazil). |
+| `water.sqlite` | `tools/build_water.py` | Upstream: USACE (barragens) e USGS NHD. Para o Brasil, usa dados de água do OSM ou adaptações equivalentes (ex.: ANA/IBGE). |
+| `crops.sqlite` | `tools/build_crops.py` | Upstream: USDA Cropland Data Layer (EUA). |
+| `terrain.sqlite` | `tools/build_terrain.py` | Modelos digitais de elevação (upstream: USGS 3DEP; globalmente aplicável com fontes SRTM/Copernicus adaptadas ao script). |
+| `buildings.sqlite` | `tools/build_buildings.py` + `tools/build_osm_heights.py` | Pegadas de edificações Microsoft Building Footprints (ODbL) e alturas OpenStreetMap (há cobertura global incluindo o Brasil). |
+| `places.sqlite` | `tools/build_places.py` | Upstream: USGS GNIS, U.S. Census + OpenStreetMap local. Para o Brasil, popula nomes/POIs de `map.sqlite` e requer adaptador específico caso utilize gazetteers IBGE/Correios. |
+| Índices de endereço | `tools/build_addresses.py` + `packaging/address_indexes.py` | Endereços do **Overture Maps**. Adaptado neste fork brasileiro para `--bbox br` como padrão e CEPs de 8 dígitos (`engine/address_search.py`). |
+| Mapa estadual (`<UF>`) ou nacional (`br`) | `packaging/build_packs.py map <UF\|br>`, listado em `packaging/state_maps.py` | Mapa-base mais recorte espacial pelos polígonos oficiais em `web/geographic-context.json`. |
 
-Each tool's header says what it reads, what it writes and the licence of its source. Read it before you run one: some
-expect source files that are hundreds of gigabytes.
+Leia sempre o cabeçalho de cada script em `tools/` antes de executá-lo: alguns trabalham com arquivos brutos de centenas de gigabytes.
 
-### Not in this repository
+### O que não faz parte deste repositório
 
-- **The builder for `national.sqlite`.** The pack tools copy from an existing `national.sqlite` and `server.py` reads it,
-  but no tool here makes it from OpenStreetMap data.
-- **The builder for `atlas.sqlite`.**
-- **A reader for seven place files.** `tools/build_places_civic.py`, `_usgs.py`, `_overture.py`, `_atp.py`, `_fsq.py`,
-  `_fuel.py` and `_snap.py` each write a `derived/geo/places-*.sqlite` and say it is merged by `game/serve.py`. That file
-  is not here, and nothing in this repository reads those seven files, so the extra records they hold are not used by
-  the app directly. This is an unused data source, not a missing kind of place: the map already shows shelters,
-  libraries, community centres and food shops from the data it does read. A class that has records and no layer is the
-  separate case described above.
+- **Construtor de `national.sqlite` e `atlas.sqlite`:** as ferramentas de empacotamento copiam e recortam de bancos `national.sqlite` e `atlas.sqlite` já preparados na máquina de build do projeto original.
+- **Mesclagem de `derived/geo/places-*.sqlite`:** os scripts `tools/build_places_civic.py`, `_usgs.py`, `_overture.py`, `_atp.py`, `_fsq.py`, `_fuel.py` e `_snap.py` são coletores auxiliares herdados do projeto original cujos bancos intermediários eram unidos fora deste repositório (`game/serve.py` no ambiente original do autor).
 
-## What is tied to the United States
+## Adaptações implementadas para o Brasil neste fork
 
-- Every detailed source above is a US dataset, or a worldwide one filtered to the US.
-- `server.py` treats a box around Southern California as the area `map.sqlite` covers (`_poi_sources`, `socal_classes`).
-- Detailed maps are cut and installed one US state at a time (`docs/SETUP-API.md`, "State maps").
-- Address search knows US state names and US street words (`engine/address_search.py`, `tools/build_addresses.py`).
-- The base map of the world is drawn from `web/world-context.json` and `web/geographic-context.json`.
+No projeto original (**Lastbook**), o mapa e os endereços eram exclusivamente focados nos Estados Unidos (UFs dos EUA, códigos ZIP de 5 dígitos e enquadramento no Sul da Califórnia/EUA). Neste fork brasileiro (**Último Livro**):
 
-Coverage outside the US needs a decision on each of these first: which open source replaces each federal list, under
-what licence, what a "state" is elsewhere, and how addresses are written. That is a design discussion to have in an
-issue before any code.
+1. **`web/geographic-context.json`:** passou a incluir os polígonos oficiais das 27 unidades federativas do Brasil (`AC` a `TO`, dados IBGE) além do contexto hidrográfico original.
+2. **`web/map.js`:** centralização inicial no Brasil, conversão da escala e medições para sistema métrico (`m`, `km`), busca com suporte a CEP de 8 dígitos (`12345-678` ou `12345678`) e toda a interface traduzida para português do Brasil.
+3. **`engine/address_search.py`:** normalização sem acentos (`fold_txt`), tipos de logradouro brasileiros (*Rua*, *Avenida*, *Alameda*, *Travessa*, *Estrada*, *Rodovia*, *Praça*, *Largo*, etc.), todas as 27 UFs e suporte completo a endereços e CEPs do Brasil mantido em paralelo à compatibilidade com testes legados dos EUA.
+4. **`tools/build_addresses.py`, `packaging/state_maps.py` e `packaging/build_packs.py`:** inclusão das 27 UFs brasileiras, `--bbox br` como padrão na extração de endereços, cálculo automático de bounding box estadual em `state_box()` via `web/geographic-context.json` e suporte a `map br`.
+5. **`server.py`:** limites geográficos para o Brasil em `/api/places`, tradução de categorias de ajuda (`HELP`) e resultados em unidades métricas (`km`, `ha`, `m³`).
 
-## Checking a map change
+> Nota sobre dados binários externos: para gerar novos pacotes `.sqlite` brasileiros prontos para uso final, ainda é necessário executar os scripts de build com extratos OpenStreetMap/Overture do Brasil; caso utilize dados nacionais do projeto original, as camadas geográficas detalhadas dos EUA continuarão usando os rótulos originais correspondentes àquele conjunto de dados.
 
-- A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.
-- A change to a pack or map tool: `packaging/test_pack_tools.py` and `packaging/scan_pack.py` check what a map set may
-  hold, and `scan_pack.py` lists the allowed files under `derived/geo/` (`GEO_FILES`).
-- Nothing a contributor adds may make the app open a connection. New data comes in through a build tool and ships as a
-  file.
+## Verificação de alterações no mapa
+
+- Alterações visuais em camadas de `web/map.js`: anexe capturas de tela em modo claro e escuro no PR.
+- Alterações nas ferramentas de empacotamento/mapa: `packaging/scan_pack.py` define a lista permitida sob `derived/geo/` (`GEO_FILES`) e `packaging/test_pack_tools.py` valida os pacotes gerados.
+- Nenhuma modificação pode abrir conexões de rede no aplicativo em execução; novos dados entram sempre via ferramenta de geração offline e arquivo empacotado.

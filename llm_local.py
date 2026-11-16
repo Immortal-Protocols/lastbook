@@ -50,6 +50,17 @@ MODELS = [
         'memory_bytes': 6_500_000_000,
         'summary': 'Leve e rápido (~5 GB), com ótimo domínio de português. Ideal para computadores de 12 GB a 16 GB de memória.',
     },
+    {
+        'id': 'gemma-4-e2b',
+        'title': 'Gemma 4 E2B (Ultra-leve 2B — 8 GB RAM)',
+        'name': 'Gemma 4 E2B (Unsloth 4-bit, Q4_K_M)',
+        'file': 'gemma-4-E2B-it-Q4_K_M.gguf',
+        'size': 3_106_738_272,
+        'sha256': '740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8',
+        'source': 'unsloth/gemma-4-E2B-it-GGUF, revision 0314792d7f1f7e229411f620751375812bb9faf2',
+        'memory_bytes': 4_200_000_000,
+        'summary': 'Ultra-leve (~3,1 GB), entende português e cabe em computadores com 8 GB de memória.',
+    },
 ]
 
 

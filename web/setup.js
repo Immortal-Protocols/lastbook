@@ -83,6 +83,7 @@
   const MODEL_NOTE = {
     'gemma-4-26b-a4b': 'Maior precisão e capacidade de síntese. Recomendado para computadores com 24 GB ou mais de memória.',
     'gemma-4-e4b': 'Alternativa compacta de 4B com ótimo domínio de português. Recomendada para computadores de 12 GB a 16 GB.',
+    'gemma-4-e2b': 'Alternativa ultra-leve de 2B com suporte a português. Feita para computadores com 8 GB de memória.',
   };
   const aiFitFor = m => (S.hardware && S.hardware.ai_models && m && S.hardware.ai_models[m.id]) || (S.hardware && S.hardware.ai) || { fits: false };
   const aiFits = m => {
@@ -256,8 +257,8 @@
       const aiCards = ms.map(m => {
         const has = curMs.includes(m.id), fits = aiFits(m), rec = !c && (S.recommend || {}).ai && recId === m.id;
         const off = !fits && !has, checked = choice.ai && selM && selM.id === m.id;
-        const alt = m.id === 'gemma-4-e4b' && !rec && !has;
-        const badge = has ? '<span class="s-badge here">Instalado</span>' : rec ? '<span class="s-badge rec">Sugerido</span>' : off ? '<span class="s-badge later">Não cabe neste computador</span>' : alt ? '<span class="s-badge">Alternativa 4B</span>' : '<span class="s-badge">Opcional</span>';
+        const altBadge = m.id === 'gemma-4-e4b' ? 'Alternativa 4B' : m.id === 'gemma-4-e2b' ? 'Para 8 GB RAM' : 'Opcional';
+        const badge = has ? '<span class="s-badge here">Instalado</span>' : rec ? '<span class="s-badge rec">Sugerido</span>' : off ? '<span class="s-badge later">Não cabe neste computador</span>' : `<span class="s-badge">${altBadge}</span>`;
         const desc = MODEL_NOTE[m.id] || (fits ? 'Responde a perguntas a partir da biblioteca, em português e offline.' : (aiFitFor(m).why || 'Este computador não tem memória suficiente para este modelo.'));
         return `<label class="s-opt s-ai${off ? ' off' : ''}">
           <input type="radio" name="aiModel" value="${esc(m.id)}"${checked ? ' checked' : ''}${off ? ' disabled' : ''}>

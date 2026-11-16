@@ -20,6 +20,10 @@ The previous interface on port 8879 is untouched and keeps running separately.
 
 - Model: `deepseek-v4.1-flash` at `http://127.0.0.1:19443` (called only by the server; override with
   `SURVIVAL_MODEL_BASE`, which must be a loopback address). The 19442 gateway is not used.
+  When that server lists models, Chat and About offer them in a menu. The choice is saved in the app's
+  settings file under `assistant_model` and used for the next answer. Ollama is that server when
+  `SURVIVAL_MODEL_BASE` is `http://127.0.0.1:11434`. A model that is not in the list is refused. Until one
+  is chosen, the model named at startup is unchanged.
 - Every question is first searched with the shared retriever; the model then gets five read-only tools:
   `search_library`, `read_pages`, `view_page` (sends the page image — verified the model reads it),
   `get_timed_transcript`, `lookup_place`. Tools accept catalog ids only: no paths, URLs or shell input.

@@ -684,6 +684,8 @@ body.v-ask main{padding-bottom:0}
 .chat-top .btn{min-height:40px;padding:6px 14px;font-size:15px}
 .chat-status{flex:1;font-size:14px;color:var(--ink2);display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
 .chat-status>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.modelpick{display:inline-flex;align-items:center;gap:6px;min-width:0;font-weight:600}
+.modelpick select{max-width:min(280px,46vw);min-width:0;min-height:32px;border-radius:8px;border:1px solid var(--line);background:var(--paper);padding:2px 8px;font-weight:600}
 @media (max-width:639px){.chat-status .long{display:none}}
 .dotok,.dotoff{width:9px;height:9px;border-radius:50%;background:#2e9d61;flex:none}
 .dotoff{background:#c0392b}

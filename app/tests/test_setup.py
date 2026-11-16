@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
+import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, tempfile, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -1330,11 +1330,26 @@ class Recommend(Base):
                 self.assertGreater(disks[0]['free_bytes'], 0)
                 self.assertEqual(hardware.candidate_disks(), [])
 
+
+class Hardware(unittest.TestCase):
+    """Real host detection needs no setup download server or test pack."""
+
     def test_hardware_here(self):
-        hw = hardware.detect([self.parent])
-        self.assertIn(hw['os'], ('macos', 'windows'))
-        self.assertGreater(hw['ram_bytes'], 2 ** 30)
-        self.assertTrue(hw['disks'] and hw['disks'][0]['free_bytes'] > 0)
+        scratch = ROOT / 'derived/app-build'
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as parent:
+            hw = hardware.detect([parent])
+            self.assertIn(hw['os'], ('macos', 'windows', 'linux'))
+            self.assertGreater(hw['ram_bytes'], 2 ** 30)
+            self.assertTrue(hw['disks'] and hw['disks'][0]['free_bytes'] > 0)
+            if sys.platform.startswith('linux'):
+                self.assertEqual(hw['os'], 'linux')
+                mem = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
+                self.assertEqual(hw['ram_bytes'], int(mem['MemTotal'].split()[0]) * 1024)
+                self.assertEqual(hw['disks'][0]['path'], parent)
+                fs = os.statvfs(parent)
+                self.assertEqual(hw['disks'][0]['total_bytes'], fs.f_blocks * fs.f_frsize)
+                self.assertIn(hw['ai_runtime'], ('cpu', 'cuda', 'vulkan'))
 
 
 class Through(Base):

@@ -1,5 +1,7 @@
 # Lastbook
 
+> **Private Omarchy testing copy.** Start with [TESTING.md](TESTING.md) for the native Arch package, installation steps, verification results, and known limitations. This is experimental; no upstream PR has been submitted.
+
 Lastbook is an offline survival library for Mac, Windows and Linux. It puts manuals, videos, encyclopedias, an offline map and
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.
 Chat answers questions using the library and links to its sources.
@@ -172,6 +174,14 @@ The app build creates `derived/app-build/linux/<timestamp>/Lastbook_1.1.9_amd64.
 `packaging/linux/requirements_linux.txt`. `packaging/linux/smoke_deb.sh` checks the package in a fresh Ubuntu container.
 Linux integration-test helpers live under `app/tests/linux_*`; set `LASTBOOK_TEST_HOST` to a Windows SSH host with WSL2
 before running them. Their disposable test distro is named `LastbookTest`, with files under `C:\LastbookTest`.
+
+**Arch / Omarchy (native local-checkout build)**
+
+See [the Arch build workflow](packaging/linux/arch/README.md) for prerequisites,
+an explicit public manifest input, and the native `makepkg` build. It shares
+Linux staging and package scans with Debian, uses the existing GTK3/WebKitGTK
+shell, and initially omits the local AI runner. This is not a published AUR
+package; Arch installation and desktop validation remain required.
 
 ## Packs, state maps and the local AI
 

@@ -5,7 +5,8 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-from engine.paths import ro_uri
+def ro_uri(path):
+    return Path(path).resolve().as_uri() + '?mode=ro'
 
 # Keep normalization compatible with tools/build_addresses.py.
 WORDS = {

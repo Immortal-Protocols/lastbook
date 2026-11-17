@@ -16,8 +16,10 @@ from array import array
 from pathlib import Path
 
 from engine import address_search
-from engine.paths import ro_uri
 from engine.setup import download, install
+
+def ro_uri(path):
+    return Path(path).resolve().as_uri() + '?mode=ro'
 
 USER_AGENT = 'UltimoLivro/1.0 (https://www.openstreetmap.org/)'
 _Q = 1e6

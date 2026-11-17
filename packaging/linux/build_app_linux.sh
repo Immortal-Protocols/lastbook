@@ -1,10 +1,10 @@
 #!/bin/bash
-# Builds the Lastbook .deb for one Ubuntu LTS release, x86_64. Run inside that release (a container is fine) from a checkout:
+# Builds the Lastbook .deb for one Ubuntu LTS release, x86_64 or aarch64. Run inside that release for the same architecture (a container is fine) from a checkout:
 #   apt-get install -y python3 python3-venv python3-pil dpkg-dev binutils   (the script installs them itself when run as root)
 #   bash packaging/linux/build_app_linux.sh
 # Each release has its own python3, and the wheels in lib/ are built for one Python only, so each release gets its own .deb:
-#   Ubuntu 24.04  python3 3.12  Lastbook_<version>_amd64.deb               Version: <version>
-#   Ubuntu 26.04  python3 3.14  Lastbook_<version>_ubuntu26.04_amd64.deb   Version: <version>+ubuntu26.04
+#   Ubuntu 24.04  python3 3.12  Lastbook_<version>_<amd64|arm64>.deb                     Version: <version>
+#   Ubuntu 26.04  python3 3.14  Lastbook_<version>_ubuntu26.04_<amd64|arm64>.deb   Version: <version>+ubuntu26.04
 # The two hold different files, so they have different versions; +ubuntu26.04 sorts after <version>, so apt takes it as the newer one.
 #
 # What the .deb holds (nothing is written outside these at install, and nothing at all at removal but these):
@@ -28,11 +28,16 @@ OPT="$STAGE/opt/lastbook"
 LLM="$ROOT/derived/llm/bin-linux"
 export PYTHONDONTWRITEBYTECODE=1
 
-[ "$(uname -m)" = x86_64 ] || { echo "build on x86_64" >&2; exit 1; }
+UNAME_M="$(uname -m)"
+case "$UNAME_M" in                     # the machine arch, and the .deb's Architecture field
+  x86_64) DEB_ARCH=amd64 ;;
+  aarch64) DEB_ARCH=arm64 ;;
+  *) echo "build on x86_64 or aarch64 (this is $UNAME_M)" >&2; exit 1 ;;
+esac
 OS="$(. /etc/os-release; echo "$ID $VERSION_ID")"
 case "$OS" in                         # the release, its own python3, and the .deb's version and file name
-  "ubuntu 24.04") WANT_PY=3.12; DEB_VERSION="$APP_VERSION"; DEB="$OUT/Lastbook_${APP_VERSION}_amd64.deb" ;;
-  "ubuntu 26.04") WANT_PY=3.14; DEB_VERSION="$APP_VERSION+ubuntu26.04"; DEB="$OUT/Lastbook_${APP_VERSION}_ubuntu26.04_amd64.deb" ;;
+  "ubuntu 24.04") WANT_PY=3.12; DEB_VERSION="$APP_VERSION"; DEB="$OUT/Lastbook_${APP_VERSION}_${DEB_ARCH}.deb" ;;
+  "ubuntu 26.04") WANT_PY=3.14; DEB_VERSION="$APP_VERSION+ubuntu26.04"; DEB="$OUT/Lastbook_${APP_VERSION}_ubuntu26.04_${DEB_ARCH}.deb" ;;
   *) echo "build on Ubuntu 24.04 or 26.04 (this is $OS): the wheels must match its python3" >&2; exit 1 ;;
 esac
 if [ "$(id -u)" = 0 ] && ! { python3 -c 'import venv, PIL' 2>/dev/null && pkg-config --exists gstreamer-base-1.0; }; then
@@ -111,7 +116,7 @@ SIZE_KB="$(du -sk --exclude=DEBIAN "$STAGE" | cut -f1)"
 cat > "$STAGE/DEBIAN/control" <<CTRL
 Package: lastbook
 Version: $DEB_VERSION
-Architecture: amd64
+Architecture: $DEB_ARCH
 Maintainer: Lastbook <noreply@lastbook.org>
 Installed-Size: $SIZE_KB
 Depends: python3 (>= $PYV), python3 (<< $PY_NEXT), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gir1.2-soup-3.0, libwebkit2gtk-4.1-0 (>= 2.40), libgstreamer1.0-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, libgomp1

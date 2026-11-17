@@ -1,6 +1,6 @@
 """Build, check, zip, upload and list one non-US region's detailed map (docs/MAPS.md, "Region maps").
 
-  derived/app-build/mac-venv/bin/python3 -I -B packaging/region_maps.py ve-a ...   # one region at a time, in this order
+  derived/app-build/mac-venv/bin/python3 -I -B packaging/region_maps.py ve-car ...   # one region at a time, in this order
   ... packaging/region_maps.py --order                                              # every region, in release order
 
 Each region: build (a Geofabrik OpenStreetMap extract clipped to the region's box), scan, zip to

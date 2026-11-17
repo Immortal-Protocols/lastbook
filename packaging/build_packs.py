@@ -1474,9 +1474,9 @@ def us_set(src, dest):
 
 
 def fetch_region_gpkg(spec):
-    """The region's GeoPackage, downloaded and unzipped once into derived/packs/maps/region-source/. Only the build machine does this."""
+    """The region's GeoPackage, downloaded and unzipped once per extract into derived/packs/maps/region-source/. Only the build machine does this."""
     url = spec['extract']
-    folder = OUT / 'maps' / 'region-source'
+    folder = OUT / 'maps' / 'region-source' / url.rstrip('/').split('/')[-1].removesuffix('.zip')
     folder.mkdir(parents=True, exist_ok=True)
     gpkg = next(folder.glob('*.gpkg'), None)
     if gpkg is None:

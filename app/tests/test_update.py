@@ -8,6 +8,7 @@ import sys
 import time
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -29,6 +30,12 @@ def wait(u, t=20):
 
 
 class UpdateTest(unittest.TestCase):
+    def setUp(self):
+        # These cases exercise a macOS offer, independent of the test host OS.
+        patcher = mock.patch.object(update, 'os_version', return_value='14.0')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @classmethod
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())

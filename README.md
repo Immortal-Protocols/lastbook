@@ -1,6 +1,6 @@
 # Lastbook
 
-> **Private Omarchy testing copy.** Start with [TESTING.md](TESTING.md) for the native Arch package, installation steps, verification results, and known limitations. This is experimental; no upstream PR has been submitted.
+> **Experimental Omarchy testing copy.** Start with [TESTING.md](TESTING.md) for the native Arch package, installation steps, verification results, and known limitations. This is a community test build, not an upstream release.
 
 Lastbook is an offline survival library for Mac, Windows and Linux. It puts manuals, videos, encyclopedias, an offline map and
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.

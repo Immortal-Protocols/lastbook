@@ -1,6 +1,6 @@
-# Private Omarchy test build
+# Experimental Omarchy test build
 
-This is an experimental, private testing copy of [Lastbook](https://github.com/Immortal-Protocols/lastbook), based on upstream commit `83f2ca9`. No upstream PR has been submitted. It adds native Arch packaging around Lastbook's existing GTK 3 / WebKitGTK window, not a browser wrapper or an HTTP server.
+This is an experimental community testing copy of [Lastbook](https://github.com/Immortal-Protocols/lastbook), based on upstream commit `83f2ca9`. It adds native Arch packaging around Lastbook's existing GTK 3 / WebKitGTK window. These packages are community test builds, not upstream releases.
 
 ## Status
 
@@ -8,7 +8,8 @@ This is an experimental, private testing copy of [Lastbook](https://github.com/I
 - The required TLS-root check and both package-content scans passed.
 - The repository test suite ran 329 tests successfully, with 4 skipped, at test build 3. This was a host-side test run, not proof of all features on Omarchy.
 - The real Small library was downloaded and verified against the publisher's SHA-256. That library is not committed or bundled in the app package.
-- Actual Omarchy / Hyprland desktop behavior remains unverified. The nested compositor test hit protocol-version mismatches; this is not a successful application test.
+- A native Wayland window and first-run setup rendering were verified on Omarchy 4.5.0 / Hyprland 0.56.2, along with single-instance behavior. Library search, PDFs, maps, media and offline use still need desktop validation. Earlier nested-compositor protocol mismatches were not a successful application test.
+- The current checkout built successfully on Omarchy with Python 3.14.8, including the TLS gate and both package-content scans. The CI-selected regression suite ran 164 tests successfully with 15 skipped; library-dependent integration tests were not included. The installer passed a real release download in check-only mode, and the workflow passed actionlint. The GitHub workflow itself still needs its first hosted run.
 - This initial package does **not** include the local AI runner. Do not expect generated AI answers. The intended scope is the library, search, maps, and media.
 - Independent Fable review (claude-fable-5-2) of `7bdb1b6`: **OK for private testing**. It found no build breaker, new network path, or unsafe pacman step. Full desktop/media testing remains open. Treat this as a test build, not an upstream release.
 
@@ -21,7 +22,20 @@ Before installing, note these two limits from the independent review:
 
 Use an x86_64 Omarchy machine with Python **3.14**. The package declares that Python ABI dependency; do not force it onto another Python minor version.
 
-Download the `.pkg.tar.zst` file and its `.sha256` companion from the newest prerelease, currently [omarchy-test-3](https://github.com/jonnyace/lastbook-omarchy/releases/tag/omarchy-test-3). In a clean Arch container, that package installed with pacman, gave the correct update message without going online, and removed cleanly. From the download directory:
+The easiest route from a checkout is:
+
+```bash
+/usr/bin/python3 -I -B packaging/linux/arch/install.py
+lastbook
+```
+
+The helper downloads the newest published test release through your authenticated
+GitHub CLI, verifies its checksum and Python compatibility, then lets pacman
+install it and its dependencies. See [installer prerequisites and signed-release
+verification](packaging/linux/arch/README.md#install-or-update-a-test-release).
+Use `--check-only` to verify without installing.
+
+For manual installation, download the `.pkg.tar.zst` file and its `.sha256` companion from the newest prerelease, currently [omarchy-test-3](https://github.com/jonnyace/lastbook-omarchy/releases/tag/omarchy-test-3). In a clean Arch container, that package installed with pacman, gave the correct update message without going online, and removed cleanly. From the download directory:
 
 ```bash
 sha256sum -c lastbook-1.1.9-1-x86_64.pkg.tar.zst.sha256

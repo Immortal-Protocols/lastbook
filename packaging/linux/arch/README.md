@@ -5,6 +5,71 @@ local checkout. It is not an AUR submission or a conversion of the Ubuntu
 package. Installation and desktop testing on Arch / Omarchy are still required
 before distributing a build.
 
+## Install or update a test release
+
+From this checkout, as your ordinary desktop user:
+
+```bash
+/usr/bin/python3 -I -B packaging/linux/arch/install.py
+```
+
+This selects the newest non-draft release, including prereleases, using `gh` so
+private-repository access works. It requires `github-cli`, `libarchive`, `pacman`,
+and `sudo`; on Omarchy install missing prerequisites with
+`omarchy pkg add github-cli libarchive`. If needed, run `gh auth login` first.
+It downloads into a temporary directory, checks the exact package checksum,
+package identity and Python ABI, then invokes `sudo pacman -U` with the normal
+confirmation prompt. Pacman resolves the declared media/desktop dependencies.
+It never runs downloaded shell scripts or changes desktop configuration.
+
+Use `--release omarchy-test-3` to select a known build, or `--check-only` to
+exercise download and verification without elevation or installation. Existing
+unsigned test releases are accepted with a notice: their checksum detects
+corruption but is not independent proof of publisher identity. Signed releases
+require `gpg`, an independently obtained maintainer public key already imported
+into your user keyring, and `--signing-key FULL_FINGERPRINT`. The installer
+checks the valid signature against that fingerprint; it never imports a key
+from the release. Configure pacman's own trusted keyring separately when
+requiring signature verification inside pacman.
+
+## Automated builds and draft releases
+
+`.github/workflows/arch.yml` tests and builds in a fresh Arch container on pull
+requests, weekly, and through **Actions → Native Arch package → Run workflow**.
+Weekly builds expose rolling Python/wheel compatibility problems. The build
+runs as an unprivileged user, retains the downloaded publisher manifest and
+its hash, and keeps the existing mandatory TLS and package scans. Artifacts
+contain the package, checksum, manifest, wheel lock, source commit and Python version.
+They do not include a library or model. A failed gate prevents release output.
+The disposable container also installs the built package, checks its launcher,
+imports bundled native dependencies, confirms the Arch update path stays
+offline, and removes the package. Desktop/media checks still require Omarchy.
+
+By default, the workflow only uploads a build artifact. To enable signed draft
+prereleases, configure the GitHub environment `arch-release`:
+
+- Secret `ARCH_SIGNING_KEY_BASE64`: base64-encoded exported GPG private signing key.
+- Secret `ARCH_SIGNING_PASSPHRASE`: its passphrase.
+- Variable `ARCH_SIGNING_FINGERPRINT`: full 40-character signing-key fingerprint.
+
+Use a dedicated release key and publish its public key/fingerprint through a
+trusted channel. Restrict the environment to trusted release branches and add
+required reviewers where supported. With `draft_release` selected on a manual
+run, the separate release job signs the package and creates a **draft**
+prerelease. Review and publish it manually after real desktop testing. No
+release is created on pull requests or the weekly schedule; signing secrets
+are only used by the release job. Missing signing configuration fails that job.
+The workflow must first be merged/pushed to GitHub before it can run; a local
+checkout edit does not register or execute it.
+
+The container follows current Arch packages; each build records the Python
+version and resolves a hashed wheel lock. This is compatibility monitoring,
+not a claim of bit-for-bit reproducible builds. Before an Arch Python minor
+transition, build and distribute the matching replacement package; the existing
+ABI bounds intentionally remain in place.
+
+## Build locally
+
 Use an up-to-date Arch x86_64 environment, as an ordinary user, with `base-devel`,
 `git`, `python`, `python-pip`, `python-pillow`, `pkgconf`, `python-gobject`, `gtk3`,
 `webkit2gtk-4.1`, `libsoup3`, `gstreamer`, `gst-plugins-base`, `gst-plugins-good`,

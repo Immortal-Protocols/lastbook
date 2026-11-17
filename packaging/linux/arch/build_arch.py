@@ -94,8 +94,13 @@ def archive(prepared, target):
                 tar.addfile(info, f)
 
 
+def is_arch(os_release):
+    """Omarchy identifies itself separately and declares Arch in ID_LIKE."""
+    return os_release.get('ID') == 'arch' or 'arch' in os_release.get('ID_LIKE', '').split()
+
+
 def prerequisites():
-    if platform.machine() != 'x86_64' or platform.freedesktop_os_release().get('ID') != 'arch':
+    if platform.machine() != 'x86_64' or not is_arch(platform.freedesktop_os_release()):
         raise ValueError('build on native Arch Linux / Omarchy, x86_64')
     if os.geteuid() == 0:
         raise ValueError('run as an ordinary user; makepkg refuses root')

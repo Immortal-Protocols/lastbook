@@ -129,9 +129,11 @@ expect source files that are hundreds of gigabytes.
 
 Outside the US, a **region map** is the "state" equivalent: a Geofabrik OpenStreetMap extract clipped to the region's
 box. It ships only `map.sqlite` (its own detail), `detail-cells.json`, `national-status.json` and `map-set.json`, so
-there are no federal datasets, terrain relief, crops or address search. The first region is Caracas (Distrito Capital,
-Venezuela), id `ve-a`. Add another by adding a row to `packaging/region_specs.py` and running
-`packaging/region_maps.py <id>`; the table `packaging/region_maps.py` writes is `derived/packs/REGION-MAPS.md`.
+there are no federal datasets, terrain relief, crops or address search. Every sovereign state's capital is available:
+`packaging/region_specs.py` holds one entry per capital (a ±0.3° box around the city, plus its Geofabrik extract), and
+it is generated, not hand-edited. Regenerate it with `packaging/generate_region_specs.py`; fix an edge case in
+`packaging/region_overrides.py` (exclude a capital, or override its code, title, box or extract) and regenerate. Build
+and publish one with `packaging/region_maps.py <id>`; the table it writes is `derived/packs/REGION-MAPS.md`.
 
 [REGIONS.md](REGIONS.md) proposes answers for Ontario, British Columbia and Guyana, as a starting point for that issue.
 [REGIONS-AR.md](REGIONS-AR.md) does the same for Argentina's provinces and the Autonomous City of Buenos Aires.

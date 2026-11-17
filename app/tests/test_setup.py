@@ -3776,10 +3776,10 @@ console.log(JSON.stringify(out));
         self.assertEqual(json.loads(r.stdout), {'win32': 0, 'linux': 0, 'darwin': 1})
 
 
-def make_region_map(path, region='ve-a', extra=None):
+def make_region_map(path, region='ve-car', extra=None):
     """A region map zip: only map.sqlite, detail-cells.json, national-status.json and map-set.json, under LastbookData/."""
     files = {'derived/geo/map.sqlite': os.urandom(300_000),
-             'derived/geo/detail-cells.json': json.dumps({'name': region, 'bbox': [-67.1, 10.4, -66.8, 10.56], 'cells': []}).encode(),
+             'derived/geo/detail-cells.json': json.dumps({'name': region, 'bbox': [-67.22, 10.2, -66.62, 10.8], 'cells': []}).encode(),
              'derived/geo/national-status.json': b'{"state":"complete"}'}
     files['map-set.json'] = json.dumps({'name': region, 'files': {k: len(v) for k, v in files.items()}}).encode()
     files.update(extra or {})
@@ -4223,29 +4223,29 @@ class AddressIndexes(Maps):
 
 class RegionMaps(Maps):
     def region_manifest(self, extra=None):
-        files = make_region_map(self.tmp / 'Lastbook-Map-ve-a.zip', extra=extra)
-        data = (self.tmp / 'Lastbook-Map-ve-a.zip').read_bytes()
-        self.files.data['Lastbook-Map-ve-a.zip'] = data
+        files = make_region_map(self.tmp / 'Lastbook-Map-ve-car.zip', extra=extra)
+        data = (self.tmp / 'Lastbook-Map-ve-car.zip').read_bytes()
+        self.files.data['Lastbook-Map-ve-car.zip'] = data
         m = self.manifest().current
-        m['maps'] = [{'id': 've-a', 'title': 'Caracas (Distrito Capital)', 'kind': 'region', 'country': 'Venezuela',
+        m['maps'] = [{'id': 've-car', 'title': 'Caracas', 'kind': 'region', 'country': 'Venezuela',
                       'includes': 'Local streets, buildings, water and places to get help',
                       'installed_bytes': sum(map(len, files.values())),
                       'download_bytes': len(data), 'available': True,
-                      'files': [{'name': 'Lastbook-Map-ve-a.zip', 'url': f'{self.base}/Lastbook-Map-ve-a.zip', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]}]
+                      'files': [{'name': 'Lastbook-Map-ve-car.zip', 'url': f'{self.base}/Lastbook-Map-ve-car.zip', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]}]
         return manifest.Manifest(bundled=m, remote=None, allowed=ALLOWED, context=self.ctx), files
 
     def test_region_map_installs_without_address_index(self):
         mf, files = self.region_manifest()
         s = self.setup(manifest=mf)
-        j = s.start('small', False, map_id='ve-a')
+        j = s.start('small', False, map_id='ve-car')
         self.assertEqual([i['kind'] for i in j['items']], ['pack', 'map'])      # Venezuela has no address index
         self.assertEqual(self.wait(s)['state'], 'done')
         lib, _ = api.startup(self.settings)
-        self.assertEqual(install.map_name(lib), 've-a')
+        self.assertEqual(install.map_name(lib), 've-car')
         self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), files['derived/geo/map.sqlite'])
         self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
         self.assertTrue((lib / 'library-data/catalog.json').is_file())
-        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-a')
+        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-car')
 
     def test_region_manifest_validates_and_merges(self):
         mf, _ = self.region_manifest()
@@ -4254,10 +4254,10 @@ class RegionMaps(Maps):
         self.assertEqual(validated['maps'][0]['kind'], 'region')
         self.assertEqual(validated['maps'][0]['country'], 'Venezuela')
         bad = json.loads(json.dumps(mf.current))
-        bad['maps'][0]['id'] = '../ve-a'
+        bad['maps'][0]['id'] = '../ve-car'
         self.assertIsNone(manifest.validate(bad, ALLOWED))
         merged = manifest.merge(mf.current, {**mf.current, 'maps': []})
-        self.assertEqual([x['id'] for x in merged['maps']], ['ve-a'])
+        self.assertEqual([x['id'] for x in merged['maps']], ['ve-car'])
 
     def test_region_map_zip_with_other_files_refused(self):
         mf, _ = self.region_manifest(extra={'library-data/catalog.json': b'{}'})
@@ -4265,7 +4265,7 @@ class RegionMaps(Maps):
         (cur / 'library-data').mkdir(parents=True)
         (cur / 'library-data/catalog.json').write_text('{"mine": 1}')
         s = self.setup('manage', current=cur, manifest=mf)
-        s.start(None, False, map_id='ve-a')
+        s.start(None, False, map_id='ve-car')
         j = self.wait(s)
         self.assertEqual(j['error']['code'], 'unpack')
         self.assertEqual((cur / 'library-data/catalog.json').read_text(), '{"mine": 1}')

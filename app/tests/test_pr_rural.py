@@ -1,13 +1,15 @@
 """Order-independent Puerto Rico road searches through the normal offline place route."""
 import itertools
+import json
 import sqlite3
 import tempfile
+import threading
 import unittest
 from contextlib import closing
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from engine import address_search
+from engine import address_search, pr_rural_model
 from engine.pr_rural import parse
 
 
@@ -71,3 +73,67 @@ class RuralLookup(unittest.TestCase):
                   'Carr 19 km 4.4 hm 6', 'Carr 19 km 4 km 5', 'PR-19 km 4.1234'):
             self.assertIsNone(parse(q))
         self.assertEqual(address_search.find_addresses('Carr 19 km 4.4', self.root / 'empty'), [])
+
+    def test_local_model_reads_speech_after_a_miss_and_cannot_move_an_existing_pin(self):
+        import server
+        model = Mock()
+        model.gen_lock.locked.return_value = False
+        model.ensure_running.return_value = None
+        output = [19, '4.4', 'Las Peñas Villa Ejemplo', '', False, '', '']
+        def generate(segments, budget, cancelled, piece, only_if_idle):
+            self.assertTrue(only_if_idle)
+            piece(json.dumps(output))
+        model.generate.side_effect = generate
+        with patch.object(server, 'HERE', self.root), patch.object(server.assistant, 'LOCAL', model):
+            known = server.places('Ctra 19 km 4.4, Bo Las Peñas, Villa Ejemplo')
+            self.assertNotIn('interpreted', known[0])
+            model.generate.assert_not_called()
+            spoken = 'En Villa Ejemplo, por la diecinueve, kilómetro cuatro punto cuatro, barrio Las Peñas'
+            answer = server.places(spoken)
+            self.assertEqual(answer[0]['lat'], known[0]['lat'])
+            self.assertIn('PR-19 km 4.4', answer[0]['interpreted'])
+            for idx, value in [(0,18), (1,'4.5'), (2,'Villa Ejemplo'), (3,'00999'), (4,True), (6,'Las Peñas')]:
+                previous, output[idx] = output[idx], value
+                self.assertEqual(server.places(spoken), [])
+                output[idx] = previous
+            model.generate.side_effect = lambda seg,budget,cancel,piece,**kw: piece('unreadable answer')
+            self.assertEqual(server.places(spoken), [])
+            model.generate.reset_mock()
+            model.gen_lock.locked.return_value = True
+            self.assertEqual(server.places(spoken), [])
+            model.generate.assert_not_called()
+            model.gen_lock.locked.return_value = False
+            model.enabled.return_value = False
+            self.assertEqual(server.places(spoken), [])
+            model.generate.assert_not_called()
+
+    def test_unsafe_or_unaccounted_directions_remain_unresolved(self):
+        make = pr_rural_model.fields
+        answer = make([19, '4.4', 'Las Peñas', '', False, '', ''])
+        for query in ('Cuatro kilómetros después del pueblo, PR-19, Las Peñas',
+                      'PR-19 km 4.4, Las Peñas, casa #7', 'PR-19 km 4.4, Las Peñas, #7',
+                      'PR-19 km 4.4 o km 5.4, Las Peñas', 'PR-19 km 4.4, Bo. Las Peñas, Pueblo Otro',
+                      'PR-19 o PR-77, km 4.4, Las Peñas', 'PR-19 km 4.4, Las Peñas 00999',
+                      'PR-19 km 4.4, Las Peñas, sector Azul'):
+            self.assertFalse(pr_rural_model.grounded(query, answer, parse(query)), query)
+        swapped = make([19,'4.4','Sol','',False,'Las Peñas',''])
+        q = 'Barrio Las Peñas, PR-19 km 4.4, Sector Sol'
+        self.assertFalse(pr_rural_model.grounded(q, swapped, parse(q)))
+        self.assertFalse(address_search.is_address_query('KM Market'))
+
+    def test_map_returns_on_timeout_without_stopping_other_model_work(self):
+        model, release = Mock(), threading.Event()
+        model.gen_lock.locked.return_value = False
+        model.ensure_running.side_effect = lambda **kwargs: release.wait(3) and 'stopped'
+        capacity = threading.BoundedSemaphore(1)
+        try:
+            with patch.object(pr_rural_model, 'BUDGET', 0.05), patch.object(pr_rural_model, 'CAPACITY', capacity):
+                self.assertIsNone(pr_rural_model.interpret(model, 'Ctra 19 km 4.4', None))
+                self.assertIsNone(pr_rural_model.interpret(model, 'Ctra 19 km 4.4', None))
+                release.set()
+                self.assertTrue(capacity.acquire(timeout=2))
+                capacity.release()
+        finally:
+            release.set()
+        model.generate.assert_not_called()
+        model.stop.assert_not_called()

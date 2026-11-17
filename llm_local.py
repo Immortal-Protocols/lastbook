@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from engine import paths
@@ -360,9 +361,18 @@ class Local:
                 self.stop(f'not used for {IDLE_STOP} s')
 
     # -- one model turn ---------------------------------------------------------------------------------------------------
-    def generate(self, segments, max_tokens, cancelled, on_text):
+    @contextmanager
+    def _generation_slot(self, only_if_idle):
+        if not self.gen_lock.acquire(blocking=not only_if_idle):
+            raise RuntimeError('The local AI is answering another question.')
+        try:
+            yield
+        finally:
+            self.gen_lock.release()
+
+    def generate(self, segments, max_tokens, cancelled, on_text, *, only_if_idle=False):
         """Streams one answer. on_text(piece). Returns the 'done' event, or raises RuntimeError with a plain sentence."""
-        with self.gen_lock:
+        with self._generation_slot(only_if_idle):
             with self.lock:
                 proc, events = self.proc, self.events
                 if not proc or self.state != 'ready':

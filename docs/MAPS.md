@@ -103,6 +103,12 @@ A whole number in that position can be a house number.
 - A supplied barrio, municipality or ZIP restricts the search. Census ZIP Code Tabulation Areas approximate
   postal areas. Interior, sector and landmark directions are shown as unverified on road results.
 
+An indexed match appears immediately. When that lookup misses and local AI is enabled and available, Gemma
+reads free-form directions such as `Por la 916, en el kilómetro cuatro punto cuatro, barrio Cerro Gordo de San Lorenzo`.
+Lastbook checks the proposed road, kilometer, place names and other qualifiers against the text, then searches the
+same on-device index. A result from this path displays the interpretation. A busy, disabled or absent model leaves
+the ordinary reader available. A map request stops waiting after 60 seconds.
+
 For a build, download the Puerto Rico OSM PBF from [Geofabrik](https://download.geofabrik.de/north-america/us/puerto-rico.html)
 and the [US Census municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
 Save them as `puerto-rico.osm.pbf` and `municipios.geojson`. Use Python 3.11 or newer in a separate build environment.
@@ -132,6 +138,8 @@ public NCES addresses, synthetic spoken directions, ordering variants and ambigu
 It checks all seven extracted fields and compares results from the same offline index, including empty results and qualifier warnings.
 Run it with the SQLite path and a new output filename. Add `--gemma` to run the same queries through Lastbook's
 local runner with its pinned model. Set `LASTBOOK_MODEL_DIR` to the model directory and `LASTBOOK_DATA` to a writable test library.
+Use `--live-map` to exercise the production place finder. This mode reads the supplied SQLite file from the test library's
+`derived/geo/addresses/PR.sqlite`. The release's public JSON Lines results can also be scored with `--replay`.
 
 For local use, close the library and extract the single ZIP member, `derived/geo/addresses/PR.sqlite`,
 under `LastbookData/` and open it with the updated reader. For a release, upload the ZIP to the Lastbook

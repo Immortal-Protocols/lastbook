@@ -1450,9 +1450,18 @@ fileprivate enum AddressSearch {
     }
 
     static func find(_ query: String, limit: Int = 8, near: (Double, Double)?) -> [[String: Any]] {
-        if let rural = PuertoRicoRoads.parse(query) {
-            guard let db = Library.shared.db("addresses/PR.sqlite", geo: true) else { return [] }
-            return PuertoRicoRoads.find(rural, db, limit)
+        let rural = PuertoRicoRoads.parse(query)
+        if rural != nil || PuertoRicoRoads.looksRural(query) {
+            guard limit > 0, let db = Library.shared.db("addresses/PR.sqlite", geo: true),
+                  !db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").isEmpty else { return [] }
+            let rows = rural.map { PuertoRicoRoads.find($0, db, limit) } ?? []
+            if !rows.isEmpty { return rows }
+            guard let a = PuertoRicoModel.interpret(query, rural) else { return [] }
+            return PuertoRicoRoads.find(a, db, limit).map { row in
+                var result = row
+                result["interpreted"] = PuertoRicoModel.description(a)
+                return result
+            }
         }
         let legacyNumber = query.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil, pr = prParts(query)
         guard limit > 0, legacyNumber || pr != nil, let geo = Library.shared.geo else { return [] }

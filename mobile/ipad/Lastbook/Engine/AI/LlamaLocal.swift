@@ -561,9 +561,11 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
 
     // -- one model turn --------------------------------------------------------------------------------------------------
     /// Streams one answer. Returns the runner's 'done' event, or throws a plain sentence (desktop Local.generate).
-    func generate(segments: [Segment], maxTokens: Int, cancelled: @escaping () -> Bool, piece: @escaping (String) -> Void) throws -> Rec {
+    func generate(segments: [Segment], maxTokens: Int, onlyIfIdle: Bool, cancelled: @escaping () -> Bool, piece: @escaping (String) -> Void) throws -> Rec {
         #if canImport(LastbookLLM)
-        genLock.lock()
+        if onlyIfIdle {
+            guard genLock.try() else { throw LocalAIError("The local AI is answering another question.") }
+        } else { genLock.lock() }
         defer { genLock.unlock() }
         lock.lock()
         guard let h = handle, state == "ready" else {

@@ -87,7 +87,7 @@ class AddressSearchTests(unittest.TestCase):
         import server
         with patch.object(server, 'HERE', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
             self.assertEqual(server.places('18003 nine mile'), [])
-            lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None)
+            lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None, model=server.assistant.LOCAL)
 
 
 if __name__ == '__main__':

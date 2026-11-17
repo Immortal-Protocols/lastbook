@@ -4,7 +4,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from engine import pr_addresses, pr_rural
+from engine import pr_addresses, pr_rural, pr_rural_model
 from engine.paths import ro_uri
 
 # Keep normalization compatible with tools/build_addresses.py.
@@ -74,17 +74,25 @@ def _parts(query):
     return number, normalize(' '.join(remainder)).split(), state, postcode
 
 
-def find_addresses(query, geo_directory, limit=8, near=None):
+def find_addresses(query, geo_directory, limit=8, near=None, model=None):
     """Find indexed street addresses or explicitly labeled rural road references."""
     rural = pr_rural.parse(query)
-    if rural and limit > 0:
+    if limit > 0 and (rural or pr_rural.looks_rural(query)):
         path = Path(geo_directory) / 'addresses' / 'PR.sqlite'
         if path.is_file():
             db = None
             try:
                 db = sqlite3.connect(ro_uri(path), uri=True)
                 if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").fetchone():
-                    return pr_rural.lookup(db, rural, limit)
+                    rows = pr_rural.lookup(db, rural, limit) if rural else []
+                    if rows:
+                        return rows
+                    interpreted = pr_rural_model.interpret(model, query, rural)
+                    if interpreted:
+                        rows = pr_rural.lookup(db, interpreted, limit)
+                        for row in rows:
+                            row['interpreted'] = pr_rural_model.description(interpreted)
+                    return rows
             except sqlite3.Error:
                 pass
             finally:

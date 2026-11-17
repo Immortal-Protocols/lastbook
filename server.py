@@ -1394,7 +1394,7 @@ def water_places(q, limit=10, near=None):
 
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near, model=assistant.LOCAL)
     if not PLACEDB.exists():
         return []
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)

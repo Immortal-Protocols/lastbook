@@ -32,8 +32,13 @@ def plain(text):
 def looks_rural(query):
     """Keep incomplete and conversational kilometer directions out of the fuzzy place finder."""
     words = plain(query)
-    return bool(re.search(r'(?<![a-z])(?:k\.?\s*m\.?s?|kilometr(?:os?|es?|ers?))(?=\W|\d|$)', words)
-                or re.search(r'\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])', words))
+    unit = re.search(r'(?<![a-z])(?:k\.?\s*m\.?s?|kilomet(?:ros?|res?|ers?))(?=\W|\d|$)', words)
+    return bool((unit and re.search(r'\d|\b(?:bo|barrio|carr|carretera|ruta|road|route|por la)\b', words))
+                or re.search(r'\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])', words)
+                or (ROAD.search(words) and (len(ROAD.findall(words)) > 1 or re.search(r'\b(?:casa|solar|lote|salida|exit)\b', words)))
+                or re.search(r'\bhc\s*\d+\s+box\b', words)
+                or (re.search(r'\b(?:barrio|bo)\b', words) and re.search(r'\b(?:punto|con)\b', words)
+                    and re.search(r'\b(?:la|carr|carretera|pr)\s*[-.]?\s*\d+', words)))
 
 
 def parse(query):
@@ -103,6 +108,9 @@ def matches_area(locality, barrio, municipality):
     town = fold(municipality)
     b_forms = ['', *(form for b in barrios for form in (b, 'barrio ' + b))]
     m_forms = ['', town, 'municipio ' + town]
+    if any(locality in (b + ' de ' + town, b + ' en ' + town, b + ' del municipio de ' + town)
+           for b in b_forms if b):
+        return True
     return any(locality == ' '.join(w for w in pair if w)
                for b in b_forms for m in m_forms for pair in ((b, m), (m, b)))
 

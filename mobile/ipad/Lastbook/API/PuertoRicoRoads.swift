@@ -23,7 +23,13 @@ enum PuertoRicoRoads {
     }
     static func looksRural(_ query: String) -> Bool {
         let words = query.folding(options: .diacriticInsensitive, locale: Locale(identifier: "en_US_POSIX")).lowercased()
-        return words.firstMatch(#"(?<![a-z])(?:k\.?\s*m\.?s?|kilometr(?:os?|es?|ers?))(?=\W|\d|$)|\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])"#) != nil
+        let unit = words.firstMatch(#"(?<![a-z])(?:k\.?\s*m\.?s?|kilomet(?:ros?|res?|ers?))(?=\W|\d|$)"#) != nil
+        return (unit && words.firstMatch(#"\d|\b(?:bo|barrio|carr|carretera|ruta|road|route|por la)\b"#) != nil)
+            || words.firstMatch(#"\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])"#) != nil
+            || (words.firstMatch(road) != nil && (words.allMatches(road).count > 1 || words.firstMatch(#"\b(?:casa|solar|lote|salida|exit)\b"#) != nil))
+            || words.firstMatch(#"\bhc\s*\d+\s+box\b"#) != nil
+            || (words.firstMatch(#"\b(?:barrio|bo)\b"#) != nil && words.firstMatch(#"\b(?:punto|con)\b"#) != nil
+                && words.firstMatch(#"\b(?:la|carr|carretera|pr)\s*[-.]?\s*\d+"#) != nil)
     }
     static func parse(_ query: String) -> Address? {
         var text = query.folding(options: .diacriticInsensitive, locale: Locale(identifier: "en_US_POSIX")).lowercased()
@@ -74,6 +80,7 @@ enum PuertoRicoRoads {
             aliases += ["pueblo", fold(String(barrio.dropLast(" barrio-pueblo".count))) + " pueblo"]
         }
         for b in [""] + aliases.flatMap({ [$0, "barrio " + $0] }) {
+            if !b.isEmpty && [" de ", " en ", " del municipio de "].contains(where: { locality == b + $0 + fold(town) }) { return true }
             for m in ["", fold(town), "municipio " + fold(town)] {
                 if [[b, m], [m, b]].contains(where: { $0.filter { !$0.isEmpty }.joined(separator: " ") == locality }) { return true }
             }

@@ -533,6 +533,17 @@
         "HI": 0.04
       }
     },
+    "region": {
+      "rule": "base plus the region's own rows inside its box; box = packaging/regions/<code>.json bbox, plus or minus 0.15 degrees; rows from derived/geo/regions/<code>/*.sqlite (tools/build_region_canada.py), copied with new ids above the base set's",
+      "national.sqlite": "feat and poi in box",
+      "water.sqlite": "feat and resource in box",
+      "terrain.sqlite": "tile z<=12 in box; base tiles kept to z7",
+      "buildings.sqlite": "bldg and bldg_osm in box",
+      "crops.sqlite": "resource and tile in box",
+      "atlas.sqlite": "resource in box",
+      "places.sqlite": "base rows; plus every region row in box",
+      "map.sqlite": "empty schema"
+    },
     "us": {
       "clones": [
         "national.sqlite",

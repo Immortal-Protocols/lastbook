@@ -1,7 +1,7 @@
 """Builds Lastbook's download packs from derived/packs/pack-spec.json. A pack is a data folder: point LASTBOOK_DATA at it.
 
   python -I -B build_packs.py snapshot
-  python -I -B build_packs.py map base|us|<state code, such as RI>
+  python -I -B build_packs.py map base|us|<state code, such as RI>|<region code, such as CA-ON>
   python -I -B build_packs.py build small|medium|all|corporals-corner|firearms-hunting [--map base|us|RI] [--sample N] [--snapshot DIR] [--fetched DIR]
 
 Everything comes from one frozen snapshot of the catalog and search file, so the indexer can run throughout. The library is only read: files that do not change are APFS
@@ -9,6 +9,8 @@ clones, and a page that changes is written as a new file here. Run it again and 
 Writes derived/packs/<pack>/ (the pack: pack.json, pack-manifest.tsv, pack-contents.tsv, the Sources page) and derived/packs/<pack>-build/ (for the owner, never shipped: what was
 left out and why). --sample takes a few records of each kind that are on this computer, into <pack>-sample. A video on a Studio is copied only if it is already under --fetched;
 this tool opens no network connection. Without it the record is left out, reported, and the build exits 1.
+A region outside the US (packaging/regions/<code>.json) is cut like a state, from its own files in derived/geo/regions/<code>/
+(tools/build_region_canada.py) on top of the base map; its box comes from its file, not from ZIP centres.
 The owner's renames always apply (pack-spec.json collection_renames, path_renames, note_edits, and packaging/ship_edits.json id_prefixes, which the shipped guides use too).
 Needs a Python whose html.parser reads as a browser does: derived/app-build/mac-venv/bin/python3 or the library's own.
 """
@@ -61,6 +63,9 @@ def load_module(name, path):
 SHIP = load_module('ship_app_files', PROJECT / 'packaging' / 'ship_app_files.py')    # what an app build ships: the guides' IDs and the ID renames come from here
 PATH_RENAMES = {**SPEC['path_renames'], **{f'text/{a}': f'text/{b}' for a, b in SHIP.PREFIXES.items()}}   # a record's text file is named by its ID
 MAP_CREDIT = 'OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth'   # as on the map itself, web/map.js
+
+
+regions = load_module('regions', PROJECT / 'packaging' / 'regions' / '__init__.py')    # docs/REGIONS.md
 
 
 def sha256_file(path):
@@ -1239,8 +1244,8 @@ def sources_page(records):
              '<h1>Sources and permissions</h1>',
              '<p>Everything here was made by the people and organizations listed below. We love to give credit: please visit them. To ask for anything to be removed, write to hello@lastbook.org.</p>',
              '<p>Not clinically reviewed. Check medical guidance against a clinician when you can.</p>',
-             f'<h2>Maps</h2><p>{e(MAP_CREDIT)}</p>']
-    text = ['Sources and permissions', 'Everything here was made by the people and organizations listed below. To ask for anything to be removed, write to hello@lastbook.org.', 'Maps: ' + MAP_CREDIT]
+             f'<h2>Maps</h2><p>{e(MAP_CREDIT)}</p>'] + [f'<p>{e(line)}</p>' for line in region_credits()]
+    text = ['Sources and permissions', 'Everything here was made by the people and organizations listed below. To ask for anything to be removed, write to hello@lastbook.org.', 'Maps: ' + MAP_CREDIT] + region_credits()
     gaps = [os.path.basename(p) for p in SPEC['known_gap_documents']]
     parts.append('<h2>Left out of this first release</h2><p>' + e(', '.join(gaps)) + ': too large to open well. They will come in a later release.</p>')
     for name in sorted(owners, key=str.lower):
@@ -1286,6 +1291,8 @@ def geo_source():
 
 
 def state_box(src, code):
+    if regions.is_region(code):
+        return regions.box(code)        # an official boundary plus the same margin, from packaging/regions/<code>.json
     db = sqlite3.connect(f'file:{src}/profiles.sqlite?immutable=1', uri=True)
     blank = {'CT': '09'}.get(code, '-')     # Connecticut's ZIPs carry its 2022 planning-region county codes and no state
     row = db.execute("SELECT min(lon),min(lat),max(lon),max(lat),count(*) FROM zcta WHERE state=? OR (coalesce(state,'')='' AND substr(county,1,2)=?)", (code, blank)).fetchone()
@@ -1430,6 +1437,109 @@ def state_set(src, dest, code):
     finish_db(db)
 
 
+REGION_SOURCES = GEO / 'regions'
+REGION_FILES = ['national', 'water', 'terrain', 'places', 'buildings', 'crops']
+
+
+def region_missing(code):
+    """The source files a region still lacks: tools/build_region_canada.py (or the region's own builder) writes them."""
+    return [n for n in REGION_FILES if not (REGION_SOURCES / code / f'{n}.sqlite').is_file()]
+
+
+def region_credits():
+    """One line per region, then each attribution statement once, for the Sources page: what the open licences ask for."""
+    lines, said = [], []
+    for code in regions.codes():
+        r = regions.get(code)
+        layers = [s for group in r['sources'].values() for s in group]
+        publishers = list(dict.fromkeys(s['publisher'] for s in layers if s.get('publisher')))
+        lines.append(f"Detailed map of {r['name']}, where it is installed: " + ' · '.join(publishers))
+        for s in layers:
+            said += [s['attribution']] if isinstance(s.get('attribution'), str) else s.get('attribution') or []
+    return lines + list(dict.fromkeys(said))
+
+
+def region_set(src, dest, code):
+    """Base, then every row of the region's own files inside its box. Like state_set, but the rows come from derived/geo/regions/<code>/,
+    so features and records get new ids above the base map's (a plain copy would collide with them), and every place row is copied:
+    the base set holds no names from outside the US."""
+    missing = region_missing(code)
+    if missing:
+        raise SystemExit(f'{code}: no {", ".join(missing)} in {REGION_SOURCES / code}; build them first (tools/build_region_canada.py {code} all)')
+    rsrc = REGION_SOURCES / code
+    base = OUT / 'maps' / 'base'
+    if not (base / 'map-set.json').exists():
+        build_map('base')
+    for f in base.rglob('*'):
+        if f.is_file() and f.name != 'map-set.json':
+            clone(f, dest / f.relative_to(base))
+    box = state_box(src, code)
+    w, s, e, n = box
+    inbox = 'i.maxx>=? AND i.minx<=? AND i.maxy>=? AND i.miny<=?'
+    args = (w, e, s, n)
+    geo = dest / 'derived/geo'
+
+    def attach(name):
+        db = sqlite3.connect(geo / f'{name}.sqlite')
+        db.execute('PRAGMA synchronous=OFF')
+        db.execute('ATTACH DATABASE ? AS src', (str(rsrc / f'{name}.sqlite'),))
+        return db
+
+    def top(db, table):
+        return db.execute(f'SELECT coalesce(max(id), 0) FROM {table}').fetchone()[0]
+    db = attach('national')
+    off = top(db, 'feat')
+    db.execute(f'INSERT INTO feat(id,layer,cls,name,minz,geom) SELECT f.id+?,f.layer,f.cls,f.name,f.minz,f.geom FROM src.feat_idx i CROSS JOIN src.feat f ON f.id=i.id WHERE {inbox}', (off, *args))
+    db.execute(f'INSERT INTO feat_idx SELECT i.id+?,i.minx,i.maxx,i.miny,i.maxy,i.minz,i.maxz FROM src.feat_idx i WHERE {inbox}', (off, *args))
+    db.execute('INSERT INTO poi(cls,name,lon,lat) SELECT cls,name,lon,lat FROM src.poi WHERE lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?', (w, e, s, n))
+    features = db.execute('SELECT count(*) FROM feat').fetchone()[0]
+    db.execute("UPDATE meta SET value=? WHERE key='status'", (json.dumps({'state': 'complete', 'stage': 'ready', 'features': features}),))
+    finish_db(db)
+    (geo / 'national-status.json').write_text(json.dumps({'state': 'complete', 'stage': 'ready', 'features': features}), encoding='utf-8')
+    db = attach('water')
+    off = top(db, 'feat')
+    db.execute(f'INSERT INTO feat(id,layer,cls,name,minz,geom,origin) SELECT f.id+?,f.layer,f.cls,f.name,f.minz,f.geom,f.origin FROM src.feat_idx i CROSS JOIN src.feat f ON f.id=i.id WHERE {inbox}', (off, *args))
+    db.execute(f'INSERT INTO feat_idx SELECT i.id+?,i.minx,i.maxx,i.miny,i.maxy,i.minz,i.maxz FROM src.feat_idx i WHERE {inbox}', (off, *args))
+    off = top(db, 'resource')
+    db.execute(f'INSERT INTO resource(id,source_id,kind,name,lat,lon,detail,source,origin) SELECT r.id+?,r.source_id,r.kind,r.name,r.lat,r.lon,r.detail,r.source,r.origin '
+               f'FROM src.spatial i CROSS JOIN src.resource r ON r.id=i.id WHERE {inbox}', (off, *args))
+    db.execute(f'INSERT INTO spatial SELECT i.id+?,i.minx,i.maxx,i.miny,i.maxy FROM src.spatial i WHERE {inbox}', (off, *args))
+    db.execute("INSERT INTO water_fts(rowid,name,other) SELECT id,name,coalesce(json_extract(detail,'$.other_names'),'') FROM resource "
+               "WHERE id>? AND kind IN ('dam','reservoir','lake') AND name!=''", (off,))
+    db.execute('INSERT OR REPLACE INTO meta SELECT * FROM src.meta')
+    finish_db(db)
+    db = attach('terrain')
+    for z in range(4, 13):      # the base set's own tiles stay to zoom 7 (they may hold the US side of a border tile); above that, the region's
+        x0, x1, y0, y1 = tile_range(box, z)
+        db.execute(f'INSERT OR {"IGNORE" if z <= 7 else "REPLACE"} INTO tile SELECT * FROM src.tile WHERE z=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ?', (z, x0, x1, y0, y1))
+    db.execute("INSERT OR REPLACE INTO meta SELECT 'source:' || ?, trim(substr(value,1,instr(value||'(','(')-1)) FROM src.meta WHERE key='source'", (code,))
+    finish_db(db)
+    db = attach('places')
+    db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) SELECT name,kind,detail,lat,lon,rank,source FROM src.place '
+               'WHERE lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?', (w, e, s, n))
+    db.execute("INSERT INTO place_fts(place_fts) VALUES('rebuild')")
+    finish_db(db)
+    db = empty_like(rsrc / 'buildings.sqlite', geo / 'buildings.sqlite', ['bldg', 'bldg_socal', 'bldg_osm', 'meta'])
+    x0, x1, y0, y1 = tile_range(box, 14)
+    for t in ('bldg', 'bldg_socal', 'bldg_osm'):
+        db.execute(f'INSERT INTO {t} SELECT * FROM src.{t} WHERE x BETWEEN ? AND ? AND y BETWEEN ? AND ?', (x0, x1, y0, y1))
+    db.execute('INSERT INTO meta SELECT * FROM src.meta')
+    finish_db(db)
+    db = empty_like(rsrc / 'crops.sqlite', geo / 'crops.sqlite', ['meta', 'resource', 'spatial', 'tile'])
+    db.execute(f'INSERT INTO resource SELECT r.* FROM src.spatial i CROSS JOIN src.resource r ON r.id=i.id WHERE {inbox}', args)
+    db.execute(f'INSERT INTO spatial SELECT i.* FROM src.spatial i WHERE {inbox}', args)
+    for (z,) in db.execute('SELECT DISTINCT z FROM src.tile').fetchall():
+        x0, x1, y0, y1 = tile_range(box, z)
+        db.execute('INSERT INTO tile SELECT * FROM src.tile WHERE z=? AND x BETWEEN ? AND ? AND y BETWEEN ? AND ?', (z, x0, x1, y0, y1))
+    db.execute('INSERT INTO meta SELECT * FROM src.meta')
+    finish_db(db)
+    db = empty_like(src / 'atlas.sqlite', dest / 'library-data/geography/resources/atlas.sqlite', ['resource', 'spatial', 'metadata'])
+    db.execute(f'INSERT INTO resource SELECT r.* FROM src.spatial i CROSS JOIN src.resource r ON r.id=i.id WHERE {inbox}', args)
+    db.execute(f'INSERT INTO spatial SELECT i.* FROM src.spatial i WHERE {inbox}', args)
+    db.execute('INSERT INTO metadata SELECT * FROM src.metadata')
+    finish_db(db)
+
+
 def us_set(src, dest):
     """Clones of the whole files, with the private notes in them cleaned out. Changing a few pages of a clone costs only those pages."""
     geo = dest / 'derived/geo'
@@ -1468,6 +1578,8 @@ def build_map(name):
         base_set(src, dest)
     elif name == 'us':
         us_set(src, dest)
+    elif regions.is_region(name):       # before the state rule: GY is two letters too
+        region_set(src, dest, name)
     elif re.fullmatch(r'[A-Z]{2}', name):
         state_set(src, dest, name)
     else:

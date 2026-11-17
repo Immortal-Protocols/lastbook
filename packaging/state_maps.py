@@ -2,10 +2,13 @@
 
   derived/app-build/mac-venv/bin/python3 -I -B packaging/state_maps.py CA TX ...   # one state at a time, in this order
   ... packaging/state_maps.py --order                                              # every state, in release order
+  ... packaging/state_maps.py CA-ON CA-BC                                          # a region outside the US (packaging/regions)
 
 Each state: build (CA and RI are kept as built), scan, zip to derived/packs/state-zips/, upload to maps/ on the bucket,
 check the public SHA-256, list it under "maps" in derived/release/manifest-v1.json and upload that, then delete the zip
 and the build copy (CA and RI stay). Results go to derived/packs/state-maps.json and STATE-MAPS.md.
+A region (packaging/regions/<code>.json) goes through the same steps. --order and --worker take it after the states,
+and only once its source files are built (derived/geo/regions/<code>/, tools/build_region_canada.py).
 """
 import fcntl
 import hashlib
@@ -32,7 +35,7 @@ MANIFEST = ROOT / 'derived/release/manifest-v1.json'
 BASE = 'https://downloads.lastbook.org'
 KEEP = {'CA', 'RI'}
 FIRST = ['CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI']
-NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='California', CO='Colorado', CT='Connecticut', DE='Delaware',
+US_NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='California', CO='Colorado', CT='Connecticut', DE='Delaware',
              DC='District of Columbia', FL='Florida', GA='Georgia', HI='Hawaii', ID='Idaho', IL='Illinois', IN='Indiana', IA='Iowa', KS='Kansas',
              KY='Kentucky', LA='Louisiana', ME='Maine', MD='Maryland', MA='Massachusetts', MI='Michigan', MN='Minnesota', MS='Mississippi',
              MO='Missouri', MT='Montana', NE='Nebraska', NV='Nevada', NH='New Hampshire', NJ='New Jersey', NM='New Mexico', NY='New York',
@@ -46,8 +49,13 @@ STORED = {'derived/geo/terrain.sqlite'}     # tiles are already compressed
 
 sys.path.insert(0, str(ROOT / 'packaging'))
 sys.path.insert(0, str(ROOT / 'derived/release'))
+import regions              # noqa: E402
+NAMES = {**US_NAMES, **{code: regions.get(code)['name'] for code in regions.codes()}}
 import scan_pack as S       # noqa: E402
-import r2_publish as R      # noqa: E402
+try:
+    import r2_publish as R      # noqa: E402
+except ImportError:             # the owner's upload tool (derived/release) is not in the repository; names and order still load without it
+    R = None
 
 
 def log(*a):
@@ -55,9 +63,31 @@ def log(*a):
 
 
 def states():
+    """Release order: the US states, then each region whose sources are built."""
     db = sqlite3.connect(f'file:{MAPS}/source/profiles.sqlite?immutable=1', uri=True)
-    have = sorted({s for (s,) in db.execute('SELECT DISTINCT state FROM zcta') if s and re.fullmatch(r'[A-Z]{2}', s)} | {'CT'})
-    return FIRST + [s for s in have if s not in FIRST]
+    have = sorted({s for (s,) in db.execute('SELECT DISTINCT state FROM zcta') if s and re.fullmatch(r'[A-Z]{2}', s) and not regions.is_region(s)} | {'CT'})
+    return FIRST + [s for s in have if s not in FIRST] + [c for c in regions.codes() if region_ready(c)]
+
+
+def region_ready(code):
+    import build_packs as BP
+    return not BP.region_missing(code)
+
+
+def order():
+    """Where each state or region sits in the manifest and the table: US states first, then regions by code."""
+    try:
+        listed = states()
+    except sqlite3.Error:
+        listed = list(US_NAMES)
+    return {s: i for i, s in enumerate(listed + [c for c in regions.codes() if c not in listed])}
+
+
+def entry_for(code, installed, z, url, sha, size):
+    """The manifest entry. A region says what it is (province, country) and what it holds, from its file."""
+    r = regions.get(code) if regions.is_region(code) else None
+    return {'id': code, 'title': NAMES.get(code, code), 'kind': r['kind'] if r else 'state', 'installed_bytes': installed, 'available': True,
+            'includes': r['includes'] if r else INCLUDES, 'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
 
 
 def sha_file(p):
@@ -219,8 +249,8 @@ def list_in_manifest(ctx, entry):
     m = json.loads(MANIFEST.read_text())
     packs, models = json.dumps(m['packs']), json.dumps(m.get('models'))
     maps = [x for x in m.get('maps', []) if x['id'] != entry['id']] + [entry]
-    order = {s: i for i, s in enumerate(states())}
-    m['maps'] = sorted(maps, key=lambda x: order.get(x['id'], 999))
+    rank = order()
+    m['maps'] = sorted(maps, key=lambda x: rank.get(x['id'], 999))
     assert json.dumps(m['packs']) == packs and json.dumps(m.get('models')) == models
     tmp = MANIFEST.with_suffix('.maps-tmp')
     tmp.write_text(json.dumps(m, indent=1) + '\n')
@@ -241,8 +271,8 @@ def write_table(res):
     rows = ['# State maps', '', 'One detailed map per state, for first-run setup (docs/SETUP-API.md, "State maps"). Built by `packaging/state_maps.py`;',
             'each zip was scanned, uploaded, checked by its public SHA-256 and then listed under `maps` in `manifest-v1.json`.', '',
             '| State | Zip size | Installed size | SHA-256 | URL |', '|---|---:|---:|---|---|']
-    order = {s: i for i, s in enumerate(states())}
-    for code in sorted(res, key=lambda c: order.get(c, 999)):
+    rank = order()
+    for code in sorted(res, key=lambda c: rank.get(c, 999)):
         r = res[code]
         rows.append(f"| {code} {NAMES.get(code, '')} | {r['size'] / 1e9:.2f} GB ({r['size']:,}) | {r['installed_bytes'] / 1e9:.2f} GB ({r['installed_bytes']:,}) | `{r['sha256']}` | {r['url']} |")
     TABLE.write_text('\n'.join(rows) + '\n')
@@ -279,8 +309,7 @@ def one_state(ctx, code, res):
     if got != sha or n != size:
         sys.exit(f'{code}: public copy differs ({got} {n})')
     log(code, 'public copy verified')
-    entry = {'id': code, 'title': NAMES.get(code, code), 'kind': 'state', 'installed_bytes': installed, 'available': True, 'includes': INCLUDES,
-             'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
+    entry = entry_for(code, installed, z, url, sha, size)
     with open(LOCK, 'a') as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
         list_in_manifest(ctx, entry)

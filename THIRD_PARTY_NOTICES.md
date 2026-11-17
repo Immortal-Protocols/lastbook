@@ -65,3 +65,10 @@ allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is 
 The manuals, videos, encyclopedias and map data in the library packs are not part of this repository. Each pack has a
 Sources and permissions page with the publisher and terms of every item. The offline map uses OpenStreetMap data
 (ODbL, © OpenStreetMap contributors) and US government data such as USGS, NOAA and USACE, as credited on the map.
+The detailed maps of Ontario and British Columbia, when built, use Canadian open data under the Open Government Licence –
+Canada, the Open Government Licence – Ontario, the Open Government Licence – British Columbia and the Statistics Canada
+Open Licence, with each source and its attribution listed in `packaging/regions/CA-ON.json` and `CA-BC.json`. The
+terrain model (Natural Resources Canada's MRDEM) is in part produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014
+and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights
+reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability
+for any use of the Copernicus WorldDEM-30.

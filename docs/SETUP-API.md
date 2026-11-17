@@ -180,3 +180,37 @@ Built by setup-backend (2026-11-12):
 - `found[]` also lists a `Lastbook-Map-*.zip` already on this computer (`kind: "map"`); `use` on it starts the map job
   in manage mode, or is used by the next `start` in first-run setup.
 - Repair skips the map files when a `map-set.json` is present; those are checked against it instead.
+
+### Regions outside the US (added 2026-11-16)
+
+A detailed map can also cover a place that is not a US state: a region, defined by one file in `packaging/regions/`
+(`CA-ON.json` Ontario, `CA-BC.json` British Columbia). Its code is ISO 3166-2 style, so it never collides with a state
+code (`CA` stays California). Everything above applies to it unchanged, with these differences:
+
+- **Box.** From the region file (an official boundary, plus the same 0.15° margin), not from ZIP centres:
+  `build_packs.state_box` returns `regions.box(code)` for a region.
+- **Source rows.** A region's rows are not in the US source files. Its builder writes them to
+  `derived/geo/regions/<code>/` (`national`, `water`, `terrain`, `places`, `buildings`, `crops`, each `.sqlite`, with the
+  same tables as the US files), and `build_packs.py map <code>` (`region_set`) copies the rows inside its box onto the
+  base map, with new ids above the base map's. For Canada: `tools/build_region_canada.py <code> all`.
+- **Manifest.** The entry's `id` is the region code, `kind` is the region's kind (`province`), and `includes` comes from
+  its file. The zip is `Lastbook-Map-<code>.zip`; `map-set.json`'s `name` and `state.current.map` are the code.
+- **Setup.** When a listed map is not a state, the picker's words say "state or region" instead of "state", and All
+  (`map: "us"`) is not counted as including it.
+- **Address search.** The index is `derived/geo/addresses/<code>.sqlite` (an `address_indexes` id may be a region code).
+  `tools/build_addresses.py --country CA` keeps whole postal codes and writes the region code in `state`;
+  `packaging/address_indexes.py build --source derived/geo/addresses-CA.sqlite --codes CA-ON CA-BC` splits it.
+  `engine/address_search.py` reads province names, their abbreviations after a comma or before a postal code, and
+  postal codes written `A1A 1A1`.
+- **Credits.** Each region file lists every source with its licence and attribution; the Sources and permissions page
+  (`build_packs.sources_page`) prints them.
+
+Build and publish a region (on the build machine):
+
+```bash
+derived/buildenv/bin/python tools/build_region_canada.py CA-ON all          # derived/geo/regions/CA-ON/*.sqlite
+derived/app-build/mac-venv/bin/python3 -I -B packaging/build_packs.py map CA-ON
+derived/app-build/mac-venv/bin/python3 -I -B packaging/state_maps.py CA-ON  # scan, zip, upload, list
+derived/buildenv/bin/python tools/build_addresses.py --country CA --bbox=-139.22,41.52,-74.17,60.16
+python3 packaging/address_indexes.py all --source derived/geo/addresses-CA.sqlite --codes CA-ON CA-BC
+```

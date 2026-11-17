@@ -556,6 +556,10 @@ def credits():
     <li>Microsoft Global ML Building Footprints</li>
     <li>U.S. Census Bureau</li>
     <li>U.S. Geological Survey</li>
+    <li>Natural Resources Canada, Statistics Canada, Agriculture and Agri-Food Canada (Open Government Licence – Canada)</li>
+    <li>Government of Ontario (Open Government Licence – Ontario)</li>
+    <li>Government of British Columbia (Open Government Licence – British Columbia)</li>
+    <li>Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA (in the Canadian terrain model)</li>
   </ul>
 </section>
 

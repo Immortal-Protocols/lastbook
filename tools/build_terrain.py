@@ -1,8 +1,10 @@
 """Builds derived/geo/terrain.sqlite: elevation tiles for shaded relief, contours, spot heights and the 3D view.
 
-  derived/buildenv/bin/python tools/build_terrain.py [--bbox W,S,E,N] [--workers N]
+  derived/buildenv/bin/python tools/build_terrain.py [--bbox W,S,E,N] [--workers N] [--src DIR --out FILE --source TEXT]
 
 Source: USGS 3DEP 1 arc-second (~30 m) GeoTIFFs in library-data/geography/usgs/Elevation/1/TIFF/current.
+--src, --out and --source let another region's 1° cells, in the same layout, build the same tiles into another file
+(tools/build_region_canada.py does this for Canada's MRDEM); without them nothing changes.
 Tiles are 256 px web-mercator PNGs, zoom 5-12, in the "terrain-RGB" encoding
 (height_m = -10000 + (R*65536 + G*256 + B) * 0.1). Open ocean (no source data) has no tile.
 """
@@ -17,8 +19,9 @@ warnings.filterwarnings("ignore", "Mean of empty slice")
 import tifffile
 
 HERE = Path(__file__).resolve().parent.parent
-SRC = HERE / 'library-data/geography/usgs/Elevation/1/TIFF/current'
-OUT = HERE / 'derived/geo/terrain.sqlite'
+SRC = Path(os.environ.get('TERRAIN_SRC') or HERE / 'library-data/geography/usgs/Elevation/1/TIFF/current')   # read again by each worker
+OUT = Path(os.environ.get('TERRAIN_OUT') or HERE / 'derived/geo/terrain.sqlite')
+SOURCE = os.environ.get('TERRAIN_SOURCE') or 'USGS 3DEP 1 arc-second DEM (library-data/geography/usgs/Elevation/1)'
 MAXZ, SUPERZ, MINZ = 12, 8, 4
 SPAN = 2 ** (MAXZ - SUPERZ)          # z12 tiles per z8 supertile edge (16)
 PX = 256 * SPAN                      # 4096 px
@@ -130,7 +133,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--bbox', help='W,S,E,N limit (default: everything)')
     ap.add_argument('--workers', type=int, default=24)
+    ap.add_argument('--src', help='folder of 1° cells named like n46w076/, default the USGS 3DEP folder')
+    ap.add_argument('--out', help='terrain file to write, default derived/geo/terrain.sqlite')
+    ap.add_argument('--source', help="meta 'source' text, default the USGS 3DEP line")
     a = ap.parse_args()
+    global SRC, OUT, SOURCE
+    for flag, env in ((a.src, 'TERRAIN_SRC'), (a.out, 'TERRAIN_OUT'), (a.source, 'TERRAIN_SOURCE')):
+        if flag:
+            os.environ[env] = flag      # workers read the module again, so they see these too
+    SRC = Path(a.src) if a.src else SRC
+    OUT = Path(a.out) if a.out else OUT
+    SOURCE = a.source or SOURCE
     init()
     keys = set()
     for top, left in CELLS:
@@ -184,7 +197,7 @@ def main():
             db.execute('INSERT OR REPLACE INTO tile VALUES (?,?,?,?)', (z, x, y, png(h)))
         level = nxt
     db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('built', time.strftime('%Y-%m-%dT%H:%M:%S')))
-    db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('source', 'USGS 3DEP 1 arc-second DEM (library-data/geography/usgs/Elevation/1)'))
+    db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('source', SOURCE))
     db.commit()
     print(f'done: {done} supertiles, {ntiles:,} tiles in {time.time() - t0:.0f}s', flush=True)
 

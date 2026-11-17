@@ -24,7 +24,10 @@
     "uhf",
     "cb",
     "radio",
-    "000"
+    "000",
+    "warnings",
+    "fire danger",
+    "AusAlert"
   ],
   "choices": [
     {
@@ -142,6 +145,33 @@
       ]
     },
     {
+      "id": "warnings",
+      "label": "Understand warnings, fire-danger ratings and phone alerts",
+      "hint": "Dated explanations of different systems; get current warnings from the issuing authorities.",
+      "read": [
+        {
+          "doc": "nsw-warning-levels",
+          "label": "Warning levels: NSW explanation of the Australian Warning System",
+          "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+        },
+        {
+          "doc": "au-fire-danger-ratings",
+          "label": "Australian fire-danger ratings: NEMA explanation",
+          "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+        },
+        {
+          "doc": "au-ausalert",
+          "label": "AusAlert: NEMA national warning-system explanation",
+          "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+        },
+        {
+          "doc": "au-ausalert-operational",
+          "label": "AusAlert operational announcement: 10 November 2026",
+          "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
+        }
+      ]
+    },
+    {
       "id": "authority",
       "label": "Find your state or territory authority",
       "hint": "Read the source guidance and its regional limits.",
@@ -208,6 +238,16 @@
       "doc": "au-remote-travel",
       "label": "Preparing for remote travel: myGov source sections",
       "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
+    },
+    {
+      "doc": "nsw-warning-levels",
+      "label": "Warning levels: NSW explanation of the Australian Warning System",
+      "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+    },
+    {
+      "doc": "au-fire-danger-ratings",
+      "label": "Australian fire-danger ratings: NEMA explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
     }
   ],
   "learn": [
@@ -250,6 +290,26 @@
       "doc": "au-remote-travel",
       "label": "Preparing for remote travel: myGov source sections",
       "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
+    },
+    {
+      "doc": "nsw-warning-levels",
+      "label": "Warning levels: NSW explanation of the Australian Warning System",
+      "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+    },
+    {
+      "doc": "au-fire-danger-ratings",
+      "label": "Australian fire-danger ratings: NEMA explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "au-ausalert",
+      "label": "AusAlert: NEMA national warning-system explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "au-ausalert-operational",
+      "label": "AusAlert operational announcement: 10 November 2026",
+      "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
     }
   ],
   "related": [

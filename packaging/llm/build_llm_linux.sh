@@ -25,6 +25,17 @@ rm -f "$O"/*
 [ -d "$L/.git" ] || git -c advice.detachedHead=false clone -q --depth 1 --branch "$TAG" https://github.com/ggml-org/llama.cpp.git "$L"
 [ "$(git -C "$L" rev-parse HEAD)" = "$COMMIT" ] || { echo "llama.cpp is not at $TAG ($COMMIT)" >&2; exit 1; }
 
+# llama.cpp emits the armv9.2 CPU variants unconditionally on Linux ARM, and their
+# -march flags carry +sme, which gcc 13 (Ubuntu 24.04's arm64 compiler) rejects as a
+# feature modifier. Drop those two variants from the checkout before configure; the
+# armv8.6 variants build and the runtime backend loader picks the best one present.
+# gcc 14 knows +sme, so nothing is dropped there.
+GCC_MAJOR="$(gcc -dumpfullversion -dumpversion | cut -d. -f1)"
+if [ "$(uname -m)" = aarch64 ] && [ "$GCC_MAJOR" -lt 14 ]; then
+  sed -i '/ggml_add_cpu_backend_variant(armv9\.2_[12]/d' "$L/ggml/src/CMakeLists.txt"
+  echo "gcc $GCC_MAJOR: dropped the armv9.2 (SME) CPU variants from llama.cpp"
+fi
+
 MAP="-ffile-prefix-map=$L=llama.cpp -ffile-prefix-map=$HERE=lastbook-llm -ffile-prefix-map=$B=build"   # no folder of this machine inside
 cmake -S "$L" -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
   -DBUILD_SHARED_LIBS=ON -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON -DGGML_NATIVE=OFF -DGGML_OPENMP=ON \
@@ -35,13 +46,6 @@ cmake -S "$L" -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc
   -DCMAKE_C_FLAGS="$MAP" -DCMAKE_CXX_FLAGS="$MAP" > "$W/cmake-linux.log"
 # Only the libraries: the default target also builds llama.cpp's own app, which downloads. One library per CPU variant.
 CPUS="$(cmake --build "$B" --target help | grep -oE '^ggml-cpu-[a-z0-9_.]+' | sort -u | tr '\n' ' ')"
-GCC_MAJOR="$(gcc -dumpfullversion -dumpversion | cut -d. -f1)"
-if [ "$(uname -m)" = aarch64 ] && [ "$GCC_MAJOR" -lt 14 ]; then
-  # gcc 13 rejects the +sme march modifier (it is a GCC 14 feature), and every armv9.2
-  # variant's flags carry it; the armv8.6 variants build and cover the machine at runtime.
-  CPUS="$(echo "$CPUS" | tr ' ' '\n' | grep -v '^ggml-cpu-armv9\.2' | tr '\n' ' ')"
-  echo "gcc $GCC_MAJOR: building without the armv9.2 (SME) CPU variants"
-fi
 cmake --build "$B" -j "$(nproc)" --target llama ggml-vulkan $CPUS > "$W/build-linux.log"
 
 # fit_unused_win.cpp: GNU ld, like the Windows linker, wants every reference in fit.cpp resolved.

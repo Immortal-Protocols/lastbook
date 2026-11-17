@@ -109,5 +109,33 @@
    "No general home-repair guide (drywall, outlets, doors and windows); plumbing comes from a Navy manual.",
    "No modern welding safety standard (ANSI Z49.1 / OSHA); the Steelworker manual is historical."
   ]
+ },
+ "au-household": {
+  "missing": [
+   "This Australian supplement is a starting collection, not complete survival coverage. It carries dated source snapshots, not live warnings, road closures or open evacuation centres.",
+   "Detailed local manuals for Victoria, Western Australia, Tasmania, South Australia, ACT and NT still need redistribution and content review. The directory covers their official warning authorities.",
+   "External-territory emergency arrangements and maps need separate verification.",
+   "State-wide maps, Australian town/address search, elevation, and verified facility status are not supplied by this text supplement.",
+   "Licensed current generator/electrical and gas safety, accessible household planning and translated sources need review."
+  ],
+  "disagree": [
+   "Do not silently combine chemical-disinfection recipes from different sources. Only the drinking-water section of Food and drinking water is retained; food guidance comes from the separate Queensland food-safety page."
+  ]
+ },
+ "au-rural": {
+  "missing": [
+   "This Australian supplement is a starting collection, not complete survival coverage. It carries dated source snapshots, not live warnings, road closures or open evacuation centres.",
+   "Detailed local manuals for Victoria, Western Australia, Tasmania, South Australia, ACT and NT still need redistribution and content review. The directory covers their official warning authorities.",
+   "External-territory emergency arrangements and maps need separate verification.",
+   "State-wide maps, Australian town/address search, elevation, and verified facility status are not supplied by this text supplement.",
+   "Remote driving, trip water/fuel planning, PLB operation, pastoral fire planning outside NSW and First Nations community-specific planning need licensed local content and review."
+  ]
+ },
+ "au-health": {
+  "missing": [
+   "Current Australian snakebite, spiderbite, marine-stinger, adult CPR and anaphylaxis offline materials need permission and clinical review. ANZCOR publicly restricts redistribution; its full guidelines are not bundled.",
+   "Queensland’s older general bites-and-stings page was reviewed and not selected; do not use a generic overseas snakebite guide as an Australian substitute.",
+   "The two SCHN CPR videos are existing optional library resources, not new media included in this text supplement."
+  ]
  }
 }

@@ -1,0 +1,78 @@
+{
+  "checked": "2026-11-17",
+  "scope": "Six states, ACT and Northern Territory. External territories need separate arrangements; do not infer that this directory covers them.",
+  "jurisdictions": [
+    {
+      "id": "AU-ACT",
+      "title": "Australian Capital Territory",
+      "warning_authority": "ACT Emergency Services Agency",
+      "warning_url": "https://www.esa.act.gov.au/be-emergency-ready/warnings-alerts",
+      "contact_source": "https://www.esa.act.gov.au/contact-us",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-NSW",
+      "title": "New South Wales",
+      "warning_authority": "NSW SES and NSW Rural Fire Service",
+      "warning_url": "https://www.ses.nsw.gov.au/",
+      "contact_source": "https://www.nsw.gov.au/emergency/floods/prepare",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-NT",
+      "title": "Northern Territory",
+      "warning_authority": "SecureNT",
+      "warning_url": "https://securent.nt.gov.au/",
+      "contact_source": "https://securent.nt.gov.au/emergency-contacts",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-QLD",
+      "title": "Queensland",
+      "warning_authority": "Queensland Government and local council disaster dashboards",
+      "warning_url": "https://www.qld.gov.au/alerts",
+      "contact_source": "https://www.qld.gov.au/emergency/dealing-disasters/prepare-for-disasters/prep-emergency-plan",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-SA",
+      "title": "South Australia",
+      "warning_authority": "Alert SA",
+      "warning_url": "https://alert.sa.gov.au/",
+      "contact_source": "https://www.sa.gov.au/topics/emergencies-and-safety/emergency-phone-numbers",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-TAS",
+      "title": "Tasmania",
+      "warning_authority": "TasALERT",
+      "warning_url": "https://alert.tas.gov.au/",
+      "contact_source": "https://alert.tas.gov.au/emergency-contacts",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-VIC",
+      "title": "Victoria",
+      "warning_authority": "VicEmergency",
+      "warning_url": "https://www.emergency.vic.gov.au/",
+      "contact_source": "https://www.ses.vic.gov.au/",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    },
+    {
+      "id": "AU-WA",
+      "title": "Western Australia",
+      "warning_authority": "Emergency WA",
+      "warning_url": "https://www.emergency.wa.gov.au/",
+      "contact_source": "https://www.emergency.wa.gov.au/",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500"
+    }
+  ]
+}

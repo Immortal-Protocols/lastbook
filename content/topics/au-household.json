@@ -1,0 +1,209 @@
+{
+  "mode": "now",
+  "requires_docs": [
+    "au-reference",
+    "au-jurisdictions"
+  ],
+  "route": [],
+  "id": "au-household",
+  "title": "Prepare an Australian household",
+  "short": "Australian plans, hazards, food and water",
+  "intro": "Official Australian readings for household preparation, with regional contacts and source dates. This offline library does not receive warnings.",
+  "keywords": [
+    "australia",
+    "australian",
+    "household",
+    "000",
+    "triple zero",
+    "bushfire",
+    "wildfire",
+    "cyclone",
+    "heatwave",
+    "heat wave",
+    "flood",
+    "torch",
+    "emergency kit"
+  ],
+  "choices": [
+    {
+      "id": "contacts",
+      "label": "Find Australian emergency information",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        },
+        {
+          "doc": "au-jurisdictions",
+          "label": "Australian state and territory emergency information",
+          "note": "Australian source directory."
+        }
+      ]
+    },
+    {
+      "id": "plan",
+      "label": "Make a household plan and kit",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-emergency-plan",
+          "label": "Prepare your emergency plan",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-emergency-kit",
+          "label": "Emergency kit: essential items, all times",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "fire-flood",
+      "label": "Prepare for bushfire or flood",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-bushfire",
+          "label": "Preparing for bushfires",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-flood",
+          "label": "Preparing for floods",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-evacuation",
+          "label": "If you have to evacuate",
+          "note": "NSW guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "cyclone-heat",
+      "label": "Prepare for cyclone or heatwave",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-cyclone",
+          "label": "Cyclones and severe storms",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-heatwave",
+          "label": "Preparing for heatwaves",
+          "note": "NSW guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "food-water",
+      "label": "Food or drinking water may be unsafe",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-food-safety",
+          "label": "Food safety after an emergency or natural disaster",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-water",
+          "label": "Food and drinking water",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "poisons",
+      "label": "Someone may have been poisoned",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-poisons",
+          "label": "Poisons",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "ACMA says mobile emergency calls require coverage from an available mobile network.",
+      "doc": "au-emergency-calls"
+    },
+    {
+      "text": "Queensland warns that boiling does not make chemically contaminated water safe.",
+      "doc": "qld-water"
+    },
+    {
+      "text": "NSW warns against driving, walking or riding through fire or floodwaters.",
+      "doc": "nsw-evacuation"
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "qld-emergency-plan",
+      "label": "Prepare your emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-kit",
+      "label": "Emergency kit: essential items, all times",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-prepare-home",
+      "label": "Prepare your home",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-pets",
+      "label": "Pet emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "au-reference",
+      "label": "Australia: household, rural and remote emergency reference",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-jurisdictions",
+      "label": "Australian state and territory emergency information",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-cyclone",
+      "label": "Cyclones and severe storms",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-heatwave",
+      "label": "Preparing for heatwaves",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-food-safety",
+      "label": "Food safety after an emergency or natural disaster",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-water",
+      "label": "Food and drinking water",
+      "note": "Queensland guidance; local services and rules apply."
+    }
+  ],
+  "related": [
+    "au-rural",
+    "au-health",
+    "disaster"
+  ]
+}

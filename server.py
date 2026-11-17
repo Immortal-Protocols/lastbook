@@ -240,6 +240,10 @@ def topics_resolved():
         return step.get('goto') or step['read'] or not step['had']
 
     for t in topics():
+        # Optional regional guides are useful only when their source supplement is installed.
+        # Check before keeping source-free introductions and warnings in smaller libraries.
+        if any(doc not in catalog()['by_id'] for doc in t.get('requires_docs', [])):
+            continue
         t = dict(t)
         t['gaps'] = gaps.get(t['id'], {})
         for k in ('prepare', 'learn'):

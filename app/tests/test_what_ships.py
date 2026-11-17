@@ -6,6 +6,7 @@ and no household area or working name in the web/ and content/ an app build pack
 
 Uses the made-up library in derived/app-build/testdata (no model). Never packaged."""
 import json, os, re, subprocess, sys, tempfile, unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -97,6 +98,16 @@ class Guides(unittest.TestCase):
         self.assertTrue(server.item_here({'zim': 'zim/m.zim/A'}, ['m.zim']))
         self.assertFalse(server.item_here({'zim': 'zim/w.zim/A'}, ['m.zim']))
         self.assertFalse(server.item_here({'doc': 'not-here'}, []))
+
+    def test_regional_guide_requires_its_sources_before_showing_warnings(self):
+        topic = {'id': 'regional', 'requires_docs': ['source-a', 'source-b'],
+                 'intro': 'A regional introduction', 'limits': [{'text': 'A regional limit'}]}
+        with patch.object(server, 'topics', return_value=[topic]):
+            for ids in ([], ['source-a']):
+                with patch.object(server, 'catalog', return_value={'by_id': dict.fromkeys(ids)}):
+                    self.assertEqual(server.topics_resolved(), [])
+            with patch.object(server, 'catalog', return_value={'by_id': dict.fromkeys(['source-a', 'source-b'])}):
+                self.assertEqual(server.topics_resolved()[0]['id'], 'regional')
 
     def test_not_a_pack_offers_everything(self):
         self.assertIsNone(server.pack_info())

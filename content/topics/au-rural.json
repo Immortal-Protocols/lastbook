@@ -1,0 +1,212 @@
+{
+  "mode": "now",
+  "requires_docs": [
+    "au-reference",
+    "au-jurisdictions"
+  ],
+  "route": [],
+  "id": "au-rural",
+  "title": "Prepare for Australian rural isolation",
+  "short": "Rural property, livestock and communications",
+  "intro": "Australian sources for isolated properties, animals and communications. NSW farm rules and service contacts apply to NSW; remote-travel coverage is still incomplete.",
+  "keywords": [
+    "australia",
+    "australian",
+    "rural",
+    "remote",
+    "isolation",
+    "outback",
+    "farm",
+    "livestock",
+    "bushfire",
+    "wildfire",
+    "flood",
+    "uhf",
+    "cb",
+    "radio",
+    "000"
+  ],
+  "choices": [
+    {
+      "id": "isolation",
+      "label": "A farm could be isolated by flood",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-rural-flood",
+          "label": "Prepare your farm and property for flood",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-emergency-plan",
+          "label": "Prepare your emergency plan",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-emergency-kit",
+          "label": "Emergency kit: essential items, all times",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "fire",
+      "label": "Prepare a rural property for bushfire",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-rural-bushfire",
+          "label": "Prepare your rural property for bushfire",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-bushfire",
+          "label": "Preparing for bushfires",
+          "note": "NSW guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "animals",
+      "label": "Plan for livestock and pets",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-animals",
+          "label": "How to prepare pets and livestock for an emergency",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-pets",
+          "label": "Pet emergency plan",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "communications",
+      "label": "Understand Australian phone and CB limits",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        },
+        {
+          "doc": "au-cb-radio",
+          "label": "Citizen band radio stations class licence",
+          "note": "Australian source directory."
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "label": "Read drinking-water safety guidance",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-water",
+          "label": "Food and drinking water",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "authority",
+      "label": "Find your state or territory authority",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-jurisdictions",
+          "label": "Australian state and territory emergency information",
+          "note": "Australian source directory."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "NSW warns against driving, riding or walking through active fire zones.",
+      "doc": "nsw-rural-bushfire"
+    },
+    {
+      "text": "ACMA limits CB operation to the class-licence rules and designated frequencies.",
+      "doc": "au-cb-radio"
+    },
+    {
+      "text": "ACMA says mobile emergency calls require coverage from an available mobile network.",
+      "doc": "au-emergency-calls"
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "nsw-rural-bushfire",
+      "label": "Prepare your rural property for bushfire",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-rural-flood",
+      "label": "Prepare your farm and property for flood",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-animals",
+      "label": "How to prepare pets and livestock for an emergency",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-plan",
+      "label": "Prepare your emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-kit",
+      "label": "Emergency kit: essential items, all times",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "au-cb-radio",
+      "label": "Citizen band radio stations class licence",
+      "note": "Australian source directory."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "au-reference",
+      "label": "Australia: household, rural and remote emergency reference",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-jurisdictions",
+      "label": "Australian state and territory emergency information",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-emergency-calls",
+      "label": "Emergency calls",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-cb-radio",
+      "label": "Citizen band radio stations class licence",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-water",
+      "label": "Food and drinking water",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-evacuation",
+      "label": "If you have to evacuate",
+      "note": "NSW guidance; local services and rules apply."
+    }
+  ],
+  "related": [
+    "au-household",
+    "au-health",
+    "comms",
+    "water"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "mode": "now",
+  "requires_docs": [
+    "au-reference",
+    "au-jurisdictions"
+  ],
+  "route": [],
+  "id": "au-health",
+  "title": "Find Australian emergency health sources",
+  "short": "Australian calls, poisons and child CPR videos",
+  "intro": "Australian emergency-call guidance, Queensland poisons advice, and Sydney Children’s Hospitals Network videos when present. This is not a complete Australian first-aid manual.",
+  "keywords": [
+    "australia",
+    "australian",
+    "000",
+    "triple zero",
+    "poisons",
+    "baby",
+    "child",
+    "cpr"
+  ],
+  "choices": [
+    {
+      "id": "call",
+      "label": "Understand Australian emergency calls",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        }
+      ]
+    },
+    {
+      "id": "poisons",
+      "label": "Read Queensland poisoning advice",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-poisons",
+          "label": "Poisons",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "child",
+      "label": "Find child or baby CPR demonstrations",
+      "hint": "Sydney Children’s Hospitals Network, 2025; videos appear only when installed.",
+      "read": [
+        {
+          "doc": "video-5zz9o_wy-Y0",
+          "label": "CPR for a child aged one year or older",
+          "note": "Sydney Children’s Hospitals Network demonstration, including calling Triple Zero."
+        },
+        {
+          "doc": "video-bsP45AXQGC4",
+          "label": "CPR for a baby under one year",
+          "note": "Sydney Children’s Hospitals Network demonstration, including calling Triple Zero."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "Queensland says not to wait for symptoms when poisoning is suspected.",
+      "doc": "qld-poisons"
+    },
+    {
+      "text": "ACMA says 000 and 112 cannot be contacted by text message.",
+      "doc": "au-emergency-calls"
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "au-emergency-calls",
+      "label": "Emergency calls",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-emergency-plan",
+      "label": "Prepare your emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-kit",
+      "label": "Emergency kit: essential items, all times",
+      "note": "Queensland guidance; local services and rules apply."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "au-reference",
+      "label": "Australia: household, rural and remote emergency reference",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-jurisdictions",
+      "label": "Australian state and territory emergency information",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-emergency-calls",
+      "label": "Emergency calls",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-poisons",
+      "label": "Poisons",
+      "note": "Queensland guidance; local services and rules apply."
+    }
+  ],
+  "related": [
+    "au-household",
+    "au-rural",
+    "hurt"
+  ]
+}

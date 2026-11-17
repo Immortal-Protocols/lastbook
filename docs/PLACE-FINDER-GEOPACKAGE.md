@@ -1,0 +1,57 @@
+# A place finder from a map's existing GeoPackage
+
+The free Geofabrik GeoPackages used by the proposed Australian region maps already
+contain named POINT places. `tools/build_places_gpkg.py` builds the `place` and
+`place_fts` schema that `server.places()` queries, using only Python and SQLite FTS5.
+No extra download, spatial extension or runtime connection is needed.
+
+This complements the PBF-based builder proposed in #63. The GPKG input is useful
+when a region builder already has that extract cached. It is less rich: it has the
+primary name and place class, not the PBF's alternative-language tags. It only
+indexes point settlements; it does not manufacture polygon centroids, street
+addresses, Australian postcodes, help points or live facility information.
+
+```sh
+python3 -B tools/build_places_gpkg.py /path/to/victoria.gpkg \
+  --out /path/to/new/places.sqlite --region 'Australia' \
+  --bbox=144.47,-38.32,145.48,-37.31
+python3 -B -m unittest tools.test_build_places_gpkg
+```
+
+The box is **west,south,east,north**, in longitude/latitude degrees. Only WGS84
+longitude/latitude point layers are accepted. The input files are read-only. An
+existing output is refused. Multiple extracts can be passed in one build, and
+overlapping copies of the same named/classed point are deduplicated.
+
+The schema/rank order agrees with the existing place finder and #63: city before
+town, village, hamlet/locality/island, then suburbs and other small places. Every
+row attributes OpenStreetMap. Geofabrik's `national_capital` class is ranked like
+a city, so Canberra is not accidentally dropped. The detail label is also indexed;
+using a country label avoids matching every row when searching the capital name.
+Builds and distributions need the usual
+OpenStreetMap contributor attribution and ODbL 1.0 notice; the source region map
+already carries them. Do not put a private home/user location in `--region`.
+
+This tool does not change the region-map release file contract, the Setup manifest
+or its download allowlist. A maintainer must decide how to include `places.sqlite`
+in regional packs and keep it with the corresponding map during switches/repair.
+Do not overwrite the place finder in a personal installed library to try this out.
+Use a separate review library and record the added file in its local map-set
+manifest. Match the place-index box to the map box: a result is not proof that
+detailed streets exist outside the installed map's coverage.
+
+## Australian review data
+
+Built from the same dated Geofabrik source snapshots used for the Australian
+capital-map review, clipped to those existing region boxes:
+
+| Map box | Named point places |
+| --- | ---: |
+| Melbourne area | 533 |
+| Canberra area | 419 |
+| Sydney area | 1,013 |
+
+These are named point places, not help facilities or address counts. The free
+extract's primary names can themselves use any script; this does not recover
+alternate names omitted by Geofabrik. Source manifests and test results accompany
+the review artifacts. Full state and nationwide coverage remain separate work.

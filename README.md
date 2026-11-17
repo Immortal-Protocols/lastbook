@@ -124,14 +124,17 @@ test code, a network call outside setup's downloader, a web address in our own p
 **macOS (Apple Silicon, needs [uv](https://github.com/astral-sh/uv)):**
 
 ```bash
-bash packaging/llm/build_llm_macos.sh    # optional: the local AI runner, llama.cpp at a pinned tag, Metal
+mkdir -p derived/release
+[ -f derived/release/manifest-v1.json ] || curl -fL https://downloads.lastbook.org/manifest-v1.json -o derived/release/manifest-v1.json
+bash packaging/llm/build_llm_macos.sh    # the local AI runner, llama.cpp at a pinned tag, Metal
 bash packaging/build_app_macos.sh        # Lastbook.app
 ```
 
 The build uses CPython 3.11.18 exactly (earlier 3.11 releases lack the block on the compromised eMudhra CA keys). It makes
 an ad-hoc signed app. Release copies are then signed with the project's Developer ID in a separate release step; its keys
-and settings are not in this repository. The build reads the release manifest from a release folder under
-`derived/release/`, which is not in this repository either; see `packaging/release_manifest.py`.
+and settings are not in this repository. Use uv 0.13.8 or newer if an older uv cannot find Python 3.11.18. The commands
+above use the published manifest when a local release manifest is absent; the build validates it before bundling it.
+See `packaging/release_manifest.py` for the manifest inputs.
 
 **Windows (64-bit, in Git Bash):**
 

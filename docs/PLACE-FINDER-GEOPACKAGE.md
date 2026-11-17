@@ -54,4 +54,26 @@ capital-map review, clipped to those existing region boxes:
 These are named point places, not help facilities or address counts. The free
 extract's primary names can themselves use any script; this does not recover
 alternate names omitted by Geofabrik. Source manifests and test results accompany
-the review artifacts. Full state and nationwide coverage remain separate work.
+the review artifacts.
+
+The same builder has also produced separate indexes matching all eight broader
+state/territory extract areas in #38, from the dated 15 November 2026 sources:
+
+| Map box | Named point places |
+| --- | ---: |
+| ACT extract | 187 |
+| NSW extract (includes ACT and Jervis Bay) | 12,659 |
+| Northern Territory extract | 1,019 |
+| Queensland extract | 6,136 |
+| South Australia extract | 1,652 |
+| Tasmania extract | 1,276 |
+| Victoria extract | 3,054 |
+| Western Australia extract | 3,373 |
+
+These 29,356 rows include overlap between NSW and ACT; they are not a deduplicated
+national place count. All eight actual SQLite/FTS integrity checks, bounds checks
+and capital/selected regional-town queries passed. New whole-extract native UI
+checks remain pending; the native finder check above was for East Melbourne.
+[Review sidecars and per-source provenance](https://github.com/pilkster/lastbook/releases/tag/australia-state-maps-review-2026-11-17)
+remain separate from the existing four-file map ZIP contract. External-territory
+completeness and address/postcode search are not established by these builds.

@@ -109,6 +109,8 @@ issue before any code.
 [REGIONS-LK.md](REGIONS-LK.md) does the same for Sri Lanka as one island-wide region.
 [REGIONS-TH.md](REGIONS-TH.md) does the same for Thailand's provinces and Bangkok.
 [REGIONS-DE.md](REGIONS-DE.md) does the same for Germany's 16 states.
+[REGIONS-PY.md](REGIONS-PY.md) does the same for Paraguay as one country-wide region.
+[REGIONS-IE.md](REGIONS-IE.md) does the same for the island of Ireland, including Northern Ireland, as one region.
 
 ## Checking a map change
 

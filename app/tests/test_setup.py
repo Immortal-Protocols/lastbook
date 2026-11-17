@@ -487,6 +487,67 @@ class Unpacking(Base):
         self.assertEqual((lib / 'derived' / 'geo' / 'map.sqlite').stat().st_size, MiB)
 
 
+class SplitPacks(Base):
+    def split_manifest(self):
+        catalog = self.manifest().current
+        pack = catalog['packs'][0]
+        parts = []
+        # Keep the last piece tiny so the ZIP's end-of-directory record crosses files as well.
+        boundaries = (0, 1_000_000, 3_000_000, len(self.zip) - 8, len(self.zip))
+        for n, (start, end) in enumerate(zip(boundaries, boundaries[1:])):
+            name = f'small-test-{n}.bin'
+            data = self.files.data[name] = self.zip[start:end]
+            parts.append({'name': name, 'size': len(data), 'sha256': sha(data), 'url': f'{self.base}/{name}'})
+        pack['parts'] = parts
+        bundled = manifest.validate(catalog, ALLOWED, bundled=True)
+        return manifest.Manifest(bundled=bundled, remote=None, allowed=ALLOWED, context=self.ctx), parts
+
+    def test_only_bundled_catalog_can_supply_parts(self):
+        catalog, parts = self.split_manifest()
+        fetched = manifest.validate(catalog.current, ALLOWED)
+        self.assertNotIn('parts', fetched['packs'][0])
+        self.assertNotIn('parts', catalog.public()['packs'][0])
+        invalid = {**catalog.current, 'packs': [{**catalog.current['packs'][0], 'parts': parts[::-1][1:]}]}
+        self.assertIsNone(manifest.validate(invalid, ALLOWED, bundled=True))
+
+    def test_resumes_split_pack_after_a_missing_part(self):
+        catalog, parts = self.split_manifest()
+        original = 'Lastbook-Small.zip'
+        del self.files.data[original]
+        absent = parts[-1]['name']
+        tail = self.files.data.pop(absent)
+        s = self.setup(manifest=catalog)
+        s.start('small')
+        self.assertEqual(self.wait(s)['error']['code'], 'network')
+        work = self.parent / 'LastbookData.setup' / 'downloads' / 'pack-parts'
+        first, second = (work / part['name'] for part in parts[:2])
+        self.assertEqual(first.read_bytes(), self.zip[:1_000_000])
+        good = second.read_bytes()
+        second.write_bytes(bytes([good[0] ^ 1]) + good[1:])
+        self.files.data[absent] = tail
+        del self.files.data[first.name]  # the verified saved part must be reusable even if its URL is unavailable
+
+        restarted = self.setup(manifest=catalog)
+        restarted.retry()
+        job = self.wait(restarted)
+        self.assertEqual(job['state'], 'done', job)
+        library, note = api.startup(self.settings)
+        self.assertFalse(note.get('error'))
+        with zipfile.ZipFile(io.BytesIO(self.zip)) as z:
+            expected = z.read('LastbookData/library-data/big.bin')
+        self.assertEqual((library / 'library-data' / 'big.bin').read_bytes(), expected)
+
+    def test_original_zip_import_still_works_with_a_split_pack(self):
+        catalog, _ = self.split_manifest()
+        self.files.data.clear()
+        source = self.tmp / 'Lastbook-Small.zip'
+        s = self.setup(manifest=catalog)
+        s.use(str(source))
+        job = self.wait(s)
+        self.assertEqual(job['state'], 'done', job)
+        self.assertEqual(source.read_bytes(), self.zip)
+
+
 class Jobs(Base):
     def test_first_run_end_to_end(self):
         s = self.setup()

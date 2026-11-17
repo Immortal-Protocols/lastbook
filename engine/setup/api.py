@@ -9,9 +9,11 @@ Two ways in, one module:
 Only requests from this computer get an answer (the bridge's, or loopback): a phone the guide is shared with gets 403.
 """
 import hashlib
+import io
 import json
 import os
 import shutil
+import stat
 import sys
 import threading
 import time
@@ -167,6 +169,7 @@ class Setup:
         work = _work_for(target)
         ids = lambda key: (plan.get(key) or {}).get('id')
         pack = self.manifest.pack(ids('pack')) if plan.get('pack') else None
+        pack = _pack_download(pack, work, {}, keep_original=not (plan.get('pack') or {}).get('split_archive'))
         mp = self.manifest.map(ids('map')) if plan.get('map') else None
         model = self.manifest.model(ids('model')) if plan.get('model') else None
         addresses = self.manifest.address_index(ids('addresses')) if plan.get('addresses') else None
@@ -212,8 +215,13 @@ class Setup:
     @staticmethod
     def _on_disk(plan, it):
         """Bytes of this item already downloaded, from the files themselves."""
+        folder = Path(plan['work']) / 'downloads'
+        split = False
         if it['kind'] == 'pack' and plan.get('pack'):
             plan_files = plan['pack']['files']
+            split = bool(plan['pack'].get('split_archive'))
+            if split:
+                folder = _pack_parts_folder(Path(plan['work']))
         elif it['kind'] == 'map' and plan.get('map'):
             plan_files = plan['map']['files']
         elif it['kind'] == 'addresses' and plan.get('addresses'):
@@ -222,11 +230,13 @@ class Setup:
             plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
         n = 0
         for f in plan_files:
-            for p in (Path(plan['work']) / 'downloads' / f['name'], Path(plan['work']) / 'downloads' / (f['name'] + '.part')):
+            sizes = [0]
+            for p in (folder / f['name'], folder / (f['name'] + '.part')):
                 try:
-                    n += p.stat().st_size
+                    sizes.append(p.stat().st_size)
                 except OSError:
                     pass
+            n += min(f['size'], max(sizes)) if split else sum(sizes)
         return n
 
     def _save_job(self):
@@ -236,6 +246,11 @@ class Setup:
             return
         f = _job_file(self.settings_dir)
         f.parent.mkdir(parents=True, exist_ok=True)
+        plan = job.get('plan') or {}
+        pack = plan.get('pack') or {}
+        if pack.get('split_archive'):
+            # An interrupted job gets its file pins from the bundled manifest again.
+            job = {**job, 'plan': {**plan, 'pack': {'id': pack['id'], 'split_archive': pack['split_archive']}}}
         install._write_json(f, job)
 
     # --------------------------------------------------------------------------------------------------- the state --
@@ -420,7 +435,7 @@ class Setup:
         with self.lock:
             if not self.job:
                 return None
-            return {k: v for k, v in json.loads(json.dumps(self.job)).items() if k != 'plan'}
+            return json.loads(json.dumps({k: v for k, v in self.job.items() if k != 'plan'}))
 
     # -------------------------------------------------------------------------------------------------- the actions --
     def _parent_for(self, folder):
@@ -495,9 +510,16 @@ class Setup:
             for f in self.found():
                 if f.get('size_ok') and f['name'] not in srcs and f['kind'] in ('pack', 'model', 'map', 'addresses'):
                     srcs[f['name']] = f['path']
-            names = ([f['name'] for f in pack['files']] if pack else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else [])
+            pack = _pack_download(pack, work, srcs)
+            split_files = pack['files'] if pack and pack.get('split_archive') else []
+            names = ([f['name'] for f in pack['files']] if pack and not split_files else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else [])
             have = set(srcs)
-            need = install.need_bytes(pack, model, have) + _map_need(mp, have) + _map_need(addresses, have)
+            if split_files:
+                have_parts = self._on_disk({'pack': pack, 'work': work}, {'kind': 'pack'})
+                need = install.need_bytes(None, model, have) + pack['download_bytes'] + pack['installed_bytes'] - have_parts
+            else:
+                need = install.need_bytes(pack, model, have)
+            need += _map_need(mp, have) + _map_need(addresses, have)
             preserve_map = bool(pack and cur.get('pack') == pack['id'] and target == self.current and not mp and cur.get('map') not in (None, 'base'))
             if preserve_map:
                 need += cur['map_bytes']
@@ -555,6 +577,7 @@ class Setup:
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model')}
+            pack = _pack_download(pack, work, srcs)
             items = [{'id': pack['id'], 'kind': 'pack', 'title': pack['title'], 'state': 'waiting', 'bytes_done': 0,
                       'bytes_total': pack['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None}]
             if model:
@@ -839,6 +862,8 @@ class Setup:
         it = None
         try:
             work = Path(plan['work'])
+            if (plan.get('pack') or {}).get('split_archive'):
+                _check_pack_paths(work, work / 'downloads', _pack_parts_folder(work), work / 'unpack')
             (work / 'downloads').mkdir(parents=True, exist_ok=True)
             for it in job['items']:
                 if it['state'] == 'done':
@@ -877,10 +902,11 @@ class Setup:
             traceback.print_exc()
             self._fail(it, 'activate', f'Setup stopped on an internal error ({type(e).__name__}).')
 
-    def _get_file(self, it, f, plan, work, control, offset):
+    def _get_file(self, it, f, plan, work, control, offset, *, part=False):
         """The file, checked against its SHA-256: one already on this computer, or a download. Returns its path."""
         tracker = _Item(it)
-        name, src = f['name'], plan['sources'].get(f['name'])
+        name = f['name']
+        src = None if part else plan['sources'].get(name)
         if src and os.path.isfile(src) and name in plan.setdefault('verified', []):
             return src, False
         explicit_use = bool(plan.get('explicit'))
@@ -900,7 +926,17 @@ class Setup:
                 raise download.Failed('found_mismatch', f'The {name} in {folder} doesn’t match the published file, so it was not used. '
                                                         'It was left as it is. Download it instead?', file=src)
             print(f'setup: {src} does not match; downloading instead', flush=True)
-        dest = work / 'downloads' / name
+        dest = (_pack_parts_folder(work) if part else work / 'downloads') / name
+        if part:
+            _check_pack_paths(*(dest.with_name(name + suffix) for suffix in ('', '.part', '.part.json', '.part.json.tmp')))
+            if dest.is_file():
+                if it['state'] != 'verifying':
+                    self._set(it, 'verifying')
+                if dest.stat().st_size == f['size'] and _sha256(
+                    dest, control, lambda d, t: tracker.progress(offset + d, it['bytes_total'], 'verifying')
+                ) == f['sha256']:
+                    return dest, True
+                dest.unlink()
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
             try:
                 still = f['size'] - os.path.getsize(str(dest) + '.part')
@@ -911,7 +947,8 @@ class Setup:
                 raise download.Failed('no_space', f'Downloading {name} needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.',
                                       need_bytes=still, free_bytes=free)
         while True:
-            self._set(it, 'downloading')
+            if not part or it['state'] != 'downloading':
+                self._set(it, 'downloading')
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
                                   lambda done, total, phase: tracker.progress(offset + done, it['bytes_total'], phase),
                                   allowed=self.allowed, context=self.context)
@@ -941,19 +978,23 @@ class Setup:
                 it['bytes_total'], it['bytes_done'] = pack['download_bytes'], 0
         staged = work / 'unpack'
         got, offset = [], 0
+        split = bool(pack.get('split_archive'))
+        if split:
+            with self.lock:
+                it['bytes_total'] = pack['download_bytes']
+                it['bytes_done'] = self._on_disk(plan, it)
         for f in pack['files']:
-            path, ours = self._get_file(it, f, plan, work, control, offset)
+            path, ours = self._get_file(it, f, plan, work, control, offset, part=split)
             got.append((path, ours))
             offset += f['size']
-        tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=pack['installed_bytes'])
-        total = sum(install.check_zip(path, pack['installed_bytes'])[1] for path, _ in got)   # every member checked before any is written
-        still = max(total - _tree_size(staged), 0)
-        free, _ = hardware.disk_of(work)
-        if free < still + 512 * 2 ** 20:
-            raise download.Failed('no_space', f'Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.')
-        for path, _ in got:
-            lib = install.unpack(path, staged, pack['installed_bytes'], control, lambda d, t: tracker.progress(d, t, 'unpacking'))
+        paths = [path for path, _ in got]
+        _prepare_pack_stage(staged, pack)
+        if split:
+            with io.BufferedReader(install.SplitZip(paths, (f['size'] for f in pack['files']))) as archive:
+                lib = self._unpack_pack(it, staged, pack['installed_bytes'], control, [archive])
+        else:
+            lib = self._unpack_pack(it, staged, pack['installed_bytes'], control, paths)
         if pack.get('revision'):
             metadata = json.loads((lib / 'pack.json').read_text(encoding='utf-8'))
             if metadata.get('content_revision') != pack['revision']:
@@ -966,6 +1007,17 @@ class Setup:
         for path, ours in got:
             if ours:
                 os.unlink(path)
+
+    def _unpack_pack(self, it, staged, installed_bytes, control, archives):
+        tracker = _Item(it)
+        total = sum(install.check_zip(z, installed_bytes)[1] for z in archives)    # all members checked before any is written
+        still = max(total - _tree_size(staged), 0)
+        free, _ = hardware.disk_of(staged.parent)
+        if free < still + 512 * 2 ** 20:
+            raise download.Failed('no_space', f'Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.')
+        for z in archives:
+            lib = install.unpack(z, staged, installed_bytes, control, lambda d, t: tracker.progress(d, t, 'unpacking'))
+        return lib
 
     def _do_map(self, it, plan, work, control):
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
@@ -1082,6 +1134,58 @@ def path_too_deep(target, windows=None):
     """On Windows the library reads its files by ordinary paths, so <target>\\<longest file> must fit in WINDOWS_MAX_PATH."""
     windows = os.name == 'nt' if windows is None else windows
     return windows and len(str(target)) + 1 + LONGEST_INSIDE > WINDOWS_MAX_PATH
+
+
+def _pack_parts_folder(work):
+    return work / 'downloads' / 'pack-parts'
+
+
+def _pack_download(pack, work, sources, *, keep_original=False):
+    if not pack or not pack.get('parts'):
+        return pack
+    original = pack['files'][0]
+    name = original['name']
+    plan = {k: v for k, v in pack.items() if k != 'parts'}
+    downloads = work / 'downloads'
+    if keep_original or name in sources or (downloads / name).is_file() or (downloads / (name + '.part')).is_file():
+        return plan
+    return {**plan, 'files': pack['parts'], 'split_archive': original['sha256']}
+
+
+def _check_pack_paths(*paths):
+    for path in paths:
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        reparse = getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        hardlink = stat.S_ISREG(info.st_mode) and info.st_nlink > 1
+        if reparse or hardlink or not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
+            raise download.Failed('folder', 'The setup folder contains a link or special file. Choose a different library folder.')
+
+
+def _prepare_pack_stage(staged, pack):
+    receipt = staged / 'archive.json'
+    archive = pack.get('split_archive')
+    if not archive and not receipt.exists():
+        return
+    _check_pack_paths(staged.parent, staged, receipt)
+    if not archive and len(pack['files']) == 1:
+        archive = pack['files'][0]['sha256']
+    previous = None
+    if receipt.is_file():
+        try:
+            with receipt.open('rb') as f:
+                previous = json.loads(f.read(81))
+        except (OSError, ValueError):
+            pass
+    if archive is not None and previous == archive:
+        return
+    if staged.exists():
+        shutil.rmtree(staged)
+    if archive is not None:
+        staged.mkdir()
+        install._write_json(receipt, archive)
 
 
 def _tag_sources(job):

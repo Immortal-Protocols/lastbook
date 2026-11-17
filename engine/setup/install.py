@@ -9,6 +9,7 @@ renamed when whole, so an unpack that stops (a crash, power) carries on where it
 An upgrade first moves the old library aside to LastbookData.old-<date>; when the app restarts it opens the new one, and only if
 that fails to open is the old one put back (apply_pending, called by app/main.py before the engine starts).
 """
+import io
 import json
 import os
 import re
@@ -16,6 +17,8 @@ import shutil
 import stat
 import time
 import zipfile
+from bisect import bisect_right
+from itertools import accumulate
 from pathlib import Path, PurePosixPath
 
 DATA_NAME = 'LastbookData'
@@ -112,6 +115,55 @@ def map_member(rel, is_dir=False):
     if is_dir:
         return rel in MAP_DIRS
     return rel in MAP_FIXED or bool(MAP_SQLITE.fullmatch(rel))
+
+
+class SplitZip(io.RawIOBase):
+    """A seekable ZIP spread across verified objects, without assembling a second copy on disk."""
+
+    def __init__(self, paths, sizes):
+        self.paths = paths
+        self.ends = list(accumulate(sizes, initial=0))
+        self.position = 0
+        self.index = -1
+        self.part = None
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self.position
+
+    def seek(self, offset, whence=os.SEEK_SET):
+        base = {os.SEEK_SET: 0, os.SEEK_CUR: self.position, os.SEEK_END: self.ends[-1]}[whence]
+        if base + offset < 0:
+            raise OSError('Negative ZIP offset')
+        self.position = base + offset
+        return self.position
+
+    def readinto(self, buffer):
+        if self.position >= self.ends[-1] or not buffer:
+            return 0
+        index = bisect_right(self.ends, self.position) - 1
+        if index != self.index:
+            if self.part is not None:
+                self.part.close()
+            self.part = open(self.paths[index], 'rb', buffering=0)
+            self.index = index
+        self.part.seek(self.position - self.ends[index])
+        size = min(len(buffer), self.ends[index + 1] - self.position)
+        count = self.part.readinto(memoryview(buffer)[:size])
+        if not count:
+            raise OSError('An archive part ended early')
+        self.position += count
+        return count
+
+    def close(self):
+        if self.part is not None:
+            self.part.close()
+        super().close()
 
 
 def check_zip(path, installed_bytes=None, allowed=None):

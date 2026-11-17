@@ -191,6 +191,17 @@ const MapView = (() => {
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
   function describe(info) {
+    if (info.terrain === false) {
+      st.noTerrain = true; st.style.relief = false; st.style.contours = false;
+      $('map-3d')?.remove();
+    }
+    if (info.attribution) document.querySelector('.mapattr').textContent = info.attribution;
+    if (info.region) {
+      $('pq').placeholder = 'Find an address, town or place';
+      document.querySelector('.map-search label').textContent = 'Find a street address, town or named place';
+      document.querySelector('.maphead p').textContent = 'Offline: works with no internet. ' +
+        (info.data_as_of ? 'Map source dated ' + info.data_as_of + '. ' : '') + 'Does not show current damage, closures or hazards.';
+    }
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     if (!info.layers) return;
@@ -247,7 +258,7 @@ const MapView = (() => {
       ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${n}</button>`).join('')}<button data-p="">None</button></div>`}
       <fieldset class="style"><legend>Map style</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>Aerial photos (USGS / USDA)</span></label>`}
-        <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>
+        ${st.noTerrain ? '' : `<label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>`}
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>Contour lines (from zoom 11)</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
       ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${gl}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(l.label)}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}

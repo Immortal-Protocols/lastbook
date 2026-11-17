@@ -1,5 +1,10 @@
 # Detailed maps outside the United States: a proposal
 
+Ontario now has a desktop source implementation and map builder. See
+[ONTARIO.md](ONTARIO.md) for coverage, installation and release status. The research
+below remains the proposal for other regions and Ontario layers not yet integrated;
+it is not a claim of published Ontario downloads.
+
 This is a proposal for discussion, not a decision. It answers, for three places, the questions
 [MAPS.md](MAPS.md) asks before coverage can go beyond the United States: which open source replaces each federal list,
 under what licence, what a "state" is there, and how addresses are written. The three places are Ontario and British

@@ -46,6 +46,10 @@ Build-only tools (uv, CMake, Ninja, glslc/shaderc, Vulkan and SPIR-V headers, py
 macholib, setuptools, packaging) are used to make the apps, and none of their code is bundled except as their licences
 allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is not bundled.
 
+The Ontario address builder additionally uses DuckDB and its httpfs/spatial
+extensions (MIT, https://duckdb.org). They run only on the build machine and are
+not imported or bundled by the desktop app.
+
 ## Downloaded by setup, never bundled
 
 | Component | Version | Licence | Source | Checked |

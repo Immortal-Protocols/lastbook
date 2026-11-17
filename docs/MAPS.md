@@ -1,5 +1,9 @@
 # How the offline map is put together
 
+Ontario desktop maps now have a separate OpenStreetMap-based builder:
+[ONTARIO.md](ONTARIO.md). The US dataset descriptions below still apply to the
+existing US map pipeline; Ontario does not reuse those federal layers.
+
 A guide for anyone who wants to improve the map: add a kind of place, show one that is already in the data, or extend
 coverage. It says which files the app reads, what builds each one, and where the gaps are. Everything here was read from
 the code and from one installed state map, without running the app; where something could not be found in this

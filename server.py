@@ -34,6 +34,7 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search  # noqa: E402
+from engine.regions import REGIONS  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -1540,7 +1541,47 @@ def map_contents():
     return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
 
 
+def region_map_info():
+    """Coverage and credits for installed non-US maps, including source libraries."""
+    description = setup_api.install.map_set(HERE)
+    region = REGIONS.get((description or {}).get('name'))
+    if not region:
+        return None
+    have = map_contents()
+    have['bounds'] = region['bounds']
+    meta = {}
+    db = national_mapdb()
+    if db is not None:
+        meta = dict(db.execute('SELECT key,value FROM meta'))
+    date = str(description.get('data_as_of') or meta.get('data_as_of') or '')
+    datasets = [{'label': 'Ontario streets, mapped buildings, water and help points (OpenStreetMap)',
+                 'status': 'Offline coverage within Ontario; detail varies by place.'}]
+    if PLACEDB.exists():
+        datasets.append({'label': 'Ontario towns and named places (OpenStreetMap)', 'status': 'Used by Find a place.'})
+    address_file = HERE / 'derived/geo/addresses/CA-ON.sqlite'
+    datasets.append({'label': 'Ontario street-address search (Overture Maps)',
+                     'status': 'Installed for offline use.' if address_file.is_file() else 'Not installed. Town and named-place search are available.'})
+    if address_file.is_file():
+        address_db = sqlite3.connect(ro_uri(address_file), uri=True)
+        try:
+            address_meta = dict(address_db.execute('SELECT key,value FROM meta'))
+            if address_meta.get('source_attribution'):
+                datasets.append({'label': 'Address source attribution', 'status': address_meta['source_attribution']})
+        except sqlite3.Error:
+            pass  # older indexes need not have source metadata
+        finally:
+            address_db.close()
+    datasets.append({'label': 'Layers not included', 'status': 'Elevation, contours, crop surveys, aerial photos and official dam inventories.'})
+    return {**have, 'region': region['id'], 'meta': meta,
+            'data_as_of': date, 'attribution': '© OpenStreetMap contributors · ODbL 1.0',
+            'datasets': datasets, 'aerial': False, 'terrain': False, 'national': national_status(),
+            'version': data_version(), 'aerial_detail': None, 'aerial_rev': None, 'terrain_circle': None}
+
+
 def map_info():
+    region = region_map_info()
+    if region:
+        return region
     db = mapdb()
     meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db else {}
     geo = []

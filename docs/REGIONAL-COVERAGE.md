@@ -68,6 +68,234 @@ names California, a California place, or University of California extension.
 6. **Record what is missing.** Once a region's sources are checked against a real library, what could not be found goes
    in `content/gaps.json`, as the guides already do.
 
+## Design
+
+This section answers the review on the pull request: how regional coverage would work in the app, before any of it is
+built. It is written against public `main` at `256d52f` (17 November 2026). Nothing in it is implemented. Where it
+leans on something not in the public repository, it says so under "Assumptions".
+
+### 1. Regions and what they hold
+
+**Codes.** A region has an ISO 3166 style code, the same scheme `docs/REGIONS.md` proposes for maps outside the US:
+
+| Level | Code | Example |
+|---|---|---|
+| Country | ISO 3166-1 | `US`, `CA`, `GY` |
+| State or province | ISO 3166-2 | `US-PA`, `US-CA`, `CA-ON` |
+| Local area | the state code, then a short lowercase name | `US-PA-lehigh-pocono`, `US-CA-socal-coast` |
+
+A US state map is named by its bare state code (`PA` in `map-set.json`). The region for it is `US-PA`. That one
+mapping lives in one place, so setup can offer the map and the region from the same choice.
+
+Each region names its parent. A local area's parent is its state, and a state's parent is its country. When the app
+looks for regional readings, it walks that chain from the most local level up to the country, then falls back to the
+general guides.
+
+**One file per region:** `content/regions/<code>.json`. It holds:
+- the region's name, level and parent;
+- for a local area, the counties it covers (by FIPS code in the US), so a contributor can say exactly where it applies;
+- its readings, grouped by slot (growing season, keeping the harvest, local hazards, warnings, wildlife and plants,
+  water and floods), plus what is missing for each slot, in plain words;
+- its sources: publisher, where it came from, reuse terms and how those terms were settled;
+- a `revision`, so a library knows when its copy is out of date.
+
+**Documents stay ordinary catalog records.** A regional document is a record in `catalog.json` like any other, with
+one new field, `region`, holding its code. `edition`, `publication_date`, `retrieved_at`, `license` and `license_url`
+already exist, so revisions and terms need nothing new on the record. `catalog_fields_allowed` in
+`derived/packs/pack-spec.json` would gain `region`. The search index (`search.sqlite`) keeps its schema, because search
+reads the region from the catalog.
+
+**General and regional material.** Topic files stay general and name no place. Where a guide needs regional readings,
+a choice or a route step names a slot instead of listing readings:
+
+```json
+{"id": "when-to-plant", "label": "What can I plant now where I live?", "hint": "Planting dates and frost for your area",
+ "slot": "growing-season",
+ "read": [{"doc": "med-2ca695c9db63d020", "page": 33, "label": "...", "note": "General readings, shown to everyone"}]}
+```
+
+The readings already listed under `read` stay general. The server adds the slot's regional readings for the reader's
+region (section 3). The 20 California readings in `grow`, and the few in `disaster`, `land`, `preserve` and `shelter`,
+move into `content/regions/US-CA-socal-coast.json` and `US-CA.json`. Nothing about them changes except where they are
+listed. After that move, the California choice in `grow` ("What can I plant now in coastal Southern California?")
+becomes the place-neutral choice above, and step 2 of its route becomes "Learn the timing where you live".
+
+**A data example.** Doc ids starting `psu-` are placeholders: those documents are not in any catalog yet.
+
+```json
+{
+  "id": "US-PA-lehigh-pocono",
+  "name": "Lehigh Valley and the Poconos",
+  "level": "local",
+  "parent": "US-PA",
+  "counties": ["42077", "42095", "42089", "42025", "42103", "42127"],
+  "revision": "2026-11-17",
+  "slots": {
+    "growing-season": {
+      "read": [
+        {"doc": "psu-vegetable-seed-planting-guide", "page": 1, "label": "When to sow each vegetable",
+         "note": "Penn State chart set for a 1 May last frost. It was made for York County, which is warmer: later here."}
+      ],
+      "missing": ["No planting chart written for Lehigh, Northampton or Monroe County."]
+    },
+    "warnings": {
+      "read": [{"doc": "nws-zones-phi-bgm", "label": "Which weather office warns your county",
+                "note": "Lehigh, Northampton, Monroe and Carbon: Mount Holly. Pike and Wayne: Binghamton."}]
+    }
+  },
+  "sources": [
+    {"doc": "psu-vegetable-seed-planting-guide", "publisher": "Penn State Extension",
+     "url": "https://extension.psu.edu/...", "terms": "permission", "terms_status": "asked",
+     "terms_note": "Asked Penn State Extension on <date>; no answer yet"}
+  ]
+}
+```
+
+`US-PA.json` holds what applies to the whole state (Penn State's statewide vegetable page, cool- and warm-season crops,
+Let's Preserve, black bears, the Ready PA guide). `US.json` holds federal material that applies to every state (USDA
+hardiness zones, NOAA frost and freeze normals, National Center for Home Food Preservation).
+
+`terms` is one of `federal` (a US federal government work), `open` (an open licence, named in `license`) or
+`permission` (the publisher agreed). `terms_status` is `settled` or `asked`. Only a `settled` source can go into a
+build (section 4).
+
+### 2. Choosing, downloading and updating
+
+**Choosing.** Setup already asks for one US state for the detailed map (`docs/SETUP-API.md`, "State maps"). The same
+choice would set the library's region: "Where will this library be used?". It lists states, and then the local areas
+that state's region files define, if any. Lastbook still never detects location. A person can skip the question, and
+the guides then stay general.
+
+**What arrives.**
+- Country-level material (`US.json`) is federal and small. It ships in every pack, like any document a guide names.
+- State and local material comes as a region pack per state, `Lastbook-Region-US-PA.zip`. It holds that state's
+  documents and those of all its local areas: a few dozen documents at most, so one zip per state is simpler than one
+  per area.
+- The manifest gains a `regions` list beside `packs`, `maps` and `address_indexes`, with the same entry shape (`id`,
+  `title`, `installed_bytes`, `available`, `files`) plus `revision`.
+- A region pack is small, so setup would include it by default once a state is chosen. The detailed map stays optional:
+  a Small library on a small disk can have Pennsylvania's guides without Pennsylvania's map.
+
+**Installing.** A region pack is installed like an add-on (`addons.merge` in `pack-spec.json`), in the staged copy:
+- its catalog records join `catalog.json`;
+- its search rows go into `search.sqlite`;
+- its files are copied in.
+
+The library then switches in one step, as packs and maps do, so a working library is never broken. A
+`region-set.json` at the library's top, like `map-set.json`, records:
+- the region chosen, which may be a local area;
+- the installed revision;
+- the ids and files it added, so a later change can remove exactly those.
+
+`state.current.region` reports it.
+
+**Changing region.** One region per library, as with state maps. Choosing another state removes the old region's
+records, rows and files and adds the new one's, in the same staged way. Moving between local areas of the same state
+needs no download: it only rewrites `region-set.json`.
+
+**Offline.** Everything a region needs is inside the library, so guides, search and Chat work with no network. If a
+person changes region while offline and the new region's zip is not on the computer, setup says so, and the current
+region stays. A region zip already on the computer is found the way pack and map zips are (`found[]`).
+
+**Updates.** When the manifest's `revision` for the installed region differs from `region-set.json`, the manage screen
+offers the update, as it does for a pack's `content_revision`.
+
+### 3. Guides, search and Chat
+
+**Guides.** `topics_resolved()` in `server.py` already drops readings whose document is not in the library. For a
+choice or step with a `slot`, it would walk the reader's region chain and add the readings from each level that fills
+the slot, most local first, each labelled with its region's name. Then:
+- **Covered.** The reader sees their area's readings first, then the general ones.
+- **Not covered.** If no level of the chain fills the slot, the reader sees the general readings and one plain line from
+  that region's `missing` list, for example "No planting dates for Pennsylvania in this library yet". Readings from
+  other regions are not offered as the answer.
+- **No region chosen.** The reader sees the general readings and a link to choose where they are.
+
+Readings written for other regions that this library holds (in All, for example) stay findable under a closed
+"Written for other places" list, each with its place in the label. They are never mixed in with "yours".
+
+**Search.** Records keep their `region` field into results. `hybrid()` in `assistant.py` already reweights scores, and
+it would add one rule:
+- a record for a region in the reader's chain is raised a little;
+- a record for any other region is lowered, but not removed, because it may be the only thing on the subject;
+- general records are unchanged.
+
+Search results show the region beside the publisher.
+
+**Chat.** Two changes in `assistant.py`:
+1. **Sources say where they apply.** `_src_block()` adds the region to each source's header: "written for coastal
+   Southern California", plus "not the reader's area" when it falls outside the chain.
+2. **The instructions know the region.** The system prompt gains the reader's chosen region, if any, and one rule:
+   "When a source is written for another region, say which region; never give its dates, hazards or contacts as the
+   reader's own. When the answer depends on place and no source is written for the reader's region, say so under
+   'Not found in the library:'."
+
+The chosen region stays on the computer, like everything else Chat sees. The fix stays in the library, as the proposal
+says: Chat still answers only from library pages, but it is told which pages are for which place.
+
+### 4. Adding the next region
+
+A contributor supplies, in one pull request:
+1. `content/regions/<code>.json`, and its parent's file if that is new, with readings by slot and what is missing.
+2. A source entry for every document: publisher, URL, the date it was retrieved, and its terms. A `permission` source
+   gives `terms_status: "asked"` until the publisher agrees. Permission letters stay with the maintainers, not in the
+   repository.
+
+The contributor does not add the documents themselves. A maintainer fetches each one from its URL, checks it, adds its
+catalog record with `region` set, and builds the region pack.
+
+**Checks**, in a `tools/validate_regions.py` beside `tools/validate_topics.py`, run against a library that holds the
+region pack:
+- the code is well formed, its parent exists, and the chain ends at a country;
+- every slot name is a known slot;
+- every `doc` is in the catalog, carries this region's code (or a code in its chain), and every page is in range;
+- every source has terms, and the build refuses a region with any source not `settled`;
+- every label and note names no place outside the region, so nothing reads as local when it is not.
+
+Plus a test in `app/tests`, like `test_validate_topics.py`, that runs these checks on the region files in the
+repository.
+
+**Pennsylvania, as the first worked example.** The research below fills the growing-season and keeping-the-harvest slots
+from Penn State Extension, and starts on hazards, warnings and wildlife. Its order would be:
+1. **`US.json` first, from federal sources.** It needs no permission, so it can go in while the rest waits.
+2. **`US-PA.json` and `US-PA-lehigh-pocono.json` growing season**, once Penn State answers on reuse.
+3. **The other slots**, which use the same file and the same checks:
+   - local hazards (Ready PA, if the Commonwealth agrees; the county hazard plans);
+   - warnings, where the NWS offices already differ within the Poconos, which is why local areas exist;
+   - water and floods (USGS, the Delaware River Basin Commission).
+
+### 5. End to end
+
+1. A contributor opens a pull request adding `US-PA.json` and `US-PA-lehigh-pocono.json`. The checks pass, and the
+   maintainers settle the terms.
+2. A maintainer adds the documents to the catalog, builds `Lastbook-Region-US-PA.zip`, and lists it under `regions` in
+   the manifest.
+3. A person in Bethlehem runs setup, picks Small, then Pennsylvania, then "Lehigh Valley and the Poconos", and skips
+   the detailed map. Setup downloads Small and the region pack, installs them in the staged library, and switches.
+4. In Grow, "What can I plant now where I live?" shows the Penn State planting chart labelled Pennsylvania first, then
+   the general readings. Southern California's chart sits under "Written for other places", if this library holds it.
+5. In Chat, "When can I plant tomatoes outside?" finds the Penn State pages first. The UC chart, if found, is marked
+   "written for coastal Southern California, not the reader's area", so the answer cites Penn State and does not give
+   the California dates.
+6. The person moves to Ontario and changes region in the manage screen. If no Ontario region exists yet, the guides go
+   back to general readings and say there is nothing for Ontario yet, rather than offering Pennsylvania.
+
+### 6. Assumptions and where this meets the map work
+
+- **Add-on merging.** `pack-spec.json` describes merging add-ons into a library (`addons.merge`, naming
+  `packaging/pack_merge.py`), but that script is not in the public repository. Region install would live in
+  `engine/setup/install.py` beside the state map code, and use the same staged switch.
+- **One picker, two downloads.** The region and the state map come from the same choice in setup but are separate
+  downloads with separate files (`region-set.json` and `map-set.json`). A person can have either without the other.
+- **Codes.** If maps outside the US adopt the codes in `docs/REGIONS.md` (`CA-ON`, `CA-BC`, `GY`), regions use the
+  same ones, and only US state maps need the `PA` to `US-PA` mapping.
+- **No geometry.** Regions need no box. Map sets are cut by a box, while a local area is a list of counties. Lastbook
+  does not use the map to guess where someone is.
+- **California-only map layers.** The fish, boating and well layers (`web/map.js`) are a map question. They could
+  carry the same region code later, so the map could say "California only" in the same words as the guides.
+- **The All pack.** All would carry every region's documents, so a region choice there only sets which ones count as
+  the reader's own.
+
 ## Worked example: northeastern Pennsylvania
 
 The Lehigh Valley (Lehigh and Northampton counties, including Allentown, Bethlehem and Easton) and the Pocono Mountains
@@ -135,20 +363,27 @@ whether a university or state document may be included. That same decision is ne
   need to be asked. The Game Commission would need to be asked separately.
 - **Federal sources** (NWS, NOAA, USDA, USGS, FEMA) are generally not under copyright in the US.
 
-## Still undecided
+## Decisions the design needs
 
-Each of these needs the maintainers' decision:
+Each of these needs the maintainers' decision before any code follows the design:
 
-1. **Packs or setup.** Whether regional documents go in Small, Medium or All, or arrive with the state map chosen in
-   setup.
-2. **How guides show them.** For example, a `grow` choice such as "What can I plant now where I live?" that shows the
-   readings for the state chosen in setup, with coastal Southern California as one region among many.
-3. **The first regions.** Whether to start with one region to set the pattern, or the federal slots for every state at
-   once.
-4. **Gaps.** Which `content/gaps.json` entries to add once a region's sources have been checked against a real library.
+1. **Moving California's readings.** Whether the California readings in the guides move into region files and the
+   guides name slots instead (section 1).
+2. **Region packs by default.** Whether setup adds a region pack whenever a state is chosen, or offers it as a separate
+   choice (section 2).
+3. **One region per library.** Whether a library holds one region, as it holds one state map, or several, for someone
+   who moves between places (section 2).
+4. **Ranking.** How strongly search raises the reader's region and lowers others (section 3). This needs testing on
+   real questions before a number is chosen.
+5. **First regions.** Whether to start with Pennsylvania alone to set the pattern, or with `US.json` (federal only) for
+   every state first, while Penn State and the Commonwealth are asked.
+6. **Gaps.** Whether a region's `missing` lists replace `content/gaps.json` for regional topics, or feed it.
 
 ## What was checked
 
+- The design was written against public `main` at `256d52f`, from `docs/SETUP-API.md`, `derived/packs/pack-spec.json`,
+  `content/SCHEMA.md`, `server.py` (`topics_resolved`, `item_here`), `assistant.py` (`hybrid`, `_src_block`, `SYSTEM`)
+  and `engine/setup/` as they are there. Nothing in it was built or run.
 - The counts in "What a reader sees today" were computed from `content/topics/*.json` at the commit this file was added
   in.
 - Sources marked "Opened" were fetched on 17 November 2026, and the quotations and facts given for them were read from

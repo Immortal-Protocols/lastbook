@@ -1,7 +1,7 @@
 """Builds Lastbook's download packs from derived/packs/pack-spec.json. A pack is a data folder: point LASTBOOK_DATA at it.
 
   python -I -B build_packs.py snapshot
-  python -I -B build_packs.py map base|us|<state code, such as RI>|<region code, such as ve-a>
+  python -I -B build_packs.py map base|us|<state code, such as RI>|<region code, such as ve-car>
   python -I -B build_packs.py build small|medium|all|corporals-corner|firearms-hunting [--map base|us|RI] [--sample N] [--snapshot DIR] [--fetched DIR]
 
 Everything comes from one frozen snapshot of the catalog and search file, so the indexer can run throughout. The library is only read: files that do not change are APFS
@@ -1460,9 +1460,9 @@ def us_set(src, dest):
 
 
 def fetch_region_gpkg(spec):
-    """The region's GeoPackage, downloaded and unzipped once into derived/packs/maps/region-source/. Only the build machine does this."""
+    """The region's GeoPackage, downloaded and unzipped once per extract into derived/packs/maps/region-source/. Only the build machine does this."""
     url = spec['extract']
-    folder = OUT / 'maps' / 'region-source'
+    folder = OUT / 'maps' / 'region-source' / url.rstrip('/').split('/')[-1].removesuffix('.zip')
     folder.mkdir(parents=True, exist_ok=True)
     gpkg = next(folder.glob('*.gpkg'), None)
     if gpkg is None:

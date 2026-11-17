@@ -3,7 +3,7 @@
 Run:  python3 app/tests/setup_stub.py [port]      (default 8925)
 Then open http://127.0.0.1:8925/__stub/<scenario> to reset to a scenario, which redirects to the setup page.
 Scenarios (see SCENARIOS): mac, mac-small (AI does not fit), win, found, low-disk, paused (a restart picked up a job),
-network, checksum, unpack, activate (each fails once at that step; Retry then goes through), manage, manage-ai, upgraded.
+network, server, checksum, unpack, activate (each fails once at that step; Retry then goes through), manage, manage-ai, upgraded.
 The page itself never knows it talks to a stub.
 """
 import copy
@@ -90,6 +90,7 @@ SCENARIOS = {
     'low-disk': dict(hardware=hw(free=30), recommend={'pack': 'small', 'ai': False, 'why': 'This disk has 30 GB free, so only Small fits.'}),
     'paused': dict(hardware=hw(), recommend={'pack': 'medium', 'ai': True, 'why': ''}, job={'pack': 'medium', 'ai': True, 'state': 'paused', 'done0': 0.37}),
     'network': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'network')),
+    'server': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'server')),
     'checksum': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('verifying', 'checksum')),
     'unpack': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('unpacking', 'unpack')),
     'activate': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('activating', 'activate')),
@@ -252,6 +253,7 @@ class Stub:
     def _fail(self, it):
         code = self.fault[1]
         msg = {'network': 'The download stopped: the connection to the internet was lost.',
+               'server': 'The download stopped: the download server stayed busy.',
                'checksum': 'The file was damaged twice in a row.', 'unpack': 'The library could not be unpacked.',
                'activate': 'The new library could not be switched in.',
                'hostile': X,

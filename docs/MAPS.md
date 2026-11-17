@@ -112,6 +112,9 @@ issue before any code.
 [REGIONS-PY.md](REGIONS-PY.md) does the same for Paraguay as one country-wide region.
 [REGIONS-IE.md](REGIONS-IE.md) does the same for the island of Ireland, including Northern Ireland, as one region.
 
+[MAP-PY-11.md](MAP-PY-11.md) describes a first build from the Paraguay proposal: a detailed map of Central, with
+Asunción.
+
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.

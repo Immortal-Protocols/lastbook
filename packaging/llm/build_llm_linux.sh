@@ -30,10 +30,17 @@ rm -f "$O"/*
 # feature modifier. Drop those two variants from the checkout before configure; the
 # armv8.6 variants build and the runtime backend loader picks the best one present.
 # gcc 14 knows +sme, so nothing is dropped there.
+# The drop edits the working copy, so restore it first: a leftover from an aborted
+# run must not leak into this build. The restore after the build keeps the checkout
+# clean, so a later gcc 14 build in the same workspace still sees every variant.
+git -C "$L" checkout -q -- ggml/src/CMakeLists.txt
 GCC_MAJOR="$(gcc -dumpfullversion -dumpversion | cut -d. -f1)"
 if [ "$(uname -m)" = aarch64 ] && [ "$GCC_MAJOR" -lt 14 ]; then
-  sed -i '/ggml_add_cpu_backend_variant(armv9\.2_[12]/d' "$L/ggml/src/CMakeLists.txt"
-  echo "gcc $GCC_MAJOR: dropped the armv9.2 (SME) CPU variants from llama.cpp"
+  CMK="$L/ggml/src/CMakeLists.txt"
+  N="$(grep -c 'ggml_add_cpu_backend_variant(armv9\.2_[12]' "$CMK" || true)"
+  [ "$N" = 2 ] || { echo "expected the 2 armv9.2 backend-variant lines in ggml/src/CMakeLists.txt, found $N: the pinned llama.cpp changed; update the gcc-13 drop step" >&2; exit 1; }
+  sed -i '/ggml_add_cpu_backend_variant(armv9\.2_[12]/d' "$CMK"
+  echo "gcc $GCC_MAJOR: dropped the armv9.2 (SME) CPU variants for this build only"
 fi
 
 MAP="-ffile-prefix-map=$L=llama.cpp -ffile-prefix-map=$HERE=lastbook-llm -ffile-prefix-map=$B=build"   # no folder of this machine inside
@@ -92,6 +99,9 @@ if grep -aEq '/(Users|home|root)/' "$O"/lastbook-llm "$O"/*.so*; then
   echo "a file names a folder of this machine" >&2; bad=1
 fi
 [ "$bad" = 0 ] || exit 1
+# All gates passed: leave the llama.cpp checkout exactly as the pin has it.
+git -C "$L" checkout -q -- ggml/src/CMakeLists.txt
+echo "llama.cpp checkout restored: $(git -C "$L" status --porcelain | wc -l) modified files"
 # Web addresses inside are text in llama.cpp's log and error messages; with no network calls they go nowhere.
 cat "$O"/lastbook-llm "$O"/*.so* | grep -aEio 'https?://[^ "<>]+' | sort -u > "$O/addresses-in-messages.txt" || true
 ( cd "$O" && sha256sum lastbook-llm *.so* > SHA256SUMS.txt )

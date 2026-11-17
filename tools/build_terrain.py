@@ -3,6 +3,10 @@
   derived/buildenv/bin/python tools/build_terrain.py [--bbox W,S,E,N] [--workers N]
 
 Source: USGS 3DEP 1 arc-second (~30 m) GeoTIFFs in library-data/geography/usgs/Elevation/1/TIFF/current.
+Elsewhere, set LASTBOOK_TERRAIN_SRC to a folder of 1-degree GeoTIFF cells named by the cell's top latitude and left
+longitude (n51w4 holds 50-51 N, 4-3 W), LASTBOOK_TERRAIN_OUT to the file to write and LASTBOOK_TERRAIN_SOURCE to the
+credit stored in meta (docs/REGIONS-UK.md: Copernicus GLO-30). Environment variables, not options, so the worker
+processes Windows starts see them too.
 Tiles are 256 px web-mercator PNGs, zoom 5-12, in the "terrain-RGB" encoding
 (height_m = -10000 + (R*65536 + G*256 + B) * 0.1). Open ocean (no source data) has no tile.
 """
@@ -17,8 +21,9 @@ warnings.filterwarnings("ignore", "Mean of empty slice")
 import tifffile
 
 HERE = Path(__file__).resolve().parent.parent
-SRC = HERE / 'library-data/geography/usgs/Elevation/1/TIFF/current'
-OUT = HERE / 'derived/geo/terrain.sqlite'
+SRC = Path(os.environ.get('LASTBOOK_TERRAIN_SRC') or HERE / 'library-data/geography/usgs/Elevation/1/TIFF/current')
+OUT = Path(os.environ.get('LASTBOOK_TERRAIN_OUT') or HERE / 'derived/geo/terrain.sqlite')
+SOURCE = os.environ.get('LASTBOOK_TERRAIN_SOURCE') or 'USGS 3DEP 1 arc-second DEM (library-data/geography/usgs/Elevation/1)'
 MAXZ, SUPERZ, MINZ = 12, 8, 4
 SPAN = 2 ** (MAXZ - SUPERZ)          # z12 tiles per z8 supertile edge (16)
 PX = 256 * SPAN                      # 4096 px
@@ -184,7 +189,7 @@ def main():
             db.execute('INSERT OR REPLACE INTO tile VALUES (?,?,?,?)', (z, x, y, png(h)))
         level = nxt
     db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('built', time.strftime('%Y-%m-%dT%H:%M:%S')))
-    db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('source', 'USGS 3DEP 1 arc-second DEM (library-data/geography/usgs/Elevation/1)'))
+    db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('source', SOURCE))
     db.commit()
     print(f'done: {done} supertiles, {ntiles:,} tiles in {time.time() - t0:.0f}s', flush=True)
 

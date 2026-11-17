@@ -193,6 +193,10 @@ const MapView = (() => {
   function describe(info) {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
+    // What the installed map set says about itself (map-set.json: units, country, credit); a US map set says nothing and keeps feet and ZIP codes.
+    st.metric = info.units === 'metric'; st.postal = info.country === 'GB' ? 'postcode' : 'ZIP'; st.area = info.country === 'GB' ? 'region' : 'state';
+    if (st.postal === 'postcode') { const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' } }
+    if (info.credit) { const at = document.querySelector('.mapattr'); if (at) at.textContent = '© OpenStreetMap contributors · ' + info.credit }
     if (!info.layers) return;
     st.have = new Set(info.layers); st.bounds = info.bounds;
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
@@ -584,10 +588,12 @@ const MapView = (() => {
     }
     g.putImageData(img, 0, 0); return t.shade = c;
   }
-  const CONTOUR = [[11, 200, 1000], [12, 100, 500], [13, 40, 200], [15, 20, 100], [16, 5, 25]];  // [from zoom, interval ft, index ft]; 5 ft only on lidar
+  const CONTOUR_FT = [[11, 200, 1000], [12, 100, 500], [13, 40, 200], [15, 20, 100], [16, 5, 25]];  // [from zoom, interval ft, index ft]; 5 ft only on lidar
+  const CONTOUR_M = [[11, 50, 250], [12, 25, 125], [13, 10, 50], [15, 5, 25], [16, 2, 10]];  // the same, in metres, for a map set that says units: metric
+  const contourRules = () => st.metric ? CONTOUR_M : CONTOUR_FT;
   function contours(t, step) {
     if (t.contours[step]) return t.contours[step];
-    const h = t.h, ft = 3.28084, lines = [];  // marching squares on the 256x256 grid, in feet
+    const h = t.h, ft = st.metric ? 1 : 3.28084, lines = [];  // marching squares on the 256x256 grid, in feet (metres on a metric map)
     let lo = Infinity, hi = -Infinity; for (let i = 0; i < 65536; i++) { const v = h[i] * ft; if (v < lo) lo = v; if (v > hi) hi = v }
     for (let lev = Math.ceil(lo / step) * step; lev <= hi; lev += step) {
       if (lev <= 0) continue;
@@ -600,7 +606,7 @@ const MapView = (() => {
         const P = { 1: [3, 0], 2: [0, 1], 3: [3, 1], 4: [1, 2], 5: [3, 0, 1, 2], 6: [0, 2], 7: [3, 2], 8: [2, 3], 9: [0, 2], 10: [0, 1, 2, 3], 11: [1, 2], 12: [1, 3], 13: [0, 1], 14: [0, 3] }[idx];
         for (let k = 0; k < P.length; k += 2) { const p = e[P[k]], q = e[P[k + 1]]; seg.push(p[0] + .5, p[1] + .5, q[0] + .5, q[1] + .5) }
       }
-      if (seg.length) lines.push({ lev, index: lev % CONTOUR.find(c => c[1] === step)[2] === 0, seg: new Float32Array(seg) });
+      if (seg.length) lines.push({ lev, index: lev % contourRules().find(c => c[1] === step)[2] === 0, seg: new Float32Array(seg) });
     }
     return t.contours[step] = lines;
   }
@@ -629,7 +635,7 @@ const MapView = (() => {
       }
       g.restore();
     }
-    const rule = [...CONTOUR].reverse().find(c => st.z >= c[0] && (c[0] < 16 || tz > TZN));
+    const rule = [...contourRules()].reverse().find(c => st.z >= c[0] && (c[0] < 16 || tz > TZN));
     if (st.style.contours && rule) {
       const [, step] = rule, k = ts / 256;
       g.save(); g.lineJoin = 'round';
@@ -650,7 +656,7 @@ const MapView = (() => {
         for (const L of contours(t, step)) { if (!L.index) continue; const a = L.seg;
           for (let i = 0; i < a.length && placed.length < 24; i += 4 * 61) { const x = sx + a[i] * k, y = sy + a[i + 1] * k; if (x < 40 || x > w - 70 || y < 70 || y > h - 50) continue;
             if (placed.some(p => Math.abs(p[0] - x) < 130 && Math.abs(p[1] - y) < 70)) continue; placed.push([x, y]);
-            const s = L.lev.toLocaleString() + ' ft'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(s, x, y); g.fillStyle = 'rgba(120,76,36,.95)'; g.fillText(s, x, y) } }
+            const s = L.lev.toLocaleString() + (st.metric ? ' m' : ' ft'); g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(s, x, y); g.fillStyle = 'rgba(120,76,36,.95)'; g.fillText(s, x, y) } }
       }
       g.restore();
     }
@@ -747,7 +753,7 @@ const MapView = (() => {
     }
     return st ? elevAt(lat, lon) : null;
   }
-  const fmtElev = m => `${Math.round(m * 3.28084).toLocaleString()} ft (${Math.round(m).toLocaleString()} m)`;
+  const fmtElev = m => st && st.metric ? `${Math.round(m).toLocaleString()} m` : `${Math.round(m * 3.28084).toLocaleString()} ft (${Math.round(m).toLocaleString()} m)`;
 
   // ------------------------------------------------------------------ card ----
   function openCard(html) {
@@ -872,7 +878,7 @@ const MapView = (() => {
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
+      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your ' + (st.area || 'state') + '’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. ' + (st.postal === 'postcode' ? 'Try a town or a full postcode.' : 'Try a town, county or 5-digit ZIP.')) + '</p>'; return }
       const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));

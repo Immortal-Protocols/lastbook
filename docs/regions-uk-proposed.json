@@ -1,0 +1,773 @@
+{
+  "about": "Proposed region definitions for detailed maps of the United Kingdom: 12 ONS ITL1 regions (nine English regions, Wales, Scotland, Northern Ireland), one region each. See docs/REGIONS-UK.md.",
+  "status": "proposal",
+  "checked": "2026-11-17",
+  "review": "Research by AI agents reading publishers' pages; not yet reviewed by a person. Page contents came back as summaries, not verbatim text.",
+  "codes": {
+    "proposal": "ISO 3166-2:GB codes GB-WLS, GB-SCT and GB-NIR for the three nations; invented GB-NE, GB-NW, GB-YH, GB-EM, GB-WM, GB-EE, GB-LON, GB-SE, GB-SW for the English regions. ONS ITL1 codes TLC to TLN are the alternative.",
+    "why": "Address index ids (engine/setup/manifest.py:72), installed files (engine/setup/install.py:267) and the map build (packaging/build_packs.py:1471) accept only two capital letters, so a hyphenated code needs a maintainer decision. GB-NE ends in NE, which is Nebraska in STATE_CODES.",
+    "verified": "ISO 3166-2:GB codes seen on Wikipedia; the ISO page refused the fetch. ITL1 codes read from ONS's ITL1_JAN_2025_UK_NC feature service; not confirmed as the latest ITL edition."
+  },
+  "layer_keys": {
+    "terrain": "terrain.sqlite",
+    "water": "water.sqlite",
+    "dams": "water.sqlite (nid part today)",
+    "crops": "crops.sqlite",
+    "buildings": "buildings.sqlite",
+    "places": "places.sqlite",
+    "postcodes": "places.sqlite (proposed)",
+    "addresses": "derived/geo/addresses/<code>.sqlite",
+    "pois": "poi rows in national.sqlite"
+  },
+  "licences": {
+    "OGL-3.0": {
+      "name": "Open Government Licence v3.0",
+      "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Providers may set their own wording.",
+      "share_alike": false,
+      "verified": "licence text not opened (the National Archives refused the fetch); attribution wording seen in search only"
+    },
+    "OS-OpenData": {
+      "name": "OS OpenData ('free to use for everyone' on each OS product page)",
+      "url": "https://www.ordnancesurvey.co.uk/business-government/licensing-agreements/copyright-acknowledgements",
+      "attribution": "Contains OS data © Crown copyright and database right [year]",
+      "share_alike": false,
+      "verified": "attribution opened; that OS OpenData is under OGL v3 is from search results only; check the licence file in each download"
+    },
+    "Royal-Mail-notice": {
+      "name": "Royal Mail rights notice on postcode products",
+      "url": "https://www.ons.gov.uk/methodology/geography/licences",
+      "attribution": "Contains Royal Mail data © Royal Mail copyright and database right [year]",
+      "share_alike": false,
+      "verified": "ONS licence page opened; Code-Point Open wording seen in search only; whether Open Names needs it not found"
+    },
+    "ONS-OGL": {
+      "name": "ONS data under OGL v3.0",
+      "url": "https://www.ons.gov.uk/methodology/geography/licences",
+      "attribution": "Source: Office for National Statistics licensed under the Open Government Licence v.3.0",
+      "share_alike": false,
+      "verified": "ONS licence page opened; Northern Ireland (BT) postcodes need a separate Land and Property Services licence for commercial use"
+    },
+    "ODbL-1.0": {
+      "name": "Open Database License 1.0",
+      "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "attribution": "© OpenStreetMap contributors",
+      "share_alike": true,
+      "verified": "OSM copyright page opened"
+    },
+    "CDLA-Permissive-2.0": {
+      "name": "Community Data License Agreement - Permissive 2.0",
+      "url": "https://github.com/microsoft/GlobalMLBuildingFootprints",
+      "attribution": "as stated by Microsoft",
+      "share_alike": false,
+      "verified": "Microsoft repository opened; Overture lists the same data under the ODbL"
+    },
+    "Copernicus-WorldDEM-30": {
+      "name": "Copernicus DEM GLO-30 licence",
+      "url": "https://registry.opendata.aws/copernicus-dem/",
+      "attribution": "provided under COPERNICUS by the European Union and ESA; all rights reserved; add 'produced using Copernicus WorldDEM-30' if modified",
+      "share_alike": false,
+      "verified": "Copernicus and AWS pages opened"
+    },
+    "CC-BY-4.0": {
+      "name": "Creative Commons Attribution 4.0 International",
+      "url": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Credit, link the licence, say if changed.",
+      "share_alike": false,
+      "verified": "licence text not reopened; GeoNames postcode file only"
+    },
+    "NHS-website-terms": {
+      "name": "NHS website terms: OGL v3.0 plus extra conditions",
+      "url": "https://www.nhs.uk/our-policies/terms-and-conditions/",
+      "attribution": "Unchanged copies: 'Information from the NHS website' plus an as-at date; adapted copies: OGL attribution and do not cite the NHS as the source",
+      "share_alike": false,
+      "verified": "opened; page last reviewed January 2021; conditions include no NHS logos, no fee for access, England only, refresh every 24 hours to 7 days"
+    }
+  },
+  "country_layers": {
+    "terrain": [
+      {
+        "dataset": "Copernicus DEM GLO-30 Public",
+        "publisher": "ESA / Airbus",
+        "url": "https://registry.opendata.aws/copernicus-dem/",
+        "licence": "Copernicus-WorldDEM-30",
+        "verified": "pages opened; UK tile completeness not checked",
+        "role": "primary",
+        "notes": "Surface model, 30 m, covers Northern Ireland. Some countries' tiles are unreleased per the AWS page."
+      },
+      {
+        "dataset": "OS Terrain 50",
+        "publisher": "Ordnance Survey",
+        "url": "https://docs.os.uk/os-downloads/products/land-and-terrain-portfolio/os-terrain-50/os-terrain-50-overview.md",
+        "licence": "OS-OpenData",
+        "verified": "2026-11-17",
+        "role": "cross-check",
+        "notes": "50 m, 10 km tiles, annual (July), Great Britain only; grid zip terr50_gagg_gb.zip 161,706,566 bytes."
+      },
+      {
+        "dataset": "Environment Agency LIDAR Composite DTM; Scottish Phase 6 DTM; Welsh Government LiDAR tile catalogue 2020-2023",
+        "publisher": "EA; Scottish Government; Welsh Government",
+        "url": null,
+        "licence": "OGL-3.0 (England and Scotland records); Wales wording not shown",
+        "verified": "programme records opened; EA DTM page itself, Scottish and Welsh completeness not checked",
+        "role": "alternative",
+        "notes": "Bare-earth, 0.5 m to 1 m. Northern Ireland: no confirmed national open DTM."
+      }
+    ],
+    "water": [
+      {
+        "dataset": "OSM waterways and water areas (Geofabrik United Kingdom extract)",
+        "publisher": "OpenStreetMap contributors",
+        "url": "https://download.geofabrik.de/europe/united-kingdom.html",
+        "licence": "ODbL-1.0",
+        "verified": "2026-11-17",
+        "role": "primary",
+        "notes": "united-kingdom-261116.osm.pbf, 2,287,716,144 bytes; includes Northern Ireland. The great-britain extract excludes it."
+      },
+      {
+        "dataset": "OS Open Rivers",
+        "publisher": "Ordnance Survey",
+        "url": "https://docs.os.uk/os-downloads/networks/os-open-rivers",
+        "licence": "OS-OpenData",
+        "verified": "2026-11-17",
+        "role": "cross-check",
+        "notes": "Great Britain only; GeoPackage 52,461,242 bytes; updated April and October."
+      }
+    ],
+    "dams": [
+      {
+        "dataset": "OSM waterway=dam and reservoir areas",
+        "publisher": "OpenStreetMap contributors",
+        "url": "https://wiki.openstreetmap.org/wiki/Tag:waterway%3Ddam",
+        "licence": "ODbL-1.0",
+        "verified": "2026-11-17",
+        "role": "primary"
+      },
+      {
+        "dataset": "Inventory of reservoirs amounting to 90% of total UK storage",
+        "publisher": "NERC / UKCEH",
+        "url": "https://data-search.nerc.ac.uk/geonetwork/srv/api/records/f5a7d56c-cea0-4f00-b159-c3788a3b2b38",
+        "licence": "OGL-3.0",
+        "verified": "2026-11-17",
+        "role": "cross-check",
+        "notes": "273 reservoirs, CSV, published 2018. No current official Environment Agency register confirmed."
+      }
+    ],
+    "crops": [
+      {
+        "dataset": "No open source with orchard, vineyard or berry classes confirmed",
+        "publisher": null,
+        "url": null,
+        "licence": null,
+        "verified": "CROME and UKCEH pages opened",
+        "role": "none",
+        "notes": "Crop Map of England 2024 (RPA, OGL) is England only and has no orchard or vineyard class; UKCEH Land Cover Map 2023 is non-commercial and forbids internet redistribution; Scottish crop map 2019 has no fruit class or download found; Wales not checked; Northern Ireland none found. OSM landuse=orchard/vineyard not looked at."
+      }
+    ],
+    "buildings": [
+      {
+        "dataset": "OSM buildings, or Overture buildings",
+        "publisher": "OpenStreetMap contributors; Overture Maps Foundation",
+        "url": "https://docs.overturemaps.org/guides/buildings/",
+        "licence": "ODbL-1.0",
+        "verified": "2026-11-17",
+        "role": "primary"
+      },
+      {
+        "dataset": "Microsoft GlobalMLBuildingFootprints, taken directly",
+        "publisher": "Microsoft",
+        "url": "https://github.com/microsoft/GlobalMLBuildingFootprints",
+        "licence": "CDLA-Permissive-2.0",
+        "verified": "2026-11-17",
+        "role": "alternative",
+        "notes": "2023 update added 7.6 million UK footprints. Do not mix with the Overture route."
+      },
+      {
+        "dataset": "OS OpenMap - Local",
+        "publisher": "Ordnance Survey",
+        "url": "https://docs.os.uk/os-downloads/products/maps-and-imagery-portfolio/os-openmap-local/os-openmap-local-overview.md",
+        "licence": "OS-OpenData",
+        "verified": "2026-11-17",
+        "role": "alternative",
+        "notes": "Great Britain only, 1:10,000, generalised; GB GeoPackage 3,480,881,355 bytes."
+      }
+    ],
+    "places": [
+      {
+        "dataset": "OS Open Names",
+        "publisher": "Ordnance Survey",
+        "url": "https://docs.os.uk/os-downloads/products/addresses-and-names-portfolio/os-open-names/os-open-names-overview.md",
+        "licence": "OS-OpenData; Royal-Mail-notice may apply",
+        "verified": "2026-11-17",
+        "role": "primary",
+        "notes": "Great Britain only. Settlements, roads, postcode points; CSV 103,312,081 bytes; version 2026-10; updated every three months."
+      },
+      {
+        "dataset": "OSM named places",
+        "publisher": "OpenStreetMap contributors",
+        "url": "https://download.geofabrik.de/europe/united-kingdom.html",
+        "licence": "ODbL-1.0",
+        "verified": "2026-11-17",
+        "role": "supplement",
+        "notes": "The source for Northern Ireland."
+      },
+      {
+        "dataset": "GeoNames postal codes, Great Britain (GB_full.csv.zip)",
+        "publisher": "GeoNames",
+        "url": "https://download.geonames.org/export/zip/",
+        "licence": "CC-BY-4.0; Royal-Mail-notice",
+        "verified": "2026-11-17",
+        "role": "supplement",
+        "notes": "14 MB; carries a Royal Mail notice."
+      }
+    ],
+    "postcodes": [
+      {
+        "dataset": "Code-Point Open",
+        "publisher": "Ordnance Survey",
+        "url": "https://docs.os.uk/os-downloads/products/areas-and-zones-portfolio/code-point-open",
+        "licence": "OS-OpenData; Royal-Mail-notice",
+        "verified": "product page and API opened; coordinate fields not read",
+        "role": "primary",
+        "notes": "About 1.7 million postcodes, Great Britain only, quarterly; CSV 14,470,875 bytes."
+      },
+      {
+        "dataset": "ONS Postcode Directory",
+        "publisher": "ONS",
+        "url": "https://ckan.publishing.service.gov.uk/dataset/ons-postcode-directory-may-2026",
+        "licence": "ONS-OGL; Royal-Mail-notice",
+        "verified": "record opened; coordinates not checked",
+        "role": "unresolved for Northern Ireland",
+        "notes": "Includes Northern Ireland, but commercial use of BT postcodes needs a Land and Property Services licence."
+      }
+    ],
+    "addresses": [
+      {
+        "dataset": "No open UK dataset with address text and coordinates found",
+        "publisher": null,
+        "url": null,
+        "licence": null,
+        "verified": "Overture, OS, Royal Mail and Finance NI pages opened",
+        "role": "none",
+        "notes": "Overture has no UK source; OS Open UPRN has coordinates only; AddressBase, PAF and Northern Ireland Pointer are licensed; council tax address lists released under the OGL are disputed by OS, GeoPlace and Royal Mail."
+      },
+      {
+        "dataset": "OSM addr:*",
+        "publisher": "OpenStreetMap contributors",
+        "url": "https://wiki.openstreetmap.org/wiki/Addresses_in_the_United_Kingdom",
+        "licence": "ODbL-1.0",
+        "verified": "wiki opened; completeness not measured",
+        "role": "gap filler",
+        "notes": "No completeness figure found."
+      }
+    ],
+    "pois": [
+      {
+        "dataset": "OSM amenities as the US map uses them",
+        "publisher": "OpenStreetMap contributors",
+        "url": "https://taginfo.geofabrik.de/europe:great-britain/",
+        "licence": "ODbL-1.0",
+        "verified": "2026-11-17",
+        "role": "primary",
+        "scope": "Great Britain extract only (England, Scotland, Wales); extract date not shown; counts are nodes, ways and relations together",
+        "counts": {
+          "amenity=pharmacy": 9129,
+          "amenity=fire_station": 2041,
+          "amenity=police": 1793,
+          "amenity=hospital": 1797,
+          "amenity=doctors": 6786,
+          "amenity=drinking_water": 2434,
+          "man_made=water_well": 1291,
+          "emergency=water_tank": 116,
+          "emergency=defibrillator": 23034,
+          "amenity=shelter": 11307
+        }
+      },
+      {
+        "dataset": "Defibrillators, OSM emergency=defibrillator",
+        "publisher": "OpenStreetMap contributors",
+        "url": "https://taginfo.geofabrik.de/europe:great-britain/",
+        "licence": "ODbL-1.0",
+        "verified": "2026-11-17",
+        "role": "proposed new kind",
+        "notes": "23,034 in Great Britain. The BHF's The Circuit is not open; its terms forbid use for an app without written consent."
+      },
+      {
+        "dataset": "Environment Agency flood areas (real-time flood-monitoring API)",
+        "publisher": "Environment Agency",
+        "url": "https://environment.data.gov.uk/flood-monitoring/doc/reference",
+        "licence": "OGL-3.0",
+        "verified": "2026-11-17",
+        "role": "proposed new kind",
+        "notes": "England only; WGS 84 polygons and centre points; credit: 'this uses Environment Agency flood and river level data from the real-time data API (Beta)'. Live warnings need a connection."
+      },
+      {
+        "dataset": "NHS Organisation Data Service",
+        "publisher": "NHS England",
+        "url": "https://digital.nhs.uk/services/organisation-data-service",
+        "licence": "OGL-3.0",
+        "verified": "opened; coordinates not confirmed",
+        "role": "cross-check",
+        "notes": "Hospitals, GPs, pharmacies; geocoding from postcode or UPRN would be needed."
+      }
+    ]
+  },
+  "not_open": [
+    "OS AddressBase",
+    "Royal Mail PAF",
+    "Northern Ireland Pointer",
+    "UKCEH Land Cover Map 2023",
+    "The Circuit (British Heart Foundation defibrillator register)",
+    "Met Office warnings feeds (not an open licence)"
+  ],
+  "guides": [
+    {
+      "source": "Be Ready (UK Government)",
+      "url": "https://beready.campaign.gov.uk/",
+      "licence": "OGL-3.0 unless stated; branding and graphics excluded",
+      "verified": "opened"
+    },
+    {
+      "source": "Ready Scotland",
+      "url": "https://ready.campaign.gov.scot/",
+      "licence": "mostly OGL-3.0; graphics excluded",
+      "verified": "opened"
+    },
+    {
+      "source": "Environment Agency flood guidance",
+      "url": "https://www.gov.uk/prepare-for-flooding",
+      "licence": "OGL-3.0",
+      "verified": "opened"
+    },
+    {
+      "source": "NHS website",
+      "url": "https://www.nhs.uk/our-policies/terms-and-conditions/",
+      "licence": "NHS-website-terms",
+      "verified": "opened"
+    },
+    {
+      "source": "Food Standards Agency, home food preservation",
+      "url": "https://www.gov.uk/guidance/consumer-advice-forfood-preservation-at-home",
+      "licence": "OGL-3.0",
+      "verified": "opened; general advice only, no tested canning times"
+    },
+    {
+      "source": "British Red Cross",
+      "url": "https://www.redcross.org.uk/terms-and-conditions",
+      "licence": "not reusable without prior authorisation",
+      "verified": "opened"
+    }
+  ],
+  "addressing": {
+    "postal_code": {
+      "format": "Six patterns: A9 9AA, A99 9AA, A9A 9AA, AA9 9AA, AA99 9AA, AA9A 9AA; always a space before a three-character inward code; Northern Ireland is area BT.",
+      "example_pattern": "^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$",
+      "pattern_note": "suggested in this proposal, not from a publisher; needs testing",
+      "verified": "Wikipedia opened; Royal Mail guidance page refused the fetch"
+    },
+    "order": "Premises (number or name), thoroughfare, locality, post town, postcode (\"10 Downing Street, London SW1A 2AA\").",
+    "notes": "normalize() keeps only a-z and 0-9, so Welsh circumflexed letters become spaces; is_address_query() needs a number first; _parts() takes a postcode only as one five-digit last word; find_addresses() reads one addresses/<code>.sqlite named for a US state; tools/build_addresses.py keeps only country = 'US'. Checked in this repository on 2026-11-17."
+  },
+  "regions": [
+    {
+      "code": "GB-NE",
+      "name": "North East",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLC",
+      "ons_code": "E12000001",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -2.6898,
+        "south": 54.4511,
+        "east": -0.7886,
+        "north": 55.8111,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -2.84,
+          54.3,
+          -0.63,
+          55.97
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 5447
+      },
+      "layers": "country_layers",
+      "code_note": "the part after the hyphen, NE, is Nebraska in STATE_CODES (engine/address_search.py)"
+    },
+    {
+      "code": "GB-NW",
+      "name": "North West",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLD",
+      "ons_code": "E12000002",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -3.6398,
+        "south": 52.9472,
+        "east": -1.9096,
+        "north": 55.189,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -3.79,
+          52.79,
+          -1.75,
+          55.34
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 18410
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-YH",
+      "name": "Yorkshire and The Humber",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLE",
+      "ons_code": "E12000003",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -2.5647,
+        "south": 53.3016,
+        "east": 0.1469,
+        "north": 54.5602,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -2.72,
+          53.15,
+          0.3,
+          54.72
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 5804
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-EM",
+      "name": "East Midlands",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLF",
+      "ons_code": "E12000004",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -2.0341,
+        "south": 51.9773,
+        "east": 0.3556,
+        "north": 53.6164,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -2.19,
+          51.82,
+          0.51,
+          53.77
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 13772
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-WM",
+      "name": "West Midlands",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLG",
+      "ons_code": "E12000005",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -3.2356,
+        "south": 51.8261,
+        "east": -1.1721,
+        "north": 53.2262,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -3.39,
+          51.67,
+          -1.02,
+          53.38
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 5294
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-EE",
+      "name": "East of England",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLH",
+      "ons_code": "E12000006",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -0.7457,
+        "south": 51.4511,
+        "east": 1.7637,
+        "north": 52.9879,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -0.9,
+          51.3,
+          1.92,
+          53.14
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 36386
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-LON",
+      "name": "London",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLI",
+      "ons_code": "E12000007",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -0.5102,
+        "south": 51.2868,
+        "east": 0.334,
+        "north": 51.6919,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -0.67,
+          51.13,
+          0.49,
+          51.85
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 2348
+      },
+      "layers": "country_layers",
+      "inside": [
+        "GB-SE"
+      ]
+    },
+    {
+      "code": "GB-SE",
+      "name": "South East",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLJ",
+      "ons_code": "E12000008",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -1.9572,
+        "south": 50.5749,
+        "east": 1.4496,
+        "north": 52.1964,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -2.11,
+          50.42,
+          1.6,
+          52.35
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 20296
+      },
+      "layers": "country_layers",
+      "contains": [
+        "GB-LON"
+      ]
+    },
+    {
+      "code": "GB-SW",
+      "name": "South West",
+      "country": "England",
+      "country_iso": "GB",
+      "admin_level": "region",
+      "itl1": "TLK",
+      "ons_code": "E12000009",
+      "code_origin": "invented in this proposal; ISO 3166-2 has no code for English regions at this level",
+      "bbox": {
+        "west": -6.4187,
+        "south": 49.8648,
+        "east": -1.4856,
+        "north": 52.1126,
+        "source": {
+          "dataset": "Regions (December 2024) Boundaries EN BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Regions_December_2024_Boundaries_EN_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -6.57,
+          49.71,
+          -1.33,
+          52.27
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 30676
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-WLS",
+      "name": "Wales",
+      "country": "Wales",
+      "country_iso": "GB",
+      "admin_level": "nation",
+      "itl1": "TLL",
+      "ons_code": "W92000004",
+      "code_origin": "ISO 3166-2:GB (seen on Wikipedia; ISO page not opened)",
+      "bbox": {
+        "west": -5.6691,
+        "south": 51.375,
+        "east": -2.6499,
+        "north": 53.4357,
+        "source": {
+          "dataset": "Countries (December 2024) Boundaries UK BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Countries_December_2024_Boundaries_UK_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -5.82,
+          51.22,
+          -2.49,
+          53.59
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 29764
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-SCT",
+      "name": "Scotland",
+      "country": "Scotland",
+      "country_iso": "GB",
+      "admin_level": "nation",
+      "itl1": "TLM",
+      "ons_code": "S92000003",
+      "code_origin": "ISO 3166-2:GB (seen on Wikipedia; ISO page not opened)",
+      "bbox": {
+        "west": -8.65,
+        "south": 54.6333,
+        "east": -0.7246,
+        "north": 60.8608,
+        "source": {
+          "dataset": "Countries (December 2024) Boundaries UK BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Countries_December_2024_Boundaries_UK_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -8.8,
+          54.48,
+          -0.57,
+          61.02
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 186378
+      },
+      "layers": "country_layers"
+    },
+    {
+      "code": "GB-NIR",
+      "name": "Northern Ireland",
+      "country": "Northern Ireland",
+      "country_iso": "GB",
+      "admin_level": "nation",
+      "itl1": "TLN",
+      "ons_code": "N92000002",
+      "code_origin": "ISO 3166-2:GB (seen on Wikipedia; ISO page not opened)",
+      "bbox": {
+        "west": -8.1775,
+        "south": 54.0228,
+        "east": -5.4328,
+        "north": 55.3129,
+        "source": {
+          "dataset": "Countries (December 2024) Boundaries UK BGC, vertices requested in WGS 84",
+          "publisher": "ONS Open Geography portal",
+          "licence": "OGL-3.0",
+          "url": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Countries_December_2024_Boundaries_UK_BGC/FeatureServer/0",
+          "verified": "service queried 2026-11-17; layer metadata page not opened"
+        },
+        "padded_0_15": [
+          -8.33,
+          53.87,
+          -5.28,
+          55.47
+        ],
+        "padded_note": "west, south, east, north plus or minus 0.15 degrees, rounded outward to 0.01 degrees, the same margin map_sets.state uses for US states",
+        "vertex_count": 8649
+      },
+      "layers": "country_layers",
+      "nation_sources": {
+        "os_open_data": "not covered (Great Britain only)",
+        "postcodes": "Code-Point Open excludes Northern Ireland; ONS Postcode Directory includes BT but commercial use needs a Land and Property Services licence",
+        "addresses": "Pointer is licensed for a fee",
+        "terrain": "no confirmed national open DTM",
+        "osm": "united-kingdom extract includes it; ireland-and-northern-ireland extract also holds the Republic",
+        "verified": "2026-11-17"
+      },
+      "notes": "The box takes in border counties of the Republic of Ireland."
+    }
+  ]
+}

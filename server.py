@@ -107,7 +107,8 @@ def catalog():
 TRUST = [  # (pattern on publisher+collection, label shown to people, ranking weight)
     (r'World Health|WHO\b|ICRC|IFRC|Red Cross|Médecins|MSF|UNICEF|Sphere|St John Ambulance|CAWST', 'International health & humanitarian guidance', 1.5),
     (r'Hesperian|Where There Is No|Where Women|Book for Midwives|Community Guide to Environmental|Health Actions|Workers\' Guide', 'Hesperian community health guide', 1.45),
-    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of', 'Government guidance', 1.4),
+    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of'
+     r'|\bNHS\b|UKHSA|UK Health Security|Met Office|\bSEPA\b|gov\.uk|GOV\.UK|Cabinet Office|Home Office|Natural Resources Wales|Ordnance Survey|Forestry England|Forestry Commission|Scottish Government|Welsh Government|UK Government|Be Ready|Ready Scotland', 'Government guidance', 1.4),
     (r'National Center for Home Food Preservation|Extension|University|UC |College|Agricultural|Food Hero|UWyo', 'University / extension service', 1.35),
     (r'MIT|OpenStax|OpenCourseWare|NIST', 'Course or textbook', 1.1),
     (r'Kiwix|Wikipedia|Wikibooks|Appropedia|MDWiki', 'Community-written encyclopedia', 1.0),
@@ -1513,6 +1514,23 @@ def _distinct(path, sql):
         db.close()
 
 
+def map_set_meta():
+    """What the installed map set says about itself in map-set.json, beyond its file list: optional 'units' ('metric' for heights,
+    contours and the scale bar; anything else means feet), 'country' (ISO code) and 'credit' (the data credit line for the map's
+    corner). A US map set has none of them and keeps today's behaviour."""
+    try:
+        d = json.loads((HERE / 'map-set.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(d, dict):
+        return {}
+    credit = d.get('credit')
+    country = d.get('country')
+    return {'units': 'metric' if d.get('units') == 'metric' else 'imperial',
+            'country': country if isinstance(country, str) and re.fullmatch(r'[A-Z]{2}', country) else None,
+            'credit': credit.strip()[:400] if isinstance(credit, str) and credit.strip() else None}
+
+
 @functools.lru_cache(maxsize=1)
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
@@ -1537,7 +1555,7 @@ def map_contents():
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
         if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
             bounds = None
-    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours, **map_set_meta()}
 
 
 def map_info():

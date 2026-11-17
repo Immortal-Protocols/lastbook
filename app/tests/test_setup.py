@@ -1142,6 +1142,30 @@ class AddressIndexes(Maps):
         self.assertEqual((new / 'derived/geo/addresses/CA.sqlite').read_bytes(), b'address index')
         self.assertFalse(source.exists())
 
+    def test_country_prefixed_region_addresses_survive_pack_upgrade(self):
+        old = self.tmp / 'old'
+        new = self.tmp / 'new'
+        (old / 'derived/geo/addresses').mkdir(parents=True)
+        for name in ('GB-SE.sqlite', 'GB-SCT.sqlite', 'gb-se.sqlite', 'GB-S.sqlite', 'GBSE.sqlite'):
+            (old / 'derived/geo/addresses' / name).write_bytes(b'address index')
+        new.mkdir()
+        install.carry_over(old, new)
+        moved = sorted(p.name for p in (new / 'derived/geo/addresses').iterdir())
+        self.assertEqual(moved, ['GB-SCT.sqlite', 'GB-SE.sqlite'])      # only well-formed region ids are carried over
+
+    def test_region_ids_in_address_manifest(self):
+        mf, _ = self.address_manifest()
+        for good in ('CA', 'GB-SE', 'GB-SCT', 'GB-NIR', 'GB-WLS'):
+            with self.subTest(good=good):
+                ok = json.loads(json.dumps(mf.current))
+                ok['address_indexes'][0]['id'] = good
+                self.assertIsNotNone(manifest.validate(ok, ALLOWED))
+        for bad in ('gb-se', 'GBSE', 'GB-', 'GB-S', 'GB-SCTL', 'GB--SE', 'GB-SE-1', '../CA', 'C'):
+            with self.subTest(bad=bad):
+                rejected = json.loads(json.dumps(mf.current))
+                rejected['address_indexes'][0]['id'] = bad
+                self.assertIsNone(manifest.validate(rejected, ALLOWED))
+
     def test_unavailable_address_index_does_not_block_map(self):
         mf, _ = self.address_manifest()
         mf.current['address_indexes'][0]['available'] = False

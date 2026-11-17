@@ -243,9 +243,15 @@ const Chat = (() => {
     return h;
   }
   function stepText(s) {
-    const a = s.args || {}, r = s.summary || {};
+    // s.args is the model's own tool call, as it sent it: use only plain text and numbers from it, never convert anything else.
+    const plain = v => typeof v === 'string' || typeof v === 'number' ? v : '';
+    const raw = s.args && typeof s.args === 'object' ? s.args : {}, r = s.summary || {};
+    const a = { query: plain(raw.query), kind: plain(raw.kind), doc_id: plain(raw.doc_id), page: plain(raw.page), pages: raw.pages };
     if (s.name === 'search_library') return `Searched “${esc(a.query || '')}”${a.kind && a.kind !== 'any' ? ' (' + esc(a.kind) + 's)' : ''} — ${r.count ?? '…'} passage${r.count === 1 ? '' : 's'}`;
-    if (s.name === 'read_pages') return r.error ? 'Tried to read an unknown document' : `Read ${esc(r.title || a.doc_id)}, page${(a.pages || []).length > 1 ? 's' : ''} ${(a.pages || []).join(', ')}`;
+    if (s.name === 'read_pages') {
+      const pages = (Array.isArray(a.pages) ? a.pages : [a.pages]).filter(p => typeof p === 'number' || typeof p === 'string');
+      return r.error ? 'Tried to read an unknown document' : `Read ${esc(r.title || a.doc_id)}, page${pages.length > 1 ? 's' : ''} ${esc(pages.join(', '))}`;
+    }
     if (s.name === 'view_page') return r.error ? 'Couldn’t view that page' : `Looked at the picture of ${esc(r.title || '')}, page ${esc(a.page)}`;
     if (s.name === 'get_timed_transcript') return r.error ? `No transcript for ${esc(r.title || 'that video')}` : `Read the transcript of ${esc(r.title || '')}`;
     if (s.name === 'lookup_place') return `Looked up “${esc(a.query || '')}” on the offline map`;

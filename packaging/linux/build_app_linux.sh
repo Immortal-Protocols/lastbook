@@ -20,7 +20,7 @@
 set -euo pipefail
 HERE="$(dirname "$(realpath "$0")")"
 ROOT="$(dirname "$(dirname "$HERE")")"
-APP_VERSION="${LASTBOOK_VERSION:-1.1.9}"
+APP_VERSION="${LASTBOOK_VERSION:-1.1.11}"
 BUILD="$ROOT/derived/app-build/linux"
 OUT="$BUILD/$(date +%Y%m%d-%H%M%S)"
 STAGE="$OUT/root"
@@ -103,8 +103,9 @@ find "$STAGE" -type d -exec chmod 755 {} +
 find "$STAGE" -type f -exec chmod go-w,a+r {} +
 
 # The package. Depends: the system's window (GTK 3, WebKitGTK 4.1 and its GObject bindings) and the codecs the library's videos need:
-# H.264/AAC in MP4 through gstreamer1.0-libav, WebM and the rest through gstreamer1.0-plugins-good. With them present, WebKit never asks
-# the system to go and look for a codec. The local AI's runner needs libgomp1, and libvulkan1 for graphics cards (else it runs on the CPU).
+# H.264/AAC in MP4 through gstreamer1.0-libav, WebM and the rest through gstreamer1.0-plugins-good, and AV1 (many of the library's
+# first-aid videos) through gstreamer1.0-plugins-bad's dav1d decoder: without it they play with sound but a black picture. With them
+# present, WebKit never asks the system to go and look for a codec. The local AI's runner needs libgomp1, and libvulkan1 for graphics cards (else it runs on the CPU).
 mkdir -p "$STAGE/DEBIAN"
 SIZE_KB="$(du -sk --exclude=DEBIAN "$STAGE" | cut -f1)"
 cat > "$STAGE/DEBIAN/control" <<CTRL
@@ -113,7 +114,7 @@ Version: $DEB_VERSION
 Architecture: amd64
 Maintainer: Lastbook <noreply@lastbook.org>
 Installed-Size: $SIZE_KB
-Depends: python3 (>= $PYV), python3 (<< $PY_NEXT), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gir1.2-soup-3.0, libwebkit2gtk-4.1-0 (>= 2.40), libgstreamer1.0-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav, libgomp1
+Depends: python3 (>= $PYV), python3 (<< $PY_NEXT), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, gir1.2-soup-3.0, libwebkit2gtk-4.1-0 (>= 2.40), libgstreamer1.0-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav, libgomp1
 Recommends: libvulkan1
 Section: education
 Priority: optional

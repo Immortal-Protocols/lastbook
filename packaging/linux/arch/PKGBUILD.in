@@ -8,7 +8,13 @@ url='https://lastbook.org'
 license=('MIT')
 depends=('python>=@PYTHON@' 'python<@PYTHON_NEXT@' 'python-gobject' 'gtk3'
          'webkit2gtk-4.1>=2.40' 'libsoup3' 'gstreamer' 'gst-plugins-base'
-         'gst-plugins-good' 'gst-libav' 'gcc-libs' 'glibc')
+         'gst-plugins-good' 'gst-libav' 'gst-plugins-bad-libs' 'gst-plugin-va'
+         'gcc-libs' 'glibc')
+# Playback needs an AV1 decoder: every library video is AV1, and gst-libav/base/good
+# have none. gst-plugin-va supplies vaav1dec, which is what decodebin actually
+# autoplugs (gst-plugins-bad-libs' vulkanav1dec exists but is never selected). Without
+# gst-plugin-va the player runs with a black picture: gst-play reports
+# "Missing plugin: AV1 decoder". Verified on Mesa 26 / RADV, RX 9070 XT.
 makedepends=('python-pip' 'python-pillow' 'pkgconf')
 options=('!strip' '!debug' '!distcc' '!ccache')
 source=('lastbook-source.tar')

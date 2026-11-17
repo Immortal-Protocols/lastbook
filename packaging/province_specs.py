@@ -22,4 +22,12 @@ PROVINCES = {
         'extract': 'https://download.geofabrik.de/north-america/canada/prince-edward-island-latest-free.gpkg.zip',
         'source': 'OpenStreetMap contributors, via Geofabrik prince-edward-island-latest-free.gpkg.zip (ODbL 1.0)',
     },
+    'za-wc': {
+        'country': 'South Africa',
+        'title': 'Western Cape and nearby areas',
+        # Mainland and nearshore envelope of OSM relation 80501, rounded outwards.
+        'bbox': [17.56, -35.04, 24.23, -30.43],
+        'extract': 'https://download.geofabrik.de/africa/south-africa-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik south-africa-latest-free.gpkg.zip (ODbL 1.0)',
+    },
 }

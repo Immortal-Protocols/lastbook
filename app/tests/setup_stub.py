@@ -38,12 +38,14 @@ MANIFEST = {
          'size': 16947541728, 'memory_bytes': 19027384256, 'available': True},
     ],
     'maps': [   # as docs/SETUP-API.md "State maps"; sizes are made up until map-packages lists the real ones
-        {'id': st, 'title': t, 'kind': 'state', 'installed_bytes': inst, 'available': ok,
+        {'id': region, 'title': title, 'kind': kind, 'installed_bytes': inst, 'available': ok,
          'includes': 'Local streets, buildings, terrain and crops, plus water, help and resource points',
-         'files': [{'name': f'Lastbook-Map-{st}.zip', 'size': dl, 'kind': 'zip'}]}
-        for st, t, dl, inst, ok in [('AZ', 'Arizona', 1600000000, 3900000000, True), ('CA', 'California', 2100000000, 5000000000, True),
-                                    ('NV', 'Nevada', 900000000, 2200000000, True), ('OR', 'Oregon', 1100000000, 2700000000, True),
-                                    ('RI', 'Rhode Island', 120000000, 300000000, True), ('TX', 'Texas', 0, 0, False)]
+         'files': [{'name': f'Lastbook-Map-{region}.zip', 'size': dl, 'kind': 'zip'}]}
+        for region, title, dl, inst, ok, kind in
+        [('AZ', 'Arizona', 1600000000, 3900000000, True, 'state'), ('CA', 'California', 2100000000, 5000000000, True, 'state'),
+         ('NV', 'Nevada', 900000000, 2200000000, True, 'state'), ('OR', 'Oregon', 1100000000, 2700000000, True, 'state'),
+         ('RI', 'Rhode Island', 120000000, 300000000, True, 'state'), ('TX', 'Texas', 0, 0, False, 'state'),
+         ('eu-de', 'Germany', 1900000000, 4600000000, True, 'country'), ('eu-pl', 'Poland', 1700000000, 4100000000, True, 'country')]
     ],
 }
 

@@ -1368,6 +1368,28 @@ class Through(Base):
             self.assertEqual(r.status, 404)
 
 
+@unittest.skipUnless(shutil.which('node'), 'Node is not installed')
+class RegionPicker(unittest.TestCase):
+    def test_country_groups_and_us_map_inclusion(self):
+        source = (ROOT / 'web/setup.js').read_text(encoding='utf-8')
+        start = source.index('  const isUSState =')
+        end = source.index('  /* the detailed map', start)
+        helpers = source[start:end]
+        expression = """(() => {
+          const maps = [{id:'CA', title:'California', kind:'state'}, {id:'eu-de', title:'Germany', kind:'country'},
+            {id:'eu-pl', title:'Poland', kind:'country'}, {id:'DE-BE', title:'Berlin', kind:'state'},
+            {id:'CA-ON', title:'Ontario', kind:'province'}];
+          return {groups: regionGroups(maps).map(([name, entries]) => [name, entries.map(x => x.id)]),
+            stateInUS: regionIncluded('CA', 'us', maps), countryInUS: regionIncluded('eu-pl', 'us', maps),
+            foreignStateInUS: regionIncluded('DE-BE', 'us', maps), currentCountry: regionIncluded('eu-pl', 'eu-pl', maps)};
+        })()"""
+        run = subprocess.run(['node', '-e', helpers + '\nconsole.log(JSON.stringify(' + expression + '))'],
+                             text=True, capture_output=True, check=True)
+        self.assertEqual(json.loads(run.stdout), {
+            'groups': [['Countries', ['eu-de', 'eu-pl']], ['United States', ['CA']], ['Other regions', ['DE-BE', 'CA-ON']]],
+            'stateInUS': True, 'countryInUS': False, 'foreignStateInUS': False, 'currentCountry': True})
+
+
 @unittest.skipUnless(os.environ.get('LASTBOOK_FULL_DISK') == '1' and sys.platform == 'darwin', 'LASTBOOK_FULL_DISK=1 on a Mac')
 class FullDisk(Base):
     def test_disk_fills_during_download(self):

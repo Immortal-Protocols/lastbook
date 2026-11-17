@@ -10,8 +10,9 @@ one more region by hand. It uses northeastern Pennsylvania (the Lehigh Valley an
 worked example, because a reader there noticed the gap: asked about that area, Chat answered with Los Angeles County
 material.
 
-Nothing here changes the app, the engine, a guide or a build. Builds package `web/` and `content/` only, so this file
-does not ship. Where something below could not be checked, it says so.
+The design below was first proposed in this file on its own. The section "Prototype" describes a small working version of
+it, added for review. Builds package `web/` and `content/` only, so this file does not ship. Where something below could
+not be checked, it says so.
 
 ## What a reader sees today
 
@@ -295,6 +296,194 @@ from Penn State Extension, and starts on hazards, warnings and wildlife. Its ord
   carry the same region code later, so the map could say "California only" in the same words as the guides.
 - **The All pack.** All would carry every region's documents, so a region choice there only sets which ones count as
   the reader's own.
+
+## Prototype: one slot, two regions
+
+Asked for in review: one guide slot (growing season) across northeastern Pennsylvania and coastal Southern California, on
+a test library, showing that choosing a region installs or switches on its material, that switching region changes both
+the Grow guide and the sources Chat is given, and that the guide falls back to general readings when a region has nothing
+in the library. It is a prototype for review, not a final implementation: there are no setup screens, and the
+Pennsylvania documents are stand-ins written for testing, because Penn State has not yet been asked about reuse.
+
+### What it adds
+
+| Part | Where | What it does |
+|---|---|---|
+| Regions | `engine/regions.py` | Region codes and chains (`US-PA-lehigh-pocono` → `US-PA` → `US`), region files, `region-set.json` in the data folder, and region packs: check, install, remove, choose. One pack per library, as with state maps. |
+| California's region file | `content/regions/US-CA-socal-coast.json` | The three California growing-season readings, moved out of `grow.json` unchanged, and the towns the region covers. |
+| Grow guide | `content/topics/grow.json` | "What can I plant now where I live?" and step 2 name the `growing-season` slot. Their own reading is the general Hesperian chapter, already in the guide's learn list. |
+| Guides | `server.py` `fill_slot`, `web/app.js` `slotMore` | The reader's region's readings first, each with its place; then the general ones; a note on what is missing; readings for other places in a closed "Written for other places" list. `/api/region` reports the region (read only: the server still writes nothing). |
+| Chat | `assistant.py` `region_context`, `hybrid`, `_src_block`, `reader_area`, rule 10 | Sources for the reader's region (or for a place the question names, such as Easton or Stroudsburg) are raised a little; sources for other places are lowered, never removed. Every regional source says where it is written for, and the model is told the area the person chose. |
+| Pennsylvania test pack | `app/tests/fixtures/region-US-PA/` | Two stand-in documents, their search rows and text, and region files for Pennsylvania and for the Lehigh Valley and the Poconos (Allentown, Bethlehem, Easton, Stroudsburg, Jim Thorpe, Honesdale and the rest). |
+| Tool | `tools/region_pack.py` | `test-library`, `build`, `install`, `select`, `remove` and `show`, for the run-through below. |
+| Tests | `app/tests/test_regions.py` | 16 tests: codes and names, region files, install and remove leaving the library exactly as it was, refused packs (a path out of the pack, another state's files, a changed file, a borrowed id, a stray search row), the guide and Chat for each case below. |
+| Shipping | `packaging/ship_app_files.py`, `lastbook_macos.spec`, `build_packs.py`, `verify_packs.py`, `tools/validate_topics.py` | `content/regions/` ships with the app, its readings count as guide readings when a pack is built (so Small keeps the California charts), and the guide check checks them. |
+
+### How a region pack is checked and installed
+
+A region pack is a zip holding `region-pack.json`, `catalog.json`, `search.json`, `regions/<code>.json` and its documents
+under `documents/regions/<state>/`, with their text under `text/`. Before anything in the library changes, every file is
+checked: no path leaves the pack or reaches another state's folder, every record's id starts `region-<state>-`, every
+file matches its SHA-256, and every search row belongs to a document the pack holds. Installing removes any other region
+pack first, copies the files, adds the search rows in one transaction and writes the catalog in one rename. Removing takes
+out exactly the ids, rows and files it added. The real version would run through setup's staged switch
+(`docs/SETUP-API.md`), as the state maps do; the region choice would come from setup's state picker.
+
+### Run-through
+
+On any computer with this branch, no library and no network needed:
+
+```bash
+python3 tools/region_pack.py test-library test-library
+python3 tools/region_pack.py build app/tests/fixtures/region-US-PA Lastbook-Region-US-PA.zip
+python3 tools/region_pack.py install --data test-library Lastbook-Region-US-PA.zip
+python3 tools/region_pack.py select --data test-library US-PA-lehigh-pocono
+python3 tools/region_pack.py show --data test-library --ask "When can I plant tomatoes?"
+python3 -B -m unittest app.tests.test_regions
+```
+
+To see it in the app, run `python3 server.py --data test-library` and open Grow, then "What can I plant now where I
+live?", or ask in Chat. `select` changes the region (`US-CA-socal-coast`, `US-OH`, `none`); reload the page after it.
+The test library holds the documents the Grow guide cites under their real ids, with short stand-in text. On a real
+library the same commands work with `--data /path/to/LastbookData` (close the app first).
+
+The log below is the output of those commands on 18 November 2026, covering each case asked for:
+1. no region chosen;
+2. the Pennsylvania pack installed;
+3. the Lehigh Valley and the Poconos chosen;
+4. California chosen, with a question about Easton;
+5. Ohio, which has no material;
+6. the Pennsylvania pack removed, with the Poconos still chosen.
+
+<details><summary>Run-through log</summary>
+
+```text
+$ python3 tools/region_pack.py test-library test-library
+Made a test library in test-library/library-data
+
+$ python3 tools/region_pack.py build app/tests/fixtures/region-US-PA Lastbook-Region-US-PA.zip
+Built Lastbook-Region-US-PA.zip
+
+$ python3 tools/region_pack.py show --data test-library --ask When\ can\ I\ plant\ tomatoes\?
+Region: not chosen
+Region pack installed: none
+
+Guide “Grow staple food” → “What can I plant now where I live?”
+  - [general] Growing food in any place: the general chapter
+  Note: Readings for a particular place show here once you choose where this library is used.
+  Written for other places: [Coastal Southern California] Month-by-month vegetable planting chart for Southern California
+  Written for other places: [Coastal Southern California] October planting list for Los Angeles County (historical)
+  Written for other places: [Coastal Southern California] Potato planting months by California region
+
+Chat sources for “When can I plant tomatoes?”:
+  - Sustainable farming (test stand-in for the Hesperian chapter) — general
+  - October planting list (test stand-in for UC Los Angeles County) — written for Coastal Southern California, the reader has not chosen an area
+  - Vegetable planting chart (test stand-in for UC Ventura County) — written for Coastal Southern California, the reader has not chosen an area
+  - Potato planting months (test stand-in for UC IPM) — written for Coastal Southern California, the reader has not chosen an area
+
+$ python3 tools/region_pack.py install --data test-library Lastbook-Region-US-PA.zip
+Installed the US-PA region pack: 2 documents. Region: US-PA.
+
+$ python3 tools/region_pack.py select --data test-library US-PA-lehigh-pocono
+Region: US-PA-lehigh-pocono.
+
+$ python3 tools/region_pack.py show --data test-library --ask When\ can\ I\ plant\ tomatoes\?
+Region: Lehigh Valley and the Poconos (US-PA-lehigh-pocono)
+Region pack installed: US-PA
+
+Guide “Grow staple food” → “What can I plant now where I live?”
+  - [Lehigh Valley and the Poconos] When to sow each vegetable (test stand-in)
+  - [Pennsylvania] Which vegetables go in before the last frost (test stand-in)
+  - [general] Growing food in any place: the general chapter
+  Note: No planting chart written for Lehigh, Northampton or Monroe County.
+  Written for other places: [Coastal Southern California] Month-by-month vegetable planting chart for Southern California
+  Written for other places: [Coastal Southern California] October planting list for Los Angeles County (historical)
+  Written for other places: [Coastal Southern California] Potato planting months by California region
+
+Chat sources for “When can I plant tomatoes?”:
+  - Vegetable seed planting guide (test stand-in) — written for Lehigh Valley and the Poconos
+  - Cool-season and warm-season vegetables (test stand-in) — written for Pennsylvania
+  - Sustainable farming (test stand-in for the Hesperian chapter) — general
+  - October planting list (test stand-in for UC Los Angeles County) — written for Coastal Southern California, not the area asked about
+  - Vegetable planting chart (test stand-in for UC Ventura County) — written for Coastal Southern California, not the area asked about
+  - Potato planting months (test stand-in for UC IPM) — written for Coastal Southern California, not the area asked about
+  Told to the model: The person set this library to their area: Lehigh Valley and the Poconos, Pennsylvania. Prefer sources written for it (rule 10).
+
+$ python3 tools/region_pack.py select --data test-library US-CA-socal-coast
+Region: US-CA-socal-coast.
+
+$ python3 tools/region_pack.py show --data test-library --ask When\ can\ I\ plant\ tomatoes\ in\ Easton\?
+Region: Coastal Southern California (US-CA-socal-coast)
+Region pack installed: US-PA
+
+Guide “Grow staple food” → “What can I plant now where I live?”
+  - [Coastal Southern California] Month-by-month vegetable planting chart for Southern California
+  - [Coastal Southern California] October planting list for Los Angeles County (historical)
+  - [Coastal Southern California] Potato planting months by California region
+  - [general] Growing food in any place: the general chapter
+  Written for other places: [Pennsylvania] Which vegetables go in before the last frost (test stand-in)
+  Written for other places: [Lehigh Valley and the Poconos] When to sow each vegetable (test stand-in)
+
+Chat sources for “When can I plant tomatoes in Easton?”:
+  - Vegetable seed planting guide (test stand-in) — written for Lehigh Valley and the Poconos
+  - Cool-season and warm-season vegetables (test stand-in) — written for Pennsylvania
+  - Sustainable farming (test stand-in for the Hesperian chapter) — general
+  - October planting list (test stand-in for UC Los Angeles County) — written for Coastal Southern California, not the area asked about
+  - Vegetable planting chart (test stand-in for UC Ventura County) — written for Coastal Southern California, not the area asked about
+  - Potato planting months (test stand-in for UC IPM) — written for Coastal Southern California, not the area asked about
+  Told to the model: The person set this library to their area: Coastal Southern California, California. Prefer sources written for it (rule 10).
+
+$ python3 tools/region_pack.py select --data test-library US-OH
+Region: US-OH.
+
+$ python3 tools/region_pack.py show --data test-library
+Region: Ohio (US-OH)
+Region pack installed: US-PA
+
+Guide “Grow staple food” → “What can I plant now where I live?”
+  - [general] Growing food in any place: the general chapter
+  Note: Nothing written for Ohio in this library yet. These readings are general.
+  Written for other places: [Coastal Southern California] Month-by-month vegetable planting chart for Southern California
+  Written for other places: [Coastal Southern California] October planting list for Los Angeles County (historical)
+  Written for other places: [Coastal Southern California] Potato planting months by California region
+  Written for other places: [Pennsylvania] Which vegetables go in before the last frost (test stand-in)
+  Written for other places: [Lehigh Valley and the Poconos] When to sow each vegetable (test stand-in)
+
+$ python3 tools/region_pack.py remove --data test-library
+Removed the US-PA region pack.
+
+$ python3 tools/region_pack.py select --data test-library US-PA-lehigh-pocono
+Region: US-PA-lehigh-pocono.
+
+$ python3 tools/region_pack.py show --data test-library --ask When\ can\ I\ plant\ tomatoes\?
+Region: Pennsylvania (lehigh pocono area) (US-PA-lehigh-pocono)
+Region pack installed: none
+
+Guide “Grow staple food” → “What can I plant now where I live?”
+  - [general] Growing food in any place: the general chapter
+  Note: Nothing written for Pennsylvania (lehigh pocono area) in this library yet. These readings are general.
+  Written for other places: [Coastal Southern California] Month-by-month vegetable planting chart for Southern California
+  Written for other places: [Coastal Southern California] October planting list for Los Angeles County (historical)
+  Written for other places: [Coastal Southern California] Potato planting months by California region
+
+Chat sources for “When can I plant tomatoes?”:
+  - Sustainable farming (test stand-in for the Hesperian chapter) — general
+  - October planting list (test stand-in for UC Los Angeles County) — written for Coastal Southern California, not the area asked about
+  - Vegetable planting chart (test stand-in for UC Ventura County) — written for Coastal Southern California, not the area asked about
+  - Potato planting months (test stand-in for UC IPM) — written for Coastal Southern California, not the area asked about
+  Told to the model: The person set this library to their area: Pennsylvania (lehigh pocono area), Pennsylvania. Prefer sources written for it (rule 10).
+```
+
+</details>
+
+### What the prototype leaves open
+
+- **Setup.** No screens: `tools/region_pack.py` stands in for setup's picker and download.
+- **Ranking.** The weights (×1.25 for the reader's region, ×0.6 for another, ×0.85 when no region is chosen) are first
+  guesses, chosen so a regional source moves past a general one on the same subject but never disappears.
+- **Places in questions.** A town is matched by whole words from a region file's `places`. A town name shared with
+  another state (Bangor, Milford) is left out of the Pennsylvania list for that reason.
+- **One region per library.** Kept, as with state maps.
 
 ## Worked example: northeastern Pennsylvania
 

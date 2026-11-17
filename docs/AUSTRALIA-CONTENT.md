@@ -6,14 +6,16 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 20 dated official text adaptations: ACMA emergency calls and CB radio; Queensland
+- 24 dated official text readings: ACMA emergency calls and CB radio; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
   emergency contacts; Energy Safe Victoria's complete generator-use section; and
-  myGov's remote-travel preparation and emergency-help sections.
-- Six copyright statements, the original Australian source hub and a directory
-  covering all six states, ACT and NT: **28 searchable HTML records** altogether.
+  myGov's remote-travel preparation and emergency-help sections; NEMA's complete
+  written fire-danger rating and AusAlert articles; the complete 10 November 2026
+  AusAlert operational announcement; and NSW's warning-level definitions.
+- Seven copyright statements, the original Australian source hub and a directory
+  covering all six states, ACT and NT: **33 searchable HTML records** altogether.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
   documents are installed. The health guide also points to the library's existing
@@ -91,6 +93,25 @@ The myGov selection supplies basic national remote-travel preparation; it is not
 a detailed outback driving, water/fuel calculation or PLB manual. Its page update
 date is 16 January 2025.
 
+The warning-system readings distinguish three subjects: warning severity,
+forecast fire behaviour and delivery of warnings to mobile devices. They are
+static explanations, not current warnings or forecasts. NEMA's source pages were
+updated 11 and 12 November 2026; its operational announcement is dated
+10 November 2026. The full written article bodies are retained without changing
+their wording. NSW's selection contains only the warning-level definitions; media,
+hazard-specific action examples and an older paragraph describing an October 2026
+AusAlert launch as a future event are excluded. Current launch/transition context
+comes from NEMA's dated operational announcement instead.
+
+Both NEMA and AusAlert footers link to NEMA's shared privacy/disclosures policy,
+which contains its CC BY 4.0 grant, requested “Australian Government: NEMA” credit,
+third-party/branding exceptions and request not to alter source content. That
+copyright/disclaimer section is copied offline. Source wording is unchanged;
+only HTML display and active/remote elements are simplified. No logos, imagery,
+branded service presentation or endorsement are supplied. Frozen text was compared
+with the selected source blocks. The copyright/source review does not certify
+every statement for a particular emergency or make this a live warning service.
+
 Reviewed but **not bundled**:
 
 - ANZCOR full guidelines: its copyright page limits public redistribution without
@@ -119,10 +140,10 @@ an instruction to accept a new live page automatically.
 
 | Area | Current contribution | Still needed |
 | --- | --- | --- |
-| Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence | Satellite phone/PLB operation and local radio frequency coverage |
+| Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence; NEMA AusAlert explanations and operational notice | Satellite phone/PLB operation, detailed device support and local radio frequency coverage |
 | Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation | Licensed detailed local guides for other jurisdictions; disability and translated materials |
 | Rural preparation | NSW rural bushfire, flood/isolation, animals; myGov remote-travel basics | Detailed remote driving, route-specific water/fuel calculations, pastoral and First Nations community-specific sources |
-| Fire, flood, cyclone and heat | Dated NSW/Qld source texts | Detailed regional manuals outside NSW/Qld; Australian fire-danger ratings and warning-system source snapshots |
+| Fire, flood, cyclone and heat | Dated NSW/Qld texts; current-source national fire-danger/No Rating explanation and warning-level definitions | More detailed regional manuals outside NSW/Qld; hazard-specific and accessible/translated warnings materials |
 | Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
 | Power, gas and repairs | Energy Safe Victoria generator-use section, with its complete cautions | Broader electrical and gas safety; equipment-specific instructions and local professional assessment |

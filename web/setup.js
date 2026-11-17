@@ -78,7 +78,7 @@
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
-  const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
+  const model = () => S.model || null;   // the backend's own selection (engine/setup/api.py state): never re-decided here
   const cur = () => S.current || null;
   const packById = id => packs().find(p => p.id === id);
   function packNeedsInstall(pack) {

@@ -239,22 +239,38 @@ def _gb(n):
     return f'{n / 1e9:.0f} GB' if n >= 10e9 else f'{n / 1e9:.1f} GB'
 
 
+def gpu_bytes_of(gpus, unified):
+    """Dedicated graphics memory a fit can spend: 0 on Apple silicon (the graphics share the one memory) or with no card reporting."""
+    return 0 if unified or not gpus else max(g['vram_bytes'] for g in gpus)
+
+
+def in_ram_bytes(memory_bytes, gpu_bytes):
+    """The part of the model, its context and RESERVE that must sit in the computer's own memory: a discrete card takes the first of it, VRAM_KEPT aside."""
+    needs = int(memory_bytes + RESERVE)
+    if not gpu_bytes:
+        return needs
+    return int(max(memory_bytes - max(gpu_bytes - VRAM_KEPT, 0), 0) + RESERVE)
+
+
+def ai_machine():
+    """The memory facts a model fit needs: the computer's RAM and the dedicated graphics memory it can spend (0 on Apple silicon)."""
+    d = detect()
+    return {'ram_bytes': d['ram_bytes'], 'gpu_bytes': gpu_bytes_of(d['gpus'], d['unified_memory'])}
+
+
 def estimate_ai(ram, gpus, unified, memory_bytes):
     """Before the model file is here to measure: the model and its context need memory_bytes, plus RESERVE for everything else.
     On a Mac that is all one memory. On Windows the part that fits on the graphics card does not count against the computer's own."""
     needs = int(memory_bytes + RESERVE)
     if not ram:
         return {'fits': False, 'needs_bytes': needs, 'estimate': True, 'why': 'Lastbook could not tell how much memory this computer has.'}
-    if unified or not gpus:
-        in_ram = needs
-    else:
-        vram = max(g['vram_bytes'] for g in gpus)
-        in_ram = int(max(memory_bytes - max(vram - VRAM_KEPT, 0), 0) + RESERVE)
+    gpu_bytes = gpu_bytes_of(gpus, unified)
+    in_ram = in_ram_bytes(memory_bytes, gpu_bytes)
     fits = ram >= in_ram
     out = {'fits': fits, 'needs_bytes': needs, 'estimate': True}
     if fits:
         out['why'] = f'The local AI needs about {_gb(needs)} of memory, and this computer has {_gb(ram)}' + (
-            '.' if unified or not gpus else ' plus its graphics memory.')
+            '.' if not gpu_bytes else ' plus its graphics memory.')
     else:
         out['why'] = (f'The local AI needs about {_gb(in_ram)} of this computer’s memory, and it has {_gb(ram)}. '
                       'Lastbook works without it: search and reading are the same.')
@@ -276,27 +292,34 @@ def measure_ai(llm_local, model_path, timeout=180):
         return None
     if not fit:
         return None
-    j = llm_local.judge(fit)
+    j = llm_local.judge(fit, Path(model_path).stat().st_size)
     return {'fits': bool(j['fits']), 'needs_bytes': int(j['needs']), 'estimate': False,
             'why': j.get('why') or f'Measured on this computer: the local AI needs about {_gb(j["needs"])} of memory, and it fits.'}
+
+
+def ram_bytes():
+    """This computer's memory, or None when it cannot be read."""
+    try:
+        name = os_name()
+        return _sysctl('hw.memsize') if name == 'macos' else _windows_ram() if name == 'windows' else _linux_ram()
+    except Exception as e:
+        print('setup: memory detection:', type(e).__name__, e, flush=True)
+        return None
 
 
 def detect(extra_disks=()):
     """Everything but the AI's fit, which the caller adds (estimate_ai or measure_ai)."""
     name = os_name()
-    ram, gpus, unified = None, [], False
+    ram, gpus, unified = ram_bytes(), [], False
     try:
         if name == 'macos':
-            ram = _sysctl('hw.memsize')
             unified = arch() == 'arm64'
             chip = _sysctl('machdep.cpu.brand_string', 'str')
             if chip:
                 gpus = [{'name': chip, 'vram_bytes': 0}]     # Apple silicon: the graphics share the one memory
         elif name == 'windows':
-            ram = _windows_ram()
             gpus = _windows_gpus()
         elif name == 'linux':
-            ram = _linux_ram()
             gpus = _linux_gpus()
             if model := _apple_silicon_linux():
                 gpus, unified = [{'name': model, 'vram_bytes': 0}], True

@@ -37,6 +37,9 @@ CHUNK = 1024 * 1024
 SAVE_EVERY = 2.0                    # seconds between saves of the partial file's .json
 NETWORK_TRIES = 6                   # broken connections in a row, with no progress between them, before giving up
 BACKOFF = (2, 4, 8, 15, 30, 30)
+BUSY_BACKOFF = (5, 15, 30, 60, 120, 300)   # a server that answers 5xx or 429 is up but busy: wait longer, and keep at it
+BUSY_TRIES = 12                     # busy answers in a row, with no progress between them (about 40 minutes), before giving up
+MAX_RETRY_AFTER = 600               # a Retry-After longer than this is not waited out in one go
 USER_AGENT = 'Lastbook-setup/1'
 
 
@@ -249,14 +252,14 @@ class Download:
             f.truncate(start)
         h, start = self._rehash(start) if start else (hashlib.sha256(), 0)
         etag = meta.get('etag')
-        tries = 0
+        tries = busy = 0                # broken connections, and busy answers, in a row with no progress
         ignored_once = False
         while start < self.size:
             self.control.check()
             try:
                 got = self._fetch(start, etag, h, ctx)
                 start, etag = got
-                tries = 0
+                tries = busy = 0
             except Stopped:
                 raise
             except Failed:
@@ -272,6 +275,18 @@ class Download:
                     f.truncate(0)
                 h, start, etag = hashlib.sha256(), 0, None
                 continue
+            except _Busy as b:
+                now = self.done_bytes()
+                if now > start:
+                    tries = busy = 0
+                busy += 1
+                start = now
+                etag = _load_meta(self.meta).get('etag') or etag
+                if busy >= BUSY_TRIES:
+                    raise Failed('server', f'The download server stayed busy ({b}). Try again later.')
+                wait = max(BUSY_BACKOFF[min(busy - 1, len(BUSY_BACKOFF) - 1)], b.wait)
+                print(f'setup: the server is busy at {start} of {self.size} ({b}); trying again in {wait}s', flush=True)
+                self.control.sleep(wait)
             except ssl.SSLCertVerificationError:
                 raise Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '
                                         'A network that intercepts secure connections (some offices, hotels) can cause this.')
@@ -301,8 +316,8 @@ class Download:
         conn, r, final = _open(self.url, start, etag, self.allowed, ctx, self.timeout)
         try:
             if r.status == 416 or r.status >= 400:
-                if 500 <= r.status < 600:
-                    raise OSError(f'HTTP {r.status}')
+                if 500 <= r.status < 600 or r.status == 429:
+                    raise _Busy(r.status, r.getheader('Retry-After'))
                 raise Failed('network', f'The download server refused the file (HTTP {r.status}).')
             new_etag = r.getheader('ETag')
             if r.status == 206:
@@ -353,3 +368,14 @@ class _Restart(Exception):
     def __init__(self, etag, whole=False):
         super().__init__('restart')
         self.etag, self.whole = etag, whole
+
+
+class _Busy(Exception):
+    """The server answered, but with 5xx or 429: the internet is fine, the server is not ready. .wait is its Retry-After, or 0."""
+
+    def __init__(self, status, retry_after):
+        super().__init__(f'HTTP {status}')
+        try:
+            self.wait = max(0, min(int(retry_after or 0), MAX_RETRY_AFTER))
+        except ValueError:
+            self.wait = 0           # an HTTP date, or nonsense: use the backoff alone

@@ -51,6 +51,7 @@ class Files:
         self.ignore_range = set()
         self.ignore_once = {}     # name -> how many more Range requests get a 200 with the whole file
         self.redirect = {}        # name -> Location
+        self.busy = {}            # name -> list of (status, Retry-After or None) answers to give before serving it again
         self.pace = 0             # seconds to sleep per 64 KiB
         self.lock = threading.Lock()
 
@@ -69,6 +70,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if name in F.redirect:
             self.send_response(302)
             self.send_header('Location', F.redirect[name])
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
+        with F.lock:
+            busy = F.busy[name].pop(0) if F.busy.get(name) else None
+        if busy:
+            self.send_response(busy[0])
+            if busy[1] is not None:
+                self.send_header('Retry-After', str(busy[1]))
             self.send_header('Content-Length', '0')
             self.end_headers()
             return
@@ -175,7 +185,7 @@ class Base(unittest.TestCase):
 
     def setUp(self):
         F = self.files
-        F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
+        F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear(); F.busy.clear()
         F.pace = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
@@ -226,8 +236,17 @@ class Base(unittest.TestCase):
         self.fail(f'job never reached {states}: {s.public_job()}')
 
 
-def fast_backoff():
-    return mock.patch.object(download, 'BACKOFF', (0.05,) * 6)
+class fast_backoff:
+    """Waits between tries shortened to 0.05 s, for broken connections and for a busy server alike."""
+
+    def __enter__(self):
+        self.p = [mock.patch.object(download, 'BACKOFF', (0.05,) * 6), mock.patch.object(download, 'BUSY_BACKOFF', (0.05,) * 6)]
+        for x in self.p:
+            x.start()
+
+    def __exit__(self, *a):
+        for x in self.p:
+            x.stop()
 
 
 # ----------------------------------------------------------------------------------------------------------- tests --
@@ -317,6 +336,35 @@ class Downloads(Base):
         self.assertEqual(ranges[0], None)
         self.assertTrue(all(r and r.startswith('bytes=') for r in ranges[1:]), ranges)
         self.assertEqual(len(ranges), 3)
+
+    def test_busy_server_is_waited_out(self):
+        """downloads.lastbook.org cut a 388 GB download, then answered its resume with 503 for minutes: more 503s in a row than
+        NETWORK_TRIES. A busy server is waited on longer, and the download finishes from where it was cut."""
+        self.files.cut_after['model.gguf'] = [700_000]
+        self.files.busy['model.gguf'] = [None] + [(503, None)] * (download.NETWORK_TRIES + 2) + [(429, None)]   # None: served (and cut)
+        with fast_backoff():
+            p = self.dl('model.gguf').run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        ranges = [r for n, r, _ in self.files.log if n == 'model.gguf']
+        self.assertEqual(ranges[0], None)
+        self.assertEqual(set(ranges[1:]), {'bytes=700000-'})                          # every retry resumed, nothing started over
+
+    def test_busy_server_gives_up_as_server(self):
+        """A server busy for good fails with 'server', not 'network': the person's internet is fine."""
+        self.files.busy['model.gguf'] = [(503, None)] * download.BUSY_TRIES
+        with fast_backoff(), self.assertRaises(download.Failed) as e:
+            self.dl('model.gguf').run()
+        self.assertEqual(e.exception.code, 'server')
+        self.assertEqual(len(self.files.log), download.BUSY_TRIES)
+
+    def test_retry_after_is_honoured(self):
+        waits = []
+        self.files.busy['model.gguf'] = [(503, 7), (503, 'Wed, 21 Oct 2015 07:28:00 GMT'), (503, 99999)]
+        d = self.dl('model.gguf')
+        d.control.sleep = waits.append
+        with fast_backoff():
+            d.run()
+        self.assertEqual(waits, [7, 0.05, download.MAX_RETRY_AFTER])
 
     def test_etag_changed_starts_over(self):
         """R2 answers 206 whatever If-Range says, so the ETag is compared here."""

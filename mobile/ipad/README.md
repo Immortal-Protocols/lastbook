@@ -1,9 +1,10 @@
-# Lastbook for iPad (development preview)
+# Lastbook for iPad and iPhone (development preview)
 
-A native iPad app for the Lastbook offline survival library: **Videos, Map and Chat**, working offline from a library stored
-on the iPad. This is **source for contributors**, not a release.
-- It is not in the App Store or TestFlight, and no iPad build is published.
-- To try it, you build and sign it yourself with Xcode and install it on your own iPad.
+A native iPad and iPhone app for the Lastbook offline survival library: **Videos, Map and Chat**, working offline from a
+library stored on the device. This is **source for contributors**, not a release.
+- It is not in the App Store or TestFlight, and no iPad or iPhone build is published.
+- To try it, you build and sign it yourself with Xcode and install it on your own iPad or iPhone.
+- The same app runs on both. Text names the device it runs on ("Files › On My iPhone › Lastbook" on an iPhone).
 
 Licence: MIT, like the rest of this repository (see [`/LICENSE`](../../LICENSE)). Third-party parts are listed in
 [`/THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md), in the section "iPad development preview".
@@ -43,6 +44,11 @@ Each download is HTTPS with the system's certificate check plus pinned root cert
 
 ## Current limitations
 
+- **iPhone:** checked in the iOS Simulator only (iPhone 18 Pro and iPhone 17e, with the Small library and a state map):
+  the first-run screen, Videos, a video's watch page, Map, Chat, a PDF page and the Library sheet, in portrait, plus Videos
+  and Map in landscape. Not yet checked: the install screen's choices, and any physical iPhone.
+  - The local AI is not tested on iPhone. Its file (17 GB) is larger than an iPhone's memory, so it is unlikely to fit; setup
+    marks it "not tested" and leaves it off. Without it, Chat shows the library pages that match.
 - **Development preview.** The local AI has run with the Small library on one physical iPad Pro (M1, 16 GB). Other iPads and longer use are untested.
 - **Local AI memory:** the model file is 17 GB. Setup turns it on by default only on iPads with 16 GB-class memory, and marks smaller iPads "not tested". Lastbook checks the fit after the file is in place.
 - **Encyclopedias (ZIM files) don't open on iPad yet:** there is no ZIM reader in the app. The rest of the library works.
@@ -61,7 +67,7 @@ Each download is HTTPS with the system's certificate check plus pinned root cert
 You need:
 - an **Apple silicon Mac** with Xcode. It was built and tested with Xcode 27 beta; older Xcode versions are untested. The deployment target is iPadOS 18.
 - CMake 3.28 or later and git, for the local AI runtime;
-- an iPad on iPadOS 18 or later.
+- an iPad on iPadOS 18 or later, or an iPhone on iOS 18 or later.
 
 Get the pinned llama.cpp source (once; Xcode never downloads code):
 
@@ -83,7 +89,7 @@ xcodebuild -project Lastbook.xcodeproj -scheme Lastbook -destination 'generic/pl
 xcodebuild -project Lastbook.xcodeproj -scheme Lastbook -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO build
 ```
 
-**To run on your iPad,** open `Lastbook.xcodeproj` and set your own team and bundle identifier. Put local overrides in
+**To run on your iPad or iPhone,** open `Lastbook.xcodeproj` and set your own team and bundle identifier. Put local overrides in
 `Local.xcconfig`, which is git-ignored, for example `DEVELOPMENT_TEAM = ABCDE12345` and `PRODUCT_BUNDLE_IDENTIFIER = com.example.lastbook`.
 
 The local AI uses the `com.apple.developer.kernel.increased-memory-limit` and

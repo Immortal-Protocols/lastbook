@@ -33,7 +33,7 @@ struct LibraryWebView: UIViewRepresentable {
         ucc.addUserScript(WKUserScript(source: Self.styleScript(kind == .map ? EmbedCSS.common + EmbedCSS.map : EmbedCSS.common + EmbedCSS.reader), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         ucc.addUserScript(WKUserScript(source: Self.linkGuard(kind), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         if let u = Bundle.main.url(forResource: "ipad-copy", withExtension: "js"), let js = try? String(contentsOf: u, encoding: .utf8) {
-            ucc.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))   // engine 0.3: iPad wording, as WebHost
+            ucc.addUserScript(WKUserScript(source: js.replacingOccurrences(of: "iPad", with: Device.name), injectionTime: .atDocumentEnd, forMainFrameOnly: true))   // engine 0.3: iPad wording, as WebHost
         }
         ucc.add(h, name: "lastbook")
         ucc.add(c, name: "lbnative")

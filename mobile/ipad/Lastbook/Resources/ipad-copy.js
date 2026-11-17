@@ -1,5 +1,5 @@
 'use strict';
-/* iPad-only wording. The shared desktop UI (web/) is unchanged; this runs in the app's top frame only and swaps a few
+/* iPad and iPhone wording (the app swaps "iPad" for the device it runs on when it loads this file). The shared desktop UI (web/) is unchanged; this runs in the app's top frame only and swaps a few
    exact desktop sentences for their iPad versions. Only whole, known sentences are replaced, so library text is never
    touched. The model card points to On My iPad › Lastbook instead of a desktop folder or Downloads. */
 (() => {

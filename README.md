@@ -17,11 +17,12 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 | Windows (64-bit, Windows 10 or later) | 1.1.11 | Live on lastbook.org, Authenticode signed |
 | Linux (Ubuntu 24.04 or 26.04 LTS, x86_64) | 1.1.11 | Ubuntu packages; installation instructions below |
 
-## iPad (development preview, source only)
+## iPad and iPhone (development preview, source only)
 
-A native iPad app (Videos, Map and Chat, offline, with optional on-device AI) is in [`mobile/ipad/`](mobile/ipad/).
+A native iPad and iPhone app (Videos, Map and Chat, offline, with optional on-device AI on iPad) is in
+[`mobile/ipad/`](mobile/ipad/).
 - It is source for contributors to build and sign themselves.
-- There is no App Store, TestFlight or downloadable iPad build.
+- There is no App Store, TestFlight or downloadable iPad or iPhone build.
 - See [mobile/ipad/README.md](mobile/ipad/README.md) for what works, the current limitations and how to build it.
 
 ## Install on Linux

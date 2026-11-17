@@ -59,6 +59,7 @@ RAMP = 60
 SEGMENT = 32 * 1024 * 1024          # a file larger than SEGMENTED_MIN comes in pieces of this size, several at once
 SEGMENTED_MIN = 4 * SEGMENT
 WINDOW = 4                          # segments per connection that may be done ahead of the first one not yet done
+WHOLE_GAP = 10                      # seconds: 200s to pieces within this count as one (all the connections see the same hiccup)
 PIECE_TRIES = 3                     # a piece that does not stay on the disk as it arrived this many times: the disk is failing
 STALL = 600                         # seconds with no byte from any connection before 503s count as failures
 REPAIR_MIN = 256 * 1024 * 1024      # a zip at least this big that fails its check is repaired in place, not downloaded again
@@ -563,6 +564,7 @@ class Download:
         self.etag = meta.get('etag') if st.received() else None
         self.st, self.halt, self.error, self.ranges_ignored = st, threading.Event(), None, False
         self.whole_answers, self.last_byte = 0, time.time()     # 200s in a row to a piece; when a byte last arrived
+        self.last_whole = 0.0
         h, cursor = hashlib.sha256(), 0
         last_save = last_progress = 0
         workers = []
@@ -678,8 +680,12 @@ class Download:
                 self.hosts.busy_signal(self.host)
                 busy = True
             except _NoRanges:
-                self.whole_answers += 1
-                if self.whole_answers >= NETWORK_TRIES:      # not a passing hiccup: this server will not send pieces
+                with st.cv:                    # the same hiccup hits every connection at once: within WHOLE_GAP it counts once
+                    if time.time() - self.last_whole >= WHOLE_GAP:
+                        self.whole_answers += 1
+                        self.last_whole = time.time()
+                    give_up = self.whole_answers >= NETWORK_TRIES
+                if give_up:                    # not a passing hiccup: this server will not send pieces
                     self.ranges_ignored = True
                     self.halt.set()
                     return

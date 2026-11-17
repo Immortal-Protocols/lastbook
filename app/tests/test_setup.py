@@ -698,9 +698,18 @@ class Pieces(Base):
         gaps = [b - a for a, b in zip(times, times[1:])]
         self.assertLess(max(gaps), 1.6, gaps)
 
+    def test_a_burst_of_200s_counts_once(self):
+        """Several connections given a 200 by the same hiccup at the same moment: one failed try, still in pieces."""
+        self.files.ignore_once['model.gguf'] = download.NETWORK_TRIES        # enough to give up on pieces if each counted
+        d = self.dl()
+        with fast_backoff():
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertNotIn(None, _requested(self.files.log, 'model.gguf'))
+        self.assertEqual(d.whole_answers, 0)                               # reset by the pieces that came after
+
     def test_server_ignoring_range_goes_on_in_one_stream(self):
         self.files.ignore_range.add('model.gguf')
-        with fast_backoff():
+        with fast_backoff(), mock.patch.object(download, 'WHOLE_GAP', 0):
             self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
         self.assertIn(None, _requested(self.files.log, 'model.gguf'))
 

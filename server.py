@@ -47,6 +47,47 @@ import engine.library as library  # noqa: E402  (provides Handler, search DB pat
 import retrieval, assistant  # noqa: E402
 import secrets  # noqa: E402
 remote_records = library.remote_records  # videos moved to remote drives by the library's workers; none in the packaged app
+
+# H.264 copies of AV1 and VP9 videos, for computers that can't decode those (Macs before the M3, for AV1). The same sidecar the
+# iPad app reads, built by mobile/ipad/tools/videocompat: derived/video-compat/h264-v1/manifest.json maps each original's
+# library path to its copy. The player asks for the original's own address with ?copy=h264, so the video keeps its id,
+# transcript and progress. Only plain file names inside that folder, at the size the manifest gives, are ever served.
+VIDEO_COPIES = HERE / 'derived' / 'video-compat' / 'h264-v1'
+VIDEO_COPY_CODECS = ('av01', 'vp09')
+_copies = {'mtime': None, 'items': {}}
+
+
+def video_copies():
+    """{library path of an original: (copy file, its size, the original's codec)}, for copies that are really there."""
+    p = VIDEO_COPIES / 'manifest.json'
+    try:
+        m = p.stat().st_mtime
+    except OSError:
+        _copies.update(mtime=None, items={})
+        return _copies['items']
+    if m == _copies['mtime']:
+        return _copies['items']
+    items = {}
+    try:
+        man = json.loads(p.read_text(encoding='utf-8'))
+        if man.get('version') == 'h264-v1':
+            for src, it in (man.get('items') or {}).items():
+                name, codec = str(it.get('file') or ''), it.get('source_video')
+                if not name or '/' in name or '\\' in name or name.startswith('.') or not name.lower().endswith('.mp4'):
+                    continue
+                if it.get('video') != 'avc1' or codec not in VIDEO_COPY_CODECS or not isinstance(src, str):
+                    continue
+                f = VIDEO_COPIES / name
+                try:
+                    size = f.stat().st_size
+                except OSError:
+                    continue
+                if f.is_file() and not f.is_symlink() and size == it.get('bytes'):   # a missing or partial copy is never served
+                    items[src] = (f, size, codec)
+    except (ValueError, OSError, AttributeError):
+        items = {}
+    _copies.update(mtime=m, items=items)
+    return items
 INDEX = None  # retrieval.Index, created in main()
 LAN_KEY = None
 SERVER = None  # the running HTTP server, so the packaged app's launcher can stop it
@@ -160,6 +201,9 @@ def public(r, full=False):
     rem = remote_records().get(r['path']) if r['kind'] == 'video' else None
     if rem:
         out['remote'] = rem.get('host')
+    cp = video_copies().get(r['path']) if r['kind'] == 'video' and not rem else None
+    if cp:
+        out['copy'] = {'codec': cp[2], 'bytes': cp[1]}   # the original's codec: the player decides whether it needs the copy
     if full:
         for k in ('notes', 'edition', 'retrieved_at', 'source_url', 'license', 'license_url', 'searchability',
                   'upload_date', 'publication_date', 'model', 'course', 'level', 'caption_type'):
@@ -1743,6 +1787,44 @@ class Handler(library.Handler):
     def list_directory(self, path):
         self.send_error(404)
 
+    def send_video_copy(self, rel):
+        """The H.264 copy of the original at library path rel (already checked by path_ok), as the original is sent: one
+        Range at a time, or the whole file when no Range is asked. 404 when this original has no copy."""
+        cp = video_copies().get(rel)
+        if not cp:
+            return self.send_error(404)
+        f, size = cp[0], cp[1]
+        rng = self.headers.get('Range')
+        start, end = 0, size - 1
+        if rng:
+            m = re.match(r'bytes=(\d+)-(\d*)', rng.strip())   # as for the original: a list of ranges reads as its first
+            if not m or int(m.group(1)) >= size or (m.group(2) and int(m.group(2)) < int(m.group(1))):
+                self.send_response(416)
+                self.send_header('Content-Range', f'bytes */{size}')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            start, end = int(m.group(1)), min(int(m.group(2)) if m.group(2) else size - 1, size - 1)
+        self.send_response(206 if rng else 200)
+        self.send_header('Content-Type', 'video/mp4')
+        self.send_header('Accept-Ranges', 'bytes')
+        if rng:
+            self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+        self.send_header('Content-Length', str(end - start + 1))
+        self.end_headers()
+        try:
+            with f.open('rb') as fh:
+                fh.seek(start)
+                left = end - start + 1
+                while left:
+                    b = fh.read(min(left, 1024 ** 2))
+                    if not b:
+                        break
+                    self.wfile.write(b)
+                    left -= len(b)
+        except library.CLIENT_GONE:
+            pass
+
     def send_header(self, keyword, value):
         if keyword.lower() == 'content-type':
             self.sent_type = value
@@ -2104,6 +2186,8 @@ class Handler(library.Handler):
                                        'pins': bool(map_contents()['layers']) if pack_info() else True})
             if path.startswith('/api/') and path not in self.LIBRARY_ROUTES:
                 return self.send_json({'error': 'not found'}, 404)
+            if qs.get('copy') == 'h264' and path.startswith(('/videos/', '/videos-external/')):
+                return self.send_video_copy(path[1:])
             return super().do_GET()
         except library.CLIENT_GONE:
             return

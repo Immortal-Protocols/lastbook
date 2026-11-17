@@ -864,6 +864,16 @@ const MapView = (() => {
       });
     } catch { if (st === state) box.innerHTML = '<p class="muted small">Nearby search is unavailable.</p>' }
   }
+  function looksLikeAddress(q) {
+    const parts = q.normalize('NFC').trim().split(/[,\n]/).map(p => p.trim()).filter(Boolean);
+    const isUrb = p => /^(?:urb\.?|urbanizaci[oó]n)\s+\S/i.test(p);
+    const street = parts.filter(p => !isUrb(p)).join(' ');
+    const match = street.match(/^#?([a-z]{1,3}\(\d+\)-\d+|[a-z]{1,3}-?\d[\w-]*(?:\(\d+\))?|\d[\w/-]*)\s+(\S.*)$/i);
+    if (!match) return false;
+    if (!/^(?:(?:PR|US|I)-\d+|[a-z]{1,3}\d\w*)$/i.test(match[1])) return true;
+    return street.startsWith('#') || parts.some(isUrb) || /^(?:avenida|avda|av|ave|calle|cl|cll|carretera|ctra|carr|camino|cam|bulevar|boulevard|blvd)\b/i.test(match[2])
+      || /\s(?:PR|Puerto Rico)(?:\s+\d{5}(?:-\d{4})?)?$/i.test(match[2]);
+  }
   async function findPlace(q) {
     const box = $('pres'); if (!q) { box.hidden = true; return }
     $('layers').hidden = true;
@@ -872,7 +882,7 @@ const MapView = (() => {
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
+      if (!r.length) { const address = looksLikeAddress(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
       const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));

@@ -79,3 +79,11 @@ There is no published iPad build. These parts go into an iPad app that a contrib
 The manuals, videos, encyclopedias and map data in the library packs are not part of this repository. Each pack has a
 Sources and permissions page with the publisher and terms of every item. The offline map uses OpenStreetMap data
 (ODbL, © OpenStreetMap contributors) and US government data such as USGS, NOAA and USACE, as credited on the map.
+
+The Puerto Rico address database is © OpenStreetMap contributors, available under the
+[Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Address features come from
+[Geofabrik’s Puerto Rico extract](https://download.geofabrik.de/north-america/us/puerto-rico.html).
+Municipio boundaries come from the [US Census Bureau TIGERweb service](https://tigerweb.geo.census.gov/).
+The offline builder reads OSM using [PyOsmium](https://github.com/osmcode/pyosmium) (BSD-2-Clause)
+and processes polygons using [Shapely](https://github.com/shapely/shapely) (BSD-3-Clause) with GEOS
+(LGPL-2.1). These libraries run on the machine that prepares the index.

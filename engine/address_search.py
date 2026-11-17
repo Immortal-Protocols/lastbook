@@ -4,6 +4,7 @@ import re
 import sqlite3
 from pathlib import Path
 
+from engine import pr_addresses
 from engine.paths import ro_uri
 
 # Keep normalization compatible with tools/build_addresses.py.
@@ -40,7 +41,7 @@ def normalize(text):
 
 def is_address_query(query):
     """A standalone ZIP remains a place query. A number followed by words is an address."""
-    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query))
+    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query) or pr_addresses.components(query))
 
 
 def street_forms(street):
@@ -75,11 +76,11 @@ def _parts(query):
 
 def find_addresses(query, geo_directory, limit=8, near=None):
     """Return exact house-number matches from installed indexes, never a guessed house."""
-    if not is_address_query(query):
+    legacy_number = re.match(r'^\s*\d[\w-]*\s+\S', query)
+    pr_parts = pr_addresses.components(query)
+    if limit <= 0 or not (legacy_number or pr_parts):
         return []
-    number, words, state, postcode = _parts(query)
-    if not words:
-        return []
+    number, words, state, postcode = _parts(query) if legacy_number else ('', [], '', '')
     geo_directory = Path(geo_directory)
     paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
     if state:
@@ -88,12 +89,28 @@ def find_addresses(query, geo_directory, limit=8, near=None):
     if not paths and legacy.is_file():
         paths = [legacy]
     connections = []
+    pr_results = []
     try:
         for path in paths:
             try:
-                connections.append(sqlite3.connect(ro_uri(path), uri=True))
+                db = sqlite3.connect(ro_uri(path), uri=True)
             except sqlite3.Error:
                 continue
+            try:
+                if path.stem.upper() == 'PR' and db.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='meta'").fetchone():
+                    profile = db.execute("SELECT value FROM meta WHERE key='search_profile'").fetchone()
+                    if profile == (pr_addresses.PROFILE,):
+                        if pr_parts:
+                            pr_results = pr_addresses.lookup(db, pr_parts, near, limit)
+                        db.close()
+                        continue
+            except sqlite3.Error:
+                db.close()
+                continue
+            connections.append(db)
+        if not connections or not words or (pr_parts and pr_parts[2]):
+            return pr_results
         for count in range(len(words), 0, -1):
             street = ' '.join(words[:count])
             if all(word in set(WORDS.values()) for word in words[:count]):
@@ -138,8 +155,14 @@ def find_addresses(query, geo_directory, limit=8, near=None):
                     })
                     if len(results) == limit:
                         break
-                return results
-        return []
+                if pr_results:
+                    results = pr_results + results
+                    if near:
+                        scale = math.cos(math.radians(near[0]))
+                        results.sort(key=lambda item: (item['lat'] - near[0]) ** 2
+                                     + ((item['lon'] - near[1]) * scale) ** 2)
+                return results[:limit]
+        return pr_results
     finally:
         for connection in connections:
             connection.close()

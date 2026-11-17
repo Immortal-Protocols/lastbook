@@ -75,10 +75,42 @@ so ask before adding many.
 | `buildings.sqlite` | `tools/build_buildings.py`, `tools/build_osm_heights.py` | Microsoft building footprints (ODbL), OpenStreetMap heights |
 | `places.sqlite` | `tools/build_places.py` | USGS GNIS, Census gazetteers, named OpenStreetMap places |
 | address indexes | `tools/build_addresses.py`, then `packaging/address_indexes.py` | Overture Maps addresses |
+| Puerto Rico address index | `tools/build_pr_addresses.py` | OpenStreetMap address objects and US Census municipio boundaries |
 | a state map | `packaging/build_packs.py map <ST>`, published by `packaging/state_maps.py` | The base map, then every row inside the state's box |
 
 Each tool's header says what it reads, what it writes and the licence of its source. Read it before you run one: some
 expect source files that are hundreds of gigabytes.
+
+### Puerto Rico street addresses
+
+The optional Puerto Rico index uses mapped house numbers and street names. Queries for
+`7 Ave. Constitucion, San Juan, PR` and `7 Avenida Constitución, San Juan, PR` find the same point.
+Results keep the source spelling. Search also accepts common forms of calle, carretera, camino and
+bulevar, alphanumeric house numbers, and a comma-separated urbanización such as `Urb. Sol, A-12 Calle Ejemplo`.
+A supplied ZIP, locality or urbanización must match the record. Urbanización names and ZIPs are often missing.
+
+For a build, download the Puerto Rico OSM PBF from [Geofabrik](https://download.geofabrik.de/north-america/us/puerto-rico.html)
+and the [US Census municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
+Save them as `puerto-rico.osm.pbf` and `municipios.geojson`. Use Python 3.11 or newer in a separate build environment.
+
+```sh
+python -m pip install osmium==4.3.2 shapely==2.2.0
+python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses
+python -m unittest tools.test_build_pr_addresses app.tests.test_pr_addresses app.tests.test_address_search
+```
+
+The builder uses address nodes and points inside valid closed ways. Each point must fall within one municipio.
+It uses the mapped city when present and accepts the containing municipio as a search qualifier. It uses an
+urbanización only when the address identifies one. Coverage varies by municipio. `PR.coverage.json` lists
+counts for all 78, reasons for skipped objects, source fingerprints and the SQLite checksum. Missing house
+numbers have no result. Search does not interpolate kilometre markers or expand a range into individual houses.
+
+For local use, close the library and extract the single ZIP member, `derived/geo/addresses/PR.sqlite`,
+under `LastbookData/` and open it with the updated reader. For a release, upload the ZIP to the Lastbook
+download URL in `PR.manifest.json`, verify the downloaded size and SHA-256, and replace the PR entry in
+`address_indexes` in the release manifest. If using the per-state publisher cache, replace its saved
+`PR` entry in `derived/packs/address-indexes.json` as well. The ZIP contains a separate ODbL database.
+Credit © OpenStreetMap contributors when redistributing the address data. [OpenStreetMap copyright and attribution](https://www.openstreetmap.org/copyright)
 
 ### Not in this repository
 

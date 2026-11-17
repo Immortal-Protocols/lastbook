@@ -275,6 +275,8 @@ The data is OpenStreetMap, ODbL: a pack built from it must carry the attribution
 
 ## Checking a map change
 
+The proposed [Australian capital-area maps](AUSTRALIA-MAPS.md) document their boxes, sources, limits and review builds.
+
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.
 - A change to a pack or map tool: `packaging/test_pack_tools.py` and `packaging/scan_pack.py` check what a map set may
   hold, and `scan_pack.py` lists the allowed files under `derived/geo/` (`GEO_FILES`).

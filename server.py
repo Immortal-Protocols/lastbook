@@ -1392,11 +1392,22 @@ def water_places(q, limit=10, near=None):
     return [o for _, o in out[:limit]]
 
 
+UK_POSTCODE = re.compile(r'\s*([A-Za-z]{1,2}\d[A-Za-z\d]?)\s*(\d[A-Za-z]{2})\s*')
+
+
+def postcode_query(q):
+    """A British postcode typed without its space ('sw1a2aa') is looked up as 'SW1A 2AA', the form the place finder keeps.
+    Only the space and the letter case change, and the place index ignores case, so no other query finds anything new."""
+    match = UK_POSTCODE.fullmatch(q)
+    return f'{match[1]} {match[2]}'.upper() if match else q
+
+
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
         return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
     if not PLACEDB.exists():
         return []
+    q = postcode_query(q)
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
     words = re.findall(r'\w+', q)
     if not words:

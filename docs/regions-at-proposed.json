@@ -3,7 +3,7 @@
   "status": "proposal",
   "checked": "2026-11-17",
   "codes": {
-    "proposal": "ISO 3166-2:AT codes, AT-1 to AT-9; AT for the whole country if it is one region.",
+    "proposal": "ISO 3166-2:AT codes, AT-1 to AT-9; AT for the whole country if it is one region, or eu-at if pull request #84's country codes land.",
     "why": "A hyphenated code keeps Austrian regions apart from US state codes. A bare AT is not in STATE_CODES (engine/address_search.py). The numbers match BEV's state key BL_KZ, checked in the boundary files.",
     "verified": "Search only: the Umweltbundesamt code list and Wikipedia agree; the ISO site was not opened."
   },
@@ -265,7 +265,31 @@
       "north": "KG Rottal, Haugschlag",
       "south": "KG Bad Vellach, Eisenkappel-Vellach"
     },
-    "notes": "Alternative to the nine regions; see \"Still undecided\" in REGIONS-AT.md."
+    "notes": "Alternative to the nine regions; see \"Still undecided\" in REGIONS-AT.md.",
+    "pull_request_84": {
+      "code": "eu-at",
+      "box_source": "bounding box of Geofabrik's OpenStreetMap extract polygon",
+      "padded_0_15": [
+        9.3768,
+        46.2198,
+        17.3141,
+        49.174
+      ],
+      "unpadded_derived": [
+        9.5268,
+        46.3698,
+        17.1641,
+        49.024
+      ],
+      "difference_from_vgd_deg": [
+        -0.0039,
+        -0.0025,
+        0.0033,
+        0.0035
+      ],
+      "verified": "pull request description read 2026-11-17; its code not read",
+      "notes": "The same whole-country region. Within 0.004° of the official boundary on every side; the extract has no state lines."
+    }
   },
   "computation": {
     "tools": "pyproj 3.8.0, PROJ 9.8.1, pyshp 3.1.9",

@@ -3,8 +3,9 @@
 This is a proposal for discussion, not a decision. It answers, for Austria, the questions [MAPS.md](MAPS.md) asks before
 coverage can go beyond the United States: which open source replaces each federal list, under what licence, what a
 "state" is there, and how addresses are written. It follows the shape of [REGIONS.md](REGIONS.md) and
-[REGIONS-DE.md](REGIONS-DE.md) and is meant to feed the same design discussion (issues #23, #25 and #31). The
-machine-readable version is [regions-at-proposed.json](regions-at-proposed.json).
+[REGIONS-DE.md](REGIONS-DE.md) and is meant to feed the same design discussion (issues #23, #25 and #31). Pull
+request #84 already proposes a whole-country Austria map, `eu-at`; how this proposal fits with it is under "Relation to
+pull request #84". The machine-readable version is [regions-at-proposed.json](regions-at-proposed.json).
 
 Nothing here changes the app, the engine or a build. No code reads the JSON, and nothing here ships: builds package
 `web/` and `content/` only.
@@ -47,7 +48,9 @@ checked in the files: each state's file holds only its own key.
 
 - A hyphenated code is needed for the same reason as Germany: it keeps Austrian regions apart from US state codes at a
   glance. A bare `AT` is not one of the 52 entries in `STATE_CODES` (`engine/address_search.py`), so a single
-  whole-country region could use it without a collision.
+  whole-country region could use it without a collision. Pull request #84 names whole countries `eu-<iso>` instead,
+  because other bare country codes do collide (`DE`, `AL`, `ME`, `MT`); if that lands, the whole-country region here
+  is its `eu-at`.
 - The part after the hyphen is a digit, unlike every code in use so far. `Lastbook-Map-AT-9.zip` is unambiguous but
   says little to a person, so setup would need to show the state's name next to it.
 
@@ -102,6 +105,27 @@ in Eisenkappel-Vellach in the south (46.37° N). The state areas, computed on th
 A newer boundary release, as of 1 October 2026, is already on BEV's download server (`.../shp/20261001/`, files dated
 2 October 2026) but was not yet in BEV's catalogue on 17 November 2026, so the catalogued April release was used.
 Boundaries between states rarely move, so the boxes should not change.
+
+## Relation to pull request #84
+
+Pull request #84 ("Maps: European country map sets, built and published like state maps", open, description read on
+17 November 2026) builds one map set per European country with the same cutting code as the US states. Austria is its
+worked example, `eu-at`. The two proposals answer different questions and fit together:
+
+- **Region level.** #84 cuts whole countries. This proposal cuts states, with the whole country as an alternative
+  (`AT` in the table above). If #84 lands, the whole-country option here is simply its `eu-at`, and the open question
+  becomes whether Austria also needs the nine state regions on top.
+- **Boxes.** #84 takes each country's box from the polygon of Geofabrik's OpenStreetMap extract. Its Austria box is
+  9.3768–17.3141° E, 46.2198–49.174° N with the margin. Taking the 0.15° margin off gives 9.5268, 46.3698, 17.1641,
+  49.0240, within 0.004° (about 400 m) of the official boundary computed here on every side, the extract's polygon
+  being a little wider. For a whole-country map the two methods give the same result. For states only the official
+  boundary helps, because the extract has no state lines.
+- **Sources.** #84 cuts from the existing source layers, which [MAPS.md](MAPS.md) describes as US datasets or
+  worldwide ones filtered to the US, so an `eu-at` set holds only what those layers hold for Austria. The Austrian
+  sources below would fill it.
+- **Addresses.** #84 keeps address search US-only, because the address index is split by Overture's US state column.
+  Overture already carries the Austrian Address Register (see below), so an Austrian index needs a split by country,
+  and the parsing changes under "How addresses are written".
 
 ## Sources, layer by layer
 
@@ -244,11 +268,12 @@ Each of these needs the maintainers' decision before any code changes. The first
 REGIONS-DE.md.
 
 1. **Codes in setup.** Whether `AT-1` to `AT-9` are acceptable as a manifest `id`, in `map-set.json` and in
-   `Lastbook-Map-<id>.zip`, and how setup shows names for codes that are only digits.
+   `Lastbook-Map-<id>.zip`, how setup shows names for codes that are only digits, and how state codes sit next to #84's
+   `eu-<iso>` country codes.
 2. **The box rule**, as in REGIONS.md, here from BEV's VGD.
-3. **Nine regions or one.** The whole country, about 83,900 km², could be a single `AT` region. That would remove the
-   Vienna address question and the two-part Tyrol box, at the cost of a bigger download for someone who needs only one
-   state.
+3. **Nine regions or one.** The whole country, about 83,900 km², could be a single region, #84's `eu-at`. That would
+   remove the Vienna address question and the two-part Tyrol box, at the cost of a bigger download for someone who
+   needs only one state.
 4. **Vienna.** If there are nine regions, whether the Lower Austria map should also carry Vienna's addresses.
 5. **Terrain.** geoland's 10 m model, BEV's 1 m tiles resampled, or BEV's ready-made 25 m raster.
 6. **Crops.** Rasterising the INVEKOS fields or reading them as vectors, the mapping from AMA's crop codes to the app's
@@ -265,7 +290,7 @@ REGIONS-DE.md.
   2025-1, and AMA's OGC API collections for 2015 to 2026-1; the data.gv.at records for the geoland 10 m DGM, the BEV
   addresses, the GGN rivers and BMI's police stations; Overture's attribution page; BMLUK's page on dams; the health
   ministry's hospital list page; oesterreich.gv.at's blackout page; Austrian Post's "Richtig adressieren"; Geofabrik's
-  Austria page; taginfo for the counts above.
+  Austria page; taginfo for the counts above; the description of pull request #84 (its code was not read).
 - Computed on 17 November 2026: the nine boxes and areas, from VGD as described above; the extreme points; the crop
   samples, from AMA's API in three areas.
 - Tried in this repository on 17 November 2026: the address examples above, against `normalize()`,

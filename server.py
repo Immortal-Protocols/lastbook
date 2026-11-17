@@ -1592,8 +1592,11 @@ def map_info():
     if CROPDB.exists():
         try:
             c = json.loads(dict(sqlite3.connect(ro_uri(CROPDB), uri=True).execute('SELECT key,value FROM meta').fetchall()).get('built', '{}'))
-            geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
-                        'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
+            if map_set_meta().get('country'):
+                geo.append({'label': 'Orchards and vineyards (OpenStreetMap)', 'status': f"{c.get('cells', 0):,} mapped areas"})
+            else:
+                geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
+                            'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
         except (sqlite3.Error, ValueError):
             pass
     if BLDGDB.exists():
@@ -1667,7 +1670,7 @@ def pack_datasets(have):
     if BLDGDB.exists():
         out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
     if CROPDB.exists():
-        out.append({'label': 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
+        out.append({'label': 'Orchards and vineyards (OpenStreetMap)' if map_set_meta().get('country') else 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
     return out
 
 

@@ -1,6 +1,6 @@
 # Guia de Sobrevivência (Último Livro) — servidor web para a biblioteca offline
 
-Modo servidor web do **Último Livro** (fork brasileiro do **Lastbook**, <https://github.com/Immortal-Protocols/lastbook> / <https://lastbook.org>) sobre a pasta de biblioteca (`library-data/` → a coleção real). Ele parte do que a pessoa precisa ("Alguém está ferido", "Obter água potável segura", "Faltou energia", mapa de ajuda próxima), mostra poucas páginas selecionadas com numeração exata e os limites da própria fonte, e dá acesso completo aos manuais, vídeos e enciclopédias. Tudo roda localmente no computador.
+Modo servidor web do **Último Livro** (fork brasileiro do **Lastbook**, <https://github.com/Immortal-Protocols/lastbook> / <https://lastbook.org>, enriquecido com módulos em português inspirados no **refugiOS**, <https://github.com/Ganso/refugiOS>) sobre a pasta de biblioteca (`library-data/` → a coleção real). Ele parte do que a pessoa precisa ("Alguém está ferido", "Obter água potável segura", "Faltou energia", mapa de ajuda próxima), mostra poucas páginas selecionadas com numeração exata e os limites da própria fonte, e dá acesso completo aos manuais, vídeos, enciclopédias `.zim`, tradutor offline, cofre criptografado e diagnóstico de integridade. Tudo roda localmente no computador.
 
 ## Como executar
 
@@ -15,14 +15,20 @@ A interface legada original da porta 8879 permanece intocada caso rode separadam
 ## Perguntar à biblioteca (assistente de IA local / servidor de modelo)
 
 - Modelo padrão para servidor HTTP externo: `deepseek-v4.1-flash` em `http://127.0.0.1:19443` (chamado apenas pelo servidor; pode ser sobrescrito por `SURVIVAL_MODEL_BASE`, que precisa ser um endereço loopback). O gateway 19442 não é utilizado.
-- Toda pergunta passa primeiro pelo recuperador compartilhado (`retrieval.py`); o modelo recebe cinco ferramentas somente leitura: `search_library`, `read_pages`, `view_page` (envia a imagem da página no modo servidor de visão), `get_timed_transcript` e `lookup_place`. As ferramentas aceitam apenas IDs do catálogo: nunca caminhos de disco, URLs nem comandos de shell. O texto das fontes é encapsulado como dado de referência não confiável.
-- Citações (`[S3]`) são validadas contra o que as ferramentas realmente retornaram; chaves desconhecidas são removidas e sinalizadas. Frases sem citação aparecem com estilo diferenciado como raciocínio próprio do modelo; seções de "Não encontrado na biblioteca", "As fontes divergem" e "Raciocínio próprio" recebem estilos distintos no frontend (`web/chat.js`).
+- Toda pergunta passa primeiro pelo recuperador compartilhado (`retrieval.py` + consulta às enciclopédias `.zim` em português instaladas em `library-data/collections/` via `_zim_hits`); o modelo recebe cinco ferramentas somente leitura: `search_library`, `read_pages` (com suporte também a artigos `zim:<arquivo>/<rota>`), `view_page` (envia a imagem da página no modo servidor de visão), `get_timed_transcript` e `lookup_place`. As ferramentas aceitam apenas IDs do catálogo: nunca caminhos de disco, URLs nem comandos de shell. O texto das fontes é encapsulado como dado de referência não confiável.
+- Citações (`[S3]`) são validadas contra o que as ferramentas realmente retornaram; chaves desconhecidas são removidas e sinalizadas. Frases sem citação aparecem com estilo diferenciado como raciocínio próprio do modelo; seções de "Não encontrado na biblioteca", "As fontes divergem" e "Raciocínio próprio" recebem estilos distintos no frontend (`web/chat.js`). A opção **Só resultado** (`hideThought`, ativada por padrão em `web/chat.js`) oculta etapas internas e raciocínios em texto puro (`llm_local.split_thinking`).
 - Se o modelo estiver offline, a aba Chat informa e lista as páginas mais relevantes encontradas na busca híbrida; toda a navegação segue funcionando.
 - Outros clientes locais compatíveis podem usar as mesmas ferramentas: `GET /api/tools` (schemas estilo OpenAI) e `POST /api/tool/<nome>` com argumentos JSON. Passagens híbridas: `GET /api/retrieve?q=…&k=8&kind=any|manual|video`.
 
 ## IA local opcional no aplicativo desktop (`llm_local.py`)
 
-O aplicativo desktop pode redigir respostas em português usando o **Gemma 4 26B A4B** (Unsloth `gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`, 16.947.541.728 bytes, SHA-256 `f2c28b3d…3f293f`, revisão `c099eb48`), rodando localmente na própria máquina. A versão de servidor `server.py` acima continua usando o servidor HTTP em `SURVIVAL_MODEL_BASE`, a menos que seja iniciada com `LASTBOOK_LOCAL_AI=1`.
+O aplicativo desktop pode redigir respostas e traduzir textos offline usando um dos quatro modelos GGUF suportados em `llm_local.py`:
+- **Gemma 4 26B A4B** (`gemma-4-26b-a4b`, ~17 GB, 24+ GB RAM)
+- **Gemma 4 E4B** (`gemma-4-e4b`, ~5 GB, 12–16 GB RAM)
+- **Gemma 4 E2B** (`gemma-4-e2b`, ~3,1 GB, 8 GB RAM)
+- **Qwen 3.5 0.8B** (`qwen-3.5-0.8b`, ~508 MB, 4 GB RAM, template ChatML `<|im_start|>...<|im_end|>`, inspirado no **refugiOS**)
+
+Quando mais de um modelo está instalado em `LastbookData/models/`, o usuário pode alternar em tempo real pelo seletor no topo do Chat ou em *Biblioteca e IA* (`POST /api/assistant/local` com `{"action": "select", "model_id": "..."}`). A versão de servidor `server.py` acima continua usando o servidor HTTP em `SURVIVAL_MODEL_BASE`, a menos que seja iniciada com `LASTBOOK_LOCAL_AI=1`.
 
 - **Executor:** `packaging/llm/lastbook_llm.cpp`, programa próprio baseado no `llama.cpp` tag `b12032` (versão avaliada nos testes de modelos compactos do upstream). Conversa em JSON lines via entrada e saída padrão, sem abrir sockets nem portas. Não inclui backend RPC nem bibliotecas comuns do llama.cpp além do cálculo de ajuste em memória (`common/fit.cpp`, equivalente ao `--fit` do llama-server) e seu log. Compile com `bash packaging/llm/build_llm_macos.sh`, que recusa binários contendo chamadas de rede ou caminhos locais de build. Prompts entram por segmentos: a marcação de template do Gemma recebe tokens especiais reconhecidos, enquanto textos da biblioteca e do usuário nunca interpretam tokens especiais — impedindo que um documento injete um turno próprio.
 - **Descoberta do modelo:** busca o arquivo em `LastbookData/models/`, `LastbookData/`, `Downloads`, `Documents` ou `Desktop`. Ele é conferido uma única vez (tamanho e SHA-256, ~10 s em um Mac rápido) e medido com `lastbook-llm --measure` via llama.cpp. O uso é oferecido quando a memória do computador comporta o consumo medido mais 2,5 GiB de reserva. No Mac, GPU e CPU compartilham memória unificada; no Windows, apenas a parcela que não cabe na placa de vídeo conta contra a RAM. Não há trava rígida de 32 GB.
@@ -54,11 +60,18 @@ Exibe um link único `http://<ip-local>:8890/?key=…`; abri-lo grava um cookie 
 
 No aplicativo empacotado: Python do ambiente (`packaging/requirements*.txt`), `engine/library.py` (`libzim`, `beautifulsoup4`), `pypdfium2` para renderização de páginas PDF (via `PdfBitmap.buffer` + biblioteca padrão no fork, dispensando `numpy` em runtime mínimo), e no Windows `onnxruntime` + `tokenizers`. Sem acesso à internet.
 
+## Novos endpoints locais (inspirados no refugiOS)
+
+- **Cofre Criptografado (`engine/vault.py`):** `GET /api/vault/list` e `POST /api/vault` (`create`, `open`, `save`, `delete`). Restrito a loopback (`127.0.0.1` / `::1`) por segurança, utilizando derivação PBKDF2-HMAC-SHA256 (250.000 iterações), cifra de fluxo `BLAKE2b` e autenticação `HMAC-SHA256` em `derived/vault/`.
+- **Tradutor Offline (`engine/translator.py`):** `GET /api/translate/glossary` (guia rápido PT/EN/ES embutido) e `POST /api/translate` (tradução via IA local com cache por página em `derived/translations/`, ou fallback automático por glossário técnico).
+- **Diagnóstico de Integridade (`engine/checker.py`):** `GET /api/check` (`?full=1` para recomputar SHA-256). Verifica biblioteca base, mapas estaduais, `.zim`, `.gguf`/RAM, cofres e disco, gravando `derived/logs/relatorio-verificacao.txt` (restrito a loopback).
+
 ## O que está onde
 
 | Caminho | Função |
 |---|---|
-| `server.py` | Servidor principal. Subclasse do `Handler` de `engine/library.py`, preservando rotas de arquivos originais, `/api/search`, `/api/collection-search`, `/zim/...` e Range de vídeo, e adicionando endpoints de leitura (tópicos, busca em linguagem natural, páginas, transcrições, estantes, tiles do mapa, pontos de ajuda e busca de lugares/CEP). |
+| `server.py` | Servidor principal. Subclasse do `Handler` de `engine/library.py`, preservando rotas de arquivos originais, `/api/search`, `/api/collection-search`, `/zim/...` e Range de vídeo, e adicionando endpoints de leitura (tópicos, busca em linguagem natural, páginas, transcrições, estantes, tiles vetoriais/OSM do mapa, pontos de ajuda, busca de lugares/CEP, cofre, tradutor e diagnóstico). |
+| `engine/kiwix_br.py`, `engine/osm_br.py`, `engine/vault.py`, `engine/translator.py`, `engine/checker.py` | Módulos brasileiros de enciclopédias Kiwix PT, download/cache OpenStreetMap por UF, cofre criptografado, tradutor offline e diagnóstico completo. |
 | `web/` | Interface web em `index.html`, `app.css`, `app.js`, `chat.js`, `map.js`, `words.js`, `sw.js`. Sem etapa de build nem fontes/scripts externos. |
 | `retrieval.py`, `assistant.py` | Serviço compartilhado de recuperação híbrida e assistente (ferramentas, streaming SSE, checagem de citações em PT-BR). |
 | `content/topics/*.json` | 14 guias curados em PT-BR (8 necessidades urgentes, 6 trilhas de aprendizagem), ~720 referências checadas contra suas páginas originais e adaptadas ao Brasil. Formato: [SCHEMA.md](../content/SCHEMA.md). |

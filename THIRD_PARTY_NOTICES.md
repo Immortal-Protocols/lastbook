@@ -1,6 +1,6 @@
 # Avisos de Terceiros (Third-Party Notices)
 
-O **Último Livro** (fork brasileiro do **Lastbook**, <https://github.com/Immortal-Protocols/lastbook> / <https://lastbook.org>) apoia-se nos softwares e dados listados abaixo. Cada componente mantém sua própria licença. As seções indicam se o componente está incluído neste repositório, empacotado nos aplicativos pelo build ou baixado apenas durante a configuração inicial.
+O **Último Livro** (fork brasileiro do **Lastbook**, <https://github.com/Immortal-Protocols/lastbook> / <https://lastbook.org>, com módulos adicionais em português inspirados no **refugiOS**, <https://github.com/Ganso/refugiOS>) apoia-se nos softwares e dados listados abaixo. Cada componente mantém sua própria licença. As seções indicam se o componente está incluído neste repositório, empacotado nos aplicativos pelo build ou baixado apenas durante a configuração inicial.
 
 **Conferido (Checked)** significa que a licença foi verificada no arquivo de licença ou nos metadados do pacote da versão exata usada nos builds.
 **Upstream** significa que a licença foi obtida da documentação publicada pelo projeto original por não haver cópia local no momento do levantamento — confira esses itens antes de uma distribuição pública.
@@ -46,7 +46,10 @@ Ferramentas apenas de build (`uv`, `CMake`, `Ninja`, `glslc/shaderc`, cabeçalho
 | Componente | Versão | Licença | Fonte | Verificação |
 |---|---|---|---|---|
 | Gemma 4 26B A4B instruct, quantização GGUF por Unsloth (`gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`) | revisão fixada em `llm_local.py` | Apache-2.0, conforme model card | https://huggingface.co/unsloth (lançamento Gemma 4 do Google) | Upstream: conferir o model card e licença antes de redistribuir |
+| Gemma 4 E4B instruct (`gemma-4-E4B-it-Q4_K_M.gguf`) e Gemma 4 E2B instruct (`gemma-4-E2B-it-Q4_K_M.gguf`), quantizações Unsloth | revisões fixadas em `llm_local.py` | Gemma Terms of Use / Apache-2.0 conforme model card no Hugging Face | https://huggingface.co/unsloth | Conferido em `llm_local.py`; conferir termos no Hugging Face antes de redistribuir |
+| Qwen 3.5 0.8B (`Qwen3.5-0.8B-Q4_K_M.gguf`), quantização Unsloth (modelo compacto para 4 GB RAM, inspirado no catálogo do [refugiOS](https://github.com/Ganso/refugiOS)) | revisão fixada em `llm_local.py` | Apache-2.0 conforme model card da família Qwen3.5 | https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF | Conferido em `llm_local.py` |
 | BAAI bge-small-en-v1.5 (ONNX), busca por significado | conforme fixado | MIT, conforme model card | https://huggingface.co/BAAI/bge-small-en-v1.5 | Upstream: a cópia local não traz arquivo de licença ao lado |
+| Pacotes Kiwix `.zim` em Português (`wikipedia_pt_*`, `ifixit_pt_*`, `wikibooks_pt_*`, `wikivoyage_pt_*`, `wiktionary_pt_*`, `phet_pt_*`) | edições fixadas em `engine/kiwix_br.py` | Conteúdo sob CC BY-SA (Wikimedia/iFixit/Wikibooks/Wikivoyage/Wikcionário) e CC BY 4.0 (PhET); catálogo curado em referência ao [refugiOS](https://github.com/Ganso/refugiOS) | https://download.kiwix.org/zim/ | Conferido: tamanho e SHA-256 verificados em `engine/kiwix_br.py` |
 
 ## Site / Fontes
 

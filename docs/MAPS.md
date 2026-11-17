@@ -19,6 +19,7 @@ Um conjunto de mapas fica na pasta de dados (`LastbookData`). O arquivo `map-set
 | `derived/geo/places.sqlite` | `place`, `place_fts` | Buscador de localidades: municípios/bairros, CEPs/códigos postais e locais nomeados | `server.py` (`/api/places`) |
 | `library-data/geography/resources/atlas.sqlite` | `resource`, `spatial` | Registros de recursos naturais (no pacote exemplo dos EUA do upstream, minerais e camadas da Califórnia) | `server.py` |
 | `derived/geo/addresses/` | um índice SQLite por estado/UF | Endereços com numeração e CEP para busca offline | `engine/address_search.py` |
+| `derived/geo/osm_br.json` e `derived/cache/osm_tiles/` | metadados UF + tiles raster PNG | Estado baixado via OpenStreetMap (`openstreetmap.org`) e cache local de tiles `/api/map/osm/<z>/<x>/<y>.png` | `engine/osm_br.py`, `server.py` |
 
 Dois tipos de tabelas guardam os pontos que a pessoa pode tocar no mapa:
 
@@ -62,10 +63,11 @@ Leia sempre o cabeçalho de cada script em `tools/` antes de executá-lo: alguns
 No projeto original (**Lastbook**), o mapa e os endereços eram exclusivamente focados nos Estados Unidos (UFs dos EUA, códigos ZIP de 5 dígitos e enquadramento no Sul da Califórnia/EUA). Neste fork brasileiro (**Último Livro**):
 
 1. **`web/geographic-context.json`:** passou a incluir os polígonos oficiais das 27 unidades federativas do Brasil (`AC` a `TO`, dados IBGE) além do contexto hidrográfico original.
-2. **`web/map.js`:** centralização inicial no Brasil, conversão da escala e medições para sistema métrico (`m`, `km`), busca com suporte a CEP de 8 dígitos (`12345-678` ou `12345678`) e toda a interface traduzida para português do Brasil.
-3. **`engine/address_search.py`:** normalização sem acentos (`fold_txt`), tipos de logradouro brasileiros (*Rua*, *Avenida*, *Alameda*, *Travessa*, *Estrada*, *Rodovia*, *Praça*, *Largo*, etc.), todas as 27 UFs e suporte completo a endereços e CEPs do Brasil mantido em paralelo à compatibilidade com testes legados dos EUA.
-4. **`tools/build_addresses.py`, `packaging/state_maps.py` e `packaging/build_packs.py`:** inclusão das 27 UFs brasileiras, `--bbox br` como padrão na extração de endereços, cálculo automático de bounding box estadual em `state_box()` via `web/geographic-context.json` e suporte a `map br`.
-5. **`server.py`:** limites geográficos para o Brasil em `/api/places`, tradução de categorias de ajuda (`HELP`) e resultados em unidades métricas (`km`, `ha`, `m³`).
+2. **`engine/osm_br.py` (download estadual via OpenStreetMap e tiles raster):** permite baixar sob demanda no Gerenciador o mapa de qualquer uma das 27 UFs brasileiras diretamente de fontes OpenStreetMap (`openstreetmap.org` / Nominatim / BrasilAPI), gerando `map.sqlite`, `places.sqlite` e `addresses/<UF>.sqlite` offline e servindo tiles raster cacheados em `/api/map/osm/<z>/<x>/<y>.png` para uso híbrido online/offline.
+3. **`web/map.js`:** centralização inicial no Brasil, conversão da escala e medições para sistema métrico (`m`, `km`), camada raster OpenStreetMap com suporte offline ao cache gravado, busca com suporte a CEP de 8 dígitos (`12345-678` ou `12345678`), logradouro, número e município, e toda a interface traduzida para português do Brasil.
+4. **`engine/address_search.py`:** normalização sem acentos (`fold_txt`), tipos de logradouro brasileiros (*Rua*, *Avenida*, *Alameda*, *Travessa*, *Estrada*, *Rodovia*, *Praça*, *Largo*, etc.), todas as 27 UFs e suporte completo a endereços com vírgula / `nº` e CEPs do Brasil mantido em paralelo à compatibilidade com testes legados dos EUA.
+5. **`tools/build_addresses.py`, `packaging/state_maps.py` e `packaging/build_packs.py`:** inclusão das 27 UFs brasileiras, `--bbox br` como padrão na extração de endereços, cálculo automático de bounding box estadual em `state_box()` via `web/geographic-context.json` e suporte a `map br`.
+6. **`server.py`:** limites geográficos para o Brasil em `/api/places` (com opção de fallback online `osm=1` via Nominatim/BrasilAPI para CEP e ruas quando conectado), tradução de categorias de ajuda (`HELP`) e resultados em unidades métricas (`km`, `ha`, `m³`).
 
 > Nota sobre dados binários externos: para gerar novos pacotes `.sqlite` brasileiros prontos para uso final, ainda é necessário executar os scripts de build com extratos OpenStreetMap/Overture do Brasil; caso utilize dados nacionais do projeto original, as camadas geográficas detalhadas dos EUA continuarão usando os rótulos originais correspondentes àquele conjunto de dados.
 

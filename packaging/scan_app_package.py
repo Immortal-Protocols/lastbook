@@ -33,12 +33,17 @@ ADDRESSES = re.compile(rb'\b(?:192\.168|10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01]))\.
 CHANNEL_NAMES = {'AddHostObjectToScript', 'add_WebMessageReceived', 'WebMessageReceived', 'PostWebMessageAsJson', 'PostWebMessageAsString', 'add_script_message_handler', 'addScriptMessageHandler_name_'}
 EXPECTED_REMOTE_NAME = 'engine.library'
 # What first-run setup may reach (engine/setup/download.py ALLOWED_HOSTS and ALLOWED_SUFFIXES). A change there must be made here too.
-SETUP_HOSTS = {'downloads.lastbook.org', 'huggingface.co', 'cas-bridge.xethub.hf.co'}
-SETUP_SUFFIXES = {'.hf.co'}
+SETUP_HOSTS = {
+    'downloads.lastbook.org', 'huggingface.co', 'cas-bridge.xethub.hf.co',
+    'www.openstreetmap.org', 'nominatim.openstreetmap.org', 'brasilapi.com.br',
+    'download.kiwix.org', 'mirror.download.kiwix.org', 'dumps.wikimedia.org',
+    'ftpmirror.your.org', 'ftp.nluug.nl', 'mirrors.dotsrc.org',
+}
+SETUP_SUFFIXES = {'.hf.co', '.mirror.driftle.ss', '.kiwix.org'}
 # http.server is left out: setup's handler class (engine.setup.api), like server.py's, answers the window in-process and listens on nothing.
 NET_MODULES = {'http.client', 'socket', '_socket', 'ssl', '_ssl', 'urllib.request', 'asyncio', 'ftplib', 'smtplib', 'xmlrpc.client'}
 # A host name in the code: dotted words ending in a top-level domain (so 'x.part.json' and '.tmp' are file names, not hosts).
-TLDS = r'(?:com|org|net|co|dev|io|app|ai|cloud|info|me|xyz|edu|gov|us|uk|de|eu|ca|ws|sh|to|link|site|tech|online)'
+TLDS = r'(?:com|org|net|co|dev|io|app|ai|cloud|info|me|xyz|edu|gov|us|uk|de|eu|ca|ws|sh|to|link|site|tech|online|br|nl|ss)'
 HOST_NAME = re.compile(r'^(?:[a-z0-9-]+\.)+' + TLDS + r'$')
 HOST_SUFFIX = re.compile(r'^\.(?:[a-z0-9-]+\.)*' + TLDS + r'$')
 LLM_DIR = ('_internal\\llm\\', '_internal/llm/')

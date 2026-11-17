@@ -29,6 +29,7 @@ FIRST_PARTY = re.compile(r'^opt/lastbook/(web|content|app|engine|setup)/|^opt/la
 NET_MODULES = {'socket', 'ssl', 'http.client', 'urllib.request', 'http.server', 'socketserver', 'asyncio', 'ftplib', 'smtplib', 'xmlrpc', 'requests', 'urllib3'}
 NET_ALLOWED = {
     'opt/lastbook/engine/setup/download.py',   # setup's downloader: HTTPS to the allowlist, roots.pem only
+    'opt/lastbook/engine/osm_br.py',           # OpenStreetMap / BrasilAPI download & tile cache on user request
     'opt/lastbook/engine/update.py',           # Check for updates, through download.py
     'opt/lastbook/server.py',                  # the engine's request handler; the app runs it through bridge.py and never opens its port
     'opt/lastbook/engine/setup/api.py',        # BaseHTTPRequestHandler for setup's routes, run the same way

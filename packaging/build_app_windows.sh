@@ -103,6 +103,7 @@ VERSIONINFO
   --add-data "$LLM;llm" --add-data "$OUT\\ship\\setup\\manifest-v1.json;setup" --add-data "$ROOTW\\engine\\setup\\roots.pem;engine\\setup" --collect-submodules engine.setup \
   --hidden-import server --hidden-import retrieval --hidden-import assistant --hidden-import llm_local --hidden-import engine.update \
   --hidden-import engine.paths --hidden-import engine.library --hidden-import engine.saved_pages --hidden-import engine.quiet_onnx \
+  --hidden-import engine.address_search --hidden-import engine.osm_br --hidden-import engine.kiwix_br --hidden-import engine.vault --hidden-import engine.translator --hidden-import engine.checker \
   --hidden-import bridge --hidden-import shell_windows --hidden-import clr --hidden-import _cffi_backend \
   --exclude-module shell_macos --exclude-module remote_storage --exclude-module tests \
   --exclude-module webview --exclude-module bottle --exclude-module proxy_tools --exclude-module lastbook_launcher \

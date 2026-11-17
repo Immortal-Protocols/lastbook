@@ -64,7 +64,7 @@ FEATURES_OFF = ('PeerConnectionEnabled', 'NavigationAPIEnabled', 'LinkPreconnect
 MENU_KEEP = {getattr(WebKit2.ContextMenuAction, n) for n in ('COPY', 'CUT', 'PASTE', 'SELECT_ALL', 'COPY_IMAGE_TO_CLIPBOARD', 'PASTE_AS_PLAIN_TEXT') if hasattr(WebKit2.ContextMenuAction, n)}
 STOPPED = 'A page stopped working, so it was closed.'
 TOO_BIG = 'A page was using too much memory, so it was closed.'
-GO = [('Videos', '#/videos'), ('Map', '#/map'), ('Chat', '#/ask')]
+GO = [('Vídeos', '#/videos'), ('Mapa', '#/map'), ('Chat', '#/ask')]
 SIDE_TOGGLE = "document.getElementById('sideBtn').click()"
 FIND = "document.dispatchEvent(new KeyboardEvent('keydown',{key:'f',code:'KeyF',metaKey:true}))"   # the page's own find, as the Mac menu asks for it
 _gtk_ok = None
@@ -75,7 +75,7 @@ def _gtk():
     global _gtk_ok
     if _gtk_ok is None:
         GLib.set_prgname('lastbook')
-        GLib.set_application_name('Lastbook')
+        GLib.set_application_name('Último Livro')
         try:
             r = Gtk.init_check(None)
             _gtk_ok = bool(r[0] if isinstance(r, tuple) else r)
@@ -383,7 +383,7 @@ class Shell:
         except Exception:
             pass
 
-        w = self.window = Gtk.ApplicationWindow(application=app, title='Lastbook')
+        w = self.window = Gtk.ApplicationWindow(application=app, title='Último Livro')
         w.set_default_size(*SIZE)
         w.set_size_request(*MIN_SIZE)
         _icon(w)
@@ -395,28 +395,28 @@ class Shell:
 
     # ---- header and keys: the Mac menu's items
     def header(self):
-        bar = Gtk.HeaderBar(title='Lastbook', show_close_button=True)
+        bar = Gtk.HeaderBar(title='Último Livro', show_close_button=True)
         menu = Gio.Menu()
         go = Gio.Menu()
         for i, (name, _) in enumerate(GO):
             go.append(name, f'win.go{i}')
         menu.append_section(None, go)
         view = Gio.Menu()
-        view.append('Show or Hide Sidebar', 'win.sidebar')
-        view.append('Find…', 'win.find')
-        view.append('Full Screen', 'win.fullscreen')
+        view.append('Mostrar ou ocultar barra lateral', 'win.sidebar')
+        view.append('Buscar…', 'win.find')
+        view.append('Tela cheia', 'win.fullscreen')
         menu.append_section(None, view)
         helps = Gio.Menu()
-        helps.append('Lastbook Help', 'win.help')
-        helps.append('Check for Updates…', 'win.updates')
-        helps.append('Quit Lastbook', 'win.quit')
+        helps.append('Ajuda do Último Livro', 'win.help')
+        helps.append('Verificar atualizações…', 'win.updates')
+        helps.append('Sair do Último Livro', 'win.quit')
         menu.append_section(None, helps)
         btn = Gtk.MenuButton(menu_model=menu, image=Gtk.Image.new_from_icon_name('open-menu-symbolic', Gtk.IconSize.BUTTON))
         btn.set_tooltip_text('Menu')
         bar.pack_end(btn)
         nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         nav.get_style_context().add_class('linked')
-        for icon, tip, act in (('go-previous-symbolic', 'Back', 'win.back'), ('go-next-symbolic', 'Forward', 'win.forward')):
+        for icon, tip, act in (('go-previous-symbolic', 'Voltar', 'win.back'), ('go-next-symbolic', 'Avançar', 'win.forward')):
             b = Gtk.Button.new_from_icon_name(icon, Gtk.IconSize.BUTTON)
             b.set_tooltip_text(tip)
             b.set_action_name(act)

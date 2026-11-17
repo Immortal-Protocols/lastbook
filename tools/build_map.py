@@ -2,7 +2,7 @@
 """Convert the Geofabrik SoCal GeoPackage (OpenStreetMap, ODbL) into a compact, spatially indexed
 map database the app can draw offline.
 
-  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite [west,south,east,north] [source] [additional.gpkg ...]
+  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite [west,south,east,north] [source]
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
 the original archive is only read. Output tables:
@@ -133,11 +133,6 @@ def area_z(minx, maxx, miny, maxy, base):
 def main():
     t0 = time.time()
     src = sqlite3.connect(SRC)
-    databases = ['main']
-    for index, path in enumerate(sys.argv[5:], 1):
-        alias = f'extract{index}'
-        src.execute(f'ATTACH DATABASE ? AS {alias}', (path,))
-        databases.append(alias)
     dst = sqlite3.connect(DST)
     dst.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
       DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
@@ -156,12 +151,7 @@ def main():
         dst.execute('INSERT INTO feat_idx VALUES (?,?,?,?,?,?,?)', (fid[0], *bx, minz, 30))
 
     def each(table, cols='fclass,name'):
-        query = f'SELECT geom,{cols} FROM {table}'
-        if len(databases) > 1:
-            # Overlapping extracts can carry the same OSM object. Keep distinct geometry pieces and distinct IDs.
-            rows = ' UNION '.join(f'SELECT osm_id,geom,{cols} FROM {db}.{table}' for db in databases)
-            query = f'SELECT geom,{cols} FROM ({rows})'
-        for row in src.execute(query):
+        for row in src.execute(f'SELECT geom,{cols} FROM {table}'):
             if row[0] is None:
                 continue
             try:

@@ -30,14 +30,14 @@ TABLE = ROOT / 'derived/packs/REGION-MAPS.md'
 sys.path.insert(0, str(ROOT / 'packaging'))
 sys.path.insert(0, str(ROOT / 'derived/release'))
 import scan_pack as S            # noqa: E402
-import region_specs              # noqa: E402
+from build_packs import REGIONS  # noqa: E402
 
 INCLUDES = 'Local streets, buildings, water and places to get help'
 ALLOWED = {'derived/geo/map.sqlite', 'derived/geo/detail-cells.json', 'derived/geo/national-status.json', 'map-set.json'}
 
 
 def regions():
-    return list(region_specs.REGIONS)
+    return list(REGIONS)
 
 
 def scan(d, code):
@@ -132,7 +132,7 @@ def write_table(res):
     rows = ['# Region maps', '', 'One detailed map per non-US region, for first-run setup (docs/MAPS.md, "Region maps"). Built by', '`packaging/region_maps.py`; each zip was scanned, uploaded, checked by its public SHA-256 and then listed under', '`maps` in `manifest-v1.json`.', '', '| Region | Zip size | Installed size | SHA-256 | URL |', '|---|---:|---:|---|---|']
     for code in sorted(res):
         r = res[code]
-        spec = region_specs.REGIONS.get(code, {})
+        spec = REGIONS.get(code, {})
         rows.append(f"| {spec.get('title', code)} | {r['size'] / 1e9:.2f} GB ({r['size']:,}) | {r['installed_bytes'] / 1e9:.2f} GB ({r['installed_bytes']:,}) | `{r['sha256']}` | {r['url']} |")
     TABLE.write_text('\n'.join(rows) + '\n')
 
@@ -165,7 +165,7 @@ def one_region(ctx, code, res):
     if got != sha or n != size:
         sys.exit(f'{code}: public copy differs ({got} {n})')
     SM.log(code, 'public copy verified')
-    spec = region_specs.REGIONS[code]
+    spec = REGIONS[code]
     entry = {'id': code, 'title': spec['title'], 'country': spec['country'], 'kind': 'region', 'installed_bytes': installed, 'available': True,
              'includes': INCLUDES, 'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
     with open(LOCK, 'a') as lk:
@@ -199,7 +199,7 @@ def main():
     todo = regions() if args == ['--order'] else args
     res = json.loads(RESULTS.read_text()) if RESULTS.exists() else {}
     for code in todo:
-        if code not in region_specs.REGIONS:
+        if code not in REGIONS:
             sys.exit(f'unknown region {code}')
         if code in res:
             continue

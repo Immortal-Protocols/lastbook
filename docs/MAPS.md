@@ -66,6 +66,33 @@ Showing one of these needs no new data: add a layer line in `web/map.js` and say
 someone in an emergency. The comment in `map.js` about retired layers shows that some kinds were left out on purpose,
 so ask before adding many.
 
+## Canadian province maps
+
+Under **Canada**, choose one province to download. Each map includes streets, building outlines, water features
+and mapped help points. Installing another province replaces the active detailed map. These archives do not include
+street-address search, a searchable town index or terrain tiles.
+
+| Province and source extract | Map ID | Review download | Installed |
+| --- | --- | ---: | ---: |
+| [Nova Scotia](https://download.geofabrik.de/north-america/canada/nova-scotia.html) | `ca-ns` | 70.5 MB | 183.8 MB |
+| [New Brunswick](https://download.geofabrik.de/north-america/canada/new-brunswick.html) | `ca-nb` | 55.9 MB | 141.2 MB |
+| [Prince Edward Island](https://download.geofabrik.de/north-america/canada/prince-edward-island.html) | `ca-pe` | 10.1 MB | 27.2 MB |
+
+Sizes are from the November 2026 review build. The inputs are provincial OpenStreetMap GeoPackages distributed by
+Geofabrik under ODbL 1.0. [OpenStreetMap attribution and licence](https://www.openstreetmap.org/copyright)
+
+Build each map and write the three archives from the repository root:
+
+```sh
+for province in ca-ns ca-nb ca-pe; do
+    python3 -I -B packaging/build_packs.py map "$province" || exit 1
+done
+python3 -I -B packaging/region_maps.py --zip-only ca-ns ca-nb ca-pe
+```
+
+The archives are written to `derived/packs/region-zips/Lastbook-Map-<id>.zip`. The release publisher scans, uploads
+and verifies each archive before adding its own entry to the setup manifest.
+
 ## What builds each file
 
 | File | Built by | From |
@@ -110,31 +137,6 @@ box. It ships only `map.sqlite` (its own detail), `detail-cells.json`, `national
 there are no federal datasets, terrain relief, crops or address search. The first region is Caracas (Distrito Capital,
 Venezuela), id `ve-a`. Add another by adding a row to `packaging/region_specs.py` and running
 `packaging/region_maps.py <id>`; the table `packaging/region_maps.py` writes is `derived/packs/REGION-MAPS.md`.
-
-### Canadian Maritimes
-
-`ca-maritimes` installs New Brunswick, Nova Scotia and Prince Edward Island together. Streets, building outlines,
-water features and mapped help points are available across all three provinces. This download has no street-address
-index, searchable town index or terrain tiles. As with other region maps, installing it replaces the current detailed map.
-
-The inputs are the provincial OpenStreetMap GeoPackages from Geofabrik, licensed under ODbL 1.0. Each is cached
-separately under `derived/packs/maps/region-source/`. Repeated rows for the same OpenStreetMap object and geometry in
-overlapping extracts appear once. The November 2026 sample is about 137 MB to download and 355 MB installed.
-[New Brunswick](https://download.geofabrik.de/north-america/canada/new-brunswick.html) ·
-[Nova Scotia](https://download.geofabrik.de/north-america/canada/nova-scotia.html) ·
-[Prince Edward Island](https://download.geofabrik.de/north-america/canada/prince-edward-island.html) ·
-[OpenStreetMap copyright and licence](https://www.openstreetmap.org/copyright)
-
-To build a local review archive from the repository root, use the build Python described in the README:
-
-```sh
-python3 -I -B packaging/build_packs.py map ca-maritimes
-python3 -I -B packaging/region_maps.py --zip-only ca-maritimes
-```
-
-The zip is written to `derived/packs/region-zips/Lastbook-Map-ca-maritimes.zip`. The release publisher scans the map,
-uploads the archive, verifies the public checksum and lists the download in the manifest. Setup then offers it under
-**Canada**.
 
 ## Checking a map change
 

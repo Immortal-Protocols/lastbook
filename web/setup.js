@@ -546,7 +546,7 @@
     if (a === 'cancel-no') { confirmCancel = false; jobView(S.job); return }
     if (a === 'cancel-yes') { confirmCancel = false; a = 'cancel' }
     b.disabled = true; lastAct = a;
-    try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { }
+    try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { } finally { b.disabled = false }
     if (a === 'cancel') { S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = 'The download was cancelled.'; return }
     jobView(S.job);
     poll();

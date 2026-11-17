@@ -207,6 +207,12 @@ print(json.dumps({'info':server.map_info(), 'places':server.places('Ceuta'),
                                  str(ROOT / 'web/setup-map.js')], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_recovery_actions_remain_available_after_manifest_errors(self):
+        result = subprocess.run([shutil.which('node'), str(ROOT / 'app/tests/setup_job_test.mjs'),
+                                 str(ROOT / 'web/setup.js')], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_release_manifest_offers_unpublished_spain_and_keeps_a_published_entry(self):
         source = self.root / 'manifest.json'
         output = self.root / 'bundled.json'

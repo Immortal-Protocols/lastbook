@@ -65,3 +65,8 @@ allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is 
 The manuals, videos, encyclopedias and map data in the library packs are not part of this repository. Each pack has a
 Sources and permissions page with the publisher and terms of every item. The offline map uses OpenStreetMap data
 (ODbL, © OpenStreetMap contributors) and US government data such as USGS, NOAA and USACE, as credited on the map.
+The Spain map uses OpenStreetMap extracts provided by Geofabrik. The OpenStreetMap data is available under the
+[Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/); see the
+[OpenStreetMap copyright notice](https://www.openstreetmap.org/copyright) and [docs/MAPS.md](docs/MAPS.md).
+The small Ceuta and Melilla land patches use Natural Earth public-domain data. Regenerating those patches uses
+[Shapely](https://github.com/shapely/shapely) (BSD-3-Clause, with GEOS under LGPL-2.1); neither is an app dependency.

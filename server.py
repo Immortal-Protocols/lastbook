@@ -1394,6 +1394,12 @@ def water_places(q, limit=10, near=None):
 
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
+        nat = national_mapdb()
+        try:
+            if nat and nat.execute("SELECT value FROM meta WHERE key='region'").fetchone() in (('ES',), ('ES-SAMPLE',)):
+                return []  # retained US indexes do not describe the installed Spain map
+        except sqlite3.Error:
+            pass  # older or currently rebuilding US maps need not have metadata yet
         return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
     if not PLACEDB.exists():
         return []
@@ -1543,6 +1549,12 @@ def map_contents():
 def map_info():
     db = mapdb()
     meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db else {}
+    national = national_mapdb()
+    try:
+        national_meta = dict(national.execute('SELECT key,value FROM meta').fetchall()) if national else {}
+    except sqlite3.Error:
+        national_meta = {}  # a national map may still be building
+    spain = national_meta.get('region') in ('ES', 'ES-SAMPLE')
     geo = []
     for rel, label, status in [
         ('geography/openstreetmap/socal-latest-free.gpkg.zip', 'Southern California streets, buildings, water and places (OpenStreetMap)', 'Shown on this map'),
@@ -1616,9 +1628,17 @@ def map_info():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
     extra = {'aerial': has_aerial()}
-    if pack:
+    if pack or spain:
         extra.update(map_contents())
         geo = pack_datasets(extra)
+    if spain:
+        meta = national_meta
+        extra.update({'map_region': meta['region'], 'street_addresses': False, 'terrain': False})
+        geo = [{'label': 'Spain map (© OpenStreetMap contributors, via Geofabrik; ODbL 1.0)',
+                'status': 'Roads, buildings, water, named places and mapped help points. No elevation or street-address index. '
+                          + 'License: ' + meta.get('license_url', '')}]
+        if meta['region'] == 'ES-SAMPLE':
+            geo[0]['status'] = 'Incomplete sample. ' + geo[0]['status']
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
 
 

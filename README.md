@@ -183,6 +183,9 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
 - **State maps** are one US state's detailed map set, built by `packaging/build_packs.py map <ST>` and published by
   `packaging/state_maps.py`, with per-state address indexes from `packaging/address_indexes.py`. A state map replaces the
   library's map set; it never merges with it. Medium already holds California and All the whole US.
+- **Spain** can be built as a separate OpenStreetMap map set with `tools/build_spain.py`. Its coverage, licensing,
+  limitations and publication steps are in [docs/MAPS.md](docs/MAPS.md). It has no street-address index or elevation
+  data, and setup cannot download it until a maintainer publishes the map archive and manifest entry.
 - **The local AI** is optional: Gemma 4 26B A4B (Unsloth's `gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`, about 17 GB). The file
   name, size, SHA-256 and Hugging Face revision are pinned in `llm_local.py`. Setup offers it only where the measured fit
   says it fits (about 18 GB of memory for model and context, plus a reserve) and says why in plain words when it does not.

@@ -40,6 +40,10 @@ also fetch `https://downloads.lastbook.org/manifest-v1.json` (one GET, only when
 packs published after the app was built. A fetched manifest is used only if it parses, its `version` is 1, and every URL is
 on an allowed host.
 
+Country-aware versions of setup also fetch `https://downloads.lastbook.org/manifest-spain-v1.json` at that time. It contains
+only a `version: 1` and one `maps` entry with id `ES` and kind `country`; it cannot change packs, models, address indexes or
+US maps. Publish Spain there, not in `manifest-v1.json`, so older clients do not offer a map they cannot display correctly.
+
 ```json
 {
   "version": 1,
@@ -89,6 +93,7 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | Request | Answer |
 |---|---|
 | `GET /api/setup/state` | `{mode: "first-run" or "manage", hardware, manifest: {source: "bundled" or "fetched", packs, models}, current: {folder, pack, model} or null, found: [...], recommend: {pack, ai, why}, job}` |
+| `POST /api/setup/refresh-manifest` | checks the approved download host again when the person asks; returns the current `state` while the fetch runs in the background |
 | `POST /api/setup/start` `{pack, ai: true or false, folder?}` | the new `job`, or `{error, need_bytes, free_bytes}` |
 | `GET /api/setup/job` | `job` |
 | `POST /api/setup/pause`, `/resume`, `/cancel`, `/retry` | `job` |
@@ -129,6 +134,13 @@ with the same result for the person. Either way, an upgrade (for example Small t
 `LastbookData.old-<date>` only after the new one is complete and opens, and offers to delete the old one afterwards.
 
 ## State maps (added 2026-11-12)
+
+Spain is also offered as a `kind: "country"` map with id `ES`; see [MAPS.md](MAPS.md) for its coverage,
+build and release instructions. A US-wide map includes the state entries, not country entries. The same
+verified download, unpack and replacement rules apply. Spain has no separate street-address index.
+When All's US map has been replaced, manage mode can restore it with `start {pack: "all", restore_map: true}`.
+That re-downloads the All library and installs its bundled US map; ordinary same-pack content refreshes still
+preserve the selected map. Existing personal files and address indexes are carried over.
 
 The owner wants setup to offer one US state's detailed map with any library: local streets, buildings, terrain,
 crops and the resource layers (water points, help points, atlas), built by `packaging/build_packs.py map <ST>`

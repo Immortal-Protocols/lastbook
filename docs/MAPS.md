@@ -93,22 +93,109 @@ expect source files that are hundreds of gigabytes.
   libraries, community centres and food shops from the data it does read. A class that has records and no layer is the
   separate case described above.
 
-## What is tied to the United States
+## Spain
 
-- Every detailed source above is a US dataset, or a worldwide one filtered to the US.
+Spain is a separate, replaceable map set, identified as `ES`. It uses OpenStreetMap data processed by
+[Geofabrik](https://download.geofabrik.de/europe/spain.html), with the separately published
+[Canary Islands extract](https://download.geofabrik.de/africa/canary-islands.html). The inputs cover the
+mainland, Balearic and Canary Islands, Ceuta and Melilla, subject to the contents and boundaries of those
+extracts. Boundaries can include neighboring areas. Features and service points are only as complete and
+current as OpenStreetMap, and do not describe closures or hazards.
+
+The map includes mapped streets, building outlines, water, land use, railways, island polygons, named places and selected
+help points. It has **no elevation, relief, contours, aerial photographs, US resource inventories or
+street-address search**. Street geometry is not an address index: town and named-place search is supported,
+but searching for a house number and street is not. Selecting Spain replaces the current map set, including
+the US map in the All library; a US state can be selected again later. To restore the whole US map in an All
+library, use **Download All and restore** in Library and local AI; this downloads and installs All again.
+Setup shows the download size before starting. Existing address index files are kept but are not searched while
+the Spain map is active.
+
+The Canary and Balearic island land outlines come from the OSM extracts. Ceuta and Melilla use small,
+generalized [Natural Earth 1:10m land](https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/)
+patches, which can be inaccurate at street zoom. Natural Earth data is public domain. The patches are stored in
+`web/spain-context.json` and are drawn behind the detailed OSM features.
+
+Map data: © OpenStreetMap contributors, licensed under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
+See the [OpenStreetMap copyright and attribution page](https://www.openstreetmap.org/copyright) and
+[Geofabrik's extract page](https://download.geofabrik.de/europe/spain.html). These are build-time sources;
+the app does not contact them. When distributing a derived database, follow the ODbL's attribution,
+share-alike and source-availability requirements.
+
+### Rebuild the Spain map
+
+Use Python 3.11 or newer with SQLite R-tree and FTS5, `curl`, and `unzip`. The following downloads the
+19 Geofabrik GeoPackage snapshots dated 15 November 2026. The compressed source archives total about **3.20 GB**;
+the extracted inputs and build output require additional disk space. A local build of these inputs with
+Python 3.15.2 and SQLite 3.54.1 produced a **1,415,768,867-byte zip** and **3,758,842,174 installed bytes**.
+That is a build measurement, not a published release; later releases can differ and setup uses the sizes in
+their manifest. The local zip's SHA-256 was `23e874aed049de474a85f294ca05971821195b1876252171ffd663517053b17a`.
+The checked [input hashes](spain-input-2026-11-15.sha256) pin these specific archives. Keep the archives if
+an identical input needs to be rebuilt later; Geofabrik may retire dated snapshots. `latest` changes over time
+and is not reproducible.
+
+```bash
+mkdir -p /path/to/spain-input
+lastbook_root="$PWD"
+for region in andalucia aragon asturias cantabria castilla-la-mancha castilla-y-leon cataluna ceuta \
+  extremadura galicia islas-baleares la-rioja madrid melilla murcia navarra pais-vasco valencia; do
+  curl -fL "https://download.geofabrik.de/europe/spain/${region}-261115-free.gpkg.zip" \
+    -o "/path/to/spain-input/${region}.zip"
+  unzip -p "/path/to/spain-input/${region}.zip" "${region}.gpkg" > "/path/to/spain-input/${region}.gpkg"
+done
+curl -fL "https://download.geofabrik.de/africa/canary-islands-261115-free.gpkg.zip" \
+  -o /path/to/spain-input/canary-islands.zip
+unzip -p /path/to/spain-input/canary-islands.zip canary-islands.gpkg > /path/to/spain-input/canary-islands.gpkg
+(cd /path/to/spain-input && shasum -a 256 -c "$lastbook_root/docs/spain-input-2026-11-15.sha256")
+python3 -B tools/build_spain.py --input-dir /path/to/spain-input \
+  --output-dir /path/to/new-spain-build --data-date 2026-11-15
+```
+
+The output directory must not already exist. The builder refuses a full `ES` build if any required extract
+is missing; it records SHA-256 hashes of the unpacked inputs in the map database, combines overlapping
+extracts, creates the place finder, and prints the zip's SHA-256, download bytes and installed bytes. Use the
+same inputs, Python and SQLite versions when comparing builds. Generated GeoPackages, SQLite databases and
+zips belong outside Git. A small **incomplete** test can be built from any subset by adding `--sample`;
+it is labeled `ES-SAMPLE`, never `ES`.
+
+For release, a maintainer can place the `ES` directory from the build under `derived/packs/maps/ES`, then run
+`packaging/state_maps.py ES` in the established release environment. That script applies the map scan,
+zips and uploads the set, verifies the public SHA-256, and publishes the entry in the separate
+`manifest-spain-v1.json`. Do not add Spain to `manifest-v1.json`: older clients read that manifest but do
+not support country maps. The release script makes its
+own archive and records its own hash and sizes. Its release-only publisher,
+credentials, private-term scan list and storage access are not part of this repository. Until an actual
+archive has been published on Lastbook's approved download host and listed with its real sizes and hash,
+Spain appears as unavailable in setup. Do not publish an `ES-SAMPLE` as a full country map.
+
+To regenerate the small Natural Earth patches (not needed for an ordinary map build), install
+`shapely==2.1.2` in a build environment, then run:
+
+```bash
+curl -fL https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_10m_land.geojson -o /path/to/ne_10m_land.geojson
+python3 -B tools/build_spain_context.py /path/to/ne_10m_land.geojson /path/to/spain-context.json
+```
+
+The tool verifies the source SHA-256 before writing. Shapely (BSD-3-Clause; GEOS is LGPL-2.1) is used only
+to regenerate this asset, not by the app or the Spain map builder.
+
+## What else is tied to the United States
+
+- The US state map sources listed above are US datasets, or worldwide ones filtered to the US.
 - `server.py` treats a box around Southern California as the area `map.sqlite` covers (`_poi_sources`, `socal_classes`).
-- Detailed maps are cut and installed one US state at a time (`docs/SETUP-API.md`, "State maps").
+- US detailed maps are cut and installed one state at a time (`docs/SETUP-API.md`, "State maps").
 - Address search knows US state names and US street words (`engine/address_search.py`, `tools/build_addresses.py`).
 - The base map of the world is drawn from `web/world-context.json` and `web/geographic-context.json`.
 
-Coverage outside the US needs a decision on each of these first: which open source replaces each federal list, under
-what licence, what a "state" is elsewhere, and how addresses are written. That is a design discussion to have in an
-issue before any code.
+Other countries need the same source, licence, coverage and address-search decisions; US federal layers do not
+automatically extend to them.
 
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.
 - A change to a pack or map tool: `packaging/test_pack_tools.py` and `packaging/scan_pack.py` check what a map set may
   hold, and `scan_pack.py` lists the allowed files under `derived/geo/` (`GEO_FILES`).
+- Spain builder and setup regressions: `python3 -B -m unittest app.tests.test_spain_map`. The setup download test
+  starts a temporary HTTPS server bound to localhost; no external network is used by the tests.
 - Nothing a contributor adds may make the app open a connection. New data comes in through a build tool and ships as a
   file.

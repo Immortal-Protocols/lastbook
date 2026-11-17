@@ -1060,7 +1060,7 @@ class Maps(Base):
         m = self.manifest().current
         raw = {**m, 'packs': [{**m['packs'][0], 'map': 'CA'}, {**m['packs'][0], 'id': 'x', 'map': 'base'}]}
         v = manifest.validate(raw, ALLOWED)
-        self.assertEqual([p['map'] for p in v['packs']], ['CA', None])
+        self.assertEqual([p['map'] for p in v['packs']], ['CA', 'base'])
 
     def test_merge_keeps_bundled_maps(self):
         mf, _ = self.map_manifest()

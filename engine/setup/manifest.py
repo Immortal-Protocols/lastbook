@@ -1,6 +1,5 @@
-"""What can be installed: manifest-v1.json, bundled with the app at build time (packaging/release_manifest.py), or fetched once
-from the download site when setup is opened. A fetched one is used only if it parses, says version 1 and every address in it is
-allowed (download.url_allowed)."""
+"""What can be installed: the bundled manifest plus the regular and Spain manifests fetched when setup opens.
+A fetched manifest is used only if it parses, says version 1 and every address is allowed (download.url_allowed)."""
 import json
 import re
 import sys
@@ -10,6 +9,7 @@ from pathlib import Path
 from . import download
 
 REMOTE = 'https://downloads.lastbook.org/manifest-v1.json'
+SPAIN_REMOTE = 'https://downloads.lastbook.org/manifest-spain-v1.json'
 SHA = re.compile(r'^[0-9a-f]{64}$')
 LIBRARY_HOSTS = frozenset({'downloads.lastbook.org'})   # packs and state maps come from Lastbook's own download site only
 MODEL_HOSTS = frozenset({'huggingface.co'})             # the model from Hugging Face only (it redirects to its own CDN hosts)
@@ -62,7 +62,7 @@ def validate(m, allowed=None):
                       'records': p.get('records') if _int(p.get('records')) else None, 'revision': revision,
                       'installed_bytes': p.get('installed_bytes') if _int(p.get('installed_bytes')) else None,
                       'download_bytes': sum(f['size'] for f in files), 'available': available, 'files': files,
-                      'map': p['map'] if isinstance(p.get('map'), str) and NAME.match(p['map']) and p['map'] != 'base' else None})
+                      'map': p['map'] if isinstance(p.get('map'), str) and NAME.match(p['map']) else None})
     collections = {}
     for key in ('maps', 'address_indexes'):
         entries = []
@@ -126,28 +126,39 @@ def merge(bundled, fetched):
 class Manifest:
     """The bundled manifest at once; a fetched one replaces it when it arrives and is newer or the same date."""
 
-    def __init__(self, bundled=None, remote=REMOTE, allowed=None, context=None):
+    def __init__(self, bundled=None, remote=REMOTE, allowed=None, context=None, spain_remote=None):
         self.current = bundled or load_bundled()
         self.source = 'bundled'
         self.remote, self.allowed, self.context = remote, allowed, context
+        self.spain_remote = spain_remote or (SPAIN_REMOTE if remote == REMOTE and allowed is None else None)
         self.fetching = None
 
-    def fetch_once(self):
-        if self.fetching or not self.remote:
+    def fetch_once(self, retry=False):
+        if not self.remote or (self.fetching and (self.fetching.is_alive() or not retry)):
             return
         self.fetching = threading.Thread(target=self._fetch, daemon=True, name='setup-manifest')
         self.fetching.start()
 
     def _fetch(self):
         data = download.fetch_small(self.remote, allowed=self.allowed, context=self.context)
-        if not data:
-            return
         try:
-            m = validate(json.loads(data.decode('utf-8')), self.allowed)
+            m = validate(json.loads(data.decode('utf-8')), self.allowed) if data else None
         except ValueError:
             m = None
         if m:      # merge() keeps every pinned entry, so a fetched copy can only add or mark available, whatever its date
             self.current, self.source = merge(self.current, m), 'fetched'
+        if self.spain_remote:
+            data = download.fetch_small(self.spain_remote, allowed=self.allowed, context=self.context)
+            try:
+                country = validate(json.loads(data.decode('utf-8')), self.allowed) if data else None
+            except ValueError:
+                country = None
+            if (country and len(country['maps']) == 1 and country['maps'][0]['id'] == 'ES' and
+                    country['maps'][0]['kind'] == 'country' and not country['packs'] and not country['models'] and
+                    not country['address_indexes']):
+                # Old clients read only manifest-v1.json and never see a country they cannot display.
+                addition = {**self.current, 'maps': country['maps']}
+                self.current, self.source = merge(self.current, addition), 'fetched'
 
     def pack(self, pid):
         return next((p for p in self.current['packs'] if p['id'] == pid), None)
@@ -164,7 +175,7 @@ class Manifest:
 
     def public(self):
         strip = lambda f: {k: v for k, v in f.items() if k != 'url'}
-        return {'source': self.source, 'published': self.current['published'],
+        return {'source': self.source, 'published': self.current['published'], 'fetching': bool(self.fetching and self.fetching.is_alive()),
                 'packs': [{**p, 'files': [strip(f) for f in p['files']]} for p in self.current['packs']],
                 'models': [strip(m) for m in self.current['models']],
                 'maps': [{**x, 'files': [strip(f) for f in x['files']]} for x in self.current.get('maps', [])],

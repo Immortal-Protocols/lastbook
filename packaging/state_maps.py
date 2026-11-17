@@ -29,8 +29,9 @@ LOCK = ROOT / 'derived/packs/state-maps.lock'      # one writer at a time for th
 CLAIMS = ROOT / 'derived/packs/state-claims'        # a worker owns a state by making its folder here
 TABLE = ROOT / 'derived/packs/STATE-MAPS.md'
 MANIFEST = ROOT / 'derived/release/manifest-v1.json'
+MANIFEST_SPAIN = ROOT / 'derived/release/manifest-spain-v1.json'
 BASE = 'https://downloads.lastbook.org'
-KEEP = {'CA', 'RI'}
+KEEP = {'CA', 'RI', 'ES'}
 FIRST = ['CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI']
 NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='California', CO='Colorado', CT='Connecticut', DE='Delaware',
              DC='District of Columbia', FL='Florida', GA='Georgia', HI='Hawaii', ID='Idaho', IL='Illinois', IN='Indiana', IA='Iowa', KS='Kansas',
@@ -39,15 +40,19 @@ NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='Califor
              NC='North Carolina', ND='North Dakota', OH='Ohio', OK='Oklahoma', OR='Oregon', PA='Pennsylvania', PR='Puerto Rico', RI='Rhode Island',
              SC='South Carolina', SD='South Dakota', TN='Tennessee', TX='Texas', UT='Utah', VT='Vermont', VA='Virginia', WA='Washington',
              WV='West Virginia', WI='Wisconsin', WY='Wyoming')
+NAMES['ES'] = 'Spain'
 INCLUDES = 'Local streets, buildings, terrain and crops, plus water, help and resource points'
 ALLOWED = {f'derived/geo/{n}.sqlite' for n in ('national', 'map', 'water', 'terrain', 'buildings', 'crops', 'places')} | {
     'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'library-data/geography/resources/atlas.sqlite', 'map-set.json'}
 STORED = {'derived/geo/terrain.sqlite'}     # tiles are already compressed
+SPAIN_ALLOWED = {'map-set.json', 'derived/geo/map.sqlite', 'derived/geo/national.sqlite', 'derived/geo/places.sqlite',
+                 'derived/geo/national-status.json', 'derived/geo/socal-cells.json'}
 
 sys.path.insert(0, str(ROOT / 'packaging'))
 sys.path.insert(0, str(ROOT / 'derived/release'))
+sys.path.insert(0, str(ROOT / 'tools'))
 import scan_pack as S       # noqa: E402
-import r2_publish as R      # noqa: E402
+from build_spain import REGIONS as SPAIN_REGIONS  # noqa: E402
 
 
 def log(*a):
@@ -78,14 +83,18 @@ def scan(d, code):
     files = sc.walk()
     rels = [p.relative_to(d).as_posix() for p in files]
     fails = []
-    if set(rels) != ALLOWED:
-        fails.append(f'files differ from the contract: extra {sorted(set(rels) - ALLOWED)} missing {sorted(ALLOWED - set(rels))}')
+    allowed = SPAIN_ALLOWED if code == 'ES' else ALLOWED
+    if set(rels) != allowed:
+        fails.append(f'files differ from the contract: extra {sorted(set(rels) - allowed)} missing {sorted(allowed - set(rels))}')
     for p, rel in zip(files, rels):
         st = os.lstat(p)
         if rel == 'map-set.json':
             info = sc.load_json(rel, rels, 'map-set')
             if not isinstance(info, dict) or info.get('name') != code or set(info) - {'name', 'files', 'bytes', 'seconds'}:
-                fails.append('map-set.json does not name the state')
+                fails.append('map-set.json does not name the region')
+            elif code == 'ES' and (not isinstance(info.get('files'), dict) or set(info['files']) != allowed - {'map-set.json'} or
+                                  any(not (d / rel).is_file() or (d / rel).stat().st_size != size for rel, size in info['files'].items())):
+                fails.append('map-set.json does not list the Spain files and sizes')
             continue
         sc.name_rules(rel, st, p.is_symlink())
         if rel.endswith('.json'):
@@ -98,6 +107,16 @@ def scan(d, code):
         else:
             sc.inspect_map(rel, p)
             db = sqlite3.connect(f'file:{p}?immutable=1', uri=True)
+            if code == 'ES' and rel == 'derived/geo/national.sqlite':
+                try:
+                    meta = dict(db.execute('SELECT key,value FROM meta'))
+                    hashes = json.loads(meta.get('input_sha256', '{}'))
+                    expected = {name + '.gpkg' for name in SPAIN_REGIONS}
+                    if (meta.get('region') != 'ES' or not isinstance(hashes, dict) or set(hashes) != expected or
+                            any(not isinstance(v, str) or not re.fullmatch(r'[0-9a-f]{64}', v) for v in hashes.values())):
+                        fails.append('Spain input metadata does not describe all required extracts')
+                except (sqlite3.Error, ValueError, TypeError):
+                    fails.append('Spain input metadata is missing or invalid')
             for t in ('meta', 'metadata'):
                 if db.execute("SELECT 1 FROM sqlite_master WHERE name=?", (t,)).fetchone():
                     for row in db.execute(f'SELECT * FROM "{t}"'):
@@ -146,10 +165,10 @@ def web_text(d):
     return fails, notes
 
 
-def make_zip(d, out):
+def make_zip(d, out, allowed=ALLOWED):
     tmp = out.with_suffix('.partial')
     with zipfile.ZipFile(tmp, 'w', allowZip64=True) as z:
-        for rel in sorted(ALLOWED):
+        for rel in sorted(allowed):
             how = zipfile.ZIP_STORED if rel in STORED else zipfile.ZIP_DEFLATED
             zi = zipfile.ZipInfo(rel, date_time=(2026, 11, 12, 0, 0, 0))
             zi.compress_type = how
@@ -159,7 +178,7 @@ def make_zip(d, out):
                     dst.write(b)
     with zipfile.ZipFile(tmp) as z:
         names = {i.filename: i.file_size for i in z.infolist()}
-    if names != {rel: (d / rel).stat().st_size for rel in ALLOWED}:
+    if names != {rel: (d / rel).stat().st_size for rel in allowed}:
         sys.exit('zip does not hold exactly the set')
     os.replace(tmp, out)
 
@@ -216,21 +235,27 @@ def public_sha(url):
 
 
 def list_in_manifest(ctx, entry):
-    m = json.loads(MANIFEST.read_text())
-    packs, models = json.dumps(m['packs']), json.dumps(m.get('models'))
-    maps = [x for x in m.get('maps', []) if x['id'] != entry['id']] + [entry]
-    order = {s: i for i, s in enumerate(states())}
-    m['maps'] = sorted(maps, key=lambda x: order.get(x['id'], 999))
-    assert json.dumps(m['packs']) == packs and json.dumps(m.get('models')) == models
-    tmp = MANIFEST.with_suffix('.maps-tmp')
+    if entry['id'] == 'ES':
+        target, key = MANIFEST_SPAIN, 'manifest-spain-v1.json'
+        m = {'version': 1, 'published': time.strftime('%Y-%m-%d', time.gmtime()), 'maps': [entry]}
+    else:
+        target, key = MANIFEST, 'manifest-v1.json'
+        m = json.loads(target.read_text())
+        packs, models = json.dumps(m['packs']), json.dumps(m.get('models'))
+        maps = [x for x in m.get('maps', []) if x['id'] != entry['id']] + [entry]
+        order = {s: i for i, s in enumerate(states())}
+        m['maps'] = sorted(maps, key=lambda x: order.get(x['id'], 999))
+        assert json.dumps(m['packs']) == packs and json.dumps(m.get('models')) == models
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix('.maps-tmp')
     tmp.write_text(json.dumps(m, indent=1) + '\n')
-    os.replace(tmp, MANIFEST)
-    data = MANIFEST.read_bytes()
-    st, _, out = R.s3(ctx, 'PUT', 'manifest-v1.json', body=data, headers={'content-type': 'application/json; charset=utf-8'})
+    os.replace(tmp, target)
+    data = target.read_bytes()
+    st, _, out = R.s3(ctx, 'PUT', key, body=data, headers={'content-type': 'application/json; charset=utf-8'})
     if st != 200:
         sys.exit(f'manifest upload HTTP {st}')
     for _ in range(10):
-        got, _n = public_sha(f'{BASE}/manifest-v1.json')
+        got, _n = public_sha(f'{BASE}/{key}')
         if got == hashlib.sha256(data).hexdigest():
             return
         time.sleep(3)
@@ -239,7 +264,8 @@ def list_in_manifest(ctx, entry):
 
 def write_table(res):
     rows = ['# State maps', '', 'One detailed map per state, for first-run setup (docs/SETUP-API.md, "State maps"). Built by `packaging/state_maps.py`;',
-            'each zip was scanned, uploaded, checked by its public SHA-256 and then listed under `maps` in `manifest-v1.json`.', '',
+            'each zip was scanned, uploaded and checked by its public SHA-256. State maps are listed in `manifest-v1.json`;',
+            'Spain is listed separately in `manifest-spain-v1.json` for clients that support country maps.', '',
             '| State | Zip size | Installed size | SHA-256 | URL |', '|---|---:|---:|---|---|']
     order = {s: i for i, s in enumerate(states())}
     for code in sorted(res, key=lambda c: order.get(c, 999)):
@@ -266,10 +292,10 @@ def one_state(ctx, code, res):
     if fails:
         sys.exit(f'{code} scan failed: {fails}')
     log(code, 'scan passed', dict((k, len(v)) for k, v in listed.items()))
-    installed = sum((d / rel).stat().st_size for rel in ALLOWED)
+    installed = sum((d / rel).stat().st_size for rel in (SPAIN_ALLOWED if code == 'ES' else ALLOWED))
     ZIPS.mkdir(exist_ok=True)
     z = ZIPS / f'Lastbook-Map-{code}.zip'
-    make_zip(d, z)
+    make_zip(d, z, SPAIN_ALLOWED if code == 'ES' else ALLOWED)
     sha, size = sha_file(z), z.stat().st_size
     log(code, 'zipped', size)
     key = f'maps/{z.name}'
@@ -279,7 +305,8 @@ def one_state(ctx, code, res):
     if got != sha or n != size:
         sys.exit(f'{code}: public copy differs ({got} {n})')
     log(code, 'public copy verified')
-    entry = {'id': code, 'title': NAMES.get(code, code), 'kind': 'state', 'installed_bytes': installed, 'available': True, 'includes': INCLUDES,
+    entry = {'id': code, 'title': NAMES.get(code, code), 'kind': 'country' if code == 'ES' else 'state', 'installed_bytes': installed, 'available': True,
+             'includes': 'Streets, buildings, water and places; no elevation or street-address search' if code == 'ES' else INCLUDES,
              'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
     with open(LOCK, 'a') as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
@@ -298,6 +325,8 @@ def one_state(ctx, code, res):
 
 
 def main():
+    global R
+    import r2_publish as R  # release-machine credentials and publisher are not part of the repository
     args = sys.argv[1:]
     ctx = R.Context()
     if args[:1] == ['--worker']:

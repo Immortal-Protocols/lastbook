@@ -11,10 +11,10 @@ the original archive is only read. Output tables:
   poi(id, cls, name, lon, lat)             help-relevant points (hospitals, pharmacies, water...)
   meta(key, value)
 """
-import math, sqlite3, struct, sys, time
+import hashlib, math, sqlite3, struct, sys, time
 from array import array
+from pathlib import Path
 
-SRC, DST = sys.argv[1], sys.argv[2]
 Q = 1e6
 
 ROAD_Z = {'motorway': 5, 'trunk': 6, 'motorway_link': 10, 'trunk_link': 10, 'primary': 8, 'primary_link': 12,
@@ -119,10 +119,12 @@ def area_z(minx, maxx, miny, maxy, base):
     return max(base, min(16, z))
 
 
-def main():
+def build(sources, destination, metadata=None, include_islands=False):
     t0 = time.time()
-    src = sqlite3.connect(SRC)
-    dst = sqlite3.connect(DST)
+    sources = list(sources)
+    if not sources:
+        raise ValueError('at least one GeoPackage is required')
+    dst = sqlite3.connect(destination)
     dst.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
       DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
       CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, minz INTEGER, geom BLOB);
@@ -140,13 +142,33 @@ def main():
         dst.execute('INSERT INTO feat_idx VALUES (?,?,?,?,?,?,?)', (fid[0], *bx, minz, 30))
 
     def each(table, cols='fclass,name'):
-        for row in src.execute(f'SELECT geom,{cols} FROM {table}'):
-            if row[0] is None:
-                continue
+        # Adjacent extracts overlap, but one OSM id can yield several geometries.
+        # Discard only an identical geometry for the same id and classification.
+        if len(sources) > 1:
+            dst.execute('DROP TABLE IF EXISTS temp.seen')
+            dst.execute('CREATE TEMP TABLE seen (osm_id TEXT, fclass TEXT, geom_hash BLOB, PRIMARY KEY (osm_id, fclass, geom_hash)) WITHOUT ROWID')
+        for path in sources:
+            src = sqlite3.connect(Path(path).resolve().as_uri() + '?mode=ro', uri=True)
             try:
-                yield gpkg_parts(row[0]), row[1:]
-            except Exception:
-                continue
+                for row in src.execute(f'SELECT geom,osm_id,fclass,{cols} FROM {table}'):
+                    if row[0] is None:
+                        continue
+                    try:
+                        parts = gpkg_parts(row[0])
+                    except (ValueError, IndexError, KeyError, struct.error):
+                        continue
+                    if len(sources) > 1 and row[1] is not None:
+                        digest = hashlib.blake2b(row[0], digest_size=16).digest()
+                        if not dst.execute('INSERT OR IGNORE INTO temp.seen VALUES (?,?,?)', (row[1], row[2] or '', digest)).rowcount:
+                            continue
+                    yield parts, row[3:]
+            finally:
+                src.close()
+
+    if include_islands:
+        for parts, (cls, name) in each('gis_osm_places_a_free'):
+            if cls == 'island' and parts:
+                add('island', cls, name, area_z(*bbox(parts), 4), [simplify(p, 0.00001) for p in parts])
 
     # Water bodies
     for parts, (cls, name) in each('gis_osm_water_a_free'):
@@ -180,6 +202,8 @@ def main():
     dst.commit()
     for parts, (cls, pop, name) in each('gis_osm_places_free', 'fclass,population,name'):
         if name:
+            if cls == 'national_capital':
+                cls = 'city'
             z = PLACE_Z.get(cls, 14)
             if cls in ('city', 'town') and pop and int(pop) > 300000:
                 z = 5
@@ -195,14 +219,19 @@ def main():
             pid += 1
             dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)', (pid, cls, name, (minx + maxx) / 2, (miny + maxy) / 2))
     dst.execute('CREATE INDEX poi_cls ON poi(cls, lon, lat)')
-    dst.executemany('INSERT INTO meta VALUES (?,?)', [
+    values = metadata if metadata is not None else [
         ('source', 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
         ('data_as_of', '2026-10-25T21:21:21Z'),
         ('bounds', '-121.36,32.50,-114.10,35.89'),
         ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
-    ])
+    ]
+    dst.executemany('INSERT INTO meta VALUES (?,?)', values)
     dst.commit()
+    dst.close()
     print('done features', fid[0], 'pois', pid, round(time.time() - t0), 's', flush=True)
 
 
-main()
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        raise SystemExit('usage: build_map.py INPUT.gpkg OUTPUT.sqlite')
+    build([sys.argv[1]], sys.argv[2])

@@ -144,6 +144,9 @@ class Setup:
                         it['paused_from'] = was       # what it was doing when this program stopped; dropped on resume
                     it['bytes_done'], it['bytes_total'] = self._done_after_restart(job['plan'], it, was)
                 it['rate_bps'], it['eta_s'] = 0, None
+        if job.get('state') in ('paused', 'failed') and (job['plan'].get('map') or {}).get('id') == 'ES':
+            # A later country manifest may name a different archive; staged map members are not reusable across restarts.
+            job['plan']['restart_country'] = True
         return job
 
     def _checked_job(self, job):
@@ -168,6 +171,10 @@ class Setup:
         ids = lambda key: (plan.get(key) or {}).get('id')
         pack = self.manifest.pack(ids('pack')) if plan.get('pack') else None
         mp = self.manifest.map(ids('map')) if plan.get('map') else None
+        if plan.get('map') and ids('map') == 'ES' and not mp:
+            # Keep the paused job visible until the separately published country manifest is fetched.
+            # This placeholder supplies no URLs, paths, sizes or checksums from the saved job.
+            mp = {'id': 'ES', 'title': 'Spain', 'kind': 'country', 'available': False, 'files': [], 'installed_bytes': None}
         model = self.manifest.model(ids('model')) if plan.get('model') else None
         addresses = self.manifest.address_index(ids('addresses')) if plan.get('addresses') else None
         if plan.get('addresses') and not addresses:
@@ -181,8 +188,15 @@ class Setup:
         sources = {n: str(v) for n, v in (plan.get('sources') or {}).items()
                    if n in names and isinstance(v, str) and Path(v).name == n and Path(v).is_file()}
         switch = bool(plan.get('switch')) and pack is not None
+        restore_map = plan.get('restore_map', False)
+        if not isinstance(restore_map, bool):
+            return None
+        if restore_map and (not pack or pack['id'] != 'all' or (pack.get('map') or 'us') != 'us' or mp or
+                            not switch or target != self.current or plan.get('repair')):
+            return None
         clean = {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
-                 'sources': sources, 'explicit': bool(plan.get('explicit')), 'retried': {}, 'switch': switch, 'repair': bool(plan.get('repair'))}
+                 'sources': sources, 'explicit': bool(plan.get('explicit')), 'retried': {}, 'switch': switch, 'repair': bool(plan.get('repair')),
+                 'restore_map': restore_map}
         if isinstance(plan.get('damaged'), list):
             clean['damaged'] = [str(x) for x in plan['damaged']]
         if plan.get('map_new'):
@@ -198,6 +212,8 @@ class Setup:
         """(bytes done, bytes total) for an item found mid-run at startup, from what is on disk for the step it was in."""
         if was == 'unpacking' and it['kind'] == 'map' and plan.get('map'):
             total = plan['map']['installed_bytes']
+            if total is None:
+                return it.get('bytes_done', 0), it.get('bytes_total', 0)
             return min(_tree_size(Path(plan['work']) / 'unpack-map'), total), total
         if was == 'unpacking' and it['kind'] == 'addresses' and plan.get('addresses'):
             total = plan['addresses']['installed_bytes']
@@ -416,6 +432,10 @@ class Setup:
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
                 'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
 
+    def refresh_manifest(self):
+        self.manifest.fetch_once(retry=True)  # only when the person asks setup to check again
+        return self.state()
+
     def public_job(self):
         with self.lock:
             if not self.job:
@@ -429,7 +449,7 @@ class Setup:
             return p.parent if p.name == DATA_NAME else p
         return self.current.parent if self.current else self.default_parent
 
-    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None):
+    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, restore_map=False):
         if repair:
             return self._start_repair(ai)
         with self.lock:
@@ -439,17 +459,22 @@ class Setup:
             if pack_id and (not pack or not pack['available']):
                 return {'error': 'That library is not available yet.', 'code': 'unavailable'}
             cur = self.current_info() or {}
+            if restore_map and (self.mode != 'manage' or not pack or pack['id'] != 'all' or
+                                (pack.get('map') or 'us') != 'us' or cur.get('pack') != 'all' or
+                                cur.get('map') in (None, 'us') or map_id or
+                                (folder and install._real(Path(folder).expanduser()) != install._real(self.current))):
+                return {'error': 'There is no US-wide map to restore this way.', 'code': 'unavailable'}
             if folder and self.current and install._real(Path(folder).expanduser()) == install._real(self.current):
                 folder = None
             same_revision = pack and (not pack.get('revision') or pack['revision'] == cur.get('content_revision', ''))
-            if pack and self.mode == 'manage' and cur.get('pack') == pack['id'] and same_revision and not folder:
+            if pack and self.mode == 'manage' and cur.get('pack') == pack['id'] and same_revision and not folder and not restore_map:
                 pack = None        # the same library again: only the AI is wanted
             model = self.manifest.model() if ai else None
             if ai and not model:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
             mp = self.manifest.map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
-                return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
+                return {'error': 'That region’s map is not available yet.', 'code': 'unavailable'}
             requested_address = address_id
             address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
             if address_id in ('base', 'us'):
@@ -498,7 +523,7 @@ class Setup:
             names = ([f['name'] for f in pack['files']] if pack else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else [])
             have = set(srcs)
             need = install.need_bytes(pack, model, have) + _map_need(mp, have) + _map_need(addresses, have)
-            preserve_map = bool(pack and cur.get('pack') == pack['id'] and target == self.current and not mp and cur.get('map') not in (None, 'base'))
+            preserve_map = bool(pack and cur.get('pack') == pack['id'] and target == self.current and not mp and not restore_map and cur.get('map') not in (None, 'base'))
             if preserve_map:
                 need += cur['map_bytes']
             for name in names:     # what an earlier run already downloaded is on the disk already
@@ -530,7 +555,7 @@ class Setup:
                         'folder': str(target),
                         'plan': {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
                                  'sources': {k: v for k, v in srcs.items() if k in names}, 'explicit': explicit,
-                                 'retried': {}, 'switch': bool(pack)}}
+                                 'retried': {}, 'switch': bool(pack), 'restore_map': bool(restore_map)}}
             s = self._settings()
             s['work'] = str(work)
             self._save_settings(s)
@@ -615,9 +640,36 @@ class Setup:
         self._join()
         return self.public_job()
 
+    def _refresh_country_job(self):
+        """Rebuild a saved country job from its fetched manifest, never from saved file details."""
+        mp = self.job['plan'].get('map')
+        if not mp or mp['id'] != 'ES' or mp['files']:
+            return True
+        published = self.manifest.map('ES')
+        refreshed = self._load_job() if published and published.get('available') and published.get('files') else None
+        if not refreshed or not refreshed['plan']['map']['files']:
+            self.manifest.fetch_once(retry=True)
+            self.job['error'] = {'code': 'manifest', 'message': 'Spain map details are unavailable. Connect to the internet, wait a moment, then try again.'}
+            return False
+        self.job = refreshed
+        return True
+
+    def _prepare_country_restart(self):
+        plan = self.job['plan']
+        if not plan.get('restart_country'):
+            return
+        for it in self.job['items']:
+            if it.get('kind') == 'map' and it.get('id') == 'ES' and it.get('state') == 'done':
+                it.update(state='waiting', error=None, bytes_done=0, bytes_total=plan['map'].get('download_bytes', 0))
+                plan.pop('map_new', None)
+
     def resume(self):
         with self.lock:
             if self.job and self.job['state'] == 'paused':
+                if not self._refresh_country_job():
+                    return self.public_job()
+                self._prepare_country_restart()
+                self.job['error'] = None
                 self.job['state'] = 'waiting'
                 for it in self.job['items']:
                     it.pop('paused_from', None)
@@ -628,6 +680,9 @@ class Setup:
     def retry(self):
         with self.lock:
             if self.job and self.job['state'] == 'failed':
+                if not self._refresh_country_job():
+                    return self.public_job()
+                self._prepare_country_restart()
                 self.job['state'], self.job['error'] = 'waiting', None
                 self.job['plan']['retried'] = {}
                 for it in self.job['items']:
@@ -711,10 +766,12 @@ class Setup:
                 if f['name'] == name:
                     if p.stat().st_size != f['size']:
                         return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'code': 'size'}
+                    if not x['available']:
+                        return {'error': 'That region’s map is not available yet.', 'code': 'unavailable'}
                     self.sources[name] = str(p)
                     if self.mode == 'manage':
                         return self.start(None, False, None, {name: str(p)}, explicit=True, map_id=x['id'])
-                    return self.public_job() or {'job': None, 'noted': True}
+                    return self.public_job() or {'job': None, 'noted': True, 'kind': 'map', 'id': x['id']}
         for entry in self.manifest.current.get('address_indexes', []):
             for file in entry['files']:
                 if file['name'] != name:
@@ -724,7 +781,7 @@ class Setup:
                 self.sources[name] = str(p)
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
-                return self.public_job() or {'job': None, 'noted': True}
+                return self.public_job() or {'job': None, 'noted': True, 'kind': 'addresses', 'id': entry['id']}
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:
@@ -732,7 +789,7 @@ class Setup:
             self.sources[name] = str(p)
             if self.mode == 'manage':
                 return self.start(None, True, None, {name: str(p)}, explicit=True)
-            return self.public_job() or {'job': None, 'noted': True}
+            return self.public_job() or {'job': None, 'noted': True, 'kind': 'model', 'id': m['id']}
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
 
     def finish(self):
@@ -901,6 +958,11 @@ class Setup:
                                                         'It was left as it is. Download it instead?', file=src)
             print(f'setup: {src} does not match; downloading instead', flush=True)
         dest = work / 'downloads' / name
+        if it['kind'] == 'map' and (plan.get('map') or {}).get('id') == 'ES' and dest.is_file():
+            # A completed download may have been saved under an older country-manifest checksum.
+            self._set(it, 'verifying')
+            if _sha256(dest, control, lambda d, t: tracker.progress(offset + d, it['bytes_total'], 'verifying')) != f['sha256']:
+                os.unlink(dest)
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
             try:
                 still = f['size'] - os.path.getsize(str(dest) + '.part')
@@ -958,8 +1020,10 @@ class Setup:
             metadata = json.loads((lib / 'pack.json').read_text(encoding='utf-8'))
             if metadata.get('content_revision') != pack['revision']:
                 raise install.Refused('unpack', 'The library content version does not match this download.')
+        if plan.get('restore_map') and (install.map_name(lib) != 'us' or not (lib / 'derived/geo/national.sqlite').is_file()):
+            raise install.Refused('unpack', 'The All library does not contain the US-wide map.')
         current = self.current_info() or {}
-        if (not plan.get('repair') and not plan.get('map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
+        if (not plan.get('repair') and not plan.get('map') and not plan.get('restore_map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
                 and current.get('map') not in (None, 'base')):
             install.copy_map(self.current, lib)
         install._write_json(lib / 'setup-pack.json', {'pack': pack['id'], 'installed': _now(), 'files': [f['name'] for f in pack['files']]})
@@ -971,6 +1035,8 @@ class Setup:
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
         map set at once; on its own it is staged and switched in when the app restarts (install._apply_map)."""
         mp = plan['map']
+        if not mp.get('files'):
+            raise install.Refused('unpack', 'The selected map has no download files.')
         got, offset = [], 0
         for f in mp['files']:
             path, ours = self._get_file(it, f, plan, work, control, offset)
@@ -979,6 +1045,10 @@ class Setup:
         tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=mp['installed_bytes'])
         staged = work / 'unpack-map'
+        if plan.get('restart_country'):
+            if staged.exists():
+                shutil.rmtree(staged)
+            plan.pop('restart_country', None)
         for path, _ in got:
             install.check_zip(path, mp['installed_bytes'], install.map_member)
         for path, _ in got:
@@ -1229,7 +1299,8 @@ def _default():
 ROUTES = {
     ('GET', 'state'): lambda s, b: s.state(),
     ('GET', 'job'): lambda s, b: s.public_job(),
-    ('POST', 'start'): lambda s, b: s.start(b.get('pack'), bool(b.get('ai')), b.get('folder'), repair=bool(b.get('repair')), map_id=b.get('map') or None, address_id=b.get('address_id') or None),
+    ('POST', 'refresh-manifest'): lambda s, b: s.refresh_manifest(),
+    ('POST', 'start'): lambda s, b: s.start(b.get('pack'), bool(b.get('ai')), b.get('folder'), repair=bool(b.get('repair')), map_id=b.get('map') or None, address_id=b.get('address_id') or None, restore_map=bool(b.get('restore_map'))),
     ('POST', 'pause'): lambda s, b: s.pause(),
     ('POST', 'resume'): lambda s, b: s.resume(),
     ('POST', 'cancel'): lambda s, b: s.cancel(),

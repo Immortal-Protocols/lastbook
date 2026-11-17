@@ -87,6 +87,10 @@ def main():
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),
            'address_indexes': list(src.get('address_indexes') or []),
            'models': [model_entry(measure(a.measure) if a.measure else MEASURED_MEMORY)]}
+    if not any(m.get('id') == 'ES' for m in out['maps']):
+        # It becomes selectable only after a scanned archive is published and listed.
+        out['maps'].append({'id': 'ES', 'title': 'Spain', 'kind': 'country', 'available': False, 'files': [],
+                            'includes': 'Streets, buildings, water and places; no elevation or street-address search'})
     if manifest.validate(out) is None:
         bad = [f.get('url') for p in packs for f in p.get('files', []) if not download.url_allowed(f.get('url'))]
         sys.exit('the manifest does not pass engine/setup/manifest.validate' + (f'; addresses not allowed: {bad}' if bad else ''))

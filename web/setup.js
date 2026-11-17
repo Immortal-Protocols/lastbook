@@ -73,6 +73,7 @@
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
+  let stopManifest = null;
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
   let note = '', noteOk = false;
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something
@@ -93,21 +94,20 @@
   const mapById = id => maps().find(m => m.id === id);
   const mapName = id => id === 'us' ? 'the whole US' : (mapById(id) || {}).title || id;
   /* the detailed map the library will have once the chosen pack is in: the person's state map, or the one the pack carries */
-  const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
-  const packMap = id => { const p = packById(id) || {}; return 'map' in p ? p.map || null : PACK_MAP[id] || null };
+  const packMap = id => SetupMap.packMap(id, packById(id));
   const mapNow = () => { const c = cur() || {}; return choice.pack && choice.pack !== c.pack ? packMap(choice.pack) : (c.map && c.map !== 'base' ? c.map : packMap(c.pack)) };
   const selectedState = () => choice.map || (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
   const addresses = () => (S.manifest && S.manifest.address_indexes) || [];
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState();
-  const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const mapAdds = () => choice.map && !SetupMap.included(mapNow(), mapById(choice.map)) ? mapById(choice.map) : null;
   function packSummary(p) {
     const text = p.summary || '';
     if (p.id !== 'medium' || !maps().length) return text;
     // The manifest describes the archive's bundled map. Setup replaces it with the chosen state map.
     const state = selectedState();
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your state'));
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your region'));
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -165,6 +165,22 @@
     else if (cur() || S.mode === 'manage' || MANAGE_ASKED) view = cur() ? 'manage' : 'choose';
     $('#sBack').hidden = !cur();
     render(true);
+    if (stopManifest) stopManifest();
+    if (S.manifest && S.manifest.fetching) stopManifest = SetupMap.followManifest(() => call('state'), refreshManifest);
+  }
+
+  function refreshManifest(fresh) {
+    if (!fresh || !fresh.manifest) return;
+    const before = JSON.stringify(S.manifest);
+    S.manifest = fresh.manifest;
+    S.found = fresh.found;
+    S.recommend = fresh.recommend;
+    if (fresh.manifest.fetching || before === JSON.stringify(fresh.manifest) || !['choose', 'manage'].includes(view)) return;
+    const active = document.activeElement, id = active && active.id;
+    const pack = active && active.name === 'pack' ? active.value : null;
+    if (view === 'choose') chooseView(); else manageView();
+    const next = id ? document.getElementById(id) : pack ? [...main.querySelectorAll('input[name=pack]')].find(r => r.value === pack) : null;
+    if (next) next.focus({ preventScroll: true });
   }
 
   /* ------------------------------------------------------------ views */
@@ -227,7 +243,7 @@
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span>Library and local AI</span></button>` : ''}
       <h1>${c ? 'Change the library' : 'Set up Lastbook'}</h1>
-      ${c ? '' : '<p class="lead">Choose your state and library. Lastbook downloads them for offline use.</p>'}
+      ${c ? '' : '<p class="lead">Choose your region and library. Lastbook downloads them for offline use.</p>'}
       ${computer()}
       ${c ? '' : recommendLine()}
       ${found ? `<h2>Found on this computer</h2><div class="s-founds">${found}</div>` : ''}
@@ -239,7 +255,7 @@
       <div class="s-go">
         <button class="btn big" id="start"></button>
         ${c ? '' : '<button class="s-link" id="haveLib">Choose an existing library folder</button>'}
-        <button class="s-link" id="haveFile">Choose a library zip or AI model file</button>
+        <button class="s-link" id="haveFile">Choose a library, map or AI file</button>
       </div>
       <p class="s-note" id="haveNote" hidden></p>`;
     main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { choice.pack = r.value; shortfall = null; mapSection(); summary() });
@@ -259,7 +275,7 @@
     main.querySelectorAll('[data-pack-summary]').forEach(el => { el.textContent = packSummary(packById(el.dataset.packSummary)) });
     const selected = selectedState();
     const opts = maps().map(m => {
-      const a = addressById(m.id), included = now === 'us' || m.id === now;
+      const a = addressById(m.id), included = SetupMap.included(now, m);
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
@@ -267,19 +283,35 @@
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
     }).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = now === 'us' || selected === now;
+    const mapIncluded = SetupMap.included(now, sel);
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
-    const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your state map is already included.') + ' Street-address search is not available for this state yet.';
+    const unavailable = sel && (!addressById(selected) || addressById(selected).available === false);
+    let hint = !sel ? 'Select your region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your map and available address index are already included.';
+    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your map is already included.') + ' Street-address search is not available for this region.';
+    if (sel && !mapIncluded && now) hint += now === 'us'
+      ? ' Installing this map replaces the US-wide map. Restoring the whole US map requires downloading All again.'
+      : ' Installing this map replaces the current detailed map.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
-      ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your state for offline street-address search.</p>' : ''}
-      <label class="s-maplabel" for="mapSel">Choose your state</label>
-      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select a state</option>${opts}</select>
-      <p class="s-hint" id="mapHint">${hint}</p>`;
+      ${now === 'us' ? '<p class="s-mapnote">All includes the US state maps. Other regions need their own map download.</p>' : ''}
+      <label class="s-maplabel" for="mapSel">Choose your region</label>
+      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select a region</option>${opts}</select>
+      <p class="s-hint" id="mapHint">${hint}</p>
+      <button class="s-link" id="checkMaps" type="button"${S.manifest && S.manifest.fetching ? ' disabled' : ''}>${S.manifest && S.manifest.fetching ? 'Checking map availability…' : 'Check map availability'}</button>`;
     $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
+    $('#checkMaps').onclick = checkMaps;
+  }
+  async function checkMaps() {
+    const b = $('#checkMaps'); b.disabled = true; b.textContent = 'Checking map availability…';
+    try {
+      const fresh = await call('refresh-manifest', {});
+      if (!fresh || !fresh.manifest) throw new Error('No manifest');
+      if (stopManifest) stopManifest();
+      refreshManifest(fresh);
+      if (fresh.manifest.fetching) stopManifest = SetupMap.followManifest(() => call('state'), refreshManifest);
+      else { const check = $('#checkMaps'); if (check) { check.disabled = false; check.textContent = 'Check map availability' } }
+    } catch { b.disabled = false; b.textContent = 'Try checking again' }
   }
   function summary() {
     const { dl, need } = plan(), d = diskFor(folder), free = d ? d.free_bytes : null;
@@ -296,7 +328,7 @@
     b.disabled = !need || !!short || mapMissing();
     const newPack = c && packNeedsInstall(packById(choice.pack)), newAi = c && choice.ai && !c.model, newMap = c && mapAdds(), newAddresses = c && addressAdds();
     const parts = [newPack && packById(choice.pack).title, newAi && 'the local AI', newMap && `the ${newMap.title} map`, newAddresses && !newMap && 'offline address search'].filter(Boolean);
-    b.textContent = mapMissing() ? 'Choose your state to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
+    b.textContent = mapMissing() ? 'Choose your region to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
     if (newPack && choice.pack === c.pack && !mapMissing()) b.textContent = 'Download and install update';
     const ch = $('#chFolder'); if (ch) ch.onclick = pickFolder;
   }
@@ -332,7 +364,15 @@
     try {
       const r = await call('use', { path });
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'The local AI file will be used. No need to download it.'; return }
+      if (r && r.noted) {
+        S = await call('state').catch(() => S);
+        if (r.kind === 'map' || r.kind === 'addresses') choice.map = r.id;
+        else choice.ai = true;
+        chooseView(); const n = $('#haveNote'); n.hidden = false;
+        n.textContent = r.kind === 'map' ? 'The map file will be used. No need to download it.' :
+          r.kind === 'addresses' ? 'The address index file will be used.' : 'The local AI file will be used. No need to download it.';
+        return;
+      }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
@@ -355,6 +395,7 @@
     const o = [].concat(c.old || [])[0], old = o ? (typeof o === 'string' ? { path: o } : o) : null;   // the engine lists the paths it moved aside
     const larger = packs().filter(x => (x.installed_bytes || 0) > ((p && p.installed_bytes) || 0));
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
+    const restoreUs = c.pack === 'all' && c.map && c.map !== 'us' && p && p.available !== false && packMap(c.pack) === 'us';
     main.innerHTML = `<h1>Library and local AI</h1>
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
@@ -362,8 +403,8 @@
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
-          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
-          <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
+          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain across the US' : mNow === 'ES' ? 'Streets, buildings and places · no elevation or street-address search' : 'Local streets, buildings and terrain') : 'None yet. Add one for your region.'}</small></span>
+          <button class="btn plain" id="mapCh">Choose region</button></div>${restoreUs ? `<div class="s-row"><span><b>Restore the whole US map</b><small>Download the All library again · ${size(packDl(p))} download</small></span><button class="btn plain" id="restoreUs">Download All and restore</button></div>` : ''}` })() : ''}
       </div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
@@ -372,6 +413,12 @@
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
     if ($('#mapCh')) $('#mapCh').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; choice.map = null; go('choose'); const m = $('#mapSel'); if (m) m.focus() };
+    if ($('#restoreUs')) $('#restoreUs').onclick = async () => {
+      const b = $('#restoreUs'); b.disabled = true;
+      const r = await call('start', { pack: c.pack, restore_map: true }).catch(e => ({ error: e.message }));
+      if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'The US map could not be restored.'; return }
+      S.job = r; go('job'); poll();
+    };
     if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
@@ -471,7 +518,8 @@
       const first = !shapeKey;
       shapeKey = key;
       const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
-      const lead = quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
+      const lead = j.state === 'paused' && errCode(j.error) === 'manifest' ? esc(errText(j.error))
+        : quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
         : j.state === 'paused' ? 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.'
         : j.state === 'failed' ? '' : 'You can keep using this computer. Closing Lastbook pauses it.';
       main.innerHTML = `<h1>${head}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}

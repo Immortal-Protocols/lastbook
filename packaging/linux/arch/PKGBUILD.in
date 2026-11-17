@@ -8,17 +8,16 @@ url='https://lastbook.org'
 license=('MIT')
 depends=('python>=@PYTHON@' 'python<@PYTHON_NEXT@' 'python-gobject' 'gtk3'
          'webkit2gtk-4.1>=2.40' 'libsoup3' 'gstreamer' 'gst-plugins-base'
-         'gst-plugins-good' 'gst-libav' 'gst-plugins-bad-libs' 'gst-plugin-va'
+         'gst-plugins-good' 'gst-libav' 'gst-plugins-bad-libs' 'gst-plugin-dav1d'
          'gcc-libs' 'glibc')
-# Playback needs an AV1 decoder: every library video is AV1, and gst-libav/base/good
-# have none. gst-plugin-va supplies vaav1dec, which is what decodebin actually
-# autoplugs (gst-plugins-bad-libs' vulkanav1dec exists but is never selected). Without
-# gst-plugin-va the player runs with a black picture: gst-play reports
-# "Missing plugin: AV1 decoder". Verified on Mesa 26 / RADV, RX 9070 XT.
+# Playback needs an AV1 decoder, and the library's videos are all AV1. Arch's
+# gst-plugins-bad ships only the SVT-AV1 encoder (unlike Debian's, which carries
+# dav1d), so the decoder comes from gst-plugin-dav1d (rank primary, what decodebin
+# picks) plus gst-plugins-bad-libs for the av1parse parser. Upstream made the same
+# fix for the .deb in ebcaeab.
+optdepends=('vulkan-icd-loader: local AI on a graphics card'
+            'gst-plugin-va: VA-API hardware AV1 decoding')
 makedepends=('python-pip' 'python-pillow' 'pkgconf')
-# The local AI runner falls back to the CPU without a Vulkan driver; the .deb
-# Recommends libvulkan1 for the same reason.
-optdepends=('vulkan-icd-loader: local AI on a graphics card')
 options=('!strip' '!debug' '!distcc' '!ccache')
 source=('lastbook-source.tar' @LLM_SOURCE@)
 sha256sums=('@SOURCE_SHA256@' @LLM_SHA256@)

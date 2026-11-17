@@ -38,7 +38,7 @@ SAVE_EVERY = 2.0                    # seconds between saves of the partial file'
 NETWORK_TRIES = 6                   # broken connections in a row, with no progress between them, before giving up
 BACKOFF = (2, 4, 8, 15, 30, 30)
 BUSY_BACKOFF = (5, 15, 30, 60, 120, 300)   # a server that answers 5xx or 429 is up but busy: wait longer, and keep at it
-BUSY_TRIES = 12                     # busy answers in a row, with no progress between them (about 40 minutes), before giving up
+BUSY_LIMIT = 40 * 60                # seconds of waiting on a busy server, with no progress, before giving up
 MAX_RETRY_AFTER = 600               # a Retry-After longer than this is not waited out in one go
 USER_AGENT = 'Lastbook-setup/1'
 
@@ -200,12 +200,14 @@ def _content_range(v):
 class Download:
     """One file: <dest>.part grows, with <dest>.part.json beside it (url, size, sha256, bytes done, ETag).
     run() returns once the whole file is there and its SHA-256 matches, renamed to <dest>. Raises Stopped, Failed or BadChecksum.
-    progress(done, total, phase) is called as bytes arrive; phase is 'downloading' or 'verifying'."""
+    progress(done, total, phase) is called as bytes arrive; phase is 'downloading' or 'verifying'. waiting(seconds) is called
+    before each wait on a busy server."""
 
-    def __init__(self, url, dest, size, sha256, control, progress=lambda d, t, p: None, allowed=None, context=None, timeout=TIMEOUT):
+    def __init__(self, url, dest, size, sha256, control, progress=lambda d, t, p: None, allowed=None, context=None, timeout=TIMEOUT,
+                 waiting=lambda s: None):
         self.url, self.dest, self.size, self.sha256 = url, str(dest), int(size), sha256.lower()
         self.part, self.meta = self.dest + '.part', self.dest + '.part.json'
-        self.control, self.progress = control, progress
+        self.control, self.progress, self.waiting = control, progress, waiting
         self.allowed, self.context, self.timeout = allowed, context, timeout
 
     def done_bytes(self):
@@ -252,14 +254,14 @@ class Download:
             f.truncate(start)
         h, start = self._rehash(start) if start else (hashlib.sha256(), 0)
         etag = meta.get('etag')
-        tries = busy = 0                # broken connections, and busy answers, in a row with no progress
+        tries = busy = waited = 0       # broken connections, busy answers, and seconds waited on them, with no progress
         ignored_once = False
         while start < self.size:
             self.control.check()
             try:
                 got = self._fetch(start, etag, h, ctx)
                 start, etag = got
-                tries = busy = 0
+                tries = busy = waited = 0
             except Stopped:
                 raise
             except Failed:
@@ -278,14 +280,16 @@ class Download:
             except _Busy as b:
                 now = self.done_bytes()
                 if now > start:
-                    tries = busy = 0
-                busy += 1
+                    tries = busy = waited = 0
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
-                if busy >= BUSY_TRIES:
+                wait = min(max(BUSY_BACKOFF[min(busy, len(BUSY_BACKOFF) - 1)], b.wait), BUSY_LIMIT - waited)
+                if wait <= 0:
                     raise Failed('server', f'The download server stayed busy ({b}). Try again later.')
-                wait = max(BUSY_BACKOFF[min(busy - 1, len(BUSY_BACKOFF) - 1)], b.wait)
+                busy += 1
+                waited += wait
                 print(f'setup: the server is busy at {start} of {self.size} ({b}); trying again in {wait}s', flush=True)
+                self.waiting(wait)
                 self.control.sleep(wait)
             except ssl.SSLCertVerificationError:
                 raise Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '

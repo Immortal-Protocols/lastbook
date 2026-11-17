@@ -3,7 +3,8 @@
 Run:  python3 app/tests/setup_stub.py [port]      (default 8925)
 Then open http://127.0.0.1:8925/__stub/<scenario> to reset to a scenario, which redirects to the setup page.
 Scenarios (see SCENARIOS): mac, mac-small (AI does not fit), win, found, low-disk, paused (a restart picked up a job),
-network, server, checksum, unpack, activate (each fails once at that step; Retry then goes through), manage, manage-ai, upgraded.
+network, server, checksum, unpack, activate (each fails once at that step; Retry then goes through), busy (the server
+answers 503 for 2 minutes, then the download goes on), manage, manage-ai, upgraded.
 The page itself never knows it talks to a stub.
 """
 import copy
@@ -91,6 +92,7 @@ SCENARIOS = {
     'paused': dict(hardware=hw(), recommend={'pack': 'medium', 'ai': True, 'why': ''}, job={'pack': 'medium', 'ai': True, 'state': 'paused', 'done0': 0.37}),
     'network': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'network')),
     'server': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'server')),
+    'busy': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'busy')),
     'checksum': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('verifying', 'checksum')),
     'unpack': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('unpacking', 'unpack')),
     'activate': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('activating', 'activate')),
@@ -125,6 +127,7 @@ class Stub:
         self.current = s.get('current')
         self.job = None
         self.fault = s.get('fault')
+        self.busy_until = None
         self.found = s.get('found', [])
         self.folder = (self.current or {}).get('folder') or (WIN if s['hardware']['os'] == 'windows' else MAC)
         if 'job' in s:
@@ -220,6 +223,13 @@ class Stub:
                 continue
             if it['state'] in ('waiting', 'paused'):
                 it['state'] = 'downloading' if it['bytes_done'] < it['bytes_total'] else 'verifying'
+            if it['state'] == 'downloading' and self.fault and self.fault[1] == 'busy' and it['bytes_done'] > it['bytes_total'] * 0.4:
+                self.busy_until = self.busy_until or now + 120     # as the engine: no rate, and the time of the next try
+                it['retry_in_s'], it['rate_bps'], it['eta_s'] = round(self.busy_until - now), 0, None
+                if now >= self.busy_until:
+                    self.fault = self.busy_until = None
+                    it.pop('retry_in_s')
+                break
             if it['state'] == 'downloading':
                 it['bytes_done'] = min(it['bytes_total'], it['bytes_done'] + int(RATE * dt))
                 it['rate_bps'] = int(RATE * (0.9 + 0.2 * ((now * 3) % 1)) / 50)   # show a believable rate

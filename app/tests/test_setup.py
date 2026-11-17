@@ -350,12 +350,37 @@ class Downloads(Base):
         self.assertEqual(set(ranges[1:]), {'bytes=700000-'})                          # every retry resumed, nothing started over
 
     def test_busy_server_gives_up_as_server(self):
-        """A server busy for good fails with 'server', not 'network': the person's internet is fine."""
-        self.files.busy['model.gguf'] = [(503, None)] * download.BUSY_TRIES
-        with fast_backoff(), self.assertRaises(download.Failed) as e:
-            self.dl('model.gguf').run()
-        self.assertEqual(e.exception.code, 'server')
-        self.assertEqual(len(self.files.log), download.BUSY_TRIES)
+        """A server busy for good fails with 'server', not 'network': the person's internet is fine. The waits add up to
+        BUSY_LIMIT, however long a Retry-After the server asks for."""
+        for retry_after in (None, 600):
+            with self.subTest(retry_after=retry_after):
+                self.files.log.clear()
+                self.files.busy['model.gguf'] = [(503, retry_after)] * 30
+                waits, d = [], self.dl('model.gguf')
+                d.control.sleep = waits.append
+                with self.assertRaises(download.Failed) as e:
+                    d.run()
+                self.assertEqual(e.exception.code, 'server')
+                self.assertEqual(sum(waits), download.BUSY_LIMIT)
+                self.assertEqual(len(self.files.log), len(waits) + 1)      # one last ask after the last wait
+
+    def test_pause_during_busy_wait_then_resume(self):
+        """Pause wakes a wait on a busy server at once, the bytes already downloaded are kept, and the next run resumes from them."""
+        self.files.cut_after['model.gguf'] = [700_000]
+        self.files.busy['model.gguf'] = [None, (503, 300)]
+        control, waits = download.Control(), []
+        d = download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model), control,
+                              allowed=ALLOWED, context=self.ctx, waiting=waits.append)
+        threading.Timer(0.5, control.stop, ['paused']).start()
+        t0 = time.time()
+        with fast_backoff(), self.assertRaises(download.Stopped):
+            d.run()
+        self.assertLess(time.time() - t0, 5)                                   # not the 300 s the server asked for
+        self.assertEqual(waits, [300])
+        self.assertEqual(os.path.getsize(d.part), 700_000)
+        p = self.dl('model.gguf').run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        self.assertEqual(self.files.log[-1][1], 'bytes=700000-')
 
     def test_retry_after_is_honoured(self):
         waits = []
@@ -616,6 +641,26 @@ class Jobs(Base):
         self.assertEqual(j['error']['code'], 'cancelled')
         self.assertFalse((self.parent / 'LastbookData.setup' / 'downloads').exists())
         self.assertFalse((self.parent / 'LastbookData').exists())
+
+    def test_job_shows_busy_wait(self):
+        """While the server is busy, the item says when the next try is, with no rate. Pausing then drops it, and resume finishes."""
+        self.files.cut_after['Lastbook-Small.zip'] = [700_000]
+        self.files.busy['Lastbook-Small.zip'] = [None, (503, 300)]
+        s = self.setup()
+        s.start('small', False)
+        t0 = time.time()
+        while time.time() - t0 < 10 and not s.public_job()['items'][0].get('retry_in_s'):
+            time.sleep(0.02)
+        it = s.public_job()['items'][0]
+        self.assertEqual((it['state'], it['rate_bps'], it['eta_s']), ('downloading', 0, None))
+        self.assertTrue(295 <= it['retry_in_s'] <= 300, it['retry_in_s'])
+        j = s.pause()
+        self.assertEqual(j['state'], 'paused')
+        self.assertNotIn('retry_in_s', j['items'][0])
+        self.assertEqual(j['items'][0]['bytes_done'], 700_000)
+        s.resume()
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual([r for n, r, _ in self.files.log if n == 'Lastbook-Small.zip'][-1], 'bytes=700000-')
 
     def test_rate_and_eta(self):
         self.files.pace = 0.06

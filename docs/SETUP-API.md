@@ -117,10 +117,11 @@ error}], error, started, folder}`. Each item also has `source`: `"found"` when i
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,
 `activating`, `done`, or `failed` (with `error`: a plain sentence and a `code`: `no_space`, `network`, `server` (the download
-server kept answering 5xx or 429 for about 40 minutes, so the internet itself was up), `checksum`, `unpack`,
+server kept answering 5xx or 429 for 40 minutes, so the internet itself was up), `checksum`, `unpack`,
 `activate`, `cancelled`, and `found_mismatch`: a file already on this computer (`use`) did not match its published SHA-256; the error carries `file`, the file is left untouched and no longer offered, and `retry` downloads it instead). The job lives in the app's own settings folder (`<settings>/setup/job.json`, with a staged switch in `<settings>/setup/pending.json`; never in `LastbookData.setup`, whose contents are not obeyed: audit E3), so a restart picks it up as `paused` and resumes
 with HTTP Range from the bytes already on disk. While downloading, a broken connection is retried six times over about 90 seconds.
-A server that answers 5xx or 429 is waited on longer (5 s rising to 5 minutes, or its `Retry-After`, about 40 minutes in all).
+A server that answers 5xx or 429 is waited on longer (5 s rising to 5 minutes, or its `Retry-After` up to 10 minutes, and
+40 minutes in all without progress). While such a wait is ahead, the item has `retry_in_s`, the seconds until the next try.
 A corrupt download (wrong SHA-256) is deleted and downloaded once more
 automatically, then fails with `checksum`.
 

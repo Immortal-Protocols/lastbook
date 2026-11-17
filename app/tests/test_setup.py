@@ -285,19 +285,19 @@ def failing_writes(part, after_bytes):
 
 
 class _FlipWrite(_HalfWrite):
-    """Writes that succeed, except that the byte at `at` (from the file's start) reaches the disk changed, once: no error."""
+    """Writes that succeed, except that the byte at `at` (from the file's start) reaches the disk changed, `times` times: no error."""
 
     def write(self, b):
         pos = self.f.tell()
-        if not self.state['done'] and pos <= self.state['at'] < pos + len(b):
-            self.state['done'] = True
+        if self.state['left'] and pos <= self.state['at'] < pos + len(b):
+            self.state['left'] -= 1
             b = bytearray(b)
             b[self.state['at'] - pos] ^= 0xff
         return self.f.write(b)
 
 
-def flipped_write(part, at):
-    return _wrap_writes(part, _FlipWrite, {'done': False, 'at': at})
+def flipped_write(part, at, times=1):
+    return _wrap_writes(part, _FlipWrite, {'left': times, 'at': at})
 
 
 def _wrap_writes(part, cls, state):
@@ -616,6 +616,18 @@ class Pieces(Base):
         covering = [r for r in _requested(self.files.log, 'model.gguf') if r[0] <= at <= r[1]]
         self.assertEqual(len(covering), 2, covering)
         self.assertEqual(sum(b - a + 1 for a, b in _requested(self.files.log, 'model.gguf')), len(self.model) + self.PIECE)
+
+    def test_a_piece_the_disk_never_keeps_stops_the_download(self):
+        """A disk that changes the same piece every time: fetched again PIECE_TRIES times, then the job stops with checksum and
+        the file is kept, instead of fetching that piece for ever."""
+        d = self.dl()
+        with flipped_write(d.part, at=2 * self.PIECE + 10, times=10 ** 6), self.assertRaises(download.Failed) as e:
+            d.run()
+        self.assertEqual(e.exception.code, 'checksum')
+        self.assertTrue(e.exception.extra.get('kept'))
+        self.assertTrue(Path(d.part).exists())
+        covering = [r for r in _requested(self.files.log, 'model.gguf') if r[0] <= 2 * self.PIECE + 10 <= r[1]]
+        self.assertEqual(len(covering), download.PIECE_TRIES + 1)
 
     def test_busy_server_gets_fewer_connections(self):
         self.files.busy['model.gguf'] = 3

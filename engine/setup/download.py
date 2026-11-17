@@ -59,6 +59,7 @@ RAMP = 60
 SEGMENT = 32 * 1024 * 1024          # a file larger than SEGMENTED_MIN comes in pieces of this size, several at once
 SEGMENTED_MIN = 4 * SEGMENT
 WINDOW = 4                          # segments per connection that may be done ahead of the first one not yet done
+PIECE_TRIES = 3                     # a piece that does not stay on the disk as it arrived this many times: the disk is failing
 STALL = 600                         # seconds with no byte from any connection before 503s count as failures
 REPAIR_MIN = 256 * 1024 * 1024      # a zip at least this big that fails its check is repaired in place, not downloaded again
 TAIL = 1024 * 1024                  # the end of a zip fetched first when repairing: its end-of-central-directory records
@@ -583,7 +584,9 @@ class Download:
                     expected = st.digests.get(cursor)
                     if expected is not None and got != expected:
                         print(f'setup: piece {cursor} of {self.name} is not on the disk as it arrived; fetching it again', flush=True)
-                        st.redo(cursor)
+                        if st.redo(cursor) > PIECE_TRIES:
+                            raise Failed('checksum', f'Part of {self.name} did not stay on the disk as it was downloaded, {PIECE_TRIES} times in a row. '
+                                                     'The disk, or the connection to it, may be failing. What was downloaded is kept.', kept=True)
                         if not any(w.is_alive() for w in workers):
                             workers = []
                         break
@@ -932,6 +935,7 @@ class Segments:
             self.claimed = set()
             self.hashers = {}        # piece -> SHA-256 of what arrived, for a piece begun in this run
             self.digests = {}        # piece -> that SHA-256, once the piece is done, until it is read back and checked
+            self.redos = {}          # piece -> times it was fetched again because the disk did not keep it
             self.cv.notify_all()
 
     @classmethod
@@ -1039,13 +1043,15 @@ class Segments:
             self.cv.notify_all()
 
     def redo(self, k):
-        """A piece the disk did not keep as it arrived: fetched again from its start."""
+        """A piece the disk did not keep as it arrived: fetched again from its start. Returns how often that has happened to it."""
         with self.cv:
             self.done[k] = 0
             self.got.pop(k, None)
             self.hashers.pop(k, None)
             self.digests.pop(k, None)
+            self.redos[k] = self.redos.get(k, 0) + 1
             self.cv.notify_all()
+            return self.redos[k]
 
 
 def _untrusted():

@@ -116,6 +116,7 @@ class Local:
         self.saved = _load()
         self.runner = runner_path()
         self._started = False
+        self.idle_stop = IDLE_STOP   # engine/power.py shortens it while saving power
 
     # -- what the app shows -----------------------------------------------------------------------------------------------
     def status(self):
@@ -368,11 +369,22 @@ class Local:
 
     def _idle_watch(self):
         while True:
-            time.sleep(min(30, IDLE_STOP / 4))
-            with self.lock:
-                idle = self.state == 'ready' and not self.gen_lock.locked() and time.time() - self.last_used > IDLE_STOP
-            if idle:
-                self.stop(f'not used for {IDLE_STOP} s')
+            time.sleep(min(30, self.idle_stop / 4))
+            self.stop_if_idle(self.idle_stop)
+
+    def stop_if_idle(self, after_s):
+        """Stops the model when it is loaded, not writing an answer, and has not been used for after_s seconds. True if it stopped."""
+        with self.lock:
+            idle = self.state == 'ready' and not self.gen_lock.locked() and time.time() - self.last_used >= after_s
+        if idle:
+            self.stop(f'not used for {after_s} s')
+        return idle
+
+    def save_power(self, idle_s):
+        """engine/power.py: idle_s seconds after each answer the model stops (None: back to IDLE_STOP). Stops it now if it is idle."""
+        self.idle_stop = idle_s or IDLE_STOP
+        if idle_s:
+            self.stop_if_idle(0)
 
     # -- one model turn ---------------------------------------------------------------------------------------------------
     def generate(self, segments, max_tokens, cancelled, on_text):

@@ -1241,6 +1241,42 @@ class RegionMaps(Maps):
         self.assertEqual(j['error']['code'], 'unpack')
         self.assertEqual((cur / 'library-data/catalog.json').read_text(), '{"mine": 1}')
 
+    def all_and_region_manifest(self):
+        """An available All pack (map 'us') plus the foreign region, for the All + foreign-region flow."""
+        all_files = {'library-data/catalog.json': b'{"records": []}', 'pack.json': b'{"name": "all", "map": "us"}',
+                     'library-data/big.bin': os.urandom(MiB), 'derived/geo/map.sqlite': os.urandom(MiB)}
+        zpath = self.tmp / 'Lastbook-All.zip'
+        installed = make_pack(zpath, all_files)
+        all_data = zpath.read_bytes()
+        self.files.data['Lastbook-All.zip'] = all_data
+        region_files = make_region_map(self.tmp / 'Lastbook-Map-ve-car.zip')
+        region_data = (self.tmp / 'Lastbook-Map-ve-car.zip').read_bytes()
+        self.files.data['Lastbook-Map-ve-car.zip'] = region_data
+        m = self.manifest().current
+        m['packs'] = [{'id': 'all', 'title': 'All', 'available': True, 'installed_bytes': installed,
+                       'files': [{'name': 'Lastbook-All.zip', 'url': f'{self.base}/Lastbook-All.zip', 'size': len(all_data), 'sha256': sha(all_data)}]}]
+        m['maps'] = [{'id': 've-car', 'title': 'Caracas', 'kind': 'region', 'country': 'Venezuela',
+                      'includes': 'Local streets, buildings, water and places to get help', 'available': True,
+                      'installed_bytes': sum(map(len, region_files.values())),
+                      'files': [{'name': 'Lastbook-Map-ve-car.zip', 'url': f'{self.base}/Lastbook-Map-ve-car.zip', 'size': len(region_data), 'sha256': sha(region_data)}]}]
+        validated = manifest.validate(m, ALLOWED)
+        self.assertIsNotNone(validated)
+        return manifest.Manifest(bundled=validated, remote=None, allowed=ALLOWED, context=self.ctx), region_files
+
+    def test_all_pack_plus_foreign_region_installs_it(self):
+        mf, region = self.all_and_region_manifest()
+        s = self.setup(manifest=mf)
+        j = s.start('all', False, map_id='ve-car')
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'map'])
+        self.assertEqual(j['items'][1]['id'], 've-car')
+        self.assertEqual(j['items'][1]['bytes_total'], mf.map('ve-car')['download_bytes'])   # the region's download, counted
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, _ = api.startup(self.settings)
+        self.assertEqual(install.map_name(lib), 've-car')                                   # replaces the All pack's US map
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), region['derived/geo/map.sqlite'])
+        self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
+        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-car')
+
 
 class ContentRevisions(Base):
     def revised_manifest(self, revision='2026-11-13-small-v2', actual_revision=None):

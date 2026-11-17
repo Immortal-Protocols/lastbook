@@ -89,8 +89,12 @@
   }
 
   /* state and region maps (docs/SETUP-API.md, State maps; docs/MAPS.md, Region maps). The person picks the area; Lastbook never looks for where it is */
+  const US = 'United States';
+  const US_COUNTRIES = new Set(['united states', 'united states of america']);
+  const countryOf = m => { const c = String((m && m.country) || '').trim(); return !c || US_COUNTRIES.has(c.toLowerCase()) ? US : c };   // state maps carry no country; DC is "United States of America"
+  const isUSMap = m => countryOf(m) === US;
   const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => {   // by country, then name, as people look for theirs
-    const ca = a.country || 'United States', cb = b.country || 'United States';
+    const ca = countryOf(a), cb = countryOf(b);
     return ca === cb ? String(a.title).localeCompare(String(b.title)) : String(ca).localeCompare(String(cb));
   });
   const mapById = id => maps().find(m => m.id === id);
@@ -104,7 +108,11 @@
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState();
-  const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const mapAdds = () => {
+    const now = mapNow(), m = choice.map ? mapById(choice.map) : null;
+    if (!m || m.id === now) return null;              // nothing, or the map this pack already carries
+    return now !== 'us' || !isUSMap(m) ? m : null;    // All carries the US; a foreign region replaces it
+  };
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
   const asData = p => /[\\/]LastbookData[\\/]?$/i.test(p) ? p.replace(/[\\/]$/, '') : String(p).replace(/[\\/]$/, '') + SEP + DATA;
@@ -254,7 +262,7 @@
     if (!box) return;
     const selected = selectedState();
     const option = m => {
-      const a = addressById(m.id), included = now === 'us' || m.id === now;
+      const a = addressById(m.id), included = (now === 'us' && isUSMap(m)) || m.id === now;
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
@@ -262,18 +270,20 @@
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
     };
     const groups = {};
-    for (const m of maps()) { const c = m.country || 'United States'; (groups[c] = groups[c] || []).push(m) }
-    const opts = Object.entries(groups).map(([country, ms]) => country === 'United States' ? ms.map(option).join('') : `<optgroup label="${esc(country)}">${ms.map(option).join('')}</optgroup>`).join('');
+    for (const m of maps()) { const c = countryOf(m); (groups[c] = groups[c] || []).push(m) }
+    const countries = Object.keys(groups).sort((a, b) => a === US ? -1 : b === US ? 1 : a.localeCompare(b));
+    const opts = countries.map(country => `<optgroup label="${esc(country)}">${groups[country].map(option).join('')}</optgroup>`).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = now === 'us' || selected === now;
+    const mapIncluded = sel && (sel.id === now || (now === 'us' && isUSMap(sel)));
+    const replacing = sel && !mapIncluded && now;
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your area map is already included.') + ' Street-address search is not available for this area yet.';
+    let hint = !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${replacing ? `. This replaces ${mapName(now)}.` : ''}${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
+    if (unavailable) hint = (bytes ? hint : 'Your area map is already included.') + ' Street-address search is not available for this area yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
-      ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your area for offline street-address search.</p>' : ''}
+      ${now === 'us' ? '<p class="s-mapnote">All includes the US and Washington, D.C. Pick a state for street-address search, or another country to download that map instead (it replaces the US map).</p>' : ''}
       <label class="s-maplabel" for="mapSel">Choose your state or region</label>
       <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select an area</option>${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;

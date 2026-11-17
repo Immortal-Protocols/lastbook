@@ -72,7 +72,8 @@ and the hosts Hugging Face redirects model downloads to (`cas-bridge.xethub.hf.c
   Documents folder on Windows, and `~/Library/Application Support/Lastbook/LastbookData` on a Mac, or a folder they choose,
   on a disk with room. `settings.json` remembers it as before (`app/main.py`).
 - Work in progress: `<parent>/LastbookData.setup/`, holding `downloads/` (partial files with a `.part` suffix and a
-  `.json` beside each: url, size, sha256, bytes done, ETag) and `unpack/` (the new LastbookData being built).
+  `.json` beside each: url, size, sha256, bytes done, ETag, and for a file in segments `segment`, `done` (a bitmap, hex) and
+  `got` (bytes of each piece part done)) and `unpack/` (the new LastbookData being built).
 - The model goes to `LastbookData/models/<file>`. After its SHA-256 matches, setup calls `llm_local.mark_checked(path)`, so
   the AI does not read 17 GB a second time.
 - Space needed = download size + unpacked size + 2 GB, on the disk that holds the target. A zip is deleted once it is
@@ -114,12 +115,34 @@ vram_bytes}], disks: [{path, free_bytes, total_bytes}], ai: {fits, needs_bytes, 
 `job` = `{id, state, items: [{id, kind: "pack" or "model", title, state, bytes_done, bytes_total, rate_bps, eta_s,
 error}], error, started, folder}`. Each item also has `source`: `"found"` when its file is already on this computer
 (it is checked, not downloaded), else `"download"` (it changes to `"download"` when a found file is rejected). After a restart, an
-item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
-`bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,
+item that stopped mid-run has `paused_from` (`downloading`, `downloaded`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
+`bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `downloaded`, `paused`, `verifying`, `unpacking`,
 `activating`, `done`, or `failed` (with `error`: a plain sentence and a `code`: `no_space`, `network`, `checksum`, `unpack`,
 `activate`, `cancelled`, and `found_mismatch`: a file already on this computer (`use`) did not match its published SHA-256; the error carries `file`, the file is left untouched and no longer offered, and `retry` downloads it instead). The job lives in the app's own settings folder (`<settings>/setup/job.json`, with a staged switch in `<settings>/setup/pending.json`; never in `LastbookData.setup`, whose contents are not obeyed: audit E3), so a restart picks it up as `paused` and resumes
-with HTTP Range from the bytes already on disk. A corrupt download (wrong SHA-256) is deleted and downloaded once more
-automatically, then fails with `checksum`.
+with HTTP Range from the bytes already on disk.
+
+Added 2026-11-17 (downloads that resume and run at once):
+- **Items download at once.** Every item's files download together; each server gets a few connections shared by all of
+  them, and the item with the fewest bytes still to come gets the next free one, so the small items finish first. The items
+  are still put in place one at a time, in order (pack, map, address index, model), because the others go into the pack's
+  library. An item whose download is complete and checked, waiting for its turn, is `downloaded`. The job's `state` is
+  `downloading` while any item downloads, else the state of the item being put in place. An item that cannot be downloaded
+  shows `failed` (with its `error`) at once while the others go on; the job fails with that error when the item's turn comes,
+  after the items before it are in place. A repair still runs one item after another.
+- **Segments.** A file over 128 MiB comes in 32 MiB pieces over several connections at once, lowest pieces first, so the file
+  grows nearly in order (no far-off writes, which some disks fill with zeros first). A server starts with 3 connections, gains
+  one a minute without a 503, loses one at each 503 or 429, and never has more than 6. Each piece is read back from the disk and
+  compared with the SHA-256 of what arrived; a piece the disk did not keep is fetched again, alone. A `.part` from one stream
+  (Lastbook 1.1.11 and earlier) is taken over: its bytes from the front count as done. A server that answers a Range with the
+  whole file makes the download go on in one stream.
+- **Nothing is thrown away on a checksum alone.** The SHA-256 is judged on the file as it is on the disk (read back). After a
+  write that failed part way, the hash and the file are made to agree before the download goes on (a network share once lost
+  a 388 GB download that way). A 200 to a resume with the same ETag and size is waited out, and after `NETWORK_TRIES` of
+  them the file is read from the start with the bytes already here compared, not written: never emptied. A file of 256 MiB or
+  more that does not match is, if it is a zip, checked member by member: its end is fetched again (the central directory),
+  each member is checked against its CRC-32, and only members that fail are fetched again. If it still does not match, it is
+  kept and the job fails with `checksum` and `kept: true` (Retry checks it again). A smaller file, or one that is not a zip,
+  is deleted and downloaded once more automatically, then fails with `checksum`, as before.
 
 ## Switching to the library
 

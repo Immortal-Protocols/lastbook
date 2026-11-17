@@ -51,7 +51,9 @@ class Files:
         self.ignore_range = set()
         self.ignore_once = {}     # name -> how many more Range requests get a 200 with the whole file
         self.redirect = {}        # name -> Location
+        self.busy = {}            # name -> how many more answers are 503
         self.pace = 0             # seconds to sleep per 64 KiB
+        self.active = self.most = 0   # answers being sent now, and the most at once
         self.lock = threading.Lock()
 
 
@@ -63,9 +65,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         F = self.server.files
+        with F.lock:
+            F.active += 1
+            F.most = max(F.most, F.active)
+        try:
+            self._get(F)
+        finally:
+            with F.lock:
+                F.active -= 1
+
+    def _get(self, F):
         name = self.path.split('?')[0].lstrip('/')
         with F.lock:
             F.log.append((name, self.headers.get('Range'), self.headers.get('If-Range')))
+            busy = F.busy.get(name)
+            if busy:
+                F.busy[name] -= 1
+        if busy:
+            self.send_response(503)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         if name in F.redirect:
             self.send_response(302)
             self.send_header('Location', F.redirect[name])
@@ -89,9 +109,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 F.ignore_once[name] -= 1
                 once = True
         if rng and name not in F.ignore_range and not once:     # like R2: If-Range is ignored
-            start = int(rng.split('=')[1].split('-')[0])
+            first, _, last = rng.split('=')[1].partition('-')
+            start = int(first)
+            if last:
+                body = body[:int(last) + 1]
             self.send_response(206)
-            self.send_header('Content-Range', f'bytes {start}-{len(body) - 1}/{len(body)}')
+            self.send_header('Content-Range', f'bytes {start}-{len(body) - 1}/{len(F.data[name])}')
         else:
             self.send_response(200)
         self.send_header('Content-Length', str(len(body) - start))
@@ -100,12 +123,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         cut = None
         with F.lock:
-            if F.cut_after.get(name):
+            if F.cut_after.get(name) and start < F.cut_after[name][0] < len(body):    # the next cut, if it falls in this answer
                 cut = F.cut_after[name].pop(0)
         sent = start
         try:
             while sent < len(body):
                 n = min(64 * 1024, len(body) - sent)
+                if F.pace:                  # before each 64 KiB, so that an answer of one 64 KiB piece is slow too
+                    time.sleep(F.pace)
                 if cut is not None and sent + n > cut:
                     self.wfile.write(body[sent:cut])
                     self.wfile.flush()
@@ -114,8 +139,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return
                 self.wfile.write(body[sent:sent + n])
                 sent += n
-                if F.pace:
-                    time.sleep(F.pace)
         except (BrokenPipeError, ConnectionResetError, OSError):
             return
 
@@ -176,7 +199,9 @@ class Base(unittest.TestCase):
     def setUp(self):
         F = self.files
         F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
+        F.busy.clear()
         F.pace = 0
+        F.most = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
         for d in ('Downloads', 'Documents', 'Desktop'):
@@ -228,6 +253,63 @@ class Base(unittest.TestCase):
 
 def fast_backoff():
     return mock.patch.object(download, 'BACKOFF', (0.05,) * 6)
+
+
+class _HalfWrite:
+    """A .part opened by the downloader whose writes fail once, like a network share did: the first write that would cross
+    `after_bytes` (counted from the file's start) puts half of its bytes on the disk, then raises OSError(22)."""
+
+    def __init__(self, f, state):
+        self.f, self.state = f, state
+
+    def write(self, b):
+        if not self.state['done'] and self.f.tell() + len(b) > self.state['after']:
+            self.state['done'] = True
+            self.f.write(b[:len(b) // 2])
+            self.f.flush()
+            raise OSError(22, 'Invalid argument')
+        return self.f.write(b)
+
+    def __getattr__(self, name):
+        return getattr(self.f, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return self.f.__exit__(*a)
+
+
+def failing_writes(part, after_bytes):
+    return _wrap_writes(part, _HalfWrite, {'done': False, 'after': after_bytes})
+
+
+class _FlipWrite(_HalfWrite):
+    """Writes that succeed, except that the byte at `at` (from the file's start) reaches the disk changed, once: no error."""
+
+    def write(self, b):
+        pos = self.f.tell()
+        if not self.state['done'] and pos <= self.state['at'] < pos + len(b):
+            self.state['done'] = True
+            b = bytearray(b)
+            b[self.state['at'] - pos] ^= 0xff
+        return self.f.write(b)
+
+
+def flipped_write(part, at):
+    return _wrap_writes(part, _FlipWrite, {'done': False, 'at': at})
+
+
+def _wrap_writes(part, cls, state):
+    import builtins
+    real = builtins.open
+
+    def fake(path, mode='r', *a, **k):
+        f = real(path, mode, *a, **k)
+        if str(path) == str(part) and ('+' in mode or 'w' in mode or 'a' in mode):
+            return cls(f, state)
+        return f
+    return mock.patch.object(download, 'open', fake, create=True)
 
 
 # ----------------------------------------------------------------------------------------------------------- tests --
@@ -330,27 +412,60 @@ class Downloads(Base):
         self.assertEqual([r for _, r, _ in self.files.log], ['bytes=600000-', None])   # tried to resume, then started over
 
     def test_server_ignores_range(self):
-        """A 200 with the whole file to a resume (seen on downloads.lastbook.org for minutes after an upload): after one more ask,
-        the .part is emptied, the hash and the progress start from 0, and nothing is appended."""
+        """A 200 with the whole file to a resume, with the same ETag and size (seen on downloads.lastbook.org for minutes after an
+        upload, and once at 109 GB into a 388 GB download): the .part is never emptied for it. Lastbook waits and asks again; a
+        server that keeps it up is read from the start, the bytes already here compared, not written, and nothing appended."""
         self.files.cut_after['model.gguf'] = [500_000]
         self.files.ignore_range.add('model.gguf')
-        seen, sizes = [], []
+        sizes = []
         d = self.dl('model.gguf')
-        d.progress = lambda done, total, phase: (seen.append(done), sizes.append(os.path.getsize(d.part)))
-        real = download.Download._fetch
-
-        def watched(self_, start, etag, h, ctx):
-            sizes.append(('fetch from', start, os.path.getsize(self_.part)))
-            return real(self_, start, etag, h, ctx)
-        with fast_backoff(), mock.patch.object(download.Download, '_fetch', watched):
+        d.progress = lambda done, total, phase: sizes.append(os.path.getsize(d.part) if os.path.exists(d.part) else -1)
+        with fast_backoff():
             p = d.run()
         self.assertEqual(Path(p).read_bytes(), self.model)
-        self.assertEqual([r for _, r, _ in self.files.log], [None, 'bytes=500000-', 'bytes=500000-', None])   # asked again once, then from 0
-        fetches = [x for x in sizes if isinstance(x, tuple)]
-        self.assertEqual(fetches[-1], ('fetch from', 0, 0))              # the .part emptied before the fresh start
-        restart = max(i for i, x in enumerate(seen) if x < 500_000)
-        self.assertLess(seen[restart], 500_000)                          # progress counted again from 0
-        self.assertTrue(all(isinstance(x, tuple) or x <= len(self.model) for x in sizes))   # never longer than the file: no append
+        ranges = [r for _, r, _ in self.files.log]
+        self.assertEqual(ranges, [None] + ['bytes=500000-'] * (download.NETWORK_TRIES + 1))   # waited and asked again, then read from 0
+        reached = next(i for i, s in enumerate(sizes) if s >= 500_000)
+        self.assertTrue(all(s >= 500_000 for s in sizes[reached:] if s != -1), 'the .part was emptied')
+        self.assertTrue(all(s <= len(self.model) for s in sizes))          # never longer than the file: no append
+
+    def test_server_ignores_range_and_the_file_changed(self):
+        """A 200 to a resume with another ETag: the file on the server is another one, so it starts over."""
+        self.files.cut_after['model.gguf'] = [500_000]
+        d = self.dl('model.gguf')
+        real = download._open
+
+        def swap(*a, **k):        # after the cut, the server has a new copy and ignores Range
+            if a[1]:
+                self.files.ignore_range.add('model.gguf')
+                self.files.etag['model.gguf'] = '"e2"'
+            return real(*a, **k)
+        with fast_backoff(), mock.patch.object(download, '_open', swap):
+            p = d.run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        self.assertEqual([r for _, r, _ in self.files.log], [None, 'bytes=500000-', None])
+
+    def test_weak_etag_is_the_same_file(self):
+        """Cloudflare may send W/"e1" for "e1": the same file, so the resume goes on."""
+        self.files.cut_after['model.gguf'] = [700_000]
+        d = self.dl('model.gguf')
+        real = download._open
+
+        def weaken(*a, **k):
+            if a[1]:
+                self.files.etag['model.gguf'] = 'W/"e1"'
+            return real(*a, **k)
+        with fast_backoff(), mock.patch.object(download, '_open', weaken):
+            p = d.run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        self.assertEqual([r for _, r, _ in self.files.log], [None, 'bytes=700000-'])
+
+    def test_bytes_the_disk_changed_are_found_after_the_download(self):
+        """A network share that keeps a wrong byte without an error: the hash of what arrived matches, but the file is judged on
+        what the disk holds (it is read back), so it is not passed on to be unpacked."""
+        d = self.dl('model.gguf')
+        with flipped_write(d.part, at=900_000), self.assertRaises(download.BadChecksum):
+            d.run()
 
     def test_wrong_checksum(self):
         d = self.dl('model.gguf', sha256='0' * 64)
@@ -406,6 +521,15 @@ class Downloads(Base):
         self.assertEqual(Path(p).read_bytes(), self.model)
         self.assertEqual([r for _, r, _ in self.files.log], [None, 'bytes=700000-', 'bytes=700000-'])   # asked again, not from 0
 
+    def test_write_error_mid_chunk_still_matches(self):
+        """Seen on a download to a network share (2026-11-17): a write of the .part failed with Errno 22 after part of the chunk
+        reached the disk. The download carried on from the file's size on disk, so the running SHA-256 no longer described the
+        file, and 388 GB that were most likely fine failed the final check and were thrown away."""
+        d = self.dl('model.gguf')
+        with fast_backoff(), failing_writes(d.part, after_bytes=900_000):
+            p = d.run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+
     def test_pause_mid_file(self):
         self.files.pace = 0.01
         c = download.Control()
@@ -418,6 +542,362 @@ class Downloads(Base):
         self.files.pace = 0
         d.control = download.Control()
         self.assertEqual(Path(d.run()).read_bytes(), self.model)
+
+
+def _requested(log, name):
+    """(first, last) byte of each Range asked for `name` (None for a request without one)."""
+    out = []
+    for n, r, _ in log:
+        if n != name:
+            continue
+        if not r:
+            out.append(None)
+            continue
+        a, _, b = r.split('=')[1].partition('-')
+        out.append((int(a), int(b) if b else None))
+    return out
+
+
+class Pieces(Base):
+    """A large file in segments over several connections at once (here 64 KiB pieces of the 2 MiB model, so 33 pieces)."""
+    PIECE = 64 * 1024
+
+    def setUp(self):
+        super().setUp()
+        for name, value in (('SEGMENT', self.PIECE), ('SEGMENTED_MIN', 0), ('WINDOW', 4)):
+            p = mock.patch.object(download, name, value)
+            p.start()
+            self.addCleanup(p.stop)
+
+    def dl(self, connections=4, control=None, hosts=None):
+        return download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model),
+                                 control or download.Control(), allowed=ALLOWED, context=self.ctx, connections=connections, hosts=hosts)
+
+    def test_plain(self):
+        self.files.pace = 0.005
+        d = self.dl()
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        asked = _requested(self.files.log, 'model.gguf')
+        self.assertTrue(all(r and r[1] is not None for r in asked), asked)       # every request is one piece, a closed range
+        self.assertEqual(sum(b - a + 1 for a, b in asked), len(self.model))      # each byte asked for once
+        self.assertGreaterEqual(self.files.most, 2)                              # at once
+        self.assertLessEqual(self.files.most, 4)
+        self.assertFalse(Path(d.part).exists() or Path(d.meta).exists())
+
+    def test_lowest_pieces_first(self):
+        """The file grows from the front: no piece is asked for further than the window ahead of the first one not done."""
+        self.files.pace = 0.005
+        self.dl().run()
+        starts = [a // self.PIECE for a, _ in _requested(self.files.log, 'model.gguf')]
+        self.assertEqual(sorted(starts[:4]), [0, 1, 2, 3])                     # the four connections begin at the front
+        self.assertLessEqual(max(s - i for i, s in enumerate(starts)), 4 * download.WINDOW)
+
+    def test_cut_mid_piece_resumes_in_place(self):
+        self.files.cut_after['model.gguf'] = [100_000, 400_000, 1_000_000]
+        with fast_backoff():
+            self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+        asked = _requested(self.files.log, 'model.gguf')
+        self.assertTrue(any(a % self.PIECE for a, _ in asked), asked)        # a piece went on from where it broke, not from its start
+        self.assertLess(sum(b - a + 1 for a, b in asked), len(self.model) + 3 * self.PIECE)
+
+    def test_write_error_mid_chunk(self):
+        """The network-share failure of 2026-11-17, in pieces: the piece goes on from what was written, and the file matches."""
+        d = self.dl()
+        with fast_backoff(), failing_writes(d.part, after_bytes=700_000):
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+
+    def test_piece_the_disk_did_not_keep_is_fetched_again(self):
+        """Each piece is read back from the disk and compared with what arrived: one byte changed on the way to the disk costs
+        that piece, fetched again, not the file."""
+        d = self.dl()
+        at = 3 * self.PIECE + 1000
+        with flipped_write(d.part, at=at):
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        covering = [r for r in _requested(self.files.log, 'model.gguf') if r[0] <= at <= r[1]]
+        self.assertEqual(len(covering), 2, covering)
+        self.assertEqual(sum(b - a + 1 for a, b in _requested(self.files.log, 'model.gguf')), len(self.model) + self.PIECE)
+
+    def test_busy_server_gets_fewer_connections(self):
+        self.files.busy['model.gguf'] = 3
+        hosts = download.Hosts(most=4, start=4)
+        with fast_backoff():
+            self.assertEqual(Path(self.dl(hosts=hosts).run()).read_bytes(), self.model)
+        self.assertLess(hosts.limit('127.0.0.1'), 4)
+
+    def test_pause_then_a_new_run_fetches_only_what_is_missing(self):
+        self.files.pace = 0.1
+        c = download.Control()
+        d = self.dl(control=c)
+        threading.Timer(0.35, c.stop, ['paused']).start()
+        with self.assertRaises(download.Stopped):
+            d.run()
+        had = download.done_on_disk(d.dest)
+        self.assertGreater(had, 0)
+        self.assertLess(had, len(self.model))
+        meta = json.loads(Path(d.meta).read_text())
+        self.assertEqual(meta['segment'], self.PIECE)
+        self.files.pace = 0
+        self.files.log.clear()
+        self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+        self.assertEqual(sum(b - a + 1 for a, b in _requested(self.files.log, 'model.gguf')), len(self.model) - had)
+
+    def test_takes_over_a_part_from_one_stream(self):
+        """A .part left by the one-stream downloader (Lastbook 1.1.11 and earlier) is kept: its bytes from the front count as done."""
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(self.model[:1_000_000])
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': 1_000_000}))
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        asked = _requested(self.files.log, 'model.gguf')
+        self.assertTrue(all(a >= 1_000_000 for a, _ in asked), asked)
+        self.assertEqual(download.done_on_disk(d.dest), len(self.model))
+
+    def test_one_stray_200_keeps_the_pieces(self):
+        """A 200 to one piece's Range (once in 16 hours on downloads.lastbook.org) is a failed try, not the end of pieces."""
+        self.files.ignore_once['model.gguf'] = 1
+        with fast_backoff():
+            self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+        asked = _requested(self.files.log, 'model.gguf')
+        self.assertNotIn(None, asked)                                        # never went over to one stream
+        self.assertLessEqual(sum(b - a + 1 for a, b in asked), len(self.model) + self.PIECE)
+
+    def test_a_busy_server_does_not_wear_out_the_connections(self):
+        """503 is this server's usual answer to one connection too many: it lowers the connections, it does not end them."""
+        self.files.busy['model.gguf'] = 40                                   # more than 4 connections x NETWORK_TRIES
+        with fast_backoff():
+            self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+
+    def test_progress_goes_on_while_old_pieces_are_read_back(self):
+        """After a restart every piece already here is read back; that happens a slice at a time, so the state is still saved,
+        progress still shown and the connections still looked after (a 388 GB file takes an hour to read back from a NAS)."""
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(self.model[:1_000_000])                     # 15 pieces done, from a one-stream .part
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': 1_000_000}))
+        real, times = download.Download._hash_range, []
+
+        def slow(self_, h, a, b):
+            time.sleep(0.2)
+            return real(self_, h, a, b)
+        d.progress = lambda done, total, phase: times.append(time.time())
+        with mock.patch.object(download.Download, '_hash_range', slow):
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertGreater(len(times), 3, 'progress was not shown during the read-back')
+        gaps = [b - a for a, b in zip(times, times[1:])]
+        self.assertLess(max(gaps), 1.6, gaps)
+
+    def test_server_ignoring_range_goes_on_in_one_stream(self):
+        self.files.ignore_range.add('model.gguf')
+        with fast_backoff():
+            self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+        self.assertIn(None, _requested(self.files.log, 'model.gguf'))
+
+    def test_changed_file_starts_over(self):
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(b'x' * (4 * self.PIECE))       # four pieces of an older copy
+        done = bytearray(5)
+        done[0] = 0x0f
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"old"', 'bytes_done': 4 * self.PIECE,
+                                            'segment': self.PIECE, 'done': done.hex(), 'got': {}}))
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertIn(0, [a for a, _ in _requested(self.files.log, 'model.gguf')])
+
+    def test_hosts_serve_the_smallest_first(self):
+        hosts, c, order = download.Hosts(most=1, start=1), download.Control(), []
+        hosts.acquire('h', 0, c)
+
+        def wait(priority):
+            hosts.acquire('h', priority, c)
+            order.append(priority)
+            hosts.release('h')
+        big = threading.Thread(target=wait, args=(10 ** 9,))
+        big.start()
+        time.sleep(0.1)
+        small = threading.Thread(target=wait, args=(10 ** 6,))
+        small.start()
+        time.sleep(0.1)
+        hosts.release('h')
+        big.join(5)
+        small.join(5)
+        self.assertEqual(order, [10 ** 6, 10 ** 9])
+
+    def test_hosts_lower_on_busy_and_raise_again(self):
+        hosts, c = download.Hosts(most=4, start=3), download.Control()
+        for _ in range(3):
+            hosts.acquire('h', 1, c)
+        hosts.busy_signal('h')
+        self.assertEqual(hosts.limit('h'), 2)
+        for _ in range(3):
+            hosts.release('h')
+        with mock.patch.object(download, 'RAMP', 0):
+            hosts.acquire('h', 1, c)
+        self.assertEqual(hosts.limit('h'), 3)
+
+
+def make_big_zip(path, members=6, size=256 * 1024):
+    """A zip like a pack, several members stored and one deflated. Returns the bytes and (name, header_offset, data length) of each."""
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_STORED) as z:
+        z.writestr('LastbookData/', b'')
+        for i in range(members):
+            z.writestr(f'LastbookData/library-data/m{i}.bin', os.urandom(size))
+        z.writestr(zipfile.ZipInfo('LastbookData/library-data/text.txt'), b'words ' * 50_000, compress_type=zipfile.ZIP_DEFLATED)
+    with zipfile.ZipFile(path) as z:
+        info = [(i.filename, i.header_offset, i.compress_size) for i in z.infolist()]
+    return Path(path).read_bytes(), info
+
+
+class Repair(Base):
+    """A large zip that does not match on the disk is repaired from its central directory, not downloaded again."""
+
+    def setUp(self):
+        super().setUp()
+        for name, value in (('REPAIR_MIN', 0), ('TAIL', 4096)):
+            p = mock.patch.object(download, name, value)
+            p.start()
+            self.addCleanup(p.stop)
+        self.big, self.members = make_big_zip(self.tmp / 'big.zip')
+        self.files.data['big.zip'] = self.big
+
+    def dl(self, sha256=None, connections=1):
+        return download.Download(f'{self.base}/big.zip', self.tmp / 'dl' / 'big.zip', len(self.big), sha256 or sha(self.big),
+                                 download.Control(), allowed=ALLOWED, context=self.ctx, connections=connections)
+
+    def test_damaged_member_fetched_again_alone(self):
+        name, offset, length = self.members[3]
+        at = offset + 200 + length // 2
+        d = self.dl()
+        with flipped_write(d.part, at=at):
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        asked = _requested(self.files.log, 'big.zip')
+        self.assertEqual(asked[0], None)                                    # the download itself
+        again = asked[1:]
+        self.assertTrue(all(r is not None for r in again), again)           # then only parts, never the whole file
+        self.assertTrue(any(a <= at <= b for a, b in again), again)
+        self.assertLess(sum(b - a + 1 for a, b in again), len(self.big) // 4)
+
+    def test_damaged_deflated_member(self):
+        name, offset, length = self.members[-1]
+        d = self.dl()
+        with flipped_write(d.part, at=offset + 100 + length // 2):
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+
+    def test_damaged_central_directory(self):
+        d = self.dl()
+        with flipped_write(d.part, at=len(self.big) - 300):
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+
+    def test_hash_from_the_disk_matches(self):
+        """The file on the disk is right, the hash taken while downloading is not (2026-11-17): it is used, nothing fetched again."""
+        d = self.dl()
+        real = hashlib.sha256
+
+        class Wrong:
+            def __init__(self):
+                self.h, self.n = real(), 0
+
+            def update(self, b):
+                self.n += 1
+                self.h.update(b if self.n != 3 else b[:-1])
+
+            def __getattr__(self, k):
+                return getattr(self.h, k)
+        calls = []
+
+        def make(*a):
+            calls.append(1)
+            return Wrong() if len(calls) == 1 else real(*a)
+        with mock.patch.object(download.hashlib, 'sha256', make):
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        self.assertEqual(_requested(self.files.log, 'big.zip'), [None])
+
+    def test_cannot_match_is_kept(self):
+        """A zip whose every member is right but whose SHA-256 is not the published one: the file on the server is not the one
+        Lastbook expects. Nothing is thrown away and nothing downloaded again: the job fails with checksum, kept."""
+        d = self.dl(sha256='0' * 64)
+        with self.assertRaises(download.Failed) as e:
+            d.run()
+        self.assertEqual(e.exception.code, 'checksum')
+        self.assertTrue(e.exception.extra.get('kept'))
+        self.assertEqual(Path(d.part).stat().st_size, len(self.big))
+        self.files.log.clear()
+        with self.assertRaises(download.Failed):
+            self.dl(sha256='0' * 64).run()                                  # Retry checks it again, from the disk
+        self.assertNotIn(None, _requested(self.files.log, 'big.zip'))
+
+    def test_damaged_in_pieces(self):
+        d = self.dl(connections=4)
+        with mock.patch.object(download, 'SEGMENT', 64 * 1024), mock.patch.object(download, 'SEGMENTED_MIN', 0), \
+                flipped_write(d.part, at=self.members[2][1] + 500):
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+
+
+class Parallel(Base):
+    """A job's items download at once; they are put in place in order."""
+
+    def test_items_download_at_once_smallest_first(self):
+        self.files.pace = 0.02
+        s = self.setup()
+        s.start('small', True)
+        seen = []
+        t0 = time.time()
+        while time.time() - t0 < 30:
+            j = s.public_job()
+            seen.append(tuple(i['state'] for i in j['items']))
+            if j['state'] in ('done', 'failed'):
+                break
+            time.sleep(0.01)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertIn(('downloading', 'downloading'), seen)                 # both at once
+        self.assertIn(('downloading', 'downloaded'), seen)                  # the smaller one done first, waiting its turn
+        self.assertGreaterEqual(self.files.most, 2)
+
+    def test_failed_item_shows_at_once_and_the_rest_goes_on(self):
+        self.files.data.pop('model.gguf')
+        self.files.pace = 0.02
+        s = self.setup()
+        s.start('small', True)
+        early = None
+        t0 = time.time()
+        while time.time() - t0 < 30:
+            j = s.public_job()
+            if j['items'][1]['state'] == 'failed' and j['state'] != 'failed':
+                early = j
+                break
+            time.sleep(0.01)
+        self.assertIsNotNone(early, 'the model did not show as failed while the pack went on')
+        self.assertEqual(early['items'][0]['state'], 'downloading')
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'failed')
+        self.assertEqual([i['state'] for i in j['items']], ['done', 'failed'])
+
+    def test_pause_stops_every_item(self):
+        self.files.pace = 0.02
+        s = self.setup()
+        s.start('small', True)
+        time.sleep(0.3)
+        j = s.pause()
+        self.assertEqual(j['state'], 'paused')
+        self.assertEqual([i['state'] for i in j['items']], ['paused', 'paused'])
+        self.assertTrue(all(i['bytes_done'] > 0 for i in j['items']))
+        self.files.pace = 0
+        s.resume()
+        self.assertEqual(self.wait(s)['state'], 'done')
+
+    def test_restart_with_a_downloaded_item(self):
+        """An item downloaded and waiting its turn when Lastbook stopped is paused, then put in place without a byte fetched."""
+        s = self.setup()
+        s.start('small', True)
+        self.wait(s)
+        self.assertEqual(s.public_job()['state'], 'done')
+        job = json.loads(api._job_file(self.settings).read_text())
+        job['state'] = 'waiting'
+        for i in job['items']:
+            i['state'] = 'downloaded'
+        api._job_file(self.settings).write_text(json.dumps(job))
+        j = self.setup().public_job()
+        self.assertEqual(j['state'], 'paused')
+        self.assertEqual({i.get('paused_from') for i in j['items']}, {'downloaded'})
 
 
 class Unpacking(Base):

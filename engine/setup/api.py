@@ -29,7 +29,21 @@ SAVE_EVERY = 2.0
 RECOMMEND_MARGIN = 5 * 10 ** 9     # beyond what the install needs, so the disk is not left full
 RECOMMEND_MARGIN_MAX = 20 * 10 ** 9
 MAX_BODY = 64 * 1024
-ACTIVE = ('waiting', 'downloading', 'verifying', 'unpacking', 'activating')
+ACTIVE = ('waiting', 'downloading', 'downloaded', 'verifying', 'unpacking', 'activating')
+
+
+def _job_state(items, now):
+    """The job's state from its items, which download at once: downloading while any does (so Pause shows), else what the item
+    being put in place is doing, else waiting."""
+    states = [i['state'] for i in items]
+    if 'downloading' in states:
+        return 'downloading'
+    for s in states:
+        if s in ('verifying', 'unpacking', 'activating'):
+            return s
+    if any(s in ('waiting', 'downloaded') for s in states):
+        return 'waiting'
+    return now
 
 
 def _now():
@@ -103,6 +117,7 @@ class Setup:
         self._llm = llm_local
         self.lock = threading.RLock()
         self.job, self.control, self.thread = None, None, None
+        self.hosts = None          # download.Hosts: each server's connections, shared by a running job's files
         self.sources = {}          # file name -> a file already on this computer the person chose with `use`
         self.ai_measure, self.measuring = None, False
         self.deleting = set()
@@ -210,24 +225,21 @@ class Setup:
         return self._on_disk(plan, it), it['bytes_total']
 
     @staticmethod
-    def _on_disk(plan, it):
-        """Bytes of this item already downloaded, from the files themselves."""
+    def _item_files(it, plan):
+        """The files of one item, as the downloader takes them."""
         if it['kind'] == 'pack' and plan.get('pack'):
-            plan_files = plan['pack']['files']
-        elif it['kind'] == 'map' and plan.get('map'):
-            plan_files = plan['map']['files']
-        elif it['kind'] == 'addresses' and plan.get('addresses'):
-            plan_files = plan['addresses']['files']
-        else:
-            plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
-        n = 0
-        for f in plan_files:
-            for p in (Path(plan['work']) / 'downloads' / f['name'], Path(plan['work']) / 'downloads' / (f['name'] + '.part')):
-                try:
-                    n += p.stat().st_size
-                except OSError:
-                    pass
-        return n
+            return plan['pack']['files']
+        if it['kind'] == 'map' and plan.get('map'):
+            return plan['map']['files']
+        if it['kind'] == 'addresses' and plan.get('addresses'):
+            return plan['addresses']['files']
+        m = plan.get('model')
+        return [{'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256']}] if m else []
+
+    @classmethod
+    def _on_disk(cls, plan, it):
+        """Bytes of this item already downloaded, from the files themselves (a file in segments: from its .part.json)."""
+        return sum(download.done_on_disk(Path(plan['work']) / 'downloads' / f['name']) for f in cls._item_files(it, plan))
 
     def _save_job(self):
         """To the app's own settings folder. A save that fails stops the job (raises OSError)."""
@@ -815,7 +827,9 @@ class Setup:
             if it is not None:
                 it['state'] = state
                 it.update(kw)
-            self.job['state'] = state
+                self.job['state'] = _job_state(self.job['items'], state)
+            else:
+                self.job['state'] = state
             self._save_job()
 
     def _fail(self, it, code, message, **extra):
@@ -834,48 +848,139 @@ class Setup:
             print('setup: could not save the job:', e, flush=True)
 
     def _work(self, control):
+        """Every item's files download at once (each server's connections shared, the item with the least still to come first),
+        while the items are put in place one by one in their order: the pack's library first, since the map, the address index
+        and the model all go into it. An item whose download failed fails the job when its turn comes; the items before it are
+        put in place first. A repair checks the library before it knows whether the pack is needed, so it runs in order."""
         job = self.job
         plan = job['plan']
-        it = None
+        it, fetchers, outcome = None, [], None
         try:
             work = Path(plan['work'])
             (work / 'downloads').mkdir(parents=True, exist_ok=True)
-            for it in job['items']:
-                if it['state'] == 'done':
-                    continue
+            self.hosts = download.Hosts()
+            todo = [i for i in job['items'] if i['state'] != 'done']
+            results, ready = {}, {}
+            if not plan.get('repair'):
+                self._room_for(todo, plan, work)
+                for i in todo:
+                    key = (i['kind'], i['id'])
+                    ready[key] = threading.Event()
+                    t = threading.Thread(target=self._prefetch, args=(i, plan, work, control, results, ready[key]), daemon=True,
+                                         name=f'setup-fetch-{i["kind"]}')
+                    fetchers.append(t)
+                    t.start()
+            for it in todo:
+                got = None
+                if fetchers:
+                    key = (it['kind'], it['id'])
+                    while not ready[key].wait(0.5):
+                        control.check()
+                    kind, got = results[key]
+                    if kind == 'err':
+                        raise got
                 if it['kind'] == 'pack':
-                    self._do_pack(it, plan, work, control)
+                    self._do_pack(it, plan, work, control, got)
                 elif it['kind'] == 'map':
-                    self._do_map(it, plan, work, control)
+                    self._do_map(it, plan, work, control, got)
                 elif it['kind'] == 'addresses':
-                    self._do_addresses(it, plan, work, control)
+                    self._do_addresses(it, plan, work, control, got)
                 else:
-                    self._do_model(it, plan, work, control)
+                    self._do_model(it, plan, work, control, got)
                 with self.lock:
                     it['state'], it['rate_bps'], it['eta_s'] = 'done', 0, None
                     self._save_job()
             it = None
             self._finish_job(plan, work)
-        except download.Stopped as s:
+        except BaseException as e:
+            outcome = e
+        if any(t.is_alive() for t in fetchers):     # the job stopped while other items were still downloading: they stop too
+            if not control.ev.is_set():
+                control.stop('failed')
+            for t in fetchers:
+                t.join(60)
+        self._after(job, it, outcome)
+
+    def _after(self, job, it, outcome):
+        """The job's state once its thread ends: paused, failed (the other items back to waiting, with what they have), or done."""
+        if outcome is None:
+            return
+        if isinstance(outcome, download.Stopped):
             with self.lock:
-                if s.why == 'paused':
-                    if it is not None:
-                        it['state'], it['rate_bps'], it['eta_s'] = 'paused', 0, None
+                if outcome.why == 'paused':
+                    for i in job['items']:
+                        if i['state'] in ACTIVE:
+                            i['state'], i['rate_bps'], i['eta_s'] = 'paused', 0, None
                     job['state'] = 'paused'
                 self._save_quietly()
-        except download.Failed as e:
-            self._fail(it, e.code, e.message, **e.extra)
-        except install.Refused as e:
-            self._fail(it, e.code, e.message)
-        except OSError as e:
-            if download.disk_full(e):
+            return
+        if isinstance(outcome, download.Failed):
+            self._fail(it, outcome.code, outcome.message, **outcome.extra)
+        elif isinstance(outcome, install.Refused):
+            self._fail(it, outcome.code, outcome.message)
+        elif isinstance(outcome, OSError):
+            if download.disk_full(outcome):
                 self._fail(it, 'no_space', 'The disk filled up. Free some space, then try again.')
             else:
-                traceback.print_exc()
-                self._fail(it, 'unpack' if it and job['state'] == 'unpacking' else 'network', f'Lastbook could not write a file ({type(e).__name__}: {e.strerror or e}).')
-        except Exception as e:
-            traceback.print_exc()
-            self._fail(it, 'activate', f'Setup stopped on an internal error ({type(e).__name__}).')
+                traceback.print_exception(outcome)
+                self._fail(it, 'unpack' if it and it['state'] == 'unpacking' else 'network',
+                           f'Lastbook could not write a file ({type(outcome).__name__}: {outcome.strerror or outcome}).')
+        elif isinstance(outcome, Exception):
+            traceback.print_exception(outcome)
+            self._fail(it, 'activate', f'Setup stopped on an internal error ({type(outcome).__name__}).')
+        else:
+            raise outcome
+        with self.lock:
+            for i in job['items']:
+                if i is not it and i['state'] in ACTIVE:
+                    i['state'], i['rate_bps'], i['eta_s'] = 'waiting', 0, None
+            self._save_quietly()
+
+    def _prefetch(self, it, plan, work, control, results, ready):
+        """One item's files, in a thread of its own. The result waits in `results` for the item's turn to be put in place; an item
+        that cannot be downloaded shows as failed at once, while the others go on."""
+        key = (it['kind'], it['id'])
+        try:
+            got = self._fetch_item(it, plan, work, control)
+            results[key] = ('ok', got)
+            with self.lock:
+                if not control.ev.is_set() and it['state'] in ACTIVE:
+                    it['state'], it['rate_bps'], it['eta_s'] = 'downloaded', 0, None
+                    it['bytes_done'] = it['bytes_total']
+                    self.job['state'] = _job_state(self.job['items'], self.job['state'])
+                    self._save_quietly()
+        except BaseException as e:
+            results[key] = ('err', e)
+            if not isinstance(e, download.Stopped):
+                code = getattr(e, 'code', None) or ('no_space' if download.disk_full(e) else 'network')
+                message = getattr(e, 'message', None) or f'{type(e).__name__}: {e}'
+                print(f'setup: {it["title"]} could not be downloaded ({code}): {message}', flush=True)
+                with self.lock:
+                    it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', {'code': code, 'message': message}, 0, None
+                    self.job['state'] = _job_state(self.job['items'], self.job['state'])
+                    self._save_quietly()
+        finally:
+            ready.set()
+
+    def _fetch_item(self, it, plan, work, control):
+        got, offset = [], 0
+        for f in self._item_files(it, plan):
+            got.append(self._get_file(it, f, plan, work, control, offset))
+            offset += f['size']
+        return got
+
+    def _room_for(self, items, plan, work):
+        """Everything still to download, at once, must fit (each file on its own is checked again as it starts)."""
+        still = 0
+        for it in items:
+            for f in self._item_files(it, plan):
+                if f['name'] not in plan['sources']:
+                    still += max(f['size'] - download.done_on_disk(work / 'downloads' / f['name']), 0)
+        if still:
+            free, _ = hardware.disk_of(work)
+            if free < still + 512 * 2 ** 20:
+                raise download.Failed('no_space', f'Downloading needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.',
+                                      need_bytes=still, free_bytes=free)
 
     def _get_file(self, it, f, plan, work, control, offset):
         """The file, checked against its SHA-256: one already on this computer, or a download. Returns its path."""
@@ -902,10 +1007,7 @@ class Setup:
             print(f'setup: {src} does not match; downloading instead', flush=True)
         dest = work / 'downloads' / name
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
-            try:
-                still = f['size'] - os.path.getsize(str(dest) + '.part')
-            except OSError:
-                still = f['size']
+            still = max(f['size'] - download.done_on_disk(dest), 0)
             free, _ = hardware.disk_of(work)
             if free < still + 512 * 2 ** 20:
                 raise download.Failed('no_space', f'Downloading {name} needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.',
@@ -914,7 +1016,8 @@ class Setup:
             self._set(it, 'downloading')
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
                                   lambda done, total, phase: tracker.progress(offset + done, it['bytes_total'], phase),
-                                  allowed=self.allowed, context=self.context)
+                                  allowed=self.allowed, context=self.context, connections=download.CONNECTIONS,
+                                  hosts=self.hosts)
             try:
                 return d.run(), True
             except download.BadChecksum:
@@ -924,7 +1027,7 @@ class Setup:
                 plan['retried'][name] = tries + 1
                 print(f'setup: {name} failed its checksum; downloading it once more', flush=True)
 
-    def _do_pack(self, it, plan, work, control):
+    def _do_pack(self, it, plan, work, control, got=None):
         pack = plan['pack']
         if plan.get('repair') and 'damaged' not in plan:
             bad = self._check_library(it, Path(plan['target']), control)
@@ -940,11 +1043,8 @@ class Setup:
             with self.lock:
                 it['bytes_total'], it['bytes_done'] = pack['download_bytes'], 0
         staged = work / 'unpack'
-        got, offset = [], 0
-        for f in pack['files']:
-            path, ours = self._get_file(it, f, plan, work, control, offset)
-            got.append((path, ours))
-            offset += f['size']
+        if got is None:
+            got = self._fetch_item(it, plan, work, control)
         tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=pack['installed_bytes'])
         total = sum(install.check_zip(path, pack['installed_bytes'])[1] for path, _ in got)   # every member checked before any is written
@@ -967,15 +1067,12 @@ class Setup:
             if ours:
                 os.unlink(path)
 
-    def _do_map(self, it, plan, work, control):
+    def _do_map(self, it, plan, work, control, got=None):
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
         map set at once; on its own it is staged and switched in when the app restarts (install._apply_map)."""
         mp = plan['map']
-        got, offset = [], 0
-        for f in mp['files']:
-            path, ours = self._get_file(it, f, plan, work, control, offset)
-            got.append((path, ours))
-            offset += f['size']
+        if got is None:
+            got = self._fetch_item(it, plan, work, control)
         tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=mp['installed_bytes'])
         staged = work / 'unpack-map'
@@ -994,7 +1091,7 @@ class Setup:
             if ours:
                 os.unlink(path)
 
-    def _do_addresses(self, it, plan, work, control):
+    def _do_addresses(self, it, plan, work, control, got=None):
         entry = plan['addresses']
         relative = 'derived/geo/addresses/' + entry['id'] + '.sqlite'
         directories = {'', 'derived', 'derived/geo', 'derived/geo/addresses'}
@@ -1007,12 +1104,8 @@ class Setup:
             if not path.is_file() or path.stat().st_size != entry['installed_bytes']:
                 raise install.Refused('unpack', 'The address index is missing or the wrong size.')
 
-        got = []
-        offset = 0
-        for file in entry['files']:
-            path, ours = self._get_file(it, file, plan, work, control, offset)
-            got.append((path, ours))
-            offset += file['size']
+        if got is None:
+            got = self._fetch_item(it, plan, work, control)
         for path, _ in got:
             install.check_zip(path, entry['installed_bytes'], allowed)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=entry['installed_bytes'])
@@ -1030,9 +1123,11 @@ class Setup:
             if ours:
                 os.unlink(path)
 
-    def _do_model(self, it, plan, work, control):
+    def _do_model(self, it, plan, work, control, got=None):
         m = plan['model']
-        path, ours = self._get_file(it, {'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256']}, plan, work, control, 0)
+        if got is None:
+            got = self._fetch_item(it, plan, work, control)
+        path, ours = got[0]
         lib = (work / 'unpack' / DATA_NAME) if plan['switch'] else Path(self.current or plan['target'])
         dest = lib / 'models' / m['file']
         dest.parent.mkdir(parents=True, exist_ok=True)

@@ -400,8 +400,8 @@
                   model: [['downloading', 'Download'], ['verifying', 'Check'], ['activating', 'Finish']] };
   STEPS.map = [['downloading', 'Download'], ['unpacking', 'Unpack']];   // the engine's map item: waiting, downloading, unpacking, done
   STEPS.addresses = STEPS.map;
-  const WORD = { waiting: 'Waiting', downloading: 'Downloading', paused: 'Paused', verifying: 'Checking', unpacking: 'Unpacking', activating: 'Finishing', done: 'Done', failed: 'Stopped' };
-  const ACTIVE = new Set(['waiting', 'downloading', 'verifying', 'unpacking', 'activating']);
+  const WORD = { waiting: 'Waiting', downloading: 'Downloading', downloaded: 'Downloaded', paused: 'Paused', verifying: 'Checking', unpacking: 'Unpacking', activating: 'Finishing', done: 'Done', failed: 'Stopped' };
+  const ACTIVE = new Set(['waiting', 'downloading', 'downloaded', 'verifying', 'unpacking', 'activating']);
   let shapeKey = '', lastAct = null;   // lastAct: the button just pressed, so focus lands on what replaced it
 
   function errorBox(j) {
@@ -415,7 +415,8 @@
       })(),
       no_space: [`Not enough room on ${esc(diskName(d))}${e && e.need_bytes ? `: this needs ${size(e.need_bytes)}, and ${size(e.free_bytes)} is free` : ''}.`, 'Free some space, then retry, or go back and choose less.', 'retry'],
       network: ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
-      checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
+      checksum: e && e.kept ? ['Part of the download did not match its published checksum, so it was not used yet.', 'What was downloaded is kept. Retry checks it again and fetches only what is wrong.', 'retry']
+        : ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
       unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
       activate: ['The new library is ready but could not be switched in.', 'Retry, or close Lastbook and open it again.', 'retry'],
       cancelled: ['The download was cancelled.', 'Start again when you are ready.', 'back'],
@@ -428,13 +429,14 @@
     const steps = STEPS[it.kind] || STEPS.pack;
     const st = it.state === 'paused' && noDownload(it) ? (it.paused_from && it.paused_from !== 'downloading' ? it.paused_from : 'verifying')
       : it.state === 'paused' || it.state === 'waiting' ? 'downloading' : it.state === 'failed' ? FAILED_AT[errCode(it.error) || errCode(j.error)] || 'downloading' : it.state;
-    const at = it.state === 'done' ? steps.length : (it.state === 'waiting' || it.state === 'paused') && !it.bytes_done && !noDownload(it) ? -1 : Math.max(0, steps.findIndex(s => s[0] === st));
+    const fetched = it.state === 'downloaded' || (it.state === 'paused' && it.paused_from === 'downloaded');   /* downloaded and checked, waiting its turn to go in */
+    const at = it.state === 'done' ? steps.length : fetched ? afterFetch(steps) : (it.state === 'waiting' || it.state === 'paused') && !it.bytes_done && !noDownload(it) ? -1 : Math.max(0, steps.findIndex(s => s[0] === st));
     const busy = ['verifying', 'activating'].includes(it.state) || (it.state === 'unpacking' && !it.bytes_total);
     return `<div class="s-item${it.state === 'failed' ? ' bad' : ''}${it.state === 'done' ? ' ok' : ''}" data-item="${esc(it.id)}" data-kind="${esc(it.kind)}">
       <div class="s-item-h">${ico(it.kind === 'model' ? 'ai' : it.kind === 'map' ? 'map' : 'book', 's-ri')}<b>${esc(itemTitle(it))}</b><span class="s-state" data-f="word">${it.state === 'done' ? ico('ok') : ''}${Object.hasOwn(WORD, it.state) ? WORD[it.state] : ''}</span></div>
       <div class="s-bar new${busy && j.state !== 'paused' ? ' busy' : ''}" role="progressbar" aria-label="${esc(it.title)}" aria-valuemin="0" aria-valuemax="100" data-f="bar"><i></i></div>
       <p class="s-line" data-f="line"></p>
-      <ol class="s-steps" aria-label="Steps">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
+      <ol class="s-steps" aria-label="Steps">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' && !fetched ? 'now' : i === at && it.state === 'failed' ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
   const itemTitle = it => it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
@@ -442,7 +444,10 @@
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);
   const STOPPED = { verifying: 'Checking stopped', unpacking: 'Unpacking stopped', activating: 'Finishing stopped' };
-  const behind = it => { const items = (S.job && S.job.items) || [], i = items.findIndex(x => x.id === it.id && x.kind === it.kind); return items.slice(0, i).some(x => x.state !== 'done' && !noDownload(x)) };
+  /* the steps an item has behind it once its download is in and checked: everything up to the Check step, or the Download step */
+  const afterFetch = steps => { const c = steps.findIndex(s => s[0] === 'verifying'); return (c >= 0 ? c : steps.findIndex(s => s[0] === 'downloading')) + 1 };
+  /* items download at once, but go in one by one, in order: one downloaded early waits for those above it */
+  const behind = it => { const items = (S.job && S.job.items) || [], i = items.findIndex(x => x.id === it.id && x.kind === it.kind); return items.slice(0, i).some(x => x.state !== 'done') };
   function fillItem(el, it) {
     const pct = it.bytes_total ? Math.min(100, it.bytes_done / it.bytes_total * 100) : it.state === 'done' ? 100 : 0;
     const bar = el.querySelector('[data-f=bar]'), line = el.querySelector('[data-f=line]');
@@ -452,8 +457,10 @@
     let t = '';
     if (it.state === 'done') t = it.bytes_total ? size(it.bytes_total) : '';
     else if (it.state === 'downloading') t = [`${size(it.bytes_done)} of ${size(it.bytes_total)}`, rate(it.rate_bps), eta(it.eta_s)].filter(Boolean).join(' · ');
+    else if (it.state === 'downloaded' || (it.state === 'paused' && it.paused_from === 'downloaded')) t = behind(it) ? 'Downloaded. It goes in after the one above.' : 'Downloaded.';
+    else if (it.state === 'failed' && it.error && it.error.message && S.job && S.job.state !== 'failed') t = it.error.message;
     else if (it.state === 'paused' && noDownload(it)) t = `${STOPPED[it.paused_from] || 'Stopped'}${it.paused_from === 'unpacking' && it.bytes_done && it.bytes_total ? ` at ${size(it.bytes_done)} of ${size(it.bytes_total)}` : ''}. Nothing to download.`;
-    else if ((it.state === 'waiting' || it.state === 'paused') && !it.bytes_done) t = it.bytes_total ? `${size(it.bytes_total)} to download${behind(it) ? ', after the one above' : ''}` : '';
+    else if ((it.state === 'waiting' || it.state === 'paused') && !it.bytes_done) t = it.bytes_total ? `${size(it.bytes_total)} to download` : '';
  else if (it.state === 'paused' || it.state === 'waiting' || it.state === 'failed') t = it.bytes_total && it.bytes_done ? `${size(it.bytes_done)} of ${size(it.bytes_total)}` : '';
     else if (it.state === 'verifying') t = 'Making sure every byte is right';
     else if (it.state === 'unpacking') t = it.bytes_total ? `Unpacking: ${size(it.bytes_done)} of ${size(it.bytes_total)}${it.eta_s != null ? ' · ' + eta(it.eta_s) : ''}` : 'Opening the files into the library folder';

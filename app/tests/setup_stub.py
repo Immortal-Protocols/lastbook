@@ -111,6 +111,32 @@ SCENARIOS = {
 
 SCENARIOS['hostile']['hardware']['disks'][0]['name'] = X
 
+
+def _item(id_, kind, title, state, done, total, **kw):
+    return {'id': id_, 'kind': kind, 'title': title, 'state': state, 'bytes_done': done, 'bytes_total': total, 'rate_bps': 0, 'eta_s': None,
+            'error': None, 'source': 'download', **kw}
+
+
+# Items download at once (engine/setup/api.py): fixed pictures of a job, which do not move. `snapshot` is the job as the engine sends it.
+_PAR = [_item('all', 'pack', 'All', 'downloading', 7_700_000_000, 387_878_571_619, rate_bps=4_100_000, eta_s=92_500),
+        _item('AZ', 'map', 'Arizona', 'downloaded', 1_536_419_242, 1_536_419_242),
+        _item('AZ', 'addresses', 'Arizona address search', 'downloading', 90_000_000, 136_180_882, rate_bps=1_200_000, eta_s=38),
+        _item('gemma-4-26b-a4b', 'model', 'Gemma 4 26B A4B', 'failed', 3_200_000_000, 16_947_541_728,
+              error={'code': 'network', 'message': 'The download server refused the file (HTTP 404).'})]
+SCENARIOS['parallel'] = dict(hardware=hw('windows', ram=32, free=2000), recommend={'pack': 'all', 'ai': True, 'why': ''},
+                             snapshot={'id': 'j1', 'state': 'downloading', 'items': _PAR, 'error': None, 'folder': WIN})
+SCENARIOS['parallel-paused'] = dict(hardware=hw('windows', ram=32, free=2000), recommend={'pack': 'all', 'ai': True, 'why': ''},
+                                    snapshot={'id': 'j1', 'state': 'paused', 'folder': WIN, 'error': None, 'items': [
+                                        {**_PAR[0], 'state': 'paused', 'rate_bps': 0, 'eta_s': None},
+                                        {**_PAR[1], 'state': 'paused', 'paused_from': 'downloaded'},
+                                        {**_PAR[2], 'state': 'paused', 'rate_bps': 0, 'eta_s': None},
+                                        {**_PAR[3], 'state': 'waiting', 'error': None}]})
+SCENARIOS['kept'] = dict(hardware=hw('windows', ram=32, free=2000), recommend={'pack': 'all', 'ai': False, 'why': ''},
+                         snapshot={'id': 'j1', 'state': 'failed', 'folder': WIN, 'items': [
+                             _item('all', 'pack', 'All', 'failed', 387_878_571_619, 387_878_571_619,
+                                   error={'code': 'checksum', 'message': 'Lastbook-All.zip still does not match.', 'kept': True})],
+                                   'error': {'code': 'checksum', 'message': 'Lastbook-All.zip still does not match.', 'kept': True}})
+
 RATE = 2.2 * GB        # pretend bytes per second, so a whole run takes about half a minute
 STEP_S = 2.5           # seconds each of checking, unpacking and finishing takes
 
@@ -126,6 +152,8 @@ class Stub:
         self.fault = s.get('fault')
         self.found = s.get('found', [])
         self.folder = (self.current or {}).get('folder') or (WIN if s['hardware']['os'] == 'windows' else MAC)
+        if 'snapshot' in s:
+            self.job = {**copy.deepcopy(s['snapshot']), 'frozen': True, 'started': time.time()}
         if 'job' in s:
             j = s['job']
             self._make(j['pack'], j['ai'])
@@ -208,6 +236,8 @@ class Stub:
 
     def tick(self):
         j = self.job
+        if j and j.get('frozen'):
+            return
         if not j or j['state'] in ('paused', 'failed', 'done'):
             if j:
                 self.last = time.time()

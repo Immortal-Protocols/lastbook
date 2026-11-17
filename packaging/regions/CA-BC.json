@@ -1,0 +1,188 @@
+{
+ "id": "CA-BC",
+ "name": "British Columbia",
+ "country": "CA",
+ "kind": "province",
+ "abbreviation": "BC",
+ "bbox": [
+  -139.0613,
+  48.2968,
+  -114.0541,
+  60.0048
+ ],
+ "bbox_source": {
+  "dataset": "Province of British Columbia – Boundary Terrestrial",
+  "publisher": "GeoBC Branch, Government of British Columbia",
+  "url": "https://catalogue.data.gov.bc.ca/dataset/30aeb5c1-4285-46c8-b60b-15b1a6f4258b",
+  "licence": "OGL-BC",
+  "method": "Min/max of every vertex of the polygon, reprojected from BC Albers (EPSG:3005) to EPSG:4326. See docs/regions-proposed.json.",
+  "checked": "2026-11-16"
+ },
+ "includes": "Local streets, buildings, terrain and crops, plus water, help and resource points",
+ "sources": {
+  "terrain": [
+   {
+    "dataset": "Medium Resolution Digital Elevation Model (MRDEM), 30 m digital terrain model – CanElevation Series",
+    "publisher": "Natural Resources Canada",
+    "url": "https://open.canada.ca/data/en/dataset/18752265-bda3-498c-a4ba-9dfe68cb98da",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": [
+     "Contains information licensed under the Open Government Licence – Canada.",
+     "Produced in part using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30."
+    ],
+    "access": "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm.vrt",
+    "notes": "Cloud-optimised GeoTIFFs in Canada Atlas Lambert (EPSG:3979), heights in CGVD2013. NRCan states the model is in part produced from Copernicus WorldDEM-30, so its notice is carried too. HRDEM (lidar) is already merged into MRDEM where it exists."
+   }
+  ],
+  "water": [
+   {
+    "dataset": "Freshwater Atlas – Lakes",
+    "publisher": "GeoBC Branch, Government of British Columbia",
+    "url": "https://catalogue.data.gov.bc.ca/dataset/freshwater-atlas-lakes",
+    "licence": "OGL-BC",
+    "licence_url": "https://www2.gov.bc.ca/gov/content/data/policy-standards/open-data/open-government-licence-bc",
+    "attribution": "Contains information licensed under the Open Government Licence – British Columbia.",
+    "access": "https://openmaps.gov.bc.ca/geo/pub/wfs?typeName=pub:WHSE_BASEMAPPING.FWA_LAKES_POLY"
+   },
+   {
+    "dataset": "Freshwater Atlas – Manmade Waterbodies",
+    "publisher": "GeoBC Branch, Government of British Columbia",
+    "url": "https://catalogue.data.gov.bc.ca/dataset/freshwater-atlas-manmade-waterbodies",
+    "licence": "OGL-BC",
+    "licence_url": "https://www2.gov.bc.ca/gov/content/data/policy-standards/open-data/open-government-licence-bc",
+    "attribution": "Contains information licensed under the Open Government Licence – British Columbia.",
+    "access": "https://openmaps.gov.bc.ca/geo/pub/wfs?typeName=pub:WHSE_BASEMAPPING.FWA_MANMADE_WATERBODIES_POLY",
+    "notes": "Reservoirs and other made waterbodies. Licence checked on the catalogue record, 2026-11-16."
+   },
+   {
+    "dataset": "Freshwater Atlas – Stream Network",
+    "publisher": "GeoBC Branch, Government of British Columbia",
+    "url": "https://catalogue.data.gov.bc.ca/dataset/freshwater-atlas-stream-network",
+    "licence": "OGL-BC",
+    "licence_url": "https://www2.gov.bc.ca/gov/content/data/policy-standards/open-data/open-government-licence-bc",
+    "attribution": "Contains information licensed under the Open Government Licence – British Columbia.",
+    "access": "https://openmaps.gov.bc.ca/geo/pub/wfs?typeName=pub:WHSE_BASEMAPPING.FWA_STREAM_NETWORKS_SP",
+    "notes": "Named streams and rivers only; the full network is very large."
+   },
+   {
+    "dataset": "BC Dams",
+    "publisher": "Water Management, Government of British Columbia",
+    "url": "https://catalogue.data.gov.bc.ca/dataset/bc-dams",
+    "licence": "OGL-BC",
+    "licence_url": "https://www2.gov.bc.ca/gov/content/data/policy-standards/open-data/open-government-licence-bc",
+    "attribution": "Contains information licensed under the Open Government Licence – British Columbia.",
+    "access": "https://openmaps.gov.bc.ca/geo/pub/wfs?typeName=pub:WHSE_WATER_MANAGEMENT.WRIS_DAMS_PUBLIC_SVW",
+    "notes": "Dam name, function, type, height, year and status only. The owner and safety officer columns name people, and are never read."
+   }
+  ],
+  "crops": [
+   {
+    "dataset": "Annual Crop Inventory",
+    "publisher": "Agriculture and Agri-Food Canada",
+    "url": "https://open.canada.ca/data/en/dataset/ba2645d5-4458-414d-b196-6303ac06c1c9",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": "Contains information licensed under the Open Government Licence – Canada.",
+    "access": "https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/{year}/ImageServer",
+    "notes": "30 m crop-type raster. Classes kept: orchards, other fruits, vineyards, berries, blueberry, cranberry, other berries."
+   }
+  ],
+  "buildings": [
+   {
+    "dataset": "The Open Database of Buildings (ODB), version 3",
+    "publisher": "Statistics Canada",
+    "url": "https://open.canada.ca/data/en/dataset/40e37a0f-1393-4e91-bd00-334dceb26e34",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": [
+     "Adapted from Statistics Canada, The Open Database of Buildings, version 3. This does not constitute an endorsement by Statistics Canada of this product.",
+     "Contains information licensed under the Open Government Licence – Canada."
+    ],
+    "access": "https://www150.statcan.gc.ca/n1/pub/34-26-0001/2018001/zip/{file}",
+    "notes": "Compiled by Statistics Canada from many municipal and provincial sources; each source and its own licence is listed in ODB_v3_data_providers.csv inside the download. Only outlines and heights are kept, never names, addresses or other attributes.",
+    "files": [
+     "ODB_v3_BC.zip"
+    ]
+   },
+   {
+    "dataset": "Canadian Building Footprints",
+    "publisher": "Microsoft",
+    "url": "https://github.com/microsoft/CanadianBuildingFootprints",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "Microsoft Canadian Building Footprints, under the Open Database License (ODbL).",
+    "access": "https://minedbuildings.z5.web.core.windows.net/legacy/canadian-buildings-v2/BritishColumbia.zip",
+    "notes": "Optional fill-in: used only in zoom-14 cells where ODB has no building. The repository was archived on 8 October 2026."
+   },
+   {
+    "dataset": "OpenStreetMap building heights",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "© OpenStreetMap contributors, under the Open Database License (ODbL).",
+    "notes": "tools/build_osm_heights.py, as for the US."
+   }
+  ],
+  "places": [
+   {
+    "dataset": "Canadian Geographical Names (CGN)",
+    "publisher": "Natural Resources Canada",
+    "url": "https://open.canada.ca/data/en/dataset/e27c6eba-3c5d-4051-9db2-082dc6411c2c",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": "Contains information licensed under the Open Government Licence – Canada.",
+    "access": "https://ftp.maps.canada.ca/pub/nrcan_rncan/vector/geobase_cgn_toponyme/prov_csv_eng/cgn_bc_csv_eng.zip"
+   },
+   {
+    "dataset": "OpenStreetMap named places",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "© OpenStreetMap contributors, under the Open Database License (ODbL).",
+    "notes": "Read from the region's roads file, as tools/build_places.py does for the US."
+   }
+  ],
+  "roads": [
+   {
+    "dataset": "OpenStreetMap",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "© OpenStreetMap contributors, under the Open Database License (ODbL).",
+    "access": "https://download.geofabrik.de/north-america/canada/british-columbia-latest-free.gpkg.zip",
+    "notes": "Streets, land use, water lines and help points, by tools/build_map.py, as for Southern California. Extract by Geofabrik."
+   }
+  ],
+  "addresses": [
+   {
+    "dataset": "Overture Maps addresses theme (Canadian rows: Statistics Canada National Address Register)",
+    "publisher": "Overture Maps Foundation / Statistics Canada",
+    "url": "https://docs.overturemaps.org/attribution/",
+    "licence": "StatCan-Open",
+    "licence_url": "https://www.statcan.gc.ca/en/reference/licence",
+    "attribution": "Adapted from Statistics Canada, National Address Register. This does not constitute an endorsement by Statistics Canada of this product.",
+    "access": "s3://overturemaps-us-west-2/release/{release}/theme=addresses/type=address/*",
+    "notes": "Overture lists these rows under the Statistics Canada Open Licence; the open.canada.ca record for the register lists OGL – Canada."
+   }
+  ]
+ },
+ "address": {
+  "postcode_pattern": "^[ABCEGHJ-NPRSTVXY][0-9][ABCEGHJ-NPRSTV-Z] ?[0-9][ABCEGHJ-NPRSTV-Z][0-9]$",
+  "postcode_format": "A1A 1A1",
+  "postcode_first_letters": [
+   "V"
+  ],
+  "region_abbreviation": "BC",
+  "country_name": "Canada",
+  "source": {
+   "dataset": "Addressing guidelines – Postal codes",
+   "publisher": "Canada Post",
+   "url": "https://www.canadapost-postescanada.ca/cpc/en/support/articles/addressing-guidelines/postal-codes.page"
+  }
+ },
+ "checked": "2026-11-16"
+}

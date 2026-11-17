@@ -1,0 +1,185 @@
+{
+ "id": "CA-ON",
+ "name": "Ontario",
+ "country": "CA",
+ "kind": "province",
+ "abbreviation": "ON",
+ "bbox": [
+  -95.1537,
+  41.6766,
+  -74.3201,
+  56.8594
+ ],
+ "bbox_source": {
+  "dataset": "Province (outer boundary of the Province of Ontario)",
+  "publisher": "Government of Ontario (Office of the Surveyor General, via Ontario GeoHub)",
+  "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open03/MapServer/0",
+  "licence": "OGL-Ontario",
+  "method": "Layer extent (NAD83) and the min/max of the polygon's vertices in EPSG:4326, which agree to 0.001°. See docs/regions-proposed.json.",
+  "checked": "2026-11-16"
+ },
+ "includes": "Local streets, buildings, terrain and crops, plus water, help and resource points",
+ "sources": {
+  "terrain": [
+   {
+    "dataset": "Medium Resolution Digital Elevation Model (MRDEM), 30 m digital terrain model – CanElevation Series",
+    "publisher": "Natural Resources Canada",
+    "url": "https://open.canada.ca/data/en/dataset/18752265-bda3-498c-a4ba-9dfe68cb98da",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": [
+     "Contains information licensed under the Open Government Licence – Canada.",
+     "Produced in part using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30."
+    ],
+    "access": "https://canelevation-dem.s3.ca-central-1.amazonaws.com/mrdem-30/mrdem-30-dtm.vrt",
+    "notes": "Cloud-optimised GeoTIFFs in Canada Atlas Lambert (EPSG:3979), heights in CGVD2013. NRCan states the model is in part produced from Copernicus WorldDEM-30, so its notice is carried too. HRDEM (lidar) is already merged into MRDEM where it exists."
+   }
+  ],
+  "water": [
+   {
+    "dataset": "Ontario Hydro Network (OHN) – Waterbody",
+    "publisher": "Government of Ontario",
+    "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/25",
+    "licence": "OGL-Ontario",
+    "licence_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "attribution": "Contains information licensed under the Open Government Licence – Ontario.",
+    "access": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/25",
+    "notes": "Lakes, ponds, reservoirs and wide rivers, with official names. The service names OGL – Ontario in its copyright text. #32 named the OHN Hydrographic Poly and Line records; those hold dams, rapids and falls, not lakes and rivers, so this layer and Watercourse are used instead."
+   },
+   {
+    "dataset": "Ontario Hydro Network (OHN) – Watercourse",
+    "publisher": "Government of Ontario",
+    "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/26",
+    "licence": "OGL-Ontario",
+    "licence_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "attribution": "Contains information licensed under the Open Government Licence – Ontario.",
+    "access": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/26",
+    "notes": "Rivers and streams."
+   },
+   {
+    "dataset": "Ontario Dam Inventory",
+    "publisher": "Government of Ontario",
+    "url": "https://open.canada.ca/data/en/dataset/b989f5fb-e5f7-4230-a53a-bfcd69754496",
+    "licence": "OGL-Ontario",
+    "licence_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "attribution": "Contains information licensed under the Open Government Licence – Ontario.",
+    "access": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open04/MapServer/0",
+    "notes": "Dam name and ownership type only."
+   }
+  ],
+  "crops": [
+   {
+    "dataset": "Annual Crop Inventory",
+    "publisher": "Agriculture and Agri-Food Canada",
+    "url": "https://open.canada.ca/data/en/dataset/ba2645d5-4458-414d-b196-6303ac06c1c9",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": "Contains information licensed under the Open Government Licence – Canada.",
+    "access": "https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/{year}/ImageServer",
+    "notes": "30 m crop-type raster. Classes kept: orchards, other fruits, vineyards, berries, blueberry, cranberry, other berries."
+   }
+  ],
+  "buildings": [
+   {
+    "dataset": "The Open Database of Buildings (ODB), version 3",
+    "publisher": "Statistics Canada",
+    "url": "https://open.canada.ca/data/en/dataset/40e37a0f-1393-4e91-bd00-334dceb26e34",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": [
+     "Adapted from Statistics Canada, The Open Database of Buildings, version 3. This does not constitute an endorsement by Statistics Canada of this product.",
+     "Contains information licensed under the Open Government Licence – Canada."
+    ],
+    "access": "https://www150.statcan.gc.ca/n1/pub/34-26-0001/2018001/zip/{file}",
+    "notes": "Compiled by Statistics Canada from many municipal and provincial sources; each source and its own licence is listed in ODB_v3_data_providers.csv inside the download. Only outlines and heights are kept, never names, addresses or other attributes.",
+    "files": [
+     "ODB_v3_ON_1.zip",
+     "ODB_v3_ON_2.zip",
+     "ODB_v3_ON_3.zip"
+    ]
+   },
+   {
+    "dataset": "Canadian Building Footprints",
+    "publisher": "Microsoft",
+    "url": "https://github.com/microsoft/CanadianBuildingFootprints",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "Microsoft Canadian Building Footprints, under the Open Database License (ODbL).",
+    "access": "https://minedbuildings.z5.web.core.windows.net/legacy/canadian-buildings-v2/Ontario.zip",
+    "notes": "Optional fill-in: used only in zoom-14 cells where ODB has no building. The repository was archived on 8 October 2026."
+   },
+   {
+    "dataset": "OpenStreetMap building heights",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "© OpenStreetMap contributors, under the Open Database License (ODbL).",
+    "notes": "tools/build_osm_heights.py, as for the US."
+   }
+  ],
+  "places": [
+   {
+    "dataset": "Canadian Geographical Names (CGN)",
+    "publisher": "Natural Resources Canada",
+    "url": "https://open.canada.ca/data/en/dataset/e27c6eba-3c5d-4051-9db2-082dc6411c2c",
+    "licence": "OGL-Canada",
+    "licence_url": "https://open.canada.ca/en/open-government-licence-canada",
+    "attribution": "Contains information licensed under the Open Government Licence – Canada.",
+    "access": "https://ftp.maps.canada.ca/pub/nrcan_rncan/vector/geobase_cgn_toponyme/prov_csv_eng/cgn_on_csv_eng.zip"
+   },
+   {
+    "dataset": "OpenStreetMap named places",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "© OpenStreetMap contributors, under the Open Database License (ODbL).",
+    "notes": "Read from the region's roads file, as tools/build_places.py does for the US."
+   }
+  ],
+  "roads": [
+   {
+    "dataset": "OpenStreetMap",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL-1.0",
+    "licence_url": "https://www.openstreetmap.org/copyright",
+    "attribution": "© OpenStreetMap contributors, under the Open Database License (ODbL).",
+    "access": "https://download.geofabrik.de/north-america/canada/ontario-latest-free.gpkg.zip",
+    "notes": "Streets, land use, water lines and help points, by tools/build_map.py, as for Southern California. Extract by Geofabrik."
+   }
+  ],
+  "addresses": [
+   {
+    "dataset": "Overture Maps addresses theme (Canadian rows: Statistics Canada National Address Register)",
+    "publisher": "Overture Maps Foundation / Statistics Canada",
+    "url": "https://docs.overturemaps.org/attribution/",
+    "licence": "StatCan-Open",
+    "licence_url": "https://www.statcan.gc.ca/en/reference/licence",
+    "attribution": "Adapted from Statistics Canada, National Address Register. This does not constitute an endorsement by Statistics Canada of this product.",
+    "access": "s3://overturemaps-us-west-2/release/{release}/theme=addresses/type=address/*",
+    "notes": "Overture lists these rows under the Statistics Canada Open Licence; the open.canada.ca record for the register lists OGL – Canada."
+   }
+  ]
+ },
+ "address": {
+  "postcode_pattern": "^[ABCEGHJ-NPRSTVXY][0-9][ABCEGHJ-NPRSTV-Z] ?[0-9][ABCEGHJ-NPRSTV-Z][0-9]$",
+  "postcode_format": "A1A 1A1",
+  "postcode_first_letters": [
+   "K",
+   "L",
+   "M",
+   "N",
+   "P"
+  ],
+  "region_abbreviation": "ON",
+  "country_name": "Canada",
+  "source": {
+   "dataset": "Addressing guidelines – Postal codes",
+   "publisher": "Canada Post",
+   "url": "https://www.canadapost-postescanada.ca/cpc/en/support/articles/addressing-guidelines/postal-codes.page"
+  }
+ },
+ "checked": "2026-11-16"
+}

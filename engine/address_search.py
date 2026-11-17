@@ -1,4 +1,9 @@
-"""Read-only address lookup using the state indexes installed with offline maps."""
+"""Read-only address lookup using the state indexes installed with offline maps.
+
+Outside the US an index is named for its region (CA-ON.sqlite, packaging/regions) and its `state` column holds that code.
+Canadian province names, their Canada Post abbreviations after a comma or before a postal code, and postal codes
+written A1A 1A1 pick a Canadian index. When no index for that province is installed, the words are read as before.
+"""
 import math
 import re
 import sqlite3
@@ -25,6 +30,14 @@ STATE_NAMES = (
 ).split('|')
 STATE_CODES = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA PR RI SC SD TN TX UT VT VA WA WV WI WY'.split()
 STATES = dict(zip((name.lower() for name in STATE_NAMES), STATE_CODES))
+# Canada's provinces and territories, with Canada Post's abbreviations. None of these abbreviations is a US code.
+PROVINCES = {'alberta': 'AB', 'british columbia': 'BC', 'manitoba': 'MB', 'new brunswick': 'NB', 'newfoundland and labrador': 'NL',
+             'nova scotia': 'NS', 'northwest territories': 'NT', 'nunavut': 'NU', 'ontario': 'ON', 'prince edward island': 'PE',
+             'quebec': 'QC', 'québec': 'QC', 'saskatchewan': 'SK', 'yukon': 'YT'}
+PROVINCE_CODES = set(PROVINCES.values())
+POSTCODE_FIRST = {'A': 'NL', 'B': 'NS', 'C': 'PE', 'E': 'NB', 'G': 'QC', 'H': 'QC', 'J': 'QC', 'K': 'ON', 'L': 'ON', 'M': 'ON',
+                  'N': 'ON', 'P': 'ON', 'R': 'MB', 'S': 'SK', 'T': 'AB', 'V': 'BC', 'Y': 'YT'}     # Canada Post; X is two territories
+CA_POSTCODE = re.compile(r'[\s,]*\b([ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z])\s?(\d[ABCEGHJ-NPRSTV-Z]\d)\s*$', re.I)
 ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty'.split()
 ORDINALS = 'zeroth first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth'.split()
 TO_DIGITS = {word: str(number) for number, word in enumerate(ONES)}
@@ -53,16 +66,44 @@ def street_forms(street):
     return list(dict.fromkeys(forms))
 
 
-def _parts(query):
+def _canada(remainder, installed=()):
+    """A Canadian postal code and province at the end of the text: (the rest, region code or '', postcode or '')."""
+    postcode = province = ''
+    match = CA_POSTCODE.search(remainder)
+    if match:
+        postcode = f'{match[1]} {match[2]}'.upper()
+        remainder = remainder[:match.start()]
+    parts = [part.strip() for part in remainder.split(',')]
+    words = remainder.replace(',', ' ').split()
+    if len(parts) > 1 and parts[-1].upper() in PROVINCE_CODES:                  # "Toronto, ON"
+        province = parts[-1].upper()
+        remainder = ','.join(parts[:-1])
+    elif len(words) > 1 and words[-1].upper() in PROVINCE_CODES and (postcode or f'CA-{words[-1].upper()}' in installed):   # "Toronto ON M5H 2N2"
+        province = words[-1].upper()
+        remainder = remainder[:remainder.rstrip().rfind(words[-1])]
+    else:
+        lowered = [word.lower() for word in words]
+        for count in (4, 3, 2, 1):
+            if len(lowered) > count and ' '.join(lowered[-count:]) in PROVINCES:   # "Victoria, British Columbia"
+                province = PROVINCES[' '.join(lowered[-count:])]
+                remainder = ' '.join(words[:-count])
+                break
+    if postcode and not province:
+        province = POSTCODE_FIRST.get(postcode[0], '')
+    return remainder, (f'CA-{province}' if province else ''), postcode
+
+
+def _parts(query, canada=True, installed=()):
     number, remainder = query.strip().split(None, 1)
     number = number.upper()
+    state = postcode = ''
+    if canada:
+        remainder, state, postcode = _canada(remainder, installed)
     remainder = re.sub(r'[^a-z0-9 ]+', ' ', remainder.lower()).split()
-    postcode = ''
-    if remainder and re.fullmatch(r'\d{5}', remainder[-1]):
+    if not postcode and remainder and re.fullmatch(r'\d{5}', remainder[-1]):
         postcode = remainder.pop()
-    state = ''
     for count in (3, 2, 1):
-        if len(remainder) <= count:
+        if state or len(remainder) <= count:
             continue
         name = ' '.join(remainder[-count:])
         code = STATES.get(name) or (name.upper() if count == 1 and name.upper() in STATE_CODES else '')
@@ -77,11 +118,14 @@ def find_addresses(query, geo_directory, limit=8, near=None):
     """Return exact house-number matches from installed indexes, never a guessed house."""
     if not is_address_query(query):
         return []
-    number, words, state, postcode = _parts(query)
-    if not words:
-        return []
     geo_directory = Path(geo_directory)
     paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
+    installed = {path.stem.upper() for path in paths}
+    number, words, state, postcode = _parts(query, installed=installed)
+    if state.startswith('CA-') and state not in installed:
+        number, words, state, postcode = _parts(query, canada=False)    # no index for that province: read the words as before
+    if not words:
+        return []
     if state:
         paths = [path for path in paths if path.stem.upper() == state]
     legacy = geo_directory / 'addresses.sqlite'
@@ -133,7 +177,7 @@ def find_addresses(query, geo_directory, limit=8, near=None):
                     seen.add(key)
                     results.append({
                         'name': f'{num} {name}', 'kind': 'Street address',
-                        'detail': ', '.join(part for part in (city_name, state_code, zip_code) if part),
+                        'detail': ', '.join(part for part in (city_name, (state_code or '').removeprefix('CA-'), zip_code) if part),
                         'lat': lat, 'lon': lon, 'source': 'Overture Maps', 'onMap': True,
                     })
                     if len(results) == limit:

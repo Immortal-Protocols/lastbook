@@ -353,9 +353,15 @@ class SpainSetupDownload(SetupBase):
     def test_retry_after_staging_cleanup_failure_does_not_reuse_old_files(self):
         self._restart_with_new_country_archive(cleanup_failure=True)
 
-    def _restart_with_new_country_archive(self, cleanup_failure=False):
+    def test_new_install_after_failed_spain_job_does_not_reuse_old_files(self):
+        self._restart_with_new_country_archive(choose_again=True)
+
+    def test_new_install_retries_cleanup_before_reusing_staging(self):
+        self._restart_with_new_country_archive(cleanup_failure=True, choose_again=True)
+
+    def _restart_with_new_country_archive(self, cleanup_failure=False, choose_again=False):
         from app.tests.test_setup import ALLOWED, make_map
-        from engine.setup import api, manifest
+        from engine.setup import api, install, manifest
         library = self.parent / 'LastbookData'
         (library / 'library-data').mkdir(parents=True)
         (library / 'library-data/catalog.json').write_text('{}')
@@ -387,6 +393,12 @@ class SpainSetupDownload(SetupBase):
         staged = work / 'unpack-map/LastbookData/derived/geo/map.sqlite'
         staged.parent.mkdir(parents=True)
         staged.write_bytes(old_files['derived/geo/map.sqlite'])
+        if choose_again:
+            saved_job = json.loads(api._job_file(self.settings).read_text())
+            saved_job['state'] = 'failed'
+            saved_job['error'] = {'code': 'unpack', 'message': 'Unpacking stopped.'}
+            saved_job['items'][0]['state'] = 'failed'
+            install._write_json(api._job_file(self.settings), saved_job)
         base = self.manifest().current
         base['maps'] = [{'id': 'ES', 'title': 'Spain', 'kind': 'country', 'available': False,
                          'installed_bytes': None, 'files': []}]
@@ -398,6 +410,7 @@ class SpainSetupDownload(SetupBase):
                                   spain_remote=f'{self.base}/manifest-spain-v1.json', allowed=ALLOWED, context=self.ctx)
         resumed = self.setup('manage', current=library, manifest=fresh)
         fresh._fetch()
+        run = (lambda: resumed.start(map_id='ES')) if choose_again else resumed.resume
         if cleanup_failure:
             remove, failed = shutil.rmtree, []
             def flaky(path, *args, **kwargs):
@@ -406,12 +419,12 @@ class SpainSetupDownload(SetupBase):
                     raise PermissionError('staging temporarily locked')
                 return remove(path, *args, **kwargs)
             with mock.patch.object(api.shutil, 'rmtree', side_effect=flaky):
-                resumed.resume()
+                run()
                 self.assertEqual(self.wait(resumed)['state'], 'failed')
                 resumed.retry()
                 self.assertEqual(self.wait(resumed)['state'], 'done')
         else:
-            resumed.resume()
+            run()
             self.assertEqual(self.wait(resumed)['state'], 'done')
         lib, note = api.startup(self.settings)
         self.assertFalse(note.get('error'))

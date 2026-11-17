@@ -555,7 +555,9 @@ class Setup:
                         'folder': str(target),
                         'plan': {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
                                  'sources': {k: v for k, v in srcs.items() if k in names}, 'explicit': explicit,
-                                 'retried': {}, 'switch': bool(pack), 'restore_map': bool(restore_map)}}
+                                 'retried': {}, 'switch': bool(pack), 'restore_map': bool(restore_map),
+                                 # A new country job can reuse a work folder from a failed, older download.
+                                 'restart_country': bool(mp and mp.get('kind') == 'country')}}
             s = self._settings()
             s['work'] = str(work)
             self._save_settings(s)

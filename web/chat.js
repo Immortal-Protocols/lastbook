@@ -121,7 +121,16 @@ const Chat = (() => {
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
+      // Loaded and idle: offer to unload it now and give its memory back. It starts again on the next question.
+      const eject = l.state === 'ready' && !Object.values(live).some(x => x.running)
+        ? `<button class="ai-eject" id="aiEject" title="Unload the local AI to free its memory. It starts again when you ask." aria-label="Unload the local AI">${ico('eject')}</button>` : '';
+      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>${eject}`;
+      const ej = $('#aiEject');
+      if (ej) ej.onclick = async () => {
+        ej.disabled = true;
+        try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop' }) }) } catch { }
+        statusLine();
+      };
     } else {
       el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
         : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
@@ -416,6 +425,7 @@ const Chat = (() => {
     b.innerHTML = on ? '<span class="stopsq"></span>' : ico('up');
     b.setAttribute('aria-label', on ? 'Stop the answer' : 'Send');
     b.classList.toggle('stop', on);
+    statusLine();   // hides the unload button while an answer is written, and shows it again after
   }
   function scrollEnd(force) {
     const near = innerHeight + scrollY > document.body.scrollHeight - 260;

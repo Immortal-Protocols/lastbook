@@ -49,7 +49,7 @@ MENU_KEEP_ACTIONS = {'copy:', 'cut:', 'paste:', 'selectAll:', 'undo:', 'redo:'}
 # The same rule as Windows' host-resolver setting: refuse by default, whatever the scheme, frame or kind of load. Compiled before the first page; with no list there is no page.
 NO_NETWORK = json.dumps([{'trigger': {'url-filter': '.*'}, 'action': {'type': 'block'}}]
                         + [{'trigger': {'url-filter': '^' + scheme + ':'}, 'action': {'type': 'ignore-previous-rules'}} for scheme in (SCHEME, 'data', 'blob', 'about')])
-NO_NETWORK_REFUSED = 'Lastbook could not switch off its network access, so it will not open anything.'
+NO_NETWORK_REFUSED = 'O Último Livro não conseguiu desativar o acesso à rede e não abrirá nada por segurança.'
 
 # Off where this WebKit lets us. These are WebKit's own private switches, looked up by name.
 FEATURES_OFF = ('PeerConnectionEnabled',   # UDP sockets, which nothing else here can see or refuse
@@ -69,9 +69,9 @@ PULSE_EVERY = 1                  # seconds between asking the page's process for
 STUCK_AFTER = 12                 # that many asks unanswered in a row: stuck
 SLOW_ANSWER = 3                  # an answer this many seconds late...
 SLOW_IN_A_ROW = 3                # ...this many times in a row: a page freezing the window on purpose, in slices
-STOPPED = 'A page stopped working, so it was closed.'
-TOO_BIG = 'A page was using too much memory, so it was closed.'
-STUCK = 'A page stopped responding, so it was closed.'
+STOPPED = 'Uma página parou de funcionar e foi fechada.'
+TOO_BIG = 'Uma página estava usando memória demais e foi fechada.'
+STUCK = 'Uma página parou de responder e foi fechada.'
 _libproc = ctypes.CDLL('/usr/lib/libproc.dylib')
 
 
@@ -81,7 +81,7 @@ def show_error(message):
     app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
     app.activateIgnoringOtherApps_(True)
     alert = AppKit.NSAlert.alloc().init()
-    alert.setMessageText_('Lastbook')
+    alert.setMessageText_('Último Livro')
     alert.setInformativeText_(message)
     alert.setAlertStyle_(AppKit.NSAlertStyleCritical)
     alert.runModal()
@@ -95,16 +95,16 @@ def choose_folder(title, message):
     alert = AppKit.NSAlert.alloc().init()
     alert.setMessageText_(title)
     alert.setInformativeText_(message)
-    alert.addButtonWithTitle_('Choose Folder…')
-    alert.addButtonWithTitle_('Quit').setKeyEquivalent_('\x1b')
+    alert.addButtonWithTitle_('Escolher pasta…')
+    alert.addButtonWithTitle_('Sair').setKeyEquivalent_('\x1b')
     if alert.runModal() != MODAL_FIRST_BUTTON:
         return None
     panel = AppKit.NSOpenPanel.openPanel()
     panel.setCanChooseDirectories_(True)
     panel.setCanChooseFiles_(False)
     panel.setAllowsMultipleSelection_(False)
-    panel.setMessage_('Choose the folder called LastbookData.')
-    panel.setPrompt_('Choose')
+    panel.setMessage_('Escolha a pasta chamada LastbookData.')
+    panel.setPrompt_('Escolher')
     panel.setDirectoryURL_(Foundation.NSURL.fileURLWithPath_(os.path.expanduser('~/Downloads')))
     if panel.runModal() == AppKit.NSModalResponseOK:
         return str(panel.URL().path())
@@ -460,7 +460,7 @@ class Shell:
     # ---- the window
     def make_window(self):
         w = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(Foundation.NSMakeRect(0, 0, *SIZE), STYLE, AppKit.NSBackingStoreBuffered, False)
-        w.setTitle_('Lastbook')    # hidden in the bar, still named in the Window menu and Mission Control
+        w.setTitle_('Último Livro')    # hidden in the bar, still named in the Window menu and Mission Control
         w.setTitlebarAppearsTransparent_(True)
         w.setTitleVisibility_(AppKit.NSWindowTitleHidden)
         bar = AppKit.NSToolbar.alloc().initWithIdentifier_('lastbook')   # empty: it only makes the band 52 points tall, with the traffic lights centred in it
@@ -633,7 +633,7 @@ class Shell:
         alert.setMessageText_(message)
         alert.addButtonWithTitle_('OK')
         if kind == 'confirm':
-            alert.addButtonWithTitle_('Cancel')
+            alert.addButtonWithTitle_('Cancelar')
         self.pulse.paused += 1      # an alert from the app's own page holds its process until it is answered: that is not a page stuck
 
         def answered(r):
@@ -675,7 +675,7 @@ class _Go(Foundation.NSObject):
     @objc.python_method
     def _side_title(self, shown):
         if self.side_item is not None:
-            self.side_item.setTitle_('Hide Sidebar' if shown else 'Show Sidebar')
+            self.side_item.setTitle_('Ocultar barra lateral' if shown else 'Mostrar barra lateral')
 
     def menuNeedsUpdate_(self, menu):
         one_each(menu)
@@ -692,13 +692,13 @@ class _Go(Foundation.NSObject):
     def toggleSidebar_(self, item):
         self.view.evaluateJavaScript_completionHandler_("document.getElementById('sideBtn').click()", None)
         if self.side_item is not None:
-            self._side_title(str(self.side_item.title()) != 'Hide Sidebar')
+            self._side_title(str(self.side_item.title()) != 'Ocultar barra lateral')
 
     def find_(self, item):
         self.view.evaluateJavaScript_completionHandler_("document.dispatchEvent(new KeyboardEvent('keydown',{key:'f',code:'KeyF',metaKey:true}))", None)
 
 
-GO = [('Videos', '#/videos'), ('Map', '#/map'), ('Chat', '#/ask')]
+GO = [('Vídeos', '#/videos'), ('Mapa', '#/map'), ('Chat', '#/ask')]
 CTRL_CMD = AppKit.NSEventModifierFlagControl | AppKit.NSEventModifierFlagCommand
 OPT_CMD = AppKit.NSEventModifierFlagOption | AppKit.NSEventModifierFlagCommand
 
@@ -749,18 +749,18 @@ def install_menu(app, go=None):
     Full screen, Start Dictation and Emoji & Symbols are this menu's own items; the copies AppKit adds are taken out (one_each), so there is one of each."""
     Foundation.NSUserDefaults.standardUserDefaults().registerDefaults_({'NSFullScreenMenuItemEverywhere': False})
     bar = AppKit.NSMenu.alloc().init()
-    edit = _menu('Edit', [('Undo', 'undo:', 'z'), ('Redo', 'redo:', 'Z'), (None, None, None), ('Cut', 'cut:', 'x'), ('Copy', 'copy:', 'c'), ('Paste', 'paste:', 'v'), ('Select All', 'selectAll:', 'a'), (None, None, None), ('Find\u2026', 'find:', 'f'),
-                                  (None, None, None), ('Start Dictation\u2026', 'startDictation:', ''), ('Emoji & Symbols', 'orderFrontCharacterPalette:', ' ', CTRL_CMD)], go)
-    view = _menu('View', [('Hide Sidebar', 'toggleSidebar:', 's', CTRL_CMD), (None, None, None), ('Enter Full Screen', 'toggleFullScreen:', 'f', CTRL_CMD)], go)
-    window = _menu('Window', [('Minimize', 'performMiniaturize:', 'm'), ('Zoom', 'performZoom:', ''), (None, None, None), ('Close', 'performClose:', 'w'),
-                              (None, None, None), ('Bring All to Front', 'arrangeInFront:', '')])
-    helps = _menu('Help', [('Lastbook Help', 'help:', '?')], go)
-    for holder in (_menu('Lastbook', [('About Lastbook', 'orderFrontStandardAboutPanel:', ''), ('Check for Updates\u2026', 'checkUpdates:', ''), (None, None, None),
-                                      ('Hide Lastbook', 'hide:', 'h'), ('Hide Others', 'hideOtherApplications:', 'h', OPT_CMD), ('Show All', 'unhideAllApplications:', ''),
-                                      (None, None, None), ('Quit Lastbook', 'terminate:', 'q')], go),
+    edit = _menu('Editar', [('Desfazer', 'undo:', 'z'), ('Refazer', 'redo:', 'Z'), (None, None, None), ('Recortar', 'cut:', 'x'), ('Copiar', 'copy:', 'c'), ('Colar', 'paste:', 'v'), ('Selecionar tudo', 'selectAll:', 'a'), (None, None, None), ('Buscar\u2026', 'find:', 'f'),
+                            (None, None, None), ('Iniciar ditado\u2026', 'startDictation:', ''), ('Emoji e símbolos', 'orderFrontCharacterPalette:', ' ', CTRL_CMD)], go)
+    view = _menu('Visualizar', [('Ocultar barra lateral', 'toggleSidebar:', 's', CTRL_CMD), (None, None, None), ('Entrar em tela cheia', 'toggleFullScreen:', 'f', CTRL_CMD)], go)
+    window = _menu('Janela', [('Minimizar', 'performMiniaturize:', 'm'), ('Ampliar/Reduzir', 'performZoom:', ''), (None, None, None), ('Fechar', 'performClose:', 'w'),
+                              (None, None, None), ('Trazer todas para a frente', 'arrangeInFront:', '')])
+    helps = _menu('Ajuda', [('Ajuda do Último Livro', 'help:', '?')], go)
+    for holder in (_menu('Último Livro', [('Sobre o Último Livro', 'orderFrontStandardAboutPanel:', ''), ('Verificar atualizações\u2026', 'checkUpdates:', ''), (None, None, None),
+                                          ('Ocultar Último Livro', 'hide:', 'h'), ('Ocultar outros', 'hideOtherApplications:', 'h', OPT_CMD), ('Mostrar tudo', 'unhideAllApplications:', ''),
+                                          (None, None, None), ('Encerrar Último Livro', 'terminate:', 'q')], go),
                    edit,
                    view,
-                   _menu('Go', [('Back', 'goBack:', '['), ('Forward', 'goForward:', ']'), (None, None, None)] + [(name, 'go:', str(i + 1)) for i, (name, _) in enumerate(GO)], go),
+                   _menu('Ir', [('Voltar', 'goBack:', '['), ('Avançar', 'goForward:', ']'), (None, None, None)] + [(name, 'go:', str(i + 1)) for i, (name, _) in enumerate(GO)], go),
                    window, helps):
         bar.addItem_(holder)
     if go is not None:

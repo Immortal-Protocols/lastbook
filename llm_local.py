@@ -644,10 +644,110 @@ def _text(m):
 
 _THOUGHT_RE = re.compile(r'<\|channel>.*?<channel\|>|<think>.*?</think>', re.S | re.I)
 _OPEN_THOUGHT_RE = re.compile(r'(?:<\|channel>|<think>).*$', re.S | re.I)
+_META_SELF_RE = re.compile(
+    r'(?:^\s*\**(?:o usu[áa]rio|a usu[áa]ria|a pergunta|o pedido|a solicita[çc][ãa]o)\b)'
+    r'|\b(?:o usu[áa]rio est[áa] perguntando|o usu[áa]rio quer saber|o usu[áa]rio pede)\b'
+    r'|\b(?:preciso (?:procurar|buscar|analisar|avaliar|verificar|encontrar|ler|consultar|responder|extrair|identificar|sintetizar|incluir|citar))\b'
+    r'|\b(?:vou (?:procurar|buscar|analisar|avaliar|verificar|estruturar|organizar|dividir|incluir|citar|responder|consultar|chamar))\b'
+    r'|\b(?:vamos (?:analisar|buscar|procurar|avaliar|verificar|olhar|examinar|estruturar))\b'
+    r'|\b(?:os resultados (?:iniciais|fornecidos|da busca)|os trechos fornecidos|as fontes fornecidas)\b'
+    r'|\b(?:search_library|read_pages|lookup_place|get_timed_transcript|view_page)\b'
+    r'|(?:^\s*\**(?:the user is asking|the user wants|let\'?s analyze|i need to search|i should check)\b)',
+    re.I,
+)
+_META_STEP_RE = re.compile(
+    r'^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*\**'
+    r'(?:analisar|an[áa]lise|buscar|busca|procurar|avaliar|avalia[çc][ãa]o|verificar|verifica[çc][ãa]o|'
+    r'identificar|identifica[çc][ãa]o|extrair|extra[çc][ãa]o|selecionar|sele[çc][ãa]o|consultar|consulta|'
+    r'sintetizar|s[íi]ntese|estruturar|estrutura[çc][ãa]o|estrutura da resposta|formular|formula[çc][ãa]o|'
+    r'planejar|planejamento|organizar|organiza[çc][ãa]o|revisar|revis[ãa]o|responder|objetivo|plano|racioc[íi]nio|pensamento)\b'
+    r'[^:\n]{0,60}\b(?:resultados?|pergunta|fontes?|documentos?|trechos?|informa[çc][õo]es|pedido|solicita[çc][ãa]o|'
+    r'busca|biblioteca|p[áa]ginas?|resposta|texto|relev[âa]ncia|dados|cita[çc][õo]es|contexto|usu[áa]rio|inicial|iniciais|relevantes?|espec[íi]ficas?)',
+    re.I,
+)
+_META_SOURCE_NOTE_RE = re.compile(
+    r'^\s*(?:[-*•]|\d+[.)])?\s*\**(?:'
+    r'(?:a fonte|as fontes|fonte|fontes)\s+[SM]\d+'
+    r'|[SM]\d+(?:\s*\([^)]*\))?\s*[:—-]'
+    r'|(?:a fonte|as fontes)\b[^.\n]{0,80}\b(?:menciona|mencionam|fala|falam|trata|tratam|aborda|abordam|indica|indicam|diz|dizem|fornece|fornecem|traz|trazem|destaca|destacam)\b'
+    r')',
+    re.I,
+)
+_META_TRANSITION_RE = re.compile(
+    r'^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*\**(?:resposta(?: final| direta| ao usu[áa]rio)?|responder(?: ao usu[áa]rio| [àa] pergunta)?|aqui est[áa] a resposta)\**\s*:?\**\s*$',
+    re.I,
+)
+_META_ANSWER_INLINE_RE = re.compile(
+    r'^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*\**(?:resposta(?:\s+(?:final|direta|ao\s+usu[áa]rio))?|responder(?:\s+(?:ao\s+usu[áa]rio|[àa]\s+pergunta))?|aqui\s+est[áa]\s+a\s+resposta)\**\s*:\**\s+(.+)$',
+    re.I,
+)
+_META_START_PREFIX_RE = re.compile(
+    r'^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*[#*\s]*(?:o\b|a\b|os\b|as\b|precis|vou\b|vam|analis|an[áa]lis|busc|procur|avali|verific|identific|extra|selecion|consult|sintetiz|estrutur|formul|planej|organiz|revis|respond|objetiv|plan|racioc|pensament|font|respost|aqui\b|the\b|let|i\b|thought|thinking)',
+    re.I,
+)
+_REAL_CITE_RE = re.compile(r'\[[SM]\d+\]')
 
 
-def split_thinking(text):
-    """Separate Gemma/thinking channel blocks from visible answer text."""
+def _is_meta_line(line, had_meta=False):
+    s = line.strip()
+    if not s:
+        return False
+    if _META_SELF_RE.search(s) or _META_STEP_RE.match(s) or _META_SOURCE_NOTE_RE.match(s):
+        return True
+    # Short continuation bullets directly after a meta-thinking header (e.g. "- S1: ...") or tool planning lines
+    if had_meta and re.match(r'^[-*•]\s+\**[SM]\d+\b', s):
+        return True
+    return False
+
+
+def _split_plain_thinking(rest, streaming=False):
+    """Strip plain-text meta-planning preambles (e.g. Gemma E2B writing numbered analysis steps before tool calls or answers)."""
+    if not rest:
+        return [], rest
+    lines = rest.replace('\r', '').split('\n')
+    ended_with_nl = rest.endswith('\n')
+    thoughts = []
+    kept = []
+    had_meta = False
+    answer_started = False
+    for idx, line in enumerate(lines):
+        if answer_started:
+            kept.append(line)
+            continue
+        s = line.strip()
+        if not s:
+            continue
+        is_last_incomplete = streaming and idx == len(lines) - 1 and not ended_with_nl
+        if is_last_incomplete:
+            if _is_meta_line(line, had_meta) or _META_TRANSITION_RE.match(s):
+                thoughts.append(line)
+                had_meta = True
+                continue
+            # While the first line (or a line after meta-thinking) is still short and might be a thinking step, hold it back briefly
+            if not _REAL_CITE_RE.search(s) and (had_meta or (_META_START_PREFIX_RE.match(s) and len(s) < 64) or len(s) < 28):
+                thoughts.append(line)
+                continue
+        if _META_TRANSITION_RE.match(s):
+            thoughts.append(line)
+            had_meta = True
+            continue
+        if _is_meta_line(line, had_meta):
+            thoughts.append(line)
+            had_meta = True
+            continue
+        m_ans = _META_ANSWER_INLINE_RE.match(line)
+        if m_ans:
+            thoughts.append(line[:m_ans.start(1)].strip())
+            kept.append(m_ans.group(1))
+            answer_started = True
+            continue
+        kept.append(line)
+        answer_started = True
+    return thoughts, '\n'.join(kept)
+
+
+def split_thinking(text, streaming=False):
+    """Separate Gemma/thinking channel blocks and plain-text meta-reasoning preambles from visible answer text."""
     s = text or ''
     thoughts = [m.group(0) for m in _THOUGHT_RE.finditer(s)]
     rest = _THOUGHT_RE.sub('', s)
@@ -668,11 +768,13 @@ def split_thinking(text):
             if rest.endswith(marker[:k]):
                 rest = rest[:-k]
                 break
-    return '\n'.join(thoughts).strip(), rest
+    plain_thoughts, rest = _split_plain_thinking(rest, streaming=streaming)
+    thoughts.extend(plain_thoughts)
+    return '\n'.join(t for t in thoughts if t).strip(), rest
 
 
 def _strip_thinking(text):
-    return split_thinking(text)[1].strip()
+    return split_thinking(text, streaming=False)[1].strip()
 
 
 def size_of(segments):

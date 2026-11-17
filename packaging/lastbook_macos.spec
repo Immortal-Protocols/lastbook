@@ -65,14 +65,16 @@ exe = EXE(pyz, a.scripts, [('X utf8', None, 'OPTION')], exclude_binaries=True, n
 coll = COLLECT(exe, a.binaries, a.datas, name='Lastbook')
 ICON = Path(SPECPATH) / 'Lastbook.icns'
 app = BUNDLE(coll, name='Lastbook.app', icon=str(ICON) if ICON.exists() else None, bundle_identifier='local.lastbook.desktop', version='1.1.8', info_plist={
-    'CFBundleDisplayName': 'Lastbook',
-    'CFBundleName': 'Lastbook',
+    'CFBundleDisplayName': 'Último Livro',
+    'CFBundleName': 'Último Livro',
+    'CFBundleSpokenName': 'Último Livro',
+    'CFBundleDevelopmentRegion': 'pt-BR',
     'LSApplicationCategoryType': 'public.app-category.reference',
     'LSMinimumSystemVersion': '14.0',   # what numpy's binaries ask for
     'LSRequiresNativeExecution': True,
     'NSHighResolutionCapable': True,
     # Lastbook looks for its library (LastbookData) in these folders; macOS shows these words when it asks to let it look.
-    'NSDocumentsFolderUsageDescription': 'Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.',
-    'NSDownloadsFolderUsageDescription': 'Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.',
-    'NSDesktopFolderUsageDescription': 'Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.',
+    'NSDocumentsFolderUsageDescription': 'O Último Livro procura aqui pela biblioteca na pasta LastbookData. Ele lê e salva apenas dentro dessa pasta.',
+    'NSDownloadsFolderUsageDescription': 'O Último Livro procura aqui pela biblioteca na pasta LastbookData. Ele lê e salva apenas dentro dessa pasta.',
+    'NSDesktopFolderUsageDescription': 'O Último Livro procura aqui pela biblioteca na pasta LastbookData. Ele lê e salva apenas dentro dessa pasta.',
 })

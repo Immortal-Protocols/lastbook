@@ -20,7 +20,7 @@ const Chat = (() => {
 
   function load() { try { return JSON.parse(localStorage.getItem('sg.chats')) || [] } catch { return [] } }
   const keep = () => { try { return localStorage.getItem('sg.chatKeep') !== 'no' } catch { return true } };
-  const hideThought = () => { try { return localStorage.getItem('sg.hideThought') === 'yes' } catch { return false } };
+  const hideThought = () => { try { return localStorage.getItem('sg.hideThought') !== 'no' } catch { return true } };
   function persist() { if (!keep()) return; try { localStorage.setItem('sg.chats', JSON.stringify(chats.slice(0, 60))) } catch { } }
   const byId = id => chats.find(c => c.id === id);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -230,10 +230,12 @@ const Chat = (() => {
     const noThought = hideThought();
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
+    const shownContent = m.content ? cleanThought(m.content, noThought, running) : '';
+    const showState = running && noThought && m.state === 'writing' && !shownContent.trim() ? 'thinking' : m.state;
     let h = '';
-    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(STATES[m.state] || 'Processando…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${!noThought && steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(STATES[showState] || 'Processando…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${!noThought && steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>Você pode continuar navegando e pesquisando. Estas são as páginas mais próximas da sua pergunta:</p>' : ''}</div></div>`;
-    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
+    if (shownContent.trim()) h += `<div class="answer">${md(shownContent, m)}</div>`;
     if (running && !noThought && found.length) h += `<div class="prefound"><p class="small muted">Páginas encontradas até agora — você pode abri-las enquanto a resposta é escrita:</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcCards(m.fallback, true);
     if (!running && m.content) {
@@ -278,14 +280,48 @@ const Chat = (() => {
     }).join('')}</div>`;
   }
 
-  /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
-  function md(text, m) {
-    text = String(text || '')
+  const META_SELF_RE = /(?:^\s*\**(?:o usu[áa]rio|a usu[áa]ria|a pergunta|o pedido|a solicita[çc][ãa]o)\b)|\b(?:o usu[áa]rio est[áa] perguntando|o usu[áa]rio quer saber|o usu[áa]rio pede)\b|\b(?:preciso (?:procurar|buscar|analisar|avaliar|verificar|encontrar|ler|consultar|responder|extrair|identificar|sintetizar|incluir|citar))\b|\b(?:vou (?:procurar|buscar|analisar|avaliar|verificar|estruturar|organizar|dividir|incluir|citar|responder|consultar|chamar))\b|\b(?:vamos (?:analisar|buscar|procurar|avaliar|verificar|olhar|examinar|estruturar))\b|\b(?:os resultados (?:iniciais|fornecidos|da busca)|os trechos fornecidos|as fontes fornecidas)\b|\b(?:search_library|read_pages|lookup_place|get_timed_transcript|view_page)\b|(?:^\s*\**(?:the user is asking|the user wants|let'?s analyze|i need to search|i should check)\b)/i;
+  const META_STEP_RE = /^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*\**(?:analisar|an[áa]lise|buscar|busca|procurar|avaliar|avalia[çc][ãa]o|verificar|verifica[çc][ãa]o|identificar|identifica[çc][ãa]o|extrair|extra[çc][ãa]o|selecionar|sele[çc][ãa]o|consultar|consulta|sintetizar|s[íi]ntese|estruturar|estrutura[çc][ãa]o|estrutura da resposta|formular|formula[çc][ãa]o|planejar|planejamento|organizar|organiza[çc][ãa]o|revisar|revis[ãa]o|responder|objetivo|plano|racioc[íi]nio|pensamento)\b[^:\n]{0,60}\b(?:resultados?|pergunta|fontes?|documentos?|trechos?|informa[çc][õo]es|pedido|solicita[çc][ãa]o|busca|biblioteca|p[áa]ginas?|resposta|texto|relev[âa]ncia|dados|cita[çc][õo]es|contexto|usu[áa]rio|inicial|iniciais|relevantes?|espec[íi]ficas?)/i;
+  const META_SOURCE_RE = /^\s*(?:[-*•]|\d+[.)])?\s*\**(?:(?:a fonte|as fontes|fonte|fontes)\s+[SM]\d+|[SM]\d+(?:\s*\([^)]*\))?\s*[:—-]|(?:a fonte|as fontes)\b[^.\n]{0,80}\b(?:menciona|mencionam|fala|falam|trata|tratam|aborda|abordam|indica|indicam|diz|dizem|fornece|fornecem|traz|trazem|destaca|destacam)\b)/i;
+  const META_TRANS_RE = /^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*\**(?:resposta(?: final| direta| ao usu[áa]rio)?|responder(?: ao usu[áa]rio| [àa] pergunta)?|aqui est[áa] a resposta)\**\s*:?\**\s*$/i;
+  const META_ANS_INLINE_RE = /^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*\**(?:resposta(?:\s+(?:final|direta|ao\s+usu[áa]rio))?|responder(?:\s+(?:ao\s+usu[áa]rio|[àa]\s+pergunta))?|aqui\s+est[áa]\s+a\s+resposta)\**\s*:\**\s+(.+)$/i;
+  const META_START_RE = /^\s*(?:[-*•]|\d+[.)]|#{1,4})?\s*[#*\s]*(?:o\b|a\b|os\b|as\b|precis|vou\b|vam|analis|an[áa]lis|busc|procur|avali|verific|identific|extra|selecion|consult|sintetiz|estrutur|formul|planej|organiz|revis|respond|objetiv|plan|racioc|pensament|font|respost|aqui\b|the\b|let|i\b|thought|thinking)/i;
+
+  function cleanThought(text, noThought, streaming) {
+    let s = String(text || '')
       .replace(/<\|channel>[\s\S]*?<channel\|>/gi, '')
       .replace(/<\|channel>thought[\s\S]*$/gi, '')
       .replace(/<think>[\s\S]*?<\/think>/gi, '')
-      .replace(/<think>[\s\S]*$/gi, '');
+      .replace(/<think>[\s\S]*$/gi, '')
+      .replace(/<\|tool_call>[\s\S]*$/gi, '');
+    if (!noThought) return s;
+    const raw = s.replace(/\r/g, '');
+    const endsNl = raw.endsWith('\n');
+    const lines = raw.split('\n');
+    const kept = [];
+    let hadMeta = false, started = false;
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i], t = ln.trim();
+      if (started) { kept.push(ln); continue }
+      if (!t) continue;
+      const isMeta = META_SELF_RE.test(t) || META_STEP_RE.test(t) || META_SOURCE_RE.test(t) || (hadMeta && /^[-*•]\s+\**[SM]\d+\b/.test(t));
+      if (streaming && i === lines.length - 1 && !endsNl) {
+        if (isMeta || META_TRANS_RE.test(t)) { hadMeta = true; continue }
+        if (!/\[[SM]\d+\]/.test(t) && (hadMeta || (META_START_RE.test(t) && t.length < 64) || t.length < 28)) continue;
+      }
+      if (META_TRANS_RE.test(t) || isMeta) { hadMeta = true; continue }
+      const mAns = META_ANS_INLINE_RE.exec(ln);
+      if (mAns) { kept.push(mAns[1]); started = true; continue }
+      kept.push(ln);
+      started = true;
+    }
+    return kept.join('\n');
+  }
+
+  /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
+  function md(text, m) {
     const noThought = hideThought();
+    text = cleanThought(text, noThought, !!m.running);
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
     const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Fonte ${k}">${k.replace(/^S/, '')}</a>` : '';
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
@@ -341,7 +377,7 @@ const Chat = (() => {
   }
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-    let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    let t = cleanThought(m.content, hideThought(), false).replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
     if ((m.cited || []).length) t += '\n\nFontes:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', página ' + s.page : ''}${s.t != null ? ', em ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }

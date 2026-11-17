@@ -35,6 +35,13 @@ cmake -S "$L" -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc
   -DCMAKE_C_FLAGS="$MAP" -DCMAKE_CXX_FLAGS="$MAP" > "$W/cmake-linux.log"
 # Only the libraries: the default target also builds llama.cpp's own app, which downloads. One library per CPU variant.
 CPUS="$(cmake --build "$B" --target help | grep -oE '^ggml-cpu-[a-z0-9_.]+' | sort -u | tr '\n' ' ')"
+GCC_MAJOR="$(gcc -dumpfullversion -dumpversion | cut -d. -f1)"
+if [ "$(uname -m)" = aarch64 ] && [ "$GCC_MAJOR" -lt 14 ]; then
+  # gcc 13 rejects the +sme march modifier (it is a GCC 14 feature), and every armv9.2
+  # variant's flags carry it; the armv8.6 variants build and cover the machine at runtime.
+  CPUS="$(echo "$CPUS" | tr ' ' '\n' | grep -v '^ggml-cpu-armv9\.2' | tr '\n' ' ')"
+  echo "gcc $GCC_MAJOR: building without the armv9.2 (SME) CPU variants"
+fi
 cmake --build "$B" -j "$(nproc)" --target llama ggml-vulkan $CPUS > "$W/build-linux.log"
 
 # fit_unused_win.cpp: GNU ld, like the Windows linker, wants every reference in fit.cpp resolved.

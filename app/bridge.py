@@ -72,6 +72,7 @@ DROP = HOP | {'server', 'date'}
 VIDEO_SUFFIXES = ('.mp4', '.webm', '.mkv')
 ENGINE_RANGE = re.compile(r'bytes=(\d+)-(\d*)')   # read as the engine reads it: match at the start, so a second range is ignored there too
 PDF_PAGE = re.compile(r'[?&]pdf-page=(\d+)(?:&|$)')
+PDF_NEAR = re.compile(r'[?&]near=(\d{1,6})(?:&|$)')      # the page the app opens the whole-PDF view at (pdf_viewer)
 PDF_WIDTH = 1400                    # the longer side of a drawn page
 PDF_MAX_PAGES = 20000               # the most one viewer page lists
 PDF_SIZES_KEPT = 16
@@ -401,7 +402,8 @@ class Exchange:
                 if m:
                     body = self.b.pdf_page(path, self.local, int(m.group(1)))
                     self._replace(200, 'OK', 'image/png', body, csp, ('Cache-Control', 'max-age=86400'))
-                body = self.b.pdf_viewer(path, self.local)
+                near = PDF_NEAR.search(self.target)
+                body = self.b.pdf_viewer(path, self.local, int(near.group(1)) if near else None)
                 self._replace(200, 'OK', 'text/html; charset=utf-8', body, ('Content-Security-Policy', self.b.viewer_csp()))
             except GONE:
                 raise
@@ -757,11 +759,14 @@ class Bridge:
                 self.pdf_sizes[key] = sizes
         return sizes
 
-    def pdf_viewer(self, path, real):
-        """A page this program writes, with no script in it and a policy allowing none. Each picture loads when it comes near the view; the ids are what #page=N looks for."""
+    def pdf_viewer(self, path, real, near=None):
+        """A page this program writes, with no script in it and a policy allowing none. Each picture loads when it comes near the view; the ids are what #page=N looks for.
+        WebKit does not load a lazy picture already in view in a frame opened at #page=N until the frame scrolls, so the page stayed blank. The
+        first page and the pages around `near` (the N the app opens it at, also sent as ?near=N, since a #fragment never reaches here) load at once."""
         rec = self.server.catalog()['by_path'].get(path.lstrip('/')) or {}
         title = html.escape(str(rec.get('title') or os.path.basename(real)))
-        rows = [f'<div class="p" id="page={i}"><img loading="lazy" decoding="async" alt="Page {i}" width="{max(round(w), 1)}" height="{max(round(h), 1)}" src="?pdf-page={i}"></div>'
+        now = {1, 2} | (set(range(near - 1, near + 3)) if near else set())
+        rows = [f'<div class="p" id="page={i}"><img loading="{"eager" if i in now else "lazy"}" decoding="async" alt="Page {i}" width="{max(round(w), 1)}" height="{max(round(h), 1)}" src="?pdf-page={i}"></div>'
                 for i, (w, h) in enumerate(self._pdf_page_sizes(real), 1)]
         return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>' + title + '</title><style>'
                 'html{background:#525659}body{margin:0;padding:8px}'

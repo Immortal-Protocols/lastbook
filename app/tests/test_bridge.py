@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, threading, time, types, unittest
+import faulthandler, hashlib, json, os, re, shutil, socket, statistics, subprocess, sys, threading, time, types, unittest
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -289,6 +289,13 @@ class Both:
             self.assertNotIn('accept-ranges', r.hs)
             self.assertTrue(r.hs['content-security-policy'].startswith('sandbox allow-scripts;'))
             self.assertIn("script-src 'none'", r.hs['content-security-policy'])
+
+    def test_pdf_viewer_loads_the_pages_it_opens_at(self):
+        """WebKit leaves a lazy picture already in view blank in a frame opened at #page=N until it scrolls: those load at once."""
+        eager = lambda b: [int(n) for n in re.findall(rb'<img loading="eager"[^>]*src="\?pdf-page=(\d+)"', b)]
+        self.assertEqual(eager(self.get(self.real_pdf()).body), [1, 2])
+        self.assertEqual(eager(self.get(self.real_pdf() + '?near=3').body), [1, 2, 3])
+        self.assertIn(b'<img loading="lazy" decoding="async" alt="Page 3"', self.get(self.real_pdf()).body)
 
     def test_pdf_viewer_lists_pages_and_runs_nothing(self):
         b = self.get(self.real_pdf()).body

@@ -13,6 +13,7 @@ REMOTE = 'https://downloads.lastbook.org/manifest-v1.json'
 SHA = re.compile(r'^[0-9a-f]{64}$')
 LIBRARY_HOSTS = frozenset({'downloads.lastbook.org'})   # packs and state maps come from Lastbook's own download site only
 MODEL_HOSTS = frozenset({'huggingface.co'})             # the model from Hugging Face only (it redirects to its own CDN hosts)
+FIRST_FETCH_WAIT = 12                                   # seconds; fetch_small's timeout is per network step, so a slow fetch can outlast this
 
 
 def _from(url, hosts, allowed):
@@ -137,6 +138,11 @@ class Manifest:
             return
         self.fetching = threading.Thread(target=self._fetch, daemon=True, name='setup-manifest')
         self.fetching.start()
+
+    def wait_if_empty(self, timeout=FIRST_FETCH_WAIT):
+        """Run from source, the app has no bundled manifest, so setup has nothing to offer until the fetched one arrives."""
+        if not self.current['packs'] and self.fetching:
+            self.fetching.join(timeout)
 
     def _fetch(self):
         data = download.fetch_small(self.remote, allowed=self.allowed, context=self.context)

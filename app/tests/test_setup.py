@@ -488,6 +488,14 @@ class Unpacking(Base):
 
 
 class Jobs(Base):
+    def test_state_waits_for_first_fetch_without_bundled_manifest(self):
+        published = json.dumps(self.manifest().current).encode()
+        empty = {'version': 1, 'published': '', 'packs': [], 'models': [], 'maps': []}
+        m = manifest.Manifest(bundled=empty, remote='https://downloads.lastbook.org/manifest-v1.json', allowed=ALLOWED, context=self.ctx)
+        with mock.patch.object(download, 'fetch_small', lambda *a, **k: (time.sleep(0.3), published)[1]):
+            st = self.setup(manifest=m).state()
+        self.assertEqual(st['recommend']['pack'], 'small')
+
     def test_first_run_end_to_end(self):
         s = self.setup()
         st = s.state()

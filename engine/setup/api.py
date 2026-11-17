@@ -412,6 +412,7 @@ class Setup:
 
     def state(self):
         self.manifest.fetch_once()
+        self.manifest.wait_if_empty()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
                 'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}

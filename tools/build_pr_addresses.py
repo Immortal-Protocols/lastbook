@@ -19,6 +19,7 @@ from shapely.geometry import Point, Polygon, shape
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from engine import pr_addresses
 from engine.address_search import normalize
+from tools import build_pr_rural
 
 MEMBER = 'derived/geo/addresses/PR.sqlite'
 ARCHIVE = 'Lastbook-Addresses-PR.zip'
@@ -78,7 +79,7 @@ def urbanization(tags):
     return ''
 
 
-def build_database(osm, census, db_path):
+def build_database(osm, census, db_path, rural=None):
     geoids, names, tree = boundaries(census)
     counts = collections.Counter()
     skipped = collections.Counter()
@@ -129,21 +130,25 @@ def build_database(osm, census, db_path):
             'osm_source': 'https://download.geofabrik.de/north-america/us/puerto-rico.html',
             'osm_snapshot': timestamp, 'osm_sha256': sha(osm), 'municipio_source': BOUNDARIES, 'municipio_sha256': sha(census)
         }
-        db.executemany('INSERT INTO meta VALUES (?,?)', sorted(metadata.items()))
         db.executemany('INSERT INTO municipios VALUES (?,?,?)', [(g, n, counts[g]) for g, n in zip(geoids, names)])
+        coverage = {'records': records, 'sources': metadata, 'skipped': dict(skipped),
+                    'municipios': {name: counts[g] for g, name in zip(geoids, names)}}
+        if rural:
+            coverage['rural'] = build_pr_rural.build(db, rural, sha)
+            metadata['rural_sources'] = json.dumps(coverage['rural']['sources'], sort_keys=True)
+        db.executemany('INSERT INTO meta VALUES (?,?)', sorted(metadata.items()))
         db.commit()
         if db.execute('PRAGMA integrity_check').fetchone() != ('ok',):
             raise ValueError('SQLite integrity check failed.')
-    return {'records': records, 'sources': metadata, 'skipped': dict(skipped),
-            'municipios': {name: counts[g] for g, name in zip(geoids, names)}}
+    return coverage
 
 
-def build(osm, census, output):
+def build(osm, census, output, rural=None):
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output) as staging:
         staging = Path(staging)
         database, archive = staging / 'PR.sqlite', staging / ARCHIVE
-        coverage = build_database(osm, census, database)
+        coverage = build_database(osm, census, database, rural)
         # A fixed member timestamp makes identical inputs reproducible in the same toolchain.
         member = zipfile.ZipInfo(MEMBER)
         member.create_system = 3
@@ -156,10 +161,12 @@ def build(osm, census, output):
             if package.namelist() != [MEMBER] or package.testzip() is not None:
                 raise ValueError('Address archive failed verification.')
         date = coverage['sources']['osm_snapshot'][:10]
+        digest = sha(archive)
+        release = f'pr-rural-{date}-{digest[:12]}' if rural else f'pr-osm-{date}'
         entry = {'id': 'PR', 'title': 'Puerto Rico', 'kind': 'state-addresses', 'available': True,
                  'installed_bytes': database.stat().st_size, 'records': coverage['records'],
-                 'files': [{'name': ARCHIVE, 'url': f'https://downloads.lastbook.org/addresses/pr-osm-{date}/{ARCHIVE}',
-                            'size': archive.stat().st_size, 'sha256': sha(archive), 'kind': 'zip'}]}
+                 'files': [{'name': ARCHIVE, 'url': f'https://downloads.lastbook.org/addresses/{release}/{ARCHIVE}',
+                            'size': archive.stat().st_size, 'sha256': digest, 'kind': 'zip'}]}
         coverage['sqlite_sha256'] = sha(database)
         for name, data in [('PR.coverage.json', coverage), ('PR.manifest.json', entry)]:
             (staging / name).write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + '\n', encoding='utf-8')
@@ -173,5 +180,6 @@ if __name__ == '__main__':
     parser.add_argument('osm', type=Path, help='Geofabrik Puerto Rico .osm.pbf')
     parser.add_argument('municipios', type=Path, help='TIGERweb GeoJSON, Puerto Rico county equivalents, EPSG:4326')
     parser.add_argument('output', type=Path)
+    parser.add_argument('--rural', type=Path, help='Folder of federal road, barrio, ZCTA and school snapshots')
     args = parser.parse_args()
-    print(json.dumps(build(args.osm, args.municipios, args.output), indent=2))
+    print(json.dumps(build(args.osm, args.municipios, args.output, args.rural), indent=2))

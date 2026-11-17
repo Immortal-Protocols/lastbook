@@ -1419,7 +1419,7 @@ fileprivate enum AddressSearch {
         return stableSort(results) { distance($0) < distance($1) }
     }
 
-    static func isAddressQuery(_ q: String) -> Bool { q.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil || prParts(q) != nil }
+    static func isAddressQuery(_ q: String) -> Bool { q.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil || prParts(q) != nil || PuertoRicoRoads.looksRural(q) }
 
     static func streetForms(_ street: String) -> [String] {
         let words = street.split(separator: " ").map(String.init)
@@ -1450,6 +1450,10 @@ fileprivate enum AddressSearch {
     }
 
     static func find(_ query: String, limit: Int = 8, near: (Double, Double)?) -> [[String: Any]] {
+        if let rural = PuertoRicoRoads.parse(query) {
+            guard let db = Library.shared.db("addresses/PR.sqlite", geo: true) else { return [] }
+            return PuertoRicoRoads.find(rural, db, limit)
+        }
         let legacyNumber = query.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil, pr = prParts(query)
         guard limit > 0, legacyNumber || pr != nil, let geo = Library.shared.geo else { return [] }
         let (number, words, state, postcode) = legacyNumber ? parts(query) : ("", [String](), "", "")

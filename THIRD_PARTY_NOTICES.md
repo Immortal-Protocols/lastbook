@@ -83,7 +83,9 @@ Sources and permissions page with the publisher and terms of every item. The off
 The Puerto Rico address database is © OpenStreetMap contributors, available under the
 [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Address features come from
 [Geofabrik’s Puerto Rico extract](https://download.geofabrik.de/north-america/us/puerto-rico.html).
-Municipio boundaries come from the [US Census Bureau TIGERweb service](https://tigerweb.geo.census.gov/).
+The US Census Bureau supplies municipio, barrio and ZIP Code Tabulation Area boundaries. [TIGERweb](https://tigerweb.geo.census.gov/)
+The Federal Highway Administration supplies the measured routes. [HPMS 2024](https://catalog.data.gov/dataset/highway-performance-monitoring-system-hpms-2024)
+The National Center for Education Statistics supplies school names, physical addresses and locations. [EDGE public school locations, 2024–25](https://catalog.data.gov/dataset/public-school-locations-2024-25)
 The offline builder reads OSM using [PyOsmium](https://github.com/osmcode/pyosmium) (BSD-2-Clause)
 and processes polygons using [Shapely](https://github.com/shapely/shapely) (BSD-3-Clause) with GEOS
 (LGPL-2.1). These libraries run on the machine that prepares the index.

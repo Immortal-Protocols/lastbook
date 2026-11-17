@@ -89,21 +89,49 @@ Results keep the source spelling. Search also accepts common forms of calle, car
 bulevar, alphanumeric house numbers, and a comma-separated urbanización such as `Urb. Sol, A-12 Calle Ejemplo`.
 A supplied ZIP, locality or urbanización must match the record. Urbanización names and ZIPs are often missing.
 
+A rural search accepts the numbered road, kilometer and barrio in any order. Try
+`Carr. 916 km 4 hm 4, Bo. Cerro Gordo, San Lorenzo` or `Bº Cerro Gordo, km 4,4, PR-916, San Lorenzo`.
+Both refer to kilometer 4.4. A decimal before a road, as in `0.6 Carr 119`, also identifies a kilometer.
+A whole number in that position can be a house number.
+
+- **Road kilometer** places the marker along a measured road segment from the Federal Highway Administration.
+  The builder converts each vertex's mile measure to meters and splits the segment at barrio and ZIP-area boundaries.
+  Search interpolates between two measured vertices on the same path. A missing segment leaves a gap.
+  The point is on the road. Someone meeting you at a house may still need a turn, gate or driveway.
+- **Public school** uses the NCES coordinates for a named school whose published street address contains the
+  same road and kilometer. Its address can name a local barrio or postal city. Lastbook labels the school by name.
+- A supplied barrio, municipality or ZIP restricts the search. Census ZIP Code Tabulation Areas approximate
+  postal areas. Interior, sector and landmark directions are shown as unverified on road results.
+
 For a build, download the Puerto Rico OSM PBF from [Geofabrik](https://download.geofabrik.de/north-america/us/puerto-rico.html)
 and the [US Census municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
 Save them as `puerto-rico.osm.pbf` and `municipios.geojson`. Use Python 3.11 or newer in a separate build environment.
 
 ```sh
 python -m pip install osmium==4.3.2 shapely==2.2.0
-python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses
-python -m unittest tools.test_build_pr_addresses app.tests.test_pr_addresses app.tests.test_address_search
+python tools/fetch_pr_rural.py derived/pr-rural-inputs
+python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs
+python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_address_search
 ```
 
 The builder uses address nodes and points inside valid closed ways. Each point must fall within one municipio.
 It uses the mapped city when present and accepts the containing municipio as a search qualifier. It uses an
 urbanización only when the address identifies one. Coverage varies by municipio. `PR.coverage.json` lists
-counts for all 78, reasons for skipped objects, source fingerprints and the SQLite checksum. Missing house
-numbers have no result. Search does not interpolate kilometre markers or expand a range into individual houses.
+house counts for all 78, reasons for skipped objects, rural coverage, source fingerprints and the SQLite checksum.
+A missing house number has no exact address result. Omitting `--rural` builds the smaller house-only index.
+For reproducible builds use the release's four archived rural inputs together with its two identified OSM and
+municipio inputs. Fetching again requests the publisher's current edition of each endpoint.
+
+Road measures come from [Puerto Rico HPMS 2024](https://geo.dot.gov/server/rest/services/Hosted/HPMS_FULL_PR_2024/FeatureServer/0).
+Area labels come from [Census barrios](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/1)
+and [ZIP Code Tabulation Areas](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/1).
+School names, directions and coordinates come from [NCES EDGE, 2024–25](https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_GEOCODE_PUBLICSCH_2425/MapServer/0).
+
+The comparison in `tools/evaluate_pr_rural.py` uses public [HRSA health center site addresses](https://gisportal.hrsa.gov/server/rest/services/HealthCareFacilities/PrimaryHealthCareFacilities_FS/MapServer/0),
+public NCES addresses, synthetic spoken directions, ordering variants and ambiguous inputs.
+It checks all seven extracted fields and compares results from the same offline index, including empty results and qualifier warnings.
+Run it with the SQLite path and a new output filename. Add `--gemma` to run the same queries through Lastbook's
+local runner with its pinned model. Set `LASTBOOK_MODEL_DIR` to the model directory and `LASTBOOK_DATA` to a writable test library.
 
 For local use, close the library and extract the single ZIP member, `derived/geo/addresses/PR.sqlite`,
 under `LastbookData/` and open it with the updated reader. For a release, upload the ZIP to the Lastbook

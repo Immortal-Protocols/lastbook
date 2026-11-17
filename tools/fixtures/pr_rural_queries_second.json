@@ -1,0 +1,22 @@
+[
+  ["second_hrsa","0.6 Carr 122, Lajas, PR 00667",[122,"0.6","Lajas","00667",false,"",""]],
+  ["second_hrsa","17.8 Carr 167, Pájaros, PR 00957",[167,"17.8","Pájaros","00957",false,"",""]],
+  ["second_hrsa","22.6 Carr 31, Gurabo Abajo, PR 00777",[31,"22.6","Gurabo Abajo","00777",false,"",""]],
+  ["second_hrsa","4.1 Carr 128, Almácigo Bajo, PR 00698",[128,"4.1","Almácigo Bajo","00698",false,"",""]],
+  ["second_hrsa","7.1 Carr 101, Llanos, PR 00667",[101,"7.1","Llanos","00667",false,"",""]],
+  ["second_directions","En el barrio Ceiba de Florida, carretera seiscientos treinta y uno, kilómetro cinco",[631,"5","Ceiba Florida","",false,"",""]],
+  ["second_directions","Hatillo, Bo. Pajuil. Es en la ciento treinta, kilómetro ocho punto tres.",[130,"8.3","Pajuil Hatillo","",false,"",""]],
+  ["second_directions","En el siete con siete de la 167, barrio Parcelas, Naranjito",[167,"7.7","Parcelas Naranjito","",false,"",""]],
+  ["second_directions","Cayey, Bo Bayamón, sector Certenejas I. Es por la 172 en el ocho punto uno.",[172,"8.1","Bayamon Cayey","",false,"Certenejas I",""]],
+  ["second_directions","On route 435 at kilometer two point three, San Sebastián 00685",[435,"2.3","San Sebastian","00685",false,"",""]],
+  ["second_directions","Toma la carretera 916 en San Lorenzo. El kilómetro es el 4.4, en Cerro Gordo.",[916,"4.4","Cerro Gordo San Lorenzo","",false,"",""]],
+  ["second_directions","Kilómetro 68, barrio Santana, PR 2, Arecibo, interior",[2,"68","Santana Arecibo","",true,"",""]],
+  ["second_directions","PR-2 km 68, Arecibo, frente a la iglesia, Bo. Santana",[2,"68","Santana Arecibo","",false,"","Frente a la iglesia"]],
+  ["second_controls","En la PR-916, entre los kilómetros 4 y 5, San Lorenzo",null],
+  ["second_controls","Del km 4.4 de la PR-916 al km 68 de la PR-2",null],
+  ["second_controls","Cuatro kilómetros después del pueblo, por la PR-916",null],
+  ["second_controls","PR-916 km 4.4, lote 12, Cerro Gordo, San Lorenzo",null],
+  ["second_controls","PR-2, salida 68, Arecibo",null],
+  ["second_controls","Mi dirección postal es HC 2 Box 68, Arecibo",null],
+  ["second_constraints","Kilómetro cuatro punto cuatro, carretera novecientos dieciséis, municipio de Mayagüez",[916,"4.4","Mayaguez","",false,"",""]]
+]

@@ -4,7 +4,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from engine import pr_addresses
+from engine import pr_addresses, pr_rural
 from engine.paths import ro_uri
 
 # Keep normalization compatible with tools/build_addresses.py.
@@ -41,7 +41,7 @@ def normalize(text):
 
 def is_address_query(query):
     """A standalone ZIP remains a place query. A number followed by words is an address."""
-    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query) or pr_addresses.components(query))
+    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query) or pr_addresses.components(query) or pr_rural.looks_rural(query))
 
 
 def street_forms(street):
@@ -75,7 +75,22 @@ def _parts(query):
 
 
 def find_addresses(query, geo_directory, limit=8, near=None):
-    """Return exact house-number matches from installed indexes, never a guessed house."""
+    """Find indexed street addresses or explicitly labeled rural road references."""
+    rural = pr_rural.parse(query)
+    if rural and limit > 0:
+        path = Path(geo_directory) / 'addresses' / 'PR.sqlite'
+        if path.is_file():
+            db = None
+            try:
+                db = sqlite3.connect(ro_uri(path), uri=True)
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").fetchone():
+                    return pr_rural.lookup(db, rural, limit)
+            except sqlite3.Error:
+                pass
+            finally:
+                if db is not None:
+                    db.close()
+        return []
     legacy_number = re.match(r'^\s*\d[\w-]*\s+\S', query)
     pr_parts = pr_addresses.components(query)
     if limit <= 0 or not (legacy_number or pr_parts):

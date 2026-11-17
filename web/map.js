@@ -882,11 +882,20 @@ const MapView = (() => {
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = looksLikeAddress(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
+      if (!r.length) {
+        const rural = /(?:^|[^a-z])(?:k\.?\s*m\.?s?|kil[oó]metr(?:os?|es?|ers?))(?=\W|\d|$)|\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])/i.test(q);
+        let message = 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.';
+        if (rural || looksLikeAddress(q)) {
+          message = rural ? 'No matching road kilometer in the offline data. Check the route, kilometer and barrio.' : 'Address not found in your offline data. Check the house number and street.';
+          if (IN_WINDOW) message += ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.';
+        }
+        box.innerHTML = '<p class="muted small" style="padding:8px">' + message + '</p>';
+        return;
+      }
       const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
-      if (r.length === 1) pick(r[0]);
+      if (r.length === 1 && r[0].kind !== 'Road kilometer' && r[0].source !== 'NCES EDGE') pick(r[0]);
     } catch { if (st === state) box.innerHTML = '<p class="muted small">Place finder unavailable.</p>' }
   }
   return { page, stop };

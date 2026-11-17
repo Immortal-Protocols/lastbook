@@ -6,13 +6,14 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 18 dated official text adaptations: ACMA emergency calls and CB radio; Queensland
+- 20 dated official text adaptations: ACMA emergency calls and CB radio; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
-  emergency contacts.
-- Four copyright statements, the original Australian source hub and a directory
-  covering all six states, ACT and NT: **24 searchable HTML records** altogether.
+  emergency contacts; Energy Safe Victoria's complete generator-use section; and
+  myGov's remote-travel preparation and emergency-help sections.
+- Six copyright statements, the original Australian source hub and a directory
+  covering all six states, ACT and NT: **28 searchable HTML records** altogether.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
   documents are installed. The health guide also points to the library's existing
@@ -62,7 +63,10 @@ original URL, retrieval date, publisher, jurisdiction and licence. Official reco
 also retain the downloaded raw response's SHA-256 as provenance. These are retrieval
 hashes, not claims that a live web page will return identical bytes later.
 
-The official text is CC BY 4.0 under the relevant site's copyright statement.
+The official text retains the licence from its exact site's copyright statement:
+CC BY 4.0 for the earlier sources and Energy Safe Victoria; CC BY 3.0 Australia
+for myGov (including its copyright statement). The manifest records each version
+and licence URL. The builder accepts those explicitly reviewed licence identifiers.
 Those statements are included offline. All publisher credits, original addresses,
 licence references, changes and non-endorsement notices appear on the adaptations.
 Original hub/directory text is also CC BY 4.0. Source content is not relicensed under
@@ -78,15 +82,29 @@ selected sections has not been rewritten, and source update dates remain where
 present. Retrieval in 2026 does not mean a source was authored or medically reviewed
 in 2026.
 
+The separately reviewed Energy Safe Victoria page is included under its own
+  explicit CC BY 4.0 statement. Only its complete “Using a generator” section is
+  selected; selection/capacity advice, illustrations and translated PDFs are not
+  included. All cautions within that section remain. Its page review date is
+  16 March 2026; that is a source date, not our independent electrical review.
+The myGov selection supplies basic national remote-travel preparation; it is not
+a detailed outback driving, water/fuel calculation or PLB manual. Its page update
+date is 16 January 2025.
+
 Reviewed but **not bundled**:
 
 - ANZCOR full guidelines: its copyright page limits public redistribution without
   written permission. Seek permission and clinical review for Australian first aid;
-  do not substitute overseas envenomation guidance.
+  do not substitute overseas envenomation guidance. The separate personal-use
+  source tool does not grant public redistribution rights.
 - Queensland's older general bites-and-stings page: not selected after review.
-- The alternative-fuel/generator page: includes third-party Victorian content;
-  permission scope needs checking. The WorkSafe Queensland site also has different,
-  more restrictive reuse terms than `qld.gov.au`.
+- The Queensland Health alternative-fuel/generator page includes third-party
+  Victorian content; permission scope needs checking. The distinct Electrical
+  Safety Office site links to Office of Industrial Relations CC BY 4.0 terms;
+  those terms must be checked directly rather than inferred from qld.gov.au.
+- NSW Parks outback text: its copyright page labels content CC BY but also asks
+  for permission to modify it and for commercial uses. It is not included while
+  that permission scope remains unresolved.
 - AMSA remote land-travel material: candidate primary source; full source/permission
   snapshot acquisition still needed. Its address appears as an unbundled reference.
 
@@ -103,13 +121,13 @@ an instruction to accept a new live page automatically.
 | --- | --- | --- |
 | Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence | Satellite phone/PLB operation and local radio frequency coverage |
 | Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation | Licensed detailed local guides for other jurisdictions; disability and translated materials |
-| Rural preparation | NSW rural bushfire, flood/isolation, animals | Remote driving, water/fuel planning, pastoral and First Nations community-specific sources |
+| Rural preparation | NSW rural bushfire, flood/isolation, animals; myGov remote-travel basics | Detailed remote driving, route-specific water/fuel calculations, pastoral and First Nations community-specific sources |
 | Fire, flood, cyclone and heat | Dated NSW/Qld source texts | Detailed regional manuals outside NSW/Qld; Australian fire-danger ratings and warning-system source snapshots |
 | Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
-| Power, gas and repairs | Explicit content gap | Licensed current Australian electrical, generator and gas safety sources |
+| Power, gas and repairs | Energy Safe Victoria generator-use section, with its complete cautions | Broader electrical and gas safety; equipment-specific instructions and local professional assessment |
 | Geographic directory | Six states, ACT and NT | External territories, including Jervis Bay's distinct arrangements |
-| Maps | Separate capital-area proposal #38 and place-finder proposal #63 | Broader detailed coverage and integration; this supplement contains no map files |
+| Maps | Separate #38 now has eight capital and eight broader extract definitions; #90 provides point-place sidecars alongside #63 | Official release/scanner/switch/repair integration and external-territory verification; this supplement contains no map files |
 
 All snapshots are static. Lastbook does not use this directory to fetch warnings,
 make phone calls, find current evacuation centres or decide that a road is safe.

@@ -114,10 +114,10 @@
  "au-household": {
   "missing": [
    "This Australian supplement is a starting collection, not complete survival coverage. It carries dated source snapshots, not live warnings, road closures or open evacuation centres.",
-   "Detailed local manuals for Victoria, Western Australia, Tasmania, South Australia, ACT and NT still need redistribution and content review. The directory covers their official warning authorities.",
+   "Most detailed local manuals outside NSW/Queensland still need review. A Victorian generator-usage section is included; the directory covers the other warning authorities.",
    "External-territory emergency arrangements and maps need separate verification.",
    "State-wide maps, Australian town/address search, elevation, and verified facility status are not supplied by this text supplement.",
-   "Licensed current generator/electrical and gas safety, accessible household planning and translated sources need review."
+   "The Victorian generator-usage section is included, but broader electrical/gas safety, accessible household planning and translated offline sources still need review."
   ],
   "disagree": [
    "Do not silently combine chemical-disinfection recipes from different sources. Only the drinking-water section of Food and drinking water is retained; food guidance comes from the separate Queensland food-safety page."
@@ -126,10 +126,10 @@
  "au-rural": {
   "missing": [
    "This Australian supplement is a starting collection, not complete survival coverage. It carries dated source snapshots, not live warnings, road closures or open evacuation centres.",
-   "Detailed local manuals for Victoria, Western Australia, Tasmania, South Australia, ACT and NT still need redistribution and content review. The directory covers their official warning authorities.",
+   "Most detailed local manuals outside NSW/Queensland still need review. A Victorian generator-usage section is included; the directory covers the other warning authorities.",
    "External-territory emergency arrangements and maps need separate verification.",
    "State-wide maps, Australian town/address search, elevation, and verified facility status are not supplied by this text supplement.",
-   "Remote driving, trip water/fuel planning, PLB operation, pastoral fire planning outside NSW and First Nations community-specific planning need licensed local content and review."
+   "National remote-travel basics are included. Detailed remote driving, route-specific water/fuel calculations, PLB operation, pastoral fire planning outside NSW and First Nations community-specific planning still need licensed sources and review."
   ]
  },
  "au-health": {

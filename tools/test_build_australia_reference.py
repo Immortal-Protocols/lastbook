@@ -25,7 +25,9 @@ class Reference(unittest.TestCase):
             with sqlite3.connect(lib / 'search.sqlite') as db:
                 self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
                 for query, expected in [('"Triple Zero"', 'au-emergency-calls'),
-                                        ('livestock', 'nsw-rural-flood'), ('chemicals', 'qld-water')]:
+                                        ('livestock', 'nsw-rural-flood'), ('chemicals', 'qld-water'),
+                                        ('"carbon monoxide"', 'vic-generator'),
+                                        ('"fuel and rest stops"', 'au-remote-travel')]:
                     ids = {r[0] for r in db.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', (query,))}
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):
@@ -35,6 +37,8 @@ class Reference(unittest.TestCase):
             directory = json.loads((au.SOURCES / 'jurisdictions.json').read_text())
             self.assertEqual({r['id'] for r in directory['jurisdictions']},
                              {'AU-ACT', 'AU-NSW', 'AU-NT', 'AU-QLD', 'AU-SA', 'AU-TAS', 'AU-VIC', 'AU-WA'})
+            self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
+            self.assertEqual(cat['vic-generator']['license'], 'CC-BY-4.0')
 
     def test_existing_output_is_untouched(self):
         with tempfile.TemporaryDirectory() as d:

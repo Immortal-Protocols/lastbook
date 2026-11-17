@@ -75,7 +75,7 @@ def checked_sources(source_dir=SOURCES):
         data = (source_dir / r['snapshot']).read_bytes()
         if len(data) != r['bytes'] or digest(data) != r['sha256']:
             raise ValueError('Snapshot changed; review and update manifest: ' + r['id'])
-        if r['license'] not in {'CC-BY-4.0', 'CC0-1.0'}:
+        if r['license'] not in {'CC-BY-4.0', 'CC-BY-3.0-AU', 'CC0-1.0'}:
             raise ValueError('Source needs redistribution permission: ' + r['id'])
         page = Page(); page.feed(data.decode('utf-8')); page.close()
         body = ''.join(page.text).strip()

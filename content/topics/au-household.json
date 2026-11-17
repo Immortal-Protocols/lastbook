@@ -116,6 +116,18 @@
       ]
     },
     {
+      "id": "generator",
+      "label": "Read Victorian portable-generator safety",
+      "hint": "Read the complete source usage section and its cautions.",
+      "read": [
+        {
+          "doc": "vic-generator",
+          "label": "Using a portable generator: Victorian source guidance",
+          "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+        }
+      ]
+    },
+    {
       "id": "poisons",
       "label": "Someone may have been poisoned",
       "hint": "Read the source guidance and its regional limits.",
@@ -167,6 +179,11 @@
       "doc": "qld-pets",
       "label": "Pet emergency plan",
       "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
     }
   ],
   "learn": [
@@ -199,6 +216,11 @@
       "doc": "qld-water",
       "label": "Food and drinking water",
       "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
     }
   ],
   "related": [

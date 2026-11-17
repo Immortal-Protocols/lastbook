@@ -88,7 +88,7 @@
     return Boolean(pack.revision && pack.revision !== current.content_revision);
   }
 
-  /* state maps (docs/SETUP-API.md, State maps). The person picks the state; Lastbook never looks for where it is */
+  /* The person picks the map. Lastbook never looks for where it is. */
   const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));   // by name, as people look for theirs
   const mapById = id => maps().find(m => m.id === id);
   const mapName = id => id === 'us' ? 'the whole US' : (mapById(id) || {}).title || id;
@@ -96,18 +96,19 @@
   const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
   const packMap = id => { const p = packById(id) || {}; return 'map' in p ? p.map || null : PACK_MAP[id] || null };
   const mapNow = () => { const c = cur() || {}; return choice.pack && choice.pack !== c.pack ? packMap(choice.pack) : (c.map && c.map !== 'base' ? c.map : packMap(c.pack)) };
-  const selectedState = () => choice.map || (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
+  const selectedMap = () => choice.map || (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
+  const includedMap = (map, current) => map.id === current || (current === 'us' && map.kind === 'state');
   const addresses = () => (S.manifest && S.manifest.address_indexes) || [];
   const addressById = id => addresses().find(a => a.id === id);
-  const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
-  const mapMissing = () => !selectedState();
-  const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const addressAdds = () => { const a = addressById(selectedMap()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
+  const mapMissing = () => !selectedMap();
+  const mapAdds = () => { const map = mapById(choice.map); return map && !includedMap(map, mapNow()) ? map : null };
   function packSummary(p) {
     const text = p.summary || '';
     if (p.id !== 'medium' || !maps().length) return text;
     // The manifest describes the archive's bundled map. Setup replaces it with the chosen state map.
-    const state = selectedState();
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your state'));
+    const map = selectedMap();
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (map ? mapName(map) : 'your area'));
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -150,6 +151,11 @@
   async function load() {
     try { S = await call('state') }
     catch (e) { main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b>Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again">Try again</button></p></div></div>`; $('#again').onclick = load; return }
+    if (!cur() && !S.job && !packs().length && S.manifest?.loading) {
+      main.innerHTML = '<p role="status">Loading the library catalog…</p>';
+      pollT = setTimeout(load, 500);
+      return;
+    }
     const rf = (S.recommend || {}).folder;
     folder = folder || (cur() && cur().folder) || S.default_folder || (rf ? asData(rf) : '');
     if (!choice.pack) {
@@ -221,13 +227,13 @@
         : `<div class="s-opt s-ai off" role="group" aria-label="Local AI"><span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b><span class="s-badge later">Not for this computer</span></span>
             <small>${esc((S.hardware.ai && S.hardware.ai.why) || 'This computer does not have enough memory for it.')}</small></span></div>`;
     }
-    const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · doesn’t match the published file, so it is not used</small></span></div>`
+    const found = (S.found || []).map((f, i) => f.kind === 'map' && mapById(f.id)?.local ? '' : f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · doesn’t match the published file, so it is not used</small></span></div>`
       : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? 'A Lastbook library' : f.kind === 'model' ? 'The local AI file' : (packById(f.id) ? packById(f.id).title + ' library' : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
         <button class="btn plain" data-use="${i}">Use the file you already have</button></div>`).join('');
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span>Library and local AI</span></button>` : ''}
       <h1>${c ? 'Change the library' : 'Set up Lastbook'}</h1>
-      ${c ? '' : '<p class="lead">Choose your state and library. Lastbook downloads them for offline use.</p>'}
+      ${c ? '' : '<p class="lead">Choose a map and library for offline use.</p>'}
       ${computer()}
       ${c ? '' : recommendLine()}
       ${found ? `<h2>Found on this computer</h2><div class="s-founds">${found}</div>` : ''}
@@ -252,33 +258,46 @@
     mapSection();
     summary();
   }
-  /* Map geometry and address indexes are separate downloads, chosen by state. */
+  /* Map geometry and address indexes are separate downloads. */
   function mapSection() {
     const box = $('#mapBox'), now = mapNow();
     if (!box) return;
     main.querySelectorAll('[data-pack-summary]').forEach(el => { el.textContent = packSummary(packById(el.dataset.packSummary)) });
-    const selected = selectedState();
-    const opts = maps().map(m => {
-      const a = addressById(m.id), included = now === 'us' || m.id === now;
+    const selected = selectedMap();
+    const option = m => {
+      const a = addressById(m.id), included = includedMap(m, now);
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
-      const details = off ? 'coming later' : bytes ? size(bytes) + ' download' : 'included';
+      const local = m.local && foundFor('map', m.id);
+      const details = off ? 'coming later' : !bytes ? 'included' : local ? size(bytes) + ' archive on this computer'
+        : m.local ? 'local archive unavailable' : size(bytes) + ' download';
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
-    }).join('');
+    };
+    const spain = m => /^ES(?:-|$)/.test(m.id);
+    const spanishMaps = maps().filter(spain).sort((a, b) => Number(b.id === 'ES') - Number(a.id === 'ES'));
+    const otherMaps = maps().filter(m => !spain(m));
+    const group = (label, items) => items.length ? `<optgroup label="${label}">${items.map(option).join('')}</optgroup>` : '';
+    const opts = spanishMaps.length ? group('Spain', spanishMaps) + group('Other maps', otherMaps) : otherMaps.map(option).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = now === 'us' || selected === now;
-    const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
+    const mapIncluded = sel && includedMap(sel, now);
+    const local = sel?.local && !mapIncluded;
+    const bytes = (sel && !mapIncluded && !foundFor('map', selected) ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
-    const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your state map is already included.') + ' Street-address search is not available for this state yet.';
+    const unavailable = sel && (sel.kind === 'region' || addresses().length) && (!addressById(selected) || addressById(selected).available === false);
+    let hint = !sel ? 'Select a map to continue.'
+      : local && !foundFor('map', selected) ? 'Rebuild the local map packs, then open setup again.'
+      : bytes ? `${size(bytes)} download · ${size(disk)} on disk.`
+      : disk ? `Use the archive on this computer · ${size(disk)} on disk.` : 'Your map is already included.';
+    if (sel?.id === 'ES') hint += ' Includes all 17 autonomous communities, Ceuta and Melilla.';
+    if (unavailable) hint += ' Street-address search is unavailable for this map.';
+    if (now && sel && !mapIncluded) hint += ` Installing this map replaces the current map (${mapName(now)}).`;
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
-      ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your state for offline street-address search.</p>' : ''}
-      <label class="s-maplabel" for="mapSel">Choose your state</label>
-      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select a state</option>${opts}</select>
-      <p class="s-hint" id="mapHint">${hint}</p>`;
+      ${now === 'us' ? '<p class="s-mapnote">All includes the whole US. Choose a US state for its offline street-address search.</p>' : ''}
+      <label class="s-maplabel" for="mapSel">Choose a map</label>
+      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select a map</option>${opts}</select>
+      <p class="s-hint" id="mapHint">${esc(hint)}</p>`;
     $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
   }
   function summary() {
@@ -293,10 +312,12 @@
       ${folderRow()}`
       : `<p class="s-nothing">${c ? 'This is what you have now.' : 'Pick a library.'}</p>${c ? '' : folderRow()}`;
     const b = $('#start');
-    b.disabled = !need || !!short || mapMissing();
+    const chosen = mapAdds();
+    const localMissing = chosen?.local && !foundFor('map', chosen.id);
+    b.disabled = !need || !!short || mapMissing() || localMissing;
     const newPack = c && packNeedsInstall(packById(choice.pack)), newAi = c && choice.ai && !c.model, newMap = c && mapAdds(), newAddresses = c && addressAdds();
     const parts = [newPack && packById(choice.pack).title, newAi && 'the local AI', newMap && `the ${newMap.title} map`, newAddresses && !newMap && 'offline address search'].filter(Boolean);
-    b.textContent = mapMissing() ? 'Choose your state to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
+    b.textContent = mapMissing() ? 'Choose a map to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
     if (newPack && choice.pack === c.pack && !mapMissing()) b.textContent = 'Download and install update';
     const ch = $('#chFolder'); if (ch) ch.onclick = pickFolder;
   }
@@ -332,7 +353,14 @@
     try {
       const r = await call('use', { path });
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'The local AI file will be used. No need to download it.'; return }
+      if (r && r.noted) {
+        S = await call('state').catch(() => S);
+        if (r.map) choice.map = r.map; else choice.ai = true;
+        chooseView();
+        const n = $('#haveNote'); n.hidden = false;
+        n.textContent = r.map ? 'The map archive will be used with your library.' : 'The local AI file will be used. No need to download it.';
+        return;
+      }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
@@ -342,7 +370,7 @@
   async function start() {
     if (mapMissing()) { $('#mapSel')?.focus(); return }
     const b = $('#start'); b.disabled = true;
-    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
+    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds()?.id || null, address_id: addressAdds()?.id || null, folder }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
     if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'Setup could not start.'; return }
     S.job = r; go('job'); poll();
@@ -362,8 +390,9 @@
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
-          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
-          <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
+          const includes = mapById(mNow)?.includes;
+          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${esc(includes || (mNow ? 'Local streets, buildings and terrain' : 'Choose a map for your area.'))}</small></span>
+          <button class="btn plain" id="mapCh">Choose a map</button></div>` })() : ''}
       </div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
@@ -416,6 +445,7 @@
       no_space: [`Not enough room on ${esc(diskName(d))}${e && e.need_bytes ? `: this needs ${size(e.need_bytes)}, and ${size(e.free_bytes)} is free` : ''}.`, 'Free some space, then retry, or go back and choose less.', 'retry'],
       network: ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
       checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
+      local_map_file: [esc(errText(e)), '', 'back'],
       unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
       activate: ['The new library is ready but could not be switched in.', 'Retry, or close Lastbook and open it again.', 'retry'],
       cancelled: ['The download was cancelled.', 'Start again when you are ready.', 'back'],

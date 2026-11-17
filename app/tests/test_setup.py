@@ -1069,6 +1069,62 @@ class Maps(Base):
         self.assertEqual([x['id'] for x in merged['maps']], ['CA'])
 
 
+class LocalRegionMaps(Base):
+    def local_manifest(self, *regions):
+        folder = self.tmp / 'local-maps'
+        folder.mkdir()
+        entries = []
+        for code, archived_code in regions:
+            path = folder / f'Lastbook-Map-{code}.zip'
+            files = make_map(path, state=archived_code)
+            data = path.read_bytes()
+            entries.append({'id': code, 'title': code, 'installed_bytes': sum(map(len, files.values())),
+                            'files': [{'name': path.name, 'size': len(data), 'sha256': sha(data)}]})
+        (folder / 'manifest-v1.json').write_text(json.dumps({'version': 1, 'maps': entries}))
+        return manifest.Manifest(bundled=self.manifest().current, remote=None, allowed=ALLOWED, local_maps=folder)
+
+    def test_first_run_installs_catalog_map_from_disk(self):
+        mf = self.local_manifest(('ES', 'ES'))
+        setup = self.setup(manifest=mf)
+        job = setup.start('small', map_id='ES')
+        self.assertIsNone(job.get('error'), job)
+        self.assertIn(('map', 'found'), [(item['kind'], item['source']) for item in job['items']])
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, note = api.startup(self.settings)
+        self.assertFalse(note.get('error'))
+        self.assertEqual(install.check_map(library)['name'], 'ES')
+        self.assertTrue(install.is_library(library))
+
+    def test_corrupt_local_archive_keeps_installed_map(self):
+        mf = self.local_manifest(('ES-ML', 'ES-ML'))
+        archive = mf.local_dir / 'Lastbook-Map-ES-ML.zip'
+        data = archive.read_bytes()
+        archive.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+        library = self.parent / 'LastbookData'
+        (library / 'library-data').mkdir(parents=True)
+        (library / 'library-data/catalog.json').write_text('{}')
+        (library / 'pack.json').write_text('{"name":"all","map":"us"}')
+        setup = self.setup('manage', current=library, manifest=mf)
+        setup.start(map_id='ES-ML')
+        self.assertEqual(self.wait(setup)['error']['code'], 'local_map_file')
+        self.assertEqual(install.map_name(library), 'us')
+        self.assertFalse(api._pending_file(self.settings).exists())
+
+    def test_changed_region_does_not_reuse_same_size_staged_files(self):
+        mf = self.local_manifest(('ES-CN', 'ES-ML'), ('ES-CE', 'ES-CE'))
+        library = self.parent / 'LastbookData'
+        (library / 'library-data').mkdir(parents=True)
+        (library / 'library-data/catalog.json').write_text('{}')
+        setup = self.setup('manage', current=library, manifest=mf)
+        setup.start(map_id='ES-CN')
+        self.assertEqual(self.wait(setup)['error']['code'], 'unpack')
+        setup.start(map_id='ES-CE')
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        installed, note = api.startup(self.settings)
+        self.assertFalse(note.get('error'))
+        self.assertEqual(install.map_name(installed), 'ES-CE')
+
+
 class AddressIndexes(Maps):
     def address_manifest(self, wrong_path=False):
         mf, maps = self.map_manifest()

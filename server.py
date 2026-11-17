@@ -33,7 +33,7 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
 
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
-from engine import saved_pages, address_search, osm_br  # noqa: E402
+from engine import saved_pages, address_search, osm_br, kiwix_br, vault, translator, checker  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -2115,23 +2115,76 @@ class Handler(library.Handler):
             text, summary = assistant.run_tool(name, args, sess, extra)
             images = [p['image_url']['url'] for m in extra for p in m['content'] if isinstance(p, dict) and p.get('type') == 'image_url']
             return self.send_json({'text': text, 'summary': summary, 'sources': list(sess.sources.values()), 'images': images})
-        if rpath == '/api/assistant/local':   # the optional local AI: look again for the file, turn it on or off, stop it
+        if rpath == '/api/assistant/local':   # the optional local AI: look again for the file, turn it on or off, stop it, switch model
             if not assistant.LOCAL:
                 return self.send_json({'error': 'no local AI in this version'}, 404)
             try:
                 n = int(self.headers.get('Content-Length') or 0)
-                action = json.loads(self.rfile.read(min(max(n, 0), 2000)) or b'{}').get('action')
+                body = json.loads(self.rfile.read(min(max(n, 0), 2000)) or b'{}')
+                action = body.get('action') if isinstance(body, dict) else None
             except (ValueError, AttributeError):
-                action = None
+                body, action = {}, None
             if action == 'rescan':
                 threading.Thread(target=assistant.LOCAL.discover, daemon=True).start()
             elif action in ('on', 'off'):
                 assistant.LOCAL.set_enabled(action == 'on')
             elif action == 'stop':
                 assistant.LOCAL.stop('asked')
+            elif action == 'select':
+                mid = body.get('model_id') if isinstance(body, dict) else None
+                if not mid or not assistant.LOCAL.select_model(mid):
+                    return self.send_json({'error': 'modelo não encontrado ou não instalado'}, 404)
             else:
-                return self.send_json({'error': 'action is rescan, on, off or stop'}, 400)
+                return self.send_json({'error': 'action is rescan, on, off, stop or select'}, 400)
             return self.send_json(assistant.LOCAL.status())
+        if rpath == '/api/vault':
+            if self.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+                return self.send_json({'error': 'O Cofre só pode ser acessado localmente neste computador.'}, 403)
+            try:
+                n = int(self.headers.get('Content-Length') or 0)
+                if n < 0 or n > 4 * 1024 * 1024:
+                    return self.send_json({'error': 'Requisição grande demais para o cofre.'}, 413)
+                req = json.loads(self.rfile.read(n) or b'{}')
+                if not isinstance(req, dict):
+                    raise ValueError('bad request')
+            except ValueError:
+                return self.send_json({'error': 'bad request'}, 400)
+            act = req.get('action')
+            try:
+                if act == 'create':
+                    return self.send_json(vault.create_vault(req.get('name'), req.get('password'), data_dir=HERE))
+                if act == 'open':
+                    return self.send_json(vault.open_vault(req.get('id'), req.get('password'), data_dir=HERE))
+                if act == 'save':
+                    return self.send_json(vault.save_vault(req.get('id'), req.get('password'), req.get('payload'), req.get('name'), data_dir=HERE))
+                if act == 'delete':
+                    return self.send_json(vault.delete_vault(req.get('id'), req.get('password'), data_dir=HERE))
+                return self.send_json({'error': 'ação inválida'}, 400)
+            except PermissionError as e:
+                return self.send_json({'error': str(e)}, 403)
+            except FileNotFoundError as e:
+                return self.send_json({'error': str(e)}, 404)
+            except ValueError as e:
+                return self.send_json({'error': str(e)}, 400)
+        if rpath == '/api/translate':
+            try:
+                n = int(self.headers.get('Content-Length') or 0)
+                if n < 0 or n > 100_000:
+                    return self.send_json({'error': 'Texto grande demais para traduzir de uma vez.'}, 413)
+                req = json.loads(self.rfile.read(n) or b'{}')
+                if not isinstance(req, dict):
+                    raise ValueError
+            except ValueError:
+                return self.send_json({'error': 'bad request'}, 400)
+            res = translator.translate(
+                req.get('text'),
+                source=req.get('source', 'auto'),
+                target=req.get('target', 'pt-BR'),
+                doc_id=req.get('doc_id'),
+                page=req.get('page'),
+                data_dir=HERE,
+            )
+            return self.send_json(res, 400 if res.get('error') else 200)
         if rpath != '/api/chat':
             return self.send_json({'error': 'not found'}, 404)
         try:
@@ -2319,8 +2372,18 @@ class Handler(library.Handler):
                 s = json.loads((LIB / 'summary.json').read_text(encoding='utf-8'))
                 sources = (catalog()['by_path'].get(SOURCES_PAGE) or {}).get('id')
                 return self.send_json({**{k: s.get(k) for k in ('resources', 'pdfs', 'pdf_pages', 'web_pages', 'videos', 'collections', 'document_bytes')},
-                                       'zims': zim_names(), 'sources': sources, 'pack': bool(pack_info()),
+                                       'zims': zim_names(), 'zims_catalog': kiwix_br.public_zims(), 'sources': sources, 'pack': bool(pack_info()),
                                        'pins': bool(map_contents()['layers']) if pack_info() else True})
+            if path == '/api/vault/list':
+                if self.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+                    return self.send_json({'error': 'O Cofre só pode ser acessado localmente neste computador.'}, 403)
+                return self.send_json({'vaults': vault.list_vaults(data_dir=HERE)})
+            if path == '/api/translate/glossary':
+                return self.send_json({'glossary': translator.glossary()})
+            if path == '/api/check':
+                if self.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+                    return self.send_json({'error': 'O Diagnóstico só pode ser executado neste computador.'}, 403)
+                return self.send_json(checker.run_check(full=(qs.get('full') == '1'), data_dir=HERE))
             if path.startswith('/api/') and path not in self.LIBRARY_ROUTES:
                 return self.send_json({'error': 'not found'}, 404)
             return super().do_GET()

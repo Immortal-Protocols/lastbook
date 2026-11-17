@@ -1,0 +1,187 @@
+"""Cofre criptografado offline para documentos, fichas médicas e contatos de emergência da família.
+
+Inspirado nas bóvedas criptográficas do refugiOS, adaptado para rodar de forma portátil
+dentro da pasta da biblioteca (<LASTBOOK_DATA>/derived/vault) usando apenas primitivas
+padrão de criptografia do Python (PBKDF2-HMAC-SHA256 + BLAKE2b stream + HMAC-SHA256).
+"""
+import base64
+import hashlib
+import hmac
+import json
+import os
+import re
+import secrets
+import time
+import zlib
+from pathlib import Path
+
+PBKDF2_ITERS = 250_000
+ID_RE = re.compile(r'^[a-z0-9][a-z0-9_-]{0,63}$')
+MAX_PAYLOAD_BYTES = 4 * 1024 * 1024
+
+
+def vault_dir(data_dir=None):
+    base = Path(data_dir) if data_dir else Path(os.environ.get('LASTBOOK_DATA') or '.')
+    return base / 'derived' / 'vault'
+
+
+def _now():
+    return time.strftime('%Y-%m-%dT%H:%M:%S')
+
+
+def _slug(name):
+    s = re.sub(r'[^a-z0-9]+', '-', str(name or '').lower()).strip('-')[:36]
+    return (s or 'cofre') + '-' + secrets.token_hex(3)
+
+
+def _derive(password, salt):
+    if not isinstance(password, str) or len(password) < 4:
+        raise ValueError('A senha deve ter pelo menos 4 caracteres.')
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, PBKDF2_ITERS, dklen=64)
+    return dk[:32], dk[32:]
+
+
+def _keystream(enc_key, nonce, length):
+    out = bytearray()
+    ctr = 0
+    while len(out) < length:
+        out.extend(hashlib.blake2b(nonce + ctr.to_bytes(8, 'big'), key=enc_key, digest_size=64).digest())
+        ctr += 1
+    return bytes(out[:length])
+
+
+def _encrypt(payload_dict, password):
+    salt = secrets.token_bytes(16)
+    nonce = secrets.token_bytes(16)
+    enc_key, mac_key = _derive(password, salt)
+    raw = json.dumps(payload_dict, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    if len(raw) > MAX_PAYLOAD_BYTES:
+        raise ValueError('O cofre excedeu o limite de tamanho permitido (4 MB).')
+    comp = zlib.compress(raw, level=6)
+    ks = _keystream(enc_key, nonce, len(comp))
+    ct = bytes(a ^ b for a, b in zip(comp, ks))
+    mac = hmac.new(mac_key, b'LASTBOOK-VAULT-V1' + salt + nonce + ct, hashlib.sha256).digest()
+    return {
+        'salt': base64.b64encode(salt).decode('ascii'),
+        'nonce': base64.b64encode(nonce).decode('ascii'),
+        'mac': base64.b64encode(mac).decode('ascii'),
+        'data': base64.b64encode(ct).decode('ascii'),
+    }
+
+
+def _decrypt(envelope, password):
+    salt = base64.b64decode(envelope['salt'])
+    nonce = base64.b64decode(envelope['nonce'])
+    mac = base64.b64decode(envelope['mac'])
+    ct = base64.b64decode(envelope['data'])
+    enc_key, mac_key = _derive(password, salt)
+    expected = hmac.new(mac_key, b'LASTBOOK-VAULT-V1' + salt + nonce + ct, hashlib.sha256).digest()
+    if not hmac.compare_digest(mac, expected):
+        raise PermissionError('Senha incorreta ou arquivo do cofre adulterado.')
+    ks = _keystream(enc_key, nonce, len(ct))
+    comp = bytes(a ^ b for a, b in zip(ct, ks))
+    return json.loads(zlib.decompress(comp).decode('utf-8'))
+
+
+def _vault_path(vault_id, data_dir=None):
+    vid = str(vault_id or '')
+    if not ID_RE.fullmatch(vid):
+        raise ValueError('Identificador de cofre inválido.')
+    return vault_dir(data_dir) / f'{vid}.lbvault'
+
+
+def list_vaults(data_dir=None):
+    d = vault_dir(data_dir)
+    if not d.is_dir():
+        return []
+    out = []
+    for p in sorted(d.glob('*.lbvault')):
+        try:
+            env = json.loads(p.read_text(encoding='utf-8'))
+            if env.get('v') != 1:
+                continue
+            out.append({
+                'id': env.get('id') or p.stem,
+                'name': env.get('name') or p.stem,
+                'created': env.get('created', ''),
+                'updated': env.get('updated', ''),
+                'bytes': p.stat().st_size,
+            })
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def create_vault(name, password, data_dir=None):
+    title = str(name or '').strip()[:80] or 'Cofre da Família'
+    vid = _slug(title)
+    now = _now()
+    payload = {
+        'name': title,
+        'updated': now,
+        'sections': {
+            'documents': '',
+            'medical': '',
+            'contacts': '',
+            'notes': '',
+        },
+        'attachments': [],
+    }
+    enc = _encrypt(payload, password)
+    env = {'v': 1, 'id': vid, 'name': title, 'created': now, 'updated': now, **enc}
+    p = _vault_path(vid, data_dir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix('.tmp')
+    tmp.write_text(json.dumps(env, ensure_ascii=False), encoding='utf-8')
+    os.replace(tmp, p)
+    return {'id': vid, 'name': title, 'created': now, 'updated': now, 'payload': payload}
+
+
+def open_vault(vault_id, password, data_dir=None):
+    p = _vault_path(vault_id, data_dir)
+    if not p.is_file():
+        raise FileNotFoundError('Cofre não encontrado.')
+    env = json.loads(p.read_text(encoding='utf-8'))
+    payload = _decrypt(env, password)
+    return {'id': env.get('id') or vault_id, 'name': env.get('name') or vault_id, 'created': env.get('created', ''), 'updated': env.get('updated', ''), 'payload': payload}
+
+
+def save_vault(vault_id, password, payload, name=None, data_dir=None):
+    p = _vault_path(vault_id, data_dir)
+    if not p.is_file():
+        raise FileNotFoundError('Cofre não encontrado.')
+    env = json.loads(p.read_text(encoding='utf-8'))
+    # Verifica a senha atual antes de sobrescrever.
+    _decrypt(env, password)
+    if not isinstance(payload, dict):
+        raise ValueError('Conteúdo do cofre inválido.')
+    now = _now()
+    title = str(name or payload.get('name') or env.get('name') or vault_id).strip()[:80]
+    clean_sec = {k: str((payload.get('sections') or {}).get(k) or '')[:200_000] for k in ('documents', 'medical', 'contacts', 'notes')}
+    attachments = []
+    for a in (payload.get('attachments') or [])[:20]:
+        if isinstance(a, dict) and isinstance(a.get('name'), str) and isinstance(a.get('data_b64'), str):
+            attachments.append({
+                'id': str(a.get('id') or secrets.token_hex(4))[:32],
+                'name': a['name'][:120],
+                'mime': str(a.get('mime') or 'application/octet-stream')[:80],
+                'size': int(a.get('size') or 0),
+                'data_b64': a['data_b64'],
+            })
+    clean_payload = {'name': title, 'updated': now, 'sections': clean_sec, 'attachments': attachments}
+    enc = _encrypt(clean_payload, password)
+    new_env = {'v': 1, 'id': env.get('id') or vault_id, 'name': title, 'created': env.get('created', now), 'updated': now, **enc}
+    tmp = p.with_suffix('.tmp')
+    tmp.write_text(json.dumps(new_env, ensure_ascii=False), encoding='utf-8')
+    os.replace(tmp, p)
+    return {'id': new_env['id'], 'name': title, 'created': new_env['created'], 'updated': now, 'payload': clean_payload}
+
+
+def delete_vault(vault_id, password, data_dir=None):
+    p = _vault_path(vault_id, data_dir)
+    if not p.is_file():
+        raise FileNotFoundError('Cofre não encontrado.')
+    env = json.loads(p.read_text(encoding='utf-8'))
+    _decrypt(env, password)
+    p.unlink()
+    return {'ok': True, 'id': vault_id}

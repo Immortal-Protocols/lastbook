@@ -4,8 +4,9 @@ Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model i
 MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
-import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import base64, html as _html, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
+from engine import kiwix_br
 from engine.paths import ro_uri
 
 import os
@@ -110,6 +111,78 @@ def _allowed(kind):
     return lambda d: d in cat and cat[d]['kind'] != 'metadata' and (ok is None or cat[d]['kind'] in ok)
 
 
+def _html_to_text(raw):
+    s = raw.decode('utf-8', 'replace') if isinstance(raw, (bytes, bytearray)) else str(raw or '')
+    s = re.sub(r'<(?:script|style|noscript)[^>]*>[\s\S]*?</(?:script|style|noscript)>', ' ', s, flags=re.I)
+    s = re.sub(r'<[^>]+>', ' ', s)
+    return re.sub(r'\s+', ' ', _html.unescape(s)).strip()
+
+
+def _zim_archive(name):
+    from libzim.reader import Archive
+    path = S.library.zim_file(name)
+    with S.library.ZIM_LOCK:
+        if name not in S.library.ZIMS:
+            S.library.ZIMS[name] = Archive(path)
+        return S.library.ZIMS[name]
+
+
+def _zim_hits(q, limit=3):
+    if not S or not q or not getattr(S, 'LIB', None):
+        return []
+    cdir = S.LIB / 'collections'
+    if not cdir.is_dir():
+        return []
+    zims = sorted(cdir.glob('*.zim'), key=lambda p: (0 if '_pt_' in p.name else 1, p.name))
+    if not zims:
+        return []
+    try:
+        from libzim.search import Searcher, Query
+    except Exception:
+        return []
+    out = []
+    for p in zims:
+        try:
+            arc = _zim_archive(p.name)
+            if not arc.has_fulltext_index:
+                continue
+            res = Searcher(arc).search(Query().set_query(q))
+            for rank, ep in enumerate(res.getResults(0, limit)):
+                entry = arc.get_entry_by_path(ep)
+                if entry.is_redirect:
+                    entry = entry.get_redirect_entry()
+                item = entry.get_item()
+                if 'html' not in (item.mimetype or '').lower():
+                    continue
+                txt = _html_to_text(bytes(item.content))
+                if not txt:
+                    continue
+                is_pt = '_pt_' in p.name or p.name.startswith('wikipedia_pt')
+                out.append({
+                    'doc_id': f'zim:{p.name}/{entry.path}',
+                    'title': entry.title or entry.path.split('/')[-1].replace('_', ' '),
+                    'publisher': kiwix_br.zim_label(p.name),
+                    'year': '',
+                    'kind': 'zim',
+                    'trust': 'Enciclopédia offline (Kiwix)',
+                    'pages': None,
+                    'page': None,
+                    't': None,
+                    'duration': None,
+                    'thumb': None,
+                    'excerpt': txt[:900],
+                    'found_by': {'zim': rank + 1},
+                    'score': 22.0 if is_pt else 14.0,
+                    'notes': '',
+                    'imageOnly': False,
+                })
+                if len(out) >= limit:
+                    return out
+        except Exception:
+            continue
+    return out
+
+
 def hybrid(q, k=8, kind='any', doc=None):
     """Best passages for q from keyword and meaning-based search, fused, with provenance."""
     cat = S.catalog()
@@ -180,6 +253,12 @@ def hybrid(q, k=8, kind='any', doc=None):
                     'imageOnly': (r.get('searchability') or '').startswith('image-only')})
         if len(res) >= k:
             break
+    if kind in ('any', 'manual') and not doc:
+        zhits = _zim_hits(q, min(3, k))
+        if zhits:
+            keep_main = max(0, k - min(len(zhits), 2 if len(res) >= k else k))
+            res = (res[:keep_main] if len(res) + len(zhits) > k else res) + zhits
+            res = res[:k]
     return res
 
 
@@ -254,6 +333,21 @@ def run_tool(name, args, sess, extra_msgs):
         return '\n\n'.join(blocks), {'query': q, 'count': len(items)}
     if name == 'read_pages':
         d = str(args.get('doc_id', ''))
+        if d.startswith('zim:'):
+            zim_name, _, entry_path = d[4:].partition('/')
+            try:
+                arc = _zim_archive(zim_name)
+                entry = arc.get_entry_by_path(entry_path)
+                if entry.is_redirect:
+                    entry = entry.get_redirect_entry()
+                body = _html_to_text(bytes(entry.get_item().content))[:3500] or '(artigo sem texto legível)'
+                title = entry.title or entry.path.split('/')[-1].replace('_', ' ')
+                src = {'doc_id': d, 'title': title, 'publisher': kiwix_br.zim_label(zim_name), 'year': '', 'kind': 'zim',
+                       'trust': 'Enciclopédia offline (Kiwix)', 'pages': None, 'page': None, 't': None,
+                       'excerpt': body[:600], 'notes': ''}
+                return _src_block(sess.add(src), src, body), {'doc_id': d, 'title': title, 'pages': [1]}
+            except Exception:
+                return f'Não foi possível abrir o artigo {d!r} na enciclopédia offline.', {'doc_id': d, 'error': 'unknown'}
         r = cat.get(d)
         if not r or r['kind'] == 'metadata':
             return f'Nenhum documento com id {d!r} na biblioteca.', {'doc_id': d, 'error': 'unknown'}
@@ -448,7 +542,7 @@ def _local_round(msgs, tools, cancelled, wrote, set_state, on_reset=None):
 
     def piece(t):   # the person sees the answer as it is written, up to the first tool call and skipping thinking tokens
         text[0] += t
-        if '<|tool_call>' in text[0]:
+        if '<|tool_call>' in text[0] or '<tool_call>' in text[0]:
             if not saw_call[0]:
                 saw_call[0] = True
                 if sent[0] > 0 and on_reset:
@@ -612,7 +706,7 @@ def chat(messages, about, emit, cancelled):
     invalid = [k for k in dict.fromkeys(used) if k not in sess.sources]
     for k in valid:
         s = sess.sources[k]
-        if s.get('doc_id'):
+        if s.get('doc_id') and s.get('kind') != 'zim' and not str(s['doc_id']).startswith('zim:'):
             r = S.catalog()['by_id'].get(s['doc_id'])
             if not r or (s.get('page') and r.get('pages') and not 1 <= s['page'] <= r['pages']):
                 invalid.append(k)

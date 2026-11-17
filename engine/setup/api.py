@@ -22,7 +22,7 @@ from pathlib import Path
 
 from . import download, hardware, install
 from .manifest import Manifest
-from .. import osm_br
+from .. import osm_br, kiwix_br
 
 DATA_NAME = install.DATA_NAME
 WORK_SUFFIX = '.setup'
@@ -171,18 +171,21 @@ class Setup:
         mp = self._resolve_map(ids('map')) if plan.get('map') else None
         model = self.manifest.model(ids('model')) if plan.get('model') else None
         addresses = self.manifest.address_index(ids('addresses')) if plan.get('addresses') else None
+        zim = kiwix_br.get_zim(ids('zim')) if plan.get('zim') else None
         if plan.get('addresses') and not addresses:
+            return None
+        if plan.get('zim') and not zim:
             return None
         if (plan.get('pack') and not pack) or (plan.get('map') and not mp) or (plan.get('model') and not model):
             return None
-        wanted = {('pack', pack['id']) if pack else None, ('map', mp['id']) if mp else None, ('model', model['id']) if model else None, ('addresses', addresses['id']) if addresses else None} - {None}
+        wanted = {('pack', pack['id']) if pack else None, ('map', mp['id']) if mp else None, ('model', model['id']) if model else None, ('addresses', addresses['id']) if addresses else None, ('zim', zim['id']) if zim else None} - {None}
         if {(i.get('kind'), i.get('id')) for i in items} != wanted:
             return None
-        names = ([f['name'] for f in pack['files']] if pack else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else []) + ([model['file']] if model else [])
+        names = ([f['name'] for f in pack['files']] if pack else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else []) + ([model['file']] if model else []) + ([zim['file']] if zim else [])
         sources = {n: str(v) for n, v in (plan.get('sources') or {}).items()
                    if n in names and isinstance(v, str) and Path(v).name == n and Path(v).is_file()}
         switch = bool(plan.get('switch')) and pack is not None
-        clean = {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
+        clean = {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'zim': zim, 'parent': str(parent), 'target': str(target), 'work': str(work),
                  'sources': sources, 'explicit': bool(plan.get('explicit')), 'retried': {}, 'switch': switch, 'repair': bool(plan.get('repair'))}
         if isinstance(plan.get('damaged'), list):
             clean['damaged'] = [str(x) for x in plan['damaged']]
@@ -219,6 +222,8 @@ class Setup:
             plan_files = plan['map']['files']
         elif it['kind'] == 'addresses' and plan.get('addresses'):
             plan_files = plan['addresses']['files']
+        elif it['kind'] == 'zim' and plan.get('zim'):
+            plan_files = [{'name': plan['zim']['file']}]
         else:
             plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
         n = 0
@@ -274,7 +279,23 @@ class Setup:
             except Exception:
                 pref = None
         model = pref if pref in installed_models else (installed_models[0] if installed_models else None)
-        return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'models': installed_models, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', [])}
+        return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'models': installed_models, 'zims': self.installed_zims(), 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', [])}
+
+    def installed_zims(self):
+        if not self.current:
+            return []
+        cdir = kiwix_br.collections_dir(self.current)
+        if not cdir.is_dir():
+            return []
+        out = []
+        for p in sorted(cdir.glob('*.zim')):
+            try:
+                sz = p.stat().st_size
+            except OSError:
+                continue
+            z = kiwix_br.get_zim(p.name)
+            out.append({'id': z['id'] if z else p.stem, 'file': p.name, 'title': kiwix_br.zim_label(p.name), 'size': sz, 'pt': bool(z)})
+        return out
 
     def address_indexes(self):
         if not self.current:
@@ -425,8 +446,8 @@ class Setup:
     def state(self):
         self.manifest.fetch_once()
         hw = self.hardware()
-        return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
-                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
+        return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'zims': kiwix_br.public_zims(),
+                'current': self.current_info(), 'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
 
     def public_job(self):
         with self.lock:
@@ -449,7 +470,7 @@ class Setup:
                 return osm_br.map_entry(map_id)
         return mp
 
-    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, model_id=None):
+    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, model_id=None, zim_id=None):
         if repair:
             return self._start_repair(ai)
         with self.lock:
@@ -467,6 +488,9 @@ class Setup:
             model = self.manifest.model(model_id) if (ai or model_id) else None
             if (ai or model_id) and not model:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
+            zim = kiwix_br.get_zim(zim_id) if zim_id else None
+            if zim_id and not zim:
+                return {'error': 'Essa enciclopédia não está disponível.', 'code': 'unavailable'}
             mp = self._resolve_map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
                 return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
@@ -492,11 +516,15 @@ class Setup:
             cur_models = cur.get('models') or ([cur['model']] if cur.get('model') else [])
             if model and model['id'] in cur_models and target == self.current:
                 model = None       # already here, and an upgrade in place carries it over
+            if zim and target == self.current:
+                zdest = kiwix_br.collections_dir(target) / zim['file']
+                if zdest.is_file() and zdest.stat().st_size == zim['size']:
+                    zim = None
             if mp and not pack and cur.get('map') == mp['id']:
                 mp = None          # this state's map is the one here already
-            if self.mode == 'first-run' and not pack and (model or mp or addresses):
+            if self.mode == 'first-run' and not pack and (model or mp or addresses or zim):
                 return {'error': 'Choose a library first.', 'code': 'nothing'}
-            if not pack and not model and not mp and not addresses:
+            if not pack and not model and not mp and not addresses and not zim:
                 if self.mode == 'first-run':
                     return {'error': 'Choose a library first.', 'code': 'nothing'}
                 return {'error': 'Nothing to add: this library and the local AI are already here.', 'code': 'nothing'}
@@ -519,9 +547,9 @@ class Setup:
             for f in self.found():
                 if f.get('size_ok') and f['name'] not in srcs and f['kind'] in ('pack', 'model', 'map', 'addresses'):
                     srcs[f['name']] = f['path']
-            names = ([f['name'] for f in pack['files']] if pack else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else [])
+            names = ([f['name'] for f in pack['files']] if pack else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else []) + ([zim['file']] if zim else [])
             have = set(srcs)
-            need = install.need_bytes(pack, model, have) + _map_need(mp, have) + _map_need(addresses, have)
+            need = install.need_bytes(pack, model, have) + _map_need(mp, have) + _map_need(addresses, have) + (zim['size'] if zim else 0)
             preserve_map = bool(pack and cur.get('pack') == pack['id'] and target == self.current and not mp and cur.get('map') not in (None, 'base'))
             if preserve_map:
                 need += cur['map_bytes']
@@ -547,12 +575,15 @@ class Setup:
             if addresses:
                 items.append({'id': addresses['id'], 'kind': 'addresses', 'title': addresses['title'] + ' address search', 'state': 'waiting', 'bytes_done': 0,
                               'bytes_total': addresses['download_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
+            if zim:
+                items.append({'id': zim['id'], 'kind': 'zim', 'title': zim['title'], 'state': 'waiting', 'bytes_done': 0,
+                              'bytes_total': zim['size'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             if model:
                 items.append({'id': model['id'], 'kind': 'model', 'title': model['title'], 'state': 'waiting', 'bytes_done': 0,
                               'bytes_total': model['size'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'items': items, 'error': None, 'started': _now(),
                         'folder': str(target),
-                        'plan': {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
+                        'plan': {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'zim': zim, 'parent': str(parent), 'target': str(target), 'work': str(work),
                                  'sources': {k: v for k, v in srcs.items() if k in names}, 'explicit': explicit,
                                  'retried': {}, 'switch': bool(pack)}}
             s = self._settings()
@@ -817,6 +848,26 @@ class Setup:
             threading.Thread(target=local.discover, daemon=True).start()
         return {'ok': True, 'freed_bytes': freed}
 
+    def remove_zim(self, zim_id):
+        if self.mode != 'manage' or not self.current or not zim_id:
+            return {'error': 'Nenhuma enciclopédia selecionada para remover.', 'code': 'nothing'}
+        with self.lock:
+            if self.job and self.job['state'] in ACTIVE:
+                return {'error': 'Há um download em andamento. Pause ou cancele antes.', 'code': 'busy'}
+        spec = kiwix_br.get_zim(zim_id)
+        name = spec['file'] if spec else str(zim_id)
+        if not name.lower().endswith('.zim') or '/' in name or '\\' in name or '..' in name:
+            return {'error': 'Arquivo de enciclopédia inválido.', 'code': 'unknown'}
+        p = kiwix_br.collections_dir(self.current) / name
+        if not p.is_file():
+            return {'error': 'Essa enciclopédia não está instalada neste computador.', 'code': 'nothing'}
+        size = p.stat().st_size
+        try:
+            p.unlink()
+        except OSError as e:
+            return {'error': f'Não foi possível remover a enciclopédia ({type(e).__name__}).', 'code': 'folder'}
+        return {'ok': True, 'freed_bytes': size}
+
     def delete_old(self, path):
         s = self._settings()
         olds = s.get('old', [])
@@ -876,6 +927,8 @@ class Setup:
                     self._do_map(it, plan, work, control)
                 elif it['kind'] == 'addresses':
                     self._do_addresses(it, plan, work, control)
+                elif it['kind'] == 'zim':
+                    self._do_zim(it, plan, work, control)
                 else:
                     self._do_model(it, plan, work, control)
                 with self.lock:
@@ -1117,6 +1170,20 @@ class Setup:
         if not plan['switch'] and self.current:      # the library open now: the AI can use it at once
             self._mark_checked(dest, m['sha256'])
 
+    def _do_zim(self, it, plan, work, control):
+        z = plan['zim']
+        path, ours = self._get_file(it, {'name': z['file'], 'url': z['url'], 'size': z['size'], 'sha256': z['sha256']}, plan, work, control, 0)
+        lib = (work / 'unpack' / DATA_NAME) if plan['switch'] else Path(self.current or plan['target'])
+        dest = kiwix_br.collections_dir(lib) / z['file']
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        self._set(it, 'activating')
+        if ours or _same_disk(path, dest):
+            os.replace(path, dest)
+        else:
+            tmp = dest.with_name(dest.name + '.partial')
+            shutil.copyfile(path, tmp)
+            os.replace(tmp, dest)
+
     def _mark_checked(self, path, sha256):
         llm = self.llm()
         if not llm:
@@ -1163,6 +1230,8 @@ def _tag_sources(job):
             names = [f['name'] for f in plan['map']['files']]
         elif it['kind'] == 'addresses' and plan.get('addresses'):
             names = [f['name'] for f in plan['addresses']['files']]
+        elif it['kind'] == 'zim' and plan.get('zim'):
+            names = [plan['zim']['file']]
         elif it['kind'] == 'model' and plan.get('model'):
             names = [plan['model']['file']]
         else:
@@ -1306,6 +1375,7 @@ ROUTES = {
         map_id=b.get('map') or None,
         address_id=b.get('address_id') or None,
         model_id=b.get('model') or (b.get('ai') if isinstance(b.get('ai'), str) else None),
+        zim_id=b.get('zim') or None,
     ),
     ('POST', 'pause'): lambda s, b: s.pause(),
     ('POST', 'resume'): lambda s, b: s.resume(),
@@ -1316,6 +1386,7 @@ ROUTES = {
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),
+    ('POST', 'remove-zim'): lambda s, b: s.remove_zim(b.get('zim')),
 }
 
 

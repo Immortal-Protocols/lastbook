@@ -61,6 +61,18 @@ MODELS = [
         'memory_bytes': 4_200_000_000,
         'summary': 'Ultra-leve (~3,1 GB), entende português e cabe em computadores com 8 GB de memória.',
     },
+    {
+        'id': 'qwen-3.5-0.8b',
+        'title': 'Qwen 3.5 0.8B (Mínimo 0.8B — 4 GB RAM)',
+        'name': 'Qwen 3.5 0.8B (Unsloth 4-bit, Q4_K_M)',
+        'file': 'Qwen3.5-0.8B-Q4_K_M.gguf',
+        'size': 532_517_120,
+        'sha256': 'bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517',
+        'source': 'unsloth/Qwen3.5-0.8B-GGUF, revision 6ab461498e2023f6e3c1baea90a8f0fe38ab64d0',
+        'memory_bytes': 1_500_000_000,
+        'template': 'chatml',
+        'summary': 'Super compacto (~508 MB, inspirado no refugiOS), para computadores antigos com 4 GB de memória.',
+    },
 ]
 
 
@@ -132,6 +144,7 @@ def mark_checked(path, sha256):
     if not spec or p.stat().st_size != spec['size'] or str(sha256).lower() != spec['sha256']:
         raise ValueError('not the model file')
     LOCAL.saved['checked'] = _stamp(p)
+    LOCAL.saved.setdefault('checked_by_file', {})[spec['id']] = _stamp(p)
     LOCAL.saved['model_id'] = spec['id']
     _save(LOCAL.saved)
 
@@ -165,6 +178,22 @@ class Local:
         self._started = False
 
     # -- what the app shows -----------------------------------------------------------------------------------------------
+    def installed_models(self):
+        out, seen = [], set()
+        for spec in MODELS:
+            if spec['id'] in seen:
+                continue
+            for folder in places():
+                p = folder / spec['file']
+                try:
+                    if p.is_file() and p.stat().st_size == spec['size']:
+                        out.append({'id': spec['id'], 'title': spec['title'], 'name': spec['name'], 'file': spec['file'], 'size': spec['size']})
+                        seen.add(spec['id'])
+                        break
+                except OSError:
+                    continue
+        return out
+
     def status(self):
         with self.lock:
             fit = self.fit or {}
@@ -173,7 +202,8 @@ class Local:
                     'state': self.state, 'pct': self.pct, 'message': self.message,
                     'found_at': self.path and _folder_name(self.path), 'enabled': self.enabled(), 'runtime': bool(self.runner),
                     'needs_bytes': fit.get('needs'), 'ram_total': fit.get('ram_total'), 'placement': fit.get('placement'),
-                    'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]]}
+                    'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]],
+                    'installed_models': self.installed_models()}
 
     def enabled(self):
         return self.saved.get('enabled', True)
@@ -236,13 +266,16 @@ class Local:
                     self.state = 'absent'
             return
         stamp = _stamp(found)
-        if self.saved.get('checked') != stamp:
+        checked_map = self.saved.setdefault('checked_by_file', {})
+        if self.saved.get('checked') != stamp and checked_map.get(spec['id']) != stamp:
             if not self._check(found, spec):
                 return
             self.saved['checked'] = stamp
+            checked_map[spec['id']] = stamp
             self.saved['model_id'] = spec['id']
             _save(self.saved)
-        elif self.saved.get('model_id') != spec['id']:
+        elif self.saved.get('model_id') != spec['id'] or checked_map.get(spec['id']) != stamp:
+            checked_map[spec['id']] = stamp
             self.saved['model_id'] = spec['id']
             _save(self.saved)
         with self.lock:
@@ -415,6 +448,25 @@ class Local:
             with self.lock:
                 self.state, self.message = 'off', ''
 
+    def select_model(self, model_id):
+        spec = model_spec(model_id)
+        if not spec:
+            return False
+        installed = {m['id'] for m in self.installed_models()}
+        if spec['id'] not in installed:
+            return False
+        if self.spec and self.spec['id'] == spec['id'] and self.state not in ('absent', 'off', 'error'):
+            return True
+        self.stop('switched model')
+        with self.lock:
+            self.saved['model_id'] = spec['id']
+            self.saved['enabled'] = True
+            _save(self.saved)
+            self.spec = spec
+            self.state, self.pct, self.message = 'absent', None, ''
+        threading.Thread(target=self.discover, daemon=True, name='local-ai-switch').start()
+        return True
+
     def _idle_watch(self):
         while True:
             time.sleep(min(30, IDLE_STOP / 4))
@@ -437,7 +489,7 @@ class Local:
             while not events.empty():       # anything left from an answer that was stopped
                 events.get_nowait()
             req = {'op': 'gen', 'id': rid, 'segments': segments, 'max_tokens': max_tokens, 'temp': 0.2, 'top_k': 64, 'top_p': 0.95,
-                   'min_p': 0.05, 'seed': 1234 + rid, 'stop': ['<|tool_response>']}
+                   'min_p': 0.05, 'seed': 1234 + rid, 'stop': ['<|tool_response>', '<|im_end|>', '<|endoftext|>']}
             try:
                 proc.stdin.write((json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8'))
             except OSError:
@@ -568,10 +620,62 @@ def declaration(tool):
     return s + '}'
 
 
+def _render_chatml(msgs, tools):
+    """Render OpenAI-shaped messages into Qwen 3/3.5 ChatML segments with thinking disabled."""
+    last_user = max((i for i, m in enumerate(msgs) if m['role'] == 'user'), default=-1)
+    first_reply = next((i for i, m in enumerate(msgs) if i > last_user and m['role'] in ('assistant', 'tool')), len(msgs))
+    top = [m for i, m in enumerate(msgs) if m['role'] == 'system' and i < first_reply]
+    rest = [m for i, m in enumerate(msgs) if not (m['role'] == 'system' and i < first_reply)]
+    sys_body = '\n\n'.join(_text(m).strip() for m in top)
+    if tools:
+        tool_defs = '\n'.join(json.dumps({'type': 'function', 'function': t['function']}, ensure_ascii=False) for t in tools)
+        sys_body += ('\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n'
+                     'You are provided with function signatures within <tools></tools> XML tags:\n<tools>\n'
+                     + tool_defs
+                     + '\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n'
+                     '<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>')
+    seg = [['<|im_start|>system\n', True], [sys_body, False], ['<|im_end|>\n', True]]
+    i = 0
+    while i < len(rest):
+        m = rest[i]
+        role = m['role']
+        if role == 'assistant':
+            seg.append(['<|im_start|>assistant\n', True])
+            parts = []
+            content = _strip_thinking(_text(m)) if m.get('content') else ''
+            if content:
+                parts.append(content)
+            for c in m.get('tool_calls') or []:
+                f = c['function']
+                args = f.get('arguments')
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args or '{}')
+                    except ValueError:
+                        args = {}
+                parts.append('<tool_call>\n' + json.dumps({'name': f['name'], 'arguments': args or {}}, ensure_ascii=False) + '\n</tool_call>')
+            if parts:
+                seg.append(['\n'.join(parts), False])
+            seg.append(['<|im_end|>\n', True])
+            j = i + 1
+            while j < len(rest) and rest[j]['role'] == 'tool':
+                seg += [['<|im_start|>user\n<tool_response>\n', True], [_text(rest[j]), False], ['\n</tool_response>\n<|im_end|>\n', True]]
+                j += 1
+            i = j
+            continue
+        if role == 'tool':
+            seg += [['<|im_start|>user\n', True], [_text(m).strip(), False], ['<|im_end|>\n', True]]
+        else:
+            seg += [['<|im_start|>' + role + '\n', True], [_text(m).strip(), False], ['<|im_end|>\n', True]]
+        i += 1
+    seg.append(['<|im_start|>assistant\n<think>\n\n</think>\n', True])
+    return seg
+
+
 def render(msgs, tools):
-    """OpenAI-shaped messages to Gemma 4 segments, as the model's chat template lays them out, with thinking off.
-    System messages before the model's first reply in this turn go together at the top, as the evaluation gave them:
-    instructions, then the sources, then the question."""
+    """OpenAI-shaped messages to Gemma 4 (or ChatML) segments, with thinking off."""
+    if (LOCAL.spec or {}).get('template') == 'chatml':
+        return _render_chatml(msgs, tools)
     last_user = max((i for i, m in enumerate(msgs) if m['role'] == 'user'), default=-1)
     first_reply = next((i for i, m in enumerate(msgs) if i > last_user and m['role'] in ('assistant', 'tool')), len(msgs))
     top = [m for i, m in enumerate(msgs) if m['role'] == 'system' and i < first_reply]
@@ -784,6 +888,7 @@ def size_of(segments):
 
 # ------------------------------------------------------------------------------------------------- Gemma's tool calls --
 CALL = re.compile(r'<\|tool_call>call:([A-Za-z_][\w.-]*)\{(.*?)\}<tool_call\|>', re.S)
+CHATML_CALL = re.compile(r'<tool_call>\s*(\{.*?\})\s*</tool_call>', re.S)
 
 
 def parse_calls(text):
@@ -795,7 +900,18 @@ def parse_calls(text):
         except ValueError:
             args = {}
         calls.append((m.group(1), args))
-    cut = text.find('<|tool_call>')
+    for m in CHATML_CALL.finditer(text):
+        try:
+            obj = json.loads(m.group(1))
+            if isinstance(obj, dict) and obj.get('name'):
+                args = obj.get('arguments')
+                if isinstance(args, str):
+                    args = json.loads(args or '{}')
+                calls.append((str(obj['name']), args if isinstance(args, dict) else {}))
+        except ValueError:
+            pass
+    cuts = [i for i in (text.find('<|tool_call>'), text.find('<tool_call>')) if i >= 0]
+    cut = min(cuts) if cuts else -1
     return _strip_thinking(text if cut < 0 else text[:cut]), calls
 
 

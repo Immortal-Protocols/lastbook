@@ -36,6 +36,9 @@ const I = {
   play: '<path d="M7 4v16l13-8z"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   insp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M15 5v14"/>',
   ask: '<path d="M4 5h16v11H9l-5 4z"/><path d="M9 9.5h6M9 12.5h4"/>', spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+  translate: '<path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>',
+  vault: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.5"/>',
+  check: '<path d="M12 2 3 6v6c0 5 3.8 9.3 9 10 5.2-.7 9-5 9-10V6z"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
 };
 const ico = (n, cls = '') => `<svg viewBox="0 0 24 24" aria-hidden="true" class="${cls}">${I[n] || I.book}</svg>`;
 const KIND_ICO = { pdf: 'page', html: 'page', video: 'video', transcript: 'video', pptx: 'page', zim: 'wiki' };
@@ -243,7 +246,7 @@ function parse() {
   return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
 }
 // The sidebar row each page belongs to. Reading pages stay under Library, articles under Encyclopedias; search results select no row.
-const NAV_OF = { '': 'videos', t: '', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
+const NAV_OF = { '': 'videos', t: '', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', encyclopedias: 'encyclopedias', translate: 'translate', vault: 'vault', check: 'check', prepare: 'prepare', about: 'about' };
 let leaving = null;  // cleanup hook for the current view (player, chat stream…)
 async function route() {
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
@@ -287,6 +290,9 @@ async function route() {
     else if (v === 'library' || v === 'learn' || v === 'browse') await library();
     else if (v === 'prepare') await prepareHub();
     else if (v === 'encyclopedias') await encyclopedias(q.get('q') || '');
+    else if (v === 'translate') await translatePage(q.get('q') || '');
+    else if (v === 'vault') await vaultPage();
+    else if (v === 'check') await checkPage();
     else if (v === 'map') await MapView.page(main, q);
     else if (v === 'saved') await savedPage();
     else if (v === 'shelf') await shelfPage(parts[1], q.get('kind') || 'all', q.get('q') || '');
@@ -397,13 +403,13 @@ $('#side').addEventListener('keydown', e => {
   if (i < 0) return;
   e.preventDefault(); rows[(i + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
 });
-const SECTIONS = ['#/videos', '#/map', '#/ask'];
+const SECTIONS = ['#/videos', '#/map', '#/ask', '#/encyclopedias', '#/translate', '#/vault', '#/check'];
 const findBox = () => [$('#bigQ'), $('#searchQ'), $('#topQ')].find(x => x && x.offsetParent) || $('#chatIn');
 document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName), cmd = MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   const is = c => e.code === 'Key' + c || (!e.code && (e.key || '').toUpperCase() === c);   // some input (assistive and remote tools) sends no key code
   if (e.key === '/' && !typing) { e.preventDefault(); findBox().focus() }
-  else if (cmd && !e.altKey && !e.shiftKey && /^[1-3]$/.test(e.key)) { e.preventDefault(); location.hash = SECTIONS[e.key - 1] }
+  else if (cmd && !e.altKey && !e.shiftKey && /^[1-7]$/.test(e.key)) { e.preventDefault(); location.hash = SECTIONS[e.key - 1] }
   else if (cmd && !e.altKey && !e.shiftKey && (is('F') || (!MAC && is('E')))) { e.preventDefault(); const f = findBox(); f.focus(); if (f.select) f.select() }
   else if (MAC && e.metaKey && e.ctrlKey && is('S')) { e.preventDefault(); toggleSide() }   // Windows apps have no key for this: the ☰ button
   else if (MAC ? e.metaKey && e.altKey && is('I') : e.ctrlKey && e.shiftKey && is('I')) { e.preventDefault(); if ($('.about-src', main)) toggleInsp() }
@@ -412,7 +418,6 @@ document.addEventListener('keydown', e => {
     else if (document.activeElement === $('#topQ')) { $('#topQ').value = ''; $('#topQ').blur() }
   }
 });
-libInfo().then(i => { if (i.zims && !i.zims.length) $('.side [data-nav=encyclopedias]').hidden = true });
 function notFound() { setTitle('Não encontrado'); main.innerHTML = emptyState('search', 'Esta página não está aqui', 'O link pode ser de uma versão anterior do guia.') }
 const emptyState = (icon, title, text) => `<div class="empty"><span class="e-ico">${ico(icon)}</span><b>${esc(title)}</b><p>${esc(text)}</p><p class="e-act"><a class="btn plain" href="#/">Ir para Vídeos</a></p></div>`;
 function searchBox(id, value, placeholder, button = 'Buscar') {
@@ -637,7 +642,7 @@ async function reader(id, page, from, view) {
   const selfHref = `#/read/${encodeURIComponent(id)}?p=${page}`;
   remember({ key: 'd:' + id, title: d.title, href: selfHref, sub: (isPdf ? 'Página ' + page + ' · ' : '') + (d.publisher || '') });
   const go = (p, v = view) => `#/read/${encodeURIComponent(id)}?p=${p}&view=${v}${from ? '&from=' + encodeURIComponent(from) : ''}`;
-  const views = isPdf ? [['page', 'Página'], ['text', 'Texto'], ['pdf', 'PDF completo']] : isWeb ? [['web', 'Página'], ['text', 'Somente texto']] : [];
+  const views = isPdf ? [['page', 'Página'], ['text', 'Texto'], ['pt', 'Traduzir (PT)'], ['pdf', 'PDF completo']] : isWeb ? [['web', 'Página'], ['text', 'Somente texto'], ['pt', 'Traduzir (PT)']] : [];
   main.innerHTML = `
     <div class="rtop">${backButton(from)}</div>
     <h1 class="rtitle">${esc(d.title)}</h1>
@@ -675,6 +680,19 @@ async function reader(id, page, from, view) {
   } else if (view === 'web') {
     const own = /(^|\/)documents\/lastbook\//.test(d.path);   // Lastbook's own pages (Sources and permissions) take the window's look from the server (engine/saved_pages.py, OWN_LOOK); an older server's stays a white sheet
     body.innerHTML = `<iframe class="frame${own ? ' own' : ''}" title="${esc(d.title)}" src="${fileUrl(d.path)}"></iframe>`;
+  } else if (view === 'pt') {
+    body.innerHTML = '<p class="loading">Extraindo e traduzindo esta página para Português (Brasil)…</p>';
+    try {
+      const t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`);
+      const txt = (t.text || '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      if (!txt) {
+        body.innerHTML = `<div class="notice">Não há texto extraível nesta página para traduzir (pode ser apenas imagem). Use a visualização Página.</div>`;
+      } else {
+        const tr = await api('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: txt, source: 'auto', target: 'pt-BR', doc_id: id, page: isPdf ? page : 1 }) });
+        const badge = tr.mode === 'ai' ? `Traduzido offline via ${esc(tr.model || 'IA local')}${tr.cached ? ' (cache)' : ''} em ${tr.elapsed_s}s` : 'Modo glossário offline (sem IA local instalada)';
+        body.innerHTML = `<div class="notice small">${badge} · Confira sempre números, doses e avisos críticos na visualização Página original.</div><div class="pagetext">${esc(tr.translated || '')}</div>`;
+      }
+    } catch (e) { body.innerHTML = errorBox(e, 'Não foi possível traduzir esta página.') }
   } else {
     body.innerHTML = '<p class="loading">Carregando texto…</p>';
     try {
@@ -687,7 +705,22 @@ async function reader(id, page, from, view) {
 }
 
 /* --------------------------------------------------------------- wiki -- */
-const ZIMNAMES = { mdwiki: 'Enciclopédia médica (MDWiki)', wikipedia: 'Wikipédia (somente texto)', wikibooks: 'Wikibooks — manuais e livros didáticos', appropedia: 'Appropedia — tecnologia apropriada' };
+const ZIMNAMES = {
+  wikipedia_pt_medicine: 'WikiMed em Português (Enciclopédia Médica)',
+  wikipedia_pt_top_mini: 'Wikipédia PT — Essenciais (Compacta)',
+  wikipedia_pt_top_nopic: 'Wikipédia PT — Principais (Texto)',
+  wikipedia_pt_top_maxi: 'Wikipédia PT — Principais (Imagens)',
+  wikipedia_pt_all: 'Wikipédia PT — Completa',
+  ifixit_pt: 'iFixit em Português (Reparos)',
+  wikibooks_pt: 'Wikilivros (Wikibooks) em Português',
+  wikivoyage_pt: 'Wikivoyage em Português',
+  wiktionary_pt: 'Wikcionário em Português',
+  phet_pt: 'Simulações PhET em Português',
+  mdwiki: 'Enciclopédia médica (MDWiki)',
+  wikipedia: 'Wikipédia (Inglês)',
+  wikibooks: 'Wikibooks — manuais e livros didáticos',
+  appropedia: 'Appropedia — tecnologia apropriada',
+};
 const zimLabel = name => { for (const k in ZIMNAMES) if (name.startsWith(k)) return ZIMNAMES[k]; return name };
 async function wiki(path, from, y) {
   const [zim, ...rest] = path.split('/');
@@ -850,16 +883,32 @@ const ZIMS = [['mdwiki_en_all_maxi_2025-11.zim', 'Enciclopédia médica', 'MDWik
 ['wikibooks_en_all_maxi_2026-04.zim', 'Wikibooks', 'Livros didáticos abertos e manuais práticos, de culinária a eletrônica.', 'book'],
 ['appropedia_en_all_maxi_2026-02.zim', 'Appropedia', 'Tecnologia apropriada: água, saneamento, energia e projetos de construção.', 'repair'],
 ['wikipedia_en_all_nopic_2026-06.zim', 'Wikipédia', 'A enciclopédia completa, somente texto (sem imagens).', 'wiki']];
-const zimsHere = async () => { const here = (await libInfo()).zims; return here ? ZIMS.filter(z => here.includes(z[0])) : ZIMS };
+const zimsHere = async () => {
+  const info = await libInfo(), here = info.zims, cat = info.zims_catalog || [];
+  if (!here) return ZIMS;
+  const out = [], seen = new Set();
+  for (const name of here) {
+    seen.add(name);
+    const pt = cat.find(z => z.file === name);
+    if (pt) { out.push([name, pt.title, pt.summary, pt.icon || 'wiki']); continue }
+    const en = ZIMS.find(z => z[0] === name);
+    if (en) { out.push(en); continue }
+    out.push([name, zimLabel(name), 'Coleção offline Kiwix (.zim).', 'wiki']);
+  }
+  return out;
+};
 async function encyclopedias(q) {
   setTitle('Enciclopédias');
-  const zims = await zimsHere();
-  if (!zims.length) { main.innerHTML = `<h1>Enciclopédias</h1><p class="lead">Este pacote não contém enciclopédias.</p>`; return }
-  main.innerHTML = `<h1>Enciclopédias</h1><p class="lead">${['', 'Uma enciclopédia completa', 'Duas enciclopédias completas', 'Três enciclopédias completas', 'Quatro enciclopédias completas'][zims.length]}. Conteúdo colaborativo: bom para contexto geral — use os manuais dos guias para passos críticos de segurança.</p>
-  <div style="margin:16px 0">${searchBox('zq', q, 'ex.: tétano, painel solar, fermentação')}</div><div id="zres"></div>
-  ${secHead('Abrir uma')}<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/encyclopedias')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>`;
-  $('#zqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/encyclopedias?q=' + encodeURIComponent($('#zq').value.trim()) });
-  if (q) zimResults(q, $('#zres'), 40);
+  const info = await libInfo(), zims = await zimsHere(), cat = info.zims_catalog || [], installed = new Set(info.zims || []);
+  const avail = cat.filter(z => !installed.has(z.file));
+  main.innerHTML = `<h1>Enciclopédias</h1><p class="lead">${zims.length ? `${zims.length} ${zims.length === 1 ? 'coleção offline instalada' : 'coleções offline instaladas'}. Conteúdo colaborativo: bom para referência geral — confira passos críticos de segurança em um manual.` : 'Baixe enciclopédias e manuais completos do Kiwix em Português (Brasil) para leitura e consulta pela IA mesmo sem internet.'}</p>
+  ${zims.length ? `<div style="margin:16px 0">${searchBox('zq', q, 'ex.: queimadura, gerador, fermentação')}</div><div id="zres"></div>
+  ${secHead('Instaladas neste computador')}<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${encodeURIComponent(z[0])}/?from=${encodeURIComponent('#/encyclopedias')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>` : ''}
+  ${avail.length ? `${secHead('Disponíveis em Português (Brasil) para baixar', 'Catálogo Kiwix integrado do Último Livro', IN_WINDOW ? '<a href="/ui/setup.html#manage">Gerenciar downloads</a>' : '')}<div class="cards2">${avail.map(z => `<a class="card" href="${IN_WINDOW ? '/ui/setup.html#manage' : '#/encyclopedias'}"><span class="ico">${ico(z.icon || 'wiki')}</span><b>${esc(z.title)}</b><small>${esc(z.group)} · ${(z.size / 1e6 >= 1000 ? (z.size / 1e9).toFixed(1) + ' GB' : Math.round(z.size / 1e6) + ' MB')}<br>${esc(z.summary)}</small></a>`).join('')}</div>` : ''}`;
+  if (zims.length) {
+    $('#zqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/encyclopedias?q=' + encodeURIComponent($('#zq').value.trim()) });
+    if (q) zimResults(q, $('#zres'), 40);
+  }
 }
 // heading: part of a wider search, shown under that heading only when something matched. Answers whether anything did.
 async function zimResults(q, el, max = 8, heading = '') {
@@ -1035,7 +1084,189 @@ async function savedPage() {
   const c = $('#clr'); if (c) c.onclick = () => { store.set('recent', []); savedPage() };
 }
 
-/* -------------------------------------------------------------- about -- */
+async function translatePage(prefill) {
+  setTitle('Tradutor offline');
+  main.innerHTML = `<h1>Tradutor offline</h1>
+    <p class="lead">Traduza trechos de manuais em inglês/espanhol com a IA local instalada ou consulte o guia de frases de emergência (funciona mesmo sem IA).</p>
+    <div class="collection" style="padding:16px;display:grid;gap:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <label>Origem: <select id="trSrc"><option value="auto" selected>Detectar automaticamente</option><option value="en">Inglês</option><option value="es">Espanhol</option><option value="pt-BR">Português (Brasil)</option></select></label>
+        <label>Destino: <select id="trTgt"><option value="pt-BR" selected>Português (Brasil)</option><option value="en">Inglês</option><option value="es">Espanhol</option></select></label>
+        <button class="btn" id="trGo" style="margin-left:auto">${ico('translate')}<span>Traduzir</span></button>
+      </div>
+      <textarea id="trIn" rows="5" placeholder="Cole ou digite aqui um trecho em inglês, espanhol ou português…" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:16px/1.45 var(--font)">${esc(prefill || '')}</textarea>
+      <div id="trOut"></div>
+    </div>
+    ${secHead('Guia rápido de frases de emergência', 'Inglês · Espanhol · Português (Brasil)')}
+    <div style="margin:10px 0">${searchBox('glQ', '', 'Filtrar frases (ex.: water, BLEEDING, gerador, 192)', 'Filtrar')}</div>
+    <div id="glList"><p class="loading">Carregando guia de frases…</p></div>`;
+  const runTr = async () => {
+    const text = $('#trIn').value.trim(), out = $('#trOut');
+    if (!text) { out.innerHTML = '<p class="muted">Digite ou cole um texto acima para traduzir.</p>'; return }
+    const b = $('#trGo'); b.disabled = true;
+    out.innerHTML = '<p class="loading">Traduzindo offline…</p>';
+    try {
+      const r = await api('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, source: $('#trSrc').value, target: $('#trTgt').value }) });
+      const info = r.mode === 'ai' ? `Traduzido com ${esc(r.model || 'IA local')} em ${r.elapsed_s}s${r.cached ? ' (cache)' : ''}` : 'Modo glossário offline';
+      out.innerHTML = `<div class="notice small">${info}</div><div class="pagetext" style="background:var(--bg);padding:14px;border-radius:12px;border:1px solid var(--line2)">${esc(r.translated)}</div>`;
+    } catch (e) { out.innerHTML = errorBox(e, 'Não foi possível traduzir.') }
+    b.disabled = false;
+  };
+  $('#trGo').onclick = runTr;
+  if (prefill) runTr();
+  let cats = [];
+  const drawGl = q => {
+    const nq = q.trim().toLowerCase();
+    const html = cats.map(c => {
+      const rows = c.items.filter(it => !nq || (it.en + ' ' + it.es + ' ' + it.pt).toLowerCase().includes(nq));
+      if (!rows.length) return '';
+      return `<section class="collection"><h3>${esc(c.category)}</h3><ul class="list">${rows.map(it => `<li class="row" style="display:grid;gap:4px;cursor:default"><b>${esc(it.pt)}</b><small>EN: ${esc(it.en)}</small><small>ES: ${esc(it.es)}</small></li>`).join('')}</ul></section>`;
+    }).join('');
+    $('#glList').innerHTML = html || '<div class="empty"><p>Nenhuma frase correspondente no guia rápido.</p></div>';
+  };
+  try { cats = (await api('/api/translate/glossary')).glossary || []; drawGl('') } catch (e) { $('#glList').innerHTML = errorBox(e) }
+  $('#glQF').addEventListener('submit', e => { e.preventDefault(); drawGl($('#glQ').value) });
+  $('#glQ').addEventListener('input', () => drawGl($('#glQ').value));
+}
+
+async function vaultPage() {
+  setTitle('Cofre de Emergência');
+  let opened = null;   // {id, name, password, payload}
+  const SEC_META = [
+    ['documents', 'Documentos pessoais', 'CPF, RG, CNH, passaporte, certidões, apólices de seguro…'],
+    ['medical', 'Ficha médica e alergias', 'Tipo sanguíneo, alergias graves, remédios contínuos, contatos médicos, cartão SUS…'],
+    ['contacts', 'Contatos de emergência e ponto de encontro', 'Telefones da família, ponto de encontro caso a rede caia, vizinhos de confiança…'],
+    ['notes', 'Senhas, bancos e anotações seguras', 'Chaves de recuperação, informações bancárias, instruções para a família…'],
+  ];
+  const draw = async (err = '', msg = '') => {
+    let list = [];
+    try { list = (await api('/api/vault/list')).vaults || [] }
+    catch (e) { main.innerHTML = `<h1>Cofre criptografado</h1>${errorBox(e, 'Cofre indisponível neste acesso')}`; return }
+    if (opened) {
+      const p = opened.payload, atts = p.attachments || [];
+      main.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h1>${ico('vault')} ${esc(opened.name)}</h1><button class="btn plain" id="vLock" style="margin-left:auto">Trancar cofre</button></div>
+        <p class="lead">Desbloqueado apenas na memória desta janela. Ao sair ou trancar, os dados voltam a ficar criptografados no disco.</p>
+        ${err ? `<div class="err">${esc(err)}</div>` : msg ? `<div class="notice">${esc(msg)}</div>` : ''}
+        <div class="collection" style="padding:16px;display:grid;gap:14px">
+          ${SEC_META.map(([k, lbl, ph]) => `<label style="display:grid;gap:6px"><b>${esc(lbl)}</b><textarea data-sec="${k}" rows="4" placeholder="${esc(ph)}" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15.5px/1.45 var(--font)">${esc((p.sections || {})[k] || '')}</textarea></label>`).join('')}
+          <div>
+            <b>Anexos cifrados dentro do cofre</b> <span class="small muted">(até 120 KB por arquivo; ex.: foto compacta de documento, receita, TXT/PDF pequeno)</span>
+            <ul class="list" id="vAtts" style="margin-top:8px">${atts.length ? atts.map((a, idx) => `<li class="row" style="display:flex;align-items:center;gap:10px"><span><b>${esc(a.name)}</b><small>${Math.max(1, Math.round((a.size || 0) / 1024))} KB</small></span><button class="btn plain" type="button" data-dl="${idx}" style="margin-left:auto">Baixar</button><button class="btn plain" type="button" data-rmatt="${idx}">Remover</button></li>`).join('') : '<li class="muted small">Nenhum anexo adicionado.</li>'}</ul>
+            <p style="margin-top:8px"><input type="file" id="vFile"></p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" id="vSave">${ico('save')}<span>Salvar alterações no cofre</span></button>
+            <button class="btn plain" id="vDel" style="margin-left:auto;color:var(--stop)">Excluir cofre</button>
+          </div>
+        </div>`;
+      $('#vLock').onclick = () => { opened = null; draw('', 'Cofre trancado.') };
+      $('#vFile').onchange = ev => {
+        const f = ev.target.files && ev.target.files[0]; if (!f) return;
+        if (f.size > 120 * 1024) { draw('Arquivo maior que 120 KB para manter o cofre leve.'); return }
+        const rd = new FileReader();
+        rd.onload = () => {
+          const b64 = String(rd.result || '').split(',')[1] || '';
+          p.attachments = (p.attachments || []).concat([{ id: Date.now().toString(36), name: f.name, mime: f.type || 'application/octet-stream', size: f.size, data_b64: b64 }]);
+          draw('', `Anexo “${f.name}” adicionado — clique em Salvar alterações.`);
+        };
+        rd.readAsDataURL(f);
+      };
+      $$('[data-dl]', main).forEach(b => b.onclick = () => {
+        const a = atts[+b.dataset.dl]; if (!a) return;
+        const bin = Uint8Array.from(atob(a.data_b64), c => c.charCodeAt(0));
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob([bin], { type: a.mime || 'application/octet-stream' }));
+        link.download = a.name; document.body.append(link); link.click();
+        setTimeout(() => { URL.revokeObjectURL(link.href); link.remove() }, 500);
+      });
+      $$('[data-rmatt]', main).forEach(b => b.onclick = () => { p.attachments.splice(+b.dataset.rmatt, 1); draw() });
+      $('#vSave').onclick = async () => {
+        p.sections = p.sections || {};
+        $$('[data-sec]', main).forEach(ta => p.sections[ta.dataset.sec] = ta.value);
+        try {
+          const r = await api('/api/vault', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', id: opened.id, password: opened.password, payload: p }) });
+          opened.payload = r.payload;
+          draw('', 'Cofre salvo e criptografado com sucesso.');
+        } catch (e) { draw(e.message) }
+      };
+      $('#vDel').onclick = async () => {
+        if (!confirm(`Excluir permanentemente o cofre “${opened.name}”? Não há como desfazer.`)) return;
+        try {
+          await api('/api/vault', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id: opened.id, password: opened.password }) });
+          opened = null;
+          draw('', 'Cofre excluído.');
+        } catch (e) { draw(e.message) }
+      };
+      return;
+    }
+    main.innerHTML = `<h1>Cofre criptografado de emergência</h1>
+      <p class="lead">Guarde documentos, ficha médica, telefones da família e senhas cifrados localmente com senha forte (PBKDF2 + HMAC-SHA256) dentro da biblioteca.</p>
+      ${err ? `<div class="err">${esc(err)}</div>` : msg ? `<div class="notice">${esc(msg)}</div>` : ''}
+      ${list.length ? `${secHead('Cofres neste dispositivo')}<div class="cards2">${list.map(v => `<div class="card" style="display:grid;gap:8px"><b>${esc(v.name)}</b><small>Atualizado em ${esc(v.updated.slice(0, 16).replace('T', ' '))} · ${(v.bytes / 1024).toFixed(1)} KB</small><div style="display:flex;gap:8px"><input type="password" data-pw="${esc(v.id)}" placeholder="Senha do cofre" style="flex:1;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"><button class="btn" data-open="${esc(v.id)}">Abrir</button></div></div>`).join('')}</div>` : ''}
+      ${secHead('Criar novo cofre')}
+      <form id="vNew" class="collection" style="padding:16px;display:grid;gap:10px;max-width:520px">
+        <label>Nome do cofre <input id="vName" required placeholder="ex.: Documentos da Família" style="width:100%;margin-top:4px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></label>
+        <label>Senha (mínimo 4 caracteres — guarde bem, não há recuperação!) <input id="vPass" type="password" required minlength="4" placeholder="Escolha uma senha forte" style="width:100%;margin-top:4px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></label>
+        <button class="btn" type="submit">${ico('vault')}<span>Criar cofre criptografado</span></button>
+      </form>`;
+    $$('[data-open]', main).forEach(b => b.onclick = async () => {
+      const id = b.dataset.open, pw = ($(`[data-pw="${id}"]`, main) || {}).value || '';
+      if (!pw) { draw('Digite a senha para abrir o cofre.'); return }
+      try {
+        const r = await api('/api/vault', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'open', id, password: pw }) });
+        opened = { id: r.id, name: r.name, password: pw, payload: r.payload };
+        draw();
+      } catch (e) { draw(e.message) }
+    });
+    $('#vNew').onsubmit = async e => {
+      e.preventDefault();
+      const name = $('#vName').value.trim(), pw = $('#vPass').value;
+      try {
+        const r = await api('/api/vault', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', name, password: pw }) });
+        opened = { id: r.id, name: r.name, password: pw, payload: r.payload };
+        draw('', 'Cofre criado! Preencha as informações abaixo e clique em Salvar.');
+      } catch (e) { draw(e.message) }
+    };
+  };
+  await draw();
+}
+
+async function checkPage() {
+  setTitle('Diagnóstico offline');
+  main.innerHTML = `<h1>Diagnóstico do Último Livro</h1>
+    <p class="lead">Confere offline se a biblioteca, mapas estaduais, enciclopédias (.zim), modelos de IA e cofres estão íntegros e compatíveis com este computador.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0">
+      <button class="btn" id="chkFast">${ico('check')}<span>Verificação rápida</span></button>
+      <button class="btn plain" id="chkFull">Verificação completa (com SHA-256)</button>
+    </div>
+    <div id="chkOut"></div>`;
+  const run = async full => {
+    const out = $('#chkOut');
+    out.innerHTML = `<p class="loading">${full ? 'Calculando SHA-256 de todos os arquivos — pode levar alguns minutos…' : 'Executando diagnóstico rápido…'}</p>`;
+    try {
+      const r = await api('/api/check' + (full ? '?full=1' : ''));
+      const iconFor = st => st === 'ok' ? '✅' : st === 'warn' ? '⚠️' : '❌';
+      out.innerHTML = `<div class="${r.ok ? 'notice' : 'err'}"><b>${r.ok ? 'Tudo em ordem nos itens críticos' : 'Há problemas que precisam de atenção'}</b> · ${r.summary.ok} OK, ${r.summary.warn} avisos, ${r.summary.error} erro(s) (${r.elapsed_s}s)</div>
+        ${r.sections.map(s => `<section class="collection"><h3>${esc(s.title)}</h3><ul class="list">${s.items.map(it => `<li class="row" style="cursor:default"><span>${iconFor(it.status)} <b>${esc(it.label)}</b><small>${esc(it.detail)}</small></span></li>`).join('')}</ul></section>`).join('')}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+          <button class="btn plain" id="chkCopy">Copiar relatório</button>
+          <button class="btn plain" id="chkSave">Baixar relatório (.txt)</button>
+        </div>`;
+      $('#chkCopy').onclick = () => navigator.clipboard?.writeText(r.report_text).then(() => toast('Relatório copiado'));
+      $('#chkSave').onclick = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([r.report_text], { type: 'text/plain;charset=utf-8' }));
+        a.download = r.report_name || 'relatorio-verificacao.txt';
+        document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
+      };
+    } catch (e) { out.innerHTML = errorBox(e, 'Falha no diagnóstico.') }
+  };
+  $('#chkFast').onclick = () => run(false);
+  $('#chkFull').onclick = () => run(true);
+  await run(false);
+}
+
+/* ------------------------------------------------------------ about -- */
 // What the assistant cannot read, as a sentence: counts of none are left out, and one is one
 const many = (n, one, more) => `${n.toLocaleString()} ${n === 1 ? one : more}`;
 function blind(c) {

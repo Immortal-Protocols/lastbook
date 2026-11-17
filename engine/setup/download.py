@@ -32,8 +32,14 @@ ALLOWED_HOSTS = frozenset({
     'www.openstreetmap.org',
     'nominatim.openstreetmap.org',
     'brasilapi.com.br',
+    'download.kiwix.org',
+    'mirror.download.kiwix.org',
+    'dumps.wikimedia.org',
+    'ftpmirror.your.org',
+    'ftp.nluug.nl',
+    'mirrors.dotsrc.org',
 })
-ALLOWED_SUFFIXES = ('.hf.co',)      # Hugging Face's download hosts (cas-bridge.xethub.hf.co and its siblings)
+ALLOWED_SUFFIXES = ('.hf.co', '.mirror.driftle.ss', '.kiwix.org')      # Hugging Face and Kiwix mirror download hosts
 MAX_REDIRECTS = 5
 TIMEOUT = 30                        # seconds without a byte before the connection counts as broken
 CHUNK = 1024 * 1024

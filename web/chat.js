@@ -132,13 +132,26 @@ const Chat = (() => {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">ainda indexando (${(ix.chunks || 0).toLocaleString()} trechos até agora)</span>` : '';
+    const models = (l && l.installed_models) || [];
+    const selHtml = models.length > 1
+      ? ` <select id="chatModelSel" aria-label="Modelo de IA" style="margin-left:6px;padding:3px 8px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px var(--font);max-width:210px">${models.map(m => `<option value="${esc(m.id)}"${m.id === l.model_id ? ' selected' : ''}>${esc(m.title || m.name)}</option>`).join('')}</select>`
+      : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — a busca e a leitura continuam funcionando</span>'}</span>`;
+      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${!models.length && l.title ? '' : models.length === 1 ? ' · ' + esc(l.title) : ''}${ok ? still : '<span class="long"> — a busca e a leitura continuam funcionando</span>'}</span>${selHtml}`;
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>Assistente local pronto${still}`
+      el.innerHTML = s.online ? `<span class="dotok"></span>Assistente local pronto${still}${selHtml}`
         : `<span class="dotoff"></span><span>Assistente offline<span class="long"> — a busca e a navegação continuam funcionando</span></span>`;
     }
+    const msel = $('#chatModelSel');
+    if (msel) msel.onchange = async () => {
+      msel.disabled = true;
+      try {
+        await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'select', model_id: msel.value }) });
+        toast('Trocando modelo de IA local…');
+      } catch { }
+      setTimeout(statusLine, 500);
+    };
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Enviar' : 'O assistente está offline; você receberá as páginas correspondentes';
     setupCard(s);
     clearTimeout(polling);
@@ -263,6 +276,7 @@ const Chat = (() => {
   }
   function srcHref(s) {
     if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || 'Local da resposta')}`;
+    if (s.kind === 'zim' || String(s.doc_id || '').startsWith('zim:')) return `#/wiki/${String(s.doc_id || '').replace(/^zim:/, '')}?from=${encodeURIComponent(here())}`;
     if (s.kind === 'video') return `#/watch/${encodeURIComponent(s.doc_id)}?${s.t != null ? 't=' + Math.floor(s.t) + '&' : ''}from=${encodeURIComponent(here())}`;
     return `#/read/${encodeURIComponent(s.doc_id)}?${s.page ? 'p=' + s.page + '&' : ''}from=${encodeURIComponent(here())}`;
   }
@@ -271,7 +285,7 @@ const Chat = (() => {
       let pv;
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'vídeo'}</span></span>`;
       else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
-      else pv = `<span class="pv w">${ico(s.kind === 'place' ? 'pin' : 'page')}</span>`;
+      else pv = `<span class="pv w">${ico(s.kind === 'place' ? 'pin' : s.kind === 'zim' ? 'wiki' : 'page')}</span>`;
       const where = s.kind === 'video' ? (s.t != null ? 'em ' + clock(s.t) : '') : s.page ? `página ${s.page}${s.pages ? ' de ' + s.pages : ''}` : '';
       return `<a class="srccard" href="${srcHref(s)}" id="src-${esc(s.key || '')}">${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>

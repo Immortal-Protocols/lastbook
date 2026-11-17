@@ -496,6 +496,15 @@ class Jobs(Base):
             st = self.setup(manifest=m).state()
         self.assertEqual(st['recommend']['pack'], 'small')
 
+    def test_state_does_not_wait_with_bundled_manifest(self):
+        m = self.manifest()
+        m.remote = 'https://downloads.lastbook.org/manifest-v1.json'
+        with mock.patch.object(download, 'fetch_small', lambda *a, **k: time.sleep(5)):
+            t = time.time()
+            st = self.setup(manifest=m).state()
+        self.assertLess(time.time() - t, 2)
+        self.assertEqual(st['recommend']['pack'], 'small')
+
     def test_first_run_end_to_end(self):
         s = self.setup()
         st = s.state()

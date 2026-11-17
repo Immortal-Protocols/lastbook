@@ -27,8 +27,7 @@ the same 0.15 degree margin.
 - British Columbia's box is the terrestrial boundary. The legal boundary is marked "Access Only" in the BC catalogue, so
   it is not cited; it agrees to 0.001° except that it reaches further south into the Juan de Fuca Strait.
 - Guyana is small enough to be one region. Its box follows the boundary as Guyana administers it and as OCHA publishes
-  it. Venezuela claims the land west of the Essequibo river, and Suriname claims an area in the south-east. Lastbook
-  takes no position; the map would show what its sources show.
+  it. Suriname claims an area in the south-east. Lastbook takes no position; the map would show what its sources show.
 
 ### Codes
 

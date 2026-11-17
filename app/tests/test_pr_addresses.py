@@ -30,7 +30,8 @@ class PuertoRicoAddresses(unittest.TestCase):
                     ('9B', 'Calle del Camino', 'Ejemplo', 'Ejemplo', '', '', 3),
                     ('I-12', 'Carretera PR-3', 'Ejemplo', 'Ejemplo', '', '', 4),
                     ('B(1)-2', 'Cam. Río', 'Ejemplo', 'Ejemplo', '', '', 5),
-                    ('3/2A', 'Bulevar Sol', 'Ejemplo', 'Ejemplo', '', '', 6)):
+                    ('3/2A', 'Bulevar Sol', 'Ejemplo', 'Ejemplo', '', '', 6),
+                    ('7', 'Carretera 19', 'Bo. Las Peñas', 'Ejemplo', '', '', 7)):
                 db.execute('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                            (number, street, normalize(street), city, 'PR', postal, lat, 1, pr.street_key(street),
                             pr.fold(city), pr.fold(municipio), urb, pr.fold(urb)))
@@ -63,7 +64,8 @@ class PuertoRicoAddresses(unittest.TestCase):
                             ('I-12 Carretera PR-3', 'I-12 Carr. PR-3, PR'),
                             ('I-12 Carretera PR-3', 'I-12 Ctra PR 3'),
                             ('B(1)-2 Cam. Río', 'B(1)-2 Camino Rio'),
-                            ('3/2A Bulevar Sol', '3/2a Blvd. Sol')):
+                            ('3/2A Bulevar Sol', '3/2a Blvd. Sol'),
+                            ('7 Carretera 19', '7 Carr. 19, Bo. Las Penas')):
             self.assertEqual(find_addresses(query, self.geo)[0]['name'], name)
         for query in ('00901', 'PR-3 Humacao', 'I-95 Rest Area', 'B52 Museum', 'Urb. Luz, Ejemplo'):
             self.assertFalse(is_address_query(query))

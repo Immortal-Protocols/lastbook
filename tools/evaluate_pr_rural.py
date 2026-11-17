@@ -27,7 +27,7 @@ def equivalent(a, b):
         return a == b
     def components(addr):
         words = [w for w in addr.locality.split() if w not in ('barrio', 'municipio')]
-        return addr.route, addr.meters, sorted(words), addr.postal, addr.interior, addr.sector, addr.landmark
+        return addr.route, addr.meters, sorted(words), addr.postal, addr.interior, addr.sector, addr.landmark, addr.lot, addr.access
     return components(a) == components(b)
 
 

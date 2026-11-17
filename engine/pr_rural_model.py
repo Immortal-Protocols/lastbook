@@ -1,40 +1,38 @@
 """Use the optional socket-free Gemma runtime to read rural directions before an offline lookup."""
-import functools
 import json
 import re
 import threading
 import time
 from dataclasses import replace
 from decimal import Decimal
-from engine import paths, pr_rural
+from engine import pr_rural
+from engine.pr_rural import language
 from engine.pr_addresses import fold
 
 CAPACITY = threading.BoundedSemaphore(1)
 BUDGET = 60
 TOKENS = re.compile(r'\d+(?:[.,]\d+)?|[a-z]+')
-UNSAFE = re.compile(r'\b(?:entre|between|despues|antes|before|after|about|aproximadamente|salida|exit|box|casa|solar|lote|lot|apt|apto|apartamento)\b')
+UNSAFE = re.compile(r'\b(?:entre|between|despues|antes|before|after|about|aproximadamente|salida|exit|box|casa|apt|apto|apartamento)\b')
 HINT = re.compile(r'\b(?:frente|lado|detras|junto|cerca|esq|esquina|shopping center|parque industrial)\b')
 FENCE = re.compile(r'\s*\x60\x60\x60(?:json)?\s*(.*?)\s*\x60\x60\x60\s*', re.S | re.I)
-
-
-@functools.lru_cache(maxsize=1)
-def language():
-    return json.loads((paths.APP / 'web' / 'pr-rural-language.json').read_text(encoding='utf-8'))
 
 
 def fields(value):
     if value is None:
         return None
-    if not isinstance(value, list) or len(value) != 7:
-        raise ValueError('expected seven fields')
-    road, km, area, postal, interior, sector, landmark = value
+    if not isinstance(value, list) or len(value) not in (7, 9):
+        raise ValueError('invalid rural address fields')
+    road, km, area, postal, interior, sector, landmark = value[:7]
+    lot, access = value[7:] if len(value) == 9 else ('', '')
     if type(road) is not int or not 1 <= road <= 9999 or type(interior) is not bool:
         raise ValueError('invalid route or interior')
-    if not all(isinstance(s, str) and len(s) <= 250 for s in (area, postal, sector, landmark)) or not re.fullmatch(r'(?:\d{5})?', postal):
+    if not all(isinstance(s, str) and len(s) <= 250 for s in (area, postal, sector, landmark, lot, access)) or not re.fullmatch(r'(?:\d{5})?', postal):
         raise ValueError('invalid qualifier')
-    if isinstance(km, bool) or not re.fullmatch(r'\d{1,3}(?:[.]\d{1,3})?', str(km)):
+    if km is not None and (isinstance(km, bool) or not re.fullmatch(r'\d{1,3}(?:[.]\d{1,3})?', str(km))):
         raise ValueError('invalid kilometer')
-    return pr_rural.RuralAddress(road, int(Decimal(str(km)) * 1000), fold(area), postal, interior, fold(sector), fold(landmark))
+    meters = None if km is None else int(Decimal(str(km)) * 1000)
+    return pr_rural.RuralAddress(road, meters, fold(area), postal, interior,
+                                 fold(sector), fold(landmark), pr_rural.lot_key(lot), fold(access))
 
 
 def extract(text):
@@ -77,7 +75,7 @@ def number_forms(value):
 
 def eligible(query, parsed):
     raw = pr_rural.plain(query)
-    if len(query) > 400 or not pr_rural.looks_rural(query) or UNSAFE.search(raw):
+    if len(query) > 400 or not (pr_rural.looks_rural(query) or pr_rural.parcel_direction(query)) or UNSAFE.search(raw):
         return False
     markers = pr_rural.KM.findall(raw)
     return (len(markers) <= 1 and not (markers and re.search(r'[.,]', markers[0]) and pr_rural.HM.search(raw))
@@ -93,11 +91,16 @@ def grounded(query, address, parsed):
         return False
     if bool(re.search(r'\b(?:int|interior)\b', raw)) != address.interior:
         return False
+    qualified = pr_rural.POSTAL.sub(',', raw)
+    if pr_rural.qualifiers(qualified) != (address.lot, address.access):
+        return False
     if bool(re.search(r'\b(?:sector|sect|sec|comunidad|com)\b', raw)) != bool(address.sector):
         return False
     if bool(HINT.search(raw)) != bool(address.landmark):
         return False
     if parsed and (parsed.route, parsed.meters) != (address.route, address.meters):
+        return False
+    if address.meters is None and (not pr_rural.parcel_direction(query) or re.search(r'\b(?:km|kms|hm|kilometros?|kilometers?|kilometres?|hectometros?)\b', raw)):
         return False
     if address.sector:
         names = fold(raw)
@@ -106,9 +109,11 @@ def grounded(query, address, parsed):
             return False
     is_named = ' '.join((address.locality, address.sector, address.landmark))
     ignore = set(language()['grammar'])
-    raw = pr_rural.POSTAL.sub(' ', re.sub(language()['preamble'], '', raw.strip()))
-    km = f'{address.meters / 1000:.3f}'.rstrip('0').rstrip('.')
-    values = [str(address.route), km]
+    raw = pr_rural.ACCESS.sub(' ', pr_rural.LOT.sub(' ', qualified))
+    raw = re.sub(language()['preamble'], '', raw.strip())
+    values = [str(address.route)]
+    if address.meters is not None:
+        values.append(f'{address.meters / 1000:.3f}'.rstrip('0').rstrip('.'))
     if parsed and pr_rural.KM.search(raw):
         # The parser accounted for these units. Keep all other numbers, including house and sector numbers.
         raw = pr_rural.HM.sub(' ', pr_rural.KM.sub(' ', raw))
@@ -169,6 +174,7 @@ def interpret(model, query, parsed):
 
 
 def description(a):
-    km = f'{a.meters / 1000:.3f}'.rstrip('0').rstrip('.')
-    return ', '.join(s for s in (f'PR-{a.route} km {km}', a.locality, a.postal, 'interior' if a.interior else '',
+    route = f'PR-{a.route}' + (f' km {a.meters / 1000:g}' if a.meters is not None else '')
+    return ', '.join(s for s in (route, a.locality, a.postal, ('interior ' + a.access).strip() if a.interior else '',
+                                'lot ' + a.lot if a.lot else '',
                                 'sector ' + a.sector if a.sector else '', a.landmark) if s)

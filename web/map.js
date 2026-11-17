@@ -105,7 +105,7 @@ const MapView = (() => {
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
-        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
+        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or Puerto Rico catastro number</label><input id="pq" type="search" placeholder="Address, place, ZIP or catastro" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
         <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers <b id="layer-count"></b></button>
       </div>
       <div class="map-pop" id="pres" hidden></div>
@@ -116,7 +116,7 @@ const MapView = (() => {
       <div class="map-card" id="card" hidden></div>
       <div class="map-tip" id="tip" hidden></div>
       <div class="map-status" id="mstatus" aria-live="polite"></div>
-      <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
+      <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr"><span id="parcel-credit" hidden>CRIM · Junta de Planificación · </span>© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
       <section class="panel"><h2>Nearest to the map center</h2><p class="small muted" style="margin:0 0 4px">For the layers you have on. Straight-line distance, not by road.</p><div class="nearres" id="near" aria-live="polite"></div></section>
@@ -140,7 +140,7 @@ const MapView = (() => {
     const place = isFinite(lat) && isFinite(lon) ? null : home;
     const openWhole = !place && !(isFinite(lat) && isFinite(lon));   // nothing says where to open: the whole of this map, once its bounds have come
     st = { lat: isFinite(lat) ? lat : place ? place.lat : 39, lon: isFinite(lon) ? lon : place ? place.lon : -98, z: isFinite(z) ? Math.max(MINZ, Math.min(MAXZ, z)) : place ? place.z : 4,
-      on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, hover: null,
+      on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, parcels: [], sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, hover: null,
       dem: new Map(), demPending: new Set(), demNone: new Map(), style: load('mapStyle', { relief: true, contours: true }) };
     if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kind: 'Linked place' };
     const cv = $('mapc');
@@ -168,7 +168,7 @@ const MapView = (() => {
     const gps = $('gps');
     if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, name: 'You are here (approx.)' }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap('Location unavailable: ' + e.message), { timeout: 15000 });
     $('pf').onsubmit = e => { e.preventDefault(); findPlace($('pq').value.trim()) };
-    $('pq').addEventListener('input', () => { if (!$('pq').value) $('pres').hidden = true });
+    $('pq').addEventListener('input', () => { if (!$('pq').value) findPlace('') });
     $('layers-btn').onclick = () => { const p = $('layers'), open = p.hidden; p.hidden = !open; $('layers-btn').setAttribute('aria-expanded', open); $('pres').hidden = true; if (open) { $('card').hidden = true; renderLayers() } };
     st.onKey = e => { if (e.key === 'Escape' && st) { if (!$('layers').hidden) { $('layers').hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') } else if (!$('pres').hidden) $('pres').hidden = true; else if (!$('card').hidden) closeCard(); else if ($('mapwrap').classList.contains('max')) toggleFull() } };
     document.addEventListener('keydown', st.onKey);
@@ -412,6 +412,37 @@ const MapView = (() => {
     st.raf = requestAnimationFrame(paint);
   }
   const px = (lat, lon, V) => [V.w / 2 + (lon2x(lon, V.tz) - V.cx) * V.ts, V.h / 2 + (lat2y(lat, V.tz) - V.cy) * V.ts];
+  function parcelBounds(parcels) {
+    const bounds = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const p of parcels) for (const ring of p.rings) for (const [x, y] of ring) {
+      bounds[0] = Math.min(bounds[0], x); bounds[1] = Math.min(bounds[1], y);
+      bounds[2] = Math.max(bounds[2], x); bounds[3] = Math.max(bounds[3], y);
+    }
+    return bounds;
+  }
+  function drawParcels(g, V) {
+    $('parcel-credit').hidden = !st.parcels.length;
+    if (!st.parcels.length) return;
+    g.save();
+    for (const p of st.parcels) {
+      g.beginPath();
+      for (const ring of p.rings) {
+        ring.forEach(([lon, lat], j) => { const [x, y] = px(lat, lon, V); j ? g.lineTo(x, y) : g.moveTo(x, y) });
+        g.closePath();
+      }
+      g.fillStyle = 'rgba(20,107,139,.22)'; g.fill('evenodd');
+      g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.9)'; g.stroke();
+      g.lineWidth = 2; g.strokeStyle = '#135774'; g.stroke();
+    }
+    for (const [i, p] of st.parcels.entries()) {
+      const [x, y] = px(p.lat, p.lon, V);
+      g.beginPath(); g.arc(x, y, 10, 0, 2 * Math.PI); g.fillStyle = '#135774'; g.fill();
+      g.strokeStyle = '#fff'; g.stroke(); g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(i + 1), x, y);
+      st.hits.push({ ...p, place: true, count: 1, sx: x, sy: y, r: 10 });
+    }
+    g.restore();
+  }
   function outline(g, fc, V) {
     for (const feature of fc.features) {
       const polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
@@ -509,7 +540,8 @@ const MapView = (() => {
       g.shadowColor = 'transparent';
       st.hits.push(p);
     }
-    if (st.mark) {
+    drawParcels(g, V);
+    if (st.mark && !st.mark.rings) {
       const [mx, my] = px(st.mark.lat, st.mark.lon, V);
       g.beginPath(); g.moveTo(mx, my); g.bezierCurveTo(mx - 3, my - 9, mx - 10, my - 13, mx - 10, my - 21); g.arc(mx, my - 21, 10, Math.PI, 0); g.bezierCurveTo(mx + 10, my - 13, mx + 3, my - 9, mx, my);
       g.fillStyle = '#1565c0'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke(); g.beginPath(); g.arc(mx, my - 21, 4, 0, 7); g.fillStyle = '#fff'; g.fill();
@@ -769,7 +801,17 @@ const MapView = (() => {
     pan(tx - x, ty - y); st.listAt = 1; settle(true);  // the nearby list stays put while the map makes room
   }
   function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
-  function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || 'Place')}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">Remove marker</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
+  function showPlace(p) {
+    const card = openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || 'Place')}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts">${p.parcelCount ? '<button data-a="results">All matches</button>' : ''}<button data-a="clear">${p.rings ? 'Clear parcel markers' : 'Remove marker'}</button></div>`);
+    card.querySelector('[data-a=clear]').onclick = () => { st.mark = null; st.parcels = []; $('pres').hidden = true; closeCard() };
+    const back = card.querySelector('[data-a=results]');
+    if (back) back.onclick = () => {
+      st.mark = null; closeCard(); $('pres').hidden = false;
+      $('pres').querySelector('[data-results]')?.click();
+      fit(parcelBounds(st.parcels), .7, true);
+    };
+    wireCoords(p);
+  }
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
     const id = 'el' + Math.random().toString(36).slice(2, 8);
@@ -843,6 +885,7 @@ const MapView = (() => {
   function countLine() {
     let n = 0; for (const p of st.pins) if (inView(p)) n += p.count;
     renderLayers();
+    if (st.parcels.length) { statusLine(''); return }
     statusLine(n ? `${n.toLocaleString()} place${n === 1 ? '' : 's'} in view${st.truncated ? ' (busiest shown — zoom in for all)' : ''}` : 'Nothing from your layers in this view — zoom out or turn on more layers.');
   }
   async function nearby() {
@@ -875,29 +918,72 @@ const MapView = (() => {
       || /\s(?:PR|Puerto Rico)(?:\s+\d{5}(?:-\d{4})?)?$/i.test(match[2]);
   }
   async function findPlace(q) {
-    const box = $('pres'); if (!q) { box.hidden = true; return }
+    const box = $('pres'), state = st, serial = ++st.serial.place;
+    const active = () => st === state && serial === st.serial.place;
+    st.parcels = []; st.mark = null; closeCard(); hideTip();
+    if (!q) { box.hidden = true; return }
     $('layers').hidden = true;
-    const state = st, serial = ++st.serial.place;
-    box.hidden = false; $('card').hidden = true; box.innerHTML = '<p class="muted small">Searching…</p>';
-    try {
-      const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
-      if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) {
-        const rural = /(?:^|[^a-z])(?:k\.?\s*m\.?s?|kil[oó]met(?:ros?|res?|ers?))(?=\W|\d|$)|\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])/i.test(q);
-        let message = 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.';
-        if (rural || looksLikeAddress(q)) {
-          message = rural ? 'No matching road kilometer in the offline data. Check the route, kilometer and barrio.' : 'Address not found in your offline data. Check the house number and street.';
-          if (IN_WINDOW) message += ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.';
-        }
-        box.innerHTML = '<p class="muted small" style="padding:8px">' + message + '</p>';
+    box.hidden = false; box.innerHTML = '<p class="muted small">Searching…</p>';
+    const query = new URLSearchParams({ q, near: `${st.lat.toFixed(3)},${st.lon.toFixed(3)}` });
+    let other = [], total = 0, interpretation = '', expanded = false;
+    function pick(p) {
+      box.hidden = true; closeCard(); st.mark = p;
+      if (p.rings) { fit(parcelBounds([p]), .76, true); showPlace(p) }
+      else go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15);
+      st.cv.focus();
+    }
+    function list() {
+      const items = [...st.parcels, ...other];
+      const header = total ? `${total} possible parcel${total === 1 ? '' : 's'}. ${st.parcels.length < total ? 'Showing ' + st.parcels.length + '. ' : ''}Select a number to inspect its boundary.` :
+        `${items.length} match${items.length === 1 ? '' : 'es'}`;
+      if (total && !expanded) {
+        const shown = st.parcels.length < total ? ` · ${st.parcels.length} on map` : '';
+        box.innerHTML = `<button data-results aria-expanded="false"><b>${total} possible parcel${total === 1 ? '' : 's'}${shown}</b><small>Show matches</small></button>`;
+        box.querySelector('[data-results]').onclick = () => { expanded = true; list(); box.querySelector('[data-map]').focus() };
         return;
       }
-      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
-      const interpretation = r[0].interpreted ? '<p class="small muted">Read as ' + escH(r[0].interpreted) + '.</p>' : '';
-      box.innerHTML = interpretation + `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
-      box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
-      if (r.length === 1 && r[0].kind !== 'Road kilometer' && r[0].source !== 'NCES EDGE') pick(r[0]);
-    } catch { if (st === state) box.innerHTML = '<p class="muted small">Place finder unavailable.</p>' }
+      box.innerHTML = (interpretation ? '<p class="small muted">Read as ' + escH(interpretation) + '.</p>' : '') +
+        (total ? '<button data-map aria-expanded="true">View map</button>' : '') +
+        `<div class="small muted" style="padding:4px 8px">${escH(header)}</div>` +
+        items.map((p, i) => `<button data-i="${i}"><b>${p.rings ? (i + 1) + '. ' : ''}${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('') +
+        (st.parcels.length < total ? '<button data-more>Show more parcels</button>' : '');
+      box.querySelectorAll('[data-i]').forEach(b => b.onclick = () => pick(items[Number(b.dataset.i)]));
+      const more = box.querySelector('[data-more]'); if (more) more.onclick = () => { more.disabled = true; loadPage(true) };
+      const map = box.querySelector('[data-map]'); if (map) map.onclick = () => { expanded = false; list(); st.cv.focus() };
+    }
+    async function loadPage(more) {
+      try {
+        query.set('parcelOffset', String(more ? st.parcels.length : 0));
+        const r = await fetch('/api/places?' + query).then(reply => reply.json());
+        if (!active()) return;
+        if (!r.length && !more) {
+          const rural = /(?:^|[^a-z])(?:k\.?\s*m\.?s?|kil[oó]met(?:ros?|res?|ers?))(?=\W|\d|$)|\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])/i.test(q);
+          const catastro = /^(?:\s*(?:catastro|crim|n[uú]mero de catastro)|\s*(?:\d{11,14}|\d{3}-\d{3}-\d{3}-\d{2})(?:\b|$))/i.test(q);
+          let message = 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.';
+          if (catastro || rural || looksLikeAddress(q)) {
+            message = catastro ? 'Parcel number not found in the offline index. For the land boundary, try the 11-digit base number.' :
+              rural ? 'No matching parcel or road kilometer in the offline data. Check the route, kilometer and barrio.' :
+                'Address not found in your offline data. Check the house number and street.';
+            if (IN_WINDOW) message += ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.';
+          }
+          box.innerHTML = '<p class="muted small" style="padding:8px">' + message + '</p>'; return;
+        }
+        const parcels = r.filter(p => p.parcelNumber && p.rings?.length);
+        if (!more) {
+          other = r.filter(p => !p.parcelNumber); interpretation = r[0]?.interpreted || '';
+          total = parcels[0]?.parcelCount || 0;
+        } else if (!parcels.length) { total = st.parcels.length }
+        st.parcels.push(...parcels);
+        list();
+        if (parcels.length) fit(parcelBounds(st.parcels), .7, true);
+        if (!more && r.length === 1 && !total && r[0].kind !== 'Road kilometer' && r[0].source !== 'NCES EDGE') pick(r[0]);
+      } catch {
+        if (!active()) return;
+        if (more) { list(); box.insertAdjacentHTML('afterbegin', '<p>Couldn’t load more parcels. Try again.</p>') }
+        else box.innerHTML = '<p class="muted small">Place finder unavailable.</p>';
+      }
+    }
+    await loadPage(false);
   }
   return { page, stop };
 })();

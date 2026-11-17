@@ -19,7 +19,7 @@ from shapely.geometry import Point, Polygon, shape
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from engine import pr_addresses
 from engine.address_search import normalize
-from tools import build_pr_rural
+from tools import build_pr_parcels, build_pr_rural
 
 MEMBER = 'derived/geo/addresses/PR.sqlite'
 ARCHIVE = 'Lastbook-Addresses-PR.zip'
@@ -79,7 +79,7 @@ def urbanization(tags):
     return ''
 
 
-def build_database(osm, census, db_path, rural=None):
+def build_database(osm, census, db_path, rural=None, parcels=None, crim_addresses=()):
     geoids, names, tree = boundaries(census)
     counts = collections.Counter()
     skipped = collections.Counter()
@@ -136,6 +136,12 @@ def build_database(osm, census, db_path, rural=None):
         if rural:
             coverage['rural'] = build_pr_rural.build(db, rural, sha)
             metadata['rural_sources'] = json.dumps(coverage['rural']['sources'], sort_keys=True)
+        if parcels:
+            if not rural:
+                raise ValueError('Parcel builds need the rural barrio and ZIP inputs.')
+            coverage['parcels'] = build_pr_parcels.build(db, parcels, rural, crim_addresses)
+        elif crim_addresses:
+            raise ValueError('Physical address exports need parcel geometry.')
         db.executemany('INSERT INTO meta VALUES (?,?)', sorted(metadata.items()))
         db.commit()
         if db.execute('PRAGMA integrity_check').fetchone() != ('ok',):
@@ -143,12 +149,12 @@ def build_database(osm, census, db_path, rural=None):
     return coverage
 
 
-def build(osm, census, output, rural=None):
+def build(osm, census, output, rural=None, parcels=None, crim_addresses=()):
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output) as staging:
         staging = Path(staging)
         database, archive = staging / 'PR.sqlite', staging / ARCHIVE
-        coverage = build_database(osm, census, database, rural)
+        coverage = build_database(osm, census, database, rural, parcels, crim_addresses)
         # A fixed member timestamp makes identical inputs reproducible in the same toolchain.
         member = zipfile.ZipInfo(MEMBER)
         member.create_system = 3
@@ -181,5 +187,7 @@ if __name__ == '__main__':
     parser.add_argument('municipios', type=Path, help='TIGERweb GeoJSON, Puerto Rico county equivalents, EPSG:4326')
     parser.add_argument('output', type=Path)
     parser.add_argument('--rural', type=Path, help='Folder of federal road, barrio, ZCTA and school snapshots')
+    parser.add_argument('--parcels', type=Path, help='Folder from fetch_pr_parcels.py')
+    parser.add_argument('--crim-addresses', type=Path, action='append', default=[], help='Additional CRIM physical-address CSV')
     args = parser.parse_args()
-    print(json.dumps(build(args.osm, args.municipios, args.output, args.rural), indent=2))
+    print(json.dumps(build(args.osm, args.municipios, args.output, args.rural, args.parcels, args.crim_addresses), indent=2))

@@ -372,8 +372,8 @@ fileprivate final class MapEngine: @unchecked Sendable {
                 let v = try? s.components(separatedBy: ",").map { try pyFloat($0) }
                 if let v, v.count >= 2 { nearPt = (v[0], v[1]) } else if let v, v.count == 1 { _ = v; throw PyError(name: "IndexError") }
             }
-            let q = String(String.UnicodeScalarView((qs("q") ?? "").unicodeScalars.prefix(100)))
-            return .json(try places(q, near: nearPt))
+            let q = qs("q") ?? ""
+            return .json(try places(q, near: nearPt, parcelOffset: max(0, try pyIntStr(qs("parcelOffset") ?? "0"))))
         }
         if p.hasPrefix("/api/map/") { return .json(["error": "not found"], status: 404) }
         return nil
@@ -1123,9 +1123,10 @@ fileprivate final class MapEngine: @unchecked Sendable {
             .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
-    func places(_ q: String, limit: Int = 20, near: (Double, Double)?) throws -> [[String: Any]] {
+    func places(_ q: String, limit: Int = 20, near: (Double, Double)?, parcelOffset: Int = 0) throws -> [[String: Any]] {
+        guard q.unicodeScalars.count <= 400 else { return [] }
         if AddressSearch.isAddressQuery(q) {
-            return AddressSearch.find(q, limit: min(limit, 8), near: near)
+            return AddressSearch.find(q, limit: min(limit, 8), near: near, parcelOffset: parcelOffset, parcelLimit: min(limit, 30))
         }
         guard let db = placeDB else { return [] }
         let ws = words(q)
@@ -1419,7 +1420,7 @@ fileprivate enum AddressSearch {
         return stableSort(results) { distance($0) < distance($1) }
     }
 
-    static func isAddressQuery(_ q: String) -> Bool { q.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil || prParts(q) != nil || PuertoRicoRoads.looksRural(q) }
+    static func isAddressQuery(_ q: String) -> Bool { q.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil || prParts(q) != nil || PuertoRicoParcels.number(q) != nil || PuertoRicoRoads.looksRural(q) || PuertoRicoRoads.parcelDirection(q) }
 
     static func streetForms(_ street: String) -> [String] {
         let words = street.split(separator: " ").map(String.init)
@@ -1449,15 +1450,22 @@ fileprivate enum AddressSearch {
         return (number, normalize(rem.joined(separator: " ")).split(separator: " ").map(String.init), state, postcode)
     }
 
-    static func find(_ query: String, limit: Int = 8, near: (Double, Double)?) -> [[String: Any]] {
-        let rural = PuertoRicoRoads.parse(query)
-        if rural != nil || PuertoRicoRoads.looksRural(query) {
-            guard limit > 0, let db = Library.shared.db("addresses/PR.sqlite", geo: true),
-                  !db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").isEmpty else { return [] }
-            let rows = rural.map { PuertoRicoRoads.find($0, db, limit) } ?? []
+    static func find(_ query: String, limit: Int = 8, near: (Double, Double)?, parcelOffset: Int = 0, parcelLimit: Int = 8) -> [[String: Any]] {
+        let key = PuertoRicoParcels.number(query), rural = PuertoRicoRoads.parse(query, parcel: true)
+        if key != nil || rural != nil || PuertoRicoRoads.looksRural(query) || PuertoRicoRoads.parcelDirection(query) {
+            guard limit > 0, let db = Library.shared.db("addresses/PR.sqlite", geo: true) else { return [] }
+            let parcels = db.one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_parcel'") != nil
+            if let key { return parcels && parcelOffset == 0 ? PuertoRicoParcels.byNumber(db,key) : [] }
+            let roads = db.one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'") != nil
+            guard parcels || roads else { return [] }
+            func lookup(_ a: PuertoRicoRoads.Address) -> [Rec] {
+                let candidates = parcels ? PuertoRicoParcels.find(a,db,limit: parcelLimit,offset: parcelOffset) : []
+                return candidates + (roads && parcelOffset == 0 ? PuertoRicoRoads.find(a,db,limit) : [])
+            }
+            let rows = rural.map(lookup) ?? []
             if !rows.isEmpty { return rows }
             guard let a = PuertoRicoModel.interpret(query, rural) else { return [] }
-            return PuertoRicoRoads.find(a, db, limit).map { row in
+            return lookup(a).map { row in
                 var result = row
                 result["interpreted"] = PuertoRicoModel.description(a)
                 return result

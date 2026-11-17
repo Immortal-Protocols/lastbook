@@ -4,7 +4,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from engine import pr_addresses, pr_rural, pr_rural_model
+from engine import pr_addresses, pr_parcels, pr_rural, pr_rural_model
 from engine.paths import ro_uri
 
 # Keep normalization compatible with tools/build_addresses.py.
@@ -41,7 +41,8 @@ def normalize(text):
 
 def is_address_query(query):
     """A standalone ZIP remains a place query. A number followed by words is an address."""
-    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query) or pr_addresses.components(query) or pr_rural.looks_rural(query))
+    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query) or pr_addresses.components(query) or
+                pr_parcels.number(query) or pr_rural.looks_rural(query) or pr_rural.parcel_direction(query))
 
 
 def street_forms(street):
@@ -74,25 +75,39 @@ def _parts(query):
     return number, normalize(' '.join(remainder)).split(), state, postcode
 
 
-def find_addresses(query, geo_directory, limit=8, near=None, model=None):
+def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_offset=0, parcel_limit=None):
     """Find indexed street addresses or explicitly labeled rural road references."""
-    rural = pr_rural.parse(query)
-    if limit > 0 and (rural or pr_rural.looks_rural(query)):
+    key = pr_parcels.number(query)
+    rural = pr_rural.parse(query, parcel=True)
+    if limit > 0 and (key or rural or pr_rural.looks_rural(query) or pr_rural.parcel_direction(query)):
         path = Path(geo_directory) / 'addresses' / 'PR.sqlite'
         if path.is_file():
             db = None
             try:
                 db = sqlite3.connect(ro_uri(path), uri=True)
-                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").fetchone():
-                    rows = pr_rural.lookup(db, rural, limit) if rural else []
-                    if rows:
-                        return rows
-                    interpreted = pr_rural_model.interpret(model, query, rural)
-                    if interpreted:
-                        rows = pr_rural.lookup(db, interpreted, limit)
-                        for row in rows:
-                            row['interpreted'] = pr_rural_model.description(interpreted)
+                parcels = pr_parcels.installed(db)
+                if key:
+                    return pr_parcels.by_number(db, key) if parcels and not parcel_offset else []
+                roads = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").fetchone()
+                if not (parcels or roads):
+                    return []
+
+                def lookup(address):
+                    if not address:
+                        return []
+                    rows = pr_parcels.candidates(db, address, max(0, parcel_offset), parcel_limit or limit) if parcels else []
+                    if roads and not parcel_offset:
+                        rows.extend(pr_rural.lookup(db, address, limit))
                     return rows
+
+                rows = lookup(rural)
+                if rows:
+                    return rows
+                interpreted = pr_rural_model.interpret(model, query, rural)
+                rows = lookup(interpreted)
+                for row in rows:
+                    row['interpreted'] = pr_rural_model.description(interpreted)
+                return rows
             except sqlite3.Error:
                 pass
             finally:

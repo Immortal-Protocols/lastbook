@@ -11,13 +11,13 @@ enum PuertoRicoModel {
         return try? JSONDecoder().decode(Language.self, from: bytes)
     }()
     static let capacity = DispatchSemaphore(value: 1)
-    static let unsafe = #"\b(?:entre|between|despues|antes|before|after|about|aproximadamente|salida|exit|box|casa|solar|lote|lot|apt|apto|apartamento)\b"#
+    static let unsafe = #"\b(?:entre|between|despues|antes|before|after|about|aproximadamente|salida|exit|box|casa|apt|apto|apartamento)\b"#
     static let hint = #"\b(?:frente|lado|detras|junto|cerca|esq|esquina|shopping center|parque industrial)\b"#
     static let tokens = #"\d+(?:[.,]\d+)?|[a-z]+"#
 
     static func eligible(_ q: String, _ parsed: Address?) -> Bool {
         let raw = plain(q), markers = raw.allMatches(PuertoRicoRoads.km)
-        return q.count <= 400 && PuertoRicoRoads.looksRural(q) && raw.firstMatch(unsafe) == nil && markers.count <= 1
+        return q.count <= 400 && (PuertoRicoRoads.looksRural(q) || PuertoRicoRoads.parcelDirection(q)) && raw.firstMatch(unsafe) == nil && markers.count <= 1
             && !(markers.first?.firstMatch(#"\d[.,]\d"#) != nil && raw.firstMatch(PuertoRicoRoads.hm) != nil)
             && (parsed != nil || raw.allMatches(PuertoRicoRoads.road).count <= 1)
     }
@@ -33,15 +33,21 @@ enum PuertoRicoModel {
     static func extract(_ answer: String) -> Address? {
         let text = answer.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacing(#"(?is)^\x60\x60\x60(?:json)?\s*(.*?)\s*\x60\x60\x60$"#, with: "$1")
-        guard let a = (try? JSONSerialization.jsonObject(with: Data(text.utf8), options: [.fragmentsAllowed])) as? [Any], a.count == 7,
+        guard let a = (try? JSONSerialization.jsonObject(with: Data(text.utf8), options: [.fragmentsAllowed])) as? [Any], [7, 9].contains(a.count),
               let road = a[0] as? NSNumber, CFGetTypeID(road) != CFBooleanGetTypeID(), road.stringValue.firstMatch(#"^[1-9]\d{0,3}$"#) != nil,
               let area = a[2] as? String, let zip = a[3] as? String, zip.isEmpty || zip.firstMatch(#"^\d{5}$"#) != nil,
               let inside = a[4] as? NSNumber, CFGetTypeID(inside) == CFBooleanGetTypeID(),
               let sect = a[5] as? String, let land = a[6] as? String, [area, sect, land].allSatisfy({ $0.count <= 250 }) else { return nil }
+        let lot = a.count == 9 ? a[7] as? String : "", access = a.count == 9 ? a[8] as? String : ""
+        guard let lot, let access, max(lot.count, access.count) <= 250 else { return nil }
         let km = (a[1] as? String) ?? ((a[1] as? NSNumber).flatMap { CFGetTypeID($0) == CFBooleanGetTypeID() ? nil : $0.stringValue } ?? "")
-        guard km.firstMatch(#"^\d{1,3}(?:\.\d{1,3})?$"#) != nil, let n = Double(km) else { return nil }
-        return Address(route: road.intValue, meters: Int((n*1000).rounded()), locality: fold(area), postal: zip,
-                       interior: inside.boolValue, sector: fold(sect), landmark: fold(land))
+        var meters: Int?
+        if !(a[1] is NSNull) {
+            guard km.firstMatch(#"^\d{1,3}(?:\.\d{1,3})?$"#) != nil, let n = Double(km) else { return nil }
+            meters = Int((n*1000).rounded())
+        }
+        return Address(route: road.intValue, meters: meters, locality: fold(area), postal: zip,
+                       interior: inside.boolValue, sector: fold(sect), landmark: fold(land), lot: PuertoRicoRoads.lotKey(plain(lot)), access: fold(access))
     }
 
     static func spelled(_ n: Int, _ spanish: Bool, _ l: Language) -> String {
@@ -89,13 +95,18 @@ enum PuertoRicoModel {
               (raw.firstMatch(#"\b(?:int|interior)\b"#) != nil) == a.interior,
               (raw.firstMatch(#"\b(?:sector|sect|sec|comunidad|com)\b"#) != nil) == !a.sector.isEmpty,
               (raw.firstMatch(hint) != nil) == !a.landmark.isEmpty else { return false }
+        if a.meters == nil && (!PuertoRicoRoads.parcelDirection(q) || raw.firstMatch(#"\b(?:km|kms|hm|kilometros?|kilometers?|kilometres?|hectometros?)\b"#) != nil) { return false }
+        let qualified = raw.replacing(PuertoRicoRoads.zip, with: ",")
+        guard let details = PuertoRicoRoads.qualifiers(qualified), details.lot == a.lot, details.access == a.access else { return false }
         if let p = parsed, p.route != a.route || p.meters != a.meters { return false }
         if !a.sector.isEmpty {
             let label = "(?:sector|sect|sec|comunidad|com)", name = NSRegularExpression.escapedPattern(for: a.sector)
             guard fold(raw).firstMatch("\\b(?:" + label + " " + name + "|" + name + " " + label + ")\\b") != nil else { return false }
         }
-        raw = raw.trimmingCharacters(in: .whitespacesAndNewlines).replacing(l.preamble, with: "").replacing(PuertoRicoRoads.zip, with: " ")
-        var values = [String(a.route),kilometer(a.meters)]
+        raw = qualified.replacing(PuertoRicoRoads.lotPattern, with: " ").replacing(PuertoRicoRoads.accessPattern, with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines).replacing(l.preamble, with: "")
+        var values = [String(a.route)]
+        if let meters = a.meters { values.append(kilometer(meters)) }
         if parsed != nil, raw.firstMatch(PuertoRicoRoads.km) != nil {
             raw = raw.replacing(PuertoRicoRoads.km, with: " ").replacing(PuertoRicoRoads.hm, with: " ")
             values.removeLast()
@@ -115,7 +126,7 @@ enum PuertoRicoModel {
         if !a.landmark.isEmpty && !a.locality.isEmpty && plain(q).firstMatch(hint) == nil,
            fold(q).firstMatch("\\b(?:por|en) " + NSRegularExpression.escapedPattern(for: a.landmark) + "\\b") != nil {
             a = Address(route: a.route, meters: a.meters, locality: a.locality + " " + a.landmark, postal: a.postal,
-                        interior: a.interior, sector: a.sector, landmark: "")
+                        interior: a.interior, sector: a.sector, landmark: "", lot: a.lot, access: a.access)
         }
         return grounded(q, a, parsed) ? a : nil
     }
@@ -141,7 +152,8 @@ enum PuertoRicoModel {
         return result.value
     }
     static func description(_ a: Address) -> String {
-        ["PR-\(a.route) km \(kilometer(a.meters))", a.locality, a.postal, a.interior ? "interior" : "",
+        ["PR-\(a.route)" + (a.meters.map { " km " + kilometer($0) } ?? ""), a.locality, a.postal,
+         a.interior ? ("interior " + a.access).trimmingCharacters(in: .whitespaces) : "", a.lot.isEmpty ? "" : "lot " + a.lot,
          a.sector.isEmpty ? "" : "sector " + a.sector, a.landmark].filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }

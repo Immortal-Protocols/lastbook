@@ -1,9 +1,12 @@
 """Read a Puerto Rico route and kilometer address without depending on component order."""
+import functools
+import json
 import re
 import unicodedata
 from dataclasses import dataclass
 
 from engine.pr_addresses import fold
+from engine import paths
 
 # Units may be joined to a number (e.g. 154KM2HM5). A letter on either side of
 # an abbreviation belongs to a word, not to a second address component.
@@ -12,21 +15,56 @@ HM = re.compile(r'(?<![a-z])(?:hectometros?|hectometers?|h\s*\.?\s*m)\.?\s*(\d)(
 ROAD = re.compile(r'(?<![a-z0-9])(?:(?:carreteras?|carret|carr?|crta|ctra|crr|ruta|rta|route|rte|ramal|state (?:road|highway)|road|rd|highway|hwy)\.?\s*'
                   r'(?:estatal\s+)?(?:p\.?\s*r\.?\s*)?|p\.?\s*r\.?\s*)[-#\s]*(\d{1,4})(?![a-z0-9])')
 POSTAL = re.compile(r'(?<!\d)(\d{5})(?:-\d{4})?(?!\d)')
+LOT_LABEL = r'\b(?:solar|lote|lot)\b'
+LOT = re.compile(LOT_LABEL + r'\.?\s*(?:n[uú]m(?:ero)?\.?\s*)?#?\s*'
+                 r'([a-z]{0,3}-?\d+[a-z]?(?:[-/][a-z0-9]+)*|[a-z]+)\b(?![-/]\w)')
+INSIDE = re.compile(r'\b(?:int|interior)\b')
+# Everything after "interior" up to another address component is a required access detail.
+ACCESS = re.compile(r'\b(?:int|interior)\b\.?\s*#?\s*([^,;\n]*?)(?=[,;\n]|$|'
+                    r'\b(?:sector|sect|sec|comunidad|barrio|bo|municipio|solar|lote|lot|km|hm|carr|carretera|pr)\b)')
 
 
 @dataclass(frozen=True)
 class RuralAddress:
     route: int
-    meters: int
+    meters: int | None
     locality: str
     postal: str
     interior: bool
     sector: str
     landmark: str
+    lot: str = ''
+    access: str = ''
 
 
 def plain(text):
     return ''.join(c for c in unicodedata.normalize('NFD', text.lower()) if not unicodedata.combining(c))
+
+
+@functools.lru_cache(maxsize=1)
+def language():
+    return json.loads((paths.APP / 'web' / 'pr-rural-language.json').read_text(encoding='utf-8'))
+
+
+@functools.lru_cache(maxsize=1)
+def lot_words():
+    return {word: str(i) for lang in ('en', 'es') for i, word in enumerate(language()[lang]['small'])}
+
+
+def lot_key(value):
+    # A-12 and A12 are two written forms of the same lot label. Preserve significant digits.
+    key = re.sub(r'[\s-]', '', plain(value))
+    return lot_words().get(key, key) if key.isalpha() and len(key) > 1 else key
+
+
+def qualifiers(text):
+    lots, interiors = list(LOT.finditer(text)), list(ACCESS.finditer(text))
+    if len(lots) != len(re.findall(LOT_LABEL, text)) or len(lots) > 1 or len(interiors) > 1:
+        return None
+    lot = lot_key(lots[0][1].strip()) if lots else ''
+    if len(lot) > 1 and lot.isalpha():
+        return None
+    return lot, fold(interiors[0][1].strip()) if interiors else ''
 
 
 def looks_rural(query):
@@ -41,10 +79,30 @@ def looks_rural(query):
                     and re.search(r'\b(?:la|carr|carretera|pr)\s*[-.]?\s*\d+', words)))
 
 
-def parse(query):
+def parcel_direction(query):
+    raw = plain(query)
+    # A street address can begin with a house number followed by a second, numbered road.
+    house = re.match(r'^\s*#?(?:[a-z]{1,3}-?)?\d[\w/-]*\s+', raw)
+    if house and ROAD.match(raw, house.end()):
+        return False
+    route = ROAD.search(raw) or re.search(r'\b(?:por la|carretera|ruta|route)\s+[a-z]+\b', raw)
+    return bool(route and re.search(r'\b(?:bo|barrio|municipio|sector|sect|sec|int|interior|solar|lote|lot)\b', raw))
+
+
+def parse(query, *, parcel=False):
     text = plain(query)
-    if re.search(r'\b(?:casa|solar|lote|lot|apto|apt|apartamento|box)\s*#?\s*\d', text):
+    if re.search(r'\b(?:casa|apto|apt|apartamento|box)\s*#?\s*\d', text):
         return None
+    # Deal with fields independently of their position. Commas keep neighboring locality words separate.
+    text = re.sub(r'\bkm\.?\s*hm\.?(?=\s*#?\s*\d)', 'km ', text)
+    # An interior flag immediately before a ZIP does not name an access road.
+    text = POSTAL.sub(lambda m: ', ' + m[0] + ',', text)
+    details = qualifiers(text)
+    if details is None:
+        return None
+    lot, access = details
+    interior = bool(INSIDE.search(text))
+    text = ACCESS.sub(',', LOT.sub(',', text))
     # HRSA site addresses also use "0.6 Carr 119" and "149 State Road".
     # A whole number before a highway can be a house number.
     text = re.sub(r'^\s*(\d{1,3}[.,]\d{1,3})(?=\s+(?:carr(?:etera)?\.?|pr[- ])\s*[-#]?\s*\d)', r'km \1', text)
@@ -59,15 +117,19 @@ def parse(query):
     # Some directories print the letter O for zero in a tagged numeric field.
     text = re.sub(r'\b(km|hm)\.?\s+o\b', r'\1 0', text)
     markers = list(KM.finditer(text))
-    if len(markers) != 1:
+    if len(markers) > 1 or not markers and not (parcel and parcel_direction(query) and ROAD.search(text) and
+            (lot or interior or re.search(r'\b(?:bo|barrio|sector|sect|sec|municipio)\b', text)) and
+            not re.search(r'\b(?:km|hm|kilometros?|kilometers?)\b', text)):
         return None
-    marker = markers[0]
-    whole, _, fraction = marker[1].replace(',', '.').partition('.')
-    meters = int(whole) * 1000 + int(fraction.ljust(3, '0'))
-    text = text[:marker.start()] + ',' + text[marker.end():]
+    meters, fraction = None, ''
+    if markers:
+        marker = markers[0]
+        whole, _, fraction = marker[1].replace(',', '.').partition('.')
+        meters = int(whole) * 1000 + int(fraction.ljust(3, '0'))
+        text = text[:marker.start()] + ',' + text[marker.end():]
     hectos = list(HM.finditer(text))
     if hectos:
-        if len(hectos) != 1 or fraction:
+        if len(hectos) != 1 or fraction or meters is None:
             return None
         meters += int(hectos[0][1]) * 100
         text = HM.sub(',', text)
@@ -85,7 +147,6 @@ def parse(query):
         return None
     route = routes[0]
     text = text[:route.start()] + ',' + text[route.end():]
-    interior = bool(re.search(r'\b(?:int|interior)\b', text))
     text = re.sub(r'\b(?:int|interior|puerto rico|pr|blvd|ward)\b', ' ', text)
     text = re.sub(r'\bb[º°]|\b(?:bo|barr|brrio)\b\.?', ' barrio ', text)
     text = re.sub(r'\b(?:mun|mpio|municipality)\.?\b', 'municipio', text)
@@ -96,7 +157,8 @@ def parse(query):
     if sector:
         text = text[:sector.start()] + ' ' + text[sector.end():]
     return RuralAddress(int(route[1]), meters, fold(text), postal[0] if postal else '', interior,
-                        fold(sector[1]) if sector else '', ' '.join(x for x in (named, fold(landmark[0]) if landmark else '') if x))
+                        fold(sector[1]) if sector else '', ' '.join(x for x in (named, fold(landmark[0]) if landmark else '') if x),
+                        lot, access)
 
 
 def matches_area(locality, barrio, municipality):
@@ -116,6 +178,8 @@ def matches_area(locality, barrio, municipality):
 
 
 def lookup(db, address, limit):
+    if address.meters is None or address.lot or address.access:
+        return []  # A lot or named interior access needs evidence on a parcel record.
     # Each segment lies on one measured path. No extrapolation or guessing across gaps.
     rows = db.execute("""SELECT low,high,lat0,lon0,lat1,lon1,barrio,municipio,zip
                          FROM pr_road r JOIN pr_area a ON a.id=r.area

@@ -1,6 +1,7 @@
-# Australian capital-area maps
+# Australian capital and state/territory extract maps
 
-This contribution proposes offline maps around Australia's eight state and territory capitals.
+This contribution proposes offline maps around Australia's eight state and territory capitals,
+plus eight broader state/territory extract areas for regional and rural use.
 The design discussion is [#36](https://github.com/Immortal-Protocols/lastbook/issues/36).
 It uses the region-map implementation proposed in #35 and the local review and extract-cache work in #30.
 These definitions alone do not add downloads to the released app.
@@ -34,7 +35,7 @@ Its generated file must also retain these manually supplied areas when regenerat
 - City points: [Natural Earth populated places](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/),
   [public domain](https://www.naturalearthdata.com/about/terms-of-use/), downloaded on 17 November 2026.
 
-These maps do not provide a street-address or searchable-town index, elevation tiles, crop classification,
+The four-file map archives do not provide a street-address or searchable-town index, elevation tiles, crop classification,
 current hazards, or authoritative emergency-facility inventories. Existing mapped help points are incomplete
 and may be outdated. Australian four-digit postcodes and state abbreviations need a separate address proposal;
 the US address builder and search rules must not be presented as Australian address support.
@@ -98,3 +99,5 @@ The required source suite and region-source tests are run before publication. A 
 | au-wa | 1016535 | 21290 | 3373 | 104741123 |
 
 All eight map ZIPs together are 830,654,610 bytes. The separate place indexes contain 29,356 named points. Counts are database rows, not verified emergency facilities or complete address coverage. All queries in the review manifest (capitals and selected regional towns) resolve within their map boxes. The tests include a fixture-only disk-capacity adjustment: synthetic Setup recommendations must not depend on the real host disk having the production 5–20 GB reserve. Low-space checks and production code remain unchanged.
+
+[Whole-extract review downloads, source receipts and checksums](https://github.com/pilkster/lastbook/releases/tag/australia-state-maps-review-2026-11-17) are separate from the earlier three capital-area ZIPs. Named-place sidecars are included as a separate archive; integrating them into the release scanner, map switching and repair remains a maintainer decision alongside #63 and #90.

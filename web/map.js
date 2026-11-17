@@ -21,6 +21,7 @@ const MapView = (() => {
   const LAYERS = [
     ['hospital', 'Hospitals', 'H', '#c62828', 'hospital', 'help'],
     ['clinic', 'Clinics & doctors', '+', '#d81b60', 'clinic,doctors', 'help'],
+    ['dentist', 'Dentists', 'Dt', '#00695c', 'dentist', 'help'],
     ['pharmacy', 'Pharmacies', 'Rx', '#2e7d32', 'pharmacy,chemist', 'help'],
     ['fire', 'Fire stations', 'F', '#ef6c00', 'fire_station', 'help'],
     ['police', 'Police', 'P', '#1a4f9c', 'police', 'help'],
@@ -46,7 +47,7 @@ const MapView = (() => {
   const GROUPS = [['help', 'Emergency help'], ['water', 'Water'], ['supply', 'Supplies & camping'], ['food', 'Food that keeps growing (2025 crop maps)'], ['resource', 'Natural resources (historical records)']];
   const BY_CLS = {}; for (const l of LAYERS) for (const c of l.cls) BY_CLS[c] = l;
   const DEFAULT_LAYERS = ['hospital', 'clinic', 'pharmacy', 'fire', 'police', 'shelter', 'water', 'reservoir', 'fish', 'boat'];
-  const PRESETS = [['Emergency', ['hospital', 'clinic', 'pharmacy', 'fire', 'police', 'shelter', 'community']], ['Water', ['water', 'spring', 'reservoir', 'pond', 'dam', 'fish', 'boat']],
+  const PRESETS = [['Emergency', ['hospital', 'clinic', 'dentist', 'pharmacy', 'fire', 'police', 'shelter', 'community']], ['Water', ['water', 'spring', 'reservoir', 'pond', 'dam', 'fish', 'boat']],
     ['Supplies', ['food', 'hardware', 'fuel', 'camp']], ['Food trees', ['orchard', 'vineyard', 'berries']], ['Resources', ['fish', 'boat', 'mineral', 'well']], ['All', LAYERS.map(l => l.id)]];
   const LEGACY = { all_resources: ['fish', 'boat', 'mineral', 'well'], mineral: ['mineral'], oil_gas_well: ['well'], fish_stocking: ['fish'], boat_launch: ['boat'] };
   const FIELD = { commod1: 'Commodity', commod2: 'Also', commod3: 'Also', ore: 'Ore', dev_stat: 'Recorded status', oper_type: 'Operation', yr_lst_prd: 'Last production year',

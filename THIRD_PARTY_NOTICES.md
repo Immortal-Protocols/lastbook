@@ -53,6 +53,20 @@ allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is 
 | Gemma 4 26B A4B instruct, GGUF quantization by Unsloth (`gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`) | revision pinned in `llm_local.py` | Apache-2.0, per the model card | https://huggingface.co/unsloth (Google's Gemma 4 release) | Upstream: check the model card and its licence file before release |
 | BAAI bge-small-en-v1.5 (ONNX), meaning-based search | as pinned | MIT, per the model card | https://huggingface.co/BAAI/bge-small-en-v1.5 | Upstream: the local copy has no licence file beside it |
 
+## iPad development preview (`mobile/ipad/`)
+
+There is no published iPad build. These parts go into an iPad app that a contributor builds from this source.
+
+| Component | Version | Licence | Source | Checked |
+|---|---|---|---|---|
+| llama.cpp and ggml, compiled into the app as a static library (`scripts/build_llama_ios.sh`) | dde879bc (as the desktop runner) | MIT (Copyright the ggml authors) | https://github.com/ggml-org/llama.cpp, fetched by `scripts/prepare_dependencies.sh`, not stored here | Checked: `LICENSE`, copied into the app as `licenses/llama.cpp-LICENSE.txt` |
+| nlohmann/json, used by llama.cpp's fitting code | as vendored in dde879bc | MIT | https://github.com/nlohmann/json | Checked: `licenses/LICENSE-jsonhpp`, copied into the app as `licenses/LICENSE-jsonhpp.txt` |
+| Root CA certificates pinned for setup downloads (`Lastbook/Engine/Install/DownloadRoots.swift`, generated from `engine/setup/roots.pem`) | as in `roots.pem` | Public certificates; no licence restriction on use for verification | the issuing certificate authorities | Upstream |
+| Lastbook web UI (`web/`) and guides (`content/`), copied into the app at build time | this repository | MIT (Lastbook) | this repository | n/a |
+| Apple frameworks (SwiftUI, WebKit, AVFoundation, VideoToolbox, PDFKit, Metal, Accelerate, SQLite) | system | Apple SDK terms; part of iPadOS, not bundled | Apple | n/a |
+| Gemma 4 26B A4B (local AI model) | as desktop | see "Downloaded by setup" above | Hugging Face, downloaded only when the person chooses it | as above |
+| ffmpeg (Mac development tools only: `tools/videocompat --ffmpeg`, `tools/validate_videocompat.py`) | supplied by the developer | LGPL-2.1+ or GPL, depending on the build | https://ffmpeg.org | Not bundled, downloaded or required by the app |
+
 ## Website
 
 | Component | Licence | Source | Checked |

@@ -27,6 +27,8 @@ except ValueError:
 MODEL_URL = BASE + '/v1/chat/completions'
 MODELS_URL = BASE + '/v1/models'
 MODEL = os.environ.get('SURVIVAL_MODEL', 'deepseek-v4.1-flash')
+# Some servers' thinking models (Ollama's gemma4) spend a whole round's tokens thinking at 'low'; 'none' answers straight away.
+REASONING_EFFORT = os.environ.get('SURVIVAL_REASONING_EFFORT', 'low')
 MAX_ROUNDS = 2  # tool rounds; then the model must answer with what it has
 S = None        # server module, set by init()
 INDEX = None    # retrieval.Index
@@ -395,7 +397,7 @@ ROUND_TOKENS = 1800
 
 def _http_round(msgs, tools, cancelled, wrote, set_state):
     """One model turn from the model server at BASE. (content, {index: call}), 'stopped', or a sentence saying what failed."""
-    body = {'model': MODEL, 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': 'low'}
+    body = {'model': MODEL, 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
     if tools:
         body['tools'] = tools
     req = urllib.request.Request(MODEL_URL, json.dumps(body).encode(), {'Content-Type': 'application/json'})

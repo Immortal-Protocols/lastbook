@@ -17,7 +17,7 @@ import hashlib, html, json, pathlib, re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE = "https://lastbook.org"
 R2 = "https://downloads.lastbook.org"
-MAC = R2 + "/Lastbook-1.1.8-mac.dmg"
+MAC = R2 + "/Lastbook-1.1.10-mac.dmg"
 WIN = R2 + "/Lastbook-1.1.8-Setup.exe"
 LINUX = R2 + "/Lastbook_1.1.9_amd64.deb"
 LIB = R2 + "/Lastbook-Small-20261113.zip"
@@ -140,7 +140,7 @@ def pic(stem, w, h, alt, widths=(720, 1280), sizes="92vw", fallback=None, eager=
     </picture>"""
 
 
-MAC_BTN = btn(MAC, APPLE, "Download for Mac", "Lastbook 1.1.8 · 28.5 MB")
+MAC_BTN = btn(MAC, APPLE, "Download for Mac", "Lastbook 1.1.10 · 28.5 MB")
 WIN_BTN = btn(WIN, WINDOWS, "Download for Windows", "Lastbook 1.1.8 · 105 MB")
 LINUX_BTN = btn(LINUX, BOX, "Download for Linux", "Lastbook 1.1.9 · 29.9 MB")
 LIB_BTN = btn(LIB, BOX, "Download the library", "Small · 7.7 GB", "btn-2")
@@ -176,7 +176,7 @@ AGAIN = f"""<section class="band band-lamp" aria-labelledby="again-h">
       <a class="btn-2 dl-win" href="{WIN}">Download for Windows</a>
       <a class="btn-2 dl-linux" href="{LINUX}">Download for Linux</a>
     </p>
-    <p class="fine">Mac 1.1.8 · 28.5 MB · Windows 1.1.8 · 105 MB · Linux 1.1.9 · 29.9 MB</p>
+    <p class="fine">Mac 1.1.10 · 28.5 MB · Windows 1.1.8 · 105 MB · Linux 1.1.9 · 29.9 MB</p>
   </div>
 </section>
 """
@@ -329,14 +329,14 @@ def download():
 <div class="os">
 <section class="card os-card dl-mac" id="mac" aria-labelledby="mac-h">
 <h2 id="mac-h">{APPLE} Install on Mac</h2>
-<ol class="list"><li>Open <b>Lastbook-1.1.8-mac.dmg</b>.</li><li>Drag <b>Lastbook</b> to <b>Applications</b>.</li><li>Open <b>Lastbook</b> from Applications.</li><li>Choose your state for a detailed local map, then your library size and optional local AI. Setup shows the space needed.</li><li>Click <b>Install</b> and keep your internet connection on until setup finishes.</li></ol>
-<details class="ver" id="why"><summary>Apple security checks</summary><div><p>Lastbook 1.1.8 is signed with our Developer ID and notarized by Apple. On first launch, macOS may ask you to confirm opening an app downloaded from the internet.</p></div></details>
+<ol class="list"><li>Open <b>Lastbook-1.1.10-mac.dmg</b>.</li><li>Drag <b>Lastbook</b> to <b>Applications</b>.</li><li>Open <b>Lastbook</b> from Applications.</li><li>Choose your state for a detailed local map, then your library size and optional local AI. Setup shows the space needed.</li><li>Click <b>Install</b> and keep your internet connection on until setup finishes.</li></ol>
+<details class="ver" id="why"><summary>Apple security checks</summary><div><p>Lastbook 1.1.10 is signed with our Developer ID and notarized by Apple. On first launch, macOS may ask you to confirm opening an app downloaded from the internet.</p></div></details>
 <p>Once setup finishes, the library and AI work offline.</p>
 </section>
 <section class="card os-card dl-win" id="windows" aria-labelledby="win-h"><h2 id="win-h">{WINDOWS} Install on Windows</h2><ol class="list"><li>Download and run <b>Lastbook-1.1.8-Setup.exe</b>.</li><li>Follow the installer, then open Lastbook.</li><li>Choose your library size, state map and optional local AI in setup.</li></ol><p>If Windows blocks the installer, contact <a href="mailto:hello@lastbook.org">hello@lastbook.org</a> with the message you see.</p></section>
 <section class="card os-card dl-linux" id="linux" aria-labelledby="linux-h"><h2 id="linux-h">Install on Linux</h2><ol class="list"><li>Download the Ubuntu package.</li><li>In the folder containing it, run <code>sudo apt install ./Lastbook_1.1.9_amd64.deb</code>.</li><li>Open Lastbook from your applications menu and choose your library, state map and optional local AI.</li></ol><p>Ubuntu 24.04 on Intel/AMD 64-bit computers. Setup downloads the content; Videos, Map and Chat work offline afterwards.</p></section>
 </div>
-<section class="card plain" id="check"><h2>Check your download</h2><p>Mac 1.1.8 SHA-256</p><p><code style="overflow-wrap:anywhere">626e3b451d5a1a6855ed2b2fc2e4147d070153ca2d803f544c828a1447dfab08</code></p><p><a href="/SHA256SUMS.txt">All published checksums</a></p></section>
+<section class="card plain" id="check"><h2>Check your download</h2><p>Mac 1.1.10 SHA-256</p><p><code style="overflow-wrap:anywhere">4e5dd37c9ef40af35ea3b896bc3ea85c8d752e962b32100ba967569d82ca1346</code></p><p><a href="/SHA256SUMS.txt">All published checksums</a></p></section>
 </div></main>
 """ + FOOT
 

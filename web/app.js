@@ -412,7 +412,6 @@ document.addEventListener('keydown', e => {
     else if (document.activeElement === $('#topQ')) { $('#topQ').value = ''; $('#topQ').blur() }
   }
 });
-libInfo().then(i => { if (i.zims && !i.zims.length) $('.side [data-nav=encyclopedias]').hidden = true });
 function notFound() { setTitle('Not found'); main.innerHTML = emptyState('search', 'That page isn’t here', 'The link may be from an older version of the guide.') }
 const emptyState = (icon, title, text) => `<div class="empty"><span class="e-ico">${ico(icon)}</span><b>${esc(title)}</b><p>${esc(text)}</p><p class="e-act"><a class="btn plain" href="#/">Go to Videos</a></p></div>`;
 function searchBox(id, value, placeholder, button = 'Search') {

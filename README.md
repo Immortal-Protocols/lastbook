@@ -1,6 +1,6 @@
 # Lastbook
 
-> **Experimental Omarchy testing copy.** Start with [TESTING.md](TESTING.md) for the native Arch package, installation steps, verification results, and known limitations. This is a community test build, not an upstream release.
+> **Arch / Omarchy support is experimental.** See [TESTING.md](TESTING.md) for community test packages, installation steps, verification results, and known limitations. These packages are not an official upstream release.
 
 Lastbook is an offline survival library for Mac, Windows and Linux. It puts manuals, videos, encyclopedias, an offline map and
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.
@@ -15,9 +15,16 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 
 | Platform | Version | Status |
 |---|---|---|
-| macOS (Apple Silicon, macOS 14 or later) | 1.1.8 | Live on lastbook.org, signed |
+| macOS (Apple Silicon, macOS 14 or later) | 1.1.10 | Live on lastbook.org, signed |
 | Windows (64-bit, Windows 10 or later) | 1.1.8 | Live on lastbook.org, Authenticode signed |
 | Linux (Ubuntu 24.04 LTS, x86_64) | 1.1.9 | Ubuntu package; installation instructions below |
+
+## iPad (development preview, source only)
+
+A native iPad app (Videos, Map and Chat, offline, with optional on-device AI) is in [`mobile/ipad/`](mobile/ipad/).
+- It is source for contributors to build and sign themselves.
+- There is no App Store, TestFlight or downloadable iPad build.
+- See [mobile/ipad/README.md](mobile/ipad/README.md) for what works, the current limitations and how to build it.
 
 ## Install on Linux
 

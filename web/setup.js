@@ -102,6 +102,13 @@
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState();
   const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  function packSummary(p) {
+    const text = p.summary || '';
+    if (p.id !== 'medium' || !maps().length) return text;
+    // The manifest describes the archive's bundled map. Setup replaces it with the chosen state map.
+    const state = selectedState();
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your state'));
+  }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
   const asData = p => /[\\/]LastbookData[\\/]?$/i.test(p) ? p.replace(/[\\/]$/, '') : String(p).replace(/[\\/]$/, '') + SEP + DATA;
@@ -200,7 +207,7 @@
       return `<label class="s-opt${off ? ' off' : ''}">
         <input type="radio" name="pack" value="${esc(p.id)}"${choice.pack === p.id ? ' checked' : ''}${off ? ' disabled' : ''}>
         <span class="s-opt-in"><span class="s-opt-h"><b>${esc(p.title)}</b>${badge}</span>
-        <small>${esc(p.summary || '')}</small>
+        <small data-pack-summary="${esc(p.id)}">${esc(packSummary(p))}</small>
         <span class="s-sizes">${off ? 'Not ready to download yet' : here ? 'On this computer' : `<span>${foundFor('pack', p.id) ? 'Already downloaded' : size(packDl(p)) + ' download'}</span><span>${size(p.installed_bytes)} on disk</span>`}</span></span></label>`;
     }).join('');
     let ai = '';
@@ -249,6 +256,7 @@
   function mapSection() {
     const box = $('#mapBox'), now = mapNow();
     if (!box) return;
+    main.querySelectorAll('[data-pack-summary]').forEach(el => { el.textContent = packSummary(packById(el.dataset.packSummary)) });
     const selected = selectedState();
     const opts = maps().map(m => {
       const a = addressById(m.id), included = now === 'us' || m.id === now;

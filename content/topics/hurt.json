@@ -37,6 +37,7 @@
   "allergic reaction",
   "anaphylaxis",
   "epinephrine",
+  "adrenaline",
   "diarrhea",
   "vomiting",
   "dehydration",
@@ -49,6 +50,9 @@
   "low blood sugar",
   "triage",
   "911",
+  "999",
+  "112",
+  "111",
   "emergency",
   "poison",
   "swallowed",
@@ -90,7 +94,7 @@
   {
    "id": "bleeding",
    "label": "Bleeding, a cut or a wound",
-   "hint": "Heavy bleeding, deep cut, dirty wound, wound getting red or swollen",
+   "hint": "Heavy bleeding, deep cut, tourniquet, dirty wound, wound getting red or swollen",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -201,7 +205,7 @@
   {
    "id": "breathing",
    "label": "Not breathing, unconscious or choking",
-   "hint": "Collapsed, not responding, gasping, food stuck in throat, drowning",
+   "hint": "Collapsed or fainted, not responding, can't breathe, gasping, food stuck in throat, drowning",
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -628,6 +632,11 @@
    "doc": "video-HGBBu4zr8sM",
    "label": "Video: helping someone who is choking",
    "note": "St John Ambulance demonstration (about 2.5 minutes, captions) of recognising choking, back blows and abdominal thrusts."
+  },
+  {
+   "doc": "video-W-Us9IP33Gs",
+   "label": "Video: helping someone with heat exhaustion",
+   "note": "British Red Cross (about 3 minutes, captions): pale, cold, clammy skin and dizziness; shade, sitting down, sips of water; when to get medical advice or call the UK emergency number."
   },
   {
    "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/First_aid",

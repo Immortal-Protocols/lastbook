@@ -25,18 +25,18 @@ class MapSetMetaTests(unittest.TestCase):
 
     def test_us_map_set_keeps_feet_and_us_wording(self):
         self.write({'name': 'CA', 'files': {}})
-        self.assertEqual(server.map_set_meta(), {'units': 'imperial', 'country': None, 'credit': None})
+        self.assertEqual(server.map_set_meta(), {'units': 'imperial', 'country': None, 'credit': None, 'as_of': None})
 
     def test_uk_map_set(self):
         credit = 'Contains OS data © Crown copyright and database right 2026'
-        self.write({'name': 'GB-SE', 'files': {}, 'units': 'metric', 'country': 'GB', 'credit': f'  {credit}  '})
-        self.assertEqual(server.map_set_meta(), {'units': 'metric', 'country': 'GB', 'credit': credit})
+        self.write({'name': 'GB-SE', 'files': {}, 'units': 'metric', 'country': 'GB', 'credit': f'  {credit}  ', 'as_of': ' 17 Nov 2026 '})
+        self.assertEqual(server.map_set_meta(), {'units': 'metric', 'country': 'GB', 'credit': credit, 'as_of': '17 Nov 2026'})
 
     def test_bad_values_are_ignored(self):
         self.write({'name': 'X', 'files': {}, 'units': 'furlongs', 'country': 'gb', 'credit': 7})
-        self.assertEqual(server.map_set_meta(), {'units': 'imperial', 'country': None, 'credit': None})
+        self.assertEqual(server.map_set_meta(), {'units': 'imperial', 'country': None, 'credit': None, 'as_of': None})
         self.write({'name': 'X', 'files': {}, 'country': 'GBR', 'credit': '   '})
-        self.assertEqual(server.map_set_meta(), {'units': 'imperial', 'country': None, 'credit': None})
+        self.assertEqual(server.map_set_meta(), {'units': 'imperial', 'country': None, 'credit': None, 'as_of': None})
 
     def test_credit_is_capped(self):
         self.write({'name': 'X', 'files': {}, 'credit': 'a' * 900})

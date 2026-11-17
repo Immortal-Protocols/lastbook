@@ -196,6 +196,7 @@ const MapView = (() => {
     // What the installed map set says about itself (map-set.json: units, country, credit); a US map set says nothing and keeps feet and ZIP codes.
     st.metric = info.units === 'metric'; st.postal = info.country === 'GB' ? 'postcode' : 'ZIP'; st.area = info.country === 'GB' ? 'region' : 'state';
     if (st.postal === 'postcode') { const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' } }
+    if (info.as_of) { const p = document.querySelector('.maphead p'); if (p) p.textContent = p.textContent.replace('25 Oct 2026', info.as_of) }
     if (info.credit) { const at = document.querySelector('.mapattr'); if (at) at.textContent = '© OpenStreetMap contributors · ' + info.credit }
     if (!info.layers) return;
     st.have = new Set(info.layers); st.bounds = info.bounds;

@@ -1517,7 +1517,7 @@ def _distinct(path, sql):
 def map_set_meta():
     """What the installed map set says about itself in map-set.json, beyond its file list: optional 'units' ('metric' for heights,
     contours and the scale bar; anything else means feet), 'country' (ISO code) and 'credit' (the data credit line for the map's
-    corner). A US map set has none of them and keeps today's behaviour."""
+    corner), 'as_of' (a short date for the 'mapped by' line). A US map set has none of them and keeps today's behaviour."""
     try:
         d = json.loads((HERE / 'map-set.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -1526,9 +1526,11 @@ def map_set_meta():
         return {}
     credit = d.get('credit')
     country = d.get('country')
+    as_of = d.get('as_of')
     return {'units': 'metric' if d.get('units') == 'metric' else 'imperial',
             'country': country if isinstance(country, str) and re.fullmatch(r'[A-Z]{2}', country) else None,
-            'credit': credit.strip()[:400] if isinstance(credit, str) and credit.strip() else None}
+            'credit': credit.strip()[:400] if isinstance(credit, str) and credit.strip() else None,
+            'as_of': as_of.strip()[:40] if isinstance(as_of, str) and as_of.strip() else None}
 
 
 @functools.lru_cache(maxsize=1)
@@ -1643,7 +1645,7 @@ def map_info():
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
     area = 'the area this map details' if have['bounds'] else 'the whole US'
-    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
+    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)' if not map_set_meta().get('country') else 'Main roads, towns and water (OpenStreetMap)', 'status': 'Shown at every zoom level'}]
     if have['detail']:
         out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
     else:

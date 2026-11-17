@@ -1,6 +1,7 @@
 """Lastbook desktop app: the entry point. Opens a window around the engine, with no network port.
 
   Lastbook --data "<folder>"
+  Lastbook --self-test        check that this copy can build and search a library index, print the result as JSON, exit
 
 The data folder comes from --data, then LASTBOOK_DATA, then the person's remembered selection, then the app's own data
 folder. Existing libraries elsewhere are opened only when the person chooses them. If no library is available, the app opens
@@ -348,10 +349,123 @@ def open_log(data):
     return logs
 
 
+def say(text):
+    """Print to whoever started the app; True if it was written. A packaged app on Windows has no sys.stdout: there it writes
+    to the handle it was given when its output is redirected (a pipe or a file), else to the console of whatever started it,
+    if there is one. It never raises: a packaged app would turn an error here into a dialog that waits for a click."""
+    text = text.rstrip('\n') + '\n'
+    try:
+        if sys.stdout is not None:
+            sys.stdout.write(text)
+            sys.stdout.flush()
+            return True
+        if sys.platform != 'win32':     # no Python stream, but the process may still have been given one
+            data = text.encode('utf-8')
+            return os.write(1, data) == len(data)
+        import ctypes
+        import msvcrt
+        kernel32 = ctypes.windll.kernel32
+        kernel32.GetStdHandle.restype = ctypes.c_void_p
+        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        if handle not in (None, 0, ctypes.c_void_p(-1).value):
+            try:
+                with os.fdopen(msvcrt.open_osfhandle(handle, os.O_WRONLY | os.O_BINARY), 'w', encoding='utf-8', closefd=False) as f:
+                    f.write(text)
+                return True
+            except OSError:
+                pass
+        if kernel32.AttachConsole(-1):  # ATTACH_PARENT_PROCESS
+            with open('CONOUT$', 'w', encoding='utf-8', errors='replace') as f:
+                f.write(text)
+            return True
+    except (OSError, ValueError):   # a closed pipe or stream
+        pass
+    return False
+
+
+def shareable(text):
+    """Text with the temporary folder as <tmp> and the person's home folder as ~, so a result can be pasted without their
+    user name. Each folder also as an error message shows it, with its backslashes doubled, and on Windows in any case."""
+    import re
+    flags = re.I if sys.platform == 'win32' else 0
+    for folder, name in ((tempfile.gettempdir(), '<tmp>'), (str(Path.home()), '~')):
+        if len(folder) > 3:
+            for form in (folder, folder.replace('\\', '\\\\')):
+                text = re.sub(r'(?<![\w.-])' + re.escape(form) + r'(?![\w.-])', lambda m: name, text, flags=flags)   # a whole folder name, not the start or end of a longer one
+    return text
+
+
+def in_app(path):
+    """A file's place inside the app's own folder (<app>/...); a file outside it, as the system's own Python on Linux, keeps
+    its full path, with the home folder as ~."""
+    if not path:
+        return None
+    base = Path(sys._MEIPASS if FROZEN else Path(__file__).resolve().parents[1]).resolve()
+    try:
+        return '<app>/' + Path(path).resolve().relative_to(base).as_posix()
+    except ValueError:
+        return shareable(str(path))
+
+
+def sqlite_library():
+    """On Windows, the SQLite DLL this process has loaded, as a path; None where that cannot be told. Python's _sqlite3 module
+    names only itself, and Windows can resolve a DLL name to another copy than the one beside it."""
+    if sys.platform != 'win32':
+        return None
+    import ctypes
+    from ctypes import wintypes
+    kernel32 = ctypes.windll.kernel32
+    kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+    kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+    kernel32.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+    module = kernel32.GetModuleHandleW('sqlite3.dll')
+    if not module:
+        return None
+    buffer = ctypes.create_unicode_buffer(32768)
+    return buffer.value if kernel32.GetModuleFileNameW(module, buffer, len(buffer)) else None
+
+
+def self_test():
+    """--self-test: can this copy of Lastbook make the library's search index and search it as the app does, with the SQLite
+    it runs with (engine/library.py search_self_test)? It searches as search() does and as the search box does
+    (server.py query_groups and fts_expr). Prints one line of JSON and returns 0 when it can, 1 when not or when the result
+    could not be written. A packaged Windows app also fails when its SQLite DLL came from outside the app's folder. It runs
+    before anything else in main(): it opens no window and no library, reads and writes no settings, and writes nothing
+    outside temporary folders of its own."""
+    out = {'ok': False, 'frozen': FROZEN, 'python': sys.version.split()[0]}
+    try:
+        with tempfile.TemporaryDirectory(prefix='lastbook-self-test-', ignore_cleanup_errors=True) as empty:
+            # The engine fixes its library folder when first imported, and run from source it loads the library's own
+            # tools from there (see engine/library.py). An empty folder of its own keeps every library out.
+            os.environ['LASTBOOK_DATA'] = empty
+            os.environ.pop('LASTBOOK_LIBRARY', None)
+            import sqlite3
+            out['sqlite'] = sqlite3.sqlite_version
+            out['sqlite_module'] = in_app(getattr(sys.modules.get('_sqlite3'), '__file__', None))
+            dll = sqlite_library()
+            if dll:
+                out['sqlite_library'] = in_app(dll)
+                if FROZEN and not out['sqlite_library'].startswith('<app>/'):
+                    raise ValueError(f'the SQLite this app loaded is not its own: {out["sqlite_library"]}')
+            import engine.paths  # noqa: F401  (first: it names the library folder that engine.library fixes when imported)
+            import engine.library as library
+            import server      # the search box's way into the index: /api/find runs server.find
+            out['search'] = library.search_self_test(matchers={'server.find': lambda w: server.fts_expr(server.query_groups(w)[1])})
+            out['ok'] = True
+    except Exception as e:
+        out['error'] = shareable(f'{type(e).__name__}: {e}')
+    written = say(json.dumps(out))
+    return 0 if out['ok'] and written else 1
+
+
 def main():
     ap = argparse.ArgumentParser(description='Lastbook')
     ap.add_argument('--data', help='data folder holding library-data/ and derived/ (or set LASTBOOK_DATA)')
     ap.add_argument('--ask', action='store_true', help='ask for the library folder in a dialog instead of opening setup')
+    ap.add_argument('--self-test', action='store_true', help='check that this copy can build and search a library index, then exit: '
+                    'prints the result as JSON, exits 0 when it can and 1 when not, and opens no window and no library')
+    if '--self-test' in sys.argv[1:]:   # before anything else, and whatever else is on the command line: an argument
+        return self_test()              # argparse refused would exit with nothing said where a packaged app has no console
     a = ap.parse_args()
     if sys.platform.startswith('linux'):
         import shell_linux

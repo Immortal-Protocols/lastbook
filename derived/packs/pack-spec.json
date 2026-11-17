@@ -10,7 +10,7 @@
       "pack.json": "name, size, map, built, counts, add-ons merged",
       "pack-manifest.tsv": "path, bytes, sha256 for every file",
       "library-data/catalog.json": "rewritten, membership and field allow-list applied",
-      "library-data/search.sqlite": "rebuilt from existing rows, same FTS5 schema",
+      "library-data/search.sqlite": "rebuilt from existing rows with search_index.schema below (combining marks kept in words since #3)",
       "library-data/summary.json": "regenerated, 7 fields",
       "library-data/reader.css": "copied",
       "library-data/documents/": "catalog paths and the Sources page",
@@ -558,7 +558,7 @@
     }
   },
   "search_index": {
-    "schema": "fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize=\"unicode61\")",
+    "schema": "fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize=\"unicode61 categories 'L* N* Co M*'\")",
     "method": "CREATE the table in a new file; INSERT rows from the snapshot where doc_id is in the pack and kind is not metadata; apply any collection rename; INSERT INTO pages(pages) VALUES('optimize'); VACUUM; integrity-check",
     "no_reextraction": true
   },

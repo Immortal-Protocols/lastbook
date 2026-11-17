@@ -8,7 +8,7 @@
 Lastbook's own copy. The library folder comes from LASTBOOK_LIBRARY, or library-data beside the engine folder.
 """
 from __future__ import annotations
-import argparse, collections, concurrent.futures, hashlib, html, http.server, importlib.util, json, mimetypes, os, re, shutil, sqlite3, subprocess, sys, threading, time, urllib.parse, zipfile
+import argparse, collections, concurrent.futures, hashlib, html, http.server, importlib.util, json, mimetypes, os, re, shutil, sqlite3, subprocess, sys, threading, time, unicodedata, urllib.parse, zipfile
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -100,6 +100,79 @@ def zim_main_path(arc):
   entry=entry.get_redirect_entry()
  return entry.path
 DB=ROOT/'search.sqlite'
+# Combining marks (M*) count as part of a word: Devanagari and Thai vowel signs, Arabic and Hebrew vowel points. Without
+# them unicode61 breaks a word at every mark, so पानी (water) was indexed as प + न and also matched पीना (drink).
+# remove_diacritics stays at its default, so Latin accents still fold: creme finds crème.
+TOKENIZE="unicode61 categories 'L* N* Co M*'"
+PAGES_TABLE=f'CREATE VIRTUAL TABLE pages USING fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="{TOKENIZE}")'
+REPLACE_TRIES,REPLACE_WAIT=20,0.25  # Windows only: how long build() waits for searches to let go of the index, 5 seconds in all
+
+def index_is_current(path):
+ """Was this index made with the table build() makes now, tokenizer included? Read-only. False for an older index, and
+ for anything that cannot be read as an index at all. SQLite keeps no record of the tokenizer but the table's own CREATE
+ statement, which it stores word for word and reads each time the file is opened. build() and the pack builder both make
+ the table with exactly this statement, so the statement itself is compared: nothing is worked out from it, and a table
+ that only looks alike does not pass."""
+ try:
+  con=sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True)
+  try:row=con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='pages'").fetchone()
+  finally:con.close()
+  return bool(row) and row[0]==PAGES_TABLE
+ except (sqlite3.Error,OSError,ValueError):return False
+
+def index_has_pages(path):
+ """Does this index hold at least one page? Read-only, and False for anything that cannot be read."""
+ try:
+  con=sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True)
+  try:return con.execute('SELECT 1 FROM pages LIMIT 1').fetchone() is not None
+  finally:con.close()
+ except (sqlite3.Error,OSError,ValueError):return False
+
+def index_fault(path,rows):
+ """Why a newly built index must not take the place of the current one, or None when it may. Read from the finished file,
+ not from the connection that wrote it: SQLite's own check passes, every row that was indexed is there, and the words
+ were cut the way searches will cut them."""
+ try:
+  con=sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True)
+  try:
+   if con.execute('PRAGMA integrity_check').fetchone()[0]!='ok':return 'it fails its integrity check'
+   found=con.execute('SELECT count(*) FROM pages').fetchone()[0]
+  finally:con.close()
+ except (sqlite3.Error,OSError,ValueError) as e:return f'it cannot be read ({type(e).__name__})'
+ if found!=rows:return f'it holds {found} rows, not the {rows} that were indexed'
+ if not index_is_current(path):return 'its table, tokenizer included, is not the one searches expect'
+ return None
+
+def replace_index(building,dest,tries=None,wait=None):
+ """Put the new index in place in one step. Windows will not replace a file that is open, and every search opens the index
+ for a moment, so there it tries again for a few seconds. Anywhere else an open file is no obstacle, a failure has another
+ cause, and one try is all."""
+ tries=tries or (REPLACE_TRIES if os.name=='nt' else 1)
+ for left in range(tries-1,-1,-1):
+  try:os.replace(building,dest);return
+  except PermissionError:
+   if not left:raise
+   time.sleep(REPLACE_WAIT if wait is None else wait)
+
+def discard_index(building):
+ """Remove an index that will not be used, with anything SQLite left beside it. packaging/build_packs.py takes a
+ *.building.sqlite file to mean a build is running, so one must not be left behind."""
+ for extra in ('','-journal','-wal','-shm'):
+  try:building.with_name(building.name+extra).unlink(missing_ok=True)
+  except OSError:pass
+
+def query_terms(text,keep='-'):
+ """The words of a search: runs of letters, numbers and combining marks, as the index reads them, with '_' and the
+ characters in keep. Python's \\w has no marks, so re.findall(r'[\\w-]+') cut पानी into प and न. Without
+ marks this gives exactly what [\\w-]+ gave (keep='-'), or [\\w'-]+ (keep="'-"). A mark with no letter before it, as a
+ stray accent between spaces, is not a word: the index has no token for it, and as a word it would make every search fail."""
+ words,word=[],[]
+ for c in text:
+  if c.isalnum() or c=='_' or c in keep or unicodedata.category(c)[0]=='M':word.append(c)
+  elif word:words.append(''.join(word));word=[]
+ if word:words.append(''.join(word))
+ return [w for w in words if not all(unicodedata.category(c)[0]=='M' for c in w)]
+
 STYLE='''body{font:17px/1.65 system-ui,sans-serif;color:#202b30;background:#f8f6ef;max-width:1100px;margin:32px auto;padding:0 24px}a{color:#166456}aside{background:#e6ede4;padding:14px;margin-bottom:26px;font-size:14px}table{border-collapse:collapse;max-width:100%;overflow:auto;display:block}td,th{border:1px solid #bbc4bb;padding:8px}img,video{max-width:100%;height:auto}h1,h2,h3{line-height:1.2}pre{white-space:pre-wrap}'''
 
 def catalog():
@@ -195,19 +268,37 @@ def extract(r):
 
 def build():
  (ROOT/'text').mkdir(exist_ok=True)
- records,bad=catalog();building=DB.with_suffix('.building.sqlite');con=sqlite3.connect(building)
- con.execute('DROP TABLE IF EXISTS pages')
- con.execute('CREATE VIRTUAL TABLE pages USING fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="unicode61")')
- built=[];errors=[];totalpages=0
- with concurrent.futures.ThreadPoolExecutor(4) as pool:
-  for i,(r,pages,error) in enumerate(pool.map(extract,records)):
-   built.append(r)
-   if error:errors.append({'path':r['path'],'error':error})
-   for page,body in enumerate(pages,1):
-    if body.strip():con.execute('INSERT INTO pages VALUES (?,?,?,?,?,?,?)',(r['id'],r['title'],r['collection'],r['category'],r['path'],page,body))
-   totalpages+=len(pages)
-   if i%100==0:print(f'Indexed {i+1}/{len(records)} resources',flush=True)
- con.commit();con.close();building.replace(DB)
+ records,bad=catalog();building=DB.with_suffix('.building.sqlite')
+ discard_index(building)  # what an interrupted build left: the new index starts as a new file
+ # The index searches use is touched once, by the replace below, and only by a file that has passed index_fault. A build
+ # that stops for any reason before that leaves search.sqlite exactly as it was and takes its own file away.
+ built=[];errors=[];totalpages=rows=0;finished=False
+ con=sqlite3.connect(building)
+ try:
+  con.execute(PAGES_TABLE)
+  with concurrent.futures.ThreadPoolExecutor(4) as pool:
+   for i,(r,pages,error) in enumerate(pool.map(extract,records)):
+    built.append(r)
+    if error:errors.append({'path':r['path'],'error':error})
+    for page,body in enumerate(pages,1):
+     if body.strip():con.execute('INSERT INTO pages VALUES (?,?,?,?,?,?,?)',(r['id'],r['title'],r['collection'],r['category'],r['path'],page,body));rows+=1
+    totalpages+=len(pages)
+    if i%100==0:print(f'Indexed {i+1}/{len(records)} resources',flush=True)
+  con.commit();finished=True
+ finally:
+  try:con.close()
+  finally:
+   if not finished:discard_index(building)
+ why=index_fault(building,rows)
+ # No pages at all, where the index in use has some, is a library that could not be read (a disk not there, an empty
+ # manifests folder), not a library that was emptied. An empty library with an empty or no index builds as before.
+ if not why and not rows and index_has_pages(DB):why='nothing was indexed, and the index in use has pages (remove search.sqlite to start again with none)'
+ if not why:
+  try:replace_index(building,DB)
+  except OSError as e:why=f'the index in use could not be replaced ({type(e).__name__}: {e.strerror or e})'
+ if why:
+  discard_index(building)
+  raise SystemExit(f'The new search index was not put in place: {why}. The index already there is unchanged.')
  (ROOT/'catalog.json').write_text(json.dumps(built,indent=2),encoding='utf-8')
  summary={'resources':len(built),'pdfs':sum(r['kind']=='pdf' for r in built),'pdf_pages':sum(r.get('pages') or 0 for r in built),'web_pages':sum(r['kind'] in ['html','htm'] for r in built),'videos':sum(r['kind'] in ['video','mp4','webm','mkv'] for r in built),'collections':sum(r['kind']=='zim' for r in built),'document_bytes':sum(r['bytes'] for r in built),'indexed_units':totalpages,'categories':dict(collections.Counter(r['category'] for r in built)),'extraction_errors':errors,'missing_files':bad,'image_only_pdfs':[r['path'] for r in built if (r.get('searchability') or '').startswith('image-only')]}
  (ROOT/'summary.json').write_text(json.dumps(summary,indent=2),encoding='utf-8');(ROOT/'reader.css').write_text(STYLE,encoding='utf-8')
@@ -231,13 +322,48 @@ def rewrite_links(records):
   if changed:path.write_text(str(s),encoding='utf-8');count+=1
  print(f'Linked {count} archived pages to local references',flush=True)
 
-def search(query,limit=25):
- terms=re.findall(r'[\w-]+',query,flags=re.UNICODE)
+def search(query,limit=25,db=None):
+ """The library's search. db is the index to read: the library's own unless another is named (search_self_test)."""
+ terms=query_terms(query)
  if not terms:return []
  expression=' AND '.join('"'+t.replace('"','""')+'"' for t in terms)
- con=sqlite3.connect(DB.resolve().as_uri()+'?mode=ro',uri=True);con.row_factory=sqlite3.Row
- rows=con.execute("SELECT doc_id,title,collection,category,path,page,snippet(pages,6,'[',']',' … ',42) AS excerpt,bm25(pages,0,5,2,1,0,0,1) AS score FROM pages WHERE pages MATCH ? ORDER BY score LIMIT ?",(expression,limit)).fetchall()
- con.close();return [dict(r) for r in rows]
+ con=sqlite3.connect(Path(db or DB).resolve().as_uri()+'?mode=ro',uri=True);con.row_factory=sqlite3.Row
+ try:rows=con.execute("SELECT doc_id,title,collection,category,path,page,snippet(pages,6,'[',']',' … ',42) AS excerpt,bm25(pages,0,5,2,1,0,0,1) AS score FROM pages WHERE pages MATCH ? ORDER BY score LIMIT ?",(expression,limit)).fetchall()
+ finally:con.close()   # also when the query fails: Windows keeps an open file from being replaced or removed
+ return [dict(r) for r in rows]
+
+SELF_TEST_PAGES=[('water','पानी'),('drink','पीना')]  # water and to drink: the same consonants, different vowel signs (combining marks)
+
+def search_self_test(table=None,matchers=None):
+ """Can this SQLite make the library's index and search it as the app does? The packaged app's --self-test and the
+ launcher's --check both run this. It makes the real table (or table, for tests) in a new database in a temporary folder,
+ indexes two words that differ only in combining marks, searches for each with search() and with each of matchers (name:
+ a function from a word to the MATCH expression another way into the index builds, as the app's search box does in
+ server.py), and checks the file as build() checks a new index. No library is opened and nothing outside that folder is
+ written. Returns what it found; raises sqlite3.Error when this SQLite cannot make the table, and ValueError when it makes
+ one that searches would get wrong. A plain fts5(x) table proves only that FTS5 is there: an SQLite that does not accept the
+ tokenizer makes no index, one that reads it differently finds nothing, and neither shows as an error when someone searches."""
+ matchers=dict(matchers or {})
+ import tempfile
+ with tempfile.TemporaryDirectory(prefix='lastbook-self-test-',ignore_cleanup_errors=True) as folder:
+  db=Path(folder)/'search.sqlite'
+  con=sqlite3.connect(db)
+  try:
+   con.execute(table or PAGES_TABLE)
+   con.executemany('INSERT INTO pages VALUES(?,?,?,?,?,?,?)',[(doc,'t','c','k','p',1,word) for doc,word in SELF_TEST_PAGES])
+   con.commit()
+  finally:con.close()
+  for doc,word in SELF_TEST_PAGES:
+   found=[r['doc_id'] for r in search(word,db=db)]
+   if found!=[doc]:raise ValueError(f'a search for {word}, one word with combining marks, found {found}, not the one page that has it')
+   for name,expression in matchers.items():
+    con=sqlite3.connect(Path(db).resolve().as_uri()+'?mode=ro',uri=True)
+    try:found=[d for (d,) in con.execute('SELECT doc_id FROM pages WHERE pages MATCH ?',(expression(word),))]
+    finally:con.close()
+    if found!=[doc]:raise ValueError(f'{name}: a search for {word}, one word with combining marks, found {found}, not the one page that has it')
+  fault=index_fault(db,len(SELF_TEST_PAGES))
+  if fault:raise ValueError(f'build() would not use an index made here: {fault}')
+ return {'sqlite':sqlite3.sqlite_version,'fts5':True,'tokenize':TOKENIZE,'marks_stay_in_words':True,'searches':['library.search',*matchers]}
 
 def write_index(records,summary):
  payload=json.dumps([{k:r.get(k) for k in ['id','title','collection','category','publisher','path','kind','pages','duration','bytes','notes','source_url']} for r in records]).replace('</','<\\/')

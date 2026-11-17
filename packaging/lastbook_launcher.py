@@ -120,6 +120,14 @@ def open_log(data):
     return logs
 
 
+def search_index_check(table=None):
+    """The packaged SQLite must make the library's search table as the app makes it and search it as the app does: the same
+    self-test as app/main.py --self-test (engine/library.py search_self_test)."""
+    import engine.paths  # noqa: F401  (first: it names the library folder that engine.library fixes when it is imported)
+    import engine.library as library
+    return library.search_self_test(table)
+
+
 def check(data, logs):
     """Prove every packaged library imports from the packaged folder. Loads no model and opens no window."""
     out = {'frozen': FROZEN, 'executable': sys.executable, 'python': sys.version,
@@ -161,10 +169,7 @@ def check(data, logs):
         return {'version': getattr(libzim, '__version__', None), 'file': zims[0].name, 'entries': a.entry_count, 'has_fulltext_index': a.has_fulltext_index}
 
     def sqlite_():
-        import sqlite3
-        c = sqlite3.connect(':memory:')
-        c.execute('CREATE VIRTUAL TABLE t USING fts5(x)')
-        return {'sqlite': sqlite3.sqlite_version, 'fts5': True}
+        return search_index_check()
 
     def webview_():
         import webview

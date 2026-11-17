@@ -33,6 +33,8 @@ export LASTBOOK_SHIP="$OUT/ship"
 "$VENV/bin/python" -m PyInstaller --noconfirm --distpath "$OUT/dist" --workpath "$OUT/work" "$HERE/lastbook_macos.spec" 2>&1 | tee "$OUT/build.log"
 BUNDLE="$OUT/dist/Lastbook.app"
 "$VENV/bin/python" "$HERE/scan_package_macos.py" "$BUNDLE" --terms-file "$BUILD/scan-terms.txt" | tee "$OUT/scan.txt"
+# The built app makes and searches the library's search index with its own SQLite (Lastbook --self-test): the build fails if it cannot
+"$BUNDLE/Contents/MacOS/Lastbook" --self-test | tee "$OUT/self-test.json"
 codesign --verify --deep --strict "$BUNDLE"
 ln -sfn "$BUNDLE" "$BUILD/mac/Lastbook.app"
 du -sh "$BUNDLE"

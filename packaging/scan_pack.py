@@ -49,6 +49,7 @@ FOLDER_EXT = {
 SUMMARY_FIELDS = {'resources', 'pdfs', 'pdf_pages', 'web_pages', 'videos', 'collections', 'document_bytes'}
 PACK_FIELDS = {'name', 'size', 'map', 'built', 'snapshot', 'sample', 'add_ons', 'counts', 'known_gaps', 'incomplete', 'content_revision'}
 SIZE_NAMES = set(SPEC['sizes']) | set(SPEC['addons'])
+
 ACCEPTABLE = ('pdf.', 'zim.', 'term.')
 WEB_ANCHOR = 'html.web_anchor'
 SHIP_EDITS = json.loads((PROJECT / 'packaging/ship_edits.json').read_text(encoding='utf-8'))
@@ -695,6 +696,12 @@ class Scan:
             self.fail('search.integrity', rel)
         if db.execute('PRAGMA freelist_count').fetchone()[0]:
             self.fail('search.free_pages', rel)
+        # The format a pack is meant to have is the one the spec asks for. build_packs.py makes the table with exactly this statement, and SQLite keeps it word for word and reads the
+        # tokenizer from it each time the file is opened, so the statement itself is compared and nothing in it is run or worked out. An index from before the tokenizer changed
+        # fails here once the spec asks for the new one, and passes against the spec it was built from.
+        made = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='pages'").fetchone()
+        if not made or made[0] != 'CREATE VIRTUAL TABLE pages USING ' + SPEC['search_index']['schema']:
+            self.fail('search.schema_differs', rel)
         ids = {x for (x,) in db.execute('SELECT DISTINCT doc_id FROM pages')}
         rows = db.execute('SELECT count(*) FROM pages').fetchone()[0]
         where = {r.get('id'): f"library-data/{r.get('path')}" for r in self.records}

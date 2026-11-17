@@ -554,6 +554,82 @@ class SpainSetupDownload(SetupBase):
         self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), b'US map')
         self.assertEqual((lib / 'derived/geo/addresses/CA.sqlite').read_bytes(), b'address index')
 
+    def test_restore_after_failed_all_update_replaces_preserved_spain_map(self):
+        self._restore_after_failed_all_update()
+
+    def test_restore_after_failed_all_update_rejects_missing_us_data(self):
+        self._restore_after_failed_all_update(missing_national=True)
+
+    def test_restore_retries_after_staged_map_cleanup_failure(self):
+        self._restore_after_failed_all_update(cleanup_failure=True)
+
+    def _restore_after_failed_all_update(self, missing_national=False, cleanup_failure=False):
+        from engine.setup import api, install
+        library = self.parent / 'LastbookData'
+        (library / 'library-data').mkdir(parents=True)
+        (library / 'library-data/catalog.json').write_text('{}')
+        (library / 'pack.json').write_text('{"name":"all","map":"us","content_revision":"old"}')
+        geo = library / 'derived/geo'
+        (geo / 'addresses').mkdir(parents=True)
+        (geo / 'addresses/CA.sqlite').write_bytes(b'address index')
+        spain = {'derived/geo/map.sqlite': b'ES map', 'derived/geo/national.sqlite': b'ES national',
+                 'derived/geo/places.sqlite': b'Spain only'}
+        for name, data in spain.items():
+            (library / name).write_bytes(data)
+        (library / 'map-set.json').write_text(json.dumps({'name': 'ES', 'files': {n: len(d) for n, d in spain.items()}}))
+        archive = self.tmp / 'Lastbook-All.zip'
+        files = {'library-data/catalog.json': b'{}',
+                 'pack.json': b'{"name":"all","map":"us","content_revision":"new"}',
+                 'derived/geo/map.sqlite': b'US map'}
+        if not missing_national:
+            files['derived/geo/national.sqlite'] = b'US national'
+        installed = make_pack(archive, files)
+        data = archive.read_bytes()
+        self.files.data[archive.name] = data
+        self.files.data.pop('model.gguf')  # Fail after the pack has preserved the installed map.
+        mf = self.manifest()
+        mf.current['packs'][1].update(available=True, map='us', revision='new', installed_bytes=installed, download_bytes=len(data),
+            files=[{'name': archive.name, 'url': f'{self.base}/{archive.name}', 'size': len(data),
+                    'sha256': hashlib.sha256(data).hexdigest(), 'kind': 'zip'}])
+        s = self.setup('manage', current=library, manifest=mf)
+        self.assertEqual([item['kind'] for item in s.start('all', ai=True)['items']], ['pack', 'model'])
+        failed = self.wait(s)
+        self.assertEqual(failed['state'], 'failed')
+        self.assertEqual(failed['items'][0]['state'], 'done')
+        staged = self.parent / 'LastbookData.setup/unpack/LastbookData'
+        self.assertEqual(install.map_name(staged), 'ES')
+        if cleanup_failure:
+            remove, failed_once = os.unlink, []
+            def flaky(path, *args, **kwargs):
+                if Path(path) == staged / 'derived/geo/national.sqlite' and not failed_once:
+                    failed_once.append(True)
+                    raise PermissionError('staged map temporarily locked')
+                return remove(path, *args, **kwargs)
+            with mock.patch.object(api.os, 'unlink', side_effect=flaky):
+                s.start('all', restore_map=True)
+                self.assertEqual(self.wait(s)['state'], 'failed')
+                self.assertEqual(install.map_name(library), 'ES')
+                s.retry()
+                restored = self.wait(s)
+        else:
+            s.start('all', restore_map=True)
+            restored = self.wait(s)
+        if missing_national:
+            self.assertEqual(restored['state'], 'failed')
+            self.assertEqual(restored['error']['code'], 'unpack')
+            self.assertEqual(install.map_name(library), 'ES')
+            self.assertEqual((geo / 'national.sqlite').read_bytes(), b'ES national')
+            return
+        self.assertEqual(restored['state'], 'done', restored.get('error'))
+        lib, note = api.startup(self.settings)
+        self.assertFalse(note.get('error'))
+        self.assertEqual(install.map_name(lib), 'us')
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), b'US map')
+        self.assertEqual((lib / 'derived/geo/national.sqlite').read_bytes(), b'US national')
+        self.assertFalse((lib / 'derived/geo/places.sqlite').exists())
+        self.assertFalse((lib / 'map-set.json').exists())
+        self.assertEqual((lib / 'derived/geo/addresses/CA.sqlite').read_bytes(), b'address index')
+
     def test_restore_rejects_an_all_archive_without_a_us_map(self):
         self._restore_rejects_bad_all('base')
 

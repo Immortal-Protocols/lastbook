@@ -1012,6 +1012,13 @@ class Setup:
         tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=pack['installed_bytes'])
         total = sum(install.check_zip(path, pack['installed_bytes'])[1] for path, _ in got)   # every member checked before any is written
+        if plan.get('restore_map') and not plan.get('_restore_map_cleared'):
+            # A failed content update may have copied another map into this staged library.
+            # Clear it once per job before unpacking; after a restart the saved plan is checked and this runs again.
+            lib = staged / DATA_NAME
+            for rel in install.map_files(lib):
+                os.unlink(lib / rel)
+            plan['_restore_map_cleared'] = True
         still = max(total - _tree_size(staged), 0)
         free, _ = hardware.disk_of(work)
         if free < still + 512 * 2 ** 20:

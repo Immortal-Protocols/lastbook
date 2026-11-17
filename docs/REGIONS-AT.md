@@ -259,7 +259,8 @@ Austrian Post's guide "Richtig adressieren" (February 2020, opened) gives the fo
     and `_parts()` reads them as house number 1060 on a street called "wien". A four-digit postcode has the same shape
     as a house number, so this needs a rule that knows the postcode list.
   - `_parts()` takes a postcode only as the last word and only with five digits, so "2283" stays among the street
-    words.
+    words. Since #121 it also reads a last word of four digits as a ZIP+4 suffix when five digits come before it; an
+    Austrian rule for four-digit postcodes would have to live beside that one.
   - `tools/build_addresses.py` keeps only `country = 'US'`; `left(postcode, 5)` leaves a four-digit postcode as it is.
 
 ## Still undecided

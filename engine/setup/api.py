@@ -510,8 +510,10 @@ class Setup:
     def state(self):
         self.manifest.fetch_once()
         hw = self.hardware()
-        return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
-                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
+        m = self.manifest.model()
+        return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(),
+                'model': {k: v for k, v in m.items() if k != 'url'} if m else None,
+                'current': self.current_info(), 'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
 
     def public_job(self):
         with self.lock:

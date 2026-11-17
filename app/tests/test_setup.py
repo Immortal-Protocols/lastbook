@@ -1080,6 +1080,31 @@ class Unpacking(Base):
 
 
 class Jobs(Base):
+    def test_state_offers_the_backend_selected_model(self):
+        # wonderdawg's PR 9 case: the screen shows what the backend will download, not manifest order.
+        GiB = 2 ** 30
+
+        def model(mid, memory):
+            return {'id': mid, 'title': mid, 'file': mid + '.gguf', 'url': f'{self.base}/{mid}.gguf', 'size': 5,
+                    'sha256': sha(b'x'), 'memory_bytes': memory, 'available': True}
+
+        mf = {'version': 1, 'published': '2026-11-17', 'packs': self.manifest().current['packs'],
+              'models': [model('big', 19 * GiB), model('small', 6 * GiB)]}
+        v = manifest.validate(mf, ALLOWED)
+        self.assertIsNotNone(v)
+        s = self.setup(manifest=manifest.Manifest(bundled=v, remote=None, allowed=ALLOWED, context=self.ctx))
+        with mock.patch.object(hardware, 'ram_bytes', lambda: 16 * GiB), \
+                mock.patch.object(hardware, 'ai_machine', lambda: {'ram_bytes': 16 * GiB, 'gpu_bytes': 12 * GiB}):
+            st = s.state()
+        self.assertEqual(st['model']['id'], 'big')            # RAM plus the 12 GiB card runs the big model
+        self.assertEqual(st['model']['size'], 5)              # the size the screen shows is what start() downloads
+        self.assertNotIn('url', st['model'])
+        with mock.patch.object(hardware, 'ram_bytes', lambda: 16 * GiB), \
+                mock.patch.object(hardware, 'ai_machine', lambda: {'ram_bytes': 16 * GiB, 'gpu_bytes': 0}):
+            st = s.state()
+        self.assertEqual(st['model']['id'], 'small')          # RAM alone fits the small one, not manifest order's big
+        self.assertNotEqual(st['model']['id'], st['manifest']['models'][0]['id'])
+
     def test_first_run_end_to_end(self):
         s = self.setup()
         st = s.state()

@@ -163,6 +163,17 @@ opens with the new one. `state.current.map` reports the installed set (`base`, `
 detailed map (Medium has California; All has the whole US) shows that, and choosing a state on Medium replaces
 its California map. All needs no state map. The state is chosen by the person; Lastbook does not detect location.
 
+Country maps work exactly the same way, for a European country instead of a US state: the entry's `kind` is
+`"country"`, its `id` is `eu-<iso>` (`eu-at` for Austria — never a bare two-letter code, so a country can never take
+a state's id, as Germany would take Delaware's), and the zip is `Lastbook-Map-eu-at.zip` with the same contents and
+the same rules. `packaging/build_packs.py map eu-at` builds it with the state cutting rules
+(`derived/packs/pack-spec.json` → `map_sets.country`); only the box differs: a state's box comes from its ZIP
+centres, a country's is the bounding box of Geofabrik's OpenStreetMap extract polygon for that country
+(`packaging/europe-countries.json`), with the same 0.15 degree margin. What a country set holds is bounded by the
+source layers' own coverage, exactly as a state's is. Setup needs no change: a map is chosen by its manifest `id`
+either way. Address indexes stay US-only — their source (Overture addresses) is split by US state, so there is no
+country entry to publish until that source is keyed by country.
+
 Built by setup-backend (2026-11-12):
 - Job item `kind: "map"` comes after the pack and before the model: `waiting`, `downloading`, `unpacking` (bytes of
   `installed_bytes`), `done`. With a pack, the state's files replace the pack's own map set inside the staged library.

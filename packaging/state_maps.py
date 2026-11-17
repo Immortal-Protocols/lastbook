@@ -1,9 +1,10 @@
-"""Build, check, zip, upload and list one state's detailed map (docs/SETUP-API.md, "State maps").
+"""Build, check, zip, upload and list one region's detailed map (docs/SETUP-API.md, "State maps"): a US state, or a
+European country ('eu-<iso>' codes, packaging/europe-countries.json).
 
-  derived/app-build/mac-venv/bin/python3 -I -B packaging/state_maps.py CA TX ...   # one state at a time, in this order
-  ... packaging/state_maps.py --order                                              # every state, in release order
+  derived/app-build/mac-venv/bin/python3 -I -B packaging/state_maps.py CA TX eu-at ...   # one region at a time, in this order
+  ... packaging/state_maps.py --order                                              # every region, in release order
 
-Each state: build (CA and RI are kept as built), scan, zip to derived/packs/state-zips/, upload to maps/ on the bucket,
+Each region: build (CA and RI are kept as built), scan, zip to derived/packs/state-zips/, upload to maps/ on the bucket,
 check the public SHA-256, list it under "maps" in derived/release/manifest-v1.json and upload that, then delete the zip
 and the build copy (CA and RI stay). Results go to derived/packs/state-maps.json and STATE-MAPS.md.
 """
@@ -39,6 +40,8 @@ NAMES = dict(AL='Alabama', AK='Alaska', AZ='Arizona', AR='Arkansas', CA='Califor
              NC='North Carolina', ND='North Dakota', OH='Ohio', OK='Oklahoma', OR='Oregon', PA='Pennsylvania', PR='Puerto Rico', RI='Rhode Island',
              SC='South Carolina', SD='South Dakota', TN='Tennessee', TX='Texas', UT='Utah', VT='Vermont', VA='Virginia', WA='Washington',
              WV='West Virginia', WI='Wisconsin', WY='Wyoming')
+COUNTRIES = {code: c['title'] for code, c in json.loads((ROOT / 'packaging' / 'europe-countries.json').read_text(encoding='utf-8'))['countries'].items()}
+TITLES = {**NAMES, **COUNTRIES}
 INCLUDES = 'Local streets, buildings, terrain and crops, plus water, help and resource points'
 ALLOWED = {f'derived/geo/{n}.sqlite' for n in ('national', 'map', 'water', 'terrain', 'buildings', 'crops', 'places')} | {
     'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'library-data/geography/resources/atlas.sqlite', 'map-set.json'}
@@ -58,6 +61,12 @@ def states():
     db = sqlite3.connect(f'file:{MAPS}/source/profiles.sqlite?immutable=1', uri=True)
     have = sorted({s for (s,) in db.execute('SELECT DISTINCT state FROM zcta') if s and re.fullmatch(r'[A-Z]{2}', s)} | {'CT'})
     return FIRST + [s for s in have if s not in FIRST]
+
+
+def regions():
+    """Every region a map is published for, in release order: the states as states() has them, then the European
+    countries by name. A country's code is its own ('eu-de'), never a state's, so the two never collide."""
+    return states() + sorted(COUNTRIES, key=lambda c: COUNTRIES[c])
 
 
 def sha_file(p):
@@ -85,7 +94,7 @@ def scan(d, code):
         if rel == 'map-set.json':
             info = sc.load_json(rel, rels, 'map-set')
             if not isinstance(info, dict) or info.get('name') != code or set(info) - {'name', 'files', 'bytes', 'seconds'}:
-                fails.append('map-set.json does not name the state')
+                fails.append('map-set.json does not name the region')
             continue
         sc.name_rules(rel, st, p.is_symlink())
         if rel.endswith('.json'):
@@ -108,9 +117,9 @@ def scan(d, code):
                 n = sum(db.execute(f'SELECT count(*) FROM "{t}"').fetchone()[0] for t in ('feat', 'poi', 'meta'))
                 if n:
                     fails.append('map.sqlite (the household area map) is not empty')
-            if rel.endswith('/buildings.sqlite'):     # every footprint table holds only tiles inside this state's box: no area beyond the state rule
+            if rel.endswith('/buildings.sqlite'):     # every footprint table holds only tiles inside this region's box: no area beyond the region rule
                 import build_packs as BP
-                x0, x1, y0, y1 = BP.tile_range(BP.state_box(MAPS / 'source', code), 14)
+                x0, x1, y0, y1 = BP.tile_range(BP.region_box(MAPS / 'source', code), 14)
                 for t in ('bldg', 'bldg_socal', 'bldg_osm'):
                     if db.execute(f'SELECT count(*) FROM {t} WHERE x NOT BETWEEN ? AND ? OR y NOT BETWEEN ? AND ?', (x0, x1, y0, y1)).fetchone()[0]:
                         fails.append(f'{t} rows outside the state box')
@@ -219,7 +228,7 @@ def list_in_manifest(ctx, entry):
     m = json.loads(MANIFEST.read_text())
     packs, models = json.dumps(m['packs']), json.dumps(m.get('models'))
     maps = [x for x in m.get('maps', []) if x['id'] != entry['id']] + [entry]
-    order = {s: i for i, s in enumerate(states())}
+    order = {s: i for i, s in enumerate(regions())}
     m['maps'] = sorted(maps, key=lambda x: order.get(x['id'], 999))
     assert json.dumps(m['packs']) == packs and json.dumps(m.get('models')) == models
     tmp = MANIFEST.with_suffix('.maps-tmp')
@@ -238,13 +247,13 @@ def list_in_manifest(ctx, entry):
 
 
 def write_table(res):
-    rows = ['# State maps', '', 'One detailed map per state, for first-run setup (docs/SETUP-API.md, "State maps"). Built by `packaging/state_maps.py`;',
+    rows = ['# State and country maps', '', 'One detailed map per state or European country, for first-run setup (docs/SETUP-API.md, "State maps"). Built by `packaging/state_maps.py`;',
             'each zip was scanned, uploaded, checked by its public SHA-256 and then listed under `maps` in `manifest-v1.json`.', '',
-            '| State | Zip size | Installed size | SHA-256 | URL |', '|---|---:|---:|---|---|']
-    order = {s: i for i, s in enumerate(states())}
+            '| Region | Zip size | Installed size | SHA-256 | URL |', '|---|---:|---:|---|---|']
+    order = {s: i for i, s in enumerate(regions())}
     for code in sorted(res, key=lambda c: order.get(c, 999)):
         r = res[code]
-        rows.append(f"| {code} {NAMES.get(code, '')} | {r['size'] / 1e9:.2f} GB ({r['size']:,}) | {r['installed_bytes'] / 1e9:.2f} GB ({r['installed_bytes']:,}) | `{r['sha256']}` | {r['url']} |")
+        rows.append(f"| {code} {TITLES.get(code, '')} | {r['size'] / 1e9:.2f} GB ({r['size']:,}) | {r['installed_bytes'] / 1e9:.2f} GB ({r['installed_bytes']:,}) | `{r['sha256']}` | {r['url']} |")
     TABLE.write_text('\n'.join(rows) + '\n')
 
 
@@ -279,7 +288,7 @@ def one_state(ctx, code, res):
     if got != sha or n != size:
         sys.exit(f'{code}: public copy differs ({got} {n})')
     log(code, 'public copy verified')
-    entry = {'id': code, 'title': NAMES.get(code, code), 'kind': 'state', 'installed_bytes': installed, 'available': True, 'includes': INCLUDES,
+    entry = {'id': code, 'title': TITLES.get(code, code), 'kind': 'state' if code in NAMES else 'country', 'installed_bytes': installed, 'available': True, 'includes': INCLUDES,
              'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
     with open(LOCK, 'a') as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
@@ -301,10 +310,10 @@ def main():
     args = sys.argv[1:]
     ctx = R.Context()
     if args[:1] == ['--worker']:
-        """Take the next unclaimed state in release order until none is left. A failed state is written down and left claimed, for a person to look at."""
+        """Take the next unclaimed region in release order until none is left. A failed region is written down and left claimed, for a person to look at."""
         name = args[1]
         CLAIMS.mkdir(exist_ok=True)
-        for code in states():
+        for code in regions():
             res = json.loads(RESULTS.read_text()) if RESULTS.exists() else {}
             if code in res:
                 continue
@@ -323,13 +332,13 @@ def main():
                     raise
         log(name, 'no states left')
         return
-    todo = states() if args == ['--order'] else args
+    todo = regions() if args == ['--order'] else args
     res = json.loads(RESULTS.read_text()) if RESULTS.exists() else {}
     for code in todo:
         if code in res:
             continue
         one_state(ctx, code, res)
-    log('done', len(res), 'states')
+    log('done', len(res), 'regions')
 
 
 if __name__ == '__main__':

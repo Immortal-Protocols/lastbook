@@ -51,7 +51,6 @@ The data holds more classes than `web/map.js` has layers for (`tools/build_map.p
 |---|---|
 | `school` | 13,862 |
 | `fountain` | 4,971 |
-| `dentist` | 2,769 |
 | `post_office` | 2,224 |
 | `car_repair` | 1,444 |
 | `park` | 1,102 |
@@ -112,6 +111,8 @@ there are no federal datasets, terrain relief, crops or address search. Every so
 it is generated, not hand-edited. Regenerate it with `packaging/generate_region_specs.py`; fix an edge case in
 `packaging/region_overrides.py` (exclude a capital, or override its code, title, box or extract) and regenerate. Build
 and publish one with `packaging/region_maps.py <id>`; the table it writes is `derived/packs/REGION-MAPS.md`.
+
+[REGIONS.md](REGIONS.md) proposes answers for Ontario, British Columbia and Guyana, as a starting point for that issue.
 
 ## Checking a map change
 

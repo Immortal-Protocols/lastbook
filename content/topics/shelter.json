@@ -39,7 +39,12 @@
   "tarp",
   "lean-to",
   "camping",
-  "outdoors"
+  "outdoors",
+  "apartment",
+  "high-rise",
+  "city",
+  "upper floor",
+  "cooling center"
  ],
  "choices": [
   {
@@ -70,6 +75,30 @@
      "page": 2,
      "label": "Keeping cool when the power is out",
      "note": "FEMA power outage sheet, including staying cool in extreme heat without power and finding air-conditioned places."
+    }
+   ]
+  },
+  {
+   "id": "heat-city",
+   "label": "Hot city apartment or upper floor, no air conditioning",
+   "hint": "Heat wave, nights that stay hot, someone living alone upstairs",
+   "read": [
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 25,
+     "label": "Why upper floors and city blocks are riskier in a heat wave",
+     "note": "CERT 2019 annex: higher floors of multistory buildings and being confined to bed are linked to higher heat death risk; city asphalt and concrete keep nights hotter."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 26,
+     "label": "Finding cooler places and checking on neighbors",
+     "note": "CERT 2019 annex: air-conditioned public places, its warning about fans alone when the heat index exceeds 99°F, and checking on neighbors without air conditioning."
+    },
+    {
+     "doc": "8a228a96ebfa42",
+     "label": "Who is most at risk from heat",
+     "note": "National Weather Service page: infants, older adults living alone or with limited mobility, people with chronic illness and pregnant women; suggests checking on them, especially without air conditioning."
     }
    ]
   },
@@ -207,6 +236,11 @@
      "page": 9,
      "label": "Assess the situation, then decide to stay or go",
      "note": "FEMA Are You Ready? on taking a few seconds to judge danger and whether to stay or change location; key actions for specific hazards follow."
+    },
+    {
+     "doc": "5cf2ec3dc27738",
+     "label": "Sheltering in a high-rise or apartment building",
+     "note": "Ready.gov page (2026): asking building managers about alarms, evacuation and shelter-in-place plans; in a high-rise, deciding whether to stay put, shelter in place or get away."
     }
    ]
   },
@@ -302,6 +336,11 @@
    "text": "If experts or local officials tell you to evacuate, leave. Older people and those with access and functional needs may need to leave well before official notice.",
    "doc": "ed5bac0a81b009",
    "page": 32
+  },
+  {
+   "text": "Living on higher floors of multistory buildings, and being confined to bed, are linked to a higher risk of heat-related death.",
+   "doc": "9681a68ebd07f5",
+   "page": 25
   }
  ],
  "prepare": [

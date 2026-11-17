@@ -3,7 +3,7 @@
  "mode": "now",
  "title": "Power is out — light, phones & power",
  "short": "Outages, generators, batteries and gas safety",
- "intro": "Help for the first hours and days without electricity: safe lighting, keeping phones charged, running a generator or battery station without poisoning or shocking anyone, power-dependent medical needs, and what to do if you smell gas.",
+ "intro": "Help for the first hours and days without electricity: safe lighting, keeping phones charged, running a generator or battery station without poisoning or shocking anyone, power-dependent medical needs, apartment buildings where the elevator stops, and what to do if you smell gas.",
  "keywords": [
   "power outage",
   "blackout",
@@ -23,7 +23,12 @@
   "backfeed",
   "CPAP",
   "oxygen",
-  "medical device"
+  "medical device",
+  "apartment",
+  "high-rise",
+  "elevator",
+  "stairs",
+  "building manager"
  ],
  "choices": [
   {
@@ -141,6 +146,30 @@
      "page": 14,
      "label": "Backup and relocation plans for life-sustaining devices",
      "note": "Are You Ready: take inventory of power-dependent medical equipment and make backup plans, including relocation."
+    }
+   ]
+  },
+  {
+   "id": "apartment",
+   "label": "I live in an apartment or high-rise",
+   "hint": "Elevator out, stairs only, neighbors who can't get down",
+   "read": [
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 58,
+     "label": "Who gets stuck upstairs when the elevator stops",
+     "note": "CERT Hazard Annexes (2019), hurricane section: a wheelchair user in a high-rise may be shut in when power and the elevator fail, and will need food, water and possibly medicine."
+    },
+    {
+     "doc": "5cf2ec3dc27738",
+     "label": "Planning with neighbors and your building",
+     "note": "Ready.gov page (2026): talking with neighbors in apartments and condos, deciding who checks on older or disabled neighbors, and high-rise basics such as not using elevators."
+    },
+    {
+     "doc": "0dfdf1fb4b178f",
+     "page": 17,
+     "label": "If you can't use the stairs: escape chairs and help from management",
+     "note": "Older FEMA Are You Ready? guide (2004): an escape chair for people with limited mobility in high-rises, and asking apartment management to mark accessible exits and help you leave."
     }
    ]
   },

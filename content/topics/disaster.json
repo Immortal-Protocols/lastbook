@@ -2,8 +2,8 @@
  "id": "disaster",
  "mode": "now",
  "title": "Stay safe in an earthquake, fire, flood or tsunami",
- "short": "Earthquake, tsunami, wildfire, home fire, flood, shelter-in-place",
- "intro": "What official guides say to do during and right after an earthquake, tsunami warning, wildfire or wildfire smoke, home fire, flood, or chemical or radiation emergency — and how to get a go-bag and family plan ready beforehand.",
+ "short": "Earthquake, tsunami, wildfire, home and high-rise fire, flood, shelter-in-place",
+ "intro": "What official guides say to do during and right after an earthquake, tsunami warning, wildfire or wildfire smoke, home or high-rise fire, flood, or chemical or radiation emergency, and how to plan an evacuation without a car — and how to get a go-bag and family plan ready beforehand.",
  "keywords": [
   "earthquake",
   "drop cover hold on",
@@ -28,7 +28,15 @@
   "fallout",
   "go bag",
   "kit",
-  "family plan"
+  "family plan",
+  "high-rise",
+  "apartment fire",
+  "elevator",
+  "stairs",
+  "no car",
+  "public transit",
+  "bus",
+  "paratransit"
  ],
  "choices": [
   {
@@ -180,6 +188,35 @@
    ]
   },
   {
+   "id": "highrise-fire",
+   "label": "Fire in an apartment or high-rise building",
+   "hint": "Alarm in the building, smoke in the hallway, stairs or elevator",
+   "read": [
+    {
+     "doc": "27757fb5d39987",
+     "label": "USFA: leaving a high-rise apartment in a fire",
+     "note": "U.S. Fire Administration page: high-rise fires are especially dangerous; leave, close the door behind you, pull the alarm, take the stairs, not the elevator unless firefighters direct it."
+    },
+    {
+     "doc": "cae1149a714fc3",
+     "page": 1,
+     "label": "Red Cross: if you can't reach the exit stairs",
+     "note": "Red Cross sheet (2014): if trapped, call 911, close doors, hang a white sheet outside the window; practice reaching the fire stairs or a safe place in your unit."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 35,
+     "label": "CERT: no elevators, hot doors, and being trapped in a room",
+     "note": "CERT 2019 annex: never using an elevator to escape, checking a door for heat and smoke, and sealing gaps with wet cloth if all exits are blocked."
+    },
+    {
+     "doc": "5cf2ec3dc27738",
+     "label": "Know two ways out of your building",
+     "note": "Ready.gov page (2026): in a high-rise, knowing the closest exit and a second way out, not using elevators, and keeping right on stairwells so emergency workers can come up."
+    }
+   ]
+  },
+  {
    "id": "flood",
    "label": "Flooding or a flood warning",
    "hint": "Rising water, flooded roads, storm",
@@ -195,6 +232,37 @@
      "page": 12,
      "label": "Turn Around, Don't Drown and flood steps",
      "note": "Are You Ready: how little moving water can sweep you or a car away, going to higher levels, and after-flood electrocution risks."
+    }
+   ]
+  },
+  {
+   "id": "no-car",
+   "label": "I may need to evacuate and have no car",
+   "hint": "Bus, train, paratransit, a ride from neighbors or family",
+   "read": [
+    {
+     "doc": "cecc1671ae4d02",
+     "page": 20,
+     "label": "Are You Ready: planning evacuation without a car",
+     "note": "FEMA Are You Ready? guide (2020): planning transportation with family, friends or local government if you have no car, and checking on neighbors who may need a ride."
+    },
+    {
+     "doc": "2848f4bffb8109",
+     "page": 5,
+     "label": "Public transportation and paratransit in an evacuation",
+     "note": "FEMA wildfire guide (written 2014, reposted 2020): arranging shared rides and asking local emergency management how evacuation by public transportation or paratransit works, including staging areas."
+    },
+    {
+     "doc": "cecc1671ae4d02",
+     "page": 19,
+     "label": "Meeting places and backup ways to get out",
+     "note": "FEMA Are You Ready? (2020): meeting places in several directions that everyone can reach, and learning alternate routes and backup modes of transportation out of your area."
+    },
+    {
+     "doc": "53da8d3443e35e",
+     "page": 1,
+     "label": "Commuter plan: write down routes, buses and trains",
+     "note": "Ready.gov fill-in form (2013): normal and alternative routes between work and home, public transportation lines and stops, and taxi and local bus numbers."
     }
    ]
   },
@@ -304,6 +372,15 @@
    "text": "Outdoor areas, vehicles and mobile homes do NOT provide adequate shelter from nuclear fallout.",
    "doc": "d0fbb2e051cd46",
    "page": 21
+  },
+  {
+   "text": "In a high-rise fire, use the stairs; do not use the elevator unless the fire department tells you to.",
+   "doc": "27757fb5d39987"
+  },
+  {
+   "text": "Never open a door that feels hot. If smoke, heat or flames block every exit, stay in the room with the door closed and call the fire department to say where you are.",
+   "doc": "9681a68ebd07f5",
+   "page": 35
   }
  ],
  "prepare": [

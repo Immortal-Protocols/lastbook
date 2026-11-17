@@ -57,13 +57,17 @@ FEATURES_OFF = ('PeerConnectionEnabled',   # UDP sockets, which nothing else her
                 'LinkPreconnect', 'LinkPreconnectEarlyHintsEnabled', 'LinkDNSPrefetchEnabled', 'LinkPrefetchEnabled', 'SpeculationRulesPrefetchEnabled',   # names looked up and sockets opened with no load to refuse
                 'WebSocketEnabled', 'WebTransportEnabled', 'BeaconAPIEnabled', 'PushAPIEnabled', 'PrivateClickMeasurementEnabled', 'SafeBrowsingEnabled')   # nothing here uses them
 
-# A page holds its memory in several processes: its own, the GPU's, and the Networking process for blob URLs. All of them count, with this one.
+# Count this app, its page and the GPU, measured, and the Networking process as a fixed NETWORK_SHARE. Its PID is not asked for: the
+# WKWebView testing-only _networkProcessIdentifier accessor RELEASE_ASSERTs when the page's data store has no network process attached
+# in WebKit before 313919@main (May 2026, bug 315599), causing the launch crash in issue #20. The page and GPU accessors are
+# WKWebViewPrivate SPI and return 0 when their process is absent.
 # Only ending the page's process makes the others give it back. Over the limit it is ended and the app starts again at home.
 # This samples and then acts, so a page allocating very fast goes over by what it takes in that time.
 MEMORY_LIMIT = min(4 * 1024 ** 3, Foundation.NSProcessInfo.processInfo().physicalMemory() // 2)   # the whole app in normal use: under 1.6 GB here
 MEMORY_EVERY = 0.1
 MEMORY_FLOOR = 1536 * 1024 ** 2
 MEMORY_QUIET = 10                # seconds after ending a page before ending another: the system needs a moment to give the memory back
+NETWORK_SHARE = 32 * 1024 ** 2   # counted for the Networking process (blob URLs, web storage): measured 5.8 to 8.5 MB in eleven runs here, memory floods included
 # All frames share one process and one thread here, so a saved page in a loop stops the whole window. A page that does not answer is ended.
 PULSE_EVERY = 1                  # seconds between asking the page's process for an answer
 STUCK_AFTER = 12                 # that many asks unanswered in a row: stuck
@@ -591,7 +595,7 @@ class Shell:
 
     def _each_second(self):
         try:
-            self.pids = (self.page_pid(), self._view_pid('_gpuProcessIdentifier'), self._view_pid('_networkProcessIdentifier'))
+            self.pids = (self.page_pid(), self._view_pid('_gpuProcessIdentifier'))   # never _networkProcessIdentifier: see MEMORY_LIMIT
             self.pulse.tick()
         except Exception:
             traceback.print_exc()
@@ -604,7 +608,7 @@ class Shell:
             try:
                 pids = self.pids
                 pages = sum(_footprint(p) or 0 for p in pids if p)
-                total = pages + (_footprint(me) or 0)
+                total = pages + (_footprint(me) or 0) + NETWORK_SHARE
                 # MEMORY_FLOOR: with the page's share this small, ending it would give nothing back.
                 if total > MEMORY_LIMIT and pages > MEMORY_FLOOR and pids and pids[0] and time.monotonic() - self.ended_at > MEMORY_QUIET:
                     self.end_page(TOO_BIG, f'over the memory limit: {total} bytes, {pages} of it the page\'s')

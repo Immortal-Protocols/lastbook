@@ -139,21 +139,34 @@ delegate = S.AppDelegate.alloc().init()
 app.setDelegate_(delegate)
 b = B.Bridge(server, 'stream', B.ORIGIN_MAC, log=lambda row: rec('bridge', **row))
 shell = Offscreen(b)
+
+
+def webkit_helpers():
+    """WebKit's helper processes on this Mac, {pid: name}, from ps, as mac_package_smoke.py finds them."""
+    rows = subprocess.run(['/bin/ps', '-axo', 'pid=,comm='], capture_output=True, text=True).stdout.splitlines()
+    return {int(r.split(None, 1)[0]): r.split(None, 1)[1].strip().rsplit('/', 1)[-1] for r in rows if 'com.apple.WebKit.' in r}
+
+
+before_webkit = set(webkit_helpers())    # before this window exists: what appears after is this window's, or at worst another app's (more checked, never less)
 shell.build()
 shell.window.orderFrontRegardless()
 shell.view._setWindowOcclusionDetectionEnabled_(False)
-before_webkit = set()
 pids = {'app': os.getpid()}
 
 
 def webkit_ids():
     v = shell.view
-    for name, sel in (('WebContent', '_webProcessIdentifier'), ('GPU', '_gpuProcessIdentifier'), ('Networking', '_networkProcessIdentifier')):
+    for name, sel in (('WebContent', '_webProcessIdentifier'), ('GPU', '_gpuProcessIdentifier')):
         try:
             if v.respondsToSelector_(sel):
                 pids[name] = int(getattr(v, sel)())
         except Exception:
             pass
+    # Never _networkProcessIdentifier: older system WebKit ends the caller when there is no network process (see MEMORY_LIMIT in shell_macos).
+    # The Networking process is the new one since before build(); the socket check in mac_driver.outside() must still see it.
+    new = sorted(p for p, n in webkit_helpers().items() if n == 'com.apple.WebKit.Networking' and p not in before_webkit)
+    for i, p in enumerate(new):
+        pids['Networking' if i == 0 else f'Networking-{i + 1}'] = p
     (OUT / 'pids.json').write_text(json.dumps(pids))
 
 

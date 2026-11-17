@@ -48,7 +48,7 @@
   {
    "id": "start",
    "label": "Someone is sick and I don't know where to start",
-   "hint": "Fever, pain, not eating, getting weaker",
+   "hint": "Fever or flu, pain, not eating, getting weaker",
    "read": [
     {
      "doc": "clinical-e11235e28035e4ac",

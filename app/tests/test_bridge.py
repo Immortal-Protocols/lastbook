@@ -470,13 +470,21 @@ class Both:
         self.assertEqual(r.status, 403)
 
     def test_rewrite_takes_linear_time_on_tags_that_never_close(self):
+        """A whole page against 1/64 of one. In step with its size the whole page takes 64 times as long; quadratic, 4096 times. A limit in seconds
+        says more about the computer, and what else it is doing, than about rewrite: at 5 s this failed two runs in five on a busy Windows laptop, on
+        '<a x>', which takes 2.2 s there when the laptop is idle. The eleven other pages take 0.1 to 0.5 s."""
         from engine import saved_pages as P
+
+        def took(data):
+            t0 = time.perf_counter()
+            P.rewrite(data, lambda src: b'WEBVTT\n' + b'<' * P.MAX_TRANSCRIPT)
+            return time.perf_counter() - t0
+
         for unit in (b'<button x>', b'<a x>', b'<a ', b'<head ', b'<track src="a.vtt ', b'<track ', b'<div class="image-gallery" data-base-url="x">', b'<div class="image-gallery ',
                      b'<!doctype ', b'<a href=x target=y download ', b'<div class="image-gallery" data-base-url="x"><a ', b'<tr><td><small>A1</small> </td>'):
-            data = unit * (P.MAX_PAGE // len(unit))
-            t0 = time.time()
-            P.rewrite(data, lambda src: b'WEBVTT\n' + b'<' * P.MAX_TRANSCRIPT)
-            self.assertLess(time.time() - t0, 5, unit)
+            small = min(took(unit * (P.MAX_PAGE // 64 // len(unit))) for _ in range(5))     # the quietest of five: other work on the computer only ever adds time
+            whole = took(unit * (P.MAX_PAGE // len(unit)))
+            self.assertLess(whole, 16 * 64 * small, (unit, small, whole))     # measured 2 to 3 times in step when idle, 6 with every core busy; quadratic is 64
 
     def test_rewrite_blank_rows_only_when_too_large(self):
         from engine import saved_pages as P

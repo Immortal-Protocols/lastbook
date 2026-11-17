@@ -109,6 +109,7 @@ issue before any code.
 [REGIONS-LK.md](REGIONS-LK.md) does the same for Sri Lanka as one island-wide region.
 [REGIONS-TH.md](REGIONS-TH.md) does the same for Thailand's provinces and Bangkok.
 [REGIONS-DE.md](REGIONS-DE.md) does the same for Germany's 16 states.
+[MAP-TR-34.md](MAP-TR-34.md) describes a working offline map builder for Istanbul (`TR-34`).
 
 ## Checking a map change
 

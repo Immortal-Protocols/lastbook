@@ -179,7 +179,8 @@ def pack_path(rel):
 def gone_paths(catalog):
     """Library paths no pack holds, whether a record names them or a page tree holds them."""
     return (set(SPEC['known_gap_documents']) | set(SPEC['pdf_one_offs']['leave_out']) | set(SPEC['leave_out_one_file'])
-            | {r['path'] for r in catalog if r['id'].startswith(LEAVE_OUT_IDS)})
+            | {r['path'] for r in catalog if r['id'].startswith(LEAVE_OUT_IDS)
+               or r.get('distribution') == 'personal-only'})
 
 
 def course_records(catalog):
@@ -278,9 +279,11 @@ def select(pack, catalog, snap, sample):
         here = [r for r in videos if r['path'] not in remote and os.path.exists(LIB / r['path'])]
         videos = pick(here, max(2, sample // 10))
         zims = sorted(zims, key=lambda r: r['bytes'])[:1]
-    chosen = {r['id']: r for r in docs + videos + zims}
-    by_video = {r['path'] for r in videos}
+    chosen = {r['id']: r for r in docs + videos + zims if r.get('distribution') != 'personal-only'}
+    by_video = {r['path'] for r in videos if r['id'] in chosen}
     for r in catalog:
+        if r.get('distribution') == 'personal-only':
+            continue
         if r['kind'] == 'transcript' and r.get('video_path') in by_video:
             chosen[r['id']] = r
         elif r['kind'] == 'metadata' and r.get('video_path') in by_video and r.get('thumbnail_path') and os.path.exists(LIB / r['thumbnail_path']):
@@ -288,7 +291,8 @@ def select(pack, catalog, snap, sample):
     out = []
     for r in catalog:
         if r['id'] not in chosen:
-            why = why_out.get(r['id']) or ('known gap' if r['path'] in SPEC['known_gap_documents'] else 'one-off left out' if r['path'] in gone
+            why = why_out.get(r['id']) or ('personal use: not redistributable' if r.get('distribution') == 'personal-only'
+                                           else 'known gap' if r['path'] in SPEC['known_gap_documents'] else 'one-off left out' if r['path'] in gone
                                            else 'video metadata: only thumbnails ship' if r['kind'] == 'metadata' else 'not in this pack')
             out.append((r['id'], r['path'], why))
     return chosen, out, remote

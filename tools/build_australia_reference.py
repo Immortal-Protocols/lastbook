@@ -7,6 +7,7 @@ Creates a separate, searchable reference library. Never modifies an installed li
 downloads anything, or claims to be an official Setup pack. See docs/AUSTRALIA-CONTENT.md.
 """
 import argparse
+from contextlib import closing
 import hashlib
 import json
 from html.parser import HTMLParser
@@ -99,7 +100,7 @@ def build(output, source_dir=SOURCES):
         lib = staging / 'library-data'; lib.mkdir()
         (lib / 'text').mkdir()
         records = []
-        with sqlite3.connect(lib / 'search.sqlite') as db:
+        with closing(sqlite3.connect(lib / 'search.sqlite')) as db:
             db.execute('CREATE VIRTUAL TABLE pages USING ' + SCHEMA)
             for r, data, body, _ in sources:
                 path = lib / r['path']; path.parent.mkdir(parents=True, exist_ok=True)

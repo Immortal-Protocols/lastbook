@@ -1653,7 +1653,17 @@ def pack_datasets(have):
     if PLACEDB.exists():
         out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
     if TERRAINDB.exists():
-        out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
+        source = 'USGS 3DEP'
+        if map_set_meta().get('country'):  # a map set from elsewhere names its own elevation source in the terrain file's meta
+            try:
+                db = sqlite3.connect(ro_uri(TERRAINDB), uri=True)
+                try:
+                    source = db.execute("SELECT value FROM meta WHERE key='source'").fetchone()[0]
+                finally:
+                    db.close()
+            except (sqlite3.Error, TypeError):
+                source = 'elevation data'
+        out.append({'label': f'Elevation ({source})', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
     if BLDGDB.exists():
         out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
     if CROPDB.exists():

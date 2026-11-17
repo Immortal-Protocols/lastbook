@@ -55,7 +55,7 @@ const MapView = (() => {
     FishType: 'Fish', Counties: 'County', WeekOfPlantStart: 'Stocked (week of)', Water_Body: 'Water', Facility_Type: 'Facility', County: 'County', Owner: 'Owner',
     other_names: 'Also called', purpose: 'Main purpose', purposes: 'All purposes', river: 'River / stream', city: 'Nearest town', owner: 'Owner',
     normal_storage_af: 'Normal storage (acre-ft)', max_storage_af: 'Max storage (acre-ft)', surface_acres: 'Surface (acres)', height_ft: 'Height (ft)', year: 'Built',
-    dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', water_type: 'Water present',
+    dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', area_ha: 'Area (hectares)', water_type: 'Water present',
     reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block', year: 'Satellite crop map year',
     FUEL_SALES: 'Fuel sales', NO_OF_RAMP_LANE_USE_ONE_TIME: 'Ramp lanes', FISH_CLEANING: 'Fish cleaning', Comments: 'Notes', Website: 'Website' };
   const CAVEAT = { mineral: 'USGS mineral record: an occurrence or past mine, not proof of recoverable ore, access or safety. Old workings can be deadly.',
@@ -195,6 +195,7 @@ const MapView = (() => {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     // What the installed map set says about itself (map-set.json: units, country, credit); a US map set says nothing and keeps feet and ZIP codes.
+    if (info.country) CAVEAT.dam = 'Mapped dam (OpenStreetMap). Keep away from spillways and outlets — currents and sudden releases drown people.';
     st.metric = info.units === 'metric'; st.postal = info.country === 'GB' ? 'postcode' : 'ZIP'; st.area = info.country === 'GB' ? 'region' : 'state';
     if (st.postal === 'postcode') { const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' } }
     if (info.as_of) { const p = document.querySelector('.maphead p'); if (p) p.textContent = p.textContent.replace('25 Oct 2026', info.as_of) }

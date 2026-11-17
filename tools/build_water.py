@@ -2,6 +2,12 @@
 
   python tools/build_water.py nid            # dams from derived/geo/sources/nid/nation.csv
   python tools/build_water.py nhd [STATE..]  # waterbodies from derived/geo/sources/nhd/*.zip (all downloaded states by default)
+  python tools/build_water.py osm            # named lakes and reservoirs from the street map's water outlines (no US source needed)
+  python tools/build_water.py dams-osm FILE.osm.pbf W,S,E,N   # dams (waterway=dam) from OpenStreetMap, for places without an NID
+  python tools/build_water.py index          # rebuild the name search
+
+Set LASTBOOK_GEO to build in another folder than derived/geo (national.sqlite is read from there too), and LASTBOOK_UNITS=metric
+to give areas in hectares instead of acres.
 
 The `resource` + `spatial` tables mirror the resource atlas so the map's pin code reads both; `feat` + `feat_idx`
 mirror the street-map tiles so waterbody outlines draw as water.
@@ -11,7 +17,7 @@ from array import array
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-GEO = HERE / 'derived/geo'
+GEO = Path(os.environ.get('LASTBOOK_GEO') or HERE / 'derived/geo')
 DB = GEO / 'water.sqlite'
 
 
@@ -267,8 +273,8 @@ def build_osm():
         if not path.exists():
             continue
         src = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
-        for cls, name, blob in src.execute("SELECT cls,name,geom FROM feat WHERE layer='water' AND name!=''"):
-            ring = max(unpack(blob), key=len)
+        for cls, name, blob in src.execute("SELECT cls,name,geom FROM feat WHERE layer='water' AND name!='' ORDER BY length(geom) DESC"):  # biggest outline first, so a lake's small fragments are skipped as duplicates
+            ring = max(unpack(blob), key=ring_area_km2)    # the outline, not an island: a lake's rings are listed outer first, then holes, in no size order
             if len(ring) < 4:
                 continue
             lon, lat = inside_point(ring)
@@ -277,11 +283,49 @@ def build_osm():
             named.setdefault(name.lower(), []).append((lat, lon))
             area = ring_area_km2(ring)
             add_point(db, 'osm', f'osm:{n}', 'reservoir' if cls == 'reservoir' else 'lake', name, lat, lon,
-                      {'area_acres': round(area * 247.105, 1), 'source_map': 'OpenStreetMap'}, 'https://www.openstreetmap.org/')
+                      ({'area_ha': round(area * 100, 1)} if os.environ.get('LASTBOOK_UNITS') == 'metric' else {'area_acres': round(area * 247.105, 1)}) | {'source_map': 'OpenStreetMap'},
+                      'https://www.openstreetmap.org/')
             n += 1
         src.close()
     db.commit()
     print(f'OpenStreetMap: {n:,} named lakes and reservoirs added')
+
+
+def build_osm_dams(pbf, bbox):
+    """Dams mapped in OpenStreetMap (waterway=dam or man_made=dam), as clickable 'dam' points, for places that have no national
+    inventory. A dam is a line or a node; its point is the middle of its nodes. Needs pyosmium on the build machine only."""
+    import osmium
+    west, south, east, north = map(float, bbox.split(','))
+    db = open_db()
+    forget(db, 'osm-dam')
+    n = 0
+    fp = (osmium.FileProcessor(pbf, osmium.osm.NODE | osmium.osm.WAY).with_locations()
+          .with_filter(osmium.filter.TagFilter(('waterway', 'dam'), ('man_made', 'dam'))))
+    for obj in fp:
+        if obj.is_node():
+            if not obj.location.valid():
+                continue
+            lon, lat = obj.location.lon, obj.location.lat
+        else:
+            pts = [(c.lon, c.lat) for c in obj.nodes if c.location.valid()]
+            if not pts:
+                continue
+            lon = sum(p[0] for p in pts) / len(pts)
+            lat = sum(p[1] for p in pts) / len(pts)
+        if not (west <= lon <= east and south <= lat <= north):
+            continue
+        tags = obj.tags
+        detail = {'source_map': 'OpenStreetMap'}
+        if tags.get('operator'):
+            detail['owner'] = tags['operator']
+        if tags.get('height'):
+            detail['height'] = tags['height']
+        add_point(db, 'osm-dam', f'osm-dam:{"n" if obj.is_node() else "w"}{obj.id}', 'dam', tags.get('name') or '', round(lat, 6), round(lon, 6),
+                  detail, 'https://www.openstreetmap.org/')
+        n += 1
+    db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', ('osm-dam', json.dumps({'points': n, 'built': time.strftime('%Y-%m-%dT%H:%M:%S')})))
+    db.commit()
+    print(f'OpenStreetMap: {n:,} dams added')
 
 
 def build_index():
@@ -302,6 +346,9 @@ if __name__ == '__main__':
         build_index()
     elif sys.argv[1:2] == ['osm']:
         build_osm()
+        build_index()
+    elif sys.argv[1:2] == ['dams-osm'] and len(sys.argv) == 4:
+        build_osm_dams(sys.argv[2], sys.argv[3])
         build_index()
     elif sys.argv[1:2] == ['index']:
         build_index()

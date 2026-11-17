@@ -1,0 +1,195 @@
+{
+  "id": "au-personal-first-aid",
+  "mode": "now",
+  "title": "Read Australian first-aid originals",
+  "short": "Personal-use ANZCOR source guidelines",
+  "intro": "Original ANZCOR readings for personal use, available only when downloaded separately. The source collection is static and does not cover every first-aid topic.",
+  "requires_docs": [
+    "personal-au-cpr",
+    "personal-au-snakebite",
+    "personal-au-spiderbite",
+    "personal-au-marine-stings",
+    "personal-au-pressure-immobilisation",
+    "personal-au-anaphylaxis"
+  ],
+  "keywords": [
+    "australia",
+    "australian",
+    "first aid",
+    "snake bite",
+    "snakebite",
+    "spider bite",
+    "marine sting",
+    "jellyfish",
+    "anaphylaxis",
+    "allergy",
+    "cpr",
+    "pressure immobilisation"
+  ],
+  "choices": [
+    {
+      "id": "cpr",
+      "label": "CPR source guidance",
+      "hint": "Read the original Australian/New Zealand source.",
+      "read": [
+        {
+          "doc": "personal-au-cpr",
+          "label": "Guideline 8 – Cardiopulmonary Resuscitation (CPR)",
+          "note": "General bystander guidance. The source directs specifically trained paediatric providers to other guidelines, which are not included.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "snake",
+      "label": "Australian snake bite sources",
+      "hint": "Read the original Australian/New Zealand source.",
+      "read": [
+        {
+          "doc": "personal-au-snakebite",
+          "label": "Australian snake bite: source summary",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-snakebite",
+          "label": "Australian snake bite: management and cautions",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 3
+        },
+        {
+          "doc": "personal-au-pressure-immobilisation",
+          "label": "Pressure immobilisation: when the source recommends it and when it does not",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "spider",
+      "label": "Spider bite sources",
+      "hint": "Read the original Australian/New Zealand source.",
+      "read": [
+        {
+          "doc": "personal-au-spiderbite",
+          "label": "Guideline 9.4.2 - First Aid Management of Spider Bite",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-pressure-immobilisation",
+          "label": "Pressure immobilisation: uses and exclusions",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "marine",
+      "label": "Marine envenomation sources",
+      "hint": "Read the original Australian/New Zealand source.",
+      "read": [
+        {
+          "doc": "personal-au-marine-stings",
+          "label": "Guideline 9.4.5 - First Aid Management of Marine Envenomation",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-pressure-immobilisation",
+          "label": "Pressure immobilisation: uses and exclusions",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "anaphylaxis",
+      "label": "Anaphylaxis source guidance",
+      "hint": "Read the original Australian/New Zealand source.",
+      "read": [
+        {
+          "doc": "personal-au-anaphylaxis",
+          "label": "Anaphylaxis: source introduction",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-anaphylaxis",
+          "label": "Anaphylaxis: recognition and management in the source",
+          "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+          "page": 2
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "ANZCOR says antivenom must be given under health professional supervision in a properly equipped medical facility.",
+      "doc": "personal-au-snakebite",
+      "page": 3
+    },
+    {
+      "text": "ANZCOR lists bites and stings for which pressure immobilisation is not recommended, including jellyfish and redback spiders.",
+      "doc": "personal-au-pressure-immobilisation",
+      "page": 1
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "personal-au-cpr",
+      "label": "Guideline 8 – Cardiopulmonary Resuscitation (CPR)",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-pressure-immobilisation",
+      "label": "Guideline 9.4.8 - Envenomation - Pressure Immobilisation Technique",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-reference",
+      "label": "What the personal source collection includes",
+      "note": "Original source directory, usage restriction and scope."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "personal-au-cpr",
+      "label": "Guideline 8 – Cardiopulmonary Resuscitation (CPR)",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    },
+    {
+      "doc": "personal-au-snakebite",
+      "label": "Guideline 9.4.1 – First Aid Management of Australian Snake Bite",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    },
+    {
+      "doc": "personal-au-spiderbite",
+      "label": "Guideline 9.4.2 - First Aid Management of Spider Bite",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    },
+    {
+      "doc": "personal-au-marine-stings",
+      "label": "Guideline 9.4.5 - First Aid Management of Marine Envenomation",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    },
+    {
+      "doc": "personal-au-pressure-immobilisation",
+      "label": "Guideline 9.4.8 - Envenomation - Pressure Immobilisation Technique",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    },
+    {
+      "doc": "personal-au-anaphylaxis",
+      "label": "Guideline 9.2.7 – First Aid Management of Anaphylaxis",
+      "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    }
+  ],
+  "route": [],
+  "related": [
+    "au-health",
+    "au-household",
+    "au-rural"
+  ]
+}

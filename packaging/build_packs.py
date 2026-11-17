@@ -1466,10 +1466,11 @@ def fetch_region_gpkg(spec):
     """The region's GeoPackage, downloaded and unzipped once per extract into derived/packs/maps/region-source/. Only the build machine does this."""
     url = spec['extract']
     folder = OUT / 'maps' / 'region-source' / url.rstrip('/').split('/')[-1].removesuffix('.zip')
-    gpkg = folder / 'source.gpkg'
-    if gpkg.is_file():
-        return gpkg
     folder.mkdir(parents=True, exist_ok=True)
+    gpkg = next(folder.glob('*.gpkg'), None)
+    if gpkg is not None:
+        return gpkg
+    gpkg = folder / 'source.gpkg'
     with tempfile.TemporaryDirectory(dir=folder) as work:
         archive = Path(work) / 'extract.zip'
         print(f'downloading {url}', flush=True)

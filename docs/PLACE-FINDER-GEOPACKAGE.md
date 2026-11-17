@@ -1,5 +1,9 @@
 # A place finder from a map's existing GeoPackage
 
+This integration branch additionally proposes [bundled region builds and lifecycle
+handling](REGION-PLACE-INTEGRATION.md). The standalone builder and earlier sidecar
+releases below remain usable independently; those earlier artifacts are unchanged.
+
 The free Geofabrik GeoPackages used by the proposed Australian region maps already
 contain named POINT places. `tools/build_places_gpkg.py` builds the `place` and
 `place_fts` schema that `server.places()` queries, using only Python and SQLite FTS5.

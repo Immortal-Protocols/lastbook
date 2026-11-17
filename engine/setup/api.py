@@ -540,8 +540,7 @@ class Setup:
             return self.public_job()
 
     def _start_repair(self, ai):
-        """Re-check the open library's files (pack-manifest.tsv) and the model's SHA-256. What is wrong is fetched again: the pack is
-        downloaded and switched to as in an upgrade, the model replaced in place. Nothing is downloaded if all is well."""
+        """Check content, the installed map set and model; fetch only the damaged components."""
         with self.lock:
             if self.job and self.job['state'] in ACTIVE + ('paused',):
                 return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
@@ -552,18 +551,24 @@ class Setup:
             if not pack or not pack['available']:
                 return {'error': 'Lastbook cannot tell which library this is, so it cannot repair it. Download a library instead.', 'code': 'unavailable'}
             model = self.manifest.model() if (ai or cur['model']) else None
+            mp = self.manifest.map(cur['map']) if cur.get('map') else None
+            if not mp or not mp['available']:
+                mp = None
             parent, target = self.current.parent, self.current
             work = _work_for(target)
-            srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model')}
+            srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model', 'map')}
             items = [{'id': pack['id'], 'kind': 'pack', 'title': pack['title'], 'state': 'waiting', 'bytes_done': 0,
                       'bytes_total': pack['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None}]
+            if mp:
+                items.append({'id': mp['id'], 'kind': 'map', 'title': mp['title'], 'state': 'waiting', 'bytes_done': 0,
+                              'bytes_total': mp['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             if model:
                 items.append({'id': model['id'], 'kind': 'model', 'title': model['title'], 'state': 'waiting', 'bytes_done': 0,
                               'bytes_total': model['size'], 'rate_bps': 0, 'eta_s': None, 'error': None})
-            names = [f['name'] for f in pack['files']] + ([model['file']] if model else [])
+            names = [f['name'] for f in pack['files']] + ([f['name'] for f in mp['files']] if mp else []) + ([model['file']] if model else [])
             self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'items': items, 'error': None, 'started': _now(), 'folder': str(target),
                         'repair': True,
-                        'plan': {'pack': pack, 'model': model, 'parent': str(parent), 'target': str(target), 'work': str(work),
+                        'plan': {'pack': pack, 'model': model, 'map': mp, 'parent': str(parent), 'target': str(target), 'work': str(work),
                                  'sources': {k: v for k, v in srcs.items() if k in names}, 'explicit': False, 'retried': {},
                                  'switch': True, 'repair': True}}
             s = self._settings()
@@ -927,6 +932,11 @@ class Setup:
     def _do_pack(self, it, plan, work, control):
         pack = plan['pack']
         if plan.get('repair') and 'damaged' not in plan:
+            if install.map_set(plan['target']) and not plan.get('map'):
+                try:
+                    install.check_map(plan['target'], verify_hashes=True, control=control)
+                except install.Refused:
+                    raise install.Refused('unavailable', 'The installed map is damaged and its download is not available in this version. Choose an available map to replace it.')
             bad = self._check_library(it, Path(plan['target']), control)
             plan['damaged'] = bad
             print(f'setup: repair found {len(bad)} damaged or missing files', flush=True)
@@ -959,7 +969,7 @@ class Setup:
             if metadata.get('content_revision') != pack['revision']:
                 raise install.Refused('unpack', 'The library content version does not match this download.')
         current = self.current_info() or {}
-        if (not plan.get('repair') and not plan.get('map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
+        if (not plan.get('map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
                 and current.get('map') not in (None, 'base')):
             install.copy_map(self.current, lib)
         install._write_json(lib / 'setup-pack.json', {'pack': pack['id'], 'installed': _now(), 'files': [f['name'] for f in pack['files']]})
@@ -971,6 +981,16 @@ class Setup:
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
         map set at once; on its own it is staged and switched in when the app restarts (install._apply_map)."""
         mp = plan['map']
+        if plan.get('repair'):
+            self._set(it, 'verifying', bytes_done=0, bytes_total=mp['installed_bytes'])
+            try:
+                install.check_map(plan['target'], verify_hashes=True, control=control)
+            except install.Refused:
+                pass  # fetch and stage a complete replacement below
+            else:
+                if plan['switch']:
+                    install.copy_map(Path(plan['target']), work / 'unpack' / DATA_NAME)
+                return
         got, offset = [], 0
         for f in mp['files']:
             path, ours = self._get_file(it, f, plan, work, control, offset)

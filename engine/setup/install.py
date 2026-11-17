@@ -9,6 +9,7 @@ renamed when whole, so an unpack that stops (a crash, power) carries on where it
 An upgrade first moves the old library aside to LastbookData.old-<date>; when the app restarts it opens the new one, and only if
 that fails to open is the old one put back (apply_pending, called by app/main.py before the engine starts).
 """
+import hashlib
 import json
 import os
 import re
@@ -318,17 +319,30 @@ def map_name(lib):
         return 'base'
 
 
-def check_map(lib):
-    """Every file map-set.json lists is there at its size, and each is a map file."""
+def check_map(lib, verify_hashes=False, control=None):
+    """Check map paths/sizes; explicit repair also verifies optional per-file SHA-256."""
     d = map_set(lib)
     if not d:
         raise Refused('unpack', 'The map has no map-set.json in it.')
+    hashes = d.get('sha256')
+    if hashes is not None and (not isinstance(hashes, dict) or set(hashes) != set(d['files'])
+                              or any(not isinstance(v, str) or not re.fullmatch(r'[0-9a-f]{64}', v) for v in hashes.values())):
+        raise Refused('unpack', 'The map’s per-file checksum list is incomplete or invalid.')
     for rel, size in d['files'].items():
         if not map_member(rel) or '..' in Path(rel).parts:
             raise Refused('unpack', f'The map lists a file that is not part of a map ({rel[:80]!r}).')
         p = Path(lib) / rel
         if not p.is_file() or p.stat().st_size != size:
             raise Refused('unpack', f'The map’s {rel} is missing or the wrong size.')
+        if verify_hashes and hashes is not None:
+            h = hashlib.sha256()
+            with open(p, 'rb') as f:
+                while chunk := f.read(COPY):
+                    if control:
+                        control.check()
+                    h.update(chunk)
+            if h.hexdigest() != hashes[rel]:
+                raise Refused('unpack', f'The map’s {rel} does not match its checksum.')
     return d
 
 

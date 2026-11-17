@@ -748,6 +748,22 @@ class Both:
 
 
 class AssistantStaysHere(unittest.TestCase):
+    def test_nearby_sources_use_installed_map_or_record_provenance_without_a_fixed_date(self):
+        from unittest.mock import patch
+        point = {'name':'Melbourne','kind':'City','detail':'Australia','lat':-37.81,'lon':144.96,'source':'OpenStreetMap contributors','onMap':True}
+        nearby = [{'name':'Mapped hospital','label':'Hospital','lat':-37.81,'lon':144.96,'km':1.2,'dir':'north'},
+                  {'name':'Agency record','label':'Hospital','lat':-37.82,'lon':144.97,'km':2.3,'dir':'south','source':'Named source agency'}]
+        for origin in ('OpenStreetMap via Geofabrik snapshot 2026-11-15',''):
+            fake = types.SimpleNamespace(catalog=lambda:{'by_id':{}},places=lambda q,n:[point],HELP={'hospital':'Hospital'},
+                                         near=lambda *args:nearby,map_info=lambda:{'meta':{'source':origin}})
+            session = assistant.Session()
+            with patch.object(assistant,'S',fake):
+                assistant.run_tool('lookup_place',{'query':'Melbourne','nearby':'hospital'},session,[])
+            sources = {s['title']:s['publisher'] for s in session.sources.values()}
+            self.assertEqual(sources['Mapped hospital'],origin or 'Offline mapped location')
+            self.assertEqual(sources['Agency record'],'Named source agency')
+            self.assertNotIn('25 Oct 2026',str(sources))
+
     def test_only_loopback_addresses(self):
         for good, out in (('http://127.0.0.1:19443', 'http://127.0.0.1:19443'), ('http://127.0.0.1:1/', 'http://127.0.0.1:1'), ('http://[::1]:80', 'http://[::1]:80'), ('http://localhost:9', 'http://127.0.0.1:9')):
             self.assertEqual(assistant.loopback_base(good), out)

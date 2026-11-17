@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import zipfile
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,7 +34,48 @@ import scan_pack as S            # noqa: E402
 import region_specs              # noqa: E402
 
 INCLUDES = 'Local streets, buildings, water and places to get help'
-ALLOWED = {'derived/geo/map.sqlite', 'derived/geo/detail-cells.json', 'derived/geo/national-status.json', 'map-set.json'}
+REQUIRED = {'derived/geo/map.sqlite', 'derived/geo/detail-cells.json', 'derived/geo/national-status.json', 'map-set.json'}
+OPTIONAL = {'derived/geo/places.sqlite'}
+ALLOWED = REQUIRED | OPTIONAL
+
+
+def contract_files(d):
+    """Four legacy files, optionally places.sqlite, all accurately listed by map-set.json."""
+    paths = list(Path(d).rglob('*'))
+    if any(p.is_symlink() for p in paths):
+        raise ValueError('region maps cannot contain links')
+    rels = {p.relative_to(d).as_posix() for p in paths if p.is_file()}
+    if not REQUIRED <= rels or rels - ALLOWED:
+        raise ValueError(f'files differ from the contract: extra {sorted(rels - ALLOWED)} missing {sorted(REQUIRED - rels)}')
+    info = json.loads((d / 'map-set.json').read_text())
+    sizes = {rel: (d / rel).stat().st_size for rel in rels - {'map-set.json'}}
+    if not isinstance(info, dict) or info.get('files') != sizes or info.get('bytes') != sum(sizes.values()):
+        raise ValueError('map-set.json inventory or byte total differs from the actual map files')
+    if 'sha256' in info:
+        hashes = {}
+        for rel in sizes:
+            with open(d / rel, 'rb') as f:
+                hashes[rel] = hashlib.file_digest(f, 'sha256').hexdigest()
+        if info['sha256'] != hashes:
+            raise ValueError('map-set.json checksums differ from the actual map files')
+    return rels
+
+
+def check_places(d):
+    """The finder must query this index, and every named point must lie in the map's own box."""
+    box = json.loads((d / 'derived/geo/detail-cells.json').read_text())['bbox']
+    west, south, east, north = box
+    p = (d / 'derived/geo/places.sqlite').resolve()
+    with closing(sqlite3.connect(p.as_uri() + '?mode=ro', uri=True)) as db:
+        if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+            raise ValueError('place index integrity check failed')
+        db.execute('SELECT id,name,kind,detail,lat,lon,rank,source FROM place LIMIT 0')
+        db.execute("SELECT p.name FROM place_fts f JOIN place p ON p.id=f.rowid WHERE place_fts MATCH '\"a\"*' LIMIT 1").fetchall()
+        if not db.execute('SELECT 1 FROM place LIMIT 1').fetchone():
+            raise ValueError('place index is empty')
+        if db.execute('SELECT 1 FROM place WHERE lat IS NULL OR lon IS NULL OR lon<? OR lon>? OR lat<? OR lat>? LIMIT 1',
+                      (west, east, south, north)).fetchone():
+            raise ValueError('place index has coordinates outside the map box')
 
 
 def regions():
@@ -50,13 +92,17 @@ def scan(d, code):
     files = sc.walk()
     rels = [p.relative_to(d).as_posix() for p in files]
     fails = []
-    if set(rels) != ALLOWED:
-        fails.append(f'files differ from the contract: extra {sorted(set(rels) - ALLOWED)} missing {sorted(ALLOWED - set(rels))}')
+    try:
+        contract_files(d)
+        if 'derived/geo/places.sqlite' in rels:
+            check_places(d)
+    except (OSError, ValueError, KeyError, sqlite3.Error) as e:
+        fails.append(str(e))
     for p, rel in zip(files, rels):
         st = os.lstat(p)
         if rel == 'map-set.json':
             info = sc.load_json(rel, rels, 'map-set')
-            if not isinstance(info, dict) or info.get('name') != code or set(info) - {'name', 'files', 'bytes', 'seconds'}:
+            if not isinstance(info, dict) or info.get('name') != code or set(info) - {'name', 'files', 'bytes', 'seconds', 'sha256'}:
                 fails.append('map-set.json does not name the region')
             continue
         sc.name_rules(rel, st, p.is_symlink())
@@ -90,9 +136,10 @@ def scan(d, code):
 
 
 def make_zip(d, out):
+    files = contract_files(d)
     tmp = out.with_suffix('.partial')
     with zipfile.ZipFile(tmp, 'w', allowZip64=True) as z:
-        for rel in sorted(ALLOWED):
+        for rel in sorted(files):
             zi = zipfile.ZipInfo(rel, date_time=(2026, 11, 16, 0, 0, 0))
             zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o644 << 16
@@ -101,7 +148,7 @@ def make_zip(d, out):
                     dst.write(b)
     with zipfile.ZipFile(tmp) as z:
         names = {i.filename: i.file_size for i in z.infolist()}
-    if names != {rel: (d / rel).stat().st_size for rel in ALLOWED}:
+    if names != {rel: (d / rel).stat().st_size for rel in files}:
         sys.exit('zip does not hold exactly the set')
     os.replace(tmp, out)
 
@@ -152,7 +199,7 @@ def one_region(ctx, code, res):
     if fails:
         sys.exit(f'{code} scan failed: {fails}')
     SM.log(code, 'scan passed', dict((k, len(v)) for k, v in listed.items()))
-    installed = sum((d / rel).stat().st_size for rel in ALLOWED)
+    installed = sum((d / rel).stat().st_size for rel in contract_files(d))
     ZIPS.mkdir(exist_ok=True)
     z = ZIPS / f'Lastbook-Map-{code}.zip'
     make_zip(d, z)
@@ -167,7 +214,7 @@ def one_region(ctx, code, res):
     SM.log(code, 'public copy verified')
     spec = region_specs.REGIONS[code]
     entry = {'id': code, 'title': spec['title'], 'country': spec['country'], 'kind': 'region', 'installed_bytes': installed, 'available': True,
-             'includes': INCLUDES, 'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
+             'includes': INCLUDES + ('; named-place search' if spec.get('places') else ''), 'files': [{'name': z.name, 'url': url, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
     with open(LOCK, 'a') as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
         list_in_manifest(ctx, entry)

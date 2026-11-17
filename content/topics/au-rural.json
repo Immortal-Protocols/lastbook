@@ -8,7 +8,7 @@
   "id": "au-rural",
   "title": "Prepare for Australian rural isolation",
   "short": "Rural property, livestock and communications",
-  "intro": "Australian sources for isolated properties, animals and communications. NSW farm rules and service contacts apply to NSW; remote-travel coverage is still incomplete.",
+  "intro": "Australian sources for isolated properties, animals, communications and basic remote travel preparation. NSW farm rules and service contacts apply to NSW; route-specific remote travel coverage remains incomplete.",
   "keywords": [
     "australia",
     "australian",
@@ -113,6 +113,35 @@
       ]
     },
     {
+      "id": "generator",
+      "label": "Read Victorian portable-generator safety",
+      "hint": "Read the complete source usage section and its cautions.",
+      "read": [
+        {
+          "doc": "vic-generator",
+          "label": "Using a portable generator: Victorian source guidance",
+          "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+        }
+      ]
+    },
+    {
+      "id": "travel",
+      "label": "Prepare for travel in a remote location",
+      "hint": "Basic national source guidance; detailed trip calculations remain a gap.",
+      "read": [
+        {
+          "doc": "au-remote-travel",
+          "label": "Preparing for remote travel: myGov source sections",
+          "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
+        },
+        {
+          "doc": "au-emergency-calls",
+          "label": "Australian emergency-call coverage limits",
+          "note": "ACMA source; a mobile emergency call still needs an available mobile network."
+        }
+      ]
+    },
+    {
       "id": "authority",
       "label": "Find your state or territory authority",
       "hint": "Read the source guidance and its regional limits.",
@@ -169,6 +198,16 @@
       "doc": "au-cb-radio",
       "label": "Citizen band radio stations class licence",
       "note": "Australian source directory."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+    },
+    {
+      "doc": "au-remote-travel",
+      "label": "Preparing for remote travel: myGov source sections",
+      "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
     }
   ],
   "learn": [
@@ -201,6 +240,16 @@
       "doc": "nsw-evacuation",
       "label": "If you have to evacuate",
       "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+    },
+    {
+      "doc": "au-remote-travel",
+      "label": "Preparing for remote travel: myGov source sections",
+      "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
     }
   ],
   "related": [

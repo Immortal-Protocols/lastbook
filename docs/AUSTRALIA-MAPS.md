@@ -6,6 +6,11 @@ The design discussion is [#36](https://github.com/Immortal-Protocols/lastbook/is
 It uses the region-map implementation proposed in #35 and the local review and extract-cache work in #30.
 These definitions alone do not add downloads to the released app.
 
+This integration branch also opts Australian regions into bundled named-place
+search. See [the five-file proposal and repair behavior](REGION-PLACE-INTEGRATION.md).
+Historical four-file review archives described below remain unchanged and valid;
+new integrated review builds are separate artifacts.
+
 Each box extends at least half a degree from the city's published Natural Earth point, rounded outwards
 to two decimal places. They are metropolitan areas, **not whole states**. The map may include nearby
 settlements and cross an administrative boundary. Canberra uses the NSW extract, which includes ACT,

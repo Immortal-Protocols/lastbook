@@ -1662,7 +1662,7 @@ def map_info():
     if AERIALDB.exists():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
-    extra = {'aerial': has_aerial()}
+    extra = {'aerial': has_aerial(), 'place_search': PLACEDB.is_file()}
     if pack:
         extra.update(map_contents())
         region = detail_cells()

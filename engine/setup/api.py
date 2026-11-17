@@ -783,14 +783,16 @@ class Setup:
             mp, map_damaged = None, False
             if _separate_map(target) and not check_only:     # Check now checks the map in its worker, so a resumed check does it again
                 map_damaged = _map_damaged(target, 'repair')
-                if map_damaged:                               # Repair fetches the map again
-                    mp = self.manifest.map(cur['map'])
-                    if not mp or not mp['available']:
+                offered_map = self.manifest.map(cur['map'])
+                if not offered_map or not offered_map['available']:
+                    if map_damaged:
                         return {'error': f'The {cur["map"]} map in this library is damaged, and this version does not offer it to download again. '
                                          'Choose a map again.', 'code': 'unavailable'}
-                    if mp:
-                        items.insert(1, {'id': mp['id'], 'kind': 'map', 'title': mp['title'], 'state': 'waiting', 'bytes_done': 0,
-                                         'bytes_total': mp['download_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
+                else:
+                    # The worker verifies hashes too, so same-size damage is found without blocking Start.
+                    mp = offered_map
+                    items.insert(1, {'id': mp['id'], 'kind': 'map', 'title': mp['title'], 'state': 'waiting', 'bytes_done': 0,
+                                     'bytes_total': mp['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             names = [f['name'] for f in pack['files']] + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else [])
             self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'items': items, 'error': None, 'started': _now(), 'folder': str(target),
                         'repair': True, 'check': check_only,
@@ -1315,7 +1317,8 @@ class Setup:
                     _check_pack_paths(work, work / 'downloads', _pack_parts_folder(work), work / 'unpack')
                 (work / 'downloads').mkdir(parents=True, exist_ok=True)
             elif plan.get('check_only') and 'map_damaged' not in plan:   # Check now: a state map against its map-set.json, from the files as they are now
-                plan['map_damaged'] = _separate_map(Path(plan['target'])) and _map_damaged(Path(plan['target']), 'check')
+                plan['map_damaged'] = _separate_map(Path(plan['target'])) and _map_damaged(
+                    Path(plan['target']), 'check', control=control, verify_hashes=True)
             for it in job['items']:
                 if it['state'] == 'done':
                     continue
@@ -1433,6 +1436,9 @@ class Setup:
     def _do_pack(self, it, plan, work, control):
         pack = plan['pack']
         if plan.get('repair') and 'damaged' not in plan:
+            if (not plan.get('check_only') and not plan.get('map') and _separate_map(Path(plan['target']))
+                    and _map_damaged(Path(plan['target']), 'repair', control=control, verify_hashes=True)):
+                raise install.Refused('unavailable', 'The installed map is damaged and its download is not available in this version. Choose an available map to replace it.')
             bad = self._check_library(it, Path(plan['target']), control)
             plan['damaged'] = bad
             print(f'setup: {"check" if plan.get("check_only") else "repair"} found {len(bad)} damaged or missing files', flush=True)
@@ -1498,6 +1504,16 @@ class Setup:
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
         map set at once; on its own it is staged and switched in when the app restarts (install._apply_map)."""
         mp = plan['map']
+        if plan.get('repair'):
+            self._set(it, 'verifying', bytes_done=0, bytes_total=mp['installed_bytes'])
+            try:
+                install.check_map(plan['target'], verify_hashes=True, control=control)
+            except install.Refused:
+                plan['map_damaged'] = True
+            else:
+                if plan['switch']:
+                    install.copy_map(Path(plan['target']), work / 'unpack' / DATA_NAME)
+                return
         got, offset = [], 0
         for f in mp['files']:
             path, ours = self._get_file(it, f, plan, work, control, offset)
@@ -1664,10 +1680,10 @@ def _check_pack_paths(*paths):
             raise download.Failed('folder', 'The setup folder contains a link or special file. Choose a different library folder.')
 
 
-def _map_damaged(target, what):
+def _map_damaged(target, what, control=None, verify_hashes=False):
     """True when the library's state map does not match its map-set.json (it came from its own download, not the pack's)."""
     try:
-        install.check_map(target)
+        install.check_map(target, verify_hashes=verify_hashes, control=control)
         return False
     except install.Refused as e:
         install.say(f'setup: {what}:', e.message)

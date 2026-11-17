@@ -20,10 +20,10 @@ class RegionSourceTests(unittest.TestCase):
                     z.writestr('map.gpkg', region)
                 local = dict(spec, extract=archive.as_uri())
                 cached[region] = local
-                self.assertEqual(build_packs.fetch_region_gpkg(local).read_text(), region)
+                self.assertEqual(build_packs.fetch_region_gpkg(local).read_text(encoding='utf-8'), region)
                 archive.unlink()
             for region, local in cached.items():
-                self.assertEqual(build_packs.fetch_region_gpkg(local).read_text(), region)
+                self.assertEqual(build_packs.fetch_region_gpkg(local).read_text(encoding='utf-8'), region)
 
 if __name__ == '__main__':
     unittest.main()

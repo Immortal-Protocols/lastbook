@@ -436,8 +436,9 @@ def run_tool(name, args, sess, extra_msgs, root=None):
             lines.append(f"[{k}] {p['name']} ({p['kind']}, {p['detail']}) at {p['lat']:.4f},{p['lon']:.4f}" + ('' if p['onMap'] else ' — outside the offline street map'))
         kinds = [c.strip() for c in str(args.get('nearby') or '').split(',') if c.strip() in S.HELP]
         if kinds and pl[0]['onMap']:
+            mapped_source = S.map_info().get('meta', {}).get('source')
             for h in S.near(pl[0]['lat'], pl[0]['lon'], kinds, 3):
-                k = sess.add({'kind': 'place', 'title': h['name'] or h['label'], 'publisher': 'OpenStreetMap (data as of 25 Oct 2026)', 'lat': h['lat'], 'lon': h['lon'],
+                k = sess.add({'kind': 'place', 'title': h['name'] or h['label'], 'publisher': h.get('source') or mapped_source or 'Offline mapped location', 'lat': h['lat'], 'lon': h['lon'],
                               'excerpt': f"{h['label']} · {h['km']} km {h['dir']} of {pl[0]['name']} (straight line)"})
                 lines.append(f"[{k}] {h['label']}: {h['name'] or '(no name recorded)'} — {h['km']} km {h['dir']} (straight-line)")
         return 'Offline map data (may be outdated; does not show closures or damage):\n' + '\n'.join(lines), {'query': q, 'count': len(pl)}

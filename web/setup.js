@@ -126,7 +126,7 @@
     return BR_STATES.map(([id, name]) => {
       const rm = remote.get(id);
       if (rm) return { ...rm, title: `${name} (${id})` };
-      return { id, title: `${name} (${id})`, kind: 'state', available: true, installed_bytes: 0, download_bytes: 0, files: [], baseOnly: true };
+      return { id, title: `${name} (${id})`, kind: 'state', osm_br: true, available: true, installed_bytes: 16000000, download_bytes: 8000000, files: [], includes: 'OpenStreetMap (ruas, locais de emergência, municípios e CEP)' };
     }).sort((a, b) => String(a.title).localeCompare(String(b.title), 'pt-BR'));   // by name, as people look for theirs
   };
   const mapById = id => maps().find(m => m.id === id);
@@ -146,8 +146,11 @@
   const mapMissing = () => !selectedState();
   const mapAdds = () => {
     const id = choice.map || selectedState();
-    const m = id && id !== mapNow() && mapNow() !== 'us' && mapNow() !== 'br' ? mapById(id) : null;
-    return m && !m.baseOnly ? m : null;
+    const curMap = (cur() || {}).map;
+    const m = id && id !== curMap ? mapById(id) : null;
+    if (!m || m.baseOnly) return null;
+    if (!choice.map && (mapNow() === 'us' || mapNow() === 'br')) return null;
+    return m;
   };
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -313,25 +316,27 @@
     if (!box) return;
     const selected = selectedState();
     const opts = maps().map(m => {
-      const a = addressById(m.id), included = m.baseOnly || now === 'us' || now === 'br' || m.id === now;
+      const a = addressById(m.id), included = m.baseOnly || (!choice.map && (now === 'us' || now === 'br')) || m.id === ((cur() || {}).map);
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
-      const details = off ? 'em breve' : bytes ? size(bytes) + ' de download' : m.baseOnly ? 'mapa base incluído' : 'incluído';
+      const details = off ? 'em breve' : bytes ? (m.osm_br ? `baixar via OpenStreetMap (~${size(bytes)})` : size(bytes) + ' de download') : m.baseOnly ? 'mapa base incluído' : 'incluído';
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
     }).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = !sel || sel.baseOnly || now === 'us' || now === 'br' || selected === now;
+    const mapIncluded = !sel || sel.baseOnly || sel.id === ((cur() || {}).map) || (!choice.map && (now === 'us' || now === 'br'));
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
-    const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
+    const unavailable = selected && !sel?.osm_br && addresses().length && (!addressById(selected) || addressById(selected).available === false);
     let hint = !sel
       ? 'Selecione seu estado (UF) para continuar.'
-      : sel.baseOnly && !a
-        ? `Estado selecionado: ${esc(sel.title)}. O mapa base do Brasil já está incluído no pacote.`
-        : bytes
-          ? `${size(bytes)} de download · ${size(disk)} no disco${mapIncluded && a ? '. Seu mapa já está incluído; apenas o índice de endereços será baixado.' : ''}`
-          : 'O mapa do seu estado e o índice de endereços disponível já estão incluídos.';
+      : sel.osm_br && bytes
+        ? `${size(bytes)} de download via OpenStreetMap (openstreetmap.org) · ${size(disk)} no disco · inclui ruas, locais de apoio e busca por CEP/endereço.`
+        : sel.baseOnly && !a
+          ? `Estado selecionado: ${esc(sel.title)}. O mapa base do Brasil já está incluído no pacote.`
+          : bytes
+            ? `${size(bytes)} de download · ${size(disk)} no disco${mapIncluded && a ? '. Seu mapa já está incluído; apenas o índice de endereços será baixado.' : ''}`
+            : 'O mapa do seu estado e o índice de endereços disponível já estão incluídos.';
     if (unavailable) hint = (bytes ? `${size(bytes)} de download · ${size(disk)} no disco.` : 'O mapa do seu estado já está incluído.') + ' A busca de endereços por rua ainda não está disponível para este estado.';
     box.innerHTML = `<h2>${ico('map')}Seu mapa local</h2>
       <p class="s-mapnote">Ruas locais, construções, água e pontos de apoio. Disponível offline.</p>
@@ -405,7 +410,8 @@
     const b = $('#start'); b.disabled = true;
     const mSel = selectedModel();
     const wantAi = !!choice.ai && !!mSel && aiFits(mSel) && !curModels().includes(mSel.id);
-    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: wantAi, model: wantAi ? mSel.id : null, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
+    const mapSel = mapAdds();
+    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: wantAi, model: wantAi ? mSel.id : null, map: mapSel ? mapSel.id : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
     if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'A configuração não pôde iniciar.'; return }
     S.job = r; go('job'); poll();

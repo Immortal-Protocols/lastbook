@@ -22,6 +22,7 @@ from pathlib import Path
 
 from . import download, hardware, install
 from .manifest import Manifest
+from .. import osm_br
 
 DATA_NAME = install.DATA_NAME
 WORK_SUFFIX = '.setup'
@@ -167,7 +168,7 @@ class Setup:
         work = _work_for(target)
         ids = lambda key: (plan.get(key) or {}).get('id')
         pack = self.manifest.pack(ids('pack')) if plan.get('pack') else None
-        mp = self.manifest.map(ids('map')) if plan.get('map') else None
+        mp = self._resolve_map(ids('map')) if plan.get('map') else None
         model = self.manifest.model(ids('model')) if plan.get('model') else None
         addresses = self.manifest.address_index(ids('addresses')) if plan.get('addresses') else None
         if plan.get('addresses') and not addresses:
@@ -440,6 +441,14 @@ class Setup:
             return p.parent if p.name == DATA_NAME else p
         return self.current.parent if self.current else self.default_parent
 
+    def _resolve_map(self, map_id):
+        mp = self.manifest.map(map_id) if map_id else None
+        if map_id and map_id in osm_br.BR_STATES:
+            br_name = osm_br.BR_STATES[map_id][0]
+            if not mp or osm_br.fold(br_name) not in osm_br.fold(mp.get('title') or ''):
+                return osm_br.map_entry(map_id)
+        return mp
+
     def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, model_id=None):
         if repair:
             return self._start_repair(ai)
@@ -458,14 +467,17 @@ class Setup:
             model = self.manifest.model(model_id) if (ai or model_id) else None
             if (ai or model_id) and not model:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
-            mp = self.manifest.map(map_id) if map_id else None
+            mp = self._resolve_map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
                 return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
             requested_address = address_id
-            address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
-            if address_id in ('base', 'us', 'br'):
-                address_id = next(iter(cur.get('address_indexes', [])), None)
-            addresses = self.manifest.address_index(address_id) if address_id else None
+            if mp and mp.get('osm_br') and not requested_address:
+                addresses = None
+            else:
+                address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
+                if address_id in ('base', 'us', 'br'):
+                    address_id = next(iter(cur.get('address_indexes', [])), None)
+                addresses = self.manifest.address_index(address_id) if address_id else None
             if not addresses or not addresses['available']:
                 if requested_address:
                     return {'error': 'That state’s address search is not available yet.', 'code': 'unavailable'}
@@ -982,10 +994,52 @@ class Setup:
             if ours:
                 os.unlink(path)
 
+    def _set_osm_progress(self, it, tracker, done, total, phase='downloading'):
+        bytes_total = max(int(it.get('bytes_total') or 1), 1)
+        scaled = int(done * bytes_total / max(total, 1))
+        if phase != self.job.get('state'):
+            self._set(it, phase)
+        tracker.progress(scaled, bytes_total, phase)
+
     def _do_map(self, it, plan, work, control):
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
         map set at once; on its own it is staged and switched in when the app restarts (install._apply_map)."""
         mp = plan['map']
+        if mp.get('osm_br'):
+            staged = work / 'unpack-map'
+            lib = staged / DATA_NAME
+            shutil.rmtree(staged, ignore_errors=True)
+            base_lib = (work / 'unpack' / DATA_NAME) if plan['switch'] else self.current
+            tracker = _Item(it)
+            self._set(it, 'downloading', bytes_done=0, bytes_total=mp['download_bytes'])
+            osm_br.build_state_map(
+                mp['id'],
+                base_lib,
+                lib,
+                progress_cb=lambda done, total, phase='downloading': self._set_osm_progress(it, tracker, done, total, phase),
+                control=control,
+                allowed=self.allowed,
+                context=self.context,
+            )
+            addr_src = lib / 'derived' / 'geo' / 'addresses' / f"{mp['id']}.sqlite"
+            target_root = (work / 'unpack' / DATA_NAME) if plan['switch'] else Path(plan['target'])
+            if addr_src.is_file():
+                addr_dst = target_root / 'derived' / 'geo' / 'addresses' / f"{mp['id']}.sqlite"
+                addr_dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(addr_src, addr_dst)
+                shutil.rmtree(lib / 'derived' / 'geo' / 'addresses', ignore_errors=True)
+            if plan['switch']:
+                install.replace_map_in(work / 'unpack' / DATA_NAME, lib)
+                shutil.rmtree(staged, ignore_errors=True)
+            elif self.current:
+                old_dir = work / 'map-old'
+                shutil.rmtree(old_dir, ignore_errors=True)
+                install.swap_map(self.current, lib, old_dir)
+                install.check_map(self.current)
+                shutil.rmtree(staged, ignore_errors=True)
+            else:
+                plan['map_new'] = str(lib)
+            return
         got, offset = [], 0
         for f in mp['files']:
             path, ours = self._get_file(it, f, plan, work, control, offset)

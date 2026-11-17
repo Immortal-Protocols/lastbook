@@ -20,6 +20,7 @@ const Chat = (() => {
 
   function load() { try { return JSON.parse(localStorage.getItem('sg.chats')) || [] } catch { return [] } }
   const keep = () => { try { return localStorage.getItem('sg.chatKeep') !== 'no' } catch { return true } };
+  const hideThought = () => { try { return localStorage.getItem('sg.hideThought') === 'yes' } catch { return false } };
   function persist() { if (!keep()) return; try { localStorage.setItem('sg.chats', JSON.stringify(chats.slice(0, 60))) } catch { } }
   const byId = id => chats.find(c => c.id === id);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -56,6 +57,7 @@ const Chat = (() => {
         <div class="chat-top">
           <button class="btn plain chat-histbtn" id="openSide" aria-label="Mostrar conversas">${ico("clock")}<span>Conversas</span></button>
           <div class="chat-status" id="chatStatus" aria-live="polite"></div>
+          <button class="btn plain chat-thinkbtn" id="toggleThink" type="button" aria-pressed="${hideThought()}">${hideThought() ? 'Só resultado (mostrar pensamento)' : 'Não mostrar pensamento'}</button>
           <a class="btn plain" href="#/ask" id="newChat" aria-label="Nova conversa">${ico('ask')}<span>Nova</span></a>
         </div>
         ${q.get('from') && !cur ? `<div style="margin:2px 0 8px">${backButton(q.get('from'))}</div>` : ''}
@@ -81,6 +83,17 @@ const Chat = (() => {
     $('#composer').addEventListener('submit', e => { e.preventDefault(); if (busy()) return stop(); send(ta.value) });
     $('#openSide').onclick = () => $('#chatSide').classList.add('open');
     $('#closeSide').onclick = () => $('#chatSide').classList.remove('open');
+    $('#toggleThink').onclick = () => {
+      const next = !hideThought();
+      try { localStorage.setItem('sg.hideThought', next ? 'yes' : 'no') } catch { }
+      const bt = $('#toggleThink');
+      if (bt) {
+        bt.setAttribute('aria-pressed', String(next));
+        bt.textContent = next ? 'Só resultado (mostrar pensamento)' : 'Não mostrar pensamento';
+      }
+      renderLog();
+      toast(next ? 'Mostrando apenas o resultado' : 'Mostrando passos e pensamento');
+    };
     $('#keepChats').onchange = e => {
       try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { }
       if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast('As conversas serão esquecidas ao fechar esta página') } else { persist(); toast('As conversas serão mantidas neste dispositivo') }
@@ -214,13 +227,14 @@ const Chat = (() => {
   }
   function botHtml(m, i) {
     const l = live[cur.id], running = l && l.running && i === cur.messages.length - 1;
+    const noThought = hideThought();
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(STATES[m.state] || 'Processando…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(STATES[m.state] || 'Processando…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${!noThought && steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>Você pode continuar navegando e pesquisando. Estas são as páginas mais próximas da sua pergunta:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    if (running && found.length) h += `<div class="prefound"><p class="small muted">Páginas encontradas até agora — você pode abri-las enquanto a resposta é escrita:</p>${srcCards(found.slice(0, 6), true)}</div>`;
+    if (running && !noThought && found.length) h += `<div class="prefound"><p class="small muted">Páginas encontradas até agora — você pode abri-las enquanto a resposta é escrita:</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcCards(m.fallback, true);
     if (!running && m.content) {
       const cited = m.cited || [];
@@ -229,8 +243,8 @@ const Chat = (() => {
       if (cited.length) h += `<h3 class="srch">Fontes (${cited.length})</h3>${srcCards(cited, false)}`;
       else h += `<p class="notice small">Esta resposta não tem fontes vinculadas. Considere-a não verificada.</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');
-      if (other.length) h += `<details class="also"><summary>Também consultado (${other.length}, não utilizado)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
-      if ((m.steps || []).length) h += `<details class="also"><summary>Como buscou (${m.steps.length} ${m.steps.length === 1 ? 'passo' : 'passos'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
+      if (!noThought && other.length) h += `<details class="also"><summary>Também consultado (${other.length}, não utilizado)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
+      if (!noThought && (m.steps || []).length) h += `<details class="also"><summary>Como buscou (${m.steps.length} ${m.steps.length === 1 ? 'passo' : 'passos'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
       h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">Copiar</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Salvar resposta</button><button class="btn plain" data-act="export">Exportar conversa</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Perguntar novamente</button>` : ''}</div>`;
     }
     return h;
@@ -266,12 +280,18 @@ const Chat = (() => {
 
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
   function md(text, m) {
+    text = String(text || '')
+      .replace(/<\|channel>[\s\S]*?<channel\|>/gi, '')
+      .replace(/<\|channel>thought[\s\S]*$/gi, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<think>[\s\S]*$/gi, '');
+    const noThought = hideThought();
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
     const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Fonte ${k}">${k.replace(/^S/, '')}</a>` : '';
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
-    let out = '', list = null, section = 'main';
+    let out = '', list = null, section = 'main', inSec = false;
     const close = () => { if (list) { out += `</${list}>`; list = null } };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
       if (section !== 'main' || m.running) return inline(raw);
@@ -285,11 +305,13 @@ const Chat = (() => {
       const sec = /não encontrado na biblioteca|not found in the library/i.test(t) ? 'missing' : /as fontes divergem|sources disagree/i.test(t) ? 'disagree' : /raciocínio próprio|own reasoning/i.test(t) ? 'reasoning' : null;
       if (sec || head) {
         close();
-        if (out.includes('<div class="sec-')) out += '</div>';
+        if (inSec) { out += '</div>'; inSec = false }
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Não encontrado na biblioteca' : sec === 'disagree' ? 'As fontes divergem' : 'Raciocínio próprio do modelo — fora da biblioteca'}</h4>`; const rest = t.replace(/^[#*\s]*(não encontrado na biblioteca|not found in the library|as fontes divergem|sources disagree|raciocínio próprio \(fora da biblioteca\)|raciocínio próprio|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (noThought && section === 'reasoning') continue;
+        if (sec) { inSec = true; out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Não encontrado na biblioteca' : sec === 'disagree' ? 'As fontes divergem' : 'Raciocínio próprio do modelo — fora da biblioteca'}</h4>`; const rest = t.replace(/^[#*\s]*(não encontrado na biblioteca|not found in the library|as fontes divergem|sources disagree|raciocínio próprio \(fora da biblioteca\)|raciocínio próprio|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
+      if (noThought && section === 'reasoning') continue;
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
       if (ul || ol) {
         const want = ul ? 'ul' : 'ol';
@@ -299,7 +321,7 @@ const Chat = (() => {
       close(); out += `<p>${mark(t)}</p>`;
     }
     close();
-    if (out.includes('<div class="sec-')) out += '</div>';
+    if (inSec) out += '</div>';
     return out;
   }
 

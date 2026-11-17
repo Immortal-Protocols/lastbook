@@ -141,7 +141,7 @@ const MapView = (() => {
     const openWhole = !place && !(isFinite(lat) && isFinite(lon));   // nothing says where to open: the whole of this map, once its bounds have come
     st = { lat: isFinite(lat) ? lat : place ? place.lat : -14.2, lon: isFinite(lon) ? lon : place ? place.lon : -51.9, z: isFinite(z) ? Math.max(MINZ, Math.min(MAXZ, z)) : place ? place.z : 4,
       on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, hover: null,
-      dem: new Map(), demPending: new Set(), demNone: new Map(), style: load('mapStyle', { relief: true, contours: true }) };
+      dem: new Map(), demPending: new Set(), demNone: new Map(), style: load('mapStyle', { relief: true, contours: true, osm: true }) };
     if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kind: 'Local vinculado' };
     const cv = $('mapc');
     st.cv = cv; st.ctx = cv.getContext('2d');
@@ -246,6 +246,7 @@ const MapView = (() => {
       ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${n}</button>`).join('')}<button data-p="">Nenhuma</button></div>`}
       <fieldset class="style"><legend>Estilo do mapa</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>Fotos aéreas / satélite</span></label>`}
+        <label><input type="checkbox" data-style="osm"${st.style.osm !== false ? ' checked' : ''}><i class="msym style-ico">🗺</i><span>Mapa de ruas OpenStreetMap (Brasil)</span></label>
         <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Relevo sombreado (morros e vales)</span></label>
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>Curvas de nível (a partir do zoom 11)</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Áreas de pomares e vinhedos (colorido)</span></label>`}</fieldset>
@@ -452,8 +453,9 @@ const MapView = (() => {
       }
     }
     st.loading = loading;
+    if (st.style.osm !== false && !st.style.aerial && st.lon >= -75 && st.lon <= -28 && st.lat >= -35 && st.lat <= 6) osmLayer(g, V);
     if (st.style.crops !== false) cropLayer(g, V);
-    if (!st.style.aerial) terrainLayer(g, V);
+    if (!st.style.aerial) terrainLayer(g, V, st.style.osm !== false && st.lon >= -75 && st.lon <= -28 && st.lat >= -35 && st.lat <= 6);
     else if (st.style.contours) terrainLayer(g, V, true);
     labels.sort((a, b) => a.pri - b.pri);
     const boxes = [];
@@ -660,6 +662,44 @@ const MapView = (() => {
     const b = $('map-photo'); if (b) { b.setAttribute('aria-pressed', on); b.classList.toggle('on', on) }
     const c = document.querySelector('[data-style=aerial]'); if (c) c.checked = on;
     draw();
+  }
+  function osmTile(z, x, y) {
+    const k = tileKey(z, x, y);
+    if (st.osmTiles.has(k)) {
+      const t = st.osmTiles.get(k);
+      if (t === LOADING) return undefined;
+      if (!t.none) { st.osmTiles.delete(k); st.osmTiles.set(k, t); return t }
+      if (Date.now() - t.at < (t.failed ? 15000 : 120000) || st.osmPending >= 8) return null;
+    } else if (st.osmPending >= 8) return undefined;
+    st.osmTiles.set(k, LOADING); st.osmPending++;
+    const state = st, cache = st.osmTiles;
+    fetch(`/api/map/osm/${k}.png`).then(r => { if (r.status !== 200 && r.status !== 204) throw Error(r.status); return r.status === 200 ? r.blob() : null })
+      .then(b => b && createImageBitmap(b))
+      .then(img => {
+        if (st !== state || st.osmTiles !== cache) return img?.close?.();
+        st.osmTiles.delete(k); st.osmTiles.set(k, img || { none: true, at: Date.now() });
+        for (const [old, v] of st.osmTiles) { if (st.osmTiles.size <= 400) break; if (v === LOADING) continue; v.close?.(); st.osmTiles.delete(old) }
+      })
+      .catch(() => { if (st === state && st.osmTiles === cache) { st.osmTiles.delete(k); st.osmTiles.set(k, { none: true, failed: true, at: Date.now() }) } })
+      .finally(() => { if (st === state) { st.osmPending--; draw() } });
+    return undefined;
+  }
+  function osmLayer(g, V) {
+    st.osmTiles = st.osmTiles || new Map(); st.osmPending = st.osmPending || 0;
+    const tz = Math.max(0, Math.min(18, Math.floor(st.z + Math.log2(Math.min(2, devicePixelRatio || 1)) + 0.01))), ts = 256 * 2 ** (st.z - tz), cx = lon2x(st.lon, tz), cy = lat2y(st.lat, tz), w = V.w, h = V.h;
+    const x0 = Math.floor(cx - w / 2 / ts), x1 = Math.floor(cx + w / 2 / ts), y0 = Math.max(0, Math.floor(cy - h / 2 / ts)), y1 = Math.min(2 ** tz - 1, Math.floor(cy + h / 2 / ts));
+    g.save(); g.imageSmoothingQuality = 'high';
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      const n = 2 ** tz, wx = ((tx % n) + n) % n, sx = w / 2 + (tx - cx) * ts, sy = h / 2 + (ty - cy) * ts;
+      const t = osmTile(tz, wx, ty);
+      if (t) { g.drawImage(t, sx, sy, ts + 0.5, ts + 0.5); continue }
+      for (let up = 1; up <= 6 && tz - up >= 0; up++) {
+        const f = 2 ** up, pxx = Math.floor(wx / f), pyy = Math.floor(ty / f), pk = tileKey(tz - up, pxx, pyy);
+        const pt = (v => v && v !== LOADING && !v.none ? v : undefined)(st.osmTiles.get(pk));
+        if (pt) { const S = 256 / f; g.drawImage(pt, (wx - pxx * f) * S, (ty - pyy * f) * S, S, S, sx, sy, ts + 0.5, ts + 0.5); break }
+      }
+    }
+    g.restore();
   }
   // Cache entries: ImageBitmap, LOADING, or {none, at} for "no photo here (yet)". The photo download is still filling in,
   // so "none" is asked again after a minute at zoom 17+ (being downloaded now), 10 minutes below; a failed request after 10 s. Hits move to the end, so eviction is least-recent.
@@ -869,14 +909,22 @@ const MapView = (() => {
     const state = st, serial = ++st.serial.place;
     box.hidden = false; $('card').hidden = true; box.innerHTML = '<p class="muted small">Buscando…</p>';
     try {
-      const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
+      const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}&osm=1`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
       if (!r.length) {
-        const isPostal = /^\s*(?:\d{5}|\d{5}-?\d{3})\s*$/.test(q);
+        const isPostal = /^\s*(?:cep\b[:\s-]*)?(?:\d{5}|\d{5}-?\d{3})\s*$/i.test(q);
         const address = !isPostal && (/^\s*\d[\w-]*\s+\S/.test(q) || /^\s*[^\d\s][\w\s.\'-]*?(?:,|\s)\s*\d{1,5}[a-zA-Z]?(?:\s*$|[\s,])/.test(q));
-        box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Endereço não encontrado nos dados offline. Confira o logradouro e o número.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Baixar índice de endereços do seu estado</a>.' : '') : 'Nenhum local encontrado. Tente o nome do município, bairro ou CEP de 8 dígitos.') + '</p>'; return;
+        box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Endereço não encontrado nos dados offline nem no OpenStreetMap. Confira o logradouro e o número.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Baixar mapa/endereços do seu estado</a>.' : '') : 'Nenhum local encontrado. Tente o nome do município, bairro, rua ou CEP de 8 dígitos.') + '</p>'; return;
       }
-      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county|município|estado/i.test(p.kind) ? 10 : /ZIP|CEP|city|town|cidade|populated|^(Lake|Reservoir|Lago|Reservatório)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
+      const pick = p => {
+        box.hidden = true;
+        st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail };
+        closeCard();
+        const zoom = /county|município|estado|state/i.test(p.kind) ? 10 : /city|town|cidade/i.test(p.kind) ? 12 : /CEP|ZIP|bairro|suburb/i.test(p.kind) ? 15 : /rua|logradouro|highway/i.test(p.kind) ? 16 : 17;
+        go(p.lat, p.lon, zoom);
+        showPlace(st.mark);
+        st.cv.focus();
+      };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} resultado${r.length === 1 ? '' : 's'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);

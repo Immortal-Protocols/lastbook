@@ -629,8 +629,7 @@ def render(msgs, tools):
             seg += [['<|turn>' + role + '\n', True], [_text(m).strip(), False], ['<turn|>\n', True]]
         open_model = False
         i += 1
-    if not open_model:
-        seg.append(['<|turn>model\n<|channel>thought\n<channel|>', True])
+    seg.append(['<|channel>thought\n<channel|>', True] if open_model else ['<|turn>model\n<|channel>thought\n<channel|>', True])
     return seg
 
 
@@ -643,8 +642,37 @@ def _text(m):
     return ''
 
 
+_THOUGHT_RE = re.compile(r'<\|channel>.*?<channel\|>|<think>.*?</think>', re.S | re.I)
+_OPEN_THOUGHT_RE = re.compile(r'(?:<\|channel>|<think>).*$', re.S | re.I)
+
+
+def split_thinking(text):
+    """Separate Gemma/thinking channel blocks from visible answer text."""
+    s = text or ''
+    thoughts = [m.group(0) for m in _THOUGHT_RE.finditer(s)]
+    rest = _THOUGHT_RE.sub('', s)
+    if '<channel|>' in rest:
+        before, _, after = rest.rpartition('<channel|>')
+        thoughts.append(before + '<channel|>')
+        rest = after
+    m_close = re.search(r'</think>', rest, re.I)
+    if m_close:
+        thoughts.append(rest[:m_close.end()])
+        rest = rest[m_close.end():]
+    m_open = _OPEN_THOUGHT_RE.search(rest)
+    if m_open:
+        thoughts.append(m_open.group(0))
+        rest = rest[:m_open.start()]
+    for marker in ('<|channel>', '<channel|>', '<think>', '</think>'):
+        for k in range(min(len(marker) - 1, len(rest)), 0, -1):
+            if rest.endswith(marker[:k]):
+                rest = rest[:-k]
+                break
+    return '\n'.join(thoughts).strip(), rest
+
+
 def _strip_thinking(text):
-    return re.sub(r'<\|channel>.*?<channel\|>', '', text, flags=re.S).strip()
+    return split_thinking(text)[1].strip()
 
 
 def size_of(segments):
@@ -666,7 +694,7 @@ def parse_calls(text):
             args = {}
         calls.append((m.group(1), args))
     cut = text.find('<|tool_call>')
-    return (text if cut < 0 else text[:cut]), calls
+    return _strip_thinking(text if cut < 0 else text[:cut]), calls
 
 
 class _Args:

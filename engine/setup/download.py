@@ -29,6 +29,9 @@ ALLOWED_HOSTS = frozenset({
     'downloads.lastbook.org',
     'huggingface.co',
     'cas-bridge.xethub.hf.co',
+    'www.openstreetmap.org',
+    'nominatim.openstreetmap.org',
+    'brasilapi.com.br',
 })
 ALLOWED_SUFFIXES = ('.hf.co',)      # Hugging Face's download hosts (cas-bridge.xethub.hf.co and its siblings)
 MAX_REDIRECTS = 5

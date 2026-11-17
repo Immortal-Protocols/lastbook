@@ -33,7 +33,7 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
 
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
-from engine import saved_pages, address_search  # noqa: E402
+from engine import saved_pages, address_search, osm_br  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -1282,7 +1282,7 @@ def socal_classes():
 def _poi_sources(west, south, east, north):
     """(connection, skip-SoCal-duplicates) pairs for service points."""
     out = []
-    if mapdb() is not None and east >= -121.4 and west <= -114.1 and north >= 32.5 and south <= 35.9:
+    if mapdb() is not None:
         out.append((mapdb(), False))
     nat = national_mapdb()
     if nat is not None:
@@ -1518,31 +1518,87 @@ def water_places(q, limit=10, near=None):
     return [o for _, o in out[:limit]]
 
 
-def places(q, limit=20, near=None):
+def _local_map_places(q, limit=10):
+    """Search named streets, places and POIs inside map.sqlite and CEPs inside installed addresses/*.sqlite."""
+    out = []
+    q_fold = _fold_text(re.sub(r'^\s*cep\b[:\s-]*', '', q or '', flags=re.I)).strip()
+    m_cep = re.fullmatch(r'(\d{5})-?(\d{3})', q_fold)
+    if m_cep:
+        cep = m_cep.group(1) + m_cep.group(2)
+        cep_fmt = f'{m_cep.group(1)}-{m_cep.group(2)}'
+        addr_dir = HERE / 'derived' / 'geo' / 'addresses'
+        if addr_dir.is_dir():
+            for p in sorted(addr_dir.glob('*.sqlite')):
+                try:
+                    con = sqlite3.connect(ro_uri(p), uri=True)
+                    rows = con.execute(
+                        "SELECT street,city,state,AVG(lat),AVG(lon),COUNT(*) FROM addr "
+                        "WHERE replace(zip, '-', '') IN (?, ?) GROUP BY street, city, state LIMIT ?",
+                        (cep, cep[:5], limit),
+                    ).fetchall()
+                    con.close()
+                    for st_n, city_n, uf, la, lo, _cnt in rows:
+                        if la is not None and lo is not None:
+                            out.append({'name': f'CEP {cep_fmt} — {st_n}', 'kind': 'CEP',
+                                        'detail': f'{city_n}, {uf}', 'lat': la, 'lon': lo, 'source': 'Endereços offline', 'onMap': True})
+                except sqlite3.Error:
+                    pass
+        if out:
+            return out[:limit]
+    db = mapdb()
+    if db is not None and q_fold and len(q_fold) >= 2:
+        try:
+            like = f'%{q_fold}%'
+            for cls, name, lo, la in db.execute(
+                "SELECT cls,name,lon,lat FROM poi WHERE name IS NOT NULL AND name<>'' AND lower(name) LIKE ? LIMIT ?",
+                (like, limit),
+            ):
+                out.append({'name': name, 'kind': HELP.get(cls, cls.replace('_', ' ')), 'detail': 'Mapa offline',
+                            'lat': la, 'lon': lo, 'source': 'OpenStreetMap', 'onMap': True})
+            for layer, cls, name, lo, la in db.execute(
+                "SELECT f.layer,f.cls,f.name,(i.minx+i.maxx)/2,(i.miny+i.maxy)/2 FROM feat_idx i JOIN feat f ON f.id=i.id "
+                "WHERE f.layer IN ('place','road') AND f.name IS NOT NULL AND f.name<>'' AND lower(f.name) LIKE ? LIMIT ?",
+                (like, limit * 2),
+            ):
+                out.append({'name': name, 'kind': 'Rua / Logradouro' if layer == 'road' else cls,
+                            'detail': 'Mapa offline', 'lat': la, 'lon': lo, 'source': 'OpenStreetMap', 'onMap': True})
+        except sqlite3.Error:
+            pass
+    return out[:limit]
+
+
+def places(q, limit=20, near=None, osm=False):
     if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
-    if not PLACEDB.exists():
-        return []
-    db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
-    words = re.findall(r'\w+', q)
-    if not words:
-        return []
+        hits = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        if hits:
+            return hits
+        return osm_br.search_places(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near) if osm else []
+    q_clean = re.sub(r'^\s*cep\b[:\s-]*', '', q or '', flags=re.I).strip()
+    is_cep = bool(re.fullmatch(r'\d{5}-?\d{3}', q_clean))
+    local_extra = _local_map_places(q_clean, limit=limit)
     rows = []
-    full = False
-    for ws in word_sets(words):
-        if full and len(ws) < len(words):
-            break  # every word matched somewhere: no need to loosen
-        if not ws:
-            continue
-        rows += db.execute('SELECT p.name,p.kind,p.detail,p.lat,p.lon,p.rank,p.source FROM place_fts f JOIN place p ON p.id=f.rowid '
-                           'WHERE place_fts MATCH ? ORDER BY p.rank, bm25(place_fts) LIMIT 200',
-                           (' '.join('"%s"*' % w.replace('"', '') for w in ws),)).fetchall()
-        if len(ws) == len(words):
-            full = bool(rows)
+    if PLACEDB.exists():
+        db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
+        try:
+            words = re.findall(r'\w+', q_clean or q)
+            if words:
+                full = False
+                for ws in word_sets(words):
+                    if full and len(ws) < len(words):
+                        break  # every word matched somewhere: no need to loosen
+                    if not ws:
+                        continue
+                    rows += db.execute('SELECT p.name,p.kind,p.detail,p.lat,p.lon,p.rank,p.source FROM place_fts f JOIN place p ON p.id=f.rowid '
+                                       'WHERE place_fts MATCH ? ORDER BY p.rank, bm25(place_fts) LIMIT 200',
+                                       (' '.join('"%s"*' % w.replace('"', '') for w in ws),)).fetchall()
+                    if len(ws) == len(words):
+                        full = bool(rows)
+        finally:
+            db.close()
     rows = list(dict.fromkeys(rows))
     def norm(t):
         return ' '.join(re.sub(r'\b(saint|sao)\b', 's', re.sub(r'[^\w ]+', ' ', _fold_text(t))).split())
-    ql = norm(q)
+    ql = norm(q_clean or q)
     nat = national_mapdb()
     size = {}
 
@@ -1561,6 +1617,11 @@ def places(q, limit=20, near=None):
     rows.sort(key=lambda r: (norm(r[0]) != ql, not norm(r[0]).startswith(ql), r[5] > 2 and norm(r[0]) == ql and importance(r),
                              -round(near_bonus(home, r[3], r[4])), r[5]))
     seen, out = set(), []
+    for item in local_extra:
+        k = (item['name'].lower(), round(item['lat'], 2), round(item['lon'], 2))
+        if k not in seen:
+            seen.add(k)
+            out.append(item)
     for name, kind, detail, lat, lon, rank, src in rows:
         k = (name.lower(), round(lat, 2), round(lon, 2))
         if k in seen:
@@ -1573,6 +1634,20 @@ def places(q, limit=20, near=None):
     water = water_places(q, near=near)
     if water:  # a query that names a water word puts lakes and dams first; otherwise towns lead
         out = (water + out) if set(w for w in re.findall(r'\w+', _fold_text(q))) & WATER_WORDS else (out[:8] + water + out[8:])
+    if osm:
+        br_hits = [x for x in out if -34.5 <= x.get('lat', 0) <= 6.0 and -74.5 <= x.get('lon', 0) <= -28.0]
+        has_cep = any(x.get('kind') == 'CEP' for x in out)
+        has_exact_street = bool(re.search(r'\b(rua|avenida|av|alameda|travessa|praca|rodovia|estrada)\b', _fold_text(q))) and any(x.get('kind') in ('Rua / Logradouro', 'Endereço') for x in br_hits)
+        if not br_hits or (is_cep and not has_cep) or (re.search(r'\b(rua|avenida|av|alameda|travessa|praca|rodovia|estrada)\b', _fold_text(q)) and not has_exact_street):
+            osm_hits = osm_br.search_places(q, HERE / 'derived' / 'geo', limit=limit, near=near)
+            if osm_hits:
+                merged = []
+                for x in osm_hits + out:
+                    k = (x['name'].lower(), round(x['lat'], 3), round(x['lon'], 3))
+                    if k not in seen or x in osm_hits:
+                        if not any(m['name'].lower() == x['name'].lower() and abs(m['lat'] - x['lat']) < 0.01 and abs(m['lon'] - x['lon']) < 0.01 for m in merged):
+                            merged.append(x)
+                return merged[:limit]
     return out[:limit + len(water)]
 
 
@@ -1643,6 +1718,17 @@ def _distinct(path, sql):
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
     kinds, boxes = set(), []
+    map_bounds = None
+    if MAPDB.exists():
+        db = sqlite3.connect(ro_uri(MAPDB), uri=True)
+        try:
+            meta = dict(db.execute('SELECT key,value FROM meta').fetchall())
+            if meta.get('state') in osm_br.BR_STATES and meta.get('bounds'):
+                map_bounds = [float(v) for v in meta['bounds'].split(',')]
+        except (sqlite3.Error, ValueError):
+            pass
+        finally:
+            db.close()
     for path in (MAPDB, HERE / 'derived/geo/national.sqlite'):
         kinds |= set(_distinct(path, 'SELECT DISTINCT cls FROM poi'))
         if Path(path).exists():
@@ -1658,8 +1744,8 @@ def map_contents():
     for path in (LIB / 'geography/resources/atlas.sqlite', WATERDB, CROPDB):
         kinds |= set(_distinct(path, 'SELECT DISTINCT kind FROM resource'))
     contours = any(r for r in _distinct(TERRAINDB, 'SELECT 1 FROM tile WHERE z>=11 LIMIT 1'))
-    bounds = None
-    if boxes:
+    bounds = map_bounds
+    if bounds is None and boxes:
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
         if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
             bounds = None
@@ -2161,6 +2247,17 @@ class Handler(library.Handler):
                 return self.send_json(shelf(path[11:], qs.get('kind', 'all'), qs.get('q', ''), int(qs.get('offset', 0))))
             if path == '/api/collection':
                 return self.send_json(collection_items(qs.get('name', ''), int(qs.get('offset', 0))))
+            m = re.fullmatch(r'/api/map/osm/(\d+)/(\d+)/(\d+)\.png', path)
+            if m:
+                png = osm_br.fetch_osm_tile(*map(int, m.groups()), CACHE)
+                if png is None:
+                    self.send_response(204); self.send_header('Cache-Control', 'no-store'); self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header('Content-Type', 'image/png'); self.send_header('Content-Length', str(len(png)))
+                self.send_header('Cache-Control', 'max-age=86400'); self.end_headers()
+                self.wfile.write(png)
+                return
             m = re.fullmatch(r'/api/map/(terrain|crops)/(\d+)/(\d+)/(\d+)\.png', path)
             if m:
                 png = (terrain_tile if m[1] == 'terrain' else crop_tile)(*map(int, m.groups()[1:]))
@@ -2217,7 +2314,7 @@ class Handler(library.Handler):
                     near_pt = tuple(map(float, qs['near'].split(',')))[:2] if qs.get('near') else None
                 except ValueError:
                     near_pt = None
-                return self.send_json(places(qs.get('q', '')[:100], near=near_pt))
+                return self.send_json(places(qs.get('q', '')[:100], near=near_pt, osm=(qs.get('osm') == '1')))
             if path == '/api/library':
                 s = json.loads((LIB / 'summary.json').read_text(encoding='utf-8'))
                 sources = (catalog()['by_path'].get(SOURCES_PAGE) or {}).get('id')

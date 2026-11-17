@@ -63,7 +63,7 @@ PT_TO_WORDS = {str(number): word for number, word in enumerate(PT_ONES)}
 _STANDALONE_POSTCODE = re.compile(r'^\s*(?:\d{5}|\d{5}-?\d{3})\s*$')
 _LEADING_NUM_ADDR = re.compile(r'^\s*\d[\w-]*\s+\S')
 _LEADING_CEP = re.compile(r'^\s*\d{5}-\d{3}(?:\s|$)')
-_BR_NUM_ADDR = re.compile(r'^\s*[^\d\s][\w\s.\'-]*?(?:,|\s)\s*(\d{1,5}[a-zA-Z]?)(?:\s*$|[\s,])')
+_BR_NUM_ADDR = re.compile(r'^\s*[^\d\s][\w\s.,\'-]*?(?:,|\s)\s*(?:n[roº°.]*\s+|num(?:ero)?\s+)?(\d{1,5}[a-zA-Z]?)(?:\s*$|[\s,])', re.I)
 _HOUSE_NUM_TOKEN = re.compile(r'^\d{1,5}[a-z]?$')
 
 
@@ -78,11 +78,12 @@ def normalize(text):
 
 def is_address_query(query):
     """A standalone ZIP or CEP remains a place query. A street with a house number is an address."""
-    if _STANDALONE_POSTCODE.fullmatch(query or ''):
+    q = re.sub(r'^\s*cep\b[:\s-]*', '', query or '', flags=re.I)
+    if _STANDALONE_POSTCODE.fullmatch(q):
         return False
-    if _LEADING_NUM_ADDR.match(query or '') and not _LEADING_CEP.match(query or ''):
+    if _LEADING_NUM_ADDR.match(q) and not _LEADING_CEP.match(q):
         return True
-    cleaned = re.sub(r'(?:[\s,;-]+)\d{5}-?\d{3}\s*$', '', _strip_accents(query or ''))
+    cleaned = re.sub(r'(?:[\s,;-]+)\d{5}-?\d{3}\s*$', '', _strip_accents(q))
     return bool(_BR_NUM_ADDR.match(cleaned))
 
 
@@ -118,7 +119,7 @@ def _pop_state(tokens):
 
 
 def _parts(query):
-    raw = query.strip()
+    raw = re.sub(r'^\s*cep\b[:\s-]*', '', query.strip(), flags=re.I).strip()
     postcode = ''
     m_cep = re.search(r'(?:[\s,;-]+)(\d{5})-?(\d{3})\s*$', raw)
     if m_cep:
@@ -142,6 +143,8 @@ def _parts(query):
         return '', [], '', postcode
     number = tokens[num_idx].upper()
     street_tokens = tokens[:num_idx]
+    while street_tokens and street_tokens[-1] in ('n', 'no', 'nr', 'num', 'numero'):
+        street_tokens.pop()
     after_tokens, state = _pop_state(tokens[num_idx + 1:])
     if not state and after_tokens:
         # Handle queries like "Rua Augusta, 1500, São Paulo" where city matches a state name and no UF was given.

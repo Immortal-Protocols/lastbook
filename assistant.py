@@ -445,9 +445,12 @@ def _local_round(msgs, tools, cancelled, wrote, set_state):
         return 'A pergunta e as fontes ficaram longas demais para a IA local. Inicie uma nova conversa ou faça uma pergunta mais curta.'
     text, sent = [''], [0]
 
-    def piece(t):   # the person sees the answer as it is written, up to the first tool call, which is markup
+    def piece(t):   # the person sees the answer as it is written, up to the first tool call and skipping thinking tokens
         text[0] += t
-        visible = text[0].split('<|tool_call>', 1)[0].lstrip()
+        thought, visible = llm_local.split_thinking(text[0].split('<|tool_call>', 1)[0])
+        if thought and not visible.strip():
+            set_state('thinking')
+        visible = visible.lstrip()
         if len(visible) > sent[0]:
             wrote(visible[sent[0]:])
             sent[0] = len(visible)

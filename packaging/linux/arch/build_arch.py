@@ -109,13 +109,19 @@ def prerequisites():
     for command in ('git', 'makepkg', 'pacman', 'gcc', 'pkg-config', 'readelf', 'nm', 'bsdtar', 'zstd', 'fakeroot'):
         if not shutil.which(command, path='/usr/bin:/bin'):
             raise ValueError(f'missing prerequisite: {command}; see packaging/linux/arch/README.md')
-    subprocess.run([sys.executable, '-I', '-B', '-c', 'import pip; from PIL import Image'], check=True)
     subprocess.run(['pkg-config', '--exists', 'gstreamer-1.0', 'gstreamer-base-1.0'], check=True)
     missing = subprocess.run(['pacman', '-T', 'python-pip', 'python-pillow', 'python-gobject', 'gtk3',
                               'webkit2gtk-4.1>=2.40', 'libsoup3', 'gstreamer', 'gst-plugins-base',
                               'gst-plugins-good', 'gst-libav', 'gcc-libs'], capture_output=True, text=True)
     if missing.returncode:
         raise ValueError('missing Arch dependencies: ' + (missing.stdout or missing.stderr).strip())
+    # After the pacman check, so a stock Arch install (python ships without pip) gets the sentence above
+    # instead of a bare ModuleNotFoundError traceback from the probe.
+    probe = subprocess.run([sys.executable, '-I', '-B', '-c', 'import pip; from PIL import Image'],
+                           capture_output=True, text=True)
+    if probe.returncode:
+        raise ValueError('python-pip/python-pillow are installed but do not import: '
+                         + (probe.stderr or probe.stdout).strip().splitlines()[-1])
 
 
 def main():

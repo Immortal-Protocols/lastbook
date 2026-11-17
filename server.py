@@ -31,6 +31,13 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
     if _data:
         os.environ['LASTBOOK_DATA'] = _data
 
+# A packaged install keeps its wheels in lib/ beside this file (packaging/linux/lastbook.py does the same for
+# the desktop app). Running this script directly must find them too: otherwise /api/page/*.png fails with
+# "No module named 'pypdfium2'" even though the package installed it, because only the app launcher adds lib/.
+_BUNDLED = Path(os.path.realpath(__file__)).parent / 'lib'
+if _BUNDLED.is_dir() and str(_BUNDLED) not in sys.path:
+    sys.path.insert(0, str(_BUNDLED))
+
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search  # noqa: E402

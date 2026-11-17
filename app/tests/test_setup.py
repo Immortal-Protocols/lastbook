@@ -869,9 +869,10 @@ class Manage(Base):
 
     def test_repair_damaged_file_and_model(self):
         lib = self.installed_library()
-        big = lib / 'library-data' / 'big.bin'
-        big.write_bytes(b'\0' + big.read_bytes()[1:])
-        (lib / 'models' / 'model.gguf').write_bytes(b'\0' + self.model[1:])
+        for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):
+            data = bytearray(path.read_bytes())
+            data[0] ^= 1
+            path.write_bytes(data)
         s = self.setup('manage', current=lib)
         s.start(repair=True)
         j = self.wait(s)

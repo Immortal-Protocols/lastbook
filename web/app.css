@@ -77,7 +77,12 @@ svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-lin
 .side>*{flex:none}   /* a short window scrolls the sidebar; nothing in it is squeezed */
 .side-top{display:flex;align-items:center;gap:8px;height:var(--top-h);padding:0 6px 0 10px}
 .side-brand{display:flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font:650 16.5px/1 var(--display);min-width:0}
-.side-brand svg{width:22px;height:22px;color:var(--logo);flex:none}
+/* The Lastbook mark: the website's ink drawing (website-next/img/ink/mark.svg), drawn once in the page as #lbMark. Its ink takes the text
+   colour; its paper, always closed in by ink, is white in light mode and near black in dark mode, so it reads like the printed mark. */
+.mk-defs{position:absolute;width:0;height:0;overflow:hidden}
+.mk{--mk-paper:#fff}
+@media (prefers-color-scheme:dark){.mk{--mk-paper:#111112}}
+.side-brand svg{width:28px;height:28px;color:var(--ink);flex:none;margin:-3px 0}
 .in-app .side-brand{display:none}
 .side-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
 .side a.row-s{position:relative;display:flex;align-items:center;gap:11px;height:var(--row-h);padding:0 10px;border-radius:var(--r-row);color:var(--ink);text-decoration:none;font:400 15.5px/1 var(--font)}
@@ -106,7 +111,7 @@ svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-lin
 .scrolled .top{border-bottom-color:var(--bar-line)}
 .top-in{display:flex;gap:10px;align-items:center;min-height:var(--top-h);padding:0 16px}
 .brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font:650 17px/1 var(--display);white-space:nowrap}
-.brand-mark{width:24px;height:24px;color:var(--logo)}
+.brand-mark{width:28px;height:28px;color:var(--ink)}
 .tb-btn{display:none;place-items:center;flex:none;width:34px;height:30px;padding:0;border:0;border-radius:var(--r-row);background:transparent;color:var(--ink2)}
 .tb-btn:hover:not([disabled]){background:var(--field)}
 .tb-btn:active:not([disabled]){opacity:.7}
@@ -880,7 +885,7 @@ body.map-maxed{overflow:hidden}
   html.plat-win.wcap{--bar-h:calc(var(--top-h) + var(--cap-h))}
   html.plat-win.wcap.no-bar{--bar-h:var(--cap-h)}
   html.wcap .capband{display:flex;align-items:center;gap:12px;position:fixed;z-index:45;left:0;top:0;right:0;height:var(--cap-h);padding:var(--cap-top,0px) 0 0 104px;background:var(--side-bg);color:var(--ink);font:12px/1 var(--font);white-space:nowrap;-webkit-user-select:none;user-select:none;app-region:drag;-webkit-app-region:drag}
-  html.wcap .capband svg{width:16px;height:16px;flex:none;color:var(--logo)}
+  html.wcap .capband svg{width:18px;height:18px;flex:none;color:var(--ink)}
   html.wcap.inactive .capband span{color:var(--ink3)}   /* as a Windows 11 title bar's name goes grey behind another window */
   html.wcap #tbBack,html.wcap #sideBtn,html.wcap.compact #sideBtn{position:fixed;z-index:46;top:calc(var(--cap-top,0px) + max(0px,(var(--cap-h) - var(--cap-top,0px) - 32px) / 2));width:40px;height:min(32px,calc(var(--cap-h) - var(--cap-top,0px)));app-region:no-drag;-webkit-app-region:no-drag}
   html.wcap #tbBack{left:4px}

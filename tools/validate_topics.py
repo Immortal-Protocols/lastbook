@@ -36,6 +36,33 @@ def items(t):
         yield from (('route:' + str(s.get('title')), i) for i in s.get('read', []))
     for l in t.get('limits', []):
         if l.get('doc') or l.get('zim'): yield ('limits', l)
+    for c in t.get('choices', []):
+        for tool in c.get('tools', []):
+            yield from (('tool:' + str(tool.get('id')), s) for s in tool.get('sources', []))
+
+
+TOOL_KINDS = {'dose', 'clock'}
+UNITS = {'L', 'gal'}
+
+
+def tool_problems(t):
+    """What is wrong with the shape of a guide's tools (web/tools.js does arithmetic on these figures, so each must be exact)."""
+    out = []
+    for c in t.get('choices', []):
+        for tool in c.get('tools', []):
+            where = 'tool:' + str(tool.get('id'))
+            if tool.get('kind') not in TOOL_KINDS: out.append(f'{where}: kind must be one of {sorted(TOOL_KINDS)}')
+            if not tool.get('id') or not tool.get('title'): out.append(f'{where}: needs an id and a title')
+            if not tool.get('sources'): out.append(f'{where}: needs at least one source'); continue
+            for s in tool['sources']:
+                if not s.get('page'): out.append(f'{where}: {s.get("doc")} needs the page the figures are on')
+                if tool.get('kind') == 'dose':
+                    rates = s.get('rates') or []
+                    if not rates: out.append(f'{where}: {s.get("doc")} has no rates')
+                    for r in rates:
+                        if not isinstance(r.get('amount'), (int, float)) or isinstance(r.get('amount'), bool) or r['amount'] <= 0 or r.get('per') not in UNITS:
+                            out.append(f'{where}: {s.get("doc")} rate {r} needs a positive amount and per in {sorted(UNITS)}')
+    return out
 
 
 ARCHIVES = {}
@@ -77,7 +104,8 @@ def main(args):
             if r['kind'] == 'metadata': print(f'{f.name} {where}: use the video id, not metadata {i["doc"]}'); errors += 1
             p = i.get('page')
             if p and r.get('pages') and not (1 <= p <= r['pages']): print(f'{f.name} {where}: page {p} out of range for {i["doc"]} ({r["pages"]})'); errors += 1
-            if not i.get('label') and where != 'limits': print(f'{f.name} {where}: missing label for {i.get("doc")}'); errors += 1
+            if not i.get('label') and where != 'limits' and not where.startswith('tool:'): print(f'{f.name} {where}: missing label for {i.get("doc")}'); errors += 1
+        for why in tool_problems(t): print(f'{f.name} {why}'); errors += 1
         print(f'{f.name}: {n} references checked')
     print('ERRORS', errors)
     return 1 if errors else 0

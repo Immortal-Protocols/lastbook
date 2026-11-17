@@ -134,6 +134,25 @@
      "label": "Signs a wound is infected or spreading",
      "note": "Swelling, redness, heat, pus, bad smell; fever and swollen lymph nodes mean the infection is spreading. Next page covers sepsis danger signs."
     }
+   ],
+   "tools": [
+    {
+     "kind": "clock",
+     "id": "tourniquet",
+     "title": "Keep the time a tourniquet went on",
+     "sources": [
+      {
+       "doc": "med-68adb7585ea5d7e0",
+       "page": 170,
+       "note": "Says to record the exact time a tourniquet was applied and write it on the person’s skin or the tourniquet. Written for health workers."
+      },
+      {
+       "doc": "med-443ae5cfaa6ecc68",
+       "page": 11,
+       "note": "Says to get to a hospital as fast as you can: the limb is likely to be lost after 2 or 3 hours."
+      }
+     ]
+    }
    ]
   },
   {

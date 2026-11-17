@@ -247,6 +247,10 @@ def topics_resolved():
         t['limits'] = [resolve_item(i) if item_here(i, zims) else {'text': i.get('text')} for i in t.get('limits', [])]
         for k in ('choices', 'route'):
             steps = [dict(c, read=here(c.get('read', [])), had=bool(c.get('read'))) for c in t.get(k, [])]
+            for c in steps:     # a tool works only on figures from pages this library holds: one with none of its sources left is hidden
+                if 'tools' in c:
+                    c['tools'] = [dict(tl, sources=here(tl.get('sources', []))) for tl in c['tools']]
+                    c['tools'] = [tl for tl in c['tools'] if tl['sources']]
             t[k] = [{a: b for a, b in c.items() if a != 'had'} for c in steps if still_useful(c)]
         res.append(t)
     return res

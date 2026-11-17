@@ -128,7 +128,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--manifest', type=Path, required=True, help='explicit verified public setup manifest-v1.json')
     ap.add_argument('--version', default='1.1.9')
+    ap.add_argument('--llm', type=Path,
+                    help='directory holding a built lastbook-llm runner (output of '
+                         'packaging/llm/build_llm_linux.sh); bundled as /opt/lastbook/llm')
     args = ap.parse_args()
+    llm = None
+    if args.llm:
+        llm = checked(args.llm, directory=True)
+        runner = llm / 'lastbook-llm'
+        if not runner.is_file() or not os.access(runner, os.X_OK):
+            raise ValueError(f'{llm} has no executable lastbook-llm')
     if not re.fullmatch(r'[0-9]+(?:\.[0-9A-Za-z]+)*', args.version):
         raise ValueError('version must contain only dot-separated alphanumeric components, starting with digits')
     manifest_file = checked(args.manifest)
@@ -184,8 +193,20 @@ def main():
     archive(prepared, tar)
     py = sys.version_info
     template = checked(HERE / 'PKGBUILD.in').read_text(encoding='utf-8')
-    for key, value in {'VERSION': args.version, 'PYTHON': f'{py.major}.{py.minor}',
-                       'PYTHON_NEXT': f'{py.major}.{py.minor + 1}', 'SOURCE_SHA256': sha256(tar)}.items():
+    values = {'VERSION': args.version, 'PYTHON': f'{py.major}.{py.minor}',
+              'PYTHON_NEXT': f'{py.major}.{py.minor + 1}', 'SOURCE_SHA256': sha256(tar),
+              'LLM_SOURCE': '', 'LLM_SHA256': '', 'LLM_ARGS': ''}
+    if llm:
+        # The runner travels as its own source so the payload keeps its executable bits
+        # and libllama.so beside it, exactly as the Debian build lays it out.
+        llm_tar = out / 'lastbook-llm.tar'
+        with tarfile.open(llm_tar, 'w') as t:
+            for path in sorted(llm.rglob('*')):
+                if path.is_file() and not path.is_symlink():
+                    t.add(str(path), arcname='llm-runner/' + path.relative_to(llm).as_posix())
+        values.update({'LLM_SOURCE': "'lastbook-llm.tar'", 'LLM_SHA256': f"'{sha256(llm_tar)}'",
+                       'LLM_ARGS': '--llm "$srcdir/llm-runner"'})
+    for key, value in values.items():
         template = template.replace('@' + key + '@', value)
     (out / 'PKGBUILD').write_text(template, encoding='utf-8')
     # Paths are resolved from the generated build directory. Never source a

@@ -16,9 +16,12 @@ depends=('python>=@PYTHON@' 'python<@PYTHON_NEXT@' 'python-gobject' 'gtk3'
 # gst-plugin-va the player runs with a black picture: gst-play reports
 # "Missing plugin: AV1 decoder". Verified on Mesa 26 / RADV, RX 9070 XT.
 makedepends=('python-pip' 'python-pillow' 'pkgconf')
+# The local AI runner falls back to the CPU without a Vulkan driver; the .deb
+# Recommends libvulkan1 for the same reason.
+optdepends=('vulkan-icd-loader: local AI on a graphics card')
 options=('!strip' '!debug' '!distcc' '!ccache')
-source=('lastbook-source.tar')
-sha256sums=('@SOURCE_SHA256@')
+source=('lastbook-source.tar' @LLM_SOURCE@)
+sha256sums=('@SOURCE_SHA256@' @LLM_SHA256@)
 
 build() {
   local actual
@@ -41,7 +44,7 @@ package() {
   local source_root="$srcdir/lastbook/source"
   /usr/bin/python3 -I -B "$source_root/packaging/linux/stage_linux.py" \
     --source "$source_root" --ship "$srcdir/lastbook/ship" --vendor "$srcdir/vendor" \
-    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" --channel arch || return 1
+    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" --channel arch @LLM_ARGS@ || return 1
   install -Dm644 "$source_root/LICENSE" "$pkgdir/usr/share/licenses/lastbook/LICENSE" || return 1
   install -Dm644 "$source_root/THIRD_PARTY_NOTICES.md" "$pkgdir/usr/share/doc/lastbook/THIRD_PARTY_NOTICES.md" || return 1
   # Required even with --nocheck: the same payload rules as the Debian build.

@@ -59,3 +59,42 @@ not evidence that the whole state is covered or that facilities are operational.
 
 Official setup offers only archives scanned, published and listed by the release maintainer on
 `downloads.lastbook.org`. A review archive on a contributor's fork does not make it an official download.
+
+
+## Broader extract areas for rural coverage
+
+Eight additional definitions cover the envelopes of Geofabrik’s state/territory extracts. These are source extract areas, not guarantees of administrative-boundary precision, complete feature coverage or safe access. The standalone ACT extract uses the filename `act`; Geofabrik also includes ACT and Jervis Bay with NSW. The ACT extract does not establish Jervis Bay or external-territory coverage.
+
+Source polygon URLs, SHA-256 hashes, vertex counts and rounded-out envelopes, checked 17 November 2026, are recorded in `AUSTRALIAN-EXTRACT-BOUNDS.json`. The official source listing is https://download.geofabrik.de/australia-oceania/australia.html .
+
+| Id | Extract area | West, south, east, north |
+| --- | --- | --- |
+| au-act | Australian Capital Territory extract area | 148.75, -35.93, 149.41, -35.12 |
+| au-nsw | New South Wales extract area | 140.99, -37.76, 160.08, -28.13 |
+| au-nt | Northern Territory extract area | 128.67, -26.01, 140.43, -9.97 |
+| au-qld | Queensland extract area | 137.99, -29.19, 154.21, -8.84 |
+| au-sa | South Australia extract area | 128.99, -39.84, 141.01, -25.99 |
+| au-tas | Tasmania extract area | 143.47, -56.87, 161.68, -39.19 |
+| au-vic | Victoria extract area | 140.95, -39.24, 150.47, -33.97 |
+| au-wa | Western Australia extract area | 109.92, -41.17, 130.32, -12.83 |
+
+Actual broader review builds now cover all eight definitions. They use the dated 15 November 2026 sources, with input receipts, SQLite integrity checks, ZIP CRC checks and passing region-map scans. New whole-extract native UI checks are pending; the earlier metro maps and Melbourne suburb finder were checked in the native Mac app. No release manifest is silently changed by adding these definitions.
+
+The review ZIP metadata is set to its actual dated input, rather than the generic builder’s build-time `data_as_of` fallback. The input receipt remains the authoritative provenance. Named-point place-finder sidecars are separate review artifacts from PR #90; they are not street-address/postcode indexes and have not changed the existing four-file region-map release contract.
+
+The required source suite and region-source tests are run before publication. A full Mac release-bundle attempt stopped at missing `uv`, and the checkout does not hold the release-baseline data required by that recipe. Map SQLite/ZIP integrity and region-map scans are separate checks, not a claim that a complete release app bundle/package scan ran.
+
+### Whole-extract review results
+
+| Id | Feature rows | Mapped POI rows | Named point sidecar | Map ZIP bytes |
+| --- | ---: | ---: | ---: | ---: |
+| au-act | 204902 | 3747 | 187 | 14795527 |
+| au-nsw | 2491059 | 58132 | 12659 | 220438034 |
+| au-nt | 139947 | 3848 | 1019 | 14871632 |
+| au-qld | 1801743 | 42877 | 6136 | 163931859 |
+| au-sa | 825663 | 13443 | 1652 | 63819563 |
+| au-tas | 521092 | 5259 | 1276 | 47358168 |
+| au-vic | 2683842 | 46851 | 3054 | 200698704 |
+| au-wa | 1016535 | 21290 | 3373 | 104741123 |
+
+All eight map ZIPs together are 830,654,610 bytes. The separate place indexes contain 29,356 named points. Counts are database rows, not verified emergency facilities or complete address coverage. All queries in the review manifest (capitals and selected regional towns) resolve within their map boxes. The tests include a fixture-only disk-capacity adjustment: synthetic Setup recommendations must not depend on the real host disk having the production 5–20 GB reserve. Low-space checks and production code remain unchanged.

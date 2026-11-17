@@ -1,0 +1,126 @@
+{
+  "checked": "2026-11-17",
+  "scope": "Eight Geofabrik extract envelopes. ACT has its own act extract and is also included with Jervis Bay in NSW. External-territory coverage must not be inferred.",
+  "extracts": [
+    {
+      "code": "au-act",
+      "title": "Australian Capital Territory extract area",
+      "country": "Australia",
+      "bbox": [
+        148.75,
+        -35.93,
+        149.41,
+        -35.12
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/act-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/act.poly",
+      "polygon_sha256": "8b868b248d33d15fa449ad75ba3fefc6417d49d0830fe696e4a46960abe02246",
+      "polygon_vertices": 86
+    },
+    {
+      "code": "au-nsw",
+      "title": "New South Wales extract area",
+      "country": "Australia",
+      "bbox": [
+        140.99,
+        -37.76,
+        160.08,
+        -28.13
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/new-south-wales-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/new-south-wales.poly",
+      "polygon_sha256": "577b4b49c43c02ccab6d691b4b45d015089298bf5cc5666533328e62abf90784",
+      "polygon_vertices": 871
+    },
+    {
+      "code": "au-nt",
+      "title": "Northern Territory extract area",
+      "country": "Australia",
+      "bbox": [
+        128.67,
+        -26.01,
+        140.43,
+        -9.97
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/northern-territory-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/northern-territory.poly",
+      "polygon_sha256": "47dcbc154337acd25d95b8920e389a7e43dfe4230d01f85623313e685937314e",
+      "polygon_vertices": 9
+    },
+    {
+      "code": "au-qld",
+      "title": "Queensland extract area",
+      "country": "Australia",
+      "bbox": [
+        137.99,
+        -29.19,
+        154.21,
+        -8.84
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/queensland-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/queensland.poly",
+      "polygon_sha256": "386acaaed2914e92e2b5b8287631b05c091d6da5b048f7ae8a2350749aca5edf",
+      "polygon_vertices": 233
+    },
+    {
+      "code": "au-sa",
+      "title": "South Australia extract area",
+      "country": "Australia",
+      "bbox": [
+        128.99,
+        -39.84,
+        141.01,
+        -25.99
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/south-australia-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/south-australia.poly",
+      "polygon_sha256": "fa665289ffcdbad989a08c20b9b8bd77f13a52c7d75c9f1181b23c927c83bc2d",
+      "polygon_vertices": 13
+    },
+    {
+      "code": "au-tas",
+      "title": "Tasmania extract area",
+      "country": "Australia",
+      "bbox": [
+        143.47,
+        -56.87,
+        161.68,
+        -39.19
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/tasmania-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/tasmania.poly",
+      "polygon_sha256": "14ea54ecfdccb80a257c565b41bde711fd0802be5a35b1af7eeae1aaaec6bfab",
+      "polygon_vertices": 10
+    },
+    {
+      "code": "au-vic",
+      "title": "Victoria extract area",
+      "country": "Australia",
+      "bbox": [
+        140.95,
+        -39.24,
+        150.47,
+        -33.97
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/victoria-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/victoria.poly",
+      "polygon_sha256": "c71317b8ea321cfa78eb0e5447cfcf53e52ab36c7294d2e57db7c9efcd666a08",
+      "polygon_vertices": 557
+    },
+    {
+      "code": "au-wa",
+      "title": "Western Australia extract area",
+      "country": "Australia",
+      "bbox": [
+        109.92,
+        -41.17,
+        130.32,
+        -12.83
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/western-australia-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/western-australia.poly",
+      "polygon_sha256": "6d70031fe79acce34d89bae6123b396e22ef859beeda1349afffc293d334131f",
+      "polygon_vertices": 11
+    }
+  ]
+}

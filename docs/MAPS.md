@@ -105,6 +105,8 @@ Coverage outside the US needs a decision on each of these first: which open sour
 what licence, what a "state" is elsewhere, and how addresses are written. That is a design discussion to have in an
 issue before any code.
 
+[REGIONS.md](REGIONS.md) proposes answers for Ontario, British Columbia and Guyana, as a starting point for that issue.
+
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.

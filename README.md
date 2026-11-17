@@ -17,6 +17,13 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 | Windows (64-bit, Windows 10 or later) | 1.1.8 | Live on lastbook.org, Authenticode signed |
 | Linux (Ubuntu 24.04 LTS, x86_64) | 1.1.9 | Ubuntu package; installation instructions below |
 
+## iPad (development preview, source only)
+
+A native iPad app (Videos, Map and Chat, offline, with optional on-device AI) is in [`mobile/ipad/`](mobile/ipad/).
+- It is source for contributors to build and sign themselves.
+- There is no App Store, TestFlight or downloadable iPad build.
+- See [mobile/ipad/README.md](mobile/ipad/README.md) for what works, the current limitations and how to build it.
+
 ## Install on Linux
 
 The Linux package targets **Ubuntu 24.04 LTS on Intel/AMD x86_64 computers**. Download
@@ -163,16 +170,19 @@ The published Windows 1.1.8 installer passed installation and startup checks, an
 had valid signatures. The release is 104,960,408 bytes with SHA-256
 `0b31eea87fa05523ca710575e5939754fe10a65eb44ee7d88fe975fbbd161d74`.
 
-**Linux (build on Ubuntu 24.04 x86_64)**
+**Linux (build on Ubuntu 24.04 or 26.04, x86_64)**
 
 ```bash
 bash packaging/llm/build_llm_linux.sh
 bash packaging/linux/build_app_linux.sh
 ```
 
-The app build creates `derived/app-build/linux/<timestamp>/Lastbook_1.1.9_amd64.deb`. It bundles the local AI runner when
-`derived/llm/bin-linux/lastbook-llm` exists. The package uses the system Python 3.12 and pinned wheels from
-`packaging/linux/requirements_linux.txt`. `packaging/linux/smoke_deb.sh` checks the package in a fresh Ubuntu container.
+The package uses the system Python and pinned wheels from `packaging/linux/requirements_linux.txt`, built for that Python
+only, so each Ubuntu release gets its own package. On 24.04 (Python 3.12) the app build creates
+`derived/app-build/linux/<timestamp>/Lastbook_1.1.9_amd64.deb`; on 26.04 (Python 3.14) it creates
+`Lastbook_1.1.9_ubuntu26.04_amd64.deb`, with the version `1.1.9+ubuntu26.04`, which apt takes as newer than the 24.04 package.
+It bundles the local AI runner when `derived/llm/bin-linux/lastbook-llm` exists. `packaging/linux/smoke_deb.sh` checks
+the package in a fresh container of the same Ubuntu release.
 Linux integration-test helpers live under `app/tests/linux_*`; set `LASTBOOK_TEST_HOST` to a Windows SSH host with WSL2
 before running them. Their disposable test distro is named `LastbookTest`, with files under `C:\LastbookTest`.
 

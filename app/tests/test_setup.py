@@ -175,8 +175,8 @@ def certificate(folder):
     return key, crt
 
 
-def start_server(folder, files):
-    key, crt = certificate(folder)
+def start_server(folder, files, cert=None):
+    key, crt = cert or certificate(folder)
     srv = TLSServer(('127.0.0.1', 0), Handler)
     sctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     sctx.load_cert_chain(crt, key)
@@ -1042,6 +1042,249 @@ class Torrents(unittest.TestCase):
                 torrent.bdecode(bad)
         self.assertEqual(torrent.bdecode(b'd1:ai-1e1:bl1:xi0eee'), {b'a': -1, b'b': [b'x', 0]})
 
+
+
+def _requested(log, name):
+    """(first, last) byte of each Range asked for `name` (None for a request without one)."""
+    out = []
+    for n, r, _ in log:
+        if n != name:
+            continue
+        if not r:
+            out.append(None)
+            continue
+        a, _, b = r.split('=')[1].partition('-')
+        out.append((int(a), int(b) if b else None))
+    return out
+
+
+def _clear(F):
+    F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear()
+    F.redirect.clear(); F.answers.clear(); F.hold.clear()
+    F.pace = 0
+
+
+class Mirrored(Base):
+    """Pieces checked against a pinned BitTorrent v2 pieces root, from the file's own address and from mirrors (a second test
+    server on another port, with the same certificate). Every file comes in pieces here, of the torrent's piece length."""
+    PIECE = 64 * 1024
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.mirror_files = Files()
+        cls.mirror_srv, _, cls.mirror_base = start_server(cls.tmp_class, cls.mirror_files, cert=(cls.tmp_class / 'key.pem', cls.tmp_class / 'cert.pem'))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.mirror_srv.shutdown()
+        cls.mirror_srv.server_close()
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        _clear(self.mirror_files)
+        p = mock.patch.multiple(download, CONNECTIONS=2, PARALLEL_MIN=0, PIECE=self.PIECE, AHEAD=4)
+        p.start()
+        self.addCleanup(p.stop)
+        path = self.tmp / 'model.gguf'
+        path.write_bytes(self.model)
+        self.torrent, self.pin = torrent.make(path, 'model.gguf', self.PIECE)
+        self.pieces = torrent.piece_hashes(self.torrent, 'model.gguf', len(self.model), self.pin['pieces_root'], self.PIECE)
+        self.mirror = f'{self.mirror_base}/model.gguf'
+
+    def dl(self, mirrors=(), pieces=True):
+        return download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model),
+                                 download.Control(), allowed=ALLOWED, context=self.ctx, pieces=self.pieces if pieces else None,
+                                 mirrors=mirrors)
+
+    def test_a_mirror_shares_the_work(self):
+        self.files.pace = self.mirror_files.pace = 0.01
+        self.mirror_files.data['model.gguf'] = self.model
+        d = self.dl([self.mirror])
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertTrue(_requested(self.mirror_files.log, 'model.gguf'))
+        self.assertTrue(_requested(self.files.log, 'model.gguf'))
+        self.assertTrue(all(r and r[1] is not None for r in _requested(self.mirror_files.log, 'model.gguf')))   # closed ranges
+        self.assertFalse(any(ir for n, _, ir in self.mirror_files.log))   # the file's own ETag is never sent to a mirror
+        self.assertEqual(d.banned, set())
+
+    def test_a_mirror_that_sends_wrong_bytes_is_dropped(self):
+        """Every piece from this mirror has one byte changed: the first one read back fails its torrent piece hash, the mirror is
+        not asked again, and the file comes out right from its own address."""
+        bad = bytearray(self.model)
+        for k in range(0, len(bad), self.PIECE):
+            bad[k + 5] ^= 0xff
+        self.mirror_files.data['model.gguf'] = bytes(bad)
+        self.files.pace = 0.01
+        d = self.dl([self.mirror])
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(d.banned, {self.mirror})
+        self.assertLessEqual(len(_requested(self.mirror_files.log, 'model.gguf')), 2 * download.AHEAD)
+
+    def test_a_mirror_outside_the_allowlist_is_asked_only_as_a_mirror(self):
+        """This test's allowlist holds 127.0.0.1 only, so the mirror at localhost is outside it: only the mirror rule lets the
+        downloader ask it for pieces, and it is not reachable any other way."""
+        mirror = f'https://localhost:{self.mirror_srv.server_address[1]}/model.gguf'
+        self.assertFalse(download.url_allowed(mirror, ALLOWED))
+        self.mirror_files.data['model.gguf'] = self.model
+        self.files.pace = 0.03                                        # a slow file's own address: the mirror takes pieces too
+        self.assertEqual(Path(self.dl([mirror]).run()).read_bytes(), self.model)
+        self.assertTrue(_requested(self.mirror_files.log, 'model.gguf'))
+        self.mirror_files.log.clear()
+        self.assertIsNone(download.fetch_small(mirror, allowed=ALLOWED, context=self.ctx))
+        with self.assertRaises(download.Failed):                      # as a file's own address: refused before connecting
+            download.Download(mirror, self.tmp / 'own', len(self.model), sha(self.model), download.Control(), allowed=ALLOWED, context=self.ctx).run()
+        self.files.pace = 0
+        self.assertEqual(Path(self.dl([mirror], pieces=False).run()).read_bytes(), self.model)   # no pinned pieces: not asked
+        self.assertEqual(self.mirror_files.log, [])
+
+    def test_bad_mirrors_cannot_fail_a_good_download(self):
+        """A wrong piece from a mirror drops that mirror and is fetched again, but does not count toward giving up on the piece:
+        five bad mirrors are more than PIECE_TRIES, and the download still comes out right."""
+        bad = bytearray(self.model)
+        for k in range(0, len(bad), self.PIECE):
+            bad[k + 5] ^= 0xff
+        mirrors = []
+        for i in range(5):
+            self.mirror_files.data[f'bad{i}/model.gguf'] = bytes(bad)
+            mirrors.append(f'{self.mirror_base}/bad{i}/model.gguf')
+        self.files.pace = 0.03
+        d = self.dl(mirrors)
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertTrue(d.banned and d.banned <= set(mirrors))         # those that got a turn were dropped
+        st = download._Pieces(0, len(self.model), None, piece=self.PIECE, checked=True)   # and their wrong pieces never count
+        for m in mirrors * 2:
+            st.source[3] = m
+            d._wrong_piece(st, 3)
+        for _ in range(download.PIECE_TRIES - 1):                    # the file's own address: PIECE_TRIES, then it stops
+            d._wrong_piece(st, 3)
+        with self.assertRaises(download.Failed):
+            d._wrong_piece(st, 3)
+
+    def test_no_pinned_pieces_no_mirrors(self):
+        self.mirror_files.data['model.gguf'] = self.model
+        self.assertEqual(Path(self.dl([self.mirror], pieces=False).run()).read_bytes(), self.model)
+        self.assertEqual(self.mirror_files.log, [])
+
+    def test_a_mirror_on_an_unlisted_host_is_refused(self):
+        """A mirror may redirect only to an allowed host or to another listed mirror."""
+        self.mirror_files.redirect['model.gguf'] = 'https://example.org/model.gguf'
+        d = self.dl([self.mirror])
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(d.banned, {self.mirror})
+
+    def test_a_busy_or_broken_mirror_never_fails_the_download(self):
+        """A mirror that answers 503, or whose connections keep breaking, is dropped after its own tries: the download goes on
+        from its own address, and the busy mirror never starts the shared wait for a busy server."""
+        self.mirror_files.answers['model.gguf'] = [(503, 600)] * 50
+        waits = []
+        d = self.dl([self.mirror])
+        d.waiting = waits.append
+        with fast_backoff():
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(d.banned, {self.mirror})
+        self.assertEqual(waits, [])
+
+    def test_pieces_that_never_match_stop_with_the_file_kept(self):
+        """The file's own address sends bytes that are not the pinned ones: the piece is fetched again until PIECE_TRIES, then the
+        download stops with checksum, the file kept."""
+        other = bytearray(self.model)
+        other[10] ^= 1
+        self.files.data['model.gguf'] = bytes(other)
+        d = self.dl()
+        with self.assertRaises(download.Failed) as e:
+            d.run()
+        self.assertEqual(e.exception.code, 'checksum')
+        self.assertTrue(e.exception.extra.get('kept'))
+        self.assertTrue(Path(d.part).exists())
+        self.assertEqual(len([r for r in _requested(self.files.log, 'model.gguf') if r and r[0] == 0]), download.PIECE_TRIES)
+
+    def test_a_resume_starts_at_a_torrent_piece(self):
+        """A .part left by one connection mid-piece: a pinned file goes on from the start of that torrent piece, so every piece
+        it checks is whole."""
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(self.model[:self.PIECE + 1000])
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': self.PIECE + 1000}))
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(min(r[0] for r in _requested(self.files.log, 'model.gguf')), self.PIECE)
+
+    def test_a_small_pinned_file_resumes_where_it_was(self):
+        """Under PARALLEL_MIN a pinned file comes over one connection, as any file, and a resume goes on from its last byte."""
+        with mock.patch.object(download, 'PARALLEL_MIN', 10 * MiB):
+            d = self.dl()
+            os.makedirs(os.path.dirname(d.part), exist_ok=True)
+            Path(d.part).write_bytes(self.model[:self.PIECE + 1000])
+            Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': self.PIECE + 1000}))
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(_requested(self.files.log, 'model.gguf'), [(self.PIECE + 1000, None)])
+
+    def manifest_with_torrent(self, mirrors=(), root=None):
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': self.installed, 'available': True,
+                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip),
+                                   'sha256': sha(self.zip), 'kind': 'zip', 'mirrors': list(mirrors),
+                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': root or self.zip_pin['pieces_root'],
+                                               'infohash_v2': self.zip_pin['infohash_v2'], 'piece_length': self.PIECE}}]}],
+             'models': []}
+        v = manifest.validate(m, ALLOWED)
+        self.assertIsNotNone(v)
+        return manifest.Manifest(bundled=v, remote=None, allowed=ALLOWED, context=self.ctx)
+
+    def zip_torrent(self):
+        path = self.tmp / 'Lastbook-Small.zip'
+        data, self.zip_pin = torrent.make(path, 'Lastbook-Small.zip', self.PIECE)
+        self.files.data['Lastbook-Small.zip.torrent'] = data
+        self.mirror_files.data['Lastbook-Small.zip'] = self.zip
+
+    def test_job_with_the_persons_own_mirror(self):
+        self.zip_torrent()
+        self.files.pace = self.mirror_files.pace = 0.01
+        s = self.setup(manifest=self.manifest_with_torrent())
+        self.assertEqual(s.mirrors(add='http://127.0.0.1/x')['code'], 'mirror')           # not https
+        self.assertEqual(s.mirrors(add='https://me:pw@127.0.0.1/x')['code'], 'mirror')     # a password
+        self.assertEqual(s.mirrors(add=self.mirror_base)['mirrors'], [self.mirror_base])
+        self.assertEqual(s.state()['sharing']['mirrors'], [self.mirror_base])
+        s.start('small', False)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertTrue(_requested(self.mirror_files.log, 'Lastbook-Small.zip'))
+        self.assertIn('Lastbook-Small.zip.torrent', [n for n, _, _ in self.files.log])
+        self.assertEqual(s.mirrors(remove=self.mirror_base)['mirrors'], [])
+
+    def test_job_with_a_torrent_that_does_not_add_up(self):
+        """A torrent that is not the pinned one is not used, and neither are mirrors: the file comes from its own address."""
+        self.zip_torrent()
+        s = self.setup(manifest=self.manifest_with_torrent(mirrors=[f'{self.mirror_base}/Lastbook-Small.zip'], root='ab' * 32))
+        s.start('small', False)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual(self.mirror_files.log, [])
+
+    def test_manifest_rules(self):
+        self.zip_torrent()
+        good = self.manifest_with_torrent(mirrors=[f'{self.mirror_base}/Lastbook-Small.zip']).current
+        f = good['packs'][0]['files'][0]
+        self.assertEqual(f['torrent']['pieces_root'], self.zip_pin['pieces_root'])
+        self.assertEqual(f['mirrors'], [f'{self.mirror_base}/Lastbook-Small.zip'])
+        self.assertTrue(manifest.Manifest(bundled=good, remote=None).public()['packs'][0]['files'][0]['shareable'])
+        self.assertNotIn('mirrors', manifest.Manifest(bundled=good, remote=None).public()['packs'][0]['files'][0])
+
+        def with_file(**change):
+            m = {'version': 1, 'packs': [{'id': 'small', 'installed_bytes': 1, 'available': True,
+                                          'files': [{**{k: v for k, v in f.items()}, **change}]}]}
+            return manifest.validate(m, ALLOWED)
+        self.assertIsNone(with_file(torrent={**f['torrent'], 'piece_length': 3 * 16384}))       # not a power of two
+        self.assertIsNone(with_file(torrent={**f['torrent'], 'pieces_root': 'xyz'}))
+        self.assertIsNone(with_file(torrent={**f['torrent'], 'url': 'https://example.org/x.torrent'}))
+        self.assertIsNone(with_file(torrent={k: v for k, v in f['torrent'].items() if k != 'infohash_v2'}))
+        self.assertIsNone(with_file(mirrors=['http://127.0.0.1/x']))
+        no_pin = with_file(torrent=None)
+        self.assertNotIn('mirrors', no_pin['packs'][0]['files'][0])                             # no pin: its mirrors are left out
+        later = with_file(mirrors=[f'{self.mirror_base}/new/Lastbook-Small.zip'])                # fetched: new mirrors, same pin
+        self.assertEqual(manifest.merge(good, later)['packs'][0]['files'][0]['mirrors'], [f'{self.mirror_base}/new/Lastbook-Small.zip'])
+        repinned = with_file(torrent={**f['torrent'], 'pieces_root': 'cd' * 32}, mirrors=[f'{self.mirror_base}/evil.zip'])
+        kept = manifest.merge(good, repinned)['packs'][0]['files'][0]                           # another pin: nothing taken
+        self.assertEqual((kept['torrent']['pieces_root'], kept['mirrors']), (self.zip_pin['pieces_root'], f['mirrors']))
 
 
 class Unpacking(Base):

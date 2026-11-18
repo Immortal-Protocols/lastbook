@@ -63,11 +63,11 @@ class Switch(unittest.TestCase):
             self.assertFalse(power.saving(), text)
 
     def test_only_this_computer(self):
-        h = FakeHandler('192.168.1.20', {'save': True})
+        h = FakeHandler('192.0.2.20', {'save': True})
         power.handle(h, 'POST')
         self.assertEqual(h.status, 403)
         self.assertFalse(power.saving())
-        g = FakeHandler('192.168.1.20', command='GET')
+        g = FakeHandler('192.0.2.20', command='GET')
         power.handle(g, 'GET')
         self.assertEqual(g.status, 403)
 

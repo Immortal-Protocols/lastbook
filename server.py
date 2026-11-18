@@ -1395,6 +1395,11 @@ def water_places(q, limit=10, near=None):
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
         return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+    if address_search.is_german_address_query(q):
+        # 'Hauptstraße 5' is street first: an address only when an installed index has that house
+        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        if found:
+            return found
     if not PLACEDB.exists():
         return []
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
@@ -1537,7 +1542,26 @@ def map_contents():
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
         if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
             bounds = None
-    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours,
+            'region': region_of_national()}
+
+
+def region_of_national():
+    """The region code a non-US map set carries in national.sqlite, or None for a US state map and the base map."""
+    path = HERE / 'derived/geo/national.sqlite'
+    if not path.exists():
+        return None
+    try:
+        db = sqlite3.connect(ro_uri(path), uri=True)
+        try:
+            row = db.execute("SELECT value FROM meta WHERE key='region'").fetchone()
+        finally:
+            db.close()
+    except sqlite3.Error:
+        return None
+    code = (row[0] or '').strip() if row else ''
+    return code if code and code not in address_search.STATE_CODES else None
+
 
 
 def map_info():
@@ -1615,11 +1639,28 @@ def map_info():
     if AERIALDB.exists():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
-    extra = {'aerial': has_aerial()}
-    if pack:
-        extra.update(map_contents())
-        geo = pack_datasets(extra)
+    extra = {'aerial': has_aerial(), 'terrain': TERRAINDB.exists(), 'crops': CROPDB.exists()}
+    contents = map_contents()
+    if pack or contents.get('region'):
+        extra.update(contents)
+        geo = region_datasets(extra) if extra.get('region') else pack_datasets(extra)
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
+
+
+def region_datasets(have):
+    """The panel beside a map set outside the US: only the files this set really holds, and their licence."""
+    code = have.get('region') or 'this area'
+    out = [{'label': f'Streets, buildings, water, land use and named places for {code} (OpenStreetMap)', 'status': 'Shown at every zoom level' if have['detail'] else 'Not in this map set'}]
+    if have['detail']:
+        out.append({'label': 'Help points: hospitals, clinics, pharmacies, fire stations, police, drinking water and more (OpenStreetMap)', 'status': 'Shown when you zoom in'})
+    if PLACEDB.exists():
+        out.append({'label': 'Place finder: city districts, streets, postcodes and named places (OpenStreetMap)', 'status': 'Used by "Find an address, town or place"'})
+    address_index = HERE / 'derived/geo/addresses' / f'{code}.sqlite'
+    if address_index.exists():
+        out.append({'label': 'Street addresses (OpenStreetMap)', 'status': 'Exact house numbers only; a house that is not mapped cannot be found'})
+    out.append({'label': 'Elevation, crops and dams are not in this map set', 'status': 'There is no open nation-wide source for them outside the US; the map draws no contours and no 3D view'})
+    out.append({'label': '© OpenStreetMap contributors, ODbL 1.0', 'status': 'Data from geofabrik.de, cut to the region boundary'})
+    return out
 
 
 def pack_datasets(have):

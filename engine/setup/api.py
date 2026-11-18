@@ -673,9 +673,11 @@ class Setup:
         return self.public_job()
 
     def _join(self):
+        """Until the job's thread has ended: Pause and Cancel return only once nothing writes any more (a download cuts its reads
+        and stops its writers when told), so a resume at once or Cancel's cleanup cannot meet a late write."""
         t = self.thread
         if t and t is not threading.current_thread():
-            t.join(30)
+            t.join()
 
     def _clean(self, job):
         """What the job made in its work folder goes; the person's own files and any library stay."""
@@ -898,7 +900,7 @@ class Setup:
             if not control.ev.is_set():
                 control.stop('failed')
             for t in fetchers:
-                t.join(60)
+                t.join()
         self._after(job, it, outcome)
 
     def _after(self, job, it, outcome):
@@ -1061,7 +1063,7 @@ class Setup:
         current = self.current_info() or {}
         if (not plan.get('repair') and not plan.get('map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
                 and current.get('map') not in (None, 'base')):
-            install.copy_map(self.current, lib)
+            install.copy_map(self.current, lib, control)
         install._write_json(lib / 'setup-pack.json', {'pack': pack['id'], 'installed': _now(), 'files': [f['name'] for f in pack['files']]})
         for path, ours in got:
             if ours:
@@ -1136,7 +1138,7 @@ class Setup:
             os.replace(path, dest)
         else:
             tmp = dest.with_name(dest.name + '.partial')
-            shutil.copyfile(path, tmp)
+            install.copy_file(path, tmp, control)
             os.replace(tmp, dest)
         plan['model_file'] = str(Path(plan['target']) / 'models' / m['file']) if plan['switch'] else str(dest)
         plan['model_sha256'] = m['sha256']           # what _get_file just matched: the streamed or re-read hash equalled this

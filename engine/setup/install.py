@@ -360,7 +360,22 @@ def map_bytes(lib):
     return total
 
 
-def copy_map(old, new):
+def copy_file(src, dst, control=None, keep_times=False):
+    """A copy that hears Pause and Cancel between chunks (control.check() raises), so a long one (a map set, a model on another
+    disk) never holds them up: they return only once the job has stopped writing."""
+    with open(src, 'rb') as a, open(dst, 'wb') as b:
+        while True:
+            if control is not None:
+                control.check()
+            chunk = a.read(COPY)
+            if not chunk:
+                break
+            b.write(chunk)
+    if keep_times:
+        shutil.copystat(src, dst)
+
+
+def copy_map(old, new, control=None):
     """Keep an installed map while refreshing the same library's content."""
     old, new = Path(old), Path(new)
     for rel in map_files(new):
@@ -368,7 +383,7 @@ def copy_map(old, new):
     for rel in map_files(old):
         destination = new / rel
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(old / rel, destination)
+        copy_file(old / rel, destination, control, keep_times=True)
 
 
 def swap_map(lib, new, old_dir):

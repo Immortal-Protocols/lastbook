@@ -53,6 +53,7 @@ class Files:
         self.redirect = {}        # name -> Location
         self.busy = {}            # name -> how many more answers are 503
         self.pace = 0             # seconds to sleep per 64 KiB
+        self.head_wait = 0        # seconds to sleep before answering at all
         self.active = self.most = 0   # answers being sent now, and the most at once
         self.lock = threading.Lock()
 
@@ -81,6 +82,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             busy = F.busy.get(name)
             if busy:
                 F.busy[name] -= 1
+        if F.head_wait:
+            time.sleep(F.head_wait)
         if busy:
             self.send_response(503)
             self.send_header('Content-Length', '0')
@@ -200,7 +203,7 @@ class Base(unittest.TestCase):
         F = self.files
         F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
         F.busy.clear()
-        F.pace = 0
+        F.pace = F.head_wait = 0
         F.most = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
@@ -558,7 +561,74 @@ def _requested(log, name):
     return out
 
 
-class Pieces(Base):
+class HeldRead:
+    """The first read of a piece's body by a download connection gets its bytes, then waits on `release` before handing them over
+    (`entered` says it is waiting): Pause or Cancel comes between a read and the write of what it brought, as when a slow
+    server's bytes arrive just after it."""
+
+    def __init__(self):
+        self.entered, self.release, self.used, self.lock = threading.Event(), threading.Event(), False, threading.Lock()
+        self.real = http.client.HTTPResponse.read1
+
+    def patch(self):
+        held = self
+
+        def read1(resp, n=-1):
+            with held.lock:
+                hold = not held.used and threading.current_thread().name.startswith('setup-dl-')
+                held.used = held.used or hold
+            data = held.real(resp, n)
+            if hold:
+                held.entered.set()
+                held.release.wait(30)
+            return data
+        return mock.patch.object(http.client.HTTPResponse, 'read1', read1)
+
+
+class HeldConnect(HeldRead):
+    """The first connection a download opens waits on `release` before it connects (`entered` says it is waiting): Pause comes
+    while it has no socket yet to cut."""
+
+    def __init__(self):
+        super().__init__()
+        self.real = http.client.HTTPSConnection.connect
+
+    def patch(self):
+        held = self
+
+        def connect(conn):
+            with held.lock:
+                hold = not held.used and threading.current_thread().name.startswith('setup-dl-')
+                held.used = held.used or hold
+            if hold:
+                held.entered.set()
+                held.release.wait(30)
+            return held.real(conn)
+        return mock.patch.object(http.client.HTTPSConnection, 'connect', connect)
+
+
+def download_threads():
+    me = threading.current_thread()
+    return [t.name for t in threading.enumerate() if t.name.startswith('setup-dl-') and t.is_alive() and t is not me]
+
+
+def run_in_thread(fn, name=None):
+    """fn() in a thread: (thread, {'error': what it raised, 'at': when it returned, 'threads': download threads alive then}).
+    name: the thread's (setup-dl-… for a download that reads in the calling thread, so HeldRead holds it)."""
+    out = {}
+
+    def go():
+        try:
+            fn()
+        except BaseException as e:
+            out['error'] = e
+        out['at'], out['threads'] = time.time(), download_threads()     # what was still running the moment it returned
+    t = threading.Thread(target=go, daemon=True, name=name)
+    t.start()
+    return t, out
+
+
+class Segmented(Base):
     """A large file in segments over several connections at once (here 64 KiB pieces of the 2 MiB model, so 33 pieces)."""
     PIECE = 64 * 1024
 
@@ -572,6 +642,95 @@ class Pieces(Base):
     def dl(self, connections=4, control=None, hosts=None):
         return download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model),
                                  control or download.Control(), allowed=ALLOWED, context=self.ctx, connections=connections, hosts=hosts)
+
+
+class Pieces(Segmented):
+    def test_pause_with_a_read_held_writes_nothing_after_it(self):
+        """A connection is in a read when Pause comes (review of #122). run() may return only once every connection has stopped,
+        and the bytes that read brings are not written: after Pause returns, the .part never changes. A new download then goes
+        on at once."""
+        self.pause_with_a_read_held(connections=4)
+
+    def test_pause_with_the_one_stream_held_writes_nothing_after_it(self):
+        """The same with one connection, which reads in run()'s own thread."""
+        self.pause_with_a_read_held(connections=1)
+
+    def pause_with_a_read_held(self, connections):
+        held, c = HeldRead(), download.Control()
+        self.files.pace = 0.01
+        d = self.dl(connections=connections, control=c)
+        with held.patch():
+            t, out = run_in_thread(d.run, name='setup-dl-stream' if connections == 1 else None)
+            self.assertTrue(held.entered.wait(10), 'no read was held')
+            c.stop('paused')
+            t.join(1.0)                                                  # still held: run() must not have returned yet
+            returned_while_held = not t.is_alive()
+            before = Path(d.part).read_bytes()
+            held.release.set()
+            t.join(15)
+        self.assertFalse(t.is_alive(), 'run() never returned')
+        self.assertIsInstance(out.get('error'), download.Stopped)
+        self.assertFalse(returned_while_held, 'run() returned while a connection was still in a read')
+        self.assertEqual(out['threads'], [])
+        after = Path(d.part).read_bytes()
+        self.assertEqual(after, before, 'the held read was written after Pause')
+        time.sleep(0.5)
+        self.assertEqual(Path(d.part).read_bytes(), after)
+        self.files.pace = 0
+        self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)    # resumed at once, nothing overlapping
+
+    def test_pause_while_connecting_is_not_missed(self):
+        """Pause comes while a connection is still being opened, so there is no socket to cut yet; the server then sends nothing for
+        5 s. The connection must see the Pause once it is open, not wait out the server."""
+        self.pause_while_connecting(connections=4)
+
+    def test_pause_while_the_one_stream_connects_is_not_missed(self):
+        self.pause_while_connecting(connections=1)
+
+    def pause_while_connecting(self, connections):
+        held, c = HeldConnect(), download.Control()
+        d = self.dl(connections=connections, control=c)
+        with held.patch():
+            t, out = run_in_thread(d.run, name='setup-dl-stream' if connections == 1 else None)
+            self.assertTrue(held.entered.wait(10), 'no connection was held')
+            c.stop('paused')
+            time.sleep(0.3)
+            self.files.head_wait = 5                                     # the server now answers nothing for 5 s
+            let_go = time.time()
+            held.release.set()
+            t.join(20)
+        self.assertIsInstance(out.get('error'), download.Stopped)
+        self.assertLess(out['at'] - let_go, 2.0, 'the connection waited out the slow server after Pause')
+        self.assertEqual(out['threads'], [])
+        self.files.head_wait = 0
+        t0 = time.time()
+        while self.files.active and time.time() - t0 < 10:              # the test server's own threads sleep out their 5 s
+            time.sleep(0.05)
+
+    def test_pause_cuts_a_read_from_a_slow_server(self):
+        """A real connection waiting on a server that sends nothing for a long time: Pause cuts it, so run() returns at once,
+        with every connection stopped."""
+        c = download.Control()
+        d = self.dl(control=c)
+        self.files.pace = 5                                              # 5 s before each 64 KiB
+        t, out = run_in_thread(d.run)
+        t0 = time.time()
+        while len(d.live.conns) < 2 and time.time() - t0 < 10:          # connections open, waiting in their reads
+            time.sleep(0.01)
+        time.sleep(0.3)
+        self.assertTrue(t.is_alive() and d.live.conns, 'no read was waiting')
+        asked = time.time()
+        c.stop('paused')
+        t.join(15)
+        self.assertIsInstance(out.get('error'), download.Stopped)
+        self.assertLess(out['at'] - asked, 2.0, 'Pause waited for the slow server')
+        self.assertEqual(download_threads(), [])
+        size = Path(d.part).stat().st_size
+        time.sleep(0.5)
+        self.assertEqual(Path(d.part).stat().st_size, size)
+        t0 = time.time()
+        while self.files.active and time.time() - t0 < 10:              # the test server's own threads sleep out their 5 s
+            time.sleep(0.05)
 
     def test_plain(self):
         self.files.pace = 0.005
@@ -921,7 +1080,73 @@ class Parallel(Base):
         self.assertEqual({i.get('paused_from') for i in j['items']}, {'downloaded'})
 
 
+class Interrupts(Segmented):
+    """Pause and Cancel of a whole job while a download connection is stuck in a read (review of #122): they return only once
+    every writer has stopped, so an immediate resume or Cancel's cleanup cannot meet a late write."""
+
+    def job(self):
+        s = self.setup()
+        s.start('small', False)
+        return s
+
+    def test_pause_then_resume_at_once(self):
+        held = HeldRead()
+        self.files.pace = 0.01
+        with held.patch():
+            s = self.job()
+            self.assertTrue(held.entered.wait(10), 'no read was held')
+            t, out = run_in_thread(s.pause)
+            t.join(6)                                                    # longer than any wait that gives up on a connection
+            held.release.set()
+            t.join(15)
+        self.assertNotIn('error', out)
+        self.assertEqual(out['threads'], [], 'Pause returned with a connection still running')
+        self.assertEqual(s.public_job()['state'], 'paused')
+        self.files.pace = 0
+        s.resume()                                                       # at once
+        self.assertEqual(self.wait(s)['state'], 'done')
+
+    def test_cancel_cleans_up_with_a_read_held(self):
+        held = HeldRead()
+        self.files.pace = 0.01
+        downloads = self.parent / 'LastbookData.setup' / 'downloads'
+        with held.patch():
+            s = self.job()
+            self.assertTrue(held.entered.wait(10), 'no read was held')
+            t, out = run_in_thread(s.cancel)
+            t.join(6)                                                    # longer than any wait that gives up on a connection
+            held.release.set()
+            t.join(15)
+        self.assertNotIn('error', out)
+        self.assertEqual(out['threads'], [], 'Cancel returned with a connection still running')
+        self.assertEqual(s.public_job()['error']['code'], 'cancelled')
+        self.assertFalse(downloads.exists(), 'Cancel left the download behind')
+        time.sleep(0.5)
+        self.assertFalse(downloads.exists(), 'a late write brought the download back')
+
+
 class Unpacking(Base):
+    def test_a_long_copy_hears_pause(self):
+        """The model copied to another disk, or a map set kept: Pause and Cancel wait for the job to stop writing, so a copy must
+        stop between chunks rather than run to its end."""
+        src, dst = self.tmp / 'big.bin', self.tmp / 'copy.bin'
+        src.write_bytes(os.urandom(3 * install.COPY + 5))
+        c = download.Control()
+        calls = []
+
+        def check():
+            calls.append(1)
+            if len(calls) == 2:
+                c.stop('paused')
+            download.Control.check(c)
+        c.check = check
+        with self.assertRaises(download.Stopped):
+            install.copy_file(src, dst, c)
+        self.assertEqual(dst.stat().st_size, install.COPY)              # one chunk, then it stopped
+        install.copy_file(src, dst, download.Control(), keep_times=True)
+        self.assertEqual(dst.read_bytes(), src.read_bytes())
+        self.assertEqual(int(dst.stat().st_mtime), int(src.stat().st_mtime))
+
     def bad_zip(self, info, data=b'x'):
         p = self.tmp / 'bad.zip'
         make_pack(p, {'library-data/catalog.json': b'{}'}, [(info, data)])

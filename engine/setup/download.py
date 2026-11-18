@@ -134,16 +134,31 @@ def tls_context():
 
 
 class Control:
-    """Pause and cancel, from any thread. The download notices within one chunk or one second of waiting."""
+    """Pause and cancel, from any thread. stop() also cuts the connections of every download running under it (their hooks), so
+    a read waiting on a slow server ends at once; each download then returns only once all its writers have stopped."""
 
     def __init__(self):
         self.ev = threading.Event()
         self.why = None
+        self._hooks, self._lock = [], threading.Lock()
 
     def stop(self, why):
         if self.why != 'cancelled':
             self.why = why
         self.ev.set()
+        with self._lock:
+            hooks = list(self._hooks)
+        for fn in hooks:
+            fn()
+
+    def hook(self, fn):
+        with self._lock:
+            self._hooks.append(fn)
+
+    def unhook(self, fn):
+        with self._lock:
+            if fn in self._hooks:
+                self._hooks.remove(fn)
 
     def check(self):
         if self.ev.is_set():
@@ -217,25 +232,39 @@ def _same_etag(a, b):
     return norm(a) == norm(b)
 
 
-def _open(url, start, etag, allowed, context, timeout, end=None):
+def _open(url, start, etag, allowed, context, timeout, end=None, live=None):
     """(connection, response, final url) for a GET from byte `start` (to byte `end`, inclusive, if given), after following
-    allowed redirects."""
+    allowed redirects. live: a download's set of open connections (so Pause can cut them); the caller takes it out again."""
     for _ in range(MAX_REDIRECTS + 1):
         if not url_allowed(url, allowed):
             raise Failed('network', 'Lastbook refused to download from an address it does not know.')
         u = urllib.parse.urlsplit(url)
         conn = http.client.HTTPSConnection(u.hostname, u.port or 443, timeout=timeout, context=context)
+        if live is not None:
+            live.add(conn)
         headers = {'User-Agent': USER_AGENT, 'Accept-Encoding': 'identity'}
         if start or end is not None:
             headers['Range'] = f'bytes={start}-' + ('' if end is None else str(end))
             if etag:
                 headers['If-Range'] = etag
-        conn.request('GET', (u.path or '/') + ('?' + u.query if u.query else ''), headers=headers)
-        r = conn.getresponse()
+        try:
+            if live is not None:
+                conn.connect()            # its socket exists from here on, so a Pause can cut it
+                if live.stopping():       # Pause or Cancel came while it connected, when there was no socket yet to cut
+                    raise ConnectionAbortedError('stopped while connecting')
+            conn.request('GET', (u.path or '/') + ('?' + u.query if u.query else ''), headers=headers)
+            r = conn.getresponse()
+        except BaseException:
+            conn.close()
+            if live is not None:
+                live.discard(conn)
+            raise
         if r.status in (301, 302, 303, 307, 308):
             loc = r.getheader('Location')
             r.close()
             conn.close()
+            if live is not None:
+                live.discard(conn)
             if not loc:
                 raise Failed('network', 'The download server answered with a move to nowhere.')
             url = urllib.parse.urljoin(url, loc)
@@ -327,10 +356,15 @@ class Download:
         self.hosts = hosts
         self.host = (urllib.parse.urlsplit(url).hostname or '').lower()
         self._pos = 0
+        self.live = _Live(self._stopping)
 
     @property
     def name(self):
         return os.path.basename(self.dest)
+
+    def _stopping(self):
+        """Pause or Cancel was asked. (A worker stopped with the others by `halt` is cut again until it ends: _stop_all.)"""
+        return self.control.ev.is_set()
 
     def done_bytes(self):
         try:
@@ -373,12 +407,14 @@ class Download:
         own = self.hosts is None
         if own:
             self.hosts = Hosts(most=self.connections, start=self.connections)
+        self.control.hook(self.live.cut)          # Pause or Cancel cuts every read this download is waiting in
         try:
             if self.connections > 1 and self.size > SEGMENTED_MIN:
                 h, fetched = self._run_segments(meta, ctx)
             else:
                 h, fetched = self._run_stream(meta, ctx)
         finally:
+            self.control.unhook(self.live.cut)
             if own:
                 self.hosts = None
         if fetched:              # judged on what the disk holds, not on what arrived: a network share can lose or change bytes
@@ -433,6 +469,7 @@ class Download:
                 except ssl.SSLCertVerificationError:
                     raise _untrusted()
                 except (OSError, http.client.HTTPException, ValueError) as e:
+                    self.control.check()       # a read cut by Pause or Cancel: stopped, not broken
                     if disk_full(e):
                         raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                     h, now = self._settle(h)
@@ -472,7 +509,7 @@ class Download:
     def _fetch(self, start, etag, h, ctx, check_front=False):
         """Reads until the end or a break. Returns (bytes done, etag). Raises _Restart when the server's file is not the one begun.
         check_front: a server that keeps ignoring Range is read from byte 0, and the bytes already here are compared, not written."""
-        conn, r, final = _open(self.url, start, etag, self.allowed, ctx, self.timeout)
+        conn, r, final = _open(self.url, start, etag, self.allowed, ctx, self.timeout, live=self.live)
         try:
             if r.status == 416 or r.status >= 400:
                 if 500 <= r.status < 600 or r.status == 429:
@@ -509,6 +546,7 @@ class Download:
                 while start < self.size:
                     self.control.check()
                     b = r.read1(min(CHUNK, self.size - start))    # what has arrived, up to CHUNK: progress and pause stay quick on a slow line
+                    self.control.check()       # Pause or Cancel came while the read waited: nothing more is written
                     if not b:
                         raise ConnectionError('the connection closed early')
                     _write_all(f, b)
@@ -529,6 +567,7 @@ class Download:
                 conn.close()
             except OSError:
                 pass
+            self.live.discard(conn)
 
     def _compare_front(self, r, front, h):
         """The first `front` bytes of a whole-file answer, which are on the disk already: hashed, not written. They must be what
@@ -538,6 +577,7 @@ class Download:
         while n < front:
             self.control.check()
             b = r.read1(min(CHUNK, front - n))
+            self.control.check()
             if not b:
                 raise ConnectionError('the connection closed early')
             h2.update(b)
@@ -608,6 +648,8 @@ class Download:
                     last_progress = now
                 if cursor == st.count:
                     break
+                if self.halt.is_set():
+                    self.live.cut()               # one connection stopped the download: the others do not wait out a read
                 if workers and not any(w.is_alive() for w in workers):
                     if self.ranges_ignored:
                         return self._fall_back_to_stream(h, cursor, ctx)
@@ -629,8 +671,7 @@ class Download:
                     st.cv.wait(0.2)
         finally:
             self.halt.set()
-            for w in workers:
-                w.join(5)
+            self._stop_all(workers)
             self._save_segments()
         return h, False
 
@@ -700,6 +741,8 @@ class Download:
                 self.halt.set()
                 return
             except (OSError, http.client.HTTPException, ValueError) as e:
+                if self.halt.is_set() or self.control.ev.is_set():
+                    return                     # cut because the download stopped: not broken, nothing to try again
                 if disk_full(e):
                     self.error = self.error or Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                     self.halt.set()
@@ -732,12 +775,21 @@ class Download:
                 if self.halt.wait(BACKOFF[min(tries, len(BACKOFF) - 1)]):
                     return
 
+    def _stop_all(self, workers):
+        """Returns once every worker has ended: a resume or Cancel's cleanup can then never meet a late write. Their reads are cut,
+        and cut again while they end, so one that was still connecting at the first cut is cut too (it also checks once its
+        socket exists); a write is at most one chunk."""
+        for w in workers:
+            while w.is_alive():
+                self.live.cut()
+                w.join(0.2)
+
     def _fetch_piece(self, k, ctx):
         """Piece k from where it stands to its end, over one connection. Returns True when it is done."""
         st = self.st
         a0, b = st.span(k)
         got = st.got.get(k, 0)
-        conn, r, _ = _open(self.url, a0 + got, None, self.allowed, ctx, self.timeout, end=b - 1)
+        conn, r, _ = _open(self.url, a0 + got, None, self.allowed, ctx, self.timeout, end=b - 1, live=self.live)
         n = 0
         try:
             if r.status in (429, 503):
@@ -765,6 +817,9 @@ class Download:
                         raise _Halt()
                     self.control.check()
                     chunk = r.read1(min(CHUNK, b - a0 - got))
+                    if self.halt.is_set():     # stopped while the read waited: what it brought is not written
+                        raise _Halt()
+                    self.control.check()
                     if not chunk:
                         raise ConnectionError('the connection closed early')
                     _write_all(f, chunk)
@@ -779,6 +834,9 @@ class Download:
         except _Halt:
             return False
         except (OSError, http.client.HTTPException, ValueError) as e:
+            if self.halt.is_set():             # a read cut because the download stopped
+                return False
+            self.control.check()
             if n:
                 e.progressed = True
             raise
@@ -787,6 +845,7 @@ class Download:
                 conn.close()
             except OSError:
                 pass
+            self.live.discard(conn)
 
     def _fall_back_to_stream(self, h, cursor, ctx):
         """The server answered a Range with the whole file: one stream from the front, from where the pieces in order end."""
@@ -894,7 +953,7 @@ class Download:
         while a < b:
             self.control.check()
             try:
-                conn, r, _ = _open(self.url, a, None, self.allowed, ctx, self.timeout, end=b - 1)
+                conn, r, _ = _open(self.url, a, None, self.allowed, ctx, self.timeout, end=b - 1, live=self.live)
                 try:
                     if r.status in (429,) or 500 <= r.status < 600:
                         raise OSError(f'HTTP {r.status}')
@@ -906,6 +965,7 @@ class Download:
                         while a < b:
                             self.control.check()
                             chunk = r.read1(min(CHUNK, b - a))
+                            self.control.check()
                             if not chunk:
                                 raise ConnectionError('the connection closed early')
                             _write_all(f, chunk)
@@ -913,9 +973,11 @@ class Download:
                             tries = 0
                 finally:
                     conn.close()
+                    self.live.discard(conn)
             except ssl.SSLCertVerificationError:
                 raise _untrusted()
             except (OSError, http.client.HTTPException, ValueError) as e:
+                self.control.check()
                 if disk_full(e):
                     raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                 tries += 1
@@ -1063,6 +1125,43 @@ class Segments:
 def _untrusted():
     return Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '
                              'A network that intercepts secure connections (some offices, hotels) can cause this.')
+
+
+class _Live:
+    """The connections a download has open. cut() shuts their sockets from any thread, so a read waiting in one ends at once (the
+    reading thread then sees why it stopped before it writes anything). stopping(): whether the download is stopping, which a
+    connection checks once its socket exists (one still connecting has no socket to cut)."""
+
+    def __init__(self, stopping=lambda: False):
+        self.conns, self.lock, self.stopping = set(), threading.Lock(), stopping
+
+    def add(self, conn):
+        with self.lock:
+            self.conns.add(conn)
+
+    def discard(self, conn):
+        with self.lock:
+            self.conns.discard(conn)
+
+    def cut(self):
+        with self.lock:
+            conns = list(self.conns)
+        for conn in conns:
+            sock = getattr(conn, 'sock', None)
+            if sock is None:
+                continue
+            if os.name != 'nt':
+                try:                                                # Linux and macOS: shutdown wakes a waiting read. The plain
+                    socket.socket.shutdown(sock, socket.SHUT_RDWR)  # socket's own, not SSLSocket's (which would tear down TLS
+                except (OSError, ValueError):                       # under the thread still reading).
+                    pass
+                continue
+            try:                                                    # Windows: neither shutdown nor close() wakes it (measured;
+                fd = socket.socket.detach(sock)                     # close() even waits for the response's file to close). The
+                if fd != -1:                                        # handle is closed underneath, which does; detached first, so
+                    socket.close(fd)                                # the socket never closes that number again once Windows
+            except (OSError, ValueError):                           # may have handed it to another connection.
+                pass
 
 
 class _Restart(Exception):

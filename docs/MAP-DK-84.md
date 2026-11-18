@@ -123,7 +123,7 @@ every connection blocked and an empty library:
 - **Nearest help.** Pharmacies at 0.3 and 0.36 km, and the police at Copenhagen Central Station at 0.5 km. Around Rønne
   on Bornholm: a pharmacy at 0.73 km, the police at 1.41 km and Bornholms Hospital at 1.45 km.
 - **Place search, with Danish letters.** "Rigshospitalet" finds the hospital; "Nørrebro", "Rønne" and "Hillerød" find
-  the district and the two towns; "Tivoli" finds the gardens; "Elsinore" finds Helsingør by its English name; "Kgs.
+  the district and the two towns; "Tivoli" finds a place of that name, tagged as a hamlet; "Elsinore" finds Helsingør by its English name; "Kgs.
   Lyngby" finds Kongens Lyngby.
 - **What the app is told.** 40 kinds, within 11.54, 54.83, 15.19, 56.13, the extent of the data inside the box.
 

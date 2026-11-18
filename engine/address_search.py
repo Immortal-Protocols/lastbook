@@ -74,6 +74,10 @@ def _parts(query, ontario_available=False, default_country='US'):
     explicit_ontario = bool(re.search(r'\bCA-ON\b', remainder, re.I))
     remainder = re.sub(r'\bCA-ON\b', 'Ontario', remainder, flags=re.I)
     remainder = re.sub(r'[^\w ]+', ' ', remainder.lower()).split()
+    # A ZIP+4 ("62704-1234", or "62704 1234" once the hyphen is gone) is the same place as its five-digit ZIP, which the
+    # index keeps: drop the four extra digits so the ZIP and the state before it are still read.
+    if len(remainder) > 1 and re.fullmatch(r'\d{4}', remainder[-1]) and re.fullmatch(r'\d{5}', remainder[-2]):
+        remainder.pop()
     if remainder and re.fullmatch(r'\d{5}', remainder[-1]):
         postcode = remainder.pop()
     state = ''

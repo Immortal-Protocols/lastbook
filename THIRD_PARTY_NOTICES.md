@@ -46,6 +46,14 @@ Build-only tools (uv, CMake, Ninja, glslc/shaderc, Vulkan and SPIR-V headers, py
 macholib, setuptools, packaging) are used to make the apps, and none of their code is bundled except as their licences
 allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is not bundled.
 
+## Optional map build tools (never bundled)
+
+`tools/build_canada_map.py` uses **osmium 4.3.2** (pyosmium, BSD-2-Clause,
+https://github.com/osmcode/pyosmium). Checked against the installed wheel's licence metadata.
+It provides streaming OSM PBF parsing, file-backed node locations and complete multipolygon
+assembly. Install it only in a separate build environment; it is not an app/runtime requirement.
+The converter reads an existing local extract and opens no network connection.
+
 ## Downloaded by setup, never bundled
 
 | Component | Version | Licence | Source | Checked |

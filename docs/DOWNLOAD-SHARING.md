@@ -98,6 +98,61 @@ downloads (`Download._run_swarm`):
 - People with a torrent client (qBittorrent, Transmission, aria2c) can download or seed the same torrent. Setup's existing
   "Use the file you already have" checks a file got that way before using it.
 
+## Sharing from a server (command line)
+
+A Linux server can share the downloads too, with no app and no screen. `tools/seed.py` downloads each file whose torrent the
+manifest pins, checks it, and seeds it for as long as it runs. It needs git and Python 3.11 or later (Debian 12, Ubuntu 24.04
+and newer have it), and nothing else to install:
+
+```bash
+git clone --depth 1 https://github.com/Immortal-Protocols/lastbook && cd lastbook && python3 packaging/share/fetch_rqbit.py && python3 tools/seed.py ~/lastbook-share
+```
+
+- `fetch_rqbit.py` with no platform fetches the rqbit for this machine (x86-64 or ARM64 Linux, a Mac, or Windows) into
+  `derived/share/`, checked against the SHA-256 pinned in `packaging/share/rqbit.json`. It is a separate step on purpose:
+  nothing in Lastbook downloads a program by itself.
+- `seed.py` downloads the files smallest first, each from its own address, its mirrors and other people at once, and
+  resumes where it stopped. Each must match its pinned SHA-256. As each file is ready it is added to one rqbit that listens
+  for peers on TCP port 4240 (`--port`). The other files are not checked again when one is added. Every hour it looks at
+  the manifest for torrents published since. Ctrl-C or SIGTERM stops it, and the same command goes on from there.
+- Let the port through the firewall (`sudo ufw allow 4240/tcp`, or the router's port forward for a home server). It
+  changes no router itself.
+- **Today no file has a torrent**, because the maintainers have not published any yet, so it says there is nothing to share
+  and waits. `--all` (or `--only NAME,...`) downloads the files now, and each is shared once its torrent is published.
+  `--list` shows every file, whether it can be shared yet, and what is here.
+- Other options: `--upload-limit 20M` (bytes per second), `--connections N`, `--mirror URL` (a copy of the download site),
+  `--no-peers` (download from the servers and mirrors only), `--manifest FILE`.
+- The trust chain is the one above. The manifest is fetched from `downloads.lastbook.org` through `download.py`, with the
+  same roots and checks the app uses (`--manifest` takes a copy instead). A torrent is used only if it is the pinned one,
+  and rqbit checks each file against it before it uploads a byte. rqbit's control API is on 127.0.0.1 only, behind a password
+  made for each run. Nothing is written outside the folder except rqbit itself, in the checkout. The uploaded total is kept
+  in `<folder>/.lastbook-seed/shared.json`, and a status line gives it every five minutes.
+
+To keep it running, use a service under its own user:
+
+```ini
+# /etc/systemd/system/lastbook-share.service
+[Unit]
+Description=Share Lastbook's downloads
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=lastbook
+WorkingDirectory=/opt/lastbook
+ExecStart=/usr/bin/python3 tools/seed.py /srv/lastbook-share
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`systemctl enable --now lastbook-share` starts it, and `journalctl -u lastbook-share -f` shows its lines.
+
+It has been run on Ubuntu 24.04 (Python 3.12) and Windows 11 with rqbit 9.1.0, against a local HTTPS server. In that run
+it downloaded and shared a file, and a second, separate rqbit then downloaded the whole file from it alone over loopback
+(no DHT, trackers or web seed). The copy matched, and the seeder counted the bytes it uploaded.
+
 ## For the maintainers: torrents at release
 
 The torrent of a file has to be pinned in the manifest the app is built with: a manifest fetched later never adds a pin to a
@@ -132,7 +187,7 @@ The Windows build's rqbit:
 python3 -I -B packaging/share/fetch_rqbit.py win-x64
 ```
 
-This fetches rqbit 9.1.0 into `derived/share/`, checked against GitHub's own digests pinned in `packaging/share/rqbit.json`. The
+This fetches rqbit 9.1.0 into `derived/share/` (with no platform named, the one for this machine), checked against GitHub's own digests pinned in `packaging/share/rqbit.json`. The
 Windows build bundles it to `_internal/share` when it is there, and the package scan accepts only that exact file. The Mac and
 Linux builds do not bundle it yet, so they do not offer sharing.
 
@@ -140,5 +195,5 @@ Linux builds do not bundle it yet, so they do not offer sharing.
 
 - Telling rqbit which pieces Lastbook already has. Its API cannot, so once the two meet in the middle, rqbit may fetch some
   pieces again from peers until the download ends. That wastes some bandwidth, never a byte of the file.
-- rqbit for the Mac and Linux packages.
+- rqbit inside the Mac and Linux app packages. A Linux server can share with `tools/seed.py` (above).
 - The iPad app's own downloader.

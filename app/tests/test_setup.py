@@ -1364,9 +1364,9 @@ time.sleep(120)
 '''
 
 
-class Sharing(Base):
-    """Keeping downloads and seeding them (engine/setup/share.py), with a stand-in for rqbit that writes down how it was started
-    and waits, as rqbit would while it seeds."""
+class WithRqbit(Base):
+    """A stand-in for rqbit that writes down how it was started and waits, as rqbit would while it seeds; the small pack's torrent
+    on the test server."""
     PIECE = 64 * 1024
 
     def setUp(self):
@@ -1379,16 +1379,6 @@ class Sharing(Base):
         fake.write_text(FAKE_RQBIT)
         self.command = [sys.executable, '-I', '-B', str(fake), str(self.record)]
 
-    def shared_manifest(self):
-        m = {'version': 1, 'published': '2026-11-17',
-             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': self.installed, 'available': True,
-                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip),
-                                   'sha256': sha(self.zip), 'kind': 'zip',
-                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': self.pin['pieces_root'],
-                                               'infohash_v2': self.pin['infohash_v2'], 'piece_length': self.PIECE}}]}],
-             'models': []}
-        return manifest.Manifest(bundled=manifest.validate(m, ALLOWED), remote=None, allowed=ALLOWED, context=self.ctx)
-
     def calls(self, n=1, timeout=20):
         t0 = time.time()
         while time.time() - t0 < timeout:
@@ -1400,6 +1390,20 @@ class Sharing(Base):
                 pass
             time.sleep(0.05)
         self.fail('rqbit was not started')
+
+
+class Sharing(WithRqbit):
+    """Keeping downloads and seeding them (engine/setup/share.py)."""
+
+    def shared_manifest(self):
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': self.installed, 'available': True,
+                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip),
+                                   'sha256': sha(self.zip), 'kind': 'zip',
+                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': self.pin['pieces_root'],
+                                               'infohash_v2': self.pin['infohash_v2'], 'piece_length': self.PIECE}}]}],
+             'models': []}
+        return manifest.Manifest(bundled=manifest.validate(m, ALLOWED), remote=None, allowed=ALLOWED, context=self.ctx)
 
     def install_shared(self, on=True):
         s = self.setup(manifest=self.shared_manifest(), share_command=self.command)
@@ -3340,6 +3344,131 @@ class AddressIndexes(Maps):
         fetched['address_indexes'][0]['files'][0]['sha256'] = '0' * 64
         merged = manifest.merge(validated, fetched)
         self.assertEqual(merged['address_indexes'][0]['files'], validated['address_indexes'][0]['files'])
+
+
+def load_seed():
+    """tools/seed.py, the command-line sharer, as a module."""
+    spec = importlib.util.spec_from_file_location('lastbook_seed', ROOT / 'tools' / 'seed.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class ServerSeeding(WithRqbit):
+    """tools/seed.py: a server downloads the files whose torrent the manifest pins, checks them, and shares them through one
+    rqbit (share.Station) on a fixed port, here the stand-in."""
+
+    def setUp(self):
+        super().setUp()
+        self.seed = load_seed()
+        self.out = self.tmp / 'share'
+        self.added = Path(str(self.record) + '.added')
+        self.files.data['Map-XX.zip'] = self.map = os.urandom(300 * 1024)
+
+    def manifest_file(self, pinned=True, torrent_name='Lastbook-Small.zip.torrent'):
+        small = {'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip), 'sha256': sha(self.zip), 'kind': 'zip'}
+        if pinned:
+            small['torrent'] = {'url': f'{self.base}/{torrent_name}', 'pieces_root': self.pin['pieces_root'],
+                                'infohash_v2': self.pin['infohash_v2'], 'piece_length': self.PIECE}
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'installed_bytes': self.installed, 'available': True, 'files': [small]}],
+             'maps': [{'id': 'XX', 'title': 'XX', 'installed_bytes': 1, 'available': True,
+                       'files': [{'name': 'Map-XX.zip', 'url': f'{self.base}/Map-XX.zip', 'size': len(self.map), 'sha256': sha(self.map)}]}],
+             'models': []}
+        path = self.tmp / 'manifest-v1.json'
+        path.write_text(json.dumps(m), encoding='utf-8')
+        return str(path)
+
+    def run_seed(self, *args, wait_for=None, timeout=20):
+        """The command in a thread until wait_for() is true (or at once without it), then stopped as Ctrl-C stops it: (exit
+        code, what it printed)."""
+        ev, out, buf = threading.Event(), {}, io.StringIO()
+
+        def go():
+            out['code'] = self.seed.main([str(self.out), *args], allowed=ALLOWED, context=self.ctx, command=self.command,
+                                         recheck=3600, status=0.2, stop=ev)
+        with mock.patch('sys.stdout', buf):
+            t = threading.Thread(target=go, daemon=True)
+            t.start()
+            t0 = time.time()
+            while (not wait_for or not wait_for()) and t.is_alive() and time.time() - t0 < timeout:   # without wait_for: until it ends
+                time.sleep(0.05)
+            ev.set()
+            t.join(30)
+        self.assertFalse(t.is_alive(), 'seed.py did not stop')
+        return out.get('code'), buf.getvalue()
+
+    def test_list_says_what_can_be_shared(self):
+        code, text = self.run_seed('--list', '--manifest', self.manifest_file())
+        self.assertEqual(code, 0)
+        self.assertRegex(text, r'Map-XX.zip +0.0 GB +not yet +no')
+        self.assertRegex(text, r'Lastbook-Small.zip +0.0 GB +yes +no')
+        self.assertIn('1 of 2 files can be shared now', text)
+        self.assertFalse(self.out.exists())
+
+    def test_downloads_checks_and_shares_on_its_port(self):
+        code, text = self.run_seed('--manifest', self.manifest_file(), '--port', '4321', '--upload-limit', '20M',
+                                   wait_for=lambda: self.added.exists() and 'files; ' in sys.stdout.getvalue())
+        self.assertEqual(code, 0, text)
+        self.assertEqual((self.out / 'Lastbook-Small.zip').read_bytes(), self.zip)
+        self.assertFalse((self.out / 'Map-XX.zip').exists())                         # no torrent yet: not taken by default
+        args = self.calls()[0]
+        self.assertEqual(args[args.index('server'):], ['server', 'start', '--disable-persistence', str(self.out)])
+        for pair in (['--listen-port', '4321'], ['--ratelimit-upload', '20000000']):
+            self.assertIn(pair[1], args[args.index(pair[0]):args.index(pair[0]) + 2])
+        self.assertTrue(args[args.index('--http-api-listen-addr') + 1].startswith('127.0.0.1:'))
+        self.assertIn('--disable-upnp-port-forward', args)
+        added = json.loads(self.added.read_text().splitlines()[0])
+        self.assertEqual((added['overwrite'], Path(added['output_folder'])), ('true', self.out))
+        self.assertIn('TCP port 4321', text)
+        self.assertIn('Stopped.', text)
+        code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: len(self.added.read_text().splitlines()) >= 2)
+        self.assertNotIn('Downloading', text)                                         # here already: shared again, not downloaded
+
+    def test_nothing_pinned_says_so_and_opens_nothing(self):
+        code, text = self.run_seed('--manifest', self.manifest_file(pinned=False), wait_for=lambda: 'nothing to share' in sys.stdout.getvalue())
+        self.assertEqual(code, 0)
+        self.assertIn('has not published a torrent', text)
+        self.assertFalse(self.record.exists(), 'rqbit started with nothing to share')
+        self.assertEqual([p.name for p in self.out.iterdir()], ['.lastbook-seed'])
+
+    def test_all_downloads_files_without_a_torrent_yet(self):
+        code, text = self.run_seed('--manifest', self.manifest_file(pinned=False), '--all',
+                                   wait_for=lambda: (self.out / 'Map-XX.zip').exists() and (self.out / 'Lastbook-Small.zip').exists())
+        self.assertEqual((self.out / 'Map-XX.zip').read_bytes(), self.map)
+        self.assertIn('each is shared once its torrent is published', text)
+        self.assertFalse(self.record.exists())
+
+    def test_a_torrent_that_is_not_the_pinned_one_is_never_shared(self):
+        self.files.data['Other.torrent'] = torrent.make(self.tmp / 'Lastbook-Small.zip', 'Lastbook-Small.zip', self.PIECE * 2)[0]
+        code, text = self.run_seed('--manifest', self.manifest_file(torrent_name='Other.torrent'),
+                                   wait_for=lambda: (self.out / 'Lastbook-Small.zip').exists())
+        self.assertIn('is not the one Lastbook pins', text)
+        self.assertEqual((self.out / 'Lastbook-Small.zip').read_bytes(), self.zip)     # still checked by its SHA-256
+        self.assertFalse(self.added.exists())
+
+    def test_too_little_space_stops_before_downloading(self):
+        with mock.patch.object(self.seed.shutil, 'disk_usage', return_value=mock.Mock(free=10 * MiB)):
+            code, text = self.run_seed('--manifest', self.manifest_file())
+        self.assertEqual(code, 1)
+        self.assertIn('need', text)
+        self.assertFalse((self.out / 'Lastbook-Small.zip').exists())
+
+    def test_without_rqbit_it_says_how_to_get_it(self):
+        self.command = None
+        with mock.patch.object(share, 'binary', return_value=None):
+            code, text = self.run_seed('--manifest', self.manifest_file())
+        self.assertEqual(code, 1)
+        self.assertIn('fetch_rqbit.py', text)
+
+    def test_names_and_rates_are_checked(self):
+        code, text = self.run_seed('--manifest', self.manifest_file(), '--only', 'Nope.zip')
+        self.assertEqual(code, 1)
+        self.assertIn('Not in the manifest: Nope.zip', text)
+        self.assertEqual([self.seed.rate(x) for x in ('500K', '20M', '1G', '1.5m', '4096', '20MB/s')],
+                         [500000, 20000000, 1000000000, 1500000, 4096, 20000000])
+        with self.assertRaises(Exception):
+            self.seed.rate('fast')
 
 
 class ContentRevisions(Base):

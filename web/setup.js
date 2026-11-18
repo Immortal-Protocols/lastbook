@@ -288,12 +288,13 @@
     const sel = mapById(selected), a = addressAdds();
     const mapIncluded = sel && (sel.id === now || (now === 'us' && isUSMap(sel)));
     const replacing = sel && !mapIncluded && now;
+    const activeMap = sel && !mapIncluded ? sel : (now ? mapById(now) : null);   // the map in force once the choice is in; its kind says whether it carries a place index
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
     let hint = !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${replacing ? `. This replaces ${mapName(now)}.` : ''}${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
     if (unavailable) hint = (bytes ? hint : 'Your area map is already included.') + ' Street-address search is not available for this area yet.';
-    if (sel && sel.kind !== 'state') hint += ' The place finder is not available for this map yet.';
+    if (activeMap && activeMap.kind === 'region') hint += ' The place finder is not available for this map yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
       ${now === 'us' ? '<p class="s-mapnote">All includes the US and Washington, D.C. Pick a state for street-address search, or another country to download that map instead (it replaces the US map).</p>' : ''}

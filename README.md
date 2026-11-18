@@ -194,6 +194,11 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
 - **State maps** are one US state's detailed map set, built by `packaging/build_packs.py map <ST>` and published by
   `packaging/state_maps.py`, with per-state address indexes from `packaging/address_indexes.py`. A state map replaces the
   library's map set; it never merges with it. Medium already holds California and All the whole US.
+- **Torrents.** `packaging/make_torrents.py` writes a BitTorrent file (v1 and v2) for each published pack, state map and
+  address index. Each lists the file's address on `downloads.lastbook.org` as a web seed, so a download with no other peers
+  is never slower than the plain one. The app does not use torrents. To download a pack with a torrent client, open the
+  torrent there, then in setup choose **Choose a library zip or AI model file** and pick the finished zip. Setup checks its
+  size and SHA-256 before using it, as it does for its own downloads.
 - **The local AI** is optional: Gemma 4 26B A4B (Unsloth's `gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`, about 17 GB). The file
   name, size, SHA-256 and Hugging Face revision are pinned in `llm_local.py`. Setup offers it only where the measured fit
   says it fits (about 18 GB of memory for model and context, plus a reserve) and says why in plain words when it does not.

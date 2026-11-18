@@ -110,6 +110,17 @@ class TestHandler(server.Handler):
             self.end_headers()
             self.wfile.write(b'z' * (17 * MiB if p.endswith('big') else 10))
             raise RuntimeError('deliberate mid-body')
+        if p in ('/documents/t/redirect-then-die', '/documents/t/flood-then-die'):
+            self.send_response(302 if 'redirect' in p else 200)
+            if 'redirect' in p:
+                self.send_header('Location', '/documents/plain.txt')
+            else:
+                self.send_header('Content-Length', str(B.BIG_BODY + 1))
+            try:
+                self.end_headers()      # the bridge answers for itself here; the flood gate stops the handler with BrokenPipe
+            except OSError:
+                pass
+            raise RuntimeError('deliberate after the bridge answered')
         if p == '/documents/t/redirect':
             self.send_response(302)
             self.send_header('Location', '/documents/plain.txt?a="<b>')
@@ -721,6 +732,16 @@ class Both:
             else:
                 self.assertEqual(r.status, 502, p)
 
+    def test_exception_after_the_bridge_answered_for_itself_keeps_its_answer(self):
+        r = self.get('/documents/t/flood-then-die')
+        self.assertEqual(r.status, 403)
+        self.assertTrue(r.ok)
+        if self.mode == 'stream':
+            r = self.get('/documents/t/redirect-then-die')
+            self.assertEqual(r.status, 200)
+            self.assertIn(b'http-equiv="refresh"', r.body)
+            self.assertTrue(r.ok)
+
     def test_exception_mid_body_leaves_no_spool(self):
         before = tmp_files()
         r = self.get('/documents/t/diemid-big')
@@ -743,6 +764,33 @@ class Both:
         finally:
             B._Buffered._end = orig
         self.assertEqual(r.status, 502)
+
+    def _failing_sink(self, fail):
+        calls = []
+
+        class Sink(Rec):
+            n = 0
+
+            def head(me, *a):
+                if fail == 'head':
+                    raise OSError('head failed')
+                super().head(*a)
+
+            def finish(me, ok):
+                calls.append(ok)
+                if fail == 'finish' and len(calls) == 1:
+                    raise OSError('finish failed')
+                super().finish(ok)
+        sink = Sink()
+        self.b.start('GET', self.b.origin + '/documents/plain.txt', {}, None, sink, None)
+        sink.done.wait(10)
+        time.sleep(0.2)
+        return calls
+
+    def test_stream_end_failure_still_finishes_the_sink(self):
+        if self.mode != 'stream':
+            self.skipTest('stream mode only')
+        self.assertEqual(self._failing_sink('finish'), [True, False])
 
     # ---- where things may go
     def test_frame_rule(self):

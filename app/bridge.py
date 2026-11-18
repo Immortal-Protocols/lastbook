@@ -507,6 +507,16 @@ class _Streamed(Exchange):
     def __init__(self, bridge, method, target, raw, lane, is_document, sink):
         super().__init__(bridge, method, target, raw, lane, is_document)
         self.sink = sink
+        self.finished = False
+
+    def _end_failed(self):
+        if self.stopped or self.finished:
+            return
+        self.finished = True
+        try:
+            self.sink.finish(False)
+        except Exception:
+            traceback.print_exc()
 
     def _send_head(self):
         self.sink.head(self.status, self.reason, list(self.headers))
@@ -536,8 +546,9 @@ class _Streamed(Exchange):
             self.announced = 0
             self._send_head()
         short = self.method != 'HEAD' and self.announced is not None and not self.swallow and self.sent < self.announced and self.status not in (204, 304)
-        cut = self.note in ('unknown-length-over-limit', 'exception')
+        cut = self.note == 'unknown-length-over-limit' or (self.note == 'exception' and not self.swallow)   # the bridge's own page is whole, whatever the handler did after
         self.sink.finish(not (short or cut))
+        self.finished = True
         self.b._log_end(self, 'short' if short or cut else 'finished')
 
 
@@ -631,7 +642,7 @@ class _Buffered(Exchange):
             self.mem = bytearray(TOO_LARGE)
         if not self.head_done:
             self.status, self.reason, self.note = 502, 'No Answer', self.note or 'no-answer'
-        elif self.note == 'exception' and self.status not in (204, 304) and self.method != 'HEAD' and (self.announced is None or self.sent < self.announced):
+        elif self.note == 'exception' and not self.swallow and self.status not in (204, 304) and self.method != 'HEAD' and (self.announced is None or self.sent < self.announced):
             self._drop_memory()      # the handler died mid-body: what is held is not the answer it announced
             self._drop_spool()
             self.status, self.reason, self.headers, text = _plain(502, 'Bad Gateway', b'incomplete answer')

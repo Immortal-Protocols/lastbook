@@ -1702,6 +1702,60 @@ class Manage(Base):
         self.assertEqual(s._check_library({'state': '', 'bytes_done': 0}, new, Control()), [])
         self.assertTrue(Path(note['old']).exists())        # the damaged copy is kept aside until deleted
 
+    def test_check_now_downloads_nothing_and_keeps_the_result(self):
+        lib = self.installed_library()
+        work = self.parent / 'LastbookData.setup'
+        shutil.rmtree(work, ignore_errors=True)
+        s = self.setup('manage', current=lib)
+        self.assertIsNone(s.current_info()['checked'])                  # never checked on this computer
+        self.files.log.clear()
+        j = s.start(check=True)
+        self.assertTrue(j['check'])
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (0, True, False))
+        self.assertEqual(self.files.log, [])                             # nothing asked of the server
+        self.assertFalse(work.exists())                                  # nothing written beside the library
+        self.assertEqual(s.current_info()['checked'], j['result'])
+        self.assertEqual(self.setup('manage', current=lib).current_info()['checked'], j['result'])   # kept in the settings folder
+        self.assertIsNone(api.startup(self.settings)[1])                 # no switch staged
+
+    def test_check_now_reports_damage_and_changes_nothing(self):
+        lib = self.installed_library()
+        damaged = []
+        for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):
+            data = bytearray(path.read_bytes())
+            data[0] ^= 1
+            path.write_bytes(data)
+            damaged.append((path, sha(data)))
+        s = self.setup('manage', current=lib)
+        self.files.log.clear()
+        s.start(check=True)
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (1, False, False))
+        self.assertEqual(self.files.log, [])                             # a check never downloads, even with damage found
+        for path, digest in damaged:
+            self.assertEqual(sha(path.read_bytes()), digest)             # and changes nothing: Repair is the person's choice
+        s.job = None
+        s.start(repair=True)                                             # then Repair fixes it, and the check it ran is kept
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['repaired']), (1, True))
+        self.assertEqual(sorted(n for n, _, _ in self.files.log), ['Lastbook-Small.zip', 'model.gguf'])
+        self.assertEqual(s.current_info()['checked']['repaired'], True)
+
+    def test_check_now_without_the_model_or_a_library(self):
+        lib = self.installed_library()
+        (lib / 'models' / 'model.gguf').unlink()
+        s = self.setup('manage', current=lib)
+        j = s.start(check=True, ai=True)                                 # the AI is not installed: it is not checked, or fetched
+        self.assertEqual([i['kind'] for i in j['items']], ['pack'])
+        j = self.wait(s)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok']), (0, None))
+        self.assertEqual(self.setup().start(check=True)['code'], 'nothing')
+        self.assertIn('check', self.setup().start(check=True)['error'])
+
     def test_repair_needs_a_known_pack(self):
         lib = self.parent / 'LastbookData'
         (lib / 'library-data').mkdir(parents=True)

@@ -274,7 +274,8 @@ class Setup:
             p = self.current / 'models' / m['file']
             if p.is_file() and p.stat().st_size == m['size']:
                 model = m['id']
-        return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', [])}
+        return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', []),
+                'checked': self._settings().get('checks', {}).get(str(self.current))}   # the last full check of this library (Check now, Repair)
 
     def address_indexes(self):
         if not self.current:
@@ -443,9 +444,9 @@ class Setup:
             return p.parent if p.name == DATA_NAME else p
         return self.current.parent if self.current else self.default_parent
 
-    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None):
-        if repair:
-            return self._start_repair(ai)
+    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, check=False):
+        if repair or check:
+            return self._start_repair(ai, check_only=check)
         with self.lock:
             if self.job and self.job['state'] in ACTIVE + ('paused',):
                 return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
@@ -553,19 +554,21 @@ class Setup:
             self._run()
             return self.public_job()
 
-    def _start_repair(self, ai):
+    def _start_repair(self, ai, check_only=False):
         """Re-check the open library's files (pack-manifest.tsv) and the model's SHA-256. What is wrong is fetched again: the pack is
-        downloaded and switched to as in an upgrade, the model replaced in place. Nothing is downloaded if all is well."""
+        downloaded and switched to as in an upgrade, the model replaced in place. Nothing is downloaded if all is well.
+        check_only (Check now): the same check, and nothing is ever downloaded or changed; the result is kept (current_info 'checked')
+        and the job's 'result' says what is damaged, so the person can choose Repair."""
         with self.lock:
             if self.job and self.job['state'] in ACTIVE + ('paused',):
                 return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
             cur = self.current_info()
             if self.mode != 'manage' or not cur:
-                return {'error': 'There is no library to repair yet.', 'code': 'nothing'}
+                return {'error': 'There is no library to check yet.' if check_only else 'There is no library to repair yet.', 'code': 'nothing'}
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             if not pack or not pack['available']:
-                return {'error': 'Lastbook cannot tell which library this is, so it cannot repair it. Download a library instead.', 'code': 'unavailable'}
-            model = self.manifest.model() if (ai or cur['model']) else None
+                return {'error': f'Lastbook cannot tell which library this is, so it cannot {"check" if check_only else "repair"} it. Download a library instead.', 'code': 'unavailable'}
+            model = self.manifest.model() if (cur['model'] if check_only else (ai or cur['model'])) else None   # a check looks only at what is installed
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model', 'map')}
@@ -574,12 +577,14 @@ class Setup:
             if model:
                 items.append({'id': model['id'], 'kind': 'model', 'title': model['title'], 'state': 'waiting', 'bytes_done': 0,
                               'bytes_total': model['size'], 'rate_bps': 0, 'eta_s': None, 'error': None})
-            mp = None
+            mp, map_damaged = None, False
             if _separate_map(target):
                 try:                 # a state map's files come from its own download, not the pack's: the pack check skips them
                     install.check_map(target)
                 except install.Refused as e:
-                    print('setup: repair:', e.message, flush=True)
+                    print('setup: repair:' if not check_only else 'setup: check:', e.message, flush=True)
+                    map_damaged = True
+                if map_damaged and not check_only:      # Repair fetches the map again; Check now only says so, and downloads nothing
                     mp = self.manifest.map(cur['map'])
                     if not mp or not mp['available']:
                         return {'error': f'The {cur["map"]} map in this library is damaged, and this version does not offer it to download again. '
@@ -589,10 +594,10 @@ class Setup:
                                          'bytes_total': mp['download_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             names = [f['name'] for f in pack['files']] + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else [])
             self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'items': items, 'error': None, 'started': _now(), 'folder': str(target),
-                        'repair': True,
+                        'repair': True, 'check': check_only,
                         'plan': {'pack': pack, 'model': model, 'map': mp, 'parent': str(parent), 'target': str(target), 'work': str(work),
-                                 'sources': {k: v for k, v in srcs.items() if k in names}, 'explicit': False, 'retried': {},
-                                 'switch': True, 'repair': True}}
+                                 'sources': {} if check_only else {k: v for k, v in srcs.items() if k in names}, 'explicit': False, 'retried': {},
+                                 'switch': not check_only, 'repair': True, 'check_only': check_only, 'map_damaged': map_damaged}}
             s = self._settings()
             s['work'] = str(work)
             self._save_settings(s)
@@ -862,7 +867,8 @@ class Setup:
         it = None
         try:
             work = Path(plan['work'])
-            (work / 'downloads').mkdir(parents=True, exist_ok=True)
+            if not plan.get('check_only'):     # Check now writes nothing beside the library
+                (work / 'downloads').mkdir(parents=True, exist_ok=True)
             for it in job['items']:
                 if it['state'] == 'done':
                     continue
@@ -872,6 +878,8 @@ class Setup:
                     self._do_map(it, plan, work, control)
                 elif it['kind'] == 'addresses':
                     self._do_addresses(it, plan, work, control)
+                elif plan.get('check_only'):
+                    self._check_model(it, plan, control)
                 else:
                     self._do_model(it, plan, work, control)
                 with self.lock:
@@ -952,7 +960,10 @@ class Setup:
         if plan.get('repair') and 'damaged' not in plan:
             bad = self._check_library(it, Path(plan['target']), control)
             plan['damaged'] = bad
-            print(f'setup: repair found {len(bad)} damaged or missing files', flush=True)
+            print(f'setup: {"check" if plan.get("check_only") else "repair"} found {len(bad)} damaged or missing files', flush=True)
+            if plan.get('check_only'):     # Check now: report, never download
+                plan['switch'] = False
+                return
             if not bad:
                 plan['switch'] = False
                 return
@@ -1054,6 +1065,17 @@ class Setup:
             if ours:
                 os.unlink(path)
 
+    def _check_model(self, it, plan, control):
+        """Check now: the installed model file against its published size and SHA-256, where it is. Nothing is fetched or moved."""
+        m = plan['model']
+        p = Path(plan['target']) / 'models' / m['file']
+        tracker = _Item(it)
+        self._set(it, 'verifying', bytes_done=0, bytes_total=m['size'])
+        ok = p.is_file() and p.stat().st_size == m['size']
+        if ok:
+            ok = _sha256(p, control, lambda d, t: tracker.progress(d, t, 'verifying')) == m['sha256']
+        plan['model_ok'] = ok
+
     def _do_model(self, it, plan, work, control):
         m = plan['model']
         path, ours = self._get_file(it, {'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256']}, plan, work, control, 0)
@@ -1092,6 +1114,13 @@ class Setup:
                 install.stage_switch(_pending_file(self.settings_dir), lib, plan['target'], plan.get('model_file'), model_sha256=plan.get('model_sha256'))
             elif plan.get('map_new'):
                 install.stage_switch(_pending_file(self.settings_dir), plan['map_new'], plan['target'], kind='map')
+            if plan.get('repair') and 'damaged' in plan:   # a full check ran (Check now, or Repair's first step): keep when, and what it found
+                result = {'at': _now(), 'damaged': len(plan['damaged']), 'model_ok': plan.get('model_ok'),
+                          'repaired': bool(plan['damaged']) and not plan.get('check_only')}
+                self.job['result'] = result
+                s = self._settings()
+                s.setdefault('checks', {})[plan['target']] = result
+                self._save_settings(s)
             self.job['state'] = 'done'
             for it in self.job['items']:
                 it['rate_bps'], it['eta_s'] = 0, None
@@ -1292,7 +1321,7 @@ def _default():
 ROUTES = {
     ('GET', 'state'): lambda s, b: s.state(),
     ('GET', 'job'): lambda s, b: s.public_job(),
-    ('POST', 'start'): lambda s, b: s.start(b.get('pack'), bool(b.get('ai')), b.get('folder'), repair=bool(b.get('repair')), map_id=b.get('map') or None, address_id=b.get('address_id') or None),
+    ('POST', 'start'): lambda s, b: s.start(b.get('pack'), bool(b.get('ai')), b.get('folder'), repair=bool(b.get('repair')), map_id=b.get('map') or None, address_id=b.get('address_id') or None, check=b.get('check') is True),
     ('POST', 'pause'): lambda s, b: s.pause(),
     ('POST', 'resume'): lambda s, b: s.resume(),
     ('POST', 'cancel'): lambda s, b: s.cancel(),

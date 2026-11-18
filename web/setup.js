@@ -162,7 +162,7 @@
     }
     const j = S.job;
     if (j && j.state && j.state !== 'done' && !(j.state === 'failed' && errCode(j.error) === 'cancelled')) view = 'job';
-    else if (j && j.state === 'done') view = 'done';
+    else if (j && j.state === 'done') view = j.check && cur() ? 'manage' : 'done';   // a finished Check now shows as "Last checked" there
     else if (cur() || S.mode === 'manage' || MANAGE_ASKED) view = cur() ? 'manage' : 'choose';
     $('#sBack').hidden = !cur();
     render(true);
@@ -368,7 +368,8 @@
       </div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
-      ${CAN.repair ? `<div class="s-go left"><button class="btn plain" id="repair">${ico('repair')}Check and repair</button></div>` : ''}
+      ${CAN.repair ? `<div class="s-have"><div class="s-row">${ico('ok', 's-ri')}<span><b>Library check</b><small id="lastCheck">${checkLine(c.checked)}</small></span><button class="btn plain" id="checkNow">Check now</button></div></div>
+      <div class="s-go left"><button class="btn plain" id="repair">${ico('repair')}Check and repair</button></div>` : ''}
       <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
@@ -380,11 +381,23 @@
     if ($('#rmOld')) $('#rmOld').onclick = () => { confirmOld = true; manageView(); $('#oldNo').focus() };
     if ($('#oldNo')) $('#oldNo').onclick = () => { confirmOld = false; manageView(); $('#rmOld').focus() };
     if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', 'The old library is being deleted.', { path: old.path });
+    if ($('#checkNow')) $('#checkNow').onclick = async () => {   // the Repair check alone: it downloads and changes nothing
+      const r = await call('start', { check: true }).catch(e => ({ error: e.message }));
+      if (!r || r.error) { note = (r && r.error) || 'The check could not start.'; manageView(); return }
+      repair = { fixed: false, check: true }; S.job = r; go('job'); poll();
+    };
     if ($('#repair')) $('#repair').onclick = async () => {
       const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
       if (!r || r.error) { note = (r && r.error) || 'Repair could not start.'; manageView(); return }
       repair = { fixed: false }; S.job = r; go('job'); poll();
     };
+  }
+  // "Last checked 17 November 2026 · every file as published", from current.checked (Check now, or Repair's own check)
+  function checkLine(ck) {
+    if (!ck || !ck.at) return 'Not checked on this computer yet. Checking reads every file and downloads nothing.';
+    const when = new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired` : ck.damaged ? `${ck.damaged} damaged or missing` : 'every file as published';
+    return `Last checked ${esc(when)} · ${what}${ck.model_ok === false && !ck.repaired ? ' · the local AI file did not match' : ''}`;
   }
   async function act(path, done, body) {
     const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? 'This Lastbook cannot do that yet.' : e.message }));
@@ -520,6 +533,7 @@
 
   /* ---- done */
   function doneView() {
+    if (repair && repair.check) return checkedView();
     const j = S.job || { items: [] }, fixed = repair && repair.fixed, checked = repair && !fixed;
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${checked ? 'All good' : fixed ? 'Repaired' : 'Ready'}</h1>
@@ -531,6 +545,28 @@
       const r = await call('finish', {}).catch(e => ({ error: e.message }));   // on {ok} the app relaunches itself into the library
       if (!r || r.error) { b.disabled = false; b.textContent = 'Open the library'; const n = $('#openNote'); n.hidden = false; n.textContent = (r && r.error) || 'The library did not open. Try again.' }
       else live.textContent = 'Opening your library…';
+    };
+  }
+
+  /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
+  function checkedView() {
+    const r = (S.job && S.job.result) || {}, bad = r.damaged || 0, ai = r.model_ok === false;
+    const what = [bad ? `${bad} ${bad === 1 ? 'file is' : 'files are'} damaged or missing` : '', ai ? 'the local AI file does not match its published copy' : ''].filter(Boolean).join(', and ');
+    main.innerHTML = bad || ai
+      ? `<div class="s-done">${ico('warn', 's-big')}<h1>Something needs repair</h1>
+        <p class="lead">${esc(what[0].toUpperCase() + what.slice(1))}. Nothing was changed or downloaded. Repair downloads only what is wrong, and keeps the damaged copy aside.</p>
+        <p class="s-two"><button class="btn big" id="doRepair">${ico('repair')}Repair</button> <button class="btn big plain" id="back">Not now</button></p></div>`
+      : `<div class="s-done">${ico('ok', 's-big')}<h1>All good</h1><p class="lead">Every file matches the published library. Nothing was downloaded.</p>
+        <button class="btn big" id="back">Back to Library and local AI</button></div>`;
+    live.textContent = bad || ai ? 'The check found damage.' : 'The library was checked. All good.';
+    repair = null;
+    S.job = null;
+    call('state').then(x => { S = x }).catch(() => { });   // the new "Last checked" date
+    $('#back').onclick = async () => { S = await call('state').catch(() => S); go('manage') };
+    if ($('#doRepair')) $('#doRepair').onclick = async () => {
+      const x = await call('start', { repair: true, ai: !!(S.current && S.current.model) }).catch(e => ({ error: e.message }));
+      if (!x || x.error) { note = (x && x.error) || 'Repair could not start.'; go('manage'); return }
+      repair = { fixed: false }; S.job = x; go('job'); poll();
     };
   }
 

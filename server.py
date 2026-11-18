@@ -1395,8 +1395,10 @@ def water_places(q, limit=10, near=None):
 
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
-    if address_search.is_street_first_address_query(q):
+        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        if found or not address_search.is_postcode_place_query(q, HERE / 'derived' / 'geo'):
+            return found    # '70173 Stuttgart' is number-first too, but a place where an installed index knows it
+    elif address_search.is_street_first_address_query(q):
         # 'Hauptstraße 5' is street first: an address only when an installed index has that house
         found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
         if found:
@@ -1440,14 +1442,16 @@ def places(q, limit=20, near=None):
     home = near or home_area()
     rows.sort(key=lambda r: (norm(r[0]) != ql, not norm(r[0]).startswith(ql), r[5] > 2 and norm(r[0]) == ql and importance(r),
                              -round(near_bonus(home, r[3], r[4])), r[5]))
+    region_bounds = map_contents().get('bounds') if region_of_national() else None
     seen, out = set(), []
     for name, kind, detail, lat, lon, rank, src in rows:
         k = (name.lower(), round(lat, 2), round(lon, 2))
         if k in seen:
             continue
         seen.add(k)
+        in_region = bool(region_bounds and region_bounds[0] <= lon <= region_bounds[2] and region_bounds[1] <= lat <= region_bounds[3])
         out.append({'name': name, 'kind': kind, 'detail': detail, 'lat': lat, 'lon': lon, 'source': src,
-                    'onMap': bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
+                    'onMap': bool(pack_info()) or in_region or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
         if len(out) >= limit:
             break
     water = water_places(q, near=near)
@@ -1656,21 +1660,23 @@ def map_info():
         contents = map_contents()
         contents['region'] = region
         extra.update(contents)
-        geo = region_datasets(extra, meta.get('source') or '') if region else pack_datasets(extra)
+        geo = region_datasets(extra, meta.get('source') or '', meta.get('help_points') or '') if region else pack_datasets(extra)
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
 
 
-def region_datasets(have, source=''):
+def region_datasets(have, source='', help_points=''):
     """The panel beside a map set outside the US: only the files this set really holds, and their licence."""
     code = have.get('region') or 'this area'
     out = [{'label': f'Streets, buildings, water, land use and named places for {code} (OpenStreetMap)', 'status': 'Shown at every zoom level' if have.get('detail') else 'Not in this map set'}]
     if have.get('detail'):
-        out.append({'label': 'Help points: hospitals, clinics, pharmacies, fire stations, police, drinking water and more (OpenStreetMap)', 'status': 'Shown when you zoom in'})
+        help_credit = f' ({help_points})' if help_points else ' (OpenStreetMap)'
+        out.append({'label': f'Help points: hospitals, clinics, pharmacies, fire stations, police, drinking water and more{help_credit}', 'status': 'Shown when you zoom in'})
     if PLACEDB.exists():
         out.append({'label': 'Place finder: city districts, streets, postcodes and named places (OpenStreetMap)', 'status': 'Used by "Find an address, town or place"'})
     address_index = HERE / 'derived/geo/addresses' / f'{code}.sqlite'
     if address_index.exists():
-        out.append({'label': 'Street addresses (OpenStreetMap)', 'status': 'Exact house numbers only; a house that is not mapped cannot be found'})
+        addr_source = address_search._index_info(address_index)[1] or 'OpenStreetMap'
+        out.append({'label': f'Street addresses ({addr_source})', 'status': 'Exact house numbers only; a house that is not mapped cannot be found'})
     if not have.get('terrain'):
         out.append({'label': 'Elevation is not in this map set', 'status': 'The map draws no contours and no 3D view for this set'})
     if not have.get('crops'):

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from engine.address_search import (Scheme, find_addresses, is_address_query,
+from engine.address_search import (Scheme, find_addresses, is_address_query, is_postcode_place_query,
                                    is_street_first_address_query, normalize, normalize_as)
 
 
@@ -120,6 +120,8 @@ class GermanAddressTests(unittest.TestCase):
                 ('5', 'Calwer Straße', 'Stuttgart', '70173', 48.7741, 9.1776, 'Stuttgart-Mitte'),
                 ('5', 'Calwer Straße', 'Stuttgart', '', 48.8000, 9.2200, 'Bad Cannstatt'),
                 ('9', 'Marktstraße', 'Stuttgart', '70173', 48.8010, 9.2210, 'Bad Cannstatt'),
+                ('51', 'Abelsbergstraße', 'Stuttgart', '70190', 48.7860, 9.2050, 'Stuttgart-Ost'),
+                ('128', 'Mercedes-Benz Werk 1 (Untertürkheim)', 'Stuttgart', '70327', 48.7840, 9.2480, 'Untertürkheim'),
             ]
             db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?)',
                            [(num, street, normalize_as('de-1', street), city, 'DE-BW-ST', zip_code, lat, lon, district)
@@ -188,6 +190,19 @@ class GermanAddressTests(unittest.TestCase):
     def test_later_number_candidate_is_tried_when_the_first_fails(self):
         hit, = find_addresses('Am 17. Juni 5', self.geo)
         self.assertEqual(hit['name'], 'Am 17. Juni 5')
+        hit, = find_addresses('Mercedes-Benz Werk 1 (Untertürkheim) 128', self.geo)
+        self.assertEqual(hit['name'], 'Mercedes-Benz Werk 1 (Untertürkheim) 128')
+
+    def test_numeric_slash_suffix_does_not_match_the_base_house(self):
+        self.assertEqual(find_addresses('Abelsbergstraße 51/1', self.geo), [])
+        self.assertEqual(find_addresses('Abelsbergstraße 51 / 1 Stuttgart', self.geo), [])
+        hit, = find_addresses('Abelsbergstraße 51', self.geo)
+        self.assertEqual(hit['name'], 'Abelsbergstraße 51')
+
+    def test_postcode_place_helper_and_liskov_patterns(self):
+        self.assertTrue(is_postcode_place_query('70173 Stuttgart', self.geo))
+        self.assertTrue(is_postcode_place_query('70376, Bad Cannstatt', self.geo))
+        self.assertFalse(is_postcode_place_query('70173 München', self.geo))
 
     def test_index_without_a_norm_meta_does_not_break_street_first_search(self):
         db = sqlite3.connect(self.geo / 'addresses' / 'CA.sqlite')

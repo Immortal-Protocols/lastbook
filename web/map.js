@@ -194,12 +194,15 @@ const MapView = (() => {
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
   function applyAvailability(info) {   // a map file still being built, or absent, must not offer or fetch its layers
-    if (info.terrain === false) { st.noTerrain = true; st.style.relief = false; st.style.contours = false; $('map-3d')?.remove() }
-    if (info.crops === false) st.noCrops = true;
+    st.noTerrain = info.terrain === false;
+    if (st.noTerrain) { st.style.relief = false; st.style.contours = false }
+    if ($('map-3d')) $('map-3d').hidden = st.noTerrain;
+    st.noCrops = info.crops === false;
   }
   function describe(info) {
     if (info.region) {
-      const at = document.querySelector('.mapattr'); if (at) at.textContent = '© OpenStreetMap contributors · Natural Earth'
+      const at = document.querySelector('.mapattr'), src = (info.meta && info.meta.source) || '';
+      if (at) at.textContent = src ? `© ${src} · Natural Earth` : '© OpenStreetMap contributors · Natural Earth';
       const stamp = ((info.meta && info.meta.data_as_of) || '').slice(0, 10), head = document.querySelector('.maphead p');
       if (stamp && head) {   // the header must quote this map's own data date, not the US build's
         const d = new Date(stamp + 'T00:00:00Z');

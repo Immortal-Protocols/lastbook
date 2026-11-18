@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from engine import pr_rural, pr_rural_model
+from engine import pr_permit, pr_rural, pr_rural_model
 
 
 class ParcelSearch(unittest.TestCase):
@@ -51,6 +51,42 @@ class ParcelSearch(unittest.TestCase):
         self.assertTrue(self.search('CRIM 001-002-003-03-007'))
         self.assertEqual(self.search('CRIM 001-002-003-03-006'),[])
         self.assertEqual(self.search('099-099-099-99'),[])
+
+    def test_complete_permit_wording_and_spoken_directions(self):
+        wording = 'CARR 135, KM 4.400, SOLAR 3, SECT EL SOL, INT 7, BO ALIAS, 00700'
+        relative = 'CARR 135, KM 4.4, DESPUÉS DEL PUENTE, BO ALIAS'
+        with sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite') as db:
+            db.execute('CREATE TABLE municipios(name)')
+            db.executemany('INSERT INTO municipios VALUES (?)', [('Villa Ejemplo',), ('Otro Pueblo',)])
+            db.execute(pr_permit.SCHEMA)
+            for base, text in [('00100200303',wording), ('00100200304',wording), ('00100200305',relative)]:
+                signature = pr_permit.key(text, 'villa ejemplo', source=True)
+                db.execute('INSERT INTO pr_permit_wording VALUES (?,?,?,?,?,?)',
+                           ('villa ejemplo', *signature, base, 'ARPE permit', text))
+        q = ('Es en Villa Ejemplo, en el sector El Sol, interior 7, por la carretera ciento treinta y cinco, '
+             'en el kilómetro cuatro punto cuatro, solar tres, en el barrio Alias.')
+        for query in [q, wording + ', Villa Ejemplo']:
+            rows = self.search(query)
+            self.assertEqual([r['parcelNumber'] for r in rows], ['001-002-003-03','001-002-003-04'])
+            self.assertTrue(all(r['name'] == wording and r['parcelCount'] == 2 for r in rows))
+            self.assertEqual(self.search(query, 1), rows[1:])
+        for original, changed in [('tres','siete'), ('interior 7','interior 8'), ('El Sol','El Río'),
+                                  ('punto cuatro','punto cero cuatro'), ('Villa Ejemplo','Otro Pueblo')]:
+            self.assertEqual(self.search(q.replace(original,changed)), [])
+        self.assertEqual(self.search(wording.replace('00700','00701') + ', Villa Ejemplo'), [])
+        self.assertEqual(self.search(relative + ', Villa Ejemplo')[0]['name'], relative)
+        self.assertEqual(self.search(relative.replace('DESPUÉS','ANTES') + ', Villa Ejemplo'), [])
+
+        # A full wording match promotes an existing structured candidate across page boundaries.
+        query = 'PR-19 km 4.4, Villa Ejemplo'
+        with sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite') as db:
+            db.execute('INSERT INTO pr_permit_wording VALUES (?,?,?,?,?,?)',
+                       ('villa ejemplo', *pr_permit.key(query, 'villa ejemplo'), '00100200324', 'SIP permit', query))
+        rows = self.search(query) + self.search(query, 20)
+        self.assertEqual((rows[0]['parcelNumber'], rows[0]['name']), ('001-002-003-24',query))
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(len({r['parcelNumber'] for r in rows}), 24)
+        self.assertTrue(all(r['parcelCount'] == 24 for r in rows))
 
     def test_candidate_pages_and_incomplete_kilometer(self):
         query = 'PR-19 km 4.4, Bo. Las Peñas, Villa Ejemplo'

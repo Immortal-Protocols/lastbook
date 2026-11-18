@@ -8,7 +8,7 @@ import re
 from shapely import make_valid
 from shapely.geometry import shape
 
-from engine import pr_parcels, pr_rural
+from engine import pr_parcels, pr_permit, pr_rural
 from engine.pr_addresses import fold
 from tools.build_pr_rural import Areas, features
 
@@ -149,7 +149,13 @@ def labels(db, records, source):
             continue
         if len(key) == 14 and key[11:] != '000':
             db.execute('INSERT OR IGNORE INTO pr_account VALUES (?)', (key,))
-        values = address_fields(row['address'] or '')
+        wording = (row['address'] or '').strip()
+        if source in ('SIP permit', 'ARPE permit') and town and wording:
+            signature = pr_permit.key(wording, town, source=True)
+            if signature:
+                db.execute('INSERT OR IGNORE INTO pr_permit_wording VALUES (?,?,?,?,?,?)',
+                           (town, *signature, key[:11], source, wording))
+        values = address_fields(wording)
         if values:
             # -1 in the unique index makes repeated records with an unreported km compare equal.
             db.execute('INSERT OR IGNORE INTO pr_parcel_address VALUES (?,?,?,?,?,?,?,?,?,?)',
@@ -174,6 +180,7 @@ def build(db, folder, rural, csv_files=()):
     db.executescript("""CREATE INDEX pr_parcel_number ON pr_parcel(base);
         CREATE UNIQUE INDEX pr_parcel_evidence ON pr_parcel_address
         (base,route,coalesce(meters,-1),lot,sector,interior,access,postal,landmark,source);""")
+    db.execute(pr_permit.SCHEMA)
     for name in ('sip', 'arpe'):
         labels(db, pages(folder, manifest[name]), name.upper() + ' permit')
     csv_hashes = []
@@ -197,6 +204,7 @@ def build(db, folder, rural, csv_files=()):
     for town, total, permits, crim in counts:
         coverage[town] = {'addressed_parcels': total, 'permit_parcels': permits, 'crim_address_parcels': crim}
     return {'parcels': n, 'addressed_parcels': db.execute('SELECT count(DISTINCT base) FROM pr_parcel_address').fetchone()[0],
+            'permit_wordings': db.execute('SELECT count(*) FROM pr_permit_wording').fetchone()[0],
             'address_coverage_by_municipio': coverage,
             'address_sources': dict(db.execute('SELECT source,count(*) FROM pr_parcel_address GROUP BY source')),
             'municipios': dict(db.execute('SELECT municipio,count(DISTINCT base) FROM pr_parcel GROUP BY municipio')),

@@ -110,6 +110,8 @@ same on-device index. Gemma keeps the supplied solar or lote, sector and interio
 It can read a parcel address that omits the kilometer. A result from this path displays the interpretation. A busy, disabled or absent model leaves
 the ordinary reader available. A map request stops waiting after 60 seconds.
 
+When a rural query names the municipio, the reader also checks the original address on individual SIP and ARPE permits. It can recognize reordered labelled details, abbreviations, and Spanish road and kilometer numbers spoken aloud. A matching permit appears first with its recorded wording. Permits that use relative directions or multiple roads require the literal wording for this match. Other matching parcels follow, and each land boundary appears once. Older packs use their existing structured search.
+
 When the directions match land records, the map outlines the possible parcels and numbers the pins.
 Open **Show matches** to compare them. Each row shows the recorded road and kilometer, when known.
 A solar, sector or interior detail helps distinguish parcels on the same road. The barrio and municipio

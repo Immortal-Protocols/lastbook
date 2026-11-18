@@ -58,7 +58,7 @@ def by_number(db, key):
     return [item]
 
 
-def candidates(db, address, offset=0, limit=PAGE):
+def structured_records(db, address):
     # Filter qualifiers on one source record; two permits on the same parcel cannot corroborate each other.
     sql = """SELECT DISTINCT a.base,a.meters,a.lot,a.sector,a.interior,a.access,a.source,p.barrio,p.municipio
              FROM pr_parcel_address a JOIN pr_parcel p ON p.base=a.base
@@ -77,11 +77,23 @@ def candidates(db, address, offset=0, limit=PAGE):
         meters, lot, sector, inside, access, source = record
         return (meters is None, source != 'CRIM', -(bool(lot) + bool(sector) + bool(inside) + bool(access)),
                 source, meters or 0, lot, sector, inside, access)
-    ordered = sorted(((base, min(records, key=best)) for base, records in matches.items()),
-                     key=lambda pair: (pair[1][0] is None, pair[0]))
+    return {base: min(rows, key=best) for base, rows in matches.items()}
+
+
+def candidates(db, address, offset=0, limit=PAGE, wording=None):
+    wording = wording or {}
+    records = structured_records(db, address) if address else {}
+    ordered = sorted(wording) + sorted(records.keys() - wording.keys(), key=lambda base: (records[base][0] is None, base))
     result = []
-    for base, (meters, lot, sector, inside, access, source) in ordered[offset:offset + limit]:
+    for base in ordered[offset:offset + limit]:
         item = outline(db, base)
+        if base in wording:
+            source, text = wording[base]
+            item.update(name=text, kind='Possible parcel', parcelCount=len(ordered),
+                        detail=item['detail'] + ' · ' + source)
+            result.append(item)
+            continue
+        meters, lot, sector, inside, access, source = records[base]
         road = f'PR-{address.route}' + (f' km {meters / 1000:g}' if meters is not None else '')
         qualifiers = [part for part in (f'Solar {lot.upper()}' if lot else '',
                                         f'Sector {sector}' if sector else '',

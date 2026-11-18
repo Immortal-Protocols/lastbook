@@ -1458,11 +1458,12 @@ fileprivate enum AddressSearch {
             if let key { return parcels && parcelOffset == 0 ? PuertoRicoParcels.byNumber(db,key) : [] }
             let roads = db.one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'") != nil
             guard parcels || roads else { return [] }
-            func lookup(_ a: PuertoRicoRoads.Address) -> [Rec] {
-                let candidates = parcels ? PuertoRicoParcels.find(a,db,limit: parcelLimit,offset: parcelOffset) : []
-                return candidates + (roads && parcelOffset == 0 ? PuertoRicoRoads.find(a,db,limit) : [])
+            let wording = parcels ? PuertoRicoPermits.matches(query,db) : [:]
+            func lookup(_ a: PuertoRicoRoads.Address?) -> [Rec] {
+                let candidates = parcels ? PuertoRicoParcels.find(a,db,limit: parcelLimit,offset: parcelOffset,wording:wording) : []
+                return candidates + (roads && parcelOffset == 0 ? a.map { PuertoRicoRoads.find($0,db,limit) } ?? [] : [])
             }
-            let rows = rural.map(lookup) ?? []
+            let rows = lookup(rural)
             if !rows.isEmpty { return rows }
             guard let a = PuertoRicoModel.interpret(query, rural) else { return [] }
             return lookup(a).map { row in

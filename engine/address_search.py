@@ -4,7 +4,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from engine import pr_addresses, pr_parcels, pr_rural, pr_rural_model
+from engine import pr_addresses, pr_parcels, pr_permit, pr_rural, pr_rural_model
 from engine.paths import ro_uri
 
 # Keep normalization compatible with tools/build_addresses.py.
@@ -92,11 +92,11 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
                 if not (parcels or roads):
                     return []
 
+                wording = pr_permit.matches(db, query) if parcels else {}
+
                 def lookup(address):
-                    if not address:
-                        return []
-                    rows = pr_parcels.candidates(db, address, max(0, parcel_offset), parcel_limit or limit) if parcels else []
-                    if roads and not parcel_offset:
+                    rows = pr_parcels.candidates(db, address, max(0, parcel_offset), parcel_limit or limit, wording) if parcels else []
+                    if address and roads and not parcel_offset:
                         rows.extend(pr_rural.lookup(db, address, limit))
                     return rows
 

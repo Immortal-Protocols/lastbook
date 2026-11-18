@@ -1,0 +1,119 @@
+import Foundation
+
+/// Compare one complete direction with one public permit in its verified municipio.
+enum PuertoRicoPermits {
+    struct Grammar: Decodable {
+        let prefix: String, postal: String, literal: String
+        let intro, aliases: [[String]]
+    }
+    static let grammar: Grammar? = {
+        let url = Resources.url("web").appendingPathComponent("pr-permit-language.json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Grammar.self, from: data)
+    }()
+    static let numbers: [String:String] = {
+        guard let lang = PuertoRicoModel.language else { return [:] }
+        return Dictionary(uniqueKeysWithValues: (0..<10000).map { (PuertoRicoModel.spelled($0,true,lang),String($0)) })
+    }()
+    static let spokenPattern: String = {
+        var words = Set(numbers.keys.flatMap { $0.components(separatedBy:" ") })
+        words.insert("punto")
+        let token = "(?:" + words.sorted().joined(separator:"|") + #"|\d+)\b"#
+        return #"\b(kilometros?|km|carretera|por la|solar|lote|parcela|calle|edificio) ("# + token + "(?: " + token + "){0,14})"
+    }()
+    static func numeral(_ phrase: String, grouped: Bool) -> String? {
+        if phrase.fullMatch("[0-9]+") { return phrase }
+        if let n = numbers[phrase] { return n }
+        let words = phrase.split(separator:" ").map(String.init)
+        let digits = words.compactMap { numbers[$0] }
+        if !words.isEmpty && digits.count == words.count && digits.allSatisfy({ $0.count == 1 }) { return digits.joined() }
+        guard grouped && words.count > 1 else { return nil }
+        var forms = Set<String>()
+        for i in 1..<words.count {
+            if let a = numbers[words.prefix(i).joined(separator:" ")], let b = numbers[words.dropFirst(i).joined(separator:" ")] {
+                forms.insert(a + b)
+            }
+        }
+        return forms.count == 1 ? forms.first : nil
+    }
+    static let trim = CharacterSet(charactersIn: " ,;.")
+    static func plain(_ text: String) -> String {
+        text.folding(options: .diacriticInsensitive, locale: Locale(identifier:"en_US_POSIX"))
+            .lowercased().replacing(#"\s+"#, with:" ").trimmingCharacters(in:trim)
+    }
+    // Apply computed replacements to the original capture ranges, from the end.
+    static func rewrite(_ text: String, _ pattern: String, _ replacement: ([String]) -> String) -> String {
+        guard let rx = try? NSRegularExpression(pattern:pattern) else { return text }
+        let input = text as NSString, out = NSMutableString(string:text)
+        for match in rx.matches(in:text, range:NSRange(location:0,length:input.length)).reversed() {
+            let groups = (0..<match.numberOfRanges).map { i in
+                match.range(at:i).location == NSNotFound ? "" : input.substring(with:match.range(at:i))
+            }
+            out.replaceCharacters(in:match.range, with:replacement(groups))
+        }
+        return out as String
+    }
+    static func signature(_ text: String, _ town: String) -> (String,String)? {
+        guard let g = grammar else { return nil }
+        var raw = plain(text).replacing(g.prefix,with:"")
+        let zips = raw.allMatches(g.postal)
+        guard zips.count <= 1 else { return nil }
+        let postal = zips.first?.replacing("[^0-9]",with:"") ?? ""
+        raw = raw.replacing(g.postal,with:",")
+        let field = #"(?:^|[,;]\s*|\ben (?:el municipio de )?)(?:municipio de )?"#
+            + NSRegularExpression.escapedPattern(for:town) + #"(?=\s*(?:[,;.]|$))"#
+        guard let rx = try? NSRegularExpression(pattern:field),
+              let m = rx.firstMatch(in:raw,range:NSRange(raw.startIndex...,in:raw)),
+              let range = Range(m.range,in:raw) else { return nil }
+        raw.replaceSubrange(range,with:",")
+        raw = raw.trimmingCharacters(in:trim)
+        guard !raw.isEmpty && !raw.contains("|") else { return nil }
+        let literal = ("literal " + raw,postal)
+        if raw.firstMatch(g.literal) != nil { return literal }
+        for rule in g.intro { raw = raw.replacing(rule[0],with:rule[1]) }
+        raw = rewrite(raw,spokenPattern) { m in
+            let label = m[1] == "por la" ? "carretera" : m[1]
+            let parts = m[2].components(separatedBy:" punto ")
+            guard let n = numeral(parts[0],grouped:label == "carretera") else { return m[0] }
+            if parts.count == 1 { return label + " " + n }
+            guard parts.count == 2, ["km","kilometro","kilometros"].contains(label),
+                  let decimal = numeral(parts[1],grouped:false) else { return m[0] }
+            return label + " " + n + "." + decimal
+        }
+        for rule in g.aliases { raw = raw.replacing(rule[0],with:rule[1]) }
+        raw = rewrite(raw,#"\|(km|road) (\d+)(?:[.,](\d+))?(?!\d)"#) { m in
+            let frac = m[3].replacing("0+$",with:"")
+            return "|" + m[1] + " " + m[2] + (frac.isEmpty ? "" : "." + frac) + "|"
+        }
+        let parts = raw.components(separatedBy:CharacterSet(charactersIn:"|,;"))
+            .map { $0.split(whereSeparator:{ $0.isWhitespace }).joined(separator:" ") }.filter { !$0.isEmpty }
+        let labels = parts.map { String($0.prefix(while:{ $0 != " " })) }
+        let allowed = Set(["km","road","barrio","sector","interior","solar","parcela","urbanizacion","comunidad","calle","camino","edificio"])
+        guard labels.contains("road"), labels.contains("km"), Set(labels).count == labels.count,
+              Set(labels).isSubset(of:allowed) else { return literal }
+        return ("parts " + parts.sorted().joined(separator:"|"),postal)
+    }
+    typealias Evidence = (source:String, wording:String)
+    static func matches(_ query: String, _ db: SQLiteDB) -> [String:Evidence] {
+        guard db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'") != nil else { return [:] }
+        let text = plain(query)
+        var result = [String:Evidence]()
+        for row in db.query("SELECT name FROM municipios ORDER BY name") {
+            guard let name = row["name"]?.text else { continue }
+            let town = plain(name)
+            guard text.contains(town), let (key,postal) = signature(text,town) else { continue }
+            let rows = db.query("""
+                SELECT base,source,wording FROM pr_permit_wording
+                WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
+                ORDER BY base,source,wording
+                """, [town,key,postal,postal,postal])
+            for r in rows {
+                if let base = r["base"]?.text, result[base] == nil,
+                   let source = r["source"]?.text, let wording = r["wording"]?.text {
+                    result[base] = (source,wording)
+                }
+            }
+        }
+        return result
+    }
+}

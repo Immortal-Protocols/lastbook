@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from engine import pr_parcels, pr_rural
+from engine import pr_parcels, pr_permit, pr_rural
 from tools import build_pr_parcels as build
 
 
@@ -20,6 +20,7 @@ class ParcelBuild(unittest.TestCase):
                 INSERT INTO pr_parcel VALUES ('00100200304','San Sebastián'), ('00100200305','Aguada'),
                     ('00100200306','San Sebastián'), ('00100200306','Aguada');
             """)
+            db.execute(pr_permit.SCHEMA)
             def record(number, town='SAN SEBASTIAN'):
                 return {'catastro': number, 'municipio': town, 'address': 'CARR 19 KM 4.4 SOLAR A-7'}
 
@@ -34,6 +35,8 @@ class ParcelBuild(unittest.TestCase):
                 record('30-001-002-003-06-014'),                  # land number spans municipios
             ], 'ARPE permit')
             self.assertEqual(db.execute('SELECT * FROM pr_account').fetchall(), [('00100200304007',)])
+            self.assertEqual(db.execute('SELECT base,wording FROM pr_permit_wording').fetchall(),
+                             [('00100200304','CARR 19 KM 4.4 SOLAR A-7')])
             self.assertEqual(db.execute('SELECT base,route,meters,lot,source FROM pr_parcel_address').fetchall(),
                              [('00100200304', 19, 4400, 'a7', 'ARPE permit')])
 

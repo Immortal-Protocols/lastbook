@@ -36,7 +36,7 @@ enum PuertoRicoParcels {
         if account { item["detail"] = (item["detail"] as? String ?? "") + " · Recorded account on this land parcel." }
         return [item]
     }
-    static func find(_ a: PuertoRicoRoads.Address, _ db: SQLiteDB, limit: Int, offset: Int) -> [Rec] {
+    static func structured(_ a: PuertoRicoRoads.Address, _ db: SQLiteDB) -> [String:SQLiteDB.Row] {
         let rows = db.query("""
             SELECT DISTINCT a.base,a.meters,a.lot,a.sector,a.interior,a.access,a.source,p.barrio,p.municipio
             FROM pr_parcel_address a JOIN pr_parcel p ON p.base=a.base
@@ -54,12 +54,25 @@ enum PuertoRicoParcels {
                   PuertoRicoRoads.matches(a.locality,row["barrio"]?.text ?? "",row["municipio"]?.text ?? "") else { continue }
             best[base] = row
         }
-        let keys = best.keys.sorted {
+        return best
+    }
+    static func find(_ address: PuertoRicoRoads.Address?, _ db: SQLiteDB, limit: Int, offset: Int,
+                     wording: [String:PuertoRicoPermits.Evidence]) -> [Rec] {
+        let best = address.map { structured($0,db) } ?? [:]
+        let keys = wording.keys.sorted() + best.keys.filter { wording[$0] == nil }.sorted {
             let x = best[$0]?["meters"]?.int != nil, y = best[$1]?["meters"]?.int != nil
             return x == y ? $0 < $1 : x
         }
         return keys.dropFirst(min(keys.count, max(0,offset))).prefix(limit).compactMap { base in
-            guard let r = best[base], var item = outline(db,base) else { return nil }
+            guard var item = outline(db,base) else { return nil }
+            if let evidence = wording[base] {
+                item["name"] = evidence.wording
+                item["kind"] = "Possible parcel"
+                item["parcelCount"] = keys.count
+                item["detail"] = (item["detail"] as? String ?? "") + " · " + evidence.source
+                return item
+            }
+            guard let r = best[base], let a = address else { return nil }
             let km = r["meters"]?.int.map { PuertoRicoModel.kilometer(Int($0)) }
             let lot = r["lot"]?.text ?? "", sector = r["sector"]?.text ?? "", access = r["access"]?.text ?? ""
             let road = "PR-\(a.route)" + (km.map { " km " + $0 } ?? "")

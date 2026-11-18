@@ -48,21 +48,45 @@ def sample(folder, towns, size):
     return selected
 
 
-def includes(geo, query, land, model=None):
+def parcel_result(geo, query, land, model=None):
     if len(query) > 400 or not address_search.is_address_query(query):
-        return False
+        return False, 0
     offset = 0
     while True:
         rows = address_search.find_addresses(query, geo, model=model, parcel_offset=offset, parcel_limit=30)
         parcels = [row for row in rows if row['kind'] == 'Possible parcel']
+        count = parcels[0]['parcelCount'] if parcels else 0
         if any(row['parcelNumber'] == land for row in parcels):
-            return True
+            return True, count
         offset += len(parcels)
         if not parcels or offset >= parcels[0]['parcelCount']:
-            return False
+            return False, count
 
 
-def evaluate(database, folder, size, model=None):
+def includes(geo, query, land, model=None):
+    return parcel_result(geo, query, land, model)[0]
+
+
+def full_directions(directions, town):
+    return directions if f' {fold(town)} ' in f' {fold(directions)} ' else f'{directions}, {town}'
+
+
+def read_rephrasings(path):
+    queries = {}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        row = json.loads(line)
+        key = row['sample_id']
+        if key in queries or not all(isinstance(row[k], str) and row[k].strip() for k in ('spoken','typed','source_preserving')):
+            raise ValueError('Duplicate sample ID or empty query in rephrased directions')
+        queries[key] = row
+    return queries
+
+
+def sample_id(land, full):
+    return hashlib.sha256((land + '\n' + full).encode()).hexdigest()
+
+
+def evaluate(database, folder, size, model=None, rephrasings=None):
     with sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True) as db, tempfile.TemporaryDirectory() as tmp:
         geo = Path(tmp)
         (geo / 'addresses').mkdir()
@@ -83,15 +107,24 @@ def evaluate(database, folder, size, model=None):
                 exists = db.execute('SELECT 1 FROM pr_parcel WHERE base=?', (base,)).fetchone()
                 counts['with_indexed_boundary'] += bool(exists)
                 short = f'{town}, km {km}, PR-{road}'
-                full = directions if f' {fold(town)} ' in f' {fold(directions)} ' else f'{directions}, {town}'
+                full = full_directions(directions, town)
                 counts['road_km_municipio_returned_parcel'] += includes(geo, short, land)
                 baseline = includes(geo, full, land)
                 counts['source_directions_returned_parcel'] += baseline
+                if rephrasings is not None:
+                    row = rephrasings.pop(sample_id(land, full))
+                    for style in ('spoken','typed','source_preserving'):
+                        hit, total = parcel_result(geo, row[style], land, model)
+                        counts[style + '_returned_parcel'] += hit
+                        counts[style + '_single_correct_parcel'] += hit and total == 1
+                        counts[style + '_other_parcels_only'] += not hit and total > 0
                 if model is not None:
                     assisted = includes(geo, full, land, model)
                     counts['gemma_enabled_returned_parcel'] += assisted
                     counts['gemma_enabled_gained'] += assisted and not baseline
                     counts['gemma_enabled_lost'] += baseline and not assisted
+        if rephrasings:
+            raise ValueError('Rephrased directions include records outside this sample')
         return dict(counts)
 
 
@@ -101,6 +134,7 @@ if __name__ == '__main__':
     parser.add_argument('sources', type=Path, help='Snapshot directory from fetch_pr_parcels.py')
     parser.add_argument('--per-municipio', type=int, default=3)
     parser.add_argument('--gemma', action='store_true', help='also replay full directions with Lastbook’s local model enabled')
+    parser.add_argument('--rephrasings', type=Path, help='replay saved spoken and typed queries from rephrase_pr_permits.py')
     args = parser.parse_args()
     if args.per_municipio < 1:
         parser.error('--per-municipio must be positive')
@@ -113,7 +147,8 @@ if __name__ == '__main__':
             problem = model.ensure_running()
             if problem or not model.enabled() or not model.available():
                 parser.error(problem or 'Enable the installed local model before running --gemma.')
-        print(json.dumps(evaluate(args.database, args.sources, args.per_municipio, model), indent=2))
+        queries = read_rephrasings(args.rephrasings) if args.rephrasings else None
+        print(json.dumps(evaluate(args.database, args.sources, args.per_municipio, model, queries), indent=2))
     finally:
         if model is not None:
             model.stop('Finished permit address evaluation')

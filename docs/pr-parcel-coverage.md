@@ -87,7 +87,7 @@ The permit column counts each land number once, however many permits or accounts
 
 ## Testing the directions
 
-The offline test selected three distinct parcel numbers per municipio from ARPE permits that included a municipio prefix, one named road number and one kilometer marker. It selected by hash before checking for a parcel boundary or a match. The expected result was the land number on the permit. The test followed every page of candidates and ran with the model disabled.
+The offline test selected three distinct parcel numbers per municipio from ARPE permits that included a municipio prefix, one named road number and one kilometer marker. It selected by hash before checking for a parcel boundary or a match. The expected result was the land number on the permit. The table below compares the two builds before original permit wording was indexed. The test followed every page of candidates and ran with the model disabled.
 
 | Check on the same source records | Earlier index | With municipality-prefixed permits |
 | --- | ---: | ---: |
@@ -108,7 +108,7 @@ Run `python tools/check_pr_permit_coverage.py path/to/PR.sqlite path/to/parcel-i
 
 ### Replaying the same 234 directions with Medium Gemma
 
-With Gemma enabled, Lastbook returned the expected parcel in **78 of 234** cases, the same 78 as the deterministic reader. In 37 of the 78, it was the only parcel candidate. The fallback called Gemma on 105 of the 156 misses. Lastbook accepted 43 of those readings under its checks that the road, kilometer and qualifiers come from the query. None added the expected parcel. To repeat the paired benchmark, add `--gemma` to the command above with the local runner and Medium model installed.
+Before original permit wording was indexed, enabling Gemma returned the same **78 of 234** parcels as the deterministic reader. In 37 of the 78, it was the only parcel candidate. The fallback called Gemma on 105 of the 156 misses. Lastbook accepted 43 of those readings under its checks that the road, kilometer and qualifiers come from the query. None added the expected parcel. To repeat the paired benchmark on that index, add `--gemma` to the command above with the local runner and Medium model installed.
 
 A second experiment scored a Gemma reading for every direction, including those the normal fallback skipped. It used the same validation and parcel lookup, and supplied only the directions to the model. Gemma alone recovered **74 of 234**. All 74 were also parser hits. In the other four parser hits, the model reading failed validation. Falling back to the parser in those cases restored all four.
 
@@ -124,3 +124,28 @@ A second experiment scored a Gemma reading for every direction, including those 
 The five substitutions covered an unhyphenated ZIP+4, `Mameyes 1` / `Mameyes I`, `Saint Just` / `St. Just`, and two alternate barrio spellings. Each brought the expected parcel into the results. Only one produced a single parcel candidate. The 24 barrio differences need local evidence before treating the names as interchangeable. Of the four parcels without an address row for the road, three permits had conflicting municipio prefixes. The fourth named both a carretera and a ramal, which the index builder could not represent as a single road.
 
 We also tested keeping the permit's full wording. We matched normalized directions within the permit municipio against the public ARPE snapshot, kept all candidate land numbers, and required the existing account-prefix and boundary-municipio checks. Adding those results to normal search recovered **61 additional recorded parcels (139/234 total)**. In 58 of the 61, the wording matched just one joined parcel. This test reuses the wording on the sampled permit. Only 13 of those 61 had a second ARPE record ID with the same normalized wording and parcel. Separately collected or independently rephrased directions would be needed to measure how well this approach handles a resident's own wording.
+
+### Searching the rebuilt index with rephrased directions
+
+The public build stores 230,317 distinct combinations of parcel, permit source and original wording across 116,649 land numbers in all 78 municipios. These counts include permits without a numbered road or kilometer. When a complete wording matches, the reader displays it beside its source and ranks the parcel ahead of the broader structured matches. The municipio-prefix and boundary checks still apply.
+
+We tested the same 234 permits with AI off during search. A hit means the recorded land number appeared among the possible parcels. The last column counts queries that returned parcels but missed the one recorded on the sampled permit. Eighty expected land numbers had no boundary in either index.
+
+| Directions, 234 per row | Previous hits | Rebuilt hits | Only candidate was correct | Other parcels only |
+| --- | ---: | ---: | ---: | ---: |
+| Original permit wording | 78 | 139 | 92 | 43 |
+| Source details retained, road and kilometer read aloud | 0 | 124 | 102 | 25 |
+| Spanish text-message paraphrase, digits requested | 1 | 87 | 69 | 17 |
+| Free Spanish phone paraphrase | 0 | 59 | 46 | 13 |
+
+The controlled read-aloud version expands common abbreviations, renders the road and kilometer in Spanish words, and keeps the remaining source details in order. For the two free rewrites, local Medium Gemma received only the public directions and a style prompt. It had no access to the parcel answer or search results. Both indexes received exactly the same saved queries. The results describe simulated speech. An automated read-back of the phone rewrites found 194 with the same road and kilometer, 26 with a different number and 14 it could not verify. All 234 remain in the denominator. Desktop and compiled iPad searches agreed on ordered results across 958 pages for the four forms.
+
+With the optional Medium fallback enabled, text-message hits increased from **69 to 100** and phone-style hits increased from **1 to 59** between the previous and rebuilt indexes. The rebuilt reader returned only the recorded parcel for 76 text messages and 46 phone directions. It returned other parcels only for 41 and 18 respectively. The comparison used live fallback responses from the previous reader and replayed those same answers whenever the rebuilt reader requested Gemma. It retained every previous hit.
+
+To repeat the comparison, freeze the generated queries once and replay that file on both indexes. The generator needs the local model. The default scorer runs offline with AI off. Add `--gemma` to the scorer to run the live fallback.
+
+```sh
+python tools/rephrase_pr_permits.py new/PR.sqlite parcel-inputs queries.jsonl
+python tools/check_pr_permit_coverage.py old/PR.sqlite parcel-inputs --rephrasings queries.jsonl
+python tools/check_pr_permit_coverage.py new/PR.sqlite parcel-inputs --rephrasings queries.jsonl
+```

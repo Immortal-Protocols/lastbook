@@ -165,12 +165,27 @@ For a local CRIM physical-address file, use `--crim-addresses file.csv` with the
 
 To use the result, quit Lastbook, keep a backup of your index, and copy the prepared `PR.sqlite` to `derived/geo/addresses/PR.sqlite` inside your Lastbook data folder. Reopen a reader built from this branch, open the map, and enter the address with its municipio. Keep the prepared file if you reinstall an official address pack. Searching works offline. For a shared description, open **Show matches** to inspect the numbered parcel boundaries.
 
+#### Collect CRIM physical addresses for a municipio
+
+The connected preparation tool can operate the **Parcela** prefix search in the [public CRIM viewer](https://catastro.crimpr.net/cdprpc/). It opens a fresh browser, submits the mapped grid prefixes for the selected municipio, and reads the displayed **Parcela**, **Dirección física** and **Municipio** fields. It preserves the address wording and punctuation. Install the build tool and its browser before running it:
+
+```sh
+python -m pip install playwright==1.65.2
+python -m playwright install chromium
+python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-utuado --municipio Utuado
+python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --municipio Utuado --crim-addresses derived/pr-crim-utuado/addresses.csv
+```
+
+The collector follows the viewer's **Load more** control until every displayed card is read. It saves each completed prefix in `prefixes.sqlite` and waits between searches. Run the same command to resume after interruption. `addresses.csv` contains the original nonblank physical addresses whose municipio and mapped land number agree. `summary.json` reports collected parcels, blank addresses, missing parcels and unqueried parcels. A shared grid may include land outside the selected municipio. The collector keeps records for the local municipio roster.
+
+Use `--prefix 000-000` to test a particular mapped grid, or `--show-browser` to watch the search. A new output directory starts a fresh snapshot. A changed viewer layout or incomplete result stops the run and leaves completed prefixes available for resumption. Follow the installation step above to use the prepared index offline. The browser and collector run on the preparation computer. The Lastbook reader searches the resulting SQLite file.
+
 For a build from existing inputs, run `python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs --parcels derived/pr-parcel-inputs`. Omit `--parcels` for the earlier road and school index. The OSM and Census inputs are the [Puerto Rico PBF](https://download.geofabrik.de/north-america/us/puerto-rico.html) and [municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
 
 A missing house number has no exact address result. Omitting `--rural` builds the smaller house-only index.
 To reproduce the road and school preview, use the release's four archived rural inputs and its identified OSM and municipio inputs. For a parcel build, retain the parcel input directory as well. The coverage report fingerprints the raw parcel and permit snapshots.
 
-Run the builder and reader regressions with `python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels tools.test_prepare_pr_municipio app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search`.
+Run the builder and reader regressions with `python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels tools.test_prepare_pr_municipio tools.test_fetch_pr_crim app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search`.
 
 Road measures come from [Puerto Rico HPMS 2024](https://geo.dot.gov/server/rest/services/Hosted/HPMS_FULL_PR_2024/FeatureServer/0).
 Area labels come from [Census barrios](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/1)

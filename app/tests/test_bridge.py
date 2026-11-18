@@ -781,6 +781,89 @@ class NothingGoesOut(unittest.TestCase):
                 self.assertNotIn(word, src, name)
 
 
+class FakeRunner:
+    """Stands in for the lastbook-llm program: it keeps what it was sent, and it is gone once it is told to quit."""
+
+    def __init__(self):
+        self.sent, self.alive = [], True
+        self.stdin = self
+
+    def write(self, data):
+        self.sent.append(data)
+        if b'"quit"' in data:
+            self.alive = False
+
+    def close(self):
+        pass
+
+    def poll(self):
+        return None if self.alive else 0
+
+    def wait(self, timeout=None):
+        return 0
+
+    def kill(self):
+        self.alive = False
+
+
+class UnloadByHand(unittest.TestCase):
+    """Chat's unload button asks with action "unload": the local AI stops only when no answer is being written, for anyone."""
+
+    def setUp(self):
+        import llm_local
+        self.runner, self.local = FakeRunner(), llm_local.Local()
+        self.local.proc, self.local.state = self.runner, 'ready'
+        self.local.path, self.local.fit = DATA / llm_local.FILE, {'fits': True}   # no such file: nothing here loads a model
+        self.addCleanup(setattr, assistant, 'LOCAL', assistant.LOCAL)
+        assistant.LOCAL = self.local
+        self.first, self.second = (B.Bridge(MOD, 'stream', OR['stream'], tmpdir=str(TMP)) for _ in range(2))   # two clients of the one engine
+
+    def ask(self, bridge, action):
+        r = call(bridge, 'POST', '/api/assistant/local', {'X-Lastbook-Key': bridge.key, 'Content-Type': 'application/json'},
+                 json.dumps({'action': action}).encode())
+        self.assertEqual(r.status, 200)
+        return json.loads(r.body)
+
+    def test_nobody_is_answering_so_it_unloads(self):
+        got = self.ask(self.first, 'unload')
+        self.assertNotIn('busy', got)
+        self.assertEqual(got['state'], 'stopped')
+        self.assertEqual(self.runner.sent, [b'{"op":"quit"}\n'])
+        self.assertFalse(self.runner.alive)
+
+    def test_an_answer_for_another_client_keeps_it_running(self):
+        STUB.update(pieces=12, delay=0.05)
+        r = Rec()
+        self.first.start('POST', self.first.origin + '/api/chat', {'X-Lastbook-Key': self.first.key, 'Content-Type': 'application/json'},
+                         b'{"messages":[{"role":"user","content":"hi"}]}', r)
+        self.assertTrue(wait_until(lambda: len(r.parts) >= 3))   # the first client's answer is being written
+        got = self.ask(self.second, 'unload')                    # the second client asks to unload
+        self.assertIs(got.get('busy'), True)
+        self.assertEqual(got['state'], 'ready')
+        self.assertEqual(self.runner.sent, [])
+        self.assertTrue(self.runner.alive)
+        self.assertTrue(r.done.wait(10))                         # and the answer is written to its end
+        self.assertIn(b'"done"', r.body)
+        self.assertTrue(r.ok)
+        self.assertTrue(wait_until(lambda: self.local.answers == 0))
+        got = self.ask(self.second, 'unload')                    # idle again: the same request now unloads it
+        self.assertNotIn('busy', got)
+        self.assertEqual(got['state'], 'stopped')
+        self.assertFalse(self.runner.alive)
+
+    def test_the_model_writing_a_turn_keeps_it_running(self):
+        with self.local.gen_lock:
+            self.assertIs(self.ask(self.first, 'unload').get('busy'), True)
+        self.assertTrue(self.runner.alive)
+
+    def test_stop_it_now_on_about_still_stops_at_once(self):
+        with self.local.answering():
+            got = self.ask(self.first, 'stop')
+        self.assertNotIn('busy', got)
+        self.assertEqual(got['state'], 'stopped')
+        self.assertFalse(self.runner.alive)
+
+
 class StreamTests(Both, unittest.TestCase):
     mode = 'stream'
 

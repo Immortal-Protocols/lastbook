@@ -121,7 +121,7 @@ const Chat = (() => {
       error: [false, l.message || 'The local AI could not start.'],
     })[l.state] || [false, l.message || 'Local AI unavailable'];
   }
-  let polling = null;
+  let polling = null, busyUntil = 0;   // busyUntil: the status line says the local AI is busy until then, after an unload it refused
   async function statusLine() {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
@@ -131,11 +131,16 @@ const Chat = (() => {
       // Loaded and idle: offer to unload it now and give its memory back. It starts again on the next question.
       const eject = l.state === 'ready' && !Object.values(live).some(x => x.running)
         ? `<button class="ai-eject" id="aiEject" title="Unload the local AI to free its memory. It starts again when you ask." aria-label="Unload the local AI">${ico('eject')}</button>` : '';
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>${eject}`;
+      const text = Date.now() < busyUntil ? 'The local AI is busy. Try again when it has finished.'
+        : esc(line) + (ok ? still : '<span class="long"> — search and reading still work</span>');
+      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${text}</span>${eject}`;
       const ej = $('#aiEject');
       if (ej) ej.onclick = async () => {
         ej.disabled = true;
-        try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop' }) }) } catch { }
+        // The server unloads it only when no answer is being written, in any window or for any client. Otherwise it says busy.
+        let refused = false;
+        try { refused = !!(await (await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unload' }) })).json()).busy } catch { }
+        if (refused) { busyUntil = Date.now() + 6000; setTimeout(statusLine, 6100) }
         statusLine();
       };
     } else {

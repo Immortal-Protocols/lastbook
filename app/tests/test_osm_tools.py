@@ -135,6 +135,29 @@ class AddressTests(Temp):
         self.assertEqual([round(r[1], 2) for r in rows if r[0] == '12'], [51.52, 51.53])
         self.assertIn('1 repeats dropped', text)
 
+    def test_a_repeat_is_merged_into_the_row_with_a_postcode_and_a_town(self):
+        pbf = self.dir / 'merge.osm.pbf'
+        ring, way = ring_way(100, 1000, -0.1580, 51.5200, {'addr:housenumber': '12', 'addr:street': 'Baker Street', 'addr:postcode': 'NW1 6XE',
+                                                           'addr:city': 'London', 'building': 'yes'})
+        nodes = [(1, -0.15785, 51.52015, {'addr:housenumber': '12', 'addr:street': 'Baker Street'}),        # the entrance: no postcode, no town
+                 (2, -0.1580, 51.5300, {'addr:housenumber': '12', 'addr:street': 'Baker Street', 'addr:postcode': 'NW1 7AA'})]   # 1 km away
+        write_pbf(pbf, nodes + ring, [way])
+        out = self.dir / 'merge.sqlite'
+        text = run('build_addresses_osm.py', pbf, out, f'--bbox={BOX}')
+        rows = self.db(out).execute('SELECT zip, city, round(lat, 2) FROM addr ORDER BY lat').fetchall()
+        self.assertEqual(rows, [('NW1 6XE', 'London', 51.52), ('NW1 7AA', '', 51.53)])       # the node's row went; its place was not lost
+        self.assertIn('1 repeats dropped', text)
+        meta = dict(self.db(out).execute('SELECT key, value FROM meta'))
+        self.assertEqual((meta['count'], meta['with_postcode']), ('2', '2'))
+
+    def test_two_postcodes_close_together_are_two_houses(self):
+        pbf = self.dir / 'two.osm.pbf'
+        write_pbf(pbf, [(1, -0.15785, 51.52015, {'addr:housenumber': '12', 'addr:street': 'Baker Street', 'addr:postcode': 'NW1 6XE'}),
+                        (2, -0.15790, 51.52010, {'addr:housenumber': '12', 'addr:street': 'Baker Street', 'addr:postcode': 'NW1 9ZZ'})])
+        out = self.dir / 'two.sqlite'
+        run('build_addresses_osm.py', pbf, out, f'--bbox={BOX}')
+        self.assertEqual(sorted(z for (z,) in self.db(out).execute('SELECT zip FROM addr')), ['NW1 6XE', 'NW1 9ZZ'])
+
     def test_meta_and_index_the_address_search_reads(self):
         db, text = self.build()
         meta = dict(db.execute('SELECT key, value FROM meta'))
@@ -558,21 +581,41 @@ class ServerUkPathTests(Temp):
             self.assertEqual(self.server.map_set_meta(), {})
 
 
+class LakeRankingTests(Temp):
+    def test_a_bigger_lake_ranks_first_on_a_metric_map_set(self):
+        import build_water, server
+        db = sqlite3.connect(self.dir / 'national.sqlite')
+        db.execute('CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, minz INTEGER, geom BLOB)')
+        # the small one is stored first, so on equal scores it would come first
+        for name, lon, size in (('Mere Small', -2.5, 0.002), ('Mere Big', -1.5, 0.02)):
+            db.execute("INSERT INTO feat(layer, cls, name, geom) VALUES ('water', 'water', ?, ?)", (name, build_water.pack([square(lon, 51.0, size)])))
+        db.commit()
+        db.close()
+        run('build_water.py', 'osm', env={'LASTBOOK_GEO': self.dir, 'LASTBOOK_UNITS': 'metric'})
+        (self.dir / 'map-set.json').write_text(json.dumps({'name': 'GB-SW', 'files': {}, 'units': 'metric', 'country': 'GB'}), encoding='utf-8')
+        with patch.object(server, 'WATERDB', self.dir / 'water.sqlite'), patch.object(server, 'HERE', self.dir):
+            names = [r['name'] for r in server.water_places('mere')]
+        self.assertEqual(names[:2], ['Mere Big', 'Mere Small'])
+
+
 class RegionDriverTests(Temp):
     """build_region.py is run with its sub-builders replaced by a recorder, so it checks order, arguments and the map-set file."""
     FILES = {'map': 'derived/geo/national.sqlite', 'terrain': 'derived/geo/terrain.sqlite', 'water': 'derived/geo/water.sqlite',
              'crops': 'derived/geo/crops.sqlite', 'atlas': 'library-data/geography/resources/atlas.sqlite',
              'heights': 'derived/geo/buildings.sqlite', 'places': 'derived/geo/places.sqlite'}
 
-    def build(self, code='GB-SW'):
+    def build(self, code='GB-SW', fail_at=None):
         import build_region
         calls = []
         out = self.dir / 'regions' / code
+        work = self.dir / 'regions' / f'{code}.building'
 
         def fake(label, args, env=None):
             calls.append((label, [str(a) for a in args], env or {}))
+            if fail_at == label:
+                raise SystemExit(f'{label} failed')
             if label in self.FILES:
-                f = out / self.FILES[label]
+                f = work / self.FILES[label]
                 f.parent.mkdir(parents=True, exist_ok=True)
                 f.write_bytes(b'x' * 10)
 
@@ -593,7 +636,8 @@ class RegionDriverTests(Temp):
         self.assertIn(f'--bbox={want}', calls[1][1])
 
     def test_each_builder_is_pointed_at_this_regions_folder(self):
-        calls, out = self.build('GB-LON')
+        calls, final = self.build('GB-LON')
+        out = final.parent / 'GB-LON.building'                # builders write here, and the result is moved over the region's folder at the end
         by = {c[0]: c for c in calls}
         self.assertEqual(by['terrain'][2]['LASTBOOK_TERRAIN_OUT'], str(out / 'derived/geo/terrain.sqlite'))
         self.assertEqual(by['terrain'][2]['LASTBOOK_TERRAIN_SRC'], str(self.dir / 'src' / 'dem'))
@@ -613,29 +657,34 @@ class RegionDriverTests(Temp):
         self.assertEqual(self.db(out / 'derived/geo/map.sqlite').execute('SELECT count(*) FROM feat').fetchone()[0], 0)
         self.assertEqual((out / 'derived/geo/national-status.json').read_text(encoding='utf-8'), '{"state":"complete"}')
 
-    def test_a_rerun_clears_the_outputs_an_earlier_run_left(self):
+    def stale_region(self):
         out = self.dir / 'regions' / 'GB-SW'
         stale = ['derived/geo/terrain.sqlite', 'derived/geo/terrain.sqlite-wal', 'derived/geo/water.sqlite', 'derived/geo/addresses/GB-SW.sqlite',
                  'library-data/geography/resources/atlas.sqlite', 'map-set.json']
         for f in stale:
             (out / f).parent.mkdir(parents=True, exist_ok=True)
             (out / f).write_bytes(b'stale')
-        keep = out / 'notes.txt'
-        keep.write_text('mine', encoding='utf-8')
-        import build_region
-        seen = []
+        (out / 'notes.txt').write_text('mine', encoding='utf-8')
+        return out, stale
 
-        def first_builder_sees(label, args, env=None):
-            if not seen:
-                seen.append([f for f in stale if (out / f).exists()])
-            if label in self.FILES:
-                (out / self.FILES[label]).parent.mkdir(parents=True, exist_ok=True)
-                (out / self.FILES[label]).write_bytes(b'x')
+    def test_a_rerun_replaces_the_files_of_an_earlier_run_and_leaves_the_rest(self):
+        out, stale = self.stale_region()
+        self.build('GB-SW')
+        self.assertEqual((out / 'derived/geo/terrain.sqlite').read_bytes(), b'x' * 10)       # whole new files, not old ones with rows added
+        self.assertEqual((out / 'derived/geo/water.sqlite').read_bytes(), b'x' * 10)
+        self.assertNotEqual((out / 'map-set.json').read_bytes(), b'stale')
+        self.assertFalse((out / 'derived/geo/terrain.sqlite-wal').exists())                  # an old journal is not left beside a new file
+        self.assertEqual((out / 'notes.txt').read_text(encoding='utf-8'), 'mine')            # nothing else in the folder was touched
+        self.assertFalse((self.dir / 'regions' / 'GB-SW.building').exists())
 
-        with patch.object(build_region, 'run', first_builder_sees):
-            build_region.build('GB-SW', self.dir / 'src', self.dir / 'regions', '2026-11-17T02:05:48Z', '17 Nov 2026', '4')
-        self.assertEqual(seen, [[]])                        # nothing stale was left when the first builder ran
-        self.assertTrue(keep.exists())                      # and nothing else in the folder was touched
+    def test_a_failed_run_leaves_the_earlier_output_alone(self):
+        out, stale = self.stale_region()
+        with self.assertRaises(SystemExit):
+            self.build('GB-SW', fail_at='terrain')
+        for f in stale:
+            with self.subTest(file=f):
+                self.assertEqual((out / f).read_bytes(), b'stale')
+        self.assertEqual((out / 'notes.txt').read_text(encoding='utf-8'), 'mine')
 
     def test_an_unknown_region_code_is_refused_before_anything_runs(self):
         r = subprocess.run([sys.executable, '-B', str(TOOLS / 'build_region.py'), 'GB-XX', '--src', str(self.dir), '--out', str(self.dir / 'o'),

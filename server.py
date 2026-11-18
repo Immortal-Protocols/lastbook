@@ -1385,7 +1385,7 @@ def water_places(q, limit=10, near=None):
         d = json.loads(raw or '{}')
         text = (name + ' ' + (d.get('other_names') or '')).lower()
         score = (sum(w in text for w in words) * 2 + (core[0] in text) + (kind != 'dam') + (name.lower() == q.lower().strip()) * 3
-                 + math.log10(float(d.get('area_acres') or d.get('surface_acres') or 1) + 1) / 3 + near_bonus(near, lat, lon))
+                 + math.log10(float(d.get('area_acres') or d.get('surface_acres') or (d.get('area_ha') or 0) * 2.471 or 1) + 1) / 3 + near_bonus(near, lat, lon))
         where = ', '.join(x for x in (d.get('county') and d['county'] + ' County', d.get('state')) if x)
         extra = f" · also called {d['other_names']}" if d.get('other_names') else ''
         away = ''

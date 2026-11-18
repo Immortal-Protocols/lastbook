@@ -14,7 +14,7 @@ docs/regions-uk-proposed.json. Per region: map, empty map.sqlite, addresses, ter
 heights, place finder. Aerial photos are not built (there is no UK source). Needs pyosmium, numpy, Pillow, tifffile and
 imagecodecs on the build machine only. A step that fails stops the run and prints its error.
 """
-import argparse, json, os, sqlite3, subprocess, sys, time
+import argparse, json, os, shutil, sqlite3, subprocess, sys, time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -22,8 +22,9 @@ CREDIT = ('Map data via Geofabrik (ODbL). Contains modified Copernicus DEM data,
           'GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA')
 SRC_GPKG = 'OpenStreetMap contributors, via Geofabrik england-latest-free.gpkg.zip (ODbL 1.0)'
 SRC_PBF = 'OpenStreetMap contributors (ODbL), via Geofabrik england-latest.osm.pbf'
-OUTPUTS = ('national.sqlite', 'map.sqlite', 'national-status.json', 'terrain.sqlite', 'water.sqlite', 'crops.sqlite', 'buildings.sqlite', 'places.sqlite')
-ATLAS = 'library-data/geography/resources/atlas.sqlite'
+MAP_SET_FILES = ['derived/geo/national-status.json', 'derived/geo/map.sqlite', 'derived/geo/national.sqlite', 'derived/geo/terrain.sqlite',
+                 'derived/geo/water.sqlite', 'derived/geo/crops.sqlite', 'library-data/geography/resources/atlas.sqlite',
+                 'derived/geo/buildings.sqlite', 'derived/geo/places.sqlite']     # what map-set.json lists, and what a finished build replaces
 NAMES = {'GB-NE': 'North East England', 'GB-NW': 'North West England', 'GB-YH': 'Yorkshire and The Humber', 'GB-EM': 'East Midlands',
          'GB-WM': 'West Midlands', 'GB-EE': 'East of England', 'GB-LON': 'London', 'GB-SE': 'South East England',
          'GB-SW': 'South West England'}
@@ -39,19 +40,32 @@ def run(label, args, env=None):
         raise SystemExit(f'{label} failed')
 
 
+def publish(work, final, code):
+    """Move a finished build over the region's folder, file by file. Only these files are replaced (whole, so no tile or row of an earlier
+    run or box survives in them); anything else in that folder is left alone."""
+    tails = ('', '-wal', '-shm', '-journal')
+    for rel in [*MAP_SET_FILES, f'derived/geo/addresses/{code}.sqlite', 'map-set.json']:
+        dst = final / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        for tail in tails[1:]:                     # an old file's journal must not be paired with the new file
+            Path(f'{dst}{tail}').unlink(missing_ok=True)
+        for tail in tails:
+            src = Path(f'{work / rel}{tail}')
+            if src.exists():
+                os.replace(src, Path(f'{dst}{tail}'))
+
+
 def build(code, src, regions, as_of_iso, as_of_text, workers):
     gpkg, pbf, dem = src / 'england.gpkg', src / 'england.osm.pbf', src / 'dem'
     boxes = {r['code']: r['bbox']['padded_0_15'] for r in json.loads((REPO / 'docs/regions-uk-proposed.json').read_text(encoding='utf-8'))['regions']}
     bbox = ','.join(str(v) for v in boxes[code])      # --bbox=... keeps a negative west value from reading as a flag
-    out = regions / code
+    final = regions / code
+    out = regions / f'{code}.building'            # built here and moved over `final` only when every step has worked, so a failed run costs nothing
+    shutil.rmtree(out, ignore_errors=True)
     geo = out / 'derived/geo'
     (geo / 'addresses').mkdir(parents=True, exist_ok=True)
     (out / 'library-data/geography/resources').mkdir(parents=True, exist_ok=True)
     print(f'{code} {bbox}', flush=True)
-    # a rerun starts clean: terrain tiles and water rows from an earlier run or box would otherwise stay (they are written with INSERT OR REPLACE)
-    for old in [*(geo / f for f in OUTPUTS), geo / f'addresses/{code}.sqlite', out / ATLAS, out / 'map-set.json']:
-        for tail in ('', '-wal', '-shm', '-journal', '.tmp'):
-            Path(f'{old}{tail}').unlink(missing_ok=True)
     t0 = time.time()
     run('map', ['tools/build_map.py', gpkg, geo / 'national.sqlite', f'--bbox={bbox}', '--source', SRC_GPKG, '--as-of', as_of_iso])
     # street tiles need an (empty) map.sqlite beside national.sqlite, and the app reads national-status.json
@@ -75,13 +89,12 @@ def build(code, src, regions, as_of_iso, as_of_text, workers):
         {'BUILDINGS_OUT': str(geo / 'buildings.sqlite'), 'LASTBOOK_BBOX': bbox, 'LASTBOOK_BUILDINGS_SOURCE': SRC_PBF})
     run('places', ['tools/build_places_osm.py', geo / 'national.sqlite', geo / f'addresses/{code}.sqlite', geo / 'places.sqlite',
                    '--area', NAMES[code]])
-    files = ['derived/geo/national-status.json', 'derived/geo/map.sqlite', 'derived/geo/national.sqlite', 'derived/geo/terrain.sqlite',
-             'derived/geo/water.sqlite', 'derived/geo/crops.sqlite', 'library-data/geography/resources/atlas.sqlite',
-             'derived/geo/buildings.sqlite', 'derived/geo/places.sqlite']
-    size = {f: (out / f).stat().st_size for f in files}
+    size = {f: (out / f).stat().st_size for f in MAP_SET_FILES}
     (out / 'map-set.json').write_text(json.dumps({'name': code, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - t0),
                                                  'units': 'metric', 'country': 'GB', 'credit': CREDIT, 'as_of': as_of_text}, indent=1),
                                       encoding='utf-8')
+    publish(out, final, code)
+    shutil.rmtree(out, ignore_errors=True)
     print(f'{code} done in {time.time() - t0:.0f}s, {sum(size.values()) / 1e9:.2f} GB', flush=True)
 
 

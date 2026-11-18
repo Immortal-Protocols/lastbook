@@ -13,8 +13,9 @@ engine/address_search.py reads it unchanged:
 
 OpenStreetMap has far fewer UK addresses than a government address list, and many have no postcode, so a house missing
 here is not proof it does not exist. An entrance node inside a building outline often repeats the building's address, so
-the same number, street and postcode within about 50 m is kept once (the first one read). Addresses mapped only on a
-multipolygon building relation are not read. See docs/REGIONS-UK.md. Needs pyosmium (`pip install osmium`) on the build machine
+the same number and street within about 50 m, with the same postcode or with one of them lacking one, is one address: the row
+that has a postcode and a town is kept, and fills a gap from the others. Addresses mapped only on a multipolygon building
+relation are not read. See docs/REGIONS-UK.md. Needs pyosmium (`pip install osmium`) on the build machine
 only; the app never imports it.
 """
 import argparse, sqlite3, sys, time
@@ -25,7 +26,7 @@ import osmium
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engine.address_search import fold, normalize, uk_postcode  # noqa: E402
 
-NEAR = 0.0005     # degrees, about 35-55 m: the same house number, street and postcode this close together is one address
+NEAR = 0.0005     # degrees, about 35-55 m: the same house number and street this close together is one address
 CITY_KEYS = ('addr:city', 'addr:town', 'addr:village', 'addr:hamlet', 'addr:suburb', 'addr:place')
 
 
@@ -33,6 +34,55 @@ def postcode(raw):
     words = (raw or '').lower().replace('-', ' ').split()
     found = uk_postcode(words) if words else None
     return found[0] if found and found[1] == len(words) else ''
+
+
+def merge_repeats(db):
+    """Fold repeats of one address into a single row, in place: same street and number (any case), within NEAR degrees, and a postcode
+    that is the same or missing on either side. The row with a postcode, then a town, stays and takes a missing postcode or town from
+    the others. Returns how many rows were dropped."""
+    drop, fill = [], []
+
+    def compatible(a, b):
+        return abs(a[5] - b[5]) < NEAR and abs(a[6] - b[6]) < NEAR and (not a[4] or not b[4] or a[4] == b[4])
+
+    def fold_block(rows):
+        by_number = {}
+        for r in rows:
+            by_number.setdefault(r[1].lower(), []).append(r)
+        for same in by_number.values():
+            if len(same) < 2:
+                continue
+            clusters = []
+            for r in sorted(same, key=lambda r: (r[5], r[6], r[0])):
+                for c in clusters:
+                    if all(compatible(r, m) for m in c):
+                        c.append(r)
+                        break
+                else:
+                    clusters.append([r])
+            for c in clusters:
+                if len(c) < 2:
+                    continue
+                best = max(c, key=lambda r: (bool(r[4]), bool(r[3])))
+                zip_ = best[4] or next((r[4] for r in c if r[4]), '')
+                city = best[3] or next((r[3] for r in c if r[3]), '')
+                if (city, zip_) != (best[3], best[4]):
+                    fill.append((city, zip_, best[0]))
+                drop.extend(r[0] for r in c if r is not best)
+
+    block, norm = [], None
+    # rows are (rowid, num, norm, city, zip, lat, lon); the (norm, num) index puts a street's rows together
+    for row in db.execute('SELECT rowid, num, norm, city, zip, lat, lon FROM addr ORDER BY norm, num'):
+        if row[2] != norm and block:
+            fold_block(block)
+            block = []
+        norm = row[2]
+        block.append(row)
+    fold_block(block)
+    db.executemany('UPDATE addr SET city = ?, zip = ? WHERE rowid = ?', fill)
+    for i in range(0, len(drop), 50_000):
+        db.execute(f'DELETE FROM addr WHERE rowid IN ({",".join("?" * len(drop[i:i + 50_000]))})', drop[i:i + 50_000])
+    return len(drop)
 
 
 def main():
@@ -52,8 +102,7 @@ def main():
                      'CREATE TABLE addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL);'
                      'CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);')
     t0 = time.time()
-    batch, total, seen, dropped = [], 0, 0, 0
-    placed = set()      # hash of (number, street, postcode, grid cell) for every address kept
+    batch, total, seen = [], 0, 0
     # locations first, so ways carry coordinates; the filters then keep only objects that have a house number
     fp = (osmium.FileProcessor(a.pbf, osmium.osm.NODE | osmium.osm.WAY)
           .with_locations()
@@ -77,14 +126,8 @@ def main():
         if not (west <= lon <= east and south <= lat <= north):
             continue
         city = next((tags[k] for k in CITY_KEYS if tags.get(k)), '')
-        norm, zip_ = normalize(fold(street)), postcode(tags.get('addr:postcode'))
-        who = (num.strip().lower(), norm, zip_)
-        cy, cx = round(lat / NEAR), round(lon / NEAR)
-        if any(hash((who, cy + dy, cx + dx)) in placed for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
-            dropped += 1
-            continue
-        placed.add(hash((who, cy, cx)))
-        batch.append((num.strip(), street.strip(), norm, city.strip(), '', zip_, round(lat, 6), round(lon, 6)))
+        batch.append((num.strip(), street.strip(), normalize(fold(street)), city.strip(), '', postcode(tags.get('addr:postcode')),
+                      round(lat, 6), round(lon, 6)))
         if len(batch) >= 200_000:
             db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?)', batch)
             total += len(batch)
@@ -94,6 +137,9 @@ def main():
     total += len(batch)
     print('indexing', flush=True)
     db.execute('CREATE INDEX addr_norm ON addr(norm, num)')
+    print('merging repeats', flush=True)
+    dropped = merge_repeats(db)
+    total = db.execute('SELECT count(*) FROM addr').fetchone()[0]
     with_postcode = db.execute("SELECT count(*) FROM addr WHERE zip != ''").fetchone()[0]
     db.executemany('INSERT INTO meta VALUES (?,?)', [('bbox', a.bbox), ('count', str(total)), ('with_postcode', str(with_postcode)),
                                                     ('built', time.strftime('%Y-%m-%dT%H:%M:%S')), ('source', a.source)])

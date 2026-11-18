@@ -44,8 +44,9 @@ const Chat = (() => {
     const id = parts[0];
     cur = id ? byId(id) : null;
     if (id && !cur) { swap('#/ask'); return }
-    const about = q.get('about');
+    const about = q.get('about'), me = routeSeq;
     aboutCtx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
+    if (me !== routeSeq) return;   // the person has gone to another page
     document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
     $('#tbTitle').textContent = cur ? cur.title : 'Chat';
     main.innerHTML = `<div class="chat">
@@ -284,7 +285,7 @@ const Chat = (() => {
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
-    let out = '', list = null, section = 'main', table = null, before = '';
+    let out = '', list = null, section = 'main', table = null, before = '', open = false;   // open: a sec- div is open
     const close = () => { if (list) { out += `</${list}>`; list = null } };
     // A table the model copied from a source. It counts as cited when a key is in it or in the line just before it, as the instructions ask.
     // Cells split on bare pipes only: "\|" is a pipe inside a cell.
@@ -323,9 +324,9 @@ const Chat = (() => {
       const sec = /not found in the library/i.test(t) ? 'missing' : /sources disagree/i.test(t) ? 'disagree' : /own reasoning/i.test(t) ? 'reasoning' : null;
       if (sec || head) {
         close();
-        if (out.includes('<div class="sec-')) out += '</div>';
+        if (open) { out += '</div>'; open = false }
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (sec) { open = true; out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
@@ -337,7 +338,7 @@ const Chat = (() => {
       close(); out += `<p>${mark(t)}</p>`;
     }
     flush(); close();
-    if (out.includes('<div class="sec-')) out += '</div>';
+    if (open) out += '</div>';
     return out;
   }
 
@@ -418,6 +419,7 @@ const Chat = (() => {
           redraw();
         }
       }
+      if (m.needFallback) { delete m.needFallback; await fallback(m, text) }
       if (m.running && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
     } catch (e) {
       if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
@@ -439,7 +441,7 @@ const Chat = (() => {
     else if (ev.type === 'reset') m.content = '';
     else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
-      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
+      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; m.needFallback = true }   // send() runs the library search, once the stream is read
       else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
     }
     else if (ev.type === 'stopped') m.stopped = true;

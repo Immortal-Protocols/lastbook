@@ -239,15 +239,20 @@ try { history.scrollRestoration = 'manual' } catch { }   // the page restores it
 let current = null;
 window.addEventListener('scroll', () => { if (current && !$('#wframe')) scrolls[current] = scrollY }, { passive: true });   // an article scrolls in its frame, which keeps its own place (wiki)
 window.addEventListener('pagehide', () => sessionStorage.setItem('sg.scroll', JSON.stringify(scrolls)));
+const dec = s => { try { return decodeURIComponent(s) } catch { return s } };   // a stray % in a title is kept as it is
+const encPath = p => String(p).split('/').map(encodeURIComponent).join('/');
+const wikiHref = p => '#/wiki/' + encPath(p);   // each segment encoded, so a ? or # in a title stays in the path
+const hilite = (t, rx) => { let o = '', i = 0; for (const m of rx ? t.matchAll(rx) : []) { o += esc(t.slice(i, m.index)) + `<mark>${esc(m[0])}</mark>`; i = m.index + m[0].length } return o + esc(t.slice(i)) };   // escape the pieces, not the markup: a match inside &lt; would break it
 function parse() {
   const h = here().slice(1) || '/';
   const [path, qs] = h.split('?');
-  return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
+  return { parts: path.split('/').filter(Boolean).map(dec), q: new URLSearchParams(qs || '') };
 }
 // The sidebar row each page belongs to. Reading pages stay under Library, articles under Encyclopedias; search results select no row.
 const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
-let leaving = null;  // cleanup hook for the current view (player, chat stream…)
+let routeSeq = 0, leaving = null;  // routeSeq: the newest route; a slower earlier one stops when it sees it has been passed. leaving: cleanup hook for the current view (player, chat stream…)
 async function route() {
+  const seq = ++routeSeq;
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
   const { parts, q } = parse();
   const h = here();
@@ -278,6 +283,7 @@ async function route() {
   try {
     if (v !== 'map') MapView.stop();
     await topics().catch(() => { });
+    if (seq !== routeSeq) return;
     if (!v || v === 'guides') await home();
     else if (v === 't') await topicPage(parts[1], parts[2]);
     else if (v === 'ask') await Chat.page(main, parts.slice(1), q);
@@ -295,7 +301,8 @@ async function route() {
     else if (v === 'collection') await collectionPage(q.get('name') || '', q.get('from'));
     else if (v === 'about') await about();
     else notFound();
-  } catch (e) { setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
+    if (seq !== routeSeq) return;   // a newer page has been opened meanwhile: it does the rest
+  } catch (e) { if (seq !== routeSeq) return; setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
   wireRails(); dock(); barState();
   $('#topQ').value = '';
   const big = $('main h1'); if (big) h1seen.observe(big);
@@ -527,8 +534,10 @@ async function videosHome() {
     <div class="chips" style="margin-top:8px">${[['short', 'Under 10 min'], ['medium', '10–30 min'], ['long', 'Over 30 min']].map(([k, l]) => `<a class="chip" href="#/videos/all?len=${k}">${ico('clock')}${l}</a>`).join('')}</div>
     <div id="vrows"><p class="loading">Loading videos…</p></div>`;
   $('#vqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/videos/all?q=' + encodeURIComponent($('#vq').value.trim()) });
+  const me = routeSeq;
   const rows = await api('/api/videos');
   const cont = (await resumable(20)).slice(0, 12);
+  if (me !== routeSeq) return;   // the person has gone to another page
   const GCOL = { health: 'hurt', water: 'water', food: 'food', power: 'power', outdoors: 'shelter', repair: 'repair', making: 'land' };
   $('#vrows').innerHTML =
     (cont.length ? secHead('Continue watching') + rail(cont.map(([id, v]) => vcard({ id, title: v.title, thumb: v.thumb, duration: v.d }, { sub: 'Resume at ' + clock(v.t) })).join('')) : '') +
@@ -541,8 +550,9 @@ async function videoRow(row, q) {
   const len = q.get('len') || '', sort = q.get('sort') || '', qq = q.get('q') || '';
   const base = `#/videos/${row}`;
   const qs = o => { const p = new URLSearchParams({ q: qq, len, sort, ...o }); for (const [k, v] of [...p]) if (!v) p.delete(k); const s = p.toString(); return base + (s ? '?' + s : '') };
-  let off = 0;
+  let off = 0, me = routeSeq;
   const first = await api(`/api/videos/${row}?q=${encodeURIComponent(qq)}&len=${len}&sort=${sort}&offset=0`);
+  if (me !== routeSeq) return;   // the person has gone to another page
   setTitle(first.title);
   main.innerHTML = `<div>${backButton('#/videos', 'Videos')}</div><h1 style="margin-top:12px">${esc(qq ? 'Videos: “' + qq + '”' : first.title)}</h1>${first.note ? `<p class="lead">${esc(first.note)}</p>` : ''}
     <div class="vtools">${searchBox('vq', qq, 'Search these videos', 'Go')}
@@ -600,7 +610,8 @@ async function videoFormats(url) {
 }
 
 async function watch(id, t, from) {
-  const d = await api('/api/doc/' + encodeURIComponent(id));
+  const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
+  if (me !== routeSeq) return;   // the person has gone to another page
   setTitle(d.title);
   const selfHref = `#/watch/${encodeURIComponent(id)}`;
   remember({ key: 'v:' + id, title: d.title, href: selfHref, sub: 'Video · ' + fmtDur(d.duration) });
@@ -662,7 +673,7 @@ async function watch(id, t, from) {
   const draw = q => {
     const rx = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig') : null;
     const list = cues.filter(c => !rx || c.text.match(rx));
-    box.innerHTML = list.length ? list.map(c => `<button class="cue" data-t="${c.t ?? ''}"><time>${c.t != null ? clock(c.t) : ''}</time><span>${rx ? esc(c.text).replace(rx, m => `<mark>${m}</mark>`) : esc(c.text)}</span></button>`).join('')
+    box.innerHTML = list.length ? list.map(c => `<button class="cue" data-t="${c.t ?? ''}"><time>${c.t != null ? clock(c.t) : ''}</time><span>${hilite(c.text, rx)}</span></button>`).join('')
       : `<p class="muted" style="padding:12px 14px">${cues.length ? 'No matching words.' : 'No transcript was saved for this video, so search and the assistant can’t see what’s said in it.'}</p>`;
   };
   draw('');
@@ -682,7 +693,8 @@ async function watch(id, t, from) {
 
 /* ------------------------------------------------------------- reader -- */
 async function reader(id, page, from, view) {
-  const d = await api('/api/doc/' + encodeURIComponent(id));
+  const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
+  if (me !== routeSeq) return;   // the person has gone to another page
   if (d.kind === 'video') { swap('#/watch/' + encodeURIComponent(id) + (from ? '?from=' + encodeURIComponent(from) : '')); return }
   if (d.kind === 'transcript' && d.videoId) { swap('#/watch/' + encodeURIComponent(d.videoId) + (from ? '?from=' + encodeURIComponent(from) : '')); return }
   setTitle(d.title, [d.publisher, d.year, d.trust].filter(Boolean).join(' · '));
@@ -749,10 +761,10 @@ const zimLabel = name => { for (const k in ZIMNAMES) if (name.startsWith(k)) ret
 async function wiki(path, from, y) {
   const [zim, ...rest] = path.split('/');
   const art = rest.join('/');
-  const title = decodeURIComponent(art.split('/').pop() || '').replace(/_/g, ' ') || zimLabel(zim);
+  const title = (art.split('/').pop() || '').replace(/_/g, ' ') || zimLabel(zim);   // path is already decoded
   setTitle(title, '', zimLabel(zim));
-  const src = '/zim/' + encodeURIComponent(zim) + '/' + art.split('/').map(encodeURIComponent).join('/');
-  const selfHref = '#/wiki/' + path;
+  const src = '/zim/' + encodeURIComponent(zim) + '/' + encPath(art);
+  const selfHref = wikiHref(path);
   const mainPage = zimMain(zim);
   main.innerHTML = `<div class="rtop">${backButton(from || '#/encyclopedias')}<span id="wsave" class="dock">${saveButton({ key: 'w:' + path, title, href: selfHref, sub: zimLabel(zim) })}</span></div>
     <h1 class="rtitle" id="wtitle">${esc(title)}</h1><div class="rsrc"><span class="zn">${esc(zimLabel(zim))} · </span>Community-written; check safety-critical steps against a manual${IN_WINDOW ? '' : ` · <a id="wopen" href="${src}" target="_blank" rel="noopener">open on its own</a>`}</div>
@@ -794,19 +806,19 @@ async function wiki(path, from, y) {
       if (y && shown === null) restoreScroll(current, y, fw);   // Back to this article: its place, once (a link followed inside the frame starts at its top)
       const loc = f.contentWindow.location.pathname, t = fd.title || '';
       const m = /^\/zim\/([^/]+)\/(.*)$/.exec(loc); if (!m) return;
-      const p = decodeURIComponent(m[1]) + '/' + m[2].split('/').map(decodeURIComponent).join('/');
+      const p = dec(m[1]) + '/' + m[2].split('/').map(dec).join('/');
       const own = fd.querySelector('#firstHeading, h1'), raw = (own && own.textContent.trim()) || t;
       if (!m[2] && !raw) return;   // the bare address, on its way to the front page
-      const front = decodeURIComponent(loc) === await mainPage;   // the front page is named by its file, such as App/IntroPage: the encyclopedia's name says it instead
+      const front = dec(loc) === await mainPage;   // the front page is named by its file, such as App/IntroPage: the encyclopedia's name says it instead
       if (f.contentDocument !== fd) return;
       if (front && own) own.style.setProperty('display', 'none', 'important');   // the skin sets its own display, which the hidden attribute does not beat
       main.classList.toggle('own-title', front);   // then the app's heading names it
       const nt = front ? zimLabel(zim) : raw || p.split('/').pop().replace(/_/g, ' '), sub = front ? 'Encyclopedia' : zimLabel(zim);
       $('#wtitle').textContent = nt; if ($('#wopen')) $('#wopen').href = loc; setTitle(nt, '', zimLabel(zim));
       f.lbName = !front && own ? { nt, at: own.getBoundingClientRect().bottom + fw.scrollY } : null; barName();
-      $('#wsave').innerHTML = saveButton({ key: 'w:' + p, title: nt, href: '#/wiki/' + p, sub });
+      $('#wsave').innerHTML = saveButton({ key: 'w:' + p, title: nt, href: wikiHref(p), sub });
       fit();
-      if (p !== shown) { shown = p; history.replaceState(null, '', '#/wiki/' + p + (from ? '?from=' + encodeURIComponent(from) : '')); remember({ key: 'w:' + p, title: nt, href: '#/wiki/' + p, sub }) }
+      if (p !== shown) { shown = p; history.replaceState(null, '', wikiHref(p) + (from ? '?from=' + encodeURIComponent(from) : '')); remember({ key: 'w:' + p, title: nt, href: wikiHref(p), sub }) }
     } catch { }
   });
 }
@@ -815,7 +827,7 @@ const ZMAIN = {};
 const zimMain = zim => ZMAIN[zim] || (ZMAIN[zim] = fetch('/zim/' + encodeURIComponent(zim) + '/').then(async r => {
   let u = r.redirected ? r.url : '';
   if (!u) { const m = /http-equiv=["']?refresh["']?[^>]*url=([^"'>]+)/i.exec(await r.text()); if (m) u = new URL(m[1].replace(/&amp;/g, '&').trim(), r.url).href }
-  return u ? decodeURIComponent(new URL(u).pathname) : '';
+  return u ? dec(new URL(u).pathname) : '';
 }).catch(() => ''));
 // A table wider than the column scrolls sideways inside its own box (.lb-wide, styled by engine/saved_pages.py), so the article never does.
 // The box goes around the table, which keeps its table layout: a table made a scrolling block itself turns its width into a fixed one.
@@ -1022,7 +1034,8 @@ function resultCard(r) {
 async function library() {
   setTitle('Library');
   const saved = store.get('saved', []).length, chats = (window.Chat ? Chat.count() : 0);
-  const zims = await zimsHere();
+  const me = routeSeq, zims = await zimsHere();
+  if (me !== routeSeq) return;   // the person has gone to another page
   main.innerHTML = `<h1>Library</h1><p class="lead">Your saved things, learning routes, encyclopedias and every manual in the collection.</p>
   <div class="cards2 three" style="margin-top:16px">
     <a class="card" href="#/saved"><span class="ico">${ico('save')}</span><b>Saved</b><small>${saved ? saved + ' saved item' + (saved > 1 ? 's' : '') : 'Pages, videos and answers you keep'} on this device</small></a>
@@ -1036,8 +1049,9 @@ async function library() {
   <p style="margin-top:20px"><a href="#/about">About this library and its sources</a>${IN_WINDOW ? ' · <a href="/ui/setup.html#manage">Library and local AI</a>' : ''}</p>`;
   try {
     const sh = await api('/api/shelves');
+    if (me !== routeSeq) return;
     $('#shelves').innerHTML = sh.filter(s => s.read + s.video).map(s => `<a class="shelfrow" href="#/shelf/${s.id}"><span><b>${esc(s.title)}</b><small>${s.read ? s.read.toLocaleString() + ' to read' : ''}${s.read && s.video ? ' · ' : ''}${s.video ? s.video.toLocaleString() + ' videos' : ''}</small></span>${ico('right')}</a>`).join('');
-  } catch (e) { $('#shelves').innerHTML = errorBox(e) }
+  } catch (e) { if (me === routeSeq) $('#shelves').innerHTML = errorBox(e) }
 }
 async function prepareHub() {
   setTitle('Prepare your household');
@@ -1048,7 +1062,8 @@ async function prepareHub() {
   ${list.map(t => `<details class="more" ${tcStyle(t.id)}><summary><span class="prep-ico">${ico(t.id)}</span><span>${esc(SHORT[t.id] || t.title)} <span class="n">· ${t.prepare.length}</span></span></summary><div class="body"><ul class="list">${t.prepare.map(i => rowItem({ ...i, preview: true })).join('')}</ul><p><a href="#/t/${t.id}">Open the full guide</a></p></div></details>`).join('')}`;
 }
 async function shelfPage(id, kind, q) {
-  const sh = (await api('/api/shelves')).find(s => s.id === id);
+  const me = routeSeq, sh = (await api('/api/shelves')).find(s => s.id === id);
+  if (me !== routeSeq) return;   // the person has gone to another page
   if (!sh) return notFound();
   setTitle(sh.title);
   main.innerHTML = `${backButton('#/library', 'Library')}${crumbs([['Library', '#/library'], [sh.title]])}<h1>${esc(sh.title)}</h1>
@@ -1058,6 +1073,7 @@ async function shelfPage(id, kind, q) {
   let off = 0;
   const load = async () => {
     const d = await api(`/api/shelf/${id}?kind=${kind}&q=${encodeURIComponent(q)}&offset=${off}`);
+    if (me !== routeSeq) return;
     const html = d.collections.map(c => `<section class="collection"><h3>${esc(c.collection)}</h3><div class="small muted">${esc(c.trust)} · ${c.count} item${c.count > 1 ? 's' : ''}</div><ul class="list">${c.items.map(r => rowItem({ src: r })).join('')}</ul>${c.count > c.items.length ? `<a class="btn ghost" href="#/collection?name=${encodeURIComponent(c.collection)}&${fromQ()}">See all ${c.count}</a>` : ''}</section>`).join('');
     if (!off) $('#shres').innerHTML = d.collections.length ? '' : '<div class="empty">Nothing here matches. Try another word.</div>';
     $('#shres').insertAdjacentHTML('beforeend', html);

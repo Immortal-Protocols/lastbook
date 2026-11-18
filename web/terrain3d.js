@@ -83,7 +83,7 @@ const Terrain3D = (() => {
     // fetch every elevation tile that covers the view (and the 30 m ones, which back up any spot lidar misses)
     const need = new Set();
     for (const z of tz > 12 ? [tz, 12] : [tz]) { const [x0, x1, y0, y1] = span(z); for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) need.add(z + '/' + x + '/' + y) }
-    for (let tries = 0; tries < 60; tries++) {
+    for (let tries = 0; tries < 60 && me.alive; tries++) {   // not once closed: the map's elevation tiles are gone with it
       let waiting = 0;
       for (const k of need) { const [z, x, y] = k.split('/').map(Number); if (o.getDem(z, x, y) === undefined) { o.demTile(z, x, y); waiting++ } }
       if (!waiting || !me.alive) break;

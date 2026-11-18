@@ -69,7 +69,7 @@ const MapView = (() => {
     berries: 'USDA 2025 satellite crop map: usually right for big orchards, sometimes wrong for small ones. Trees and vines keep producing for decades but need water in dry regions and winter pruning. Private farmland — ask first.',
     perennial_veg: 'USDA 2025 satellite crop map: usually right for big orchards, sometimes wrong for small ones. Trees and vines keep producing for decades but need water in dry regions and winter pruning. Private farmland — ask first.',
     pond: 'Small ponds are often livestock ponds with manure runoff: treat the water and cook any fish thoroughly. Small ponds can be fished out in weeks.', spring: 'Mapped spring — treat the water before drinking.', drinking_water: 'Mapped tap; may be off in an emergency.' };
-  let st = null, world = null, geography = null;
+  let st = null, seen = null, world = null, geography = null;   // seen: the tools column's resize observer
 
   const load = (k, d) => { try { return JSON.parse(localStorage.getItem('sg.' + k)) ?? d } catch { return d } };
   const save = (k, v) => { try { localStorage.setItem('sg.' + k, JSON.stringify(v)) } catch { } };
@@ -93,6 +93,7 @@ const MapView = (() => {
   const wholeMap = () => st.bounds || US;
   async function page(main, q) {
     await localHome();
+    stop();   // entering the map again (a new address, Back): the last visit's listeners and timers end first
     const home = load('mapHome', HOME);
     const lat = parseFloat(q.get('lat')), lon = parseFloat(q.get('lon')), z = parseFloat(q.get('z'));
     let on = (q.get('layers') || '').split(',').filter(id => LAYERS.some(l => l.id === id));
@@ -136,7 +137,7 @@ const MapView = (() => {
     // The tools column scrolls on its own when it is taller than the map, and fades at an edge with more past it, as the chat list does
     const toolsEdge = () => { const more = tools.scrollHeight - tools.clientHeight; tools.classList.toggle('more-b', more > 1 && tools.scrollTop < more - 1); tools.classList.toggle('more-t', more > 1 && tools.scrollTop > 1) };
     tools.addEventListener('scroll', toolsEdge, { passive: true });
-    const toolsSeen = new ResizeObserver(toolsEdge); toolsSeen.observe(tools); [...tools.children].forEach(c => toolsSeen.observe(c));
+    const toolsSeen = new ResizeObserver(toolsEdge); toolsSeen.observe(tools); seen = toolsSeen; [...tools.children].forEach(c => toolsSeen.observe(c));
     const place = isFinite(lat) && isFinite(lon) ? null : home;
     const openWhole = !place && !(isFinite(lat) && isFinite(lon));   // nothing says where to open: the whole of this map, once its bounds have come
     st = { lat: isFinite(lat) ? lat : place ? place.lat : 39, lon: isFinite(lon) ? lon : place ? place.lon : -98, z: isFinite(z) ? Math.max(MINZ, Math.min(MAXZ, z)) : place ? place.z : 4,
@@ -205,6 +206,7 @@ const MapView = (() => {
   function stop() {
     document.getElementById('main')?.classList.remove('map-page');
     if (typeof Terrain3D !== 'undefined') Terrain3D.close();
+    if (seen) { seen.disconnect(); seen = null }
     if (st) { clearInterval(st.nationalTimer); for (const t of ['nt', 'wt', 'kt', 'resizeTimer']) clearTimeout(st[t]); cancelAnimationFrame(st.raf); st.alive = false; st.ro && st.ro.disconnect(); document.removeEventListener('keydown', st.onKey); document.removeEventListener('fullscreenchange', st.onFull); if (document.fullscreenElement) document.exitFullscreen().catch(() => { }); st = null }
   }
   function toggleFull() {
@@ -549,6 +551,7 @@ const MapView = (() => {
     return Math.hypot(dx, dy) <= c[2] ? TZD : TZN;
   };
   function demTile(z, x, y) {
+    if (!st) return;   // the map has been left
     const k = tileKey(z, x, y); let t = st.dem.get(k);
     if (t === null && z > TZN && Date.now() - (st.demNone.get(k) || 0) > 60000) { st.dem.delete(k); t = undefined }  // lidar may still be building
     if (t !== undefined) { if (t) { st.dem.delete(k); st.dem.set(k, t) } return t }  // keep recently used tiles last (eviction is oldest-first)

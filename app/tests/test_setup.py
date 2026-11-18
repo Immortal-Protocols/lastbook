@@ -1805,6 +1805,53 @@ class MacSharingEnds(unittest.TestCase):
         swarm.stop()
         self.assertEqual(w.returncode, -signal.SIGKILL)
 
+    def test_no_watcher_no_rqbit(self):
+        """If the watcher cannot start, rqbit is ended and sharing does not start: it never runs untied."""
+        tmp = shorttemp.mkdtemp('lastbook-watch-')
+        self.addCleanup(shutil.rmtree, tmp, True)
+        real, started = subprocess.Popen, []
+
+        def popen(args, **kw):
+            if args[0] == '/bin/sh':
+                raise OSError(24, 'Too many open files')
+            p = real(args, **kw)
+            started.append(p)
+            return p
+        waits = [sys.executable, '-I', '-c', 'import time; time.sleep(300)']
+        with mock.patch.object(share.subprocess, 'Popen', popen):
+            with self.assertRaises(OSError):
+                share._spawn(waits, 'x')
+            self.assertEqual(len(started), 1)
+            self.assertIsNotNone(started[0].poll())               # ended and reaped
+            seeder = share.Seeder(waits)
+            self.assertEqual(seeder.start({str(tmp): [str(tmp / 'a.torrent')]}), 0)
+            self.assertEqual(seeder.running(), [])
+            self.assertFalse(share.Swarm(b'', command=waits).start(tmp))
+        self.assertEqual(len(started), 3)
+        self.assertTrue(all(p.poll() is not None for p in started))
+
+    def test_watcher_goes_once_rqbit_ends_on_its_own(self):
+        tmp = shorttemp.mkdtemp('lastbook-watch-')
+        self.addCleanup(shutil.rmtree, tmp, True)
+        brief = [sys.executable, '-I', '-c', 'import time; time.sleep(0.3)']
+        seeder = share.Seeder(brief)
+        self.addCleanup(seeder.stop)
+        self.assertEqual(seeder.start({str(tmp): [str(tmp / 'a.torrent')]}), 1)
+        p = seeder.procs[0][0]
+        w = p.watcher
+        p.wait(10)
+        self.assertEqual(seeder.running(), [])
+        self.assertEqual(w.returncode, -signal.SIGKILL)              # killed in its read: it ended nothing
+        self.assertIsNone(p.watcher)
+        swarm = share.Swarm(b'')
+        swarm.proc = share._spawn(brief, 'x')
+        swarm.id = 0
+        w = swarm.proc.watcher
+        swarm.proc.wait(10)
+        self.assertIsNone(swarm.poll())
+        self.assertEqual(w.returncode, -signal.SIGKILL)
+        swarm.stop()
+
 
 class _HeldRead:
     """The first read of a piece's body by a download connection gets its bytes, then waits on `release` before handing them over

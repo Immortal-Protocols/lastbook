@@ -102,17 +102,18 @@ def write_results(db, directory, town, roster, known):
             returned.add(base)
             if address.strip():
                 populated.add(base)
+                writer.writerow((base, address, municipality))
+                wordings += 1
                 if fold(municipality) == fold(town):
                     eligible.add(base)
-                    writer.writerow((base, address, town))
-                    wordings += 1
     Path(stream.name).replace(csv_path)
     completed = {row[0].replace('-', '') for row in db.execute('SELECT value FROM prefix')}
     checked = {base for base in roster if base[:6] in completed}
     summary = dict(municipio=town, roster_parcels=len(roster), completed_prefixes=db.execute('SELECT count(*) FROM prefix').fetchone()[0],
                    total_prefixes=len({base[:6] for base in roster}), returned_parcels=len(returned),
-                   nonblank_address_parcels=len(populated), csv_parcels=len(eligible), csv_wordings=wordings,
-                   newly_collected_parcels=len(eligible - known), empty_address_parcels=len(returned - populated),
+                   nonblank_address_parcels=len(populated), csv_parcels=len(populated), csv_wordings=wordings,
+                   municipio_matched_parcels=len(eligible), newly_collected_parcels=len(populated - known),
+                   empty_address_parcels=len(returned - populated),
                    missing_parcels=len(checked - returned), unqueried_parcels=len(roster - checked), csv=str(csv_path))
     summary['complete'] = summary['completed_prefixes'] == summary['total_prefixes']
     with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=directory, delete=False) as stream:

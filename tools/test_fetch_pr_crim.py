@@ -50,5 +50,8 @@ class PublicPrefixResults(unittest.TestCase):
         fetch.save_prefix(self.db, '001-002', rows, 3, self.roster)
         fetch.save_prefix(self.db, '001-004', [], 0, self.roster)
         summary = fetch.write_results(self.db, self.directory, 'Villa Ejemplo', self.roster, set())
-        self.assertEqual((summary['nonblank_address_parcels'], summary['csv_parcels'], summary['csv_wordings']), (2, 1, 2))
+        self.assertEqual((summary['csv_parcels'], summary['municipio_matched_parcels'], summary['csv_wordings']), (2, 1, 3))
+        with (self.directory / 'addresses.csv').open(newline='', encoding='utf-8') as stream:
+            saved = list(csv.DictReader(stream))
+        self.assertEqual(saved[-1]['municipio'], 'Otro Pueblo')
         self.assertEqual((summary['missing_parcels'], summary['unqueried_parcels']), (1, 0))

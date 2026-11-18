@@ -368,8 +368,10 @@ def rewrite(data, read_local=None):
     if vtt:
         block = b'<details class="lb-transcript" open><summary>Transcript</summary><p>' + html.escape(transcript_text(vtt)).encode() + b'</p></details>'
         i = data.find(b'video-tab-content-section')
-        i = data.find(b'>', i) + 1 if i >= 0 else data.find(b'</video>') + 8
-        data = data[:i] + block + data[i:]
+        j = data.find(b'</video>')
+        i = data.find(b'>', i) + 1 if i >= 0 else j + 8 if j >= 0 else -1
+        if i >= 0:  # no anchor: leave the transcript out rather than splice it into the doctype
+            data = data[:i] + block + data[i:]
     end = _upto(data)
     m = _HEAD.search(data, 0, end) or _DOCTYPE.search(data, 0, end)
     i = m.end() if m else 0

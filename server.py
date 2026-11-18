@@ -329,7 +329,7 @@ def query_groups(q):
             phrase_groups += g if isinstance(g[0], list) else [g]
             q = re.sub(rx, ' ', q)
     words = [w.lower() for w in re.findall(r"[\w'-]+", q)]
-    words = [w.strip("'") for w in words if w.strip("'")]
+    words = [w.strip("'") for w in words if w.strip("'") and re.search(r'[^\W_]', w)]  # a lone '-' or '_' is no search word
     content = [w for w in words if w not in STOP] or ([] if phrase_groups else words)
     groups = []
     for w in content:
@@ -342,8 +342,13 @@ def query_groups(q):
     return content, groups
 
 
-@functools.lru_cache(maxsize=256)
 def find(q, kind='all', limit=30):
+    cat = catalog()  # the catalog and exclusion list reload at runtime: their versions are part of the cache key
+    return _find(q, kind, limit, (cat['mtime'], _excl['mtime']))
+
+
+@functools.lru_cache(maxsize=256)
+def _find(q, kind, limit, version):
     content, groups = query_groups(q)
     if not groups:
         return {'q': q, 'results': [], 'expanded': []}
@@ -630,7 +635,7 @@ def render_page(r, n, width):
                 data = png_bytes(bitmap.to_numpy())
             finally:
                 pdf.close()
-        tmp = CACHE / f".{r['id']}-{n}-{width}-{threading.get_ident()}.tmp"
+        tmp = CACHE / f".{r['id']}-{n}-{width}-{os.getpid()}-{threading.get_ident()}.tmp"
         tmp.write_bytes(data)
         try:
             os.replace(tmp, out)
@@ -856,7 +861,7 @@ def map_tile(z, x, y):
         data = _map_tile(z, x, y, version)
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(f'.{threading.get_ident()}.tmp')
+            tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
             tmp.write_bytes(data)
             tmp.replace(path)
         except OSError:

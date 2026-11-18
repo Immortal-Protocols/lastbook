@@ -205,19 +205,20 @@ class Index:
 
     def _load(self, truncate=True, db=None):
         if not self.vec_path.exists() or not AVAILABLE:
-            self.mat = np.zeros((0, DIM), dtype=np.float16) if AVAILABLE else None
-            self.active = np.zeros(0, dtype=bool) if AVAILABLE else None
+            with self.lock:
+                self.mat, self.active = (np.zeros((0, DIM), dtype=np.float16), np.zeros(0, dtype=bool)) if AVAILABLE else (None, None)
             return
         raw = np.fromfile(self.vec_path, dtype=np.float16)
         n = len(raw) // DIM
         db = db or self._ro()
         rows = one(db, 'SELECT max(id) FROM chunk')[0] or 0
         n = min(n, rows)  # vectors beyond the committed chunk rows were from an interrupted run
-        self.mat = raw[:n * DIM].reshape(n, DIM)
+        mat = raw[:n * DIM].reshape(n, DIM)
         act = np.zeros(n, dtype=bool)
         for (i,) in db.execute('SELECT id FROM chunk WHERE active=1 AND id<=?', (n,)).fetchall():
             act[i - 1] = True
-        self.active = act
+        with self.lock:  # semantic() must never see one without the other
+            self.mat, self.active = mat, act
         if truncate and n * DIM * 2 != self.vec_path.stat().st_size:
             with open(self.vec_path, 'r+b') as f:
                 f.truncate(n * DIM * 2)
@@ -435,24 +436,28 @@ class Index:
             m, act = self.mat, self.active
             s = (m @ qv).astype(np.float32)
             s[~act[:len(s)]] = -1
-        top = np.argpartition(-s, min(k * 3, len(s) - 1))[:k * 3]
+        top = np.nonzero(s >= floor)[0]  # everything above the floor, best first: filtering by allowed happens before any cut
         top = top[np.argsort(-s[top])]
         db = self._ro()
         excl = self.excluded()
-        out = []
-        for i in top:
-            row = one(db, 'SELECT doc_id,page,t,text FROM chunk WHERE id=?', (int(i) + 1,))
-            if not row or row[0] in excl:
-                continue
-            if allowed and not allowed(row[0]):
-                continue
-            if float(s[i]) < floor:
-                break
-            if not readable(row[3]):  # indexed before the quality filter existed
-                continue
-            out.append({'doc_id': row[0], 'page': row[1], 't': row[2], 'text': row[3], 'sem': float(s[i])})
-            if len(out) >= k:
-                break
+        out, seen = [], {}
+        for b in range(0, len(top), 500):  # doc ids in batches, text only for what survives the filters
+            ids = [int(i) + 1 for i in top[b:b + 500]]
+            docs = dict(db.execute(f"SELECT id,doc_id FROM chunk WHERE id IN ({','.join('?' * len(ids))})", ids).fetchall())
+            for i in top[b:b + 500]:
+                d = docs.get(int(i) + 1)
+                if d is None or d in excl:
+                    continue
+                if d not in seen:
+                    seen[d] = not allowed or bool(allowed(d))
+                if not seen[d]:
+                    continue
+                row = one(db, 'SELECT doc_id,page,t,text FROM chunk WHERE id=?', (int(i) + 1,))
+                if not row or not readable(row[3]):  # indexed before the quality filter existed
+                    continue
+                out.append({'doc_id': row[0], 'page': row[1], 't': row[2], 'text': row[3], 'sem': float(s[i])})
+                if len(out) >= k:
+                    return out
         return out
 
     def gaps_for(self, doc_ids):

@@ -60,3 +60,45 @@ python3 server.py --data /path/to/PhuketData --port 8890
 # then open the address it prints, choose Map, and go to:  #/map?lat=7.8961&lon=98.2964&z=14.5   (Patong)
 # the whole island:  #/map?lat=7.95&lon=98.36&z=10.3
 ```
+
+## The build this was checked with
+
+| | |
+|---|---|
+| Source file | `thailand-latest.osm.pbf` (Geofabrik's file of 17 November), 330,447,194 bytes |
+| Source SHA-256 | `6a2908238debf96dd36e5c66bbaff19da7ab1f77b08bc8e106fd78b9fa3a6759` |
+| Source MD5 (matches Geofabrik's `.md5`) | `de5d72d732c387d2edda85ab571230bb` |
+| OpenStreetMap data up to | 2026-11-17T21:24:30Z (from the file's header) |
+| Built on | 17 November 2026, Windows 11 (10.0.22631), Python 3.12.7, pyosmium 4.3.2 from PyPI |
+| Build time | 511 seconds, reading the whole country and keeping the box |
+| Box | 98.10, 7.33, 98.63, 8.36 (west, south, east, north) |
+
+| File | Bytes | SHA-256 |
+|---|---|---|
+| `derived/geo/national.sqlite` | 22,122,496 | `1ebb8d332b9a342469c1ea136eaaffe262dbff5e4514687e7dea1c0e0887893e` |
+| `derived/geo/map.sqlite` | 36,864 | `72c019de2f80354e7bf2ed13acac61fd532a63778cb0361fbe7f133bd041a527` |
+| `derived/geo/places.sqlite` | 217,088 | `76f948c74de775ef03d50e52ebd5e0cb7d27f0b7e501c7de188a91ba8e90ca10` |
+| `derived/geo/national-status.json` | 59 | `b5a0aa874ce2dd85a0d8d9cf95e0a583c7ab9a2089dc95ee48c943e67b4cfcb1` |
+| `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
+
+The map was built once; whether a second build gives the same bytes on Windows was not tested (#80 reports identical
+checksums for two builds on a Mac). Geofabrik replaces `thailand-latest` every day, so a later download gives a
+different source checksum and slightly different counts.
+
+What the map holds:
+
+| Layer | Features | | Layer | Features |
+|---|---|---|---|---|
+| Roads | 29,043 (3,172 with a name or number) | | Land use and parks | 2,930 |
+| Building outlines | 98,325 | | Water areas | 1,907 |
+| Streams, canals and drains | 682 | | Wetland | 76 |
+| Place labels | 111 | | Islands | 147 |
+| Beaches | 173 | | Railways | none (Phuket has no railway) |
+| Sea | 1 polygon, cut to the box | | | |
+
+Help points: 2,297 in 39 classes, 1,180 of them with a name. The largest: convenience stores 516, pharmacies 255,
+toilets 216, shelters 206, beaches 173, schools 141, supermarkets 137, fuel 105. For emergencies: police 58, clinics
+32, hospitals 29, dentists 30, doctors 17, drinking water 15, fire stations 10. The full list is in `TH-83.build.json`.
+
+The place finder has 1,291 rows: 111 places (1 city, 11 towns, 72 villages, 15 neighbourhoods, 4 quarters, 4 islands
+and others) and 1,180 named help points. 273 rows carry a second name, the English one where OpenStreetMap has it.

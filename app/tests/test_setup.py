@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
+import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socket, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -52,6 +52,7 @@ class Files:
         self.ignore_once = {}     # name -> how many more Range requests get a 200 with the whole file
         self.redirect = {}        # name -> Location
         self.pace = 0             # seconds to sleep per 64 KiB
+        self.hold = {}            # name -> (byte, reached, release): an answer that gets to `byte` sets `reached`, then waits for `release`
         self.lock = threading.Lock()
 
 
@@ -107,9 +108,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if F.cut_after.get(name):
                 cut = F.cut_after[name].pop(0)
         sent = start
+        with F.lock:
+            hold = F.hold.get(name)
         try:
             while sent < end:
                 n = min(64 * 1024, end - sent)
+                if hold and sent <= hold[0] < sent + n:
+                    self.wfile.write(body[sent:hold[0]])
+                    self.wfile.flush()
+                    sent = hold[0]
+                    hold[1].set()
+                    hold[2].wait(10)
+                    n = min(64 * 1024, end - sent)
                 if cut is not None and sent + n > cut:
                     self.wfile.write(body[sent:cut])
                     self.wfile.flush()
@@ -180,6 +190,9 @@ class Base(unittest.TestCase):
     def setUp(self):
         F = self.files
         F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
+        for _, _, release in F.hold.values():
+            release.set()
+        F.hold.clear()
         F.pace = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
@@ -479,12 +492,21 @@ class ParallelDownloads(Base):
         self.assertIn('bytes=200000-262143', self.ranges())            # the cut piece carried on from where it broke
 
     def test_pause_and_resume(self):
-        self.files.pace = 0.02
+        reached, release = threading.Event(), threading.Event()
+        self.files.hold['big.bin'] = (5 * 256 * 1024 + 1000, reached, release)    # one answer stops partway into piece 5
         c = download.Control()
         d = self.dl(control=c)
-        threading.Timer(0.3, c.stop, ['paused']).start()
+
+        def pause():
+            if reached.wait(30):
+                c.stop('paused')
+            release.set()
+        t = threading.Thread(target=pause, daemon=True)
+        t.start()
         with pieces(), self.assertRaises(download.Stopped):
             d.run()
+        t.join(30)
+        self.files.hold.clear()
         meta = json.loads(Path(d.meta).read_text())
         self.assertTrue(meta['parallel'])
         self.assertEqual(meta['bytes_done'] % (256 * 1024), 0)           # a whole number of pieces, hashed
@@ -496,6 +518,54 @@ class ParallelDownloads(Base):
         with pieces():
             self.assertEqual(Path(d.run()).read_bytes(), self.big)
         self.assertTrue(all(int(x[6:].split('-')[0]) >= meta['bytes_done'] for x in self.ranges()))   # nothing hashed is fetched again
+
+    def test_pause_during_stalled_handshake(self):
+        """A server that takes the connection but never answers the TLS handshake: pause ends the run and every worker within a
+        couple of seconds, not at the 30 s network timeout."""
+        lsn = socket.socket()
+        lsn.bind(('127.0.0.1', 0))
+        lsn.listen(8)
+        held, accepted = [], threading.Semaphore(0)
+
+        def accept():
+            while True:
+                try:
+                    s, _ = lsn.accept()
+                except OSError:
+                    return
+                held.append(s)
+                accepted.release()
+        threading.Thread(target=accept, daemon=True).start()
+        self.files.redirect['big.bin'] = f'https://127.0.0.1:{lsn.getsockname()[1]}/big.bin'
+        c = download.Control()
+        d = self.dl(control=c, connections=2)
+        err = []
+
+        def run():
+            try:
+                with pieces():
+                    d.run()
+            except BaseException as e:      # noqa: B036
+                err.append(e)
+        runner = threading.Thread(target=run, daemon=True)
+        try:
+            runner.start()
+            for _ in range(2):
+                self.assertTrue(accepted.acquire(timeout=10), 'the workers never connected')
+            time.sleep(0.3)                 # both are in the handshake now, waiting for a ServerHello that never comes
+            t0 = time.monotonic()
+            c.stop('paused')
+            runner.join(10)
+            took = time.monotonic() - t0
+            self.assertFalse(runner.is_alive(), 'run() was still going 10 s after the pause')
+            self.assertEqual(len(err), 1)
+            self.assertIsInstance(err[0], download.Stopped)
+            self.assertLess(took, 2)
+            self.assertEqual([t.name for t in threading.enumerate() if t.name.startswith('download-')], [])
+        finally:
+            lsn.close()
+            for s in held:
+                s.close()
 
     def test_resume_after_kill_ignores_unhashed_bytes(self):
         """Bytes past bytes_done may be holes or half a piece: a resume trusts only the hashed run."""

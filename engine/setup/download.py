@@ -23,6 +23,7 @@ import hashlib
 import http.client
 import json
 import os
+import select
 import socket
 import ssl
 import sys
@@ -138,14 +139,89 @@ class Control:
             raise Stopped(self.why or 'paused')
 
 
-def _open(url, start, etag, allowed, context, timeout, end=None, opened=None):
+class _StoppableConnection(http.client.HTTPSConnection):
+    """A piece's connection, which a pause can end while it is still connecting or in the TLS handshake. The stock connect() blocks
+    in both until the timeout, and only sets .sock once the handshake is over, so there is nothing to shut down before then.
+    Here .sock is set as soon as each socket exists, and both steps wait in short slices, checking `stopping` between them."""
+
+    SLICE = 0.25
+
+    def __init__(self, host, port, timeout, context, stopping):
+        super().__init__(host, port, timeout=timeout, context=context)
+        self.stopping = stopping
+
+    def _check(self):
+        if self.stopping.is_set():
+            raise Stopped('paused')
+
+    def _wait(self, sock, write, deadline):
+        """Until `sock` can be read (or written), a slice at a time. The third list is where Windows reports a refused connect."""
+        while True:
+            self._check()
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise TimeoutError('timed out')
+            r, w, x = select.select([] if write else [sock], [sock] if write else [], [sock], min(self.SLICE, left))
+            if r or w or x:
+                return
+
+    def connect(self):
+        deadline = time.monotonic() + self.timeout
+        err = None
+        for family, kind, proto, _, addr in socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM):
+            self._check()
+            s = socket.socket(family, kind, proto)
+            self.sock = s                                   # from here a pause can shut it down
+            try:
+                s.setblocking(False)
+                code = s.connect_ex(addr)
+                if code not in (0, errno.EINPROGRESS, errno.EWOULDBLOCK, getattr(errno, 'WSAEWOULDBLOCK', errno.EWOULDBLOCK)):
+                    raise OSError(code, os.strerror(code))
+                self._wait(s, True, deadline)
+                code = s.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                if code:
+                    raise OSError(code, os.strerror(code))
+                break
+            except Stopped:
+                s.close()
+                raise
+            except OSError as e:
+                err = e
+                s.close()
+                self.sock = None
+        else:
+            raise err or OSError('no address for the download server')
+        s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        ss = self._context.wrap_socket(s, server_hostname=self.host, do_handshake_on_connect=False)
+        self.sock = ss                                      # the wrapped socket replaces the plain one, which it took over
+        try:
+            while True:
+                self._check()                               # also catches a pause that shut the plain socket just before
+                try:
+                    ss.do_handshake()
+                    break
+                except ssl.SSLWantReadError:
+                    self._wait(ss, False, deadline)
+                except ssl.SSLWantWriteError:
+                    self._wait(ss, True, deadline)
+            ss.settimeout(self.timeout)
+        except BaseException:
+            ss.close()
+            raise
+
+
+def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, stopping=None):
     """(connection, response, final url) for a GET from byte `start` (to byte `end`, included, when given), after following
-    allowed redirects. `opened(conn)`, when given, hears of each connection, so another thread can close it."""
+    allowed redirects. `opened(conn)`, when given, hears of each connection, so another thread can close it. With `stopping`
+    (an Event), connecting and the TLS handshake end soon after it is set, raising Stopped, rather than at the timeout."""
     for _ in range(MAX_REDIRECTS + 1):
         if not url_allowed(url, allowed):
             raise Failed('network', 'Lastbook refused to download from an address it does not know.')
         u = urllib.parse.urlsplit(url)
-        conn = http.client.HTTPSConnection(u.hostname, u.port or 443, timeout=timeout, context=context)
+        if stopping is not None:
+            conn = _StoppableConnection(u.hostname, u.port or 443, timeout, context, stopping)
+        else:
+            conn = http.client.HTTPSConnection(u.hostname, u.port or 443, timeout=timeout, context=context)
         if opened:
             opened(conn)
         headers = {'User-Agent': USER_AGENT, 'Accept-Encoding': 'identity'}
@@ -485,7 +561,8 @@ class Download:
             if st.stopping.is_set():
                 return
             try:
-                conn, r, _ = _open(self.url, pos, st.etag, self.allowed, ctx, self.timeout, end=b - 1, opened=st.opened)
+                conn, r, _ = _open(self.url, pos, st.etag, self.allowed, ctx, self.timeout, end=b - 1, opened=st.opened,
+                                   stopping=st.stopping)
                 try:
                     if r.status >= 400:
                         if 500 <= r.status < 600:
@@ -605,7 +682,9 @@ class _Pieces:
             pass
 
     def halt(self, workers):
-        """Stops every connection at once: a read waiting on the network ends now, not at the timeout."""
+        """Stops every connection at once: a read waiting on the network ends now, not at the timeout. A connection still
+        connecting or in its handshake notices `stopping` within a slice. Returns only once every worker has ended, so
+        nothing holds the .part open or writes to it after a pause."""
         with self.cv:
             self.stopping.set()
             conns = list(self.conns)
@@ -617,7 +696,7 @@ class _Pieces:
             except OSError:
                 pass
         for w in workers:
-            w.join(10)
+            w.join()        # each wait in a worker is bounded: by `stopping`, a shut socket, or the network timeout
 
 
 class _Restart(Exception):

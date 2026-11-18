@@ -22,6 +22,8 @@ CREDIT = ('Map data via Geofabrik (ODbL). Contains modified Copernicus DEM data,
           'GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA')
 SRC_GPKG = 'OpenStreetMap contributors, via Geofabrik england-latest-free.gpkg.zip (ODbL 1.0)'
 SRC_PBF = 'OpenStreetMap contributors (ODbL), via Geofabrik england-latest.osm.pbf'
+OUTPUTS = ('national.sqlite', 'map.sqlite', 'national-status.json', 'terrain.sqlite', 'water.sqlite', 'crops.sqlite', 'buildings.sqlite', 'places.sqlite')
+ATLAS = 'library-data/geography/resources/atlas.sqlite'
 NAMES = {'GB-NE': 'North East England', 'GB-NW': 'North West England', 'GB-YH': 'Yorkshire and The Humber', 'GB-EM': 'East Midlands',
          'GB-WM': 'West Midlands', 'GB-EE': 'East of England', 'GB-LON': 'London', 'GB-SE': 'South East England',
          'GB-SW': 'South West England'}
@@ -46,6 +48,10 @@ def build(code, src, regions, as_of_iso, as_of_text, workers):
     (geo / 'addresses').mkdir(parents=True, exist_ok=True)
     (out / 'library-data/geography/resources').mkdir(parents=True, exist_ok=True)
     print(f'{code} {bbox}', flush=True)
+    # a rerun starts clean: terrain tiles and water rows from an earlier run or box would otherwise stay (they are written with INSERT OR REPLACE)
+    for old in [*(geo / f for f in OUTPUTS), geo / f'addresses/{code}.sqlite', out / ATLAS, out / 'map-set.json']:
+        for tail in ('', '-wal', '-shm', '-journal', '.tmp'):
+            Path(f'{old}{tail}').unlink(missing_ok=True)
     t0 = time.time()
     run('map', ['tools/build_map.py', gpkg, geo / 'national.sqlite', f'--bbox={bbox}', '--source', SRC_GPKG, '--as-of', as_of_iso])
     # street tiles need an (empty) map.sqlite beside national.sqlite, and the app reads national-status.json

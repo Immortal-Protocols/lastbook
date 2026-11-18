@@ -69,6 +69,24 @@ const MapView = (() => {
     berries: 'USDA 2025 satellite crop map: usually right for big orchards, sometimes wrong for small ones. Trees and vines keep producing for decades but need water in dry regions and winter pruning. Private farmland — ask first.',
     perennial_veg: 'USDA 2025 satellite crop map: usually right for big orchards, sometimes wrong for small ones. Trees and vines keep producing for decades but need water in dry regions and winter pruning. Private farmland — ask first.',
     pond: 'Small ponds are often livestock ponds with manure runoff: treat the water and cook any fish thoroughly. Small ponds can be fished out in weeks.', spring: 'Mapped spring — treat the water before drinking.', drinking_water: 'Mapped tap; may be off in an emergency.' };
+  // The labels and notes above are written for the US map sets; a map set that names a country overlays its own (describe), and every
+  // describe starts again from this snapshot so one map set's wording never carries over to the next.
+  const BASE = { labels: Object.fromEntries(LAYERS.map(l => [l.id, l.label])), groups: GROUPS.map(g => g[1]), caveat: { ...CAVEAT } };
+  function wording(country) {
+    for (const l of LAYERS) l.label = BASE.labels[l.id];
+    GROUPS.forEach((g, n) => { g[1] = BASE.groups[n] });
+    for (const k of Object.keys(CAVEAT)) delete CAVEAT[k];
+    Object.assign(CAVEAT, BASE.caveat);
+    if (!country) return;   // names and notes that say US or California belong to the US map sets
+    const name = (id, label) => { const l = LAYERS.find(x => x.id === id); if (l) l.label = label };
+    name('mineral', 'Mines & quarries'); name('boat', 'Boat launches & marinas'); name('community', 'Community centres, town halls & libraries'); name('dam', 'Dams'); name('orchard', 'Orchards'); name('vineyard', 'Vineyards');
+    const group = (id, label) => { const g = GROUPS.find(x => x[0] === id); if (g) g[1] = label };
+    group('food', 'Food that keeps growing'); group('resource', 'Natural resources (mapped places)');
+    for (const k of ['orchard', 'vineyard', 'berries', 'perennial_veg']) CAVEAT[k] = 'Mapped in OpenStreetMap by volunteers: an orchard or vineyard may be missing, old or grubbed up, and the map does not say what grows there. Trees and vines keep producing for decades but need winter pruning. Private farmland — ask first.';
+    CAVEAT.mineral = 'Mapped in OpenStreetMap: an old mine, quarry or shaft, not proof of anything recoverable, and not necessarily safe or open. Old workings, shafts and flooded quarries can be deadly.';
+    CAVEAT.boat_launch = 'Mapped in OpenStreetMap by volunteers: check current access, and the tides on the coast.';
+    CAVEAT.dam = 'Mapped dam (OpenStreetMap). Keep away from spillways and outlets — currents and sudden releases drown people.';
+  }
   let st = null, world = null, geography = null;
 
   const load = (k, d) => { try { return JSON.parse(localStorage.getItem('sg.' + k)) ?? d } catch { return d } };
@@ -195,15 +213,7 @@ const MapView = (() => {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     // What the installed map set says about itself (map-set.json: units, country, credit); a US map set says nothing and keeps feet and ZIP codes.
-    if (info.country) for (const k of ['orchard', 'vineyard', 'berries', 'perennial_veg']) CAVEAT[k] = 'Mapped in OpenStreetMap by volunteers: an orchard or vineyard may be missing, old or grubbed up, and the map does not say what grows there. Trees and vines keep producing for decades but need winter pruning. Private farmland — ask first.';
-    if (info.country) {   // names and notes that say US or California belong to the US map sets
-      const name = (id, label) => { const l = LAYERS.find(x => x.id === id); if (l) l.label = label };
-      name('mineral', 'Mines & quarries'); name('boat', 'Boat launches & marinas'); name('community', 'Community centres, town halls & libraries'); name('dam', 'Dams'); name('orchard', 'Orchards'); name('vineyard', 'Vineyards');
-      GROUPS.find(g => g[0] === 'food')[1] = 'Food that keeps growing'; GROUPS.find(g => g[0] === 'resource')[1] = 'Natural resources (mapped places)';
-      CAVEAT.mineral = 'Mapped in OpenStreetMap: an old mine, quarry or shaft, not proof of anything recoverable, and not necessarily safe or open. Old workings, shafts and flooded quarries can be deadly.';
-      CAVEAT.boat_launch = 'Mapped in OpenStreetMap by volunteers: check current access, and the tides on the coast.';
-    }
-    if (info.country) CAVEAT.dam = 'Mapped dam (OpenStreetMap). Keep away from spillways and outlets — currents and sudden releases drown people.';
+    wording(!!info.country);
     st.metric = info.units === 'metric'; st.postal = info.country === 'GB' ? 'postcode' : 'ZIP'; st.area = info.country === 'GB' ? 'region' : 'state';
     if (st.postal === 'postcode') { const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' } }
     if (info.as_of) { const d = $('mapasof'); if (d) d.textContent = info.as_of }

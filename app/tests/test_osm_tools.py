@@ -3,6 +3,7 @@
 They need pyosmium, numpy and Pillow, which only a build machine has, so each group is skipped where they are missing.
 """
 import json
+import math
 import os
 import sqlite3
 import struct
@@ -319,35 +320,44 @@ class CropTests(Temp):
         self.assertEqual(build_crops_osm.polygons(b'GP' + bytes([0, 0b011]) + b'\0' * 38 + struct.pack('<BI', 1, 1)), [])   # a point is no area
 
 
+def national_fixture(directory):
+    """A small national.sqlite: named places (some that must be left out), roads and help points."""
+    path = Path(directory) / 'national.sqlite'
+    db = sqlite3.connect(path)
+    db.executescript("""CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, geom BLOB);
+                        CREATE TABLE poi(id INTEGER PRIMARY KEY, cls TEXT, name TEXT, lon REAL, lat REAL);""")
+    point = lambda lon, lat: struct.pack('<iiii', 0, 0, round(lon * 1e6), round(lat * 1e6))
+    db.executemany('INSERT INTO feat(layer, cls, name, geom) VALUES (?,?,?,?)', [
+        ('place', 'town', 'Camden Town', point(-0.1428, 51.5393)),
+        ('place', 'farm', 'Rose Farm', point(-0.2, 51.4)),                     # farms and localities would bury the towns
+        ('place', 'locality', 'The Heath', point(-0.2, 51.45)),
+        ('place', 'village', None, point(-0.3, 51.5)),                         # no name
+        ('road', 'primary', 'High Road', point(0, 51.5))])
+    db.executemany('INSERT INTO poi(cls, name, lon, lat) VALUES (?,?,?,?)', [
+        ('police_station', 'Holborn Police Station', -0.12, 51.52), ('hospital', None, -0.1, 51.5)])
+    db.commit()
+    db.close()
+    return path
+
+
+def addresses_fixture(directory):
+    path = Path(directory) / 'addr.sqlite'
+    db = sqlite3.connect(path)
+    db.execute('CREATE TABLE addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL)')
+    db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?)', [
+        ('1', 'A St', 'a st', '', '', 'NW1 8AA', 51.50, -0.10), ('2', 'A St', 'a st', '', '', 'NW1 8AA', 51.52, -0.12),
+        ('3', 'B St', 'b st', '', '', 'NW1 9ZZ', 51.60, -0.20), ('4', 'C St', 'c st', '', '', '', 51.0, 0.0)])
+    db.commit()
+    db.close()
+    return path
+
+
 class PlaceFinderTests(Temp):
     def national(self):
-        path = self.dir / 'national.sqlite'
-        db = sqlite3.connect(path)
-        db.executescript('''CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, geom BLOB);
-                            CREATE TABLE poi(id INTEGER PRIMARY KEY, cls TEXT, name TEXT, lon REAL, lat REAL);''')
-        point = lambda lon, lat: struct.pack('<iiii', 0, 0, round(lon * 1e6), round(lat * 1e6))
-        db.executemany('INSERT INTO feat(layer, cls, name, geom) VALUES (?,?,?,?)', [
-            ('place', 'town', 'Camden Town', point(-0.1428, 51.5393)),
-            ('place', 'farm', 'Rose Farm', point(-0.2, 51.4)),                     # farms and localities would bury the towns
-            ('place', 'locality', 'The Heath', point(-0.2, 51.45)),
-            ('place', 'village', None, point(-0.3, 51.5)),                         # no name
-            ('road', 'primary', 'High Road', point(0, 51.5))])
-        db.executemany('INSERT INTO poi(cls, name, lon, lat) VALUES (?,?,?,?)', [
-            ('police_station', 'Holborn Police Station', -0.12, 51.52), ('hospital', None, -0.1, 51.5)])
-        db.commit()
-        db.close()
-        return path
+        return national_fixture(self.dir)
 
     def addresses(self):
-        path = self.dir / 'addr.sqlite'
-        db = sqlite3.connect(path)
-        db.execute('CREATE TABLE addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL)')
-        db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?)', [
-            ('1', 'A St', 'a st', '', '', 'NW1 8AA', 51.50, -0.10), ('2', 'A St', 'a st', '', '', 'NW1 8AA', 51.52, -0.12),
-            ('3', 'B St', 'b st', '', '', 'NW1 9ZZ', 51.60, -0.20), ('4', 'C St', 'c st', '', '', '', 51.0, 0.0)])
-        db.commit()
-        db.close()
-        return path
+        return addresses_fixture(self.dir)
 
     def build(self):
         out = self.dir / 'places.sqlite'
@@ -404,6 +414,150 @@ class ToolDocsTests(unittest.TestCase):
         self.assertNotIn('expected one argument', r.stderr)     # it fails later, on the missing file, not on the box
 
 
+def gpkg_geom(kind, coords, envelope=True):
+    """A GeoPackage geometry blob: a point, a line or a one-ring polygon, with or without the header's envelope."""
+    if kind == 'point':
+        wkb = struct.pack('<BI', 1, 1) + struct.pack('<2d', *coords[0])
+    elif kind == 'line':
+        wkb = struct.pack('<BII', 1, 2, len(coords)) + b''.join(struct.pack('<2d', *c) for c in coords)
+    else:
+        wkb = struct.pack('<BIII', 1, 3, 1, len(coords)) + b''.join(struct.pack('<2d', *c) for c in coords)
+    xs, ys = [c[0] for c in coords], [c[1] for c in coords]
+    if envelope:
+        return b'GP' + bytes([0, 0b011]) + struct.pack('<i', 4326) + struct.pack('<4d', min(xs), max(xs), min(ys), max(ys)) + wkb
+    return b'GP' + bytes([0, 0b001]) + struct.pack('<i', 4326) + wkb
+
+
+class MapCutTests(Temp):
+    """build_map.py --bbox keeps only features that meet the box, whether or not the GeoPackage header carries an envelope."""
+
+    def gpkg(self):
+        path = self.dir / 'x.gpkg'
+        db = sqlite3.connect(path)
+        for table, extra in [('water_a', ''), ('natural_a', ''), ('landuse_a', ''), ('protected_areas_a', ''), ('waterways', ''), ('railways', ''),
+                             ('roads', ', ref TEXT'), ('buildings_a', ''), ('places', ', population TEXT'), ('pois', ''), ('pois_a', ''),
+                             ('natural', '')]:
+            db.execute(f'CREATE TABLE gis_osm_{table}_free(geom BLOB, fclass TEXT, name TEXT{extra})')
+
+        def insert(table, extra_col, row):
+            marks = ','.join('?' * len(row))
+            db.execute(f'INSERT INTO gis_osm_{table}_free(geom, fclass, name{extra_col}) VALUES ({marks})', row)
+
+        london, far = (-0.1276, 51.5034), EXETER
+        line = lambda lon, lat, d=0.01: [(lon, lat), (lon + d, lat + d)]
+        insert('roads', ', ref', (gpkg_geom('line', line(*london)), 'primary', 'In Box Road', ''))
+        insert('roads', ', ref', (gpkg_geom('line', line(*far)), 'primary', 'Far Road', ''))
+        insert('roads', ', ref', (gpkg_geom('line', line(*london), envelope=False), 'primary', 'In Box No Envelope', ''))
+        insert('roads', ', ref', (gpkg_geom('line', line(*far), envelope=False), 'primary', 'Far No Envelope', ''))
+        insert('roads', ', ref', (gpkg_geom('line', [(-0.40, 51.50), (-0.20, 51.50)]), 'primary', 'Crosses The Edge', ''))   # starts outside, ends inside
+        insert('places', ', population', (gpkg_geom('point', [london]), 'town', 'Camden Town', '0'))
+        insert('places', ', population', (gpkg_geom('point', [far]), 'town', 'Exeter', '0'))
+        insert('pois', '', (gpkg_geom('point', [london]), 'pharmacy', 'Boots'))
+        insert('pois', '', (gpkg_geom('point', [far]), 'pharmacy', 'Far Pharmacy'))
+        db.commit()
+        db.close()
+        return path
+
+    def names(self, out):
+        db = self.db(out)
+        feats = {n for (n,) in db.execute('SELECT name FROM feat WHERE name IS NOT NULL')}
+        return feats, {n for (n,) in db.execute('SELECT name FROM poi')}, dict(db.execute('SELECT key, value FROM meta'))
+
+    def test_the_box_keeps_what_meets_it_and_drops_the_rest(self):
+        out = self.dir / 'cut.sqlite'
+        run('build_map.py', self.gpkg(), out, f'--bbox={BOX}', '--source', 'test source', '--as-of', '2026-11-17T02:05:48Z')
+        feats, pois, meta = self.names(out)
+        self.assertEqual(feats, {'In Box Road', 'In Box No Envelope', 'Crosses The Edge', 'Camden Town'})
+        self.assertEqual(pois, {'Boots'})
+        self.assertEqual((meta['source'], meta['data_as_of'], meta['bounds']), ('test source', '2026-11-17T02:05:48Z', BOX))
+
+    def test_without_a_box_everything_is_kept(self):
+        out = self.dir / 'all.sqlite'
+        run('build_map.py', self.gpkg(), out)
+        feats, pois, meta = self.names(out)
+        self.assertEqual(feats, {'In Box Road', 'Far Road', 'In Box No Envelope', 'Far No Envelope', 'Crosses The Edge', 'Camden Town', 'Exeter'})
+        self.assertEqual(pois, {'Boots', 'Far Pharmacy'})
+        self.assertIn('socal', meta['source'].lower())          # the Southern California defaults, unchanged
+
+
+class LakeTests(Temp):
+    def lakes(self, env):
+        import build_water
+        db = sqlite3.connect(self.dir / 'national.sqlite')
+        db.execute('CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, minz INTEGER, geom BLOB)')
+        lon, lat, d = -2.5, 51.0, 0.02
+        outer = square(lon, lat, d)
+        island = [(lon + d / 2 + 0.002 * math.cos(a / 15 * math.pi), lat + d / 2 + 0.002 * math.sin(a / 15 * math.pi)) for a in range(31)]
+        fragment = square(lon + 0.005, lat + 0.005, 0.002)
+        # the fragment is stored first; the lake's own outline lists the island (more points) before the outline itself
+        db.execute("INSERT INTO feat(layer, cls, name, geom) VALUES ('water', 'water', 'Test Lake', ?)", (build_water.pack([fragment]),))
+        db.execute("INSERT INTO feat(layer, cls, name, geom) VALUES ('water', 'water', 'Test Lake', ?)", (build_water.pack([island, outer]),))
+        db.commit()
+        db.close()
+        run('build_water.py', 'osm', env={'LASTBOOK_GEO': self.dir, **env})
+        return self.db(self.dir / 'water.sqlite').execute("SELECT name, kind, detail FROM resource WHERE origin='osm'").fetchall()
+
+    def test_a_lake_is_measured_by_its_outline_not_its_island_and_counted_once(self):
+        rows = self.lakes({'LASTBOOK_UNITS': 'metric'})
+        self.assertEqual([(r[0], r[1]) for r in rows], [('Test Lake', 'lake')])        # the fragment is a duplicate of the bigger outline
+        ha = json.loads(rows[0][2])['area_ha']
+        self.assertTrue(300 < ha < 325, ha)            # 0.02 degrees square at 51 N is about 1.4 km by 2.2 km, 311 ha (the island's ring read 0.1 ha)
+
+    def test_the_same_lake_in_acres_when_the_map_set_is_not_metric(self):
+        rows = self.lakes({'LASTBOOK_UNITS': ''})
+        detail = json.loads(rows[0][2])
+        self.assertTrue(740 < detail['area_acres'] < 800, detail)
+        self.assertNotIn('area_ha', detail)
+
+
+class ServerUkPathTests(Temp):
+    """server.places() and water_places() on a UK map set: postcodes in any form, kilometres, 'United Kingdom'."""
+
+    def setUp(self):
+        super().setUp()
+        if not HAVE_OSMIUM:
+            self.skipTest('pyosmium is not installed')
+        import server
+        self.server = server
+        run('build_places_osm.py', national_fixture(self.dir), addresses_fixture(self.dir), self.dir / 'places.sqlite', '--area', 'London')
+        pbf = self.dir / 'dam.osm.pbf'
+        write_pbf(pbf, [(1, -0.20, 51.45, {}), (2, -0.19, 51.45, {})], [(1000, [1, 2], {'waterway': 'dam', 'name': 'Long Dam'})])
+        run('build_water.py', 'dams-osm', pbf, BOX, env={'LASTBOOK_GEO': self.dir})
+        for name, value in [('HERE', self.dir), ('PLACEDB', self.dir / 'places.sqlite'), ('WATERDB', self.dir / 'water.sqlite'),
+                            ('national_mapdb', lambda: None), ('home_area', lambda: None), ('pack_info', lambda: {})]:
+            patcher = patch.object(server, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_a_postcode_is_found_with_or_without_the_space_in_any_case(self):
+        for query in ('NW1 8AA', 'nw1 8aa', 'nw18aa', 'NW18AA'):
+            with self.subTest(query=query):
+                first = self.server.places(query)[0]
+                self.assertEqual((first['name'], first['kind']), ('NW1 8AA', 'postcode'))
+
+    def test_a_dam_on_a_metric_map_set_is_in_kilometres_in_the_united_kingdom(self):
+        (self.dir / 'map-set.json').write_text(json.dumps({'name': 'GB-LON', 'files': {}, 'units': 'metric', 'country': 'GB'}), encoding='utf-8')
+        hit = self.server.water_places('Long Dam', near=(50.45, -0.195))[0]
+        self.assertEqual(hit['detail'], 'United Kingdom · 111 km away')
+
+    def test_a_us_map_set_keeps_miles_and_the_united_states(self):
+        hit = self.server.water_places('Long Dam', near=(50.45, -0.195))[0]
+        self.assertEqual(hit['detail'], 'United States · 69 mi away')
+
+    def test_the_map_set_file_is_read_once_until_it_changes(self):
+        path = self.dir / 'map-set.json'
+        path.write_text(json.dumps({'name': 'A', 'files': {}, 'country': 'GB', 'units': 'metric'}), encoding='utf-8')
+        with patch.object(self.server, '_read_map_set_meta', wraps=self.server._read_map_set_meta) as read:
+            for _ in range(5):
+                self.assertEqual(self.server.map_set_meta()['country'], 'GB')
+            self.assertEqual(read.call_count, 1)
+            path.write_text(json.dumps({'name': 'B', 'files': {}, 'country': 'IE', 'units': 'metric', 'as_of': '1 Jan 2027'}), encoding='utf-8')
+            self.assertEqual(self.server.map_set_meta()['country'], 'IE')
+            self.assertEqual(read.call_count, 2)
+            path.unlink()
+            self.assertEqual(self.server.map_set_meta(), {})
+
+
 class RegionDriverTests(Temp):
     """build_region.py is run with its sub-builders replaced by a recorder, so it checks order, arguments and the map-set file."""
     FILES = {'map': 'derived/geo/national.sqlite', 'terrain': 'derived/geo/terrain.sqlite', 'water': 'derived/geo/water.sqlite',
@@ -458,6 +612,30 @@ class RegionDriverTests(Temp):
         self.assertEqual(m['files']['derived/geo/water.sqlite'], 10)
         self.assertEqual(self.db(out / 'derived/geo/map.sqlite').execute('SELECT count(*) FROM feat').fetchone()[0], 0)
         self.assertEqual((out / 'derived/geo/national-status.json').read_text(encoding='utf-8'), '{"state":"complete"}')
+
+    def test_a_rerun_clears_the_outputs_an_earlier_run_left(self):
+        out = self.dir / 'regions' / 'GB-SW'
+        stale = ['derived/geo/terrain.sqlite', 'derived/geo/terrain.sqlite-wal', 'derived/geo/water.sqlite', 'derived/geo/addresses/GB-SW.sqlite',
+                 'library-data/geography/resources/atlas.sqlite', 'map-set.json']
+        for f in stale:
+            (out / f).parent.mkdir(parents=True, exist_ok=True)
+            (out / f).write_bytes(b'stale')
+        keep = out / 'notes.txt'
+        keep.write_text('mine', encoding='utf-8')
+        import build_region
+        seen = []
+
+        def first_builder_sees(label, args, env=None):
+            if not seen:
+                seen.append([f for f in stale if (out / f).exists()])
+            if label in self.FILES:
+                (out / self.FILES[label]).parent.mkdir(parents=True, exist_ok=True)
+                (out / self.FILES[label]).write_bytes(b'x')
+
+        with patch.object(build_region, 'run', first_builder_sees):
+            build_region.build('GB-SW', self.dir / 'src', self.dir / 'regions', '2026-11-17T02:05:48Z', '17 Nov 2026', '4')
+        self.assertEqual(seen, [[]])                        # nothing stale was left when the first builder ran
+        self.assertTrue(keep.exists())                      # and nothing else in the folder was touched
 
     def test_an_unknown_region_code_is_refused_before_anything_runs(self):
         r = subprocess.run([sys.executable, '-B', str(TOOLS / 'build_region.py'), 'GB-XX', '--src', str(self.dir), '--out', str(self.dir / 'o'),

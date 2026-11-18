@@ -25,6 +25,7 @@ from build_crops import down, png_rgba          # noqa: E402  the overlay pyrami
 from build_water import inside_point, ring_area_km2   # noqa: E402
 
 MAXZ, MINZ = 13, 7
+BLOCK = 4          # a zoom-9 tile holds 2**4 by 2**4 zoom-13 tiles
 KINDS = {'orchard': ('orchard', 'Orchard', 1, (45, 160, 110)), 'vineyard': ('vineyard', 'Grapes', 2, (120, 50, 150))}
 PALETTE = np.zeros((3, 4), np.uint8)
 for _k, _name, _code, _rgb in KINDS.values():
@@ -81,7 +82,9 @@ def main():
       CREATE TABLE tile(z INT, x INT, y INT, png BLOB, PRIMARY KEY(z,x,y)) WITHOUT ROWID;
       CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);''')
     nz = 2 ** MAXZ
-    tiles, count = {}, 0
+    px = lambda lo: (lo + 180) / 360 * nz
+    py = lambda la: (1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * nz
+    blocks, count = {}, 0      # (bx, by) of a zoom-9 tile -> the areas that touch it, so a block is painted, written and let go in turn
     for osm_id, fclass, name, g in src.execute("SELECT osm_id, fclass, name, geom FROM gis_osm_landuse_a_free WHERE fclass IN ('orchard','vineyard')"):
         if g is None:
             continue
@@ -111,45 +114,64 @@ def main():
                           json.dumps({'crop': crop, 'crop_ha': round(max(hectares, 0.01), 2), 'source_map': 'OpenStreetMap'}),
                           f'https://www.openstreetmap.org/way/{osm_id}'))
         db.execute('INSERT INTO spatial VALUES (?,?,?,?,?)', (cur.lastrowid, lon, lon, lat, lat))
-        # the overlay: draw this area on every zoom-13 tile its box touches
-        px = lambda lo: (lo + 180) / 360 * nz
-        py = lambda la: (1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * nz
+        # the overlay: remember this area, in zoom-13 pixel space, under every zoom-9 block its box touches
         for rings in polys:
-            xs = [px(p[0]) for p in rings[0]]
-            ys = [py(p[1]) for p in rings[0]]
-            for tx in range(int(min(xs)), int(max(xs)) + 1):
-                for ty in range(int(min(ys)), int(max(ys)) + 1):
-                    mask = Image.new('L', (256, 256), 0)
-                    d = ImageDraw.Draw(mask)
-                    for i, ring in enumerate(rings):
-                        pts = [((px(p[0]) - tx) * 256, (py(p[1]) - ty) * 256) for p in ring]
-                        if len(pts) >= 3:
-                            d.polygon(pts, fill=255 if i == 0 else 0)
-                    m = np.asarray(mask) > 0
-                    if m.any():
-                        t = tiles.setdefault((tx, ty), np.zeros((256, 256), np.uint8))
-                        t[m] = code
+            xy = [np.array([(px(p[0]), py(p[1])) for p in ring]) for ring in rings]
+            lo, hi = xy[0].min(axis=0), xy[0].max(axis=0)
+            area = (code, xy, int(lo[0]), int(hi[0]), int(lo[1]), int(hi[1]))
+            for bx in range(area[2] >> BLOCK, (area[3] >> BLOCK) + 1):
+                for by in range(area[4] >> BLOCK, (area[5] >> BLOCK) + 1):
+                    blocks.setdefault((bx, by), []).append(area)
     db.commit()
-    level = tiles
-    for z in range(MAXZ, MINZ - 1, -1):
+
+    def write(z, level):
         for (x, y), v in level.items():
             db.execute('INSERT OR REPLACE INTO tile VALUES (?,?,?,?)', (z, x, y, png_rgba(PALETTE[v])))
-        if z > MINZ:
-            nxt = {}
-            for (x, y) in {(x // 2, y // 2) for x, y in level}:
-                q = np.zeros((512, 512), np.uint8)
-                for dy in (0, 1):
-                    for dx in (0, 1):
-                        v = level.get((2 * x + dx, 2 * y + dy))
-                        if v is not None:
-                            q[dy * 256:(dy + 1) * 256, dx * 256:(dx + 1) * 256] = v
-                nxt[(x, y)] = down(q)
-            level = nxt
+
+    def up(level):
+        nxt = {}
+        for (x, y) in {(x // 2, y // 2) for x, y in level}:
+            q = np.zeros((512, 512), np.uint8)
+            for dy in (0, 1):
+                for dx in (0, 1):
+                    v = level.get((2 * x + dx, 2 * y + dy))
+                    if v is not None:
+                        q[dy * 256:(dy + 1) * 256, dx * 256:(dx + 1) * 256] = v
+            nxt[(x, y)] = down(q)
+        return nxt
+
+    top, detailed = {}, 0       # the zoom-9 tiles, kept for the last two zooms; the rest of a block is dropped once written
+    size = 2 ** BLOCK
+    for (bx, by), areas in sorted(blocks.items()):
+        level = {}
+        for code, xy, x0, x1, y0, y1 in areas:
+            for tx in range(max(x0, bx * size), min(x1, bx * size + size - 1) + 1):
+                for ty in range(max(y0, by * size), min(y1, by * size + size - 1) + 1):
+                    mask = Image.new('L', (256, 256), 0)
+                    d = ImageDraw.Draw(mask)
+                    for i, ring in enumerate(xy):
+                        if len(ring) >= 3:
+                            d.polygon(((ring - (tx, ty)) * 256).ravel().tolist(), fill=255 if i == 0 else 0)
+                    m = np.asarray(mask) > 0
+                    if m.any():
+                        t = level.setdefault((tx, ty), np.zeros((256, 256), np.uint8))
+                        t[m] = code
+        detailed += len(level)
+        for z in range(MAXZ, MAXZ - BLOCK - 1, -1):      # zoom 13 down to zoom 9, all inside this block
+            write(z, level)
+            if z > MAXZ - BLOCK:
+                level = up(level)
+        top.update(level)
         db.commit()
+    level = top
+    for z in range(MAXZ - BLOCK - 1, MINZ - 1, -1):      # zoom 8 and 7 span several blocks
+        level = up(level)
+        write(z, level)
+    db.commit()
     db.execute('INSERT INTO meta VALUES (?,?)', ('built', json.dumps({'cells': count, 'source': a.source, 'at': time.strftime('%Y-%m-%dT%H:%M:%S')})))
     db.commit()
     db.close()
-    print(f'done: {count:,} orchards and vineyards, {len(tiles):,} detailed tiles, {time.time() - t0:.0f}s', flush=True)
+    print(f'done: {count:,} orchards and vineyards, {detailed:,} detailed tiles, {time.time() - t0:.0f}s', flush=True)
 
 
 if __name__ == '__main__':

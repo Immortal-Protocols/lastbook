@@ -1380,6 +1380,7 @@ def water_places(q, limit=10, near=None):
     finally:
         db.close()
     out = []
+    meta = map_set_meta()
     for kind, name, lat, lon, raw in rows:
         d = json.loads(raw or '{}')
         text = (name + ' ' + (d.get('other_names') or '')).lower()
@@ -1390,9 +1391,9 @@ def water_places(q, limit=10, near=None):
         away = ''
         if near:
             km = haversine(near[0], near[1], lat, lon)[0]
-            away = (f" · {km:,.0f} km away" if km >= 1 else ' · nearby') if map_set_meta().get('units') == 'metric' else (f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby')
+            away = (f" · {km:,.0f} km away" if km >= 1 else ' · nearby') if meta.get('units') == 'metric' else (f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby')
         out.append((score, {'name': name, 'kind': {'dam': 'Dam', 'reservoir': 'Reservoir', 'lake': 'Lake'}[kind],
-                            'detail': (where or ('United Kingdom' if map_set_meta().get('country') == 'GB' else 'United States')) + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
+                            'detail': (where or ('United Kingdom' if meta.get('country') == 'GB' else 'United States')) + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
     out.sort(key=lambda t: -t[0])
     return [o for _, o in out[:limit]]
 
@@ -1522,12 +1523,31 @@ def _distinct(path, sql):
         db.close()
 
 
+_MAP_SET_CACHE = {}
+
+
 def map_set_meta():
     """What the installed map set says about itself in map-set.json, beyond its file list: optional 'units' ('metric' for heights,
     contours and the scale bar; anything else means feet), 'country' (ISO code) and 'credit' (the data credit line for the map's
-    corner), 'as_of' (a short date for the 'mapped by' line). A US map set has none of them and keeps today's behaviour."""
+    corner), 'as_of' (a short date for the 'mapped by' line). A US map set has none of them and keeps today's behaviour.
+    Read once and kept until the file's size or modification time changes (a search asks for it once per result)."""
+    path = HERE / 'map-set.json'
     try:
-        d = json.loads((HERE / 'map-set.json').read_text(encoding='utf-8'))
+        st = path.stat()
+        key = (str(path), st.st_mtime_ns, st.st_size)
+    except OSError:
+        key = (str(path), None, None)
+    hit = _MAP_SET_CACHE.get('last')
+    if hit and hit[0] == key:
+        return dict(hit[1])
+    meta = _read_map_set_meta(path)
+    _MAP_SET_CACHE['last'] = (key, meta)
+    return dict(meta)
+
+
+def _read_map_set_meta(path):
+    try:
+        d = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
         return {}
     if not isinstance(d, dict):

@@ -15,6 +15,12 @@ class MapPageDateTests(unittest.TestCase):
         self.assertIn("d.textContent = info.as_of", js)
         self.assertNotIn(".replace('25 Oct 2026'", js)
 
+    def test_each_map_set_starts_again_from_the_us_wording(self):
+        js = (Path(__file__).resolve().parents[2] / 'web' / 'map.js').read_text(encoding='utf-8')
+        self.assertIn('const BASE = {', js)                                  # a snapshot of the labels, groups and notes as written for the US sets
+        self.assertIn('wording(!!info.country);', js)                        # describe() applies it every time, with or without a country
+        self.assertNotIn("GROUPS.find(g => g[0] === 'food')[1]", js)         # no unguarded lookup that can throw before the layers are set
+
 
 class MapSetMetaTests(unittest.TestCase):
     def setUp(self):

@@ -93,6 +93,10 @@ class Scheme:
                  number=r'\d{1,4}[a-z]?', postcode=r'\d{5}', postcode_policy='strict',
                  street_kinds=(), form_suffixes=(), place_stop=(), name='{street} {num}',
                  min_street=3):
+        if number_pick not in ('first', 'last'):
+            raise ValueError(f'unknown number_pick {number_pick!r}')
+        if postcode_policy not in ('strict', 'district-loose'):
+            raise ValueError(f'unknown postcode_policy {postcode_policy!r}')
         self.chars = str.maketrans(chars)
         self.words = words
         self.markers = markers
@@ -128,35 +132,38 @@ class Scheme:
         text = re.sub(r'(\b\d+)\s*[-–]\s*\d+[a-z]?\b', r'\1', text)          # a range ('5-7') answers at its first end
         return re.sub(r'[^a-z0-9 ]+', ' ', text).split()
 
-    def _number_index(self, tokens):
-        """(index of the house number, index where the street ends), or (-1, -1)."""
+    def _candidates(self, tokens):
+        """(house-number index, street-end index) pairs in preference order."""
         for index in range(len(tokens) - 2, 0, -1):                          # an explicit marker ('No: 22') wins
             if tokens[index] in self.markers and self.number.fullmatch(tokens[index + 1]):
-                return index + 1, index
+                yield index + 1, index
         indexes = range(1, len(tokens)) if self.number_pick == 'first' else range(len(tokens) - 1, 0, -1)
         for index in indexes:
             token = tokens[index]
             if self.postcode.fullmatch(token):
                 continue                                  # a postcode, not a house number
             if self.number.fullmatch(token) and tokens[index - 1] not in self.skip_after:
-                return index, index
-        return -1, -1
+                yield index, index
 
     def parse(self, query):
         """(number, street words, postcode, qualifier words) in street-first order, or None."""
         tokens = self.tokens(query)
         if len(tokens) < 2:
             return None
-        number_index, street_end = self._number_index(tokens)
-        if number_index < 0:
-            return None
+        for number_index, street_end in self._candidates(tokens):
+            parsed = self._parse_at(tokens, number_index, street_end)
+            if parsed is not None:
+                return parsed
+        return None
+
+    def _parse_at(self, tokens, number_index, street_end):
         number = tokens[number_index].upper()
         street = tokens[:street_end]
-        rest = tokens[number_index + 1:]
-        if rest and re.fullmatch(r'[a-z]', rest[0]):
-            number += rest.pop(0).upper()                  # '12 a' as written on many letters
-        while rest and self.number.fullmatch(rest[0]):
-            rest.pop(0)                                   # the second half of a spaced range ('5 7')
+        rest = list(tokens[number_index + 1:])
+        if rest and re.fullmatch(r'[a-z]', rest[0]) and not number[-1].isalpha():
+            number += rest.pop(0).upper()                  # '12 a' as written on many letters; '12a b' is not 12AB
+        while rest and self.number.fullmatch(rest[0]) and not self.postcode.fullmatch(rest[0]):
+            rest.pop(0)                                   # the second half of a spaced range ('5 7'), never a postcode
         postcode = ''
         for index, token in enumerate(rest):
             if self.postcode.fullmatch(token):
@@ -166,6 +173,8 @@ class Scheme:
         qualifier = [token for token in rest if self.words.get(token, token) not in self.place_stop]
         if not street or len(' '.join(street)) < self.min_street or not any(re.search(r'[a-z]', word) for word in street):
             return None                                  # 'B 10 5' must not answer Bodoweg 10
+        if self.number.fullmatch(street[-1]):
+            return None                                  # a street ending in a bare number is a road designation, not a name to search by prefix
         return number, street, postcode, qualifier
 
     def street_forms(self, words):
@@ -177,23 +186,24 @@ class Scheme:
         return list(dict.fromkeys(forms))
 
     def place_matches(self, qualifier, city, district):
-        words = [word for word in qualifier.split() if word not in self.place_stop]
+        words = [word for word in self.normalize(qualifier).split() if word not in self.place_stop]
         if not words:
             return True
         hay = ' '.join(part for part in (self.normalize(city or ''), self.normalize(district or '')) if part).split()
-        return all(any(h.startswith(word) for h in hay) for word in words)
+        squashed = ''.join(hay)                          # 'badcannstatt' as typed, 'Bad Cannstatt' as stored
+        return all(any(h.startswith(word) for h in hay) or squashed.startswith(word) for word in words)
 
 
 SCHEMES = {
     'de-1': Scheme(
         chars={'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss'},
-        words={'strasse': 'str', 'str': 'str', 'platz': 'pl', 'sankt': 'st', 'saint': 'st'},
+        words={'strasse': 'str', 'platz': 'pl', 'sankt': 'st', 'saint': 'st'},
         markers=('nr', 'nummer', 'hausnummer'),
         skip_after=('des',),
         postcode_policy='district-loose',
         street_kinds=('str', 'pl', 'weg', 'allee', 'gasse', 'damm', 'ring', 'steige'),
         form_suffixes=('str',),
-        place_stop=('stuttgart', 'bw', 'baden-wuerttemberg', 'deutschland', 'de'),
+        place_stop=('deutschland', 'de'),                # country only: a city name here would hide another city's houses
     ),
 }
 
@@ -232,22 +242,31 @@ def _find_street_first(scheme, norm, parts, geo_directory, limit, near):
         except sqlite3.Error:
             continue
         try:
+            has_district = any(row[1] == 'district' for row in connection.execute('PRAGMA table_info(addr)'))
+            district = 'district' if has_district else "''"   # older indexes have no district column
+            fits = {}
             for form in scheme.street_forms(words):
                 conditions = ['num IN (?, ?)', 'norm >= ?', 'norm < ?']
                 parameters = [number, number.lower(), form, form + '\uffff']
                 if postcode and scheme.postcode_policy == 'strict':
                     conditions.append('zip = ?')
                     parameters.append(postcode)
-                sql = ('SELECT num,street,city,state,zip,lat,lon,norm,district FROM addr WHERE '
+                sql = (f'SELECT num,street,city,state,zip,lat,lon,norm,{district} FROM addr WHERE '
                        + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT 500')
                 found = connection.execute(sql, parameters).fetchall()
+                if qual:
+                    found = [row for row in found if scheme.place_matches(qual, row[2], row[8])]
                 if postcode and scheme.postcode_policy == 'district-loose':
                     # A mapped house with no postcode of its own still answers a postcode this district really uses; a wrong one answers nothing.
+                    def fits_here(row):
+                        key = (row[8] or '', row[2] or '')
+                        if key not in fits:
+                            fits[key] = _postcode_fits(connection, postcode, *key)
+                        return fits[key]
                     exact = [row for row in found if row[4] == postcode]
-                    loose = [row for row in found if not row[4]
-                             and _postcode_fits(connection, postcode, row[8] or '', row[2] or '')]
+                    loose = [row for row in found if not row[4] and fits_here(row)]
                     found = exact or loose
-                rows.extend((*row, source) for row in found if not qual or scheme.place_matches(qual, row[2], row[8]))
+                rows.extend((*row, source) for row in found)
         except sqlite3.Error:
             continue
         finally:
@@ -278,8 +297,9 @@ def _index_info(path):
         stat = path.stat()
     except OSError:
         return US_NORM, None
-    key = (str(path), stat.st_mtime_ns, stat.st_size)
-    if key not in _INFO:
+    stamp = (stat.st_mtime_ns, stat.st_size)
+    cached = _INFO.get(str(path))
+    if cached is None or cached[0] != stamp:
         meta = {}
         try:
             connection = sqlite3.connect(ro_uri(path), uri=True)
@@ -289,8 +309,9 @@ def _index_info(path):
                 connection.close()
         except sqlite3.Error:
             pass
-        _INFO[key] = (meta.get('norm') or US_NORM, meta.get('source'))
-    return _INFO[key]
+        cached = (stamp, (meta.get('norm') or US_NORM, meta.get('source')))
+        _INFO[str(path)] = cached
+    return cached[1]
 
 
 def _rank(near):
@@ -302,27 +323,37 @@ def _rank(near):
     return rank
 
 
+def _find_street_first_installed(query, geo_directory, limit, near):
+    installed = {_index_info(path)[0] for path in sorted((geo_directory / 'addresses').glob('*.sqlite'))}
+    for norm, scheme in SCHEMES.items():
+        if norm not in installed:
+            continue
+        parts = scheme.parse(query)
+        if parts is not None:
+            found = _find_street_first(scheme, norm, parts, geo_directory, limit, near)
+            if found:
+                return found
+    return []
+
+
 def find_addresses(query, geo_directory, limit=8, near=None):
     """Return exact house-number matches from installed indexes, never a guessed house.
 
-    A street-first index is written 'Hauptstraße 5', so installed schemes are tried before the
-    number-first US rules decide that the query is not an address at all."""
+    Number-first queries search US-normalized indexes first; a street name that itself starts
+    with a number ('19 Mai Straße 5') then still reaches the installed street-first schemes."""
     geo_directory = Path(geo_directory)
-    if not is_address_query(query):
-        installed = {_index_info(path)[0] for path in sorted((geo_directory / 'addresses').glob('*.sqlite'))}
-        for norm, scheme in SCHEMES.items():
-            if norm not in installed:
-                continue
-            parts = scheme.parse(query)
-            if parts is not None:
-                found = _find_street_first(scheme, norm, parts, geo_directory, limit, near)
-                if found:
-                    return found
-        return []
+    if is_address_query(query):
+        found = _find_us(query, geo_directory, limit, near)
+        if found:
+            return found
+    return _find_street_first_installed(query, geo_directory, limit, near)
+
+
+def _find_us(query, geo_directory, limit, near):
     number, words, state, postcode = _parts(query)
     if not words:
         return []
-    paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
+    paths = [path for path in sorted((geo_directory / 'addresses').glob('*.sqlite')) if _index_info(path)[0] == US_NORM]
     if state:
         paths = [path for path in paths if path.stem.upper() == state]
     legacy = geo_directory / 'addresses.sqlite'

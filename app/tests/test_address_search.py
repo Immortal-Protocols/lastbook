@@ -115,6 +115,11 @@ class GermanAddressTests(unittest.TestCase):
                 ('12A', 'Berliner Straße', 'Stuttgart', '70376', 48.8156, 9.2275, 'Bad Cannstatt'),
                 ('5', 'Straße des 17. Juni', 'Stuttgart', '70178', 48.7770, 9.1740, 'Stuttgart-West'),
                 ('7', 'Calwer Straße', 'Stuttgart', '', 48.7740, 9.1775, 'Stuttgart-Mitte'),
+                ('5', '19 Mai Straße', 'Stuttgart', '70173', 48.7700, 9.1700, 'Stuttgart-Mitte'),
+                ('5', 'Am 17. Juni', 'Stuttgart', '70178', 48.7760, 9.1730, 'Stuttgart-West'),
+                ('5', 'Calwer Straße', 'Stuttgart', '70173', 48.7741, 9.1776, 'Stuttgart-Mitte'),
+                ('5', 'Calwer Straße', 'Stuttgart', '', 48.8000, 9.2200, 'Bad Cannstatt'),
+                ('9', 'Marktstraße', 'Stuttgart', '70173', 48.8010, 9.2210, 'Bad Cannstatt'),
             ]
             db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?)',
                            [(num, street, normalize_as('de-1', street), city, 'DE-BW-ST', zip_code, lat, lon, district)
@@ -169,6 +174,21 @@ class GermanAddressTests(unittest.TestCase):
         self.assertFalse(is_street_first_address_query('Stuttgart'))
         self.assertTrue(is_street_first_address_query('Hauptstraße 5'))
 
+    def test_street_name_starting_with_a_number_is_reachable(self):
+        hit, = find_addresses('19 Mai Straße 5', self.geo)
+        self.assertEqual(hit['name'], '19 Mai Straße 5')
+
+    def test_number_first_spelling_does_not_borrow_the_street_first_index(self):
+        self.assertEqual(find_addresses('28 Koenigstrasse', self.geo), [])
+
+    def test_qualifier_decides_before_postcode_preference(self):
+        hit, = find_addresses('Calwer Straße 5, 70173 Bad Cannstatt', self.geo)
+        self.assertEqual(hit['lat'], 48.8000)
+
+    def test_later_number_candidate_is_tried_when_the_first_fails(self):
+        hit, = find_addresses('Am 17. Juni 5', self.geo)
+        self.assertEqual(hit['name'], 'Am 17. Juni 5')
+
     def test_index_without_a_norm_meta_does_not_break_street_first_search(self):
         db = sqlite3.connect(self.geo / 'addresses' / 'CA.sqlite')
         try:
@@ -178,6 +198,24 @@ class GermanAddressTests(unittest.TestCase):
             db.close()
         hit, = find_addresses('Königstraße 28', self.geo)
         self.assertEqual(hit['name'], 'Königstraße 28')
+
+    def test_region_code_must_be_iso_shaped_text(self):
+        import server
+        national = self.geo / 'national.sqlite'
+        cases = (('DE-STG', 'DE-STG'), ('TR-34', 'TR-34'), ('DE', None), ('CA', None),
+                 ('ca-on', None), ('US', None), ('', None), (b'DE-STG', None), (12345, None))
+        with patch.object(server, 'HERE', self.geo.parents[1]):
+            for value, want in cases:
+                national.unlink(missing_ok=True)
+                db = sqlite3.connect(national)
+                try:
+                    db.execute('CREATE TABLE meta(key TEXT PRIMARY KEY,value)')
+                    db.execute("INSERT INTO meta VALUES ('region',?)", (value,))
+                    db.commit()
+                finally:
+                    db.close()
+                with self.subTest(value=value):
+                    self.assertEqual(server.region_of_national(), want)
 
     def test_app_route_reaches_the_german_index(self):
         import server
@@ -211,6 +249,12 @@ class SchemeDataTests(unittest.TestCase):
         self.assertEqual((number, street, postcode, qualifier),
                          ('22', ['suleyman', 'seba', 'caddesi'], '', ['besiktas']))
         self.assertEqual(self.scheme.normalize('İstiklâl Caddesi'), 'istiklal cd')
+
+    def test_unknown_scheme_modes_are_refused(self):
+        with self.assertRaises(ValueError):
+            Scheme(chars={}, words={}, postcode_policy='loose')
+        with self.assertRaises(ValueError):
+            Scheme(chars={}, words={}, number_pick='middle')
 
     def test_street_name_may_start_with_a_number(self):
         number, street, postcode, qualifier = self.scheme.parse('19 Mayıs Caddesi 135')

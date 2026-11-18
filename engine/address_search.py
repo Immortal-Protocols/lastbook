@@ -113,20 +113,22 @@ def find_addresses(query, geo_directory, limit=8, near=None):
                 if postcode:
                     conditions.append('zip = ?')
                     parameters.append(postcode)
+                if city:
+                    # normalize() keeps a word's first letter (north->n, saint->st, mount->mt) and only strips
+                    # punctuation, so this cheap SQL prefilter never drops a row the Python city check would keep.
+                    conditions.append('lower(substr(city,1,1)) = ?')
+                    parameters.append(city[0])
                 # The city is compared in Python, after normalize() on both sides: the query's "north", "saint" and
                 # punctuation must meet the stored "North Hollywood", "Saint Paul" and "St. Louis" in the same form.
-                # Without a SQL LIMIT, so that a row the city filter keeps is never cut off first.
                 sql = ('SELECT num,street,city,state,zip,lat,lon,norm FROM addr WHERE '
-                       + ' AND '.join(conditions) + ' ORDER BY length(norm),norm'
-                       + ('' if city else ' LIMIT ?'))
-                if not city:
-                    parameters.append(limit * 3)
+                       + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT ?')
+                parameters.append(limit * 20 if city else limit * 3)
                 for connection in connections:
                     try:
                         found = connection.execute(sql, parameters).fetchall()
                     except sqlite3.Error:
                         continue
-                    rows.extend(row for row in found if not city or normalize(row[2]).startswith(city))
+                    rows.extend(row for row in found if not city or normalize(row[2] or '').startswith(city))
             if rows:
                 def rank(row):
                     distance = 0

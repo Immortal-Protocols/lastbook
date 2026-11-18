@@ -3,9 +3,26 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from engine.address_search import find_addresses, is_address_query, normalize
+
+
+class CountingConnection:
+    """Wraps a sqlite3 connection and records how many rows each query hands back to Python."""
+
+    def __init__(self, connection, fetched):
+        self.connection = connection
+        self.fetched = fetched
+
+    def execute(self, sql, parameters=()):
+        rows = self.connection.execute(sql, parameters).fetchall()
+        self.fetched.append(len(rows))
+        return SimpleNamespace(fetchall=lambda: rows)
+
+    def close(self):
+        self.connection.close()
 
 
 class AddressSearchTests(unittest.TestCase):
@@ -115,6 +132,38 @@ class AddressSearchTests(unittest.TestCase):
         finally:
             db.close()      # as in write_state: the `with` form does not close, and Windows will not remove an open file
         self.assertEqual(find_addresses('23001 Maple Ave Kansas City MO', empty)[0]['lat'], 39.0997)
+
+    def test_null_city_row_does_not_break_city_query(self):
+        self.write_state('OH', [
+            ('5', 'Elm Street', None, 'OH', '43001', 40.0, -83.0),
+            ('5', 'Elm Street', 'Columbus', 'OH', '43215', 39.96, -83.0),
+        ])
+        result = find_addresses('5 elm Columbus OH', self.geo)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['detail'], 'Columbus, OH, 43215')
+
+    def test_city_query_fetches_only_rows_it_can_keep(self):
+        # Same number and street in other cities: only the first-letter prefilter should keep them out of Python.
+        self.write_state('IL', [('100', 'Main Street', 'Springfield', 'IL', '62701', 39.80, -89.64)])
+        self.write_state('NV', [('100', 'Main Street', 'Boston', 'NV', '89501', 39.5, -119.8)] * 300)
+        fetched = []
+        real_connect = sqlite3.connect
+        with patch('engine.address_search.sqlite3.connect',
+                   side_effect=lambda *args, **kwargs: CountingConnection(real_connect(*args, **kwargs), fetched)):
+            result = find_addresses('100 main springfield', self.geo)
+        self.assertEqual(result[0]['detail'], 'Springfield, IL, 62701')
+        self.assertLessEqual(sum(fetched), 10)
+
+    def test_city_query_fetch_is_limited_when_first_letter_matches(self):
+        self.write_state('IL', [('100', 'Main Street', 'Springfield', 'IL', '62701', 39.80, -89.64)])
+        self.write_state('NV', [('100', 'Main Street', 'Sparks', 'NV', '89431', 39.5, -119.7)] * 300)
+        fetched = []
+        real_connect = sqlite3.connect
+        with patch('engine.address_search.sqlite3.connect',
+                   side_effect=lambda *args, **kwargs: CountingConnection(real_connect(*args, **kwargs), fetched)):
+            result = find_addresses('100 main springfield', self.geo)
+        self.assertEqual(result[0]['detail'], 'Springfield, IL, 62701')
+        self.assertLessEqual(max(fetched), 8 * 20)
 
     def test_app_route_preserves_address_number(self):
         import server

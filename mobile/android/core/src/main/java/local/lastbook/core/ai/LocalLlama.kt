@@ -11,6 +11,7 @@ internal class LocalLlama(private val runtime: LlamaRuntime = NativeLlamaRuntime
     private val handle = AtomicLong(0L)
     @Volatile private var loadedPath: String? = null
     private val genLock = java.util.concurrent.locks.ReentrantLock()
+    private val life = Any()
     private val releaseExecutor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "lastbook-llm-release").apply { isDaemon = true }
     }
@@ -22,7 +23,7 @@ internal class LocalLlama(private val runtime: LlamaRuntime = NativeLlamaRuntime
         return try {
             var h = handle.get()
             if (h == 0L || loadedPath != path) {
-                if (h != 0L && handle.compareAndSet(h, 0L)) runCatching { runtime.nativeFree(h) }
+                if (h != 0L && handle.compareAndSet(h, 0L)) free(h)
                 val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
                 h = runCatching { runtime.nativeLoad(path, 2048, threads) }.getOrDefault(0L)
                 if (h == 0L) return null
@@ -35,7 +36,7 @@ internal class LocalLlama(private val runtime: LlamaRuntime = NativeLlamaRuntime
         }
     }
 
-    fun stop() {
+    fun stop() = synchronized(life) {
         val h = handle.get()
         if (h != 0L) runCatching { runtime.nativeCancel(h) }
     }
@@ -53,11 +54,15 @@ internal class LocalLlama(private val runtime: LlamaRuntime = NativeLlamaRuntime
             try {
                 val late = handle.getAndSet(0L)
                 loadedPath = null
-                if (held != 0L) runCatching { runtime.nativeFree(held) }
-                if (late != 0L) runCatching { runtime.nativeFree(late) }
+                if (held != 0L) free(held)
+                if (late != 0L) free(late)
             } finally {
                 genLock.unlock()
             }
         }
+    }
+
+    private fun free(h: Long) = synchronized(life) {
+        runCatching { runtime.nativeFree(h) }
     }
 }

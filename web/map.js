@@ -79,7 +79,23 @@ const MapView = (() => {
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
-  const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
+  // Units. A map of a region outside the US (/api/map/info region) is shown in metric. Everything that depends on it goes
+  // through metric(), so the planned metric/imperial setting can replace this one switch. The data files keep US columns.
+  const metric = () => !!st?.region;
+  const ACRE_HA = 0.40468564224;
+  const METRIC_FIELD = { area_acres: ['area_ha', 'Area (ha)', ACRE_HA], surface_acres: [null, 'Surface (ha)', ACRE_HA], height_ft: ['height_m', 'Height (m)', 1 / 3.28084],
+    normal_storage_af: [null, 'Normal storage (m³)', 1233.48], max_storage_af: [null, 'Max storage (m³)', 1233.48],
+    crop_acres: [null, 'Hectares of it in this ~600 m block', ACRE_HA], perennial_acres: [null, 'All tree, vine & berry hectares in block', ACRE_HA] };
+  const REGION_FIELD = { state: 'Department', year: 'Year', spring_type: 'Type', drop_height_m: 'Drop at low flow (m)' };
+  // [label, value] for one detail field, or null to leave it out: imperial columns become metric ones (the file's own metric value first)
+  function field(k, v, detail) {
+    if (!metric()) return FIELD[k] ? [FIELD[k], v] : null;
+    if (k === 'area_ha' || k === 'height_m') return null;  // shown in place of their imperial twin
+    const m = METRIC_FIELD[k];
+    if (m) { const own = m[0] && detail[m[0]]; const n = own != null && own !== '' ? Number(own) : Number(v) * m[2]; return isFinite(n) ? [m[1], (Math.round(n * 10) / 10).toLocaleString()] : null }
+    const label = REGION_FIELD[k] || FIELD[k]; return label ? [label, v] : null;
+  }
+  const dist = km => metric() ? (km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(km < 10 ? 1 : 0) + ' km') : km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
   const layerOf = cls => BY_CLS[cls] || { sym: '•', col: '#555', label: cls };
@@ -101,7 +117,7 @@ const MapView = (() => {
     if (!on.length) on = DEFAULT_LAYERS;
     main.classList.add('map-page');
     document.title = 'Map · Lastbook';
-    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
+    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted" id="masof">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
@@ -161,7 +177,7 @@ const MapView = (() => {
       closeCard();
       const w = cv.clientWidth, h = cv.clientHeight;
       Terrain3D.open($('mapwrap'), { lat: st.lat, lon: st.lon, z: st.z, w, h, texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y), getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
-        geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon) });
+        geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon), metric: metric(), region: st.region });
     };
     document.addEventListener('fullscreenchange', st.onFull = () => { const f = document.fullscreenElement === $('mapwrap'); if (!f) $('mapwrap')?.classList.remove('max'); syncFull() });
     $('sethome').onclick = () => { save('mapHome', { lat: st.lat, lon: st.lon, z: Math.round(st.z) }); toastMap('Saved as your area on this device'); draw() };
@@ -193,6 +209,7 @@ const MapView = (() => {
   function describe(info) {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
+    if (info.region) region(info);
     if (!info.layers) return;
     st.have = new Set(info.layers); st.bounds = info.bounds;
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
@@ -201,6 +218,22 @@ const MapView = (() => {
     if (info.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
   }
   const offered = l => !st.have || (l && l.cls.some(c => st.have.has(c)));
+  // A map of an area outside the US (/api/map/info region): its own date, credits and words, and its box even without a pack.
+  function region(info) {
+    st.region = info.region; st.bounds = info.bounds || st.bounds;
+    for (const l of LAYERS) if (REGION_LAYER_LABEL[l.id]) l.label = REGION_LAYER_LABEL[l.id];  // US source details that do not hold here
+    const d = new Date(info.meta?.data_as_of || ''), el = $('masof');
+    if (el && !isNaN(d)) el.textContent = `Offline: works with no internet. Shows what was mapped in ${info.region} by ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })} — not damage, closures or hazards.`;
+    const at = document.querySelector('#mapwrap .mapattr'); if (at && info.attribution?.length) at.textContent = info.attribution.join(' · ');
+    const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' }
+    if (st.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
+  }
+  // How close to go for a found place. A region outside the US names its own kinds (department, commune, village).
+  const placeZoom = kind => (st.region ? /county|department/i : /county/i).test(kind) ? 10
+    : (st.region ? /ZIP|city|town|populated|commune|village|postcode|^(Lake|Reservoir)$/i : /ZIP|city|town|populated|^(Lake|Reservoir)$/i).test(kind) ? 13
+    : st.region && /^(river|stream)$/i.test(kind) ? 12 : 15;
+  const REGION_CROP_CAVEAT = 'Fields declared by farmers (see “What this map covers”): old grazed orchards declared as grassland are not shown. Trees and vines keep producing for decades but need winter pruning. Private farmland — ask first.';
+  const caveat = cls => !st?.region || !CAVEAT[cls] ? CAVEAT[cls] : /^USDA /.test(CAVEAT[cls]) ? REGION_CROP_CAVEAT : CAVEAT[cls].replace(/^National Inventory of Dams record\. /, '');
   function toastMap(m) { if (typeof toast === 'function') toast(m) }
   function stop() {
     document.getElementById('main')?.classList.remove('map-page');
@@ -287,6 +320,8 @@ const MapView = (() => {
     function mid() { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }
   }
   const CROP_RGB = {"Almonds":[150,100,50],"Walnuts":[120,80,40],"Pecans":[135,90,45],"Pistachios":[140,160,60],"Cherries":[190,30,60],"Peaches":[240,140,90],"Apples":[200,40,40],"Pears":[170,190,60],"Prunes":[110,50,120],"Nectarines":[240,120,70],"Plums":[130,40,110],"Apricots":[245,160,50],"Pomegranates":[180,30,50],"Avocados":[70,120,40],"Olives":[110,120,50],"Other tree crops":[90,150,70],"Citrus":[250,160,20],"Oranges":[255,140,0],"Grapes":[120,50,150],"Blueberries":[60,70,180],"Cranberries":[170,20,50],"Caneberries":[150,30,90],"Asparagus":[90,160,90]};  // overlay colours (tools/build_crops.py)
+  const REGION_LAYER_LABEL = { dam: 'Dams', orchard: 'Orchards (fruit and nut trees)' };
+  const REGION_CROP_RGB = {"Berries":[150,30,120],"Hazelnuts":[160,110,60],"Chestnuts":[110,70,30],"Other perennial fruit & vegetables":[90,160,120]};  // RPG classes (tools/build_crops_rpg.py)
   // Clicking a coloured orchard / vineyard patch opens the crop block under it.
   function identifyCrop(x, y) {
     if (st.style.crops === false || st.z < 11) return false;
@@ -296,7 +331,7 @@ const MapView = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 1; const g = c.getContext('2d');
     g.drawImage(img, Math.floor((fx % 1) * 256), Math.floor((fy % 1) * 256), 1, 1, 0, 0, 1, 1);
     const px = g.getImageData(0, 0, 1, 1).data; if (px[3] < 40) return false;
-    const crop = Object.entries(CROP_RGB).sort((a, b) => Math.hypot(...a[1].map((v, i) => v - px[i])) - Math.hypot(...b[1].map((v, i) => v - px[i])))[0][0];
+    const crop = Object.entries(st.region ? { ...CROP_RGB, ...REGION_CROP_RGB } : CROP_RGB).sort((a, b) => Math.hypot(...a[1].map((v, i) => v - px[i])) - Math.hypot(...b[1].map((v, i) => v - px[i])))[0][0];
     const lon = x2lon(fx, tz), lat = y2lat(fy, tz), d = 0.006, state = st;
     fetch('/api/map/members?' + new URLSearchParams({ west: lon - d, south: lat - d, east: lon + d, north: lat + d, lat, lon, kinds: 'orchard,vineyard,berries,perennial_veg' }))
       .then(r => r.json()).then(r => { const m = r.items?.find(i => i.detail?.crop === crop) || r.items?.[0]; if (st === state && m) showDetail(m) }).catch(() => { });
@@ -521,7 +556,7 @@ const MapView = (() => {
     g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2 - 7, h / 2); g.lineTo(w / 2 + 7, h / 2); g.moveTo(w / 2, h / 2 - 7); g.lineTo(w / 2, h / 2 + 7); g.stroke();
     const mpp = 156543.03 * Math.cos(st.lat * Math.PI / 180) / 2 ** st.z;
     const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000].find(m => m / mpp > 60) || 100000;
-    const el = $('mscale'); if (el) el.innerHTML = `<span style="display:inline-block;width:${Math.round(nice / mpp)}px;border:2px solid #333;border-top:0;height:6px;vertical-align:middle"></span> ${nice >= 1000 ? nice / 1000 + ' km' : nice + ' m'} · ${(nice / 1609.34 < 1 ? Math.round(nice * 3.281) + ' ft' : (nice / 1609.34).toFixed(nice < 5000 ? 1 : 0) + ' mi')}`;
+    const el = $('mscale'); if (el) el.innerHTML = `<span style="display:inline-block;width:${Math.round(nice / mpp)}px;border:2px solid #333;border-top:0;height:6px;vertical-align:middle"></span> ${nice >= 1000 ? nice / 1000 + ' km' : nice + ' m'}${metric() ? '' : ` · ${(nice / 1609.34 < 1 ? Math.round(nice * 3.281) + ' ft' : (nice / 1609.34).toFixed(nice < 5000 ? 1 : 0) + ' mi')}`}`;
     const at = el && el.parentNode.querySelector('.mapattr'); if (at) at.style.maxWidth = Math.max(120, el.parentNode.clientWidth - el.offsetWidth - 34) + 'px';   // the credits wrap before they reach the scale bar, however long it is
   }
 
@@ -562,7 +597,9 @@ const MapView = (() => {
           const c = document.createElement('canvas'); c.width = c.height = 256; const cx = c.getContext('2d', { willReadFrequently: true });
           cx.drawImage(img, 0, 0); const d = cx.getImageData(0, 0, 256, 256).data, h = new Float32Array(65536);
           for (let i = 0; i < 65536; i++) h[i] = -10000 + (d[i * 4] * 65536 + d[i * 4 + 1] * 256 + d[i * 4 + 2]) * 0.1;
-          st.dem.set(k, { z, x, y, h, contours: {} });
+          let vd = null;  // a region's tiles hold 0 m where its elevation data stops (and at sea): no relief or contours drawn there
+          if (st.region) { vd = new Uint8Array(65536); for (let i = 0; i < 65536; i++) vd[i] = Math.abs(h[i]) < 0.05 }
+          st.dem.set(k, { z, x, y, h, void: vd, contours: {} });
           if (st.dem.size > 400) for (const old of [...st.dem.keys()].slice(0, 100)) st.dem.delete(old);
           draw();
         }).catch(() => { if (st === state) { st.demPending.delete(k); st.dem.set(k, null); st.demNone.set(k, Date.now()) } });
@@ -575,8 +612,10 @@ const MapView = (() => {
     const ex = t.z < 7 ? 4 : t.z < 9 ? 2.5 : t.z < 11 ? 1.8 : t.z < 15 ? 1.3 : 2;  // gentle exaggeration so low-zoom relief reads; lidar's small banks and ditches need a little more
     const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), img = g.createImageData(256, 256), o = img.data;
     const az = 315 * Math.PI / 180, alt = 45 * Math.PI / 180, lx = Math.sin(az) * Math.cos(alt), ly = -Math.cos(az) * Math.cos(alt), lz = Math.sin(alt);
+    const vd = t.void, at = j => vd && vd[j] ? NaN : h[j];
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
-      const i = y * 256 + x, l = h[y * 256 + Math.max(0, x - 1)], r = h[y * 256 + Math.min(255, x + 1)], u = h[Math.max(0, y - 1) * 256 + x], d = h[Math.min(255, y + 1) * 256 + x];
+      const i = y * 256 + x, hc = vd && vd[i] ? NaN : h[i], or = v => isNaN(v) ? hc : v;  // beside missing data, slope is taken as flat
+      const l = isNaN(hc) ? 0 : or(at(y * 256 + Math.max(0, x - 1))), r = isNaN(hc) ? 0 : or(at(y * 256 + Math.min(255, x + 1))), u = isNaN(hc) ? 0 : or(at(Math.max(0, y - 1) * 256 + x)), d = isNaN(hc) ? 0 : or(at(Math.min(255, y + 1) * 256 + x));
       const dx = (r - l) * ex / (2 * m), dy = (d - u) * ex / (2 * m), n = Math.hypot(dx, dy, 1);
       const hs = (-dx * lx + dy * ly + lz) / n, v = Math.max(0, Math.min(1, hs / lz));  // 1 on flat ground: multiply leaves it untouched
       const s = Math.round(255 * (0.55 + 0.45 * v));
@@ -585,14 +624,16 @@ const MapView = (() => {
     g.putImageData(img, 0, 0); return t.shade = c;
   }
   const CONTOUR = [[11, 200, 1000], [12, 100, 500], [13, 40, 200], [15, 20, 100], [16, 5, 25]];  // [from zoom, interval ft, index ft]; 5 ft only on lidar
+  const CONTOUR_M = [[11, 50, 250], [12, 25, 125], [13, 10, 50], [15, 5, 25], [16, 2, 10]];  // the same in metres, for metric()
   function contours(t, step) {
     if (t.contours[step]) return t.contours[step];
-    const h = t.h, ft = 3.28084, lines = [];  // marching squares on the 256x256 grid, in feet
+    const h = t.h, ft = metric() ? 1 : 3.28084, lines = [], vd = t.void;  // marching squares on the 256x256 grid, in feet (metres for metric())
     let lo = Infinity, hi = -Infinity; for (let i = 0; i < 65536; i++) { const v = h[i] * ft; if (v < lo) lo = v; if (v > hi) hi = v }
     for (let lev = Math.ceil(lo / step) * step; lev <= hi; lev += step) {
       if (lev <= 0) continue;
       const seg = [];
       for (let y = 0; y < 255; y++) for (let x = 0; x < 255; x++) {
+        if (vd && (vd[y * 256 + x] || vd[y * 256 + x + 1] || vd[(y + 1) * 256 + x] || vd[(y + 1) * 256 + x + 1])) continue;  // no lines along the edge of the data
         const a = h[y * 256 + x] * ft, b = h[y * 256 + x + 1] * ft, c = h[(y + 1) * 256 + x + 1] * ft, d = h[(y + 1) * 256 + x] * ft;
         const idx = (a > lev) | ((b > lev) << 1) | ((c > lev) << 2) | ((d > lev) << 3);
         if (idx === 0 || idx === 15) continue;
@@ -600,7 +641,7 @@ const MapView = (() => {
         const P = { 1: [3, 0], 2: [0, 1], 3: [3, 1], 4: [1, 2], 5: [3, 0, 1, 2], 6: [0, 2], 7: [3, 2], 8: [2, 3], 9: [0, 2], 10: [0, 1, 2, 3], 11: [1, 2], 12: [1, 3], 13: [0, 1], 14: [0, 3] }[idx];
         for (let k = 0; k < P.length; k += 2) { const p = e[P[k]], q = e[P[k + 1]]; seg.push(p[0] + .5, p[1] + .5, q[0] + .5, q[1] + .5) }
       }
-      if (seg.length) lines.push({ lev, index: lev % CONTOUR.find(c => c[1] === step)[2] === 0, seg: new Float32Array(seg) });
+      if (seg.length) lines.push({ lev, index: lev % (metric() ? CONTOUR_M : CONTOUR).find(c => c[1] === step)[2] === 0, seg: new Float32Array(seg) });
     }
     return t.contours[step] = lines;
   }
@@ -629,7 +670,7 @@ const MapView = (() => {
       }
       g.restore();
     }
-    const rule = [...CONTOUR].reverse().find(c => st.z >= c[0] && (c[0] < 16 || tz > TZN));
+    const rule = [...(metric() ? CONTOUR_M : CONTOUR)].reverse().find(c => st.z >= c[0] && (c[0] < 16 || tz > TZN));
     if (st.style.contours && rule) {
       const [, step] = rule, k = ts / 256;
       g.save(); g.lineJoin = 'round';
@@ -650,7 +691,7 @@ const MapView = (() => {
         for (const L of contours(t, step)) { if (!L.index) continue; const a = L.seg;
           for (let i = 0; i < a.length && placed.length < 24; i += 4 * 61) { const x = sx + a[i] * k, y = sy + a[i + 1] * k; if (x < 40 || x > w - 70 || y < 70 || y > h - 50) continue;
             if (placed.some(p => Math.abs(p[0] - x) < 130 && Math.abs(p[1] - y) < 70)) continue; placed.push([x, y]);
-            const s = L.lev.toLocaleString() + ' ft'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(s, x, y); g.fillStyle = 'rgba(120,76,36,.95)'; g.fillText(s, x, y) } }
+            const s = L.lev.toLocaleString() + (metric() ? ' m' : ' ft'); g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(s, x, y); g.fillStyle = 'rgba(120,76,36,.95)'; g.fillText(s, x, y) } }
       }
       g.restore();
     }
@@ -736,6 +777,7 @@ const MapView = (() => {
       if (t === null && z === TZN) return null;  // no data here (ocean / outside the US); a missing lidar tile falls through
       if (!t) continue;
       const px = Math.min(254.999, Math.max(0, (fx - x) * 256 - 0.5)), py = Math.min(254.999, Math.max(0, (fy - y) * 256 - 0.5)), i = Math.floor(px), j = Math.floor(py), a = px - i, b = py - j, H = t.h;
+      if (t.void && t.void[Math.round(py) * 256 + Math.round(px)]) return null;  // outside a region's elevation data
       return H[j * 256 + i] * (1 - a) * (1 - b) + H[j * 256 + i + 1] * a * (1 - b) + H[(j + 1) * 256 + i] * (1 - a) * b + H[(j + 1) * 256 + i + 1] * a * b;
     }
     return null;
@@ -747,7 +789,7 @@ const MapView = (() => {
     }
     return st ? elevAt(lat, lon) : null;
   }
-  const fmtElev = m => `${Math.round(m * 3.28084).toLocaleString()} ft (${Math.round(m).toLocaleString()} m)`;
+  const fmtElev = m => metric() ? `${Math.round(m).toLocaleString()} m` : `${Math.round(m * 3.28084).toLocaleString()} ft (${Math.round(m).toLocaleString()} m)`;
 
   // ------------------------------------------------------------------ card ----
   function openCard(html) {
@@ -784,11 +826,11 @@ const MapView = (() => {
   function showDetail(p, back) {
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
-    const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
-      .map(([k, v]) => `<tr><th>${escH(FIELD[k])}</th><td>${escH(v)}</td></tr>`).join('');
+    const rows = Object.entries(detail).filter(([k, v]) => v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
+      .map(([k, v]) => field(k, v, detail)).filter(Boolean).map(([k, v]) => `<tr><th>${escH(k)}</th><td>${escH(v)}</td></tr>`).join('');
     const el = openCard(`${back ? `<button class="back">← ${escH(back.title)}</button>` : ''}<div class="kind">${sym(l, 20)}${escH(l.label)}</div><h3>${escH(unnamed(p))}</h3>
       ${p.records > 1 ? `<p class="muted small">${p.records} source records at this spot</p>` : ''}
-      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>Not a water source:</b> this is a ${escH((detail.reservoir_type || 'waste pond').toLowerCase())}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.</p>` : ''}${/tailings/i.test(detail.purposes || '') ? '<p class="caveat"><b>Mine-tailings dam:</b> it holds mine waste, not usable water. Do not drink, swim or fish here.</p>' : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(CAVEAT[p.cls])}</p>` : ''}${coordsBlock(p)}
+      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>Not a water source:</b> this is a ${escH((detail.reservoir_type || 'waste pond').toLowerCase())}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.</p>` : ''}${/tailings/i.test(detail.purposes || '') ? '<p class="caveat"><b>Mine-tailings dam:</b> it holds mine waste, not usable water. Do not drink, swim or fish here.</p>' : ''}${caveat(p.cls) && !detail.not_drinking_water ? `<p class="caveat">${escH(caveat(p.cls))}</p>` : ''}${coordsBlock(p)}
       <div class="acts"><button data-a="zoom">Zoom here</button><button data-a="copy">Copy coordinates</button></div>`);   // no web links: the words stay, the addresses go
     if (back) el.querySelector('.back').onclick = () => showMembers(back.p);
     wireCoords(p); reveal(p.lat, p.lon);
@@ -854,7 +896,7 @@ const MapView = (() => {
       const r = await fetch(`/api/map/near?lat=${st.lat}&lon=${st.lon}&cls=${ks.join(',')}&limit=${Math.max(3, Math.ceil(14 / ks.length))}`).then(r => r.json());
       if (st !== state || serial !== st.serial.near) return;
       box.classList.remove('busy');
-      if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">Nothing from your layers within about 100 miles of the map center.</p>'; return }
+      if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">Nothing from your layers within about ' + (metric() ? '150 km' : '100 miles') + ' of the map center.</p>'; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
       box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${escH(layerOf(p.cls).label)} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -872,8 +914,8 @@ const MapView = (() => {
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
-      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
+      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : st.region ? 'No place by that name in the saved gazetteers. Try a town or a 5-digit postcode.' : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
+      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, placeZoom(p.kind)); st.cv.focus() };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);

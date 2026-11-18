@@ -711,6 +711,43 @@ def national_mapdb():
     return _tls.national_map
 
 
+@functools.lru_cache(maxsize=1)
+def region_meta():
+    """A map of an area outside the US says so in national.sqlite's meta: 'region' (a plain name), with 'source',
+    'data_as_of' and 'bounds' (tools/build_map.py --region). None for the US maps, which carry no 'region'."""
+    db = national_mapdb()
+    try:
+        meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db is not None else {}
+    except sqlite3.Error:
+        return None
+    if not meta.get('region'):
+        return None
+    out = {k: meta[k] for k in ('region', 'source', 'data_as_of', 'bounds') if meta.get(k)}
+    try:
+        out['box'] = [float(v) for v in meta['bounds'].split(',')]
+    except (KeyError, ValueError):
+        pass
+    return out
+
+
+def in_region(lat, lon):
+    b = (region_meta() or {}).get('box')
+    return bool(b) and b[0] <= lon <= b[2] and b[1] <= lat <= b[3]
+
+
+def file_meta(path):
+    """A map file's own meta table as a dict, or {}."""
+    if not Path(path).exists():
+        return {}
+    db = sqlite3.connect(ro_uri(path), uri=True)
+    try:
+        return dict(db.execute('SELECT key,value FROM meta').fetchall())
+    except sqlite3.Error:
+        return {}
+    finally:
+        db.close()
+
+
 def national_status():
     path = HERE / 'derived/geo/national-status.json'
     try:
@@ -837,7 +874,8 @@ def data_version():
     """Changes whenever map data changes: every 20 s while the national map builds, and when the water inventory is written."""
     status = national_status()
     v = f"n{int(time.time() // 20)}" if status.get('state') == 'building' else f"n{status.get('features', 0)}"
-    for f in (WATERDB, WATERDB.with_name(WATERDB.name + '-wal'), CROPDB, TERRAINDB, BLDGDB, BLDGDB.with_name(BLDGDB.name + '-wal')):
+    region = (HERE / 'derived/geo/national.sqlite',) if region_meta() else ()   # a region's base map is rebuilt in place (coast, waterways)
+    for f in (WATERDB, WATERDB.with_name(WATERDB.name + '-wal'), CROPDB, TERRAINDB, BLDGDB, BLDGDB.with_name(BLDGDB.name + '-wal')) + region:
         try:
             v += f".{int(f.stat().st_mtime) // 60}"
         except OSError:
@@ -1060,6 +1098,28 @@ HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharma
         'orchard': 'Orchard', 'vineyard': 'Vineyard', 'berries': 'Berry field', 'perennial_veg': 'Asparagus field'}
 
 
+REGION_HELP = {'dam': 'Dam'}   # outside the US a dam record does not come from the National Inventory of Dams
+
+
+# Units. A map of a region outside the US is shown in metric; everything that depends on it calls metric(), so the
+# maintainers' planned metric/imperial setting can replace this one function. The files keep their US columns.
+ACRE_HA = 0.40468564224
+ACRE_FT_M3 = 1233.48
+
+
+def metric():
+    return bool(region_meta())
+
+
+def region_springs(kinds):
+    """A region's water.sqlite also holds springs (resource kind 'spring'); OpenStreetMap springs stay in poi."""
+    return ['spring'] if 'spring' in kinds and region_meta() else []
+
+
+def help_label(cls):
+    return REGION_HELP.get(cls, HELP.get(cls, cls)) if region_meta() else HELP.get(cls, cls)
+
+
 CROP_KINDS = {'orchard', 'vineyard', 'berries', 'perennial_veg'}
 RESOURCE_KINDS = {'mineral', 'oil_gas_well', 'boat_launch', 'fish_stocking', 'dam', 'reservoir', 'lake', 'pond'} | CROP_KINDS
 WATERDB = HERE / 'derived/geo/water.sqlite'
@@ -1068,7 +1128,7 @@ CROPDB = HERE / 'derived/geo/crops.sqlite'
 
 def resource_dbs(kinds):
     """Point databases holding these resource kinds: the library's resource atlas and the derived water inventory."""
-    water = {'dam', 'reservoir', 'lake', 'pond'}
+    water = {'dam', 'reservoir', 'lake', 'pond'} | set(region_springs(kinds))
     out = []
     if set(kinds) - water - CROP_KINDS and (LIB / 'geography/resources/atlas.sqlite').exists():
         out.append(LIB / 'geography/resources/atlas.sqlite')
@@ -1096,7 +1156,7 @@ def resource_near(lat, lon, cls, limit):
                 detail = json.loads(raw)
                 summary = _resource_summary(cls, detail) + (' · historical stocking record' if cls == 'fish_stocking' else '')
                 dist, brg = haversine(lat, lon, y, x)
-                out.append({'cls':cls,'label':HELP[cls],'name':name,'lat':y,'lon':x,'km':round(dist,2),'dir':brg,'detail':summary,'source':source})
+                out.append({'cls':cls,'label':help_label(cls),'name':name,'lat':y,'lon':x,'km':round(dist,2),'dir':brg,'detail':summary,'source':source})
     return sorted(out, key=lambda p:p['km'])[:limit]
 
 
@@ -1122,7 +1182,7 @@ def resource_view(west, south, east, north, zoom, kinds):
     finally:
         db.close()
     points = [{'cls':k,'lat':lat,'lon':lon,'count':sites,'record_count':n,'name':name if sites==1 else f'{sites:,} locations',
-               'label':HELP[k],'detail':json.loads(detail) if sites==1 else {},'source':source}
+               'label':help_label(k),'detail':json.loads(detail) if sites==1 else {},'source':source}
               for k,lat,lon,n,name,detail,source,sites in rows[:2000]]
     return {'points':points, 'records':sum(p['record_count'] for p in points), 'truncated':len(rows)>2000}
 
@@ -1134,16 +1194,16 @@ def _resource_summary(cls, detail):
     keys = {'mineral': ('commod1', 'commod2', 'dev_stat'), 'oil_gas_well': ('WellTypeLabel', 'FieldName', 'API'),
             'fish_stocking': ('FishType', 'Counties'), 'boat_launch': ('Water_Body', 'Facility_Type'),
             'dam': ('purpose', 'river', 'county'), 'reservoir': ('reservoir_type', 'water_type', 'state'),
-            'orchard': ('crop',), 'vineyard': ('crop',), 'berries': ('crop',), 'perennial_veg': ('crop',), 'lake': ('water_type', 'state'), 'pond': ('water_type', 'state')}.get(cls, ())
+            'orchard': ('crop',), 'vineyard': ('crop',), 'berries': ('crop',), 'perennial_veg': ('crop',), 'lake': ('water_type', 'state'), 'pond': ('water_type', 'state'), 'spring': ('spring_type', 'state')}.get(cls, ())
     out = [str(detail.get(k)) for k in keys if detail.get(k)]
     if detail.get('not_drinking_water'):
         out.insert(0, 'NOT drinking water')
     if detail.get('area_acres'):
-        out.insert(0, f"{detail['area_acres']:,} acres")
+        out.insert(0, f"{detail.get('area_ha') or round(detail['area_acres'] * ACRE_HA, 1):,} ha" if metric() else f"{detail['area_acres']:,} acres")
     if detail.get('crop_acres'):
-        out.append(f"about {round(detail['crop_acres']):,} acres in this block")
+        out.append(f"about {round(detail['crop_acres'] * ACRE_HA, 1):,} ha in this block" if metric() else f"about {round(detail['crop_acres']):,} acres in this block")
     if detail.get('normal_storage_af'):
-        out.append(f"{int(float(detail['normal_storage_af'])):,} acre-ft stored")
+        out.append(f"{int(float(detail['normal_storage_af']) * ACRE_FT_M3):,} m³ stored" if metric() else f"{int(float(detail['normal_storage_af'])):,} acre-ft stored")
     return ' · '.join(out)
 
 
@@ -1187,7 +1247,7 @@ def pins(west, south, east, north, zoom, kinds):
 @functools.lru_cache(maxsize=256)
 def _pins(west, south, east, north, cx, cy, kinds, version):
     services = [k for k in kinds if k in HELP and k not in RESOURCE_KINDS]
-    resources = [k for k in kinds if k in RESOURCE_KINDS]
+    resources = [k for k in kinds if k in RESOURCE_KINDS] + region_springs(kinds)
     cells = {}
 
     def add(kind, n, sites, lat, lon, x0, x1, y0, y1, name, detail, source):
@@ -1226,7 +1286,7 @@ def _pins(west, south, east, north, cx, cy, kinds, version):
         c['lat'] /= c['count']; c['lon'] /= c['count']
         single = c['count'] == 1
         if single:
-            c['label'] = HELP.get(c['cls'], c['cls'])
+            c['label'] = help_label(c['cls'])
             c['summary'] = _resource_summary(c['cls'], c['detail'])
         else:
             c['cls'] = max(c['kinds'], key=c['kinds'].get)
@@ -1256,7 +1316,7 @@ def dedupe_named(rows):
 def members(west, south, east, north, kinds, lat, lon, limit=60):
     """Individual records inside a cluster's bounds, nearest to its centre first."""
     services = [k for k in kinds if k in HELP and k not in RESOURCE_KINDS]
-    resources = [k for k in kinds if k in RESOURCE_KINDS]
+    resources = [k for k in kinds if k in RESOURCE_KINDS] + region_springs(kinds)
     rows = []
     eps = 1e-4  # the R-tree keeps float32 bounds (~1e-5° error)
     if services:
@@ -1273,7 +1333,7 @@ def members(west, south, east, north, kinds, lat, lon, limit=60):
                     "WHERE s.minx>=? AND s.maxx<=? AND s.miny>=? AND s.maxy<=? AND r.kind IN (%s) LIMIT 2000" % ','.join('?' * len(resources)),
                     (west - eps, east + eps, south - eps, north + eps, *resources)):
                 detail = json.loads(d or '{}')
-                rows.append({'cls': k, 'label': HELP[k], 'name': n or '', 'lat': y, 'lon': x, 'detail': detail,
+                rows.append({'cls': k, 'label': help_label(k), 'name': n or '', 'lat': y, 'lon': x, 'detail': detail,
                              'summary': _resource_summary(k, detail), 'source': src or ''})
     rows = [r for r in rows if r['cls'] in RESOURCE_KINDS] + dedupe_named([r for r in rows if r['cls'] not in RESOURCE_KINDS])
     for r in rows:
@@ -1291,6 +1351,8 @@ def near(lat, lon, classes, limit=8):
         if cls in RESOURCE_KINDS:
             out.extend(resource_near(lat, lon, cls, limit))
             continue
+        if region_springs([cls]):
+            out.extend(resource_near(lat, lon, cls, limit))
         sources = [d for d in (db, national_mapdb()) if d is not None]
         d = 0.02
         rows = []
@@ -1330,6 +1392,12 @@ def haversine(la1, lo1, la2, lo2):
 
 
 WATER_WORDS = {'lake', 'lakes', 'reservoir', 'res', 'dam', 'pond', 'ponds'}
+REGION_WATER_WORDS = {'lac', 'lacs', 'etang', 'étang', 'etangs', 'étangs', 'retenue', 'barrage', 'barrages', 'mare', 'mares', 'bassin', 'réservoir'}
+
+
+def water_words():
+    """Generic water words: only ranking help, not names. A map outside the US adds French ones (lac, étang, barrage...)."""
+    return WATER_WORDS | REGION_WATER_WORDS if region_meta() else WATER_WORDS
 
 
 def near_bonus(near, lat, lon):
@@ -1353,7 +1421,7 @@ def water_places(q, limit=10, near=None):
     if not WATERDB.exists():
         return []
     words = [w.lower() for w in re.findall(r'\w+', q)]
-    core = [w for w in words if w not in WATER_WORDS]
+    core = [w for w in words if w not in water_words()]
     if not core:
         return []
     db = sqlite3.connect(ro_uri(WATERDB), uri=True)
@@ -1381,21 +1449,24 @@ def water_places(q, limit=10, near=None):
         text = (name + ' ' + (d.get('other_names') or '')).lower()
         score = (sum(w in text for w in words) * 2 + (core[0] in text) + (kind != 'dam') + (name.lower() == q.lower().strip()) * 3
                  + math.log10(float(d.get('area_acres') or d.get('surface_acres') or 1) + 1) / 3 + near_bonus(near, lat, lon))
-        where = ', '.join(x for x in (d.get('county') and d['county'] + ' County', d.get('state')) if x)
+        region = region_meta()
+        where = ', '.join(x for x in (d.get('county') and d['county'] + ('' if region else ' County'), d.get('state')) if x)
         extra = f" · also called {d['other_names']}" if d.get('other_names') else ''
         away = ''
         if near:
             km = haversine(near[0], near[1], lat, lon)[0]
-            away = f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby'
+            away = (f" · {km:,.0f} km away" if metric() else f" · {km / 1.609:,.0f} mi away") if km >= 1.6 else ' · nearby'
         out.append((score, {'name': name, 'kind': {'dam': 'Dam', 'reservoir': 'Reservoir', 'lake': 'Lake'}[kind],
-                            'detail': (where or 'United States') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
+                            'detail': (where or (region or {}).get('region') or 'United States') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
     out.sort(key=lambda t: -t[0])
     return [o for _, o in out[:limit]]
 
 
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        if found or not address_search.goes_on_to_places(q, region=bool(region_meta())):
+            return found
     if not PLACEDB.exists():
         return []
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
@@ -1442,12 +1513,12 @@ def places(q, limit=20, near=None):
             continue
         seen.add(k)
         out.append({'name': name, 'kind': kind, 'detail': detail, 'lat': lat, 'lon': lon, 'source': src,
-                    'onMap': bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
+                    'onMap': bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1 or in_region(lat, lon)})
         if len(out) >= limit:
             break
     water = water_places(q, near=near)
     if water:  # a query that names a water word puts lakes and dams first; otherwise towns lead
-        out = (water + out) if set(w.lower() for w in re.findall(r'\w+', q)) & WATER_WORDS else (out[:8] + water + out[8:])
+        out = (water + out) if set(w.lower() for w in re.findall(r'\w+', q)) & water_words() else (out[:8] + water + out[8:])
     return out[:limit + len(water)]
 
 
@@ -1617,14 +1688,64 @@ def map_info():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
     extra = {'aerial': has_aerial()}
+    region = region_meta()
+    if region:
+        extra['region'] = region['region']
+        meta = meta or {k: v for k, v in region.items() if k != 'box'}
+        extra['attribution'] = region_attribution()
+        if not pack:
+            extra['bounds'] = region.get('box')
     if pack:
         extra.update(map_contents())
         geo = pack_datasets(extra)
+    elif region:
+        geo = region_datasets(extra)
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
+
+
+REGION_FILES = [  # (file, what it holds) for a map outside the US; each file's meta 'source' names where it comes from
+    (PLACEDB, 'Place names', 'Used by "Find a place"'),
+    (WATERDB, 'Lakes, reservoirs and dams', 'Shown on the map and found by "Find a place"'),
+    (TERRAINDB, 'Elevation', 'Shaded relief and contour lines'),
+    (BLDGDB, 'Building outlines', 'Shown from street level zoom'),
+    (CROPDB, 'Orchards, vineyards and berry fields', 'Shown on the map'),
+]
+
+
+def region_datasets(have):
+    """What a map outside the US holds, in its own files' words: no US source is named for it."""
+    region = region_meta()
+    when = (region.get('data_as_of') or '')[:10]
+    out = [{'label': f"Streets, places and help points for {region['region']}",
+            'status': (region.get('source') or 'OpenStreetMap contributors') + (f' · data as of {when}' if when else '')}]
+    for path, label, status in REGION_FILES:
+        if path.exists():
+            src = file_meta(path).get('source')
+            out.append({'label': label + (f' ({src})' if src else ''), 'status': status})
+    if any((HERE / 'derived/geo/addresses').glob('*.sqlite')):
+        out.append({'label': 'Street addresses', 'status': 'Used by "Find a place" when the search starts with a house number'})
+    return out
+
+
+def region_attribution():
+    """Credits for the map's corner: OpenStreetMap, then each region file's own 'attribution' or 'source' meta."""
+    out = ['© OpenStreetMap contributors']
+    for path in [p for p, _, _ in REGION_FILES] + sorted((HERE / 'derived/geo/addresses').glob('*.sqlite')):
+        m = file_meta(path)
+        src = re.sub(r'\s*\([^)]*\)', '', m.get('source') or '').split(': ')[0]   # publishers and editions, not file lists
+        if m.get('attribution'):
+            src = re.sub(r'\s*\([^)]*\)', '', m['attribution'])
+        for a in [x.split(', Licence')[0].strip(' ,') for x in src.split(';')]:
+            key = ' '.join(re.findall(r'\w+', a)[:3])
+            if len(a.split()) > 1 and not a.startswith('Licence') and key not in {' '.join(re.findall(r'\w+', o)[:3]) for o in out}:   # one credit per dataset
+                out.append(a)
+    return out
 
 
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
+    if region_meta():
+        return region_datasets(have)
     area = 'the area this map details' if have['bounds'] else 'the whole US'
     out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
     if have['detail']:

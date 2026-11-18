@@ -224,7 +224,7 @@ const Terrain3D = (() => {
       B.list = list; buildBldg(ex); render();
       if (!list.length) return '';
       const measured = list.filter(f => f.osm).length, guessed = list.filter(f => !f.est).length;
-      return `${list.length.toLocaleString()} buildings${capped ? ' (nearest shown)' : ''} · ${measured ? `${measured.toLocaleString()} with mapped heights (OpenStreetMap), the rest ` : 'heights are '}satellite estimates${guessed ? `; ${guessed.toLocaleString()} without one shown one storey tall` : ''}`;
+      return `${list.length.toLocaleString()} buildings${capped ? ' (nearest shown)' : ''} · ${measured ? `${measured.toLocaleString()} with mapped heights (OpenStreetMap), the rest ` : 'heights are '}${o.region ? 'from the map’s building data (see “What this map covers”)' : 'satellite estimates'}${guessed ? `; ${guessed.toLocaleString()} without one shown one storey tall` : ''}`;
     }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
     // the 2D map (streets, labels, pins) becomes the ground texture
@@ -281,7 +281,8 @@ const Terrain3D = (() => {
     me.ro = new ResizeObserver(render); me.ro.observe(cv);
     setEx();
     const rel = hmax - hmin;
-    const base = rel < 1 ? 'No elevation data here (ocean or outside the US).' : `${matchMedia('(pointer: coarse)').matches ? 'Drag to turn and tilt · pinch to zoom' : 'Drag to rotate · scroll to zoom · shift-drag to tilt'} · ${Math.round(hmin * 3.28084).toLocaleString()}–${Math.round(hmax * 3.28084).toLocaleString()} ft`;
+    const ft = o.metric ? 1 : 3.28084;  // the map passes metric for a region outside the US
+    const base = rel < 1 ? `No elevation data here (ocean or outside ${o.region ? 'this map' : 'the US'}).` : `${matchMedia('(pointer: coarse)').matches ? 'Drag to turn and tilt · pinch to zoom' : 'Drag to rotate · scroll to zoom · shift-drag to tilt'} · ${Math.round(hmin * ft).toLocaleString()}–${Math.round(hmax * ft).toLocaleString()} ${o.metric ? 'm' : 'ft'}`;
     hint.textContent = base + (W <= BLDG_MAX_SPAN && Hm <= BLDG_MAX_SPAN ? ' · loading buildings…' : '');
     const note = await loadBldg();
     if (!me.alive) return;

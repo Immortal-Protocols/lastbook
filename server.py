@@ -1390,9 +1390,9 @@ def water_places(q, limit=10, near=None):
         away = ''
         if near:
             km = haversine(near[0], near[1], lat, lon)[0]
-            away = f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby'
+            away = (f" · {km:,.0f} km away" if km >= 1 else ' · nearby') if map_set_meta().get('units') == 'metric' else (f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby')
         out.append((score, {'name': name, 'kind': {'dam': 'Dam', 'reservoir': 'Reservoir', 'lake': 'Lake'}[kind],
-                            'detail': (where or 'United States') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
+                            'detail': (where or ('United Kingdom' if map_set_meta().get('country') == 'GB' else 'United States')) + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
     out.sort(key=lambda t: -t[0])
     return [o for _, o in out[:limit]]
 
@@ -1406,6 +1406,10 @@ def places(q, limit=20, near=None):
     words = re.findall(r'\w+', q)
     if not words:
         return []
+    postcode = address_search.uk_postcode([w.lower() for w in words])
+    if postcode and postcode[1] == len(words):  # 'ex48aj' and 'EX4 8AJ' are the same postcode; the finder holds it as 'EX4 8AJ'
+        q = postcode[0]
+        words = q.split()
     rows = []
     full = False
     for ws in word_sets(words):

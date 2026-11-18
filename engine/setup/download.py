@@ -6,6 +6,8 @@
   - A redirect is followed only to another allowed address, at most MAX_REDIRECTS times.
   - Resuming uses HTTP Range on the ETag saved beside the partial file. R2 ignores If-Range (it answers 206 whatever the ETag),
     so the check is made here: another ETag on the 206, a 200 instead, or another total size starts that file over.
+    One 200 is asked again first, and bytes that arrive afterwards earn the next 200 the same: a long download from a
+    server having a bad day meets several, and each one must not cost everything downloaded so far.
     (Not If-Match: on a redirect chain the first host's ETag is not the file's, so it would refuse every resume.)
   - The SHA-256 is computed while the bytes arrive. After a resume the bytes already on disk are read once to rebuild it.
   - Nothing here runs unless the person started or resumed a download (or opened setup: one GET of the manifest).
@@ -280,6 +282,8 @@ class Download:
                     raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                 now = self.done_bytes()     # h already holds every byte written: it is updated just after each write
                 tries = 0 if now > start else tries + 1
+                if now > start:
+                    ignored_once = False    # bytes arrived since the last stray 200: the next one is a new hiccup, not the second of two
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
                 if tries >= NETWORK_TRIES:

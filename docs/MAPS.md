@@ -131,8 +131,10 @@ Outside the US, a **region map** is the "state" equivalent: a Geofabrik OpenStre
 box. It ships only `map.sqlite` (its own detail), `detail-cells.json`, `national-status.json` and `map-set.json`, so
 there are no federal datasets, terrain relief, crops, address search or place finder (`places.sqlite` is not shipped,
 so `/api/places` returns nothing). A coastal region's sea is not drawn either: the free extract has no coastline, and
-the region build does not run `tools/build_coast.py` (which is written for Southern California), so streets sit on the
-base ocean background. Every sovereign state's capital is available:
+the region build does not run `tools/build_coast.py` (which is written for Southern California). The renderer still
+draws the coarse world outline (`web/world-context.json`, `web/geographic-context.json`), so the shoreline looks
+approximate, and an island missing from that outline — Malta, say — appears on the ocean background. Every sovereign
+state's capital is available:
 `packaging/region_specs.py` holds one entry per capital (a ±0.3° box around the city, plus its Geofabrik extract), and
 it is generated, not hand-edited. Regenerate it with `packaging/generate_region_specs.py`; fix an edge case in
 `packaging/region_overrides.py` (exclude a capital, or override its code, title, box or extract) and regenerate. Build

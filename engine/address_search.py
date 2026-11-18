@@ -113,16 +113,20 @@ def find_addresses(query, geo_directory, limit=8, near=None):
                 if postcode:
                     conditions.append('zip = ?')
                     parameters.append(postcode)
-                if city:
-                    conditions.append('lower(city) LIKE ?')
-                    parameters.append(city + '%')
+                # The city is compared in Python, after normalize() on both sides: the query's "north", "saint" and
+                # punctuation must meet the stored "North Hollywood", "Saint Paul" and "St. Louis" in the same form.
+                # Without a SQL LIMIT, so that a row the city filter keeps is never cut off first.
                 sql = ('SELECT num,street,city,state,zip,lat,lon,norm FROM addr WHERE '
-                       + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT ?')
+                       + ' AND '.join(conditions) + ' ORDER BY length(norm),norm'
+                       + ('' if city else ' LIMIT ?'))
+                if not city:
+                    parameters.append(limit * 3)
                 for connection in connections:
                     try:
-                        rows.extend(connection.execute(sql, [*parameters, limit * 3]).fetchall())
+                        found = connection.execute(sql, parameters).fetchall()
                     except sqlite3.Error:
                         continue
+                    rows.extend(row for row in found if not city or normalize(row[2]).startswith(city))
             if rows:
                 def rank(row):
                     distance = 0

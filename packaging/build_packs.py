@@ -1508,7 +1508,7 @@ def fetch_region_gpkg(spec):
         try:
             with zipfile.ZipFile(zipped) as z:
                 bad = z.testzip() is not None
-        except zipfile.BadZipFile:
+        except (zipfile.BadZipFile, zlib.error):
             bad = True
         if bad:
             zipped.unlink()

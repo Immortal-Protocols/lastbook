@@ -10,3 +10,6 @@ Local.xcconfig
 *.p8
 *.xcarchive
 *.ipa
+
+# Downloaded by scripts/prepare_corekiwix.sh (200 MB prebuilt libzim/libkiwix)
+CoreKiwix.xcframework/

@@ -1,6 +1,6 @@
 import Foundation
 
-/// What this iPad's library can actually do right now. A partial install must say what is missing instead of looking
+/// What this \(DeviceName.thisOne)'s library can actually do right now. A partial install must say what is missing instead of looking
 /// complete. Shown as a notice above the library and served at /api/ipad/readiness (for tests).
 struct Readiness {
     /// `busy`: on its way (the local AI checking its file, measuring or loading). Neither ready nor missing: shown neutrally.
@@ -41,20 +41,25 @@ struct Readiness {
             let (have, _) = vc.variantCount()
             let (av1, missingCopies) = vc.coverage()
             if missingCopies > 0 {
-                out.append(Item(id: "videos", ok: false, title: "\(missingCopies) of \(av1) videos can't play on this iPad yet",
-                                detail: "This iPad can't decode the format these videos use. Add the library's H.264 video copies to play them."))
+                out.append(Item(id: "videos", ok: false, title: "\(missingCopies) of \(av1) videos can't play on this \(DeviceName.thisOne) yet",
+                                detail: "This \(DeviceName.thisOne) can't decode the format these videos use. Add the library's H.264 video copies to play them."))
             } else {
-                out.append(Item(id: "videos", ok: true, title: "Videos play on this iPad", detail: "\(have) videos use H.264 copies."))
+                out.append(Item(id: "videos", ok: true, title: "Videos play on this \(DeviceName.thisOne)", detail: "\(have) videos use H.264 copies."))
             }
         } else {
-            out.append(Item(id: "videos", ok: true, title: "Videos play on this iPad", detail: "This iPad plays the original videos."))
+            out.append(Item(id: "videos", ok: true, title: "Videos play on this \(DeviceName.thisOne)", detail: "This \(DeviceName.thisOne) plays the original videos."))
         }
 
-        // Encyclopedias (.zim): no reader on iPad yet.
+        // Encyclopedias (.zim): reader on iPhone, no reader on iPad yet.
         let zims = ((try? FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("library-data/collections").path)) ?? []).filter { $0.hasSuffix(".zim") }
         if !zims.isEmpty {
-            out.append(Item(id: "encyclopedias", ok: false, title: "Encyclopedias don't open on iPad yet",
-                            detail: "\(zims.count) encyclopedia\(zims.count == 1 ? "" : "s") in this library need a reader the iPad app doesn't have yet."))
+            if DeviceName.thisOne == "iPhone" {
+                out.append(Item(id: "encyclopedias", ok: true, title: "Encyclopedias: \(zims.count)",
+                                detail: "\(zims.count) installed and ready to read offline."))
+            } else {
+                out.append(Item(id: "encyclopedias", ok: false, title: "Encyclopedias don't open on \(DeviceName.thisOne) yet",
+                                detail: "\(zims.count) encyclopedia\(zims.count == 1 ? "" : "s") in this library need a reader the \(DeviceName.thisOne) app doesn't have yet."))
+            }
         }
 
         out.append(Self.aiItem(LocalAI.shared.status))
@@ -68,17 +73,17 @@ struct Readiness {
         let pctText = pct.map { " \($0)%" } ?? ""
         switch ai.s("state") {
         case "ready":
-            return Item(id: "ai", ok: true, title: "Local AI ready", detail: "Chat writes answers from the library, on this iPad only.")
+            return Item(id: "ai", ok: true, title: "Local AI ready", detail: "Chat writes answers from the library, on this \(DeviceName.thisOne) only.")
         case "stopped":
-            return Item(id: "ai", ok: true, title: "Local AI ready", detail: "It starts when you ask a question. Chat writes answers from the library, on this iPad only.")
+            return Item(id: "ai", ok: true, title: "Local AI ready", detail: "It starts when you ask a question. Chat writes answers from the library, on this \(DeviceName.thisOne) only.")
         case "checking", "found":
             return Item(id: "ai", ok: false, title: "Preparing local AI…\(pctText)", detail: "Checking the local AI file once. Videos, Map and search work meanwhile.", busy: true, pct: pct)
         case "measuring":
-            return Item(id: "ai", ok: false, title: "Preparing local AI…", detail: "Checking it fits this iPad's memory. Videos, Map and search work meanwhile.", busy: true)
+            return Item(id: "ai", ok: false, title: "Preparing local AI…", detail: "Checking it fits this \(DeviceName.thisOne)'s memory. Videos, Map and search work meanwhile.", busy: true)
         case "loading":
             return Item(id: "ai", ok: false, title: "Loading local AI…\(pctText)", detail: "Questions asked now wait for it. Videos, Map and search work meanwhile.", busy: true, pct: pct)
         case "too_big":
-            return Item(id: "ai", ok: false, title: "The local AI doesn't fit this iPad", detail: ai.str("message") ?? "This iPad doesn't have enough memory for it. Chat shows the library pages that match.")
+            return Item(id: "ai", ok: false, title: "The local AI doesn't fit this \(DeviceName.thisOne)", detail: ai.str("message") ?? "This \(DeviceName.thisOne) doesn't have enough memory for it. Chat shows the library pages that match.")
         case "wrong":
             return Item(id: "ai", ok: false, title: "The local AI file isn't the right one", detail: ai.str("message") ?? "Lastbook checks the file and this one doesn't match. Chat shows the library pages that match.")
         case "error":
@@ -86,7 +91,7 @@ struct Readiness {
         case "off":
             return Item(id: "ai", ok: false, title: "Local AI is off", detail: "Turn it on in Chat for written answers. Chat shows the library pages that match.")
         default:   // absent, or no runtime
-            return Item(id: "ai", ok: false, title: "No written answers yet", detail: "Chat shows the library pages that match. Written answers need the local AI file on this iPad.")
+            return Item(id: "ai", ok: false, title: "No written answers yet", detail: "Chat shows the library pages that match. Written answers need the local AI file on this \(DeviceName.thisOne).")
         }
     }
 

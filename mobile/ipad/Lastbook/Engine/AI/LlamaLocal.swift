@@ -16,14 +16,14 @@ import LastbookLLM
 ///
 /// States (desktop names, chat.js localLine) and their phase (the `phase` field, for the iPad's own UI):
 ///   checking   reading the file to check it (pct)         in_progress
-///   measuring  asking llama.cpp how it fits this iPad     in_progress
+///   measuring  asking llama.cpp how it fits this \(DeviceName.thisOne)     in_progress
 ///   loading    loading (pct)                              in_progress
 ///   ready      loaded, answering                          ready
 ///   stopped    found, checked and fits; loads when asked  ready
 ///   absent     no model file found                        unavailable
 ///   off        turned off in the app                      unavailable
 ///   wrong      a file of that name that is not the one    incompatible
-///   too_big    it does not fit this iPad's memory         incompatible
+///   too_big    it does not fit this \(DeviceName.thisOne)'s memory         incompatible
 ///   error      it failed (message)                        failed
 final class LlamaLocal: LocalModel, @unchecked Sendable {
     static let CTX = 16384                         // tokens the model holds: the system prompt, sources, the conversation and the answer
@@ -204,6 +204,25 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
             if size == Gemma4.size { found = p; break }
             if wrong == nil { wrong = (p, size) }
         }
+        if found == nil && wrong == nil {
+            for tier in Gemma4.tiers where tier.file != Gemma4.file {
+                for folder in places() {
+                    let p = folder.appendingPathComponent(tier.file)
+                    guard let a = try? FileManager.default.attributesOfItem(atPath: p.path), (a[.type] as? FileAttributeType) == .typeRegular,
+                          let size = (a[.size] as? NSNumber)?.int64Value else { continue }
+                    if size == tier.size { found = p; break }
+                }
+                if found != nil { break }
+            }
+        }
+        if found == nil && wrong == nil {
+            for folder in places() where folder.lastPathComponent == "models" {
+                if let items = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]),
+                   let custom = items.filter({ $0.pathExtension.lowercased() == "gguf" }).first {
+                    found = custom; break
+                }
+            }
+        }
         lock.lock()
         guard let found else {
             defer { discovering = false; wantLoad = false; lock.unlock() }
@@ -291,6 +310,18 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
 
     /// Reads all 17 GB once to compare the SHA-256 with the published one, showing how far it has got.
     private func check(_ p: URL) -> Bool {
+        let tier = Gemma4.tier(forFile: p.lastPathComponent)
+        guard let tier else {
+            // Unverified custom GGUF file in models/: verify GGUF 4-byte magic header.
+            guard let fh = try? FileHandle(forReadingFrom: p),
+                  let head = try? fh.read(upToCount: 4),
+                  String(data: head, encoding: .ascii) == "GGUF" else {
+                lock.lock(); state = "wrong"; pct = nil; message = "The custom model file is not a valid GGUF file."; lock.unlock()
+                return false
+            }
+            try? fh.close()
+            return true
+        }
         NSLog("local AI: checking \(p.lastPathComponent) (SHA-256 of the whole file, once)")
         let t0 = Date()
         var h = SHA256()
@@ -303,7 +334,7 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
                 guard let chunk, !chunk.isEmpty else { break }
                 h.update(data: chunk)
                 done += Int64(chunk.count)
-                let n = Int(done * 100 / Gemma4.size)
+                let n = Int(done * 100 / max(1, tier.size))
                 lock.lock(); pct = n; lock.unlock()
             }
         } catch {
@@ -311,7 +342,7 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
             return false
         }
         let hex = h.finalize().map { String(format: "%02x", $0) }.joined()
-        guard done == Gemma4.size, hex == Gemma4.sha256 else {
+        guard done == tier.size, hex == tier.sha256 else {
             lock.lock(); defer { lock.unlock() }
             state = "wrong"; pct = nil
             message = "The file in \(folderName(p)) has the right size but different contents. Copy it again."
@@ -345,7 +376,7 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
         settle()
     }
 
-    /// Does it fit this iPad? llama.cpp's fit (common_fit_params) places the model on the Metal device against the memory the
+    /// Does it fit this \(DeviceName.thisOne)? llama.cpp's fit (common_fit_params) places the model on the Metal device against the memory the
     /// device reports as usable, leaving a 1 GiB margin, as on desktop. On iPad that is the whole decision: the weights stay in
     /// the mapped file, which iPadOS does not count against the app, so the desktop's total-memory sum (device + host + RESERVE
     /// against the computer's RAM) would wrongly refuse the M1 iPad Pro on which this exact model loaded and answered (the
@@ -364,7 +395,7 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
                         "n_gpu_layers": fit["n_gpu_layers"] ?? NSNull(), "app_available": fit["app_available"] ?? NSNull()]
         if fit.s("status") != "fits" {
             out["fits"] = false
-            out["why"] = "The local AI does not fit this iPad’s memory."
+            out["why"] = "The local AI does not fit this \(DeviceName.thisOne)’s memory."
         } else { out["fits"] = true }
         return out
     }
@@ -415,10 +446,10 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
     }
 
     static func unavailable(_ s: String) -> String {
-        ["absent": "The local AI file is not on this iPad. Search and reading still work.",
+        ["absent": "The local AI file is not on this \(DeviceName.thisOne). Search and reading still work.",
          "off": "The local AI is turned off. Search and reading still work.",
-         "too_big": "The local AI does not fit this iPad’s memory.",
-         "wrong": "The local AI file on this iPad is not the right one."][s] ?? "The local AI is not set up on this iPad."
+         "too_big": "The local AI does not fit this \(DeviceName.thisOne)’s memory.",
+         "wrong": "The local AI file on this \(DeviceName.thisOne) is not the right one."][s] ?? "The local AI is not set up on this \(DeviceName.thisOne)."
     }
 
     /// Starts a load on its own background thread (lock held). Utility priority, so Videos, Map and WebKit stay ahead of it.

@@ -4,6 +4,11 @@ import Combine
 import UIKit
 #endif
 
+extension Notification.Name {
+    /// The phone Setup sheet changed which AI model to install: the open plan must be made afresh.
+    static let lastbookModelTierChanged = Notification.Name("lastbook.modelTierChanged")
+}
+
 /// Runs a Plan: each item to download in order, each resumable (its part file stays on Cancel, a failure or a relaunch).
 /// The run is complete only when the plan made afresh afterwards says so (library and required state map installed and
 /// checked, and the state's addresses when published).

@@ -1,0 +1,11 @@
+# Gradle and build output
+.gradle/
+build/
+**/build/
+.cxx/
+**/.cxx/
+local.properties
+*.apk
+*.aab
+captures/
+.externalNativeBuild/

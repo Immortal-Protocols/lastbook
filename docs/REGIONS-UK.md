@@ -84,6 +84,23 @@ so those are **invented here** and flagged as such. ONS's own ITL1 codes (`TLC` 
 - **Islands.** Shetland is in `GB-SCT`, St Kilda too, the Isles of Scilly in `GB-SW` and the Isle of Wight in `GB-SE`.
   The Isle of Man, Jersey and Guernsey are Crown Dependencies, not part of the UK, and are not proposed.
 
+### Related proposals
+
+Two other proposals in this folder cover part of the same ground. This document has not been reconciled with them; it
+only says where they meet. Both were read for this note, not checked against their sources.
+
+- **[REGIONS-GB-LONDON.md](REGIONS-GB-LONDON.md)** proposes Greater London alone, under the same code, `GB-LON`, and from
+  the same ONS "London" row (Regions December 2024). Its box is the service's extent-only answer, `-0.5160, 51.2788,
+  0.3414, 51.6976`; this document's is the minimum and maximum of every vertex, `-0.5102, 51.2868, 0.3340, 51.6919`.
+  With the 0.15° margin the two differ by 0.01° in the south (51.12 and 51.13) and the east (0.50 and 0.49). Its own
+  text says the rest of the United Kingdom is left for a later proposal, which is this one. If both are accepted, one
+  box for `GB-LON` has to be chosen.
+- **[REGIONS-IE.md](REGIONS-IE.md)** proposes one region for the whole island of Ireland, Northern Ireland included
+  (named "Ireland and Northern Ireland", no code chosen). This document proposes Northern Ireland as `GB-NIR`, one of 12.
+  Both take Northern Ireland's east edge, -5.4328°, from the same ONS layer. If both are accepted, Northern Ireland would
+  be in two map sets, as REGIONS-IE.md already notes for another overlap, and the maintainers would have to say which
+  one setup offers.
+
 ### Boxes
 
 The boxes were computed from the ONS **Regions (December 2024) Boundaries EN BGC** (the nine English regions) and
@@ -336,6 +353,9 @@ REGIONS-DE.md.
 9. **New help-point kinds**: defibrillators from OSM, and flood warning areas from the Environment Agency.
 10. **Units.** The map code shows contour intervals in feet (`web/map.js`); a UK map would use metres, and miles are fine for
     distance.
+11. **London and Northern Ireland in two proposals.** [REGIONS-GB-LONDON.md](REGIONS-GB-LONDON.md) proposes `GB-LON` on its
+    own, and [REGIONS-IE.md](REGIONS-IE.md) proposes Northern Ireland as part of an island-wide region. See "Related
+    proposals" above for what differs.
 
 ## What was checked, and what was not
 

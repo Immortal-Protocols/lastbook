@@ -5,14 +5,24 @@ map database the app can draw offline.
   python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
-the original archive is only read. Output tables:
+the original archive is only read. Another Geofabrik "free" GeoPackage works the same way; give its own
+description so the file does not claim to be Southern California (the defaults are the SoCal ones):
+
+  python3 tools/build_map.py basse-normandie.gpkg national.sqlite --source "OpenStreetMap contributors, via Geofabrik
+    basse-normandie-latest-free.gpkg.zip (ODbL 1.0)" --data-as-of 2026-11-16T21:22:36Z --bounds=-2.11,48.02,1.13,49.88
+    --region "Basse-Normandie (Calvados, Manche, Orne)" --no-buildings
+
+--no-buildings leaves out building outlines, for a region whose outlines come from derived/geo/buildings.sqlite;
+--no-waterways leaves out river and stream lines, for a region whose lines come from derived/geo/water.sqlite.
+Output tables:
   feat(id, layer, cls, name, minz, geom)   geom = packed int32 lon/lat * 1e6 (see pack())
   feat_idx (R*Tree on bbox)
   poi(id, cls, name, lon, lat)             help-relevant points (hospitals, pharmacies, water...)
   meta(key, value)
 """
-import math, sqlite3, struct, sys, time
+import argparse, math, sqlite3, struct, time
 from array import array
+from pathlib import Path
 
 Q = 1e6
 
@@ -125,7 +135,7 @@ MAP_SCHEMA = '''DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP T
       CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);'''
 
 
-def build(src, dst, metadata):
+def build(src, dst, metadata, buildings=True, waterways=True):
     t0 = time.time()
     dst.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;')
     dst.executescript(MAP_SCHEMA)
@@ -164,7 +174,7 @@ def build(src, dst, metadata):
     for parts, (cls,) in each('gis_osm_protected_areas_a_free', 'fclass'):
         add('land', 'park', None, area_z(*bbox(parts), 8), [simplify(p, 0.00002) for p in parts])
     print('land', fid[0], round(time.time() - t0), flush=True)
-    for parts, (cls, name) in each('gis_osm_waterways_free'):
+    for parts, (cls, name) in each('gis_osm_waterways_free') if waterways else ():
         add('waterway', cls, name, 10 if cls == 'river' else 13, parts)
     for parts, (cls, name) in each('gis_osm_railways_free'):
         add('rail', cls, name, 10 if cls == 'rail' else 13, parts)
@@ -174,7 +184,7 @@ def build(src, dst, metadata):
         add('road', cls, label, ROAD_Z.get(cls, 15), parts)
     print('roads', fid[0], round(time.time() - t0), flush=True)
     dst.commit()
-    for parts, (cls, name) in each('gis_osm_buildings_a_free'):
+    for parts, (cls, name) in each('gis_osm_buildings_a_free') if buildings else ():
         add('bldg', cls or '', None, 15, [simplify(parts[0], 0.000002)])
     print('buildings', fid[0], round(time.time() - t0), flush=True)
     dst.commit()
@@ -185,11 +195,17 @@ def build(src, dst, metadata):
                 z = 5
             add('place', cls, name, z, parts)
     pid = 0
-    for table in ('gis_osm_pois_free', 'gis_osm_pois_a_free', 'gis_osm_natural_free', 'gis_osm_natural_a_free'):
+    # Geofabrik files fuel stations under "traffic", not "pois"; only fuel is taken from those tables.
+    for table in ('gis_osm_pois_free', 'gis_osm_pois_a_free', 'gis_osm_natural_free', 'gis_osm_natural_a_free',
+                  'gis_osm_traffic_free', 'gis_osm_traffic_a_free'):
+        if not src.execute('SELECT 1 FROM sqlite_master WHERE name=?', (table,)).fetchone():
+            continue
         for parts, (cls, name) in each(table):
             if cls not in POI_KEEP:
                 continue
             if table == 'gis_osm_natural_free' and cls not in ('spring',):
+                continue
+            if table.startswith('gis_osm_traffic') and cls != 'fuel':
                 continue
             minx, maxx, miny, maxy = bbox(parts)
             pid += 1
@@ -202,11 +218,17 @@ def build(src, dst, metadata):
 
 
 if __name__ == '__main__':
-    src, dst = sys.argv[1:3]
-    with sqlite3.connect(src) as source, sqlite3.connect(dst) as output:
-        build(source, output, {
-            'source': 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)',
-            'data_as_of': '2026-10-25T21:21:21Z',
-            'bounds': '-121.36,32.50,-114.10,35.89',
-            'built': time.strftime('%Y-%m-%dT%H:%M:%S'),
-        })
+    ap = argparse.ArgumentParser(description='Geofabrik free GeoPackage -> offline map database')
+    ap.add_argument('src', help='extracted .gpkg (read only)')
+    ap.add_argument('dst', help='map database to write (its four tables are replaced)')
+    ap.add_argument('--source', default='OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)', help='meta.source')
+    ap.add_argument('--data-as-of', default='2026-10-25T21:21:21Z', help='meta.data_as_of: the date in the extract\'s README')
+    ap.add_argument('--bounds', default='-121.36,32.50,-114.10,35.89', help='meta.bounds: west,south,east,north')
+    ap.add_argument('--region', help='meta.region: a plain name for the area, when it is not Southern California')
+    ap.add_argument('--no-buildings', action='store_true', help='leave out building outlines')
+    ap.add_argument('--no-waterways', action='store_true', help='leave out river and stream lines, for a region whose lines come from derived/geo/water.sqlite')
+    a = ap.parse_args()
+    metadata = {'source': a.source, 'data_as_of': a.data_as_of, 'bounds': a.bounds,
+                'built': time.strftime('%Y-%m-%dT%H:%M:%S'), **({'region': a.region} if a.region else {})}
+    with sqlite3.connect(Path(a.src).resolve().as_uri() + '?mode=ro', uri=True) as source, sqlite3.connect(a.dst) as output:
+        build(source, output, metadata, buildings=not a.no_buildings, waterways=not a.no_waterways)

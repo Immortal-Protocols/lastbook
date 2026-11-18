@@ -1660,6 +1660,12 @@ class MacSharingEnds(unittest.TestCase):
         w = swarm.proc.watcher
         swarm.stop()
         self.assertEqual(w.returncode, -signal.SIGKILL)
+        station = share.Station(tmp)                     # tools/seed.py's one rqbit
+        station.proc = share._spawn([sys.executable, '-I', '-c', 'import time; time.sleep(300)'], 'x')
+        p, w = station.proc, station.proc.watcher
+        station.stop()
+        self.assertEqual(w.returncode, -signal.SIGKILL)
+        self.assertIsNotNone(p.poll())
 
     def test_no_watcher_no_rqbit(self):
         """If the watcher cannot start, rqbit is ended and sharing does not start: it never runs untied."""
@@ -1707,6 +1713,13 @@ class MacSharingEnds(unittest.TestCase):
         self.assertIsNone(swarm.poll())
         self.assertEqual(w.returncode, -signal.SIGKILL)
         swarm.stop()
+        station = share.Station(tmp)
+        station.proc = share._spawn(brief, 'x')
+        w = station.proc.watcher
+        station.proc.wait(10)
+        self.assertFalse(station.running())
+        self.assertEqual(w.returncode, -signal.SIGKILL)
+        station.stop()
 
 
 class _HeldRead:
@@ -3373,6 +3386,42 @@ def load_seed():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+class StationUnwatches(unittest.TestCase):
+    """share.Station ends rqbit's watcher (on a Mac, what ties rqbit to Lastbook) as Seeder and Swarm do: before it ends rqbit
+    itself, and once rqbit has ended on its own. Here on every platform, with a stand-in process; MacSharingEnds runs the real
+    watcher."""
+
+    class Proc:
+        pid = 1
+
+        def __init__(self, calls, code=None):
+            self.calls, self.returncode = calls, code
+
+        def poll(self):
+            return self.returncode
+
+        def terminate(self):
+            self.calls.append('terminate')
+            self.returncode = -15
+
+        def wait(self, timeout=None):
+            return self.returncode
+
+    def test_watcher_first_and_after_an_end_of_its_own(self):
+        calls = []
+        with mock.patch.object(share, '_unwatch', lambda p: calls.append('unwatch')):
+            station = share.Station('.')
+            station.proc = self.Proc(calls)
+            self.assertTrue(station.running())
+            self.assertEqual(calls, [])
+            station.stop()
+            self.assertEqual(calls, ['unwatch', 'terminate'])
+            calls.clear()
+            station.proc = self.Proc(calls, code=1)            # ended on its own
+            self.assertFalse(station.running())
+            self.assertEqual(calls, ['unwatch'])
 
 
 class ServerSeeding(WithRqbit):

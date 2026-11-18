@@ -8,6 +8,14 @@ from unittest.mock import patch
 import server
 
 
+class MapPageDateTests(unittest.TestCase):
+    def test_the_mapped_by_date_has_its_own_element_so_a_map_sets_date_is_not_a_text_replace(self):
+        js = (Path(__file__).resolve().parents[2] / 'web' / 'map.js').read_text(encoding='utf-8')
+        self.assertIn('<span id="mapasof">', js)
+        self.assertIn("d.textContent = info.as_of", js)
+        self.assertNotIn(".replace('25 Oct 2026'", js)
+
+
 class MapSetMetaTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

@@ -102,7 +102,7 @@ const MapView = (() => {
     if (!on.length) on = DEFAULT_LAYERS;
     main.classList.add('map-page');
     document.title = 'Map · Lastbook';
-    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
+    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted">Offline: works with no internet. Shows what was mapped by <span id="mapasof">25 Oct 2026</span> — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
@@ -206,7 +206,7 @@ const MapView = (() => {
     if (info.country) CAVEAT.dam = 'Mapped dam (OpenStreetMap). Keep away from spillways and outlets — currents and sudden releases drown people.';
     st.metric = info.units === 'metric'; st.postal = info.country === 'GB' ? 'postcode' : 'ZIP'; st.area = info.country === 'GB' ? 'region' : 'state';
     if (st.postal === 'postcode') { const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' } }
-    if (info.as_of) { const p = document.querySelector('.maphead p'); if (p) p.textContent = p.textContent.replace('25 Oct 2026', info.as_of) }
+    if (info.as_of) { const d = $('mapasof'); if (d) d.textContent = info.as_of }
     if (info.credit) { const at = document.querySelector('.mapattr'); if (at) at.textContent = '© OpenStreetMap contributors · ' + info.credit }
     if (!info.layers) return;
     st.have = new Set(info.layers); st.bounds = info.bounds;

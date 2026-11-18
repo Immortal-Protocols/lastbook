@@ -3,10 +3,10 @@
 map database the app can draw offline.
 
   python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite
-  python3 tools/build_map.py england.gpkg national.sqlite --bbox -6.57,49.71,-1.33,52.27 \
+  python3 tools/build_map.py england.gpkg national.sqlite --bbox=-6.57,49.71,-1.33,52.27 \
       --source "OpenStreetMap contributors, via Geofabrik england-latest-free.gpkg.zip (ODbL 1.0)" --as-of 2026-11-17
 
---bbox W,S,E,N keeps only features whose box meets it (a region cut from a larger extract; docs/REGIONS-UK.md). --source and
+--bbox=W,S,E,N (with an equals sign: a negative west value is not a flag) keeps only features whose box meets it (a region cut from a larger extract; docs/REGIONS-UK.md). --source and
 --as-of replace the meta lines that otherwise describe the Southern California extract.
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;

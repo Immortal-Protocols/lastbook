@@ -85,6 +85,7 @@ def _parts(query, states=True):
     elif (uk := uk_postcode(remainder)):
         postcode = uk[0]
         del remainder[-uk[1]:]
+        states = False      # a UK address: 'Washington' in '7 Church Lane Washington NE37 1AA' is a town, whatever US indexes are installed
     state = ''
     for count in (3, 2, 1):
         if not states or len(remainder) <= count:

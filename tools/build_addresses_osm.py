@@ -12,7 +12,9 @@ engine/address_search.py reads it unchanged:
   meta(key, value)                                      'source' is shown with each result as its credit
 
 OpenStreetMap has far fewer UK addresses than a government address list, and many have no postcode, so a house missing
-here is not proof it does not exist. See docs/REGIONS-UK.md. Needs pyosmium (`pip install osmium`) on the build machine
+here is not proof it does not exist. An entrance node inside a building outline often repeats the building's address, so
+the same number, street and postcode within about 50 m is kept once (the first one read). Addresses mapped only on a
+multipolygon building relation are not read. See docs/REGIONS-UK.md. Needs pyosmium (`pip install osmium`) on the build machine
 only; the app never imports it.
 """
 import argparse, sqlite3, sys, time
@@ -23,6 +25,7 @@ import osmium
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engine.address_search import fold, normalize, uk_postcode  # noqa: E402
 
+NEAR = 0.0005     # degrees, about 35-55 m: the same house number, street and postcode this close together is one address
 CITY_KEYS = ('addr:city', 'addr:town', 'addr:village', 'addr:hamlet', 'addr:suburb', 'addr:place')
 
 
@@ -49,7 +52,8 @@ def main():
                      'CREATE TABLE addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL);'
                      'CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);')
     t0 = time.time()
-    batch, total, seen = [], 0, 0
+    batch, total, seen, dropped = [], 0, 0, 0
+    placed = set()      # hash of (number, street, postcode, grid cell) for every address kept
     # locations first, so ways carry coordinates; the filters then keep only objects that have a house number
     fp = (osmium.FileProcessor(a.pbf, osmium.osm.NODE | osmium.osm.WAY)
           .with_locations()
@@ -73,8 +77,14 @@ def main():
         if not (west <= lon <= east and south <= lat <= north):
             continue
         city = next((tags[k] for k in CITY_KEYS if tags.get(k)), '')
-        batch.append((num.strip(), street.strip(), normalize(fold(street)), city.strip(), '', postcode(tags.get('addr:postcode')),
-                      round(lat, 6), round(lon, 6)))
+        norm, zip_ = normalize(fold(street)), postcode(tags.get('addr:postcode'))
+        who = (num.strip().lower(), norm, zip_)
+        cy, cx = round(lat / NEAR), round(lon / NEAR)
+        if any(hash((who, cy + dy, cx + dx)) in placed for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+            dropped += 1
+            continue
+        placed.add(hash((who, cy, cx)))
+        batch.append((num.strip(), street.strip(), norm, city.strip(), '', zip_, round(lat, 6), round(lon, 6)))
         if len(batch) >= 200_000:
             db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?)', batch)
             total += len(batch)
@@ -90,7 +100,7 @@ def main():
     db.commit()
     db.close()
     tmp.replace(out)
-    print(f'done: {total:,} addresses, {with_postcode:,} with a postcode, in {time.time() - t0:.0f}s', flush=True)
+    print(f'done: {total:,} addresses ({dropped:,} repeats dropped), {with_postcode:,} with a postcode, in {time.time() - t0:.0f}s', flush=True)
 
 
 if __name__ == '__main__':

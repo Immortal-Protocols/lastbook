@@ -119,6 +119,21 @@ class AddressTests(Temp):
         self.assertAlmostEqual(lon, -0.2 + 0.0004 * 2 / 5, places=5)
         self.assertAlmostEqual(lat, 51.45 + 0.0004 * 2 / 5, places=5)
 
+    def test_the_same_address_on_a_node_and_its_building_is_kept_once(self):
+        pbf = self.dir / 'dup.osm.pbf'
+        tags = {'addr:housenumber': '12', 'addr:street': 'Baker Street', 'addr:postcode': 'NW1 6XE'}
+        ring, way = ring_way(100, 1000, -0.1580, 51.5200, {**tags, 'building': 'yes'})
+        nodes = [(1, -0.15785, 51.52015, dict(tags)),                                    # an entrance node inside that outline
+                 (2, -0.1580, 51.5300, dict(tags)),                                      # the same address text 1 km away: a different house
+                 (3, -0.15790, 51.52010, {**tags, 'addr:housenumber': '14'})]             # a neighbour: different number
+        write_pbf(pbf, nodes + ring, [way])
+        out = self.dir / 'dup.sqlite'
+        text = run('build_addresses_osm.py', pbf, out, f'--bbox={BOX}')
+        rows = self.db(out).execute('SELECT num, lat FROM addr ORDER BY num, lat').fetchall()
+        self.assertEqual([r[0] for r in rows], ['12', '12', '14'])
+        self.assertEqual([round(r[1], 2) for r in rows if r[0] == '12'], [51.52, 51.53])
+        self.assertIn('1 repeats dropped', text)
+
     def test_meta_and_index_the_address_search_reads(self):
         db, text = self.build()
         meta = dict(db.execute('SELECT key, value FROM meta'))
@@ -374,6 +389,19 @@ class PlaceFinderTests(Temp):
         out = self.dir / 'chain.sqlite'
         run('build_places_osm.py', self.national(), addr, out, '--area', 'London')
         self.assertEqual(self.db(out).execute("SELECT count(*) FROM place WHERE name IN ('SW1A 2AA','SW1A')").fetchone()[0], 2)
+
+
+class ToolDocsTests(unittest.TestCase):
+    def test_no_tool_documents_a_negative_bbox_with_a_space(self):
+        # argparse reads '--bbox -6.57,...' as a flag and fails; '--bbox=-6.57,...' is the form that works
+        for path in sorted(TOOLS.glob('*.py')):
+            with self.subTest(tool=path.name):
+                self.assertIsNone(__import__('re').search(r'--bbox\s+-\d', path.read_text(encoding='utf-8')))
+
+    def test_build_map_accepts_the_documented_negative_box(self):
+        r = subprocess.run([sys.executable, '-B', str(TOOLS / 'build_map.py'), 'missing.gpkg', 'out.sqlite', f'--bbox={BOX}'],
+                           cwd=tempfile.gettempdir(), capture_output=True, text=True)
+        self.assertNotIn('expected one argument', r.stderr)     # it fails later, on the missing file, not on the box
 
 
 class RegionDriverTests(Temp):

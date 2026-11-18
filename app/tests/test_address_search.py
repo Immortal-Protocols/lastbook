@@ -177,6 +177,21 @@ class UkAddressSearchTests(unittest.TestCase):
             self.assertEqual(find_addresses('18001 nine mile CA', geo), [])
             self.assertEqual(find_addresses('18001 nine mile California', geo), [])
 
+    def test_uk_address_with_a_us_state_named_town_is_found_with_a_us_index_installed_too(self):
+        # A library can hold a US state index and a UK one. With a UK postcode, 'Washington' is the town, not the state WA.
+        db = sqlite3.connect(self.geo / 'addresses' / 'MI.sqlite')
+        try:
+            db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL)')
+            db.execute("INSERT INTO addr VALUES('18001','Nine Mile Road','nine mile rd','Canton','MI','48188',42.3,-83.4)")
+            db.commit()
+        finally:
+            db.close()
+        for query in ('7 Church Lane Washington NE37 1AA', '7 church lane washington ne371aa'):
+            with self.subTest(query=query):
+                self.assertEqual(find_addresses(query, self.geo)[0]['detail'], 'Washington, NE37 1AA')
+        self.assertEqual(len(find_addresses('18001 nine mile Canton MI', self.geo)), 1)          # a US state still filters a US query
+        self.assertEqual(find_addresses('7 Church Lane Washington', self.geo), [])               # no postcode: still read as the state, as before
+
     def test_uk_postcode_reading(self):
         from engine.address_search import uk_postcode
         self.assertEqual(uk_postcode(['downing', 'sw1a', '2aa']), ('SW1A 2AA', 2))

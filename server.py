@@ -22,7 +22,7 @@ requests, and adds a few read-only endpoints:
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
-import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
+import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, unicodedata, urllib.parse, zlib
 from array import array
 from pathlib import Path
 
@@ -36,6 +36,7 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search, encyclopedias  # noqa: E402
+from engine.map_regions import canada_info  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -44,6 +45,7 @@ WEB = APP / 'web'
 CACHE = HERE / 'derived' / 'cache'
 MAPDB = HERE / 'derived' / 'geo' / 'map.sqlite'
 PLACEDB = HERE / 'derived' / 'geo' / 'places.sqlite'
+CANADADB = HERE / 'derived' / 'geo' / 'canada.sqlite'
 os.environ.setdefault('SURVIVAL_DISABLE_INDEX_WATCH', '1')
 import engine.library as library  # noqa: E402  (provides Handler, search DB path, ZIM reader)
 import retrieval, assistant  # noqa: E402
@@ -723,6 +725,15 @@ def national_mapdb():
     return _tls.national_map
 
 
+def canada_mapdb():
+    if not CANADADB.exists():
+        return None
+    if not hasattr(_tls, 'canada_map'):
+        _tls.canada_map = sqlite3.connect(ro_uri(CANADADB), uri=True, check_same_thread=False)
+        _tls.canada_map.execute('PRAGMA query_only=ON')
+    return _tls.canada_map
+
+
 def national_status():
     path = HERE / 'derived/geo/national-status.json'
     try:
@@ -849,7 +860,7 @@ def data_version():
     """Changes whenever map data changes: every 20 s while the national map builds, and when the water inventory is written."""
     status = national_status()
     v = f"n{int(time.time() // 20)}" if status.get('state') == 'building' else f"n{status.get('features', 0)}"
-    for f in (WATERDB, WATERDB.with_name(WATERDB.name + '-wal'), CROPDB, TERRAINDB, BLDGDB, BLDGDB.with_name(BLDGDB.name + '-wal')):
+    for f in (CANADADB, WATERDB, WATERDB.with_name(WATERDB.name + '-wal'), CROPDB, TERRAINDB, BLDGDB, BLDGDB.with_name(BLDGDB.name + '-wal')):
         try:
             v += f".{int(f.stat().st_mtime) // 60}"
         except OSError:
@@ -880,7 +891,7 @@ def map_tile(z, x, y):
 @functools.lru_cache(maxsize=2048)
 def _map_tile(z, x, y, version):
     db = mapdb()
-    if db is None:
+    if db is None and national_mapdb() is None and canada_mapdb() is None:
         return b'{"error":"map not built"}'
     lon0, lat0, lon1, lat1 = tile_bounds(z, x, y)
     pad = (lon1 - lon0) * 0.04
@@ -893,7 +904,7 @@ def _map_tile(z, x, y, version):
         return px, py
     rows = db.execute('SELECT f.layer,f.cls,f.name,f.geom FROM feat_idx i JOIN feat f ON f.id=i.id '
                       'WHERE i.maxx>=? AND i.minx<=? AND i.maxy>=? AND i.miny<=? AND i.minz<=? ORDER BY f.id',
-                      (lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad, z)).fetchall()
+                      (lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad, z)).fetchall() if db is not None else []
     national = national_mapdb()
     if national is not None and z >= 11:
         c = SOCAL_CELL
@@ -905,6 +916,11 @@ def _map_tile(z, x, y, version):
         rows += national.execute('SELECT f.layer,f.cls,f.name,f.geom FROM feat_idx i JOIN feat f ON f.id=i.id '
                       'WHERE i.maxx>=? AND i.minx<=? AND i.maxy>=? AND i.miny<=? AND i.minz<=? ORDER BY f.id',
                       (lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad, z)).fetchall()
+    canada = canada_mapdb()
+    if canada is not None:
+        rows += canada.execute('SELECT f.layer,f.cls,f.name,f.geom FROM feat_idx i JOIN feat f ON f.id=i.id '
+                               'WHERE i.maxx>=? AND i.minx<=? AND i.maxy>=? AND i.miny<=? AND i.minz<=? ORDER BY f.id',
+                               (lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad, z)).fetchall()
     if WATERDB.exists():  # NHD lakes, reservoirs, ponds and marsh outlines
         wdb = getattr(_tls, 'water', None) or sqlite3.connect(ro_uri(WATERDB), uri=True, check_same_thread=False)
         _tls.water = wdb
@@ -920,7 +936,18 @@ def _map_tile(z, x, y, version):
         polygon = layer in ('water', 'wet', 'land', 'beach', 'bldg', 'ocean', 'island')
         geo = []
         for p in parts:
-            pts = [proj(lo, la) for lo, la in p]
+            # Keep date-line geometry contiguous before placing its nearest world
+            # copy in this tile. A 179 -> -179 segment must not span Greenwich.
+            continuous = []
+            for lo, la in p:
+                if continuous:
+                    lo += 360 * round((continuous[-1][0] - lo) / 360)
+                continuous.append((lo, la))
+            if not continuous:
+                continue
+            middle = (min(lo for lo, _ in continuous) + max(lo for lo, _ in continuous)) / 2
+            shift = 360 * round(((lon0 + lon1) / 2 - middle) / 360)
+            pts = [proj(lo + shift, la) for lo, la in continuous]
             if polygon and len(pts) > 200:
                 pts = clip_ring(pts, -16, -16, EXT + 16, EXT + 16)
             q, last = [], None
@@ -1178,12 +1205,15 @@ def _poi_sources(west, south, east, north):
             nat.create_function('socal', 3, lambda cls, lo, la: 1 if cls in socal_classes() and in_socal(lo, la) else 0, deterministic=True)
             _tls.socal_fn = True
         out.append((nat, dedupe))
+    canada = canada_mapdb()
+    if canada is not None:
+        out.append((canada, False))
     return out
 
 
 def pins(west, south, east, north, zoom, kinds):
     """Clustered service + resource points for the visible area. Clusters mix kinds and carry their bounds."""
-    zoom = round(max(3, min(18, zoom)))
+    zoom = round(max(0, min(18, zoom)))
     cx = 360 / 2 ** zoom * (72 if zoom <= 5 else 58 if zoom <= 8 else CLUSTER_PX) / 256  # coarser groups when a whole region is in view
     cy = cx * max(0.2, math.cos(math.radians((south + north) / 2)))
     if zoom >= 17:
@@ -1194,6 +1224,15 @@ def pins(west, south, east, north, zoom, kinds):
         south, north = math.floor((south + 90) / cy) * cy - 90, math.ceil((north + 90) / cy) * cy - 90
     version = data_version()
     return _pins(max(-180, west), max(-85, south), min(180, east), min(85, north), cx, cy, tuple(sorted(set(kinds))), version)
+
+
+def _resource_pin_from(cell_degrees):
+    # At country scale, selecting the requested kinds first avoids a random
+    # resource-row lookup for every unrelated oil well/mine in the atlas.
+    # Neighborhood views still benefit from the spatial index first.
+    if cell_degrees >= 3:
+        return 'resource r CROSS JOIN spatial s ON s.id=r.id'
+    return 'spatial s CROSS JOIN resource r ON r.id=s.id'
 
 
 @functools.lru_cache(maxsize=256)
@@ -1217,16 +1256,16 @@ def _pins(west, south, east, north, cx, cy, kinds, version):
         q = ','.join('?' * len(services))
         for db, dedupe in _poi_sources(west, south, east, north):
             sql = (f'SELECT cls,COUNT(*),AVG(lat),AVG(lon),MIN(lon),MAX(lon),MIN(lat),MAX(lat),MIN(name) FROM poi '
-                   f'WHERE cls IN ({q}) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?{" AND socal(cls,lon,lat)=0" if dedupe else ""} '
+                   f'WHERE cls IN ({q}) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?{_poi_filter(db, dedupe)} '
                    f'GROUP BY cls, CAST((lon+180)/? AS INT), CAST((lat+90)/? AS INT)')
             for k, n, la, lo, x0, x1, y0, y1, name in db.execute(sql, (*services, west, east, south, north, cx, cy)):
-                add(k, n, n, la, lo, x0, x1, y0, y1, name or '', {}, '')
+                add(k, n, n, la, lo, x0, x1, y0, y1, name or '', {}, _poi_provenance(db))
     for path in resource_dbs(resources):
         rdb = sqlite3.connect(ro_uri(path), uri=True)
         try:
             sql = ("SELECT r.kind,COUNT(*),AVG(r.lat),AVG(r.lon),MIN(r.lon),MAX(r.lon),MIN(r.lat),MAX(r.lat),r.name,r.detail,r.source,"
                    "COUNT(DISTINCT CASE WHEN r.kind='fish_stocking' THEN r.name ELSE r.source_id END) "
-                   "FROM spatial s CROSS JOIN resource r ON r.id=s.id WHERE s.minx>=? AND s.maxx<=? AND s.miny>=? AND s.maxy<=? "
+                   f"FROM {_resource_pin_from(cx)} WHERE s.minx>=? AND s.maxx<=? AND s.miny>=? AND s.maxy<=? "
                    "AND r.kind IN (%s) GROUP BY r.kind, CAST((r.lon+180)/? AS INT), CAST((r.lat+90)/? AS INT)" % ','.join('?' * len(resources)))
             g = 3 if path == CROPDB and cx > 1e-5 else 1  # farm blocks are dense: group them more coarsely (the colour overlay shows the detail)
             for k, n, la, lo, x0, x1, y0, y1, name, detail, source, sites in rdb.execute(sql, (west, east, south, north, *resources, cx * g, cy * g)):
@@ -1257,7 +1296,7 @@ def dedupe_named(rows):
     out = []
     for r in rows:
         if r['name']:
-            near_same = kept.setdefault(r['name'].lower(), [])
+            near_same = kept.setdefault((r['cls'], r['name'].lower()), [])
             if any(abs(r['lat'] - y) < 0.0007 and abs(r['lon'] - x) < 0.0009 for y, x in near_same):
                 continue
             near_same.append((r['lat'], r['lon']))
@@ -1274,9 +1313,9 @@ def members(west, south, east, north, kinds, lat, lon, limit=60):
     if services:
         q = ','.join('?' * len(services))
         for db, dedupe in _poi_sources(west, south, east, north):
-            rows += [{'cls': c, 'label': HELP.get(c, c), 'name': n or '', 'lon': x, 'lat': y, 'summary': '', 'detail': {}, 'source': ''}
+            rows += [{'cls': c, 'label': HELP.get(c, c), 'name': n or '', 'lon': x, 'lat': y, 'summary': '', 'detail': {}, 'source': _poi_provenance(db)}
                      for c, n, x, y in db.execute(f'SELECT cls,name,lon,lat FROM poi WHERE cls IN ({q}) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?'
-                                                  f'{" AND socal(cls,lon,lat)=0" if dedupe else ""} LIMIT 2000',
+                                                  f'{_poi_filter(db, dedupe)} LIMIT 2000',
                                                   (*services, west - eps, east + eps, south - eps, north + eps))]
     for path in resource_dbs(resources):
         with sqlite3.connect(ro_uri(path), uri=True) as rdb:
@@ -1295,40 +1334,103 @@ def members(west, south, east, north, kinds, lat, lon, limit=60):
     return {'items': rows[:limit], 'total': len(rows), 'capped': len(rows) >= 2000}
 
 
+def _poi_provenance(db):
+    if db is canada_mapdb():
+        meta = dict(db.execute('SELECT key,value FROM meta'))
+        return meta.get('source', 'OpenStreetMap Canada') + '; data as of ' + meta.get('data_as_of', 'unknown')
+    return 'OpenStreetMap — original US pack; source dates vary by layer'
+
+
+# Embedded into the generated server, not imported at runtime.
+def _poi_filter(db, dedupe):
+    """Deduplicate exact cross-extract service identities before aggregation.
+
+    Same-source objects (including unnamed co-located sites) remain distinct.
+    US databases lack shared OSM lineage: never use a fuzzy border rectangle.
+    Read-only attached databases use their existing poi(cls,lon,lat) indexes.
+    """
+    clauses = ['socal(cls,lon,lat)=0'] if dedupe else []
+    if db is canada_mapdb():
+        attached = {row[1] for row in db.execute('PRAGMA database_list')}
+        for alias, path in (('canada_us_detail', MAPDB), ('canada_us_national', HERE / 'derived/geo/national.sqlite')):
+            if not path.exists():
+                continue
+            if alias not in attached:
+                db.execute('ATTACH DATABASE ? AS ' + alias, (ro_uri(path),))
+            clauses.append('NOT EXISTS (SELECT 1 FROM ' + alias + '.poi u '
+                           "WHERE u.cls=poi.cls AND u.lon=poi.lon AND u.lat=poi.lat AND COALESCE(u.name,'')=COALESCE(poi.name,''))")
+    return ''.join(' AND ' + clause for clause in clauses)
+
+
+def _distance_boxes(lat, lon, radius):
+    """Conservative spherical-cap bounds in degrees; split at the date line."""
+    angle = min(math.pi, radius / 6371)
+    delta = math.degrees(angle)
+    south, north = max(-90, lat - delta), min(90, lat + delta)
+    if south <= -90 or north >= 90:
+        return [(-180, south, 180, north)]
+    span = math.degrees(math.asin(min(1, math.sin(angle) / math.cos(math.radians(lat)))))
+    lon = (lon + 180) % 360 - 180
+    west, east = lon - span, lon + span
+    if west < -180:
+        return [(-180, south, east, north), (west + 360, south, 180, north)]
+    if east > 180:
+        return [(west, south, 180, north), (-180, south, east - 360, north)]
+    return [(west, south, east, north)]
+
+
 def near(lat, lon, classes, limit=8):
-    db = mapdb()
+    """Nearest mapped service sites, stopping only after a complete distance cap.
+
+    Sparse northern coverage can expand to the globe; no equal-degree or arbitrary
+    140-km cutoff. Resource datasets keep their separate upstream implementation.
+    """
     limit = max(1, min(limit, 50))
     out = []
-    for cls in classes:
+    for cls in dict.fromkeys(classes):
         if cls in RESOURCE_KINDS:
             out.extend(resource_near(lat, lon, cls, limit))
             continue
-        sources = [d for d in (db, national_mapdb()) if d is not None]
-        d = 0.02
-        rows = []
-        while d < 1.5 and len(rows) < limit:
-            rows = []
-            for source in sources:
-                found = source.execute('SELECT cls,name,lon,lat FROM poi WHERE cls=? AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?',
-                                       (cls, lon - d, lon + d, lat - d, lat + d)).fetchall()
-                if source is not db and db is not None and cls in socal_classes():
-                    found = [r for r in found if not in_socal(r[2], r[3])]
-                rows.extend(found)
-            rows = list({(r[0],r[1],round(r[2],5),round(r[3],5)):r for r in rows}.values())
-            d *= 2
-        for c, name, x, y in rows:
-            dist, brg = haversine(lat, lon, y, x)
-            out.append({'cls': c, 'label': HELP.get(c, c), 'name': name, 'lat': y, 'lon': x, 'km': round(dist, 2), 'dir': brg})
+        radius = 2.0
+        while True:
+            candidates = []
+            for west, south, east, north in _distance_boxes(lat, lon, radius):
+                for db, dedupe in _poi_sources(west, south, east, north):
+                    sql = ('SELECT cls,name,lon,lat FROM poi WHERE cls=? AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?'
+                           + _poi_filter(db, dedupe))
+                    provenance = _poi_provenance(db)
+                    for c, name, x, y in db.execute(sql, (cls, west, east, south, north)):
+                        km, direction = haversine(lat, lon, y, x)
+                        if km <= radius + 1e-7:
+                            candidates.append({'cls': c, 'label': HELP.get(c, c), 'name': name or '',
+                                               'lat': y, 'lon': x, 'km': km, 'dir': direction, 'source': provenance})
+            candidates.sort(key=lambda p: p['km'])
+            candidates = dedupe_named(candidates)
+            if len(candidates) >= limit or radius >= math.pi * 6371:
+                out.extend(candidates[:limit])
+                break
+            radius = min(radius * 2, math.pi * 6371)
     out.sort(key=lambda p: p['km'])
-    out = [p for p in out if p['cls'] in RESOURCE_KINDS] + dedupe_named([p for p in out if p['cls'] not in RESOURCE_KINDS])
-    out.sort(key=lambda p: p['km'])
-    per = {}
-    res = []
     for p in out:
-        if per.get(p['cls'], 0) < limit:
-            per[p['cls']] = per.get(p['cls'], 0) + 1
-            res.append(p)
-    return res
+        p['km'] = round(p['km'], 2)
+    return out
+
+
+def _place_candidates(db, words, near):
+    """Bound memory, not geographic coverage: rank every FTS match before LIMIT.
+
+    The previous rank-only LIMIT 200 could hide a local clinic behind 200 distant
+    US clinics. Preserve national text/rank candidates as well as geographic ones.
+    SQLite scans matching FTS rows (not the whole gazetteer) using bounded top-K.
+    """
+    match = ' '.join('"%s"*' % w.replace('"', '') for w in words)
+    select = ('SELECT p.name,p.kind,p.detail,p.lat,p.lon,p.rank,p.source '
+              'FROM place_fts f JOIN place p ON p.id=f.rowid WHERE place_fts MATCH ? ')
+    rows = db.execute(select + 'ORDER BY p.rank, bm25(place_fts), p.id LIMIT 200', (match,)).fetchall()
+    if near:
+        db.create_function('place_distance', 2, lambda la, lo: haversine(near[0], near[1], la, lo)[0], deterministic=True)
+        rows += db.execute(select + 'ORDER BY place_distance(p.lat,p.lon), p.rank, p.id LIMIT 200', (match,)).fetchall()
+    return rows
 
 
 def haversine(la1, lo1, la2, lo2):
@@ -1336,7 +1438,7 @@ def haversine(la1, lo1, la2, lo2):
     p1, p2 = math.radians(la1), math.radians(la2)
     dp, dl = p2 - p1, math.radians(lo2 - lo1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    d = 2 * R * math.asin(math.sqrt(a))
+    d = 2 * R * math.asin(math.sqrt(max(0.0, min(1.0, a))))
     b = (math.degrees(math.atan2(math.sin(dl) * math.cos(p2), math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl))) + 360) % 360
     return d, ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][int((b + 22.5) // 45) % 8]
 
@@ -1358,6 +1460,14 @@ def word_sets(words):
     if len(words) > 1:
         for i in range(len(words)):
             yield words[:i] + words[i + 1:]
+
+
+def _fold_text(t):
+    """Lowercase and strip combining diacritics so 'Montréal' matches 'Montreal'."""
+    return ''.join(
+        ch for ch in unicodedata.normalize('NFKD', str(t).lower())
+        if not unicodedata.combining(ch)
+    )
 
 
 def water_places(q, limit=10, near=None):
@@ -1387,11 +1497,14 @@ def water_places(q, limit=10, near=None):
                               [x for w in core for x in (f'%{w}%', f'%{w}%')]).fetchall()
     finally:
         db.close()
+    words_folded = [_fold_text(w) for w in words]
+    core_folded = [_fold_text(w) for w in core]
+    q_folded = _fold_text(q).strip()
     out = []
     for kind, name, lat, lon, raw in rows:
         d = json.loads(raw or '{}')
-        text = (name + ' ' + (d.get('other_names') or '')).lower()
-        score = (sum(w in text for w in words) * 2 + (core[0] in text) + (kind != 'dam') + (name.lower() == q.lower().strip()) * 3
+        text = _fold_text(name + ' ' + (d.get('other_names') or ''))
+        score = (sum(w in text for w in words_folded) * 2 + (core_folded[0] in text) + (kind != 'dam') + (_fold_text(name) == q_folded) * 3
                  + math.log10(float(d.get('area_acres') or d.get('surface_acres') or 1) + 1) / 3 + near_bonus(near, lat, lon))
         where = ', '.join(x for x in (d.get('county') and d['county'] + ' County', d.get('state')) if x)
         extra = f" · also called {d['other_names']}" if d.get('other_names') else ''
@@ -1422,6 +1535,7 @@ def places(q, limit=20, near=None):
         return []
     rows = []
     full = False
+    home = near or home_area()
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
     try:  # closed here, so the file can be removed or replaced afterwards (Windows refuses while it is open)
         for ws in word_sets(words):
@@ -1429,16 +1543,14 @@ def places(q, limit=20, near=None):
                 break  # every word matched somewhere: no need to loosen
             if not ws:
                 continue
-            rows += db.execute('SELECT p.name,p.kind,p.detail,p.lat,p.lon,p.rank,p.source FROM place_fts f JOIN place p ON p.id=f.rowid '
-                               'WHERE place_fts MATCH ? ORDER BY p.rank, bm25(place_fts) LIMIT 200',
-                               (' '.join('"%s"*' % w.replace('"', '') for w in ws),)).fetchall()
+            rows += _place_candidates(db, ws, home)
             if len(ws) == len(words):
                 full = bool(rows)
     finally:
         db.close()
     rows = list(dict.fromkeys(rows))
     def norm(t):
-        return ' '.join(re.sub(r'\bsaint\b', 'st', re.sub(r'[^\w ]+', ' ', t.lower())).split())
+        return ' '.join(re.sub(r'\bsaint\b', 'st', re.sub(r'[^\w ]+', ' ', _fold_text(t))).split())
     ql = norm(q)
     nat = national_mapdb()
     size = {}
@@ -1454,22 +1566,25 @@ def places(q, limit=20, near=None):
                               (r[4] - .08, r[4] + .08, r[3] - .08, r[3] + .08, r[0])).fetchone()
             size[k] = 2 if hit[0] is None else hit[0]
         return size[k]
-    home = near or home_area()
-    rows.sort(key=lambda r: (norm(r[0]) != ql, not norm(r[0]).startswith(ql), r[5] > 2 and norm(r[0]) == ql and importance(r),
-                             -round(near_bonus(home, r[3], r[4])), r[5]))
+    rows.sort(key=lambda r: (norm(r[0]) != ql, not norm(r[0]).startswith(ql),
+                             -round(near_bonus(home, r[3], r[4])),
+                             r[5] > 2 and norm(r[0]) == ql and importance(r), r[5]))
     seen, out = set(), []
     for name, kind, detail, lat, lon, rank, src in rows:
-        k = (name.lower(), round(lat, 2), round(lon, 2))
+        k = (norm(name), round(lat, 2), round(lon, 2))
         if k in seen:
             continue
         seen.add(k)
         out.append({'name': name, 'kind': kind, 'detail': detail, 'lat': lat, 'lon': lon, 'source': src,
-                    'onMap': bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
+                    'onMap': (src == 'OpenStreetMap Canada' and CANADADB.exists()) or bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
         if len(out) >= limit:
             break
     water = water_places(q, near=near)
     if water:  # a query that names a water word puts lakes and dams first; otherwise towns lead
-        out = (water + out) if set(w.lower() for w in re.findall(r'\w+', q)) & WATER_WORDS else (out[:8] + water + out[8:])
+        out = (water + out) if set(w.lower() for w in words) & WATER_WORDS else (out[:8] + water + out[8:])
+    # Preserve exact Canadian water names ahead of loosely matched US resource names, breaking exact ties by proximity.
+    if water and CANADADB.exists() and set(w.lower() for w in words) & WATER_WORDS:
+        out.sort(key=lambda p: (norm(p['name']) != ql, -round(near_bonus(home, p['lat'], p['lon']))))
     return out[:limit + len(water)]
 
 
@@ -1540,9 +1655,9 @@ def _distinct(path, sql):
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
     kinds, boxes = set(), []
-    for path in (MAPDB, HERE / 'derived/geo/national.sqlite'):
+    for path in (MAPDB, HERE / 'derived/geo/national.sqlite', CANADADB):
         kinds |= set(_distinct(path, 'SELECT DISTINCT cls FROM poi'))
-        if Path(path).exists():
+        if path != CANADADB and Path(path).exists():
             db = sqlite3.connect(ro_uri(path), uri=True)
             try:
                 box = db.execute('SELECT MIN(lon),MIN(lat),MAX(lon),MAX(lat) FROM poi').fetchone()
@@ -1560,7 +1675,43 @@ def map_contents():
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
         if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
             bounds = None
-    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes) or CANADADB.exists(), 'contours': contours}
+
+
+@functools.lru_cache(maxsize=8)
+def _place_dataset(path, signature):
+    """Describe providers actually represented in this installed gazetteer."""
+    db = sqlite3.connect(ro_uri(path), uri=True)
+    try:
+        rows = db.execute('SELECT DISTINCT source FROM place').fetchall()
+        if not rows:
+            return None
+        sources = sorted({str(row[0]).strip() for row in rows if row[0] and str(row[0]).strip()})
+        if not sources:
+            try:
+                meta = dict(db.execute('SELECT key,value FROM meta'))
+                sources = [meta['source']] if meta.get('source') else []
+            except sqlite3.Error:
+                pass
+        label = 'Place names (' + '; '.join(sources) + ')' if sources else 'Place names (installed gazetteer; source unspecified)'
+        return {'label': label, 'status': 'Used by "Find a place"'}
+    except sqlite3.Error:
+        return None
+    finally:
+        db.close()
+
+
+def place_dataset():
+    if not PLACEDB.exists():
+        return None
+    signature = []
+    for path in (PLACEDB, Path(str(PLACEDB) + '-wal')):
+        try:
+            stat = path.stat()
+            signature.append((stat.st_mtime_ns, stat.st_size))
+        except OSError:
+            signature.append(None)
+    return _place_dataset(PLACEDB, tuple(signature))
 
 
 def map_info():
@@ -1578,7 +1729,9 @@ def map_info():
         p = LIB / rel
         if p.exists() and label:
             geo.append({'label': label, 'status': status, 'path': rel, 'bytes': p.stat().st_size})
-    geo.append({'label': 'US place names (USGS GNIS) and Census 2025 ZIP-code and county centres', 'status': 'Used by "Find a place", together with named lakes, reservoirs and dams', 'path': 'geography/geographic-names/'})
+    places = place_dataset()
+    if places:
+        geo.append(places)
     if WATERDB.exists():
         try:
             w = dict(sqlite3.connect(ro_uri(WATERDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
@@ -1638,23 +1791,34 @@ def map_info():
     if AERIALDB.exists():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
+    canada = canada_mapdb()
     extra = {'aerial': has_aerial()}
-    if pack:
+    if pack or canada is not None:
         extra.update(map_contents())
+    if pack:
         geo = pack_datasets(extra)
+    if canada is not None:
+        cm = dict(canada.execute('SELECT key,value FROM meta'))
+        extra['canada'] = canada_info(cm)
+        geo.append({'label': 'Canada — OpenStreetMap contributors / Geofabrik (ODbL 1.0)',
+                    'status': 'Roads, paths, inland water, mapped places and selected services. Data: ' + extra['canada']['data_as_of'] +
+                              '. No Canadian imagery, elevation, routing or live opening status; address/postcode coverage is not comprehensive.',
+                    'bytes': CANADADB.stat().st_size})
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
 
 
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
-    area = 'the area this map details' if have['bounds'] else 'the whole US'
-    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
+    have_us = MAPDB.exists() or (HERE / 'derived/geo/national.sqlite').exists()
+    area = ('the original US pack coverage' if have_us else 'Canada') if CANADADB.exists() else ('the area this map details' if have['bounds'] else 'the whole US')
+    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}] if MAPDB.exists() or (HERE / 'derived/geo/national.sqlite').exists() else []
     if have['detail']:
-        out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
+        out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail varies by installed region; Canadian coverage is listed separately.' if CANADADB.exists() else ('Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in')})
     else:
         out.append({'label': 'No street detail or help points', 'status': 'This download has only the base map. Hospitals, water taps and side streets are not in it.'})
-    if PLACEDB.exists():
-        out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
+    places = place_dataset()
+    if places:
+        out.append(places)
     if TERRAINDB.exists():
         out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
     if BLDGDB.exists():

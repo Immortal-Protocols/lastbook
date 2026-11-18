@@ -3,7 +3,7 @@
    No external tiles or libraries. */
 const MapView = (() => {
   const EXT = 512;            // tile coordinate extent sent by the server
-  const MINZ = 3, MAXZ = 19, DATAZ = 17;
+  const MINZ = 0, MAXZ = 19, DATAZ = 17;
   let HOME = null;   // a household's own opening place, from web/home-area.json: a local file never packaged. "Set as my area" wins over it.
   const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';
   const US = [-124.8, 24.4, -66.9, 49.4];  // lower 48
@@ -80,7 +80,7 @@ const MapView = (() => {
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
-  const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
+  const dist = km => km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(km < 10 ? 1 : 0) + ' km';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
   const layerOf = cls => BY_CLS[cls] || { sym: '•', col: '#555', label: cls };
@@ -91,7 +91,8 @@ const MapView = (() => {
     if (!askedHome && !IN_WINDOW) { askedHome = true; try { const r = await fetch('/ui/home-area.json'); if (r.ok) HOME = await r.json() } catch { } }
     return HOME;
   }
-  const wholeMap = () => st.bounds || US;
+  // Fit the installed Canada extent (clamped to Canada so adjacent-border features do not distort the overview).
+  const wholeMap = () => st.canada?.overview_bounds || st.bounds || US;
   async function page(main, q, current = () => true) {   // current(): false once the router has moved on
     await localHome();
     if (!current()) return;   // left while the home area loaded: build nothing
@@ -103,17 +104,17 @@ const MapView = (() => {
     if (!on.length) on = DEFAULT_LAYERS;
     main.classList.add('map-page');
     document.title = 'Map · Lastbook';
-    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
+    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><label class="map-area"><span class="sr">Show map area</span><select id="map-area" aria-label="Show map area"><option value="" selected>Map area…</option><option value="us">US — lower 48</option></select></label><p class="small muted">Offline: works with no internet. <span id="map-date">Mapped records — not live services, closures or hazards. See layer source dates.</span></p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
-        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
+        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find a town or mapped place</label><input id="pq" type="search" placeholder="Find a town or mapped place" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
         <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers <b id="layer-count"></b></button>
       </div>
       <div class="map-pop" id="pres" hidden></div>
       <div class="map-pop layers" id="layers" hidden></div>
       <div class="mapctl"><span class="zgrp" role="group" aria-label="Zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">−</button></span>
-        <button id="zhome" aria-label="Go to my area" title="My area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button><button id="map-us" aria-label="Whole United States" title="Whole US">US</button>
+        <button id="zhome" aria-label="Go to my area" title="My area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button>
         <button id="map-full" aria-label="Full screen" title="Full screen">${FULL[0]}</button><button id="map-3d" aria-label="3D terrain view" title="3D view">3D</button><button id="map-photo" aria-label="Aerial photos" aria-pressed="false" title="Aerial photos">🛰</button></div>
       <div class="map-card" id="card" hidden></div>
       <div class="map-tip" id="tip" hidden></div>
@@ -130,9 +131,9 @@ const MapView = (() => {
     const tools = main.querySelector('.maptools');
     const fitMap = () => {
       const w = $('mapwrap'); if (!w) return;
-      const top = w.getBoundingClientRect().top + scrollY, tb = document.querySelector('.tabbar'), beside = tools.getBoundingClientRect().top < w.getBoundingClientRect().bottom;
+      const top = w.getBoundingClientRect().top + scrollY, tb = document.querySelector('.tabbar'), beside = tools.getBoundingClientRect().left >= w.getBoundingClientRect().right - 1;
       main.style.setProperty('--map-top', Math.round(top) + 'px');
-      main.style.setProperty('--map-bottom', (beside ? parseFloat(getComputedStyle(main).paddingBottom) + parseFloat(getComputedStyle(document.body).paddingBottom) : (tb && tb.offsetParent ? tb.offsetHeight : 0) + 16) + 'px');
+      main.style.setProperty('--map-bottom', (beside ? parseFloat(getComputedStyle(main).paddingBottom) + parseFloat(getComputedStyle(document.body).paddingBottom) : (tb && getComputedStyle(tb).display !== 'none' ? tb.getBoundingClientRect().height : 0) + 16) + 'px');
     };
     fitMap(); window.onresize = fitMap;   // the router clears window.onresize on the next page
     // The tools column scrolls on its own when it is taller than the map, and fades at an edge with more past it, as the chat list does
@@ -142,7 +143,7 @@ const MapView = (() => {
     const place = isFinite(lat) && isFinite(lon) ? null : home;
     const openWhole = !place && !(isFinite(lat) && isFinite(lon));   // nothing says where to open: the whole of this map, once its bounds have come
     st = { lat: isFinite(lat) ? lat : place ? place.lat : 39, lon: isFinite(lon) ? lon : place ? place.lon : -98, z: isFinite(z) ? Math.max(MINZ, Math.min(MAXZ, z)) : place ? place.z : 4,
-      on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, hover: null,
+      on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, nearAbort: null, hover: null,
       dem: new Map(), demPending: new Set(), demNone: new Map(), style: load('mapStyle', { relief: true, contours: true }) };
     if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kind: 'Linked place' };
     const cv = $('mapc');
@@ -153,8 +154,13 @@ const MapView = (() => {
     bind(cv);
     $('zin').onclick = () => zoomAt(1, cv.clientWidth / 2, cv.clientHeight / 2);
     $('zout').onclick = () => zoomAt(-1, cv.clientWidth / 2, cv.clientHeight / 2);
-    $('zhome').onclick = () => { const h = load('mapHome', HOME); if (h) go(h.lat, h.lon, h.z); else { closeCard(); fit(wholeMap(), 0.92, true) } };
-    $('map-us').onclick = () => { closeCard(); fit(wholeMap(), 0.92, true) };
+    $('zhome').onclick = () => { const h = load('mapHome', HOME); if (h) go(h.lat, h.lon, h.z); else { st.listAt = null; closeCard(); fit(wholeMap(), 0.92, true) } };
+    $('map-area').onchange = e => {
+      const value = e.target.value;
+      const box = value === 'canada' ? wholeMap() : value === 'us' ? US : value === 'all' ? st.bounds : st.canada?.regions?.find(r => r.id === value)?.bounds;
+      if (box) { st.listAt = null; closeCard(); fit(box, 0.88, true) }
+      // Keep the chosen destination visible after fitting the map.
+    };
     $('map-full').onclick = toggleFull;
     $('map-photo').onclick = () => setPhoto(!st.style.aerial);
     $('map-photo').classList.toggle('on', !!st.style.aerial); $('map-photo').setAttribute('aria-pressed', !!st.style.aerial);
@@ -172,13 +178,13 @@ const MapView = (() => {
     $('pf').onsubmit = e => { e.preventDefault(); findPlace($('pq').value.trim()) };
     $('pq').addEventListener('input', () => { if (!$('pq').value) $('pres').hidden = true });
     $('layers-btn').onclick = () => { const p = $('layers'), open = p.hidden; p.hidden = !open; $('layers-btn').setAttribute('aria-expanded', open); $('pres').hidden = true; if (open) { $('card').hidden = true; renderLayers() } };
-    st.onKey = e => { if (e.key === 'Escape' && st) { if (!$('layers').hidden) { $('layers').hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') } else if (!$('pres').hidden) $('pres').hidden = true; else if (!$('card').hidden) closeCard(); else if ($('mapwrap').classList.contains('max')) toggleFull() } };
+    st.onKey = e => { if (e.key === 'Escape' && st) { if (!$('layers').hidden) { $('layers').hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false'); $('layers-btn').focus({ preventScroll: true }) } else if (!$('pres').hidden) $('pres').hidden = true; else if (!$('card').hidden) closeCard(); else if ($('mapwrap').classList.contains('max')) toggleFull() } };
     document.addEventListener('keydown', st.onKey);
     layerCount();
     fetch('/api/map/info').then(r => r.json()).then(info => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
-      describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
+      describe(info); fitMap(); if (openWhole) { fit(wholeMap(), 0.92, true); $('map-area').value = st.canada ? 'canada' : st.bounds ? 'all' : 'us' } coverage(); draw();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
     }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
@@ -195,19 +201,30 @@ const MapView = (() => {
   function describe(info) {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
+    st.canada = info.canada || null;
+    const date = $('map-date');
+    if (date) date.textContent = st.canada
+      ? `Installed Canada OSM data: ${st.canada.data_as_of}. US layers retain their own source dates. Mapped records are not live services, closures or hazards.`
+      : 'Mapped records — not live services, closures or hazards. See layer source dates.';
+    const caBox = st.canada?.overview_bounds;
+    const caFull = !caBox || ((caBox[2] - caBox[0]) >= 75 && (caBox[3] - caBox[1]) >= 35);
+    const area = $('map-area');
+    if (area) area.innerHTML = '<option value="" selected>Map area…</option>' +
+      (st.canada ? `<option value="canada">${caFull ? 'Canada — all' : 'Canada — installed'}</option>` : info.bounds ? '<option value="all">Whole installed map</option>' : '') +
+      '<option value="us">US — lower 48</option>' +
+      (st.canada?.regions?.length ? '<optgroup label="Canada regions">' + st.canada.regions.map(r => `<option value="${escH(r.id)}">${escH(r.label)}</option>`).join('') + '</optgroup>' : '');
     if (!info.layers) return;
     st.have = new Set(info.layers); st.bounds = info.bounds;
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
     layerCount();
     if (!st.have.size) $('near').closest('section').hidden = true;
-    if (info.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
   }
   const offered = l => !st.have || (l && l.cls.some(c => st.have.has(c)));
   function toastMap(m) { if (typeof toast === 'function') toast(m) }
   function stop() {
     document.getElementById('main')?.classList.remove('map-page');
     if (typeof Terrain3D !== 'undefined') Terrain3D.close();
-    if (st) { clearInterval(st.nationalTimer); for (const t of ['nt', 'wt', 'kt', 'resizeTimer']) clearTimeout(st[t]); cancelAnimationFrame(st.raf); st.alive = false; st.ro && st.ro.disconnect(); document.removeEventListener('keydown', st.onKey); document.removeEventListener('fullscreenchange', st.onFull); if (document.fullscreenElement) document.exitFullscreen().catch(() => { }); st = null }
+    if (st) { clearInterval(st.nationalTimer); for (const t of ['nt', 'wt', 'kt', 'resizeTimer']) clearTimeout(st[t]); st.nearAbort?.abort(); st.nearAbort = null; cancelAnimationFrame(st.raf); st.alive = false; st.ro && st.ro.disconnect(); document.removeEventListener('keydown', st.onKey); document.removeEventListener('fullscreenchange', st.onFull); if (document.fullscreenElement) document.exitFullscreen().catch(() => { }); st = null }
   }
   function toggleFull() {
     const w = $('mapwrap'); if (!w) return;
@@ -216,7 +233,11 @@ const MapView = (() => {
     else { w.classList.add('max'); w.requestFullscreen?.().catch(() => { }) }  // CSS fallback keeps working where the Fullscreen API is missing (iPhone)
     syncFull();
   }
-  function syncFull() { const w = $('mapwrap'), b = $('map-full'); if (!w || !b) return; const on = w.classList.contains('max'); b.innerHTML = FULL[on ? 1 : 0]; b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = on ? 'Exit full screen (Esc)' : 'Full screen'; document.body.classList.toggle('map-maxed', on); draw() }
+  function syncFull() { const w = $('mapwrap'), b = $('map-full'); if (!w || !b) return; const on = w.classList.contains('max'); b.innerHTML = FULL[on ? 1 : 0]; b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = on ? 'Exit full screen (Esc)' : 'Full screen'; document.body.classList.toggle('map-maxed', on);
+    // Keep the same area control available inside the fullscreen top layer.
+    const area = $('map-area')?.closest('.map-area'), heading = document.querySelector('.maphead');
+    if (area && heading) { if (on) w.querySelector('.map-top').append(area); else heading.insertBefore(area, heading.querySelector('p')) }
+    draw() }
 
   function coverage() {
     const n = st?.national, el = $('mstatus'); if (!el) return;
@@ -224,6 +245,7 @@ const MapView = (() => {
     const b = st.bounds, outside = b && (st.lon < b[0] || st.lon > b[2] || st.lat < b[1] || st.lat > b[3]);
     st.coverNote = n && n.state === 'building' && !inSoCal
       ? `US streets still being converted (${((n.features || 0) / 1e6).toFixed(1)}M roads & features so far) — gaps fill in automatically.`
+      : st.canada ? 'Installed Canada layer: mapped roads, places and selected services; no Canadian imagery, elevation or routing. US layers retain their own coverage. Neither region reports live opening status.'
       : outside ? 'Outside the area this map details, only main roads, towns and water show.'
       : st.have && !st.have.size && st.z >= 9 ? 'This download has the base map only: main roads, towns and water.' : '';
     statusLine();
@@ -231,7 +253,8 @@ const MapView = (() => {
   function statusLine(msg) {
     const el = $('mstatus'); if (!el || !st) return;
     if (msg != null) st.pinMsg = msg;
-    const parts = [st.pinMsg, st.coverNote].filter(Boolean);
+    // Canada's static coverage limits remain in the header and dataset panel, not over the map.
+    const parts = [st.pinMsg, st.coverNote?.startsWith('Installed Canada layer:') ? '' : st.coverNote].filter(Boolean);
     el.innerHTML = parts.map(escH).join('<br>'); el.hidden = !parts.length;
   }
 
@@ -254,7 +277,7 @@ const MapView = (() => {
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
       ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${gl}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(l.label)}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
       ${st.have && !st.have.size ? '' : '<p class="small muted" style="margin:6px 2px 0">Numbers are places in the current view.</p>'}`;
-    box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') };
+    box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false'); $('layers-btn').focus({ preventScroll: true }) };
     box.querySelectorAll('label.ly input').forEach(i => i.onchange = () => { i.checked ? st.on.add(i.value) : st.on.delete(i.value); layersChanged() });
     box.querySelectorAll('[data-style]').forEach(i => i.onchange = () => { if (i.dataset.style === 'aerial') return setPhoto(i.checked); st.style[i.dataset.style] = i.checked; save('mapStyle', st.style); draw() });
     box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { st.on = new Set((PRESETS.find(p => p[0] === b.dataset.p)?.[1] || []).filter(id => offered(LAYERS.find(l => l.id === id)))); layersChanged(); renderLayers() });
@@ -332,7 +355,7 @@ const MapView = (() => {
 
   function pan(dx, dy) {
     const zf = st.z, wx = lon2x(st.lon, zf) - dx / 256, wy = lat2y(st.lat, zf) - dy / 256;
-    st.lon = ((x2lon(wx, zf) + 540) % 360) - 180; st.lat = Math.max(-80, Math.min(80, y2lat(wy, zf))); draw();
+    st.lon = ((x2lon(wx, zf) + 540) % 360) - 180; st.lat = Math.max(-85.0511, Math.min(85.0511, y2lat(wy, zf))); draw();
   }
   function zoomAt(dz, px, py, smooth) {
     const cv = st.cv, w = cv.clientWidth, h = cv.clientHeight;
@@ -342,19 +365,20 @@ const MapView = (() => {
     st.lon = x2lon(lon2x(glon, nz) - (px - w / 2) / 256, nz); st.lat = y2lat(lat2y(glat, nz) - (py - h / 2) / 256, nz);
     if (!smooth) settle(); else draw();
   }
-  function go(lat, lon, z) { Object.assign(st, { lat, lon, z: Math.max(MINZ, Math.min(MAXZ, z)) }); settle() }
+  function go(lat, lon, z) { st.listAt = null; Object.assign(st, { lat, lon, z: Math.max(MINZ, Math.min(MAXZ, z)) }); settle() }
   function fit(b, share = 0.7, free) {  // [west, south, east, north] into part of the view
     const w = st.cv.clientWidth * share, h = st.cv.clientHeight * share;
-    const dx = Math.max(1e-9, lon2x(b[2], 0) - lon2x(b[0], 0)), dy = Math.max(1e-9, lat2y(b[1], 0) - lat2y(b[3], 0));
+    const east = b[2] < b[0] ? b[2] + 360 : b[2];
+    const dx = Math.max(1e-9, lon2x(east, 0) - lon2x(b[0], 0)), dy = Math.max(1e-9, lat2y(b[1], 0) - lat2y(b[3], 0));
     const z = Math.min(Math.log2(w / 256 / dx), Math.log2(h / 256 / dy), 17);
     const cy = y2lat((lat2y(b[1], 0) + lat2y(b[3], 0)) / 2, 0);
-    go(cy, (b[0] + b[2]) / 2, free ? Math.max(MINZ, z) : Math.min(17, Math.max(Math.floor(z * 2) / 2, st.z + 1.5)));
+    go(cy, ((b[0] + east) / 2 + 180) % 360 - 180, free ? Math.max(MINZ, z) : Math.min(17, Math.max(Math.floor(z * 2) / 2, st.z + 1.5)));
   }
   function settle(keepList) {
     if (!st) return;
     draw(); coverage();
     history.replaceState(null, '', `#/map?lat=${st.lat.toFixed(5)}&lon=${st.lon.toFixed(5)}&z=${st.z.toFixed(2)}&layers=${[...st.on].join(',')}`);  // a pin= marker belongs to the visit that linked it
-    if (!keepList) st.listAt = null;
+    if (!keepList) { st.listAt = null; st.nearAbort?.abort(); st.nearAbort = null }
     clearTimeout(st.nt); st.nt = setTimeout(() => { if (!st) return; if (!st.listAt) nearby(); loadPins() }, 200);
   }
 
@@ -418,7 +442,13 @@ const MapView = (() => {
     for (const feature of fc.features) {
       const polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
       g.beginPath();
-      for (const poly of polys) for (const ring of poly) { ring.forEach(([lo, la], i) => { const [x, y] = px(la, lo, V); i ? g.lineTo(x, y) : g.moveTo(x, y) }); g.closePath() }
+      for (const poly of polys) for (const ring of poly) {
+        let previous = null;
+        const points = ring.map(([lo, la]) => { if (previous !== null) lo += 360 * Math.round((previous - lo) / 360); previous = lo; return [lo, la] });
+        const middle = points.length ? (Math.min(...points.map(p => p[0])) + Math.max(...points.map(p => p[0]))) / 2 : 0;
+        const shift = 360 * Math.round((st.lon - middle) / 360);
+        points.forEach(([lo, la], i) => { const [x, y] = px(la, lo + shift, V); i ? g.lineTo(x, y) : g.moveTo(x, y) }); g.closePath();
+      }
       feature.properties?.kind === 'lake' ? (g.fillStyle = C.water, g.fill('evenodd')) : fc === world ? (g.fill('evenodd'), g.stroke()) : g.stroke();
     }
   }
@@ -429,7 +459,7 @@ const MapView = (() => {
     if (cv.width !== Math.round(w * R) || cv.height !== Math.round(h * R)) { cv.width = Math.round(w * R); cv.height = Math.round(h * R) }
     const g = st.ctx; g.setTransform(R, 0, 0, R, 0, 0);
     g.fillStyle = C.ocean; g.fillRect(0, 0, w, h);
-    const tz = Math.max(MINZ, Math.min(DATAZ, Math.floor(st.z + 0.01)));
+    const tz = Math.max(3, Math.min(DATAZ, Math.floor(st.z + 0.01)));
     const ts = 256 * 2 ** (st.z - tz), cx = lon2x(st.lon, tz), cy = lat2y(st.lat, tz);
     const V = { w, h, tz, ts, cx, cy };
     if (world) { g.fillStyle = C.land; g.strokeStyle = '#aab5a5'; g.lineWidth = .7; outline(g, world, V) }
@@ -448,7 +478,7 @@ const MapView = (() => {
         for (const l of t.labels) labels.push({ ...l, sx: sx + l.x * ts, sy: sy + l.y * ts });
       } else {
         if (!t?.failed) loading++;
-        for (let up = 1; up <= 5 && tz - up >= MINZ; up++) {  // a lower-zoom parent stands in while loading
+        for (let up = 1; up <= 5 && tz - up >= 3; up++) {  // a lower-zoom parent stands in while loading
           const pz = tz - up, f = 2 ** up, ppx = Math.floor(wx / f), ppy = Math.floor(ty / f), pt = st.tiles.get(tileKey(pz, ppx, ppy));
           if (pt && pt.canvas && pt.photo === !!st.style.aerial) { const S = pt.canvas.width / f; g.drawImage(pt.canvas, (wx - ppx * f) * S, (ty - ppy * f) * S, S, S, sx, sy, ts + 0.5, ts + 0.5); break }
         }
@@ -758,7 +788,7 @@ const MapView = (() => {
     el.querySelector('.x').onclick = closeCard; return el;
   }
   // Keep the chosen place visible beside (desktop) or above (phone) the card instead of underneath it.
-  function reveal(lat, lon) {
+  function reveal(lat, lon, keepList = false) {
     const card = $('card'), cv = st.cv; if (!card || card.hidden) return;
     const w = cv.clientWidth, h = cv.clientHeight, c = card.getBoundingClientRect(), m = cv.getBoundingClientRect();
     const x = w / 2 + (lon2x(lon, st.z) - lon2x(st.lon, st.z)) * 256, y = h / 2 + (lat2y(lat, st.z) - lat2y(st.lat, st.z)) * 256;
@@ -768,7 +798,9 @@ const MapView = (() => {
     const covered = x > cl - 24 && x < cr + 24 && y > ct - 24 && y < cb + 24;
     if (!covered && x > 20 && x < w - 70 && y > 60 && y < h - 30) return;
     const tx = sheet ? w / 2 : (cr + 24 + w - 60) / 2, ty = sheet ? Math.max(70, ct / 2 + 20) : h / 2;
-    pan(tx - x, ty - y); st.listAt = 1; settle(true);  // the nearby list stays put while the map makes room
+    pan(tx - x, ty - y);
+    if (keepList) st.listAt = 1;
+    settle(keepList);  // only preserve the nearby list when the user picked an item from that list
   }
   function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
   function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || 'Place')}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">Remove marker</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
@@ -783,7 +815,7 @@ const MapView = (() => {
     el.querySelector('[data-a=copy]')?.addEventListener('click', async e => { try { await navigator.clipboard.writeText(`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`); e.target.textContent = 'Copied ✓' } catch { e.target.textContent = 'Copy failed — select the numbers above' } });
     el.querySelector('[data-a=zoom]')?.addEventListener('click', () => { go(p.lat, p.lon, Math.max(st.z, 16)); reveal(p.lat, p.lon) });
   }
-  function showDetail(p, back) {
+  function showDetail(p, back, keepList = false) {
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
     const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
@@ -793,7 +825,7 @@ const MapView = (() => {
       ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>Not a water source:</b> this is a ${escH((detail.reservoir_type || 'waste pond').toLowerCase())}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.</p>` : ''}${/tailings/i.test(detail.purposes || '') ? '<p class="caveat"><b>Mine-tailings dam:</b> it holds mine waste, not usable water. Do not drink, swim or fish here.</p>' : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(CAVEAT[p.cls])}</p>` : ''}${coordsBlock(p)}
       <div class="acts"><button data-a="zoom">Zoom here</button><button data-a="copy">Copy coordinates</button></div>`);   // no web links: the words stay, the addresses go
     if (back) el.querySelector('.back').onclick = () => showMembers(back.p);
-    wireCoords(p); reveal(p.lat, p.lon);
+    wireCoords(p); reveal(p.lat, p.lon, keepList);
   }
   async function showMembers(p) {
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
@@ -850,21 +882,32 @@ const MapView = (() => {
   async function nearby() {
     if (!st) return;
     const box = $('near'), state = st, serial = ++st.serial.near, ks = kinds(); if (!box) return;
-    if (!ks.length) { box.innerHTML = '<p class="muted small">No layers are on.</p>'; return }
+    st.nearAbort?.abort();
+    st.nearAbort = null;
+    if (!ks.length) { box.classList.remove('busy'); box.innerHTML = '<p class="muted small">No layers are on.</p>'; return }
+    const ac = typeof AbortController === 'function' ? new AbortController() : null;
+    st.nearAbort = ac;
     box.classList.add('busy');
     try {
-      const r = await fetch(`/api/map/near?lat=${st.lat}&lon=${st.lon}&cls=${ks.join(',')}&limit=${Math.max(3, Math.ceil(14 / ks.length))}`).then(r => r.json());
+      const r = await fetch(`/api/map/near?lat=${st.lat}&lon=${st.lon}&cls=${ks.join(',')}&limit=${Math.max(3, Math.ceil(14 / ks.length))}`, ac ? { signal: ac.signal } : undefined).then(r => r.json());
       if (st !== state || serial !== st.serial.near) return;
-      box.classList.remove('busy');
       if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">Nothing from your layers within about 100 miles of the map center.</p>'; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
       box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${escH(layerOf(p.cls).label)} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
         const p = list[+b.dataset.i]; box.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
-        st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }); settle(true); b.classList.add('on');
+        st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }, null, true); settle(true); b.classList.add('on');
         if (innerWidth < 1000) $('mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
-    } catch { if (st === state) box.innerHTML = '<p class="muted small">Nearby search is unavailable.</p>' }
+    } catch (e) {
+      if (e?.name === 'AbortError' || st !== state || serial !== st.serial.near) return;
+      box.innerHTML = '<p class="muted small">Nearby search is unavailable.</p>';
+    } finally {
+      if (st === state && serial === st.serial.near) {
+        if (st.nearAbort === ac) st.nearAbort = null;
+        box.classList.remove('busy');
+      }
+    }
   }
   async function findPlace(q) {
     const box = $('pres'); if (!q) { box.hidden = true; return }
@@ -874,8 +917,19 @@ const MapView = (() => {
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
-      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
+      if (!r.length) {
+        const address = /^\s*\d[\w-]*\s+\S/.test(q);
+        const msg = st.canada
+          ? (address
+              ? 'Address not found in your offline data. Canadian search covers places, services and named water — not street addresses or postal codes.'
+              : 'No place by that name in the saved gazetteers. Try a town, city, service or named lake or river (Canadian street addresses and postal codes are not included).')
+          : (address
+              ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '')
+              : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.');
+        box.innerHTML = '<p class="muted small" style="padding:8px">' + msg + '</p>';
+        return;
+      }
+      const pick = p => { box.hidden = true; st.listAt = null; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);

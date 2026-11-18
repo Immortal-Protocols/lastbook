@@ -50,7 +50,8 @@ other Linux distributions have not been validated for this release.
   keyword search everywhere and meaning-based search on Windows.
 - **Offline map.** A base map of the world and the US, plus a detailed map for the state selected during setup: local streets,
   buildings, terrain, crops, and water, help and resource points. Addresses in that state can be found offline. The person
-  picks the state; Lastbook never detects location.
+  picks the state; Lastbook never detects location. Developer-built Canadian coverage can be added from a local
+  OpenStreetMap extract; see [Canada map tools and limitations](docs/canada-map.md).
 - **Optional local AI.** Ask questions in plain words and get answers that cite library pages, from a model that runs on
   the computer itself (see "The local AI" below). Without it, Chat still finds the right pages.
 - **Saved video moments.** Keep several named positions in a video and open them from the player or Saved. Names and

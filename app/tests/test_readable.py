@@ -22,7 +22,8 @@ def load():
     finally:
         sys.path.remove(str(ROOT))
         for name in set(sys.modules) - set(before):
-            del sys.modules[name]
+            if name.split('.')[0] != 'numpy':   # a compiled module loads once per process: dropping it breaks the next import
+                del sys.modules[name]
         sys.modules.update(before)
         if 'onnxruntime' not in before:
             sys.modules.pop('onnxruntime', None)

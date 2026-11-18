@@ -28,6 +28,7 @@ from engine.setup import download, manifest        # noqa: E402
 MEASURED_MEMORY = 18_160_150_464 + 867_233_792     # Mac Studio M3 Ultra, 12 Nov 2026, --ctx 16384: device_bytes + host_bytes
 BASE = 'https://downloads.lastbook.org'     # live since 12 Nov 2026; packs and maps are accepted from this host only
 SMALL_SUMMARY = 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'
+PACK_MAPS = {'medium': 'CA', 'all': 'us'}
 
 
 def model_entry(memory_bytes):
@@ -79,9 +80,10 @@ def main():
     for p in packs:      # the detailed map a pack already holds ("CA", "us"), from the pack as built, when its entry does not say
         if 'map' not in p:
             try:
-                p['map'] = json.loads((ROOT / 'derived' / 'packs' / p['id'] / 'pack.json').read_text(encoding='utf-8')).get('map')
+                built = json.loads((ROOT / 'derived' / 'packs' / p['id'] / 'pack.json').read_text(encoding='utf-8'))
+                p['map'] = built.get('map', PACK_MAPS.get(p['id'])) or 'base'
             except (OSError, ValueError):
-                pass
+                p['map'] = PACK_MAPS.get(p['id'])
     if not packs:
         sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),

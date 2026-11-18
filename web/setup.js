@@ -104,7 +104,7 @@
   }
   /* the detailed map the library will have once the chosen pack is in: the person's regional map, or the one the pack carries */
   const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
-  const packMap = id => { const p = packById(id) || {}; return 'map' in p ? p.map || null : PACK_MAP[id] || null };
+  const packMap = id => { const p = packById(id) || {}; return p.map === 'base' ? null : p.map || PACK_MAP[id] || null };
   const mapNow = () => { const c = cur() || {}; return choice.pack && choice.pack !== c.pack ? packMap(choice.pack) : (c.map && c.map !== 'base' ? c.map : packMap(c.pack)) };
   const selectedRegion = () => choice.map || (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
   const addresses = () => (S.manifest && S.manifest.address_indexes) || [];
@@ -114,10 +114,12 @@
   const mapAdds = () => choice.map && !regionIncluded(choice.map, mapNow(), maps()) ? mapById(choice.map) : null;
   function packSummary(p) {
     const text = p.summary || '';
-    if (p.id !== 'medium' || !maps().length) return text;
+    if (!maps().length) return text;
     // The manifest describes the archive's bundled map. Setup replaces it with the chosen regional map.
     const region = selectedRegion();
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (region ? mapName(region) : 'your region'));
+    if (p.id === 'medium') return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (region ? mapName(region) : 'your region'));
+    return packMap(p.id) === 'us' && region && !isUSState(mapById(region))
+      ? `${text} Choosing ${mapName(region)} replaces the bundled US map.` : text;
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -282,8 +284,10 @@
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your map is already included.') + ' Street-address search is not available for this region yet.';
+    const replacesBundledUS = now === 'us' && sel && !isUSState(sel);
+    const replacementNote = replacesBundledUS ? ' This replaces the US map bundled with All.' : '';
+    let hint = !sel ? 'Select your region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}${replacementNote}` : 'Your map and available address index are already included.';
+    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your map is already included.') + ` Street-address search is not available for this region yet.${replacementNote}`;
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
       ${now === 'us' ? '<p class="s-mapnote">All includes every US state map. Choose a state for offline street-address search, or another country for its local map.</p>' : ''}

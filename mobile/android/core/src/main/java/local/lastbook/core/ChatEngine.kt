@@ -4,8 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import local.lastbook.core.ai.LlamaAndroid
-import java.util.concurrent.atomic.AtomicLong
+import local.lastbook.core.ai.LocalLlama
 
 /**
  * Chat's library half: keyword retrieval over the library's own FTS5 index, the catalog and video transcripts. When a
@@ -19,10 +18,8 @@ class ChatEngine(
     private val catalog: Catalog,
     private val paths: LastbookPaths,
 ) {
-    private val llama = AtomicLong(0L)
-    @Volatile private var llamaPath: String? = null
+    private val llama = LocalLlama()
     private val prefs = context.getSharedPreferences("lastbook", android.content.Context.MODE_PRIVATE)
-    private val genLock = java.util.concurrent.locks.ReentrantLock()
 
     /** Whether local AI answers are allowed. The file may stay installed while this is off. */
     fun aiEnabled(): Boolean = prefs.getBoolean("aiEnabled", true)
@@ -245,20 +242,11 @@ class ChatEngine(
     /** One answer written on this phone from the retrieved sources. Returns null when the runtime or model cannot start. */
     fun generate(question: String, sources: List<Rec>): String? {
         // The native bridge shares one context and one output buffer: never let two answers overlap.
-        if (!genLock.tryLock()) return null
-        return try { generateUnlocked(question, sources) } finally { genLock.unlock() }
+        return generateUnlocked(question, sources)
     }
 
     private fun generateUnlocked(question: String, sources: List<Rec>): String? {
         val model = localModelFile() ?: return null
-        var h = llama.get()
-        if (h == 0L || llamaPath != model.path) {
-            if (h != 0L) { runCatching { LlamaAndroid.nativeFree(h) }; llama.set(0L) }
-            val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
-            h = runCatching { LlamaAndroid.nativeLoad(model.path, 2048, threads) }.getOrDefault(0L)
-            if (h == 0L) return null
-            llama.set(h); llamaPath = model.path
-        }
         val src = StringBuilder()
         for ((i, s) in sources.take(3).withIndex()) {
             val key = "S${i + 1}"
@@ -282,19 +270,12 @@ class ChatEngine(
         sp("<|turn>model\n<|channel>thought\n")
         tx("I have checked the sources and will now write a direct, practical answer citing [S1], [S2], [S3].\n")
         sp("<channel|>")
-        return runCatching {
-            LlamaAndroid.nativeGenerate(h, texts.toTypedArray(), special.toBooleanArray(), 160, 0.2f, 40, 0.95f)
-                .trim().takeIf { it.isNotEmpty() }
-        }.getOrNull()
+        return llama.generate(model.path, texts.toTypedArray(), special.toBooleanArray(), 160, 0.2f, 40, 0.95f)
     }
 
-    fun stop() { val h = llama.get(); if (h != 0L) runCatching { LlamaAndroid.nativeCancel(h) } }
+    fun stop() = llama.stop()
 
-    fun release() {
-        val h = llama.getAndSet(0L)
-        if (h != 0L) runCatching { LlamaAndroid.nativeFree(h) }
-        llamaPath = null
-    }
+    fun release() = llama.release()
 
     fun localModelFile(): File? {
         if (!aiEnabled()) return null

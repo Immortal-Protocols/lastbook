@@ -17,6 +17,12 @@ shelter may be a shelter structure, including a bus shelter; mapped services are
 not confirmation of current availability. The map reports its source date and
 OpenStreetMap attribution. Addresses are a separate optional download.
 
+Place-name search includes settlements stored as points or polygons. For a
+polygon name, the builder prefers a matching mapped town centre inside that
+area, including a multilingual point such as `ᒨᓱᓂᔾ Moosonee`. Original names
+and existing point locations are preserved. If no unambiguous centre is available,
+the builder uses an interior point that avoids holes and gaps between islands.
+
 Elevation/contours, aerial photos, crop surveys, official dam inventories, postal
 area centroids and Ontario-specific survival-guide curation are separate work.
 Unit preferences belong to the upstream units work; this PR keeps the existing
@@ -124,6 +130,9 @@ Tiny fictional fixtures need no download or socket. They cover building, input a
 output receipts, safe archive layout, corrupt local files, installation over All
 US, Canadian address preservation on upgrade, US compatibility, and actual map,
 place and address routes. Node additionally exercises setup selection and size
-calculations. Run the full suite in CONTRIBUTING before proposing the change.
+calculations. Polygon-place tests cover exact-name search and map labels after
+installation, multilingual town centres, concave areas, holes, separate islands,
+distant namesakes, and extracts without a polygon-place table.
+Run the full suite in CONTRIBUTING before proposing the change.
 Real province checks and native-window checks should be reported separately from
 fixture tests; Windows and Linux are not implied by a Mac result.

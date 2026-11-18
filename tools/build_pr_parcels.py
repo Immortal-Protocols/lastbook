@@ -13,6 +13,29 @@ from engine.pr_addresses import fold
 from tools.build_pr_rural import Areas, features
 
 
+# CRIM's municipio numbers differ from Census FIPS. Source: Tipos Contributivos 2025–26,
+# https://portal.crim360.com/crimpr/CMS/DOCUMENTOS/download/362.pdf
+CRIM_MUNICIPIOS = {
+    '01': 'Aguadilla', '02': 'Isabela', '03': 'Quebradillas', '04': 'Camuy', '05': 'Hatillo',
+    '06': 'Arecibo', '07': 'Barceloneta', '08': 'Manatí', '09': 'Vega Baja', '10': 'Vega Alta',
+    '11': 'Dorado', '12': 'Toa Alta', '13': 'Toa Baja', '14': 'Cataño', '15': 'Bayamón',
+    '16': 'Guaynabo', '19': 'Trujillo Alto', '20': 'Carolina', '21': 'Loíza', '22': 'Río Grande',
+    '23': 'Luquillo', '24': 'Fajardo', '25': 'Rincón', '26': 'Aguada', '27': 'Moca',
+    '28': 'Añasco', '29': 'Mayagüez', '30': 'San Sebastián', '31': 'Las Marías', '32': 'Maricao',
+    '33': 'Lares', '34': 'Adjuntas', '35': 'Utuado', '36': 'Jayuya', '37': 'Ciales',
+    '38': 'Morovis', '39': 'Orocovis', '40': 'Corozal', '41': 'Barranquitas', '42': 'Naranjito',
+    '43': 'Comerío', '44': 'Cidra', '45': 'Aguas Buenas', '46': 'Caguas', '47': 'Gurabo',
+    '48': 'San Lorenzo', '49': 'Juncos', '50': 'Las Piedras', '51': 'Humacao', '52': 'Naguabo',
+    '53': 'Ceiba', '54': 'Hormigueros', '55': 'Cabo Rojo', '56': 'San Germán', '57': 'Lajas',
+    '58': 'Sabana Grande', '59': 'Guánica', '60': 'Yauco', '61': 'Guayanilla', '62': 'Peñuelas',
+    '63': 'Ponce', '64': 'Juana Díaz', '65': 'Villalba', '66': 'Coamo', '67': 'Santa Isabel',
+    '68': 'Aibonito', '69': 'Salinas', '70': 'Cayey', '71': 'Guayama', '72': 'Arroyo',
+    '73': 'Patillas', '74': 'Maunabo', '75': 'Yabucoa', '76': 'Vieques', '77': 'Culebra',
+    '79': 'San Juan', '80': 'Canóvanas', '81': 'Florida',
+}
+PREFIXED_ACCOUNT = re.compile(r'([0-9]{2})-([0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{2}-[0-9]{3})')
+
+
 def pages(folder, entry):
     count = 0
     fingerprint = hashlib.sha256()
@@ -98,8 +121,8 @@ def csv_records(path):
         names = {fold(c).replace(' ', ''): c for c in reader.fieldnames or []}
         def field(*options):
             return next((names[name] for name in options if name in names), None)
-        number = field('catastro', 'numcatastro')
-        address = field('address', 'direccionfisica')
+        number = field('catastro', 'numcatastro', 'numdecatastro', 'numerocatastro', 'numerodecatastro')
+        address = field('address', 'direccionfisica', 'dirfisica')
         town = field('municipio', 'municipality')
         if not (number and address and town):
             raise ValueError('CRIM CSV needs catastro, physical address and municipio columns.')
@@ -109,12 +132,20 @@ def csv_records(path):
 
 def labels(db, records, source):
     for row in records:
-        key = pr_parcels.number(str(row['catastro'] or '').strip())
+        value = str(row['catastro'] or '').strip()
+        town = fold(row['municipio'] or '')
+        account = PREFIXED_ACCOUNT.fullmatch(value)
+        if account:
+            code, value = account.groups()
+            if not town or town != fold(CRIM_MUNICIPIOS.get(code, '')):
+                continue
+        key = pr_parcels.number(value)
         if not key:
             continue
-        town = fold(row['municipio'] or '')
-        places = db.execute('SELECT municipio FROM pr_parcel WHERE base=?', (key[:11],)).fetchall()
-        if not places or (town and not any(town == fold(p[0]) for p in places)):
+        # Address candidates share the outline of every polygon with this land number.
+        # A number spanning different municipios cannot identify a permit's land unambiguously.
+        places = {fold(p[0]) for p in db.execute('SELECT municipio FROM pr_parcel WHERE base=?', (key[:11],))}
+        if len(places) != 1 or '' in places or (town and town not in places):
             continue
         if len(key) == 14 and key[11:] != '000':
             db.execute('INSERT OR IGNORE INTO pr_account VALUES (?)', (key,))
@@ -145,14 +176,29 @@ def build(db, folder, rural, csv_files=()):
         (base,route,coalesce(meters,-1),lot,sector,interior,access,postal,landmark,source);""")
     for name in ('sip', 'arpe'):
         labels(db, pages(folder, manifest[name]), name.upper() + ' permit')
+    csv_hashes = []
     for path in csv_files:
         labels(db, csv_records(path), 'CRIM')
+        with path.open('rb') as stream:
+            csv_hashes.append(hashlib.file_digest(stream, 'sha256').hexdigest())
     db.execute('CREATE INDEX pr_parcel_route ON pr_parcel_address(route,meters,base)')
     n = db.execute('SELECT count(DISTINCT base) FROM pr_parcel').fetchone()[0]
     if not n:
         raise ValueError('No indexed parcel geometry.')
+    # A land number can have multiple permits and can also appear in a CRIM address export.
+    counts = db.execute("""
+        SELECT p.municipio, count(DISTINCT a.base),
+               count(DISTINCT CASE WHEN a.source IN ('SIP permit', 'ARPE permit') THEN a.base END),
+               count(DISTINCT CASE WHEN a.source = 'CRIM' THEN a.base END)
+          FROM pr_parcel_address a JOIN pr_parcel p ON p.base = a.base
+         GROUP BY p.municipio""")
+    coverage = {town: {'addressed_parcels': 0, 'permit_parcels': 0, 'crim_address_parcels': 0}
+                for town in sorted(towns.values())}
+    for town, total, permits, crim in counts:
+        coverage[town] = {'addressed_parcels': total, 'permit_parcels': permits, 'crim_address_parcels': crim}
     return {'parcels': n, 'addressed_parcels': db.execute('SELECT count(DISTINCT base) FROM pr_parcel_address').fetchone()[0],
+            'address_coverage_by_municipio': coverage,
             'address_sources': dict(db.execute('SELECT source,count(*) FROM pr_parcel_address GROUP BY source')),
             'municipios': dict(db.execute('SELECT municipio,count(DISTINCT base) FROM pr_parcel GROUP BY municipio')),
             'sources': {k: {f: v[f] for f in ('source','records','sha256_uncompressed')} for k,v in manifest.items()},
-            'additional_csvs': [hashlib.sha256(path.read_bytes()).hexdigest() for path in csv_files]}
+            'additional_csvs': csv_hashes}

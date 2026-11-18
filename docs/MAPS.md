@@ -123,16 +123,11 @@ but omits the requested kilometer, the result says **km unrecorded**. The parcel
 within the recorded land boundary. Its position does not identify an entrance or a building.
 These screenshots use invented parcels. [Numbered boundaries](pr-parcels-map.png) · [Match list](pr-parcels-list.png)
 
-For a build, download the Puerto Rico OSM PBF from [Geofabrik](https://download.geofabrik.de/north-america/us/puerto-rico.html)
-and the [US Census municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
-Save them as `puerto-rico.osm.pbf` and `municipios.geojson`. Use Python 3.11 or newer in a separate build environment.
+To build a parcel-enabled Puerto Rico pack, use Python 3.11 or newer in a separate build environment on a computer with internet access. The command fetches the islandwide public inputs directly from their publishers and writes `Lastbook-Addresses-PR.zip`, `PR.sqlite` and `PR.coverage.json` in the chosen directory. Reusing the directory reuses its source files. Using a new directory fetches a new snapshot.
 
 ```sh
 python -m pip install osmium==4.3.2 shapely==2.2.0
-python tools/fetch_pr_rural.py derived/pr-rural-inputs
-python tools/fetch_pr_parcels.py derived/pr-parcel-inputs
-python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs --parcels derived/pr-parcel-inputs
-python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search
+python tools/prepare_pr_address_index.py derived/pr-addresses
 ```
 
 The builder uses address nodes and points inside valid closed ways. Each point must fall within one municipio.
@@ -140,23 +135,21 @@ It uses the mapped city when present and accepts the containing municipio as a s
 urbanización only when the address identifies one. Coverage varies by municipio. `PR.coverage.json` lists
 house counts for all 78, reasons for skipped objects, rural coverage, source fingerprints and the SQLite checksum.
 The parcel fetcher reads numbered land polygons from the February 2025 CRIM layer. It also reads
-physical addresses and cadastral numbers from the SIP and ARPE permit layers. Many parcels have
-no usable numbered-road address in these records. A November 2026 build found 1,292,468 distinct
-land parcel numbers in 78 municipios. The two permit layers supplied searchable rural addresses
-for 20,681 of those parcels. The fetcher requests no ownership or valuation fields.
+physical addresses and cadastral numbers from the SIP and ARPE permit layers. Many ARPE numbers start with a two-digit CRIM municipio code. The builder accepts those records when the code, the permit's municipio and the indexed municipio of the parcel agree. A multi-parcel permit or conflicting municipality cannot supply a prefixed match.
+
+The November 2026 build found 1,292,468 distinct land numbers. The two permit layers supplied searchable numbered-road addresses for **62,164 parcels across all 78 municipios**. Of these, 52,816 had at least one recorded kilometer. The fetcher requests only the land number, geometry or directions, municipio and the source record identifier. See the counts for each municipio and the results of searching 234 real permit addresses. [Municipio coverage and search results](pr-parcel-coverage.md) · [CRIM municipio codes](https://portal.crim360.com/crimpr/CMS/DOCUMENTOS/download/362.pdf)
 [CRIM parcel boundaries](https://sigejp.pr.gov/server/rest/services/crim/crim_feb_2025/MapServer/0) ·
 [SIP permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/8) ·
 [ARPE permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/16)
 
-A local physical-address export can supplement permit coverage. Add `--crim-addresses file.csv` for each
-export with `catastro,address,municipio` columns. The builder indexes geographic qualifiers for
-matching land numbers and records a fingerprint for each input. Store any such export locally.
-A new download directory fetches a fresh snapshot. An interrupted download resumes in the same directory.
-Omit `--parcels` for the road and school index from the original rural preview.
+The Planning Board's parcel layer has land numbers and boundaries. CRIM's *dirección física* is a separate source. The Catastro Digital guide describes individual lookups. An islandwide physical-address export with published redistribution terms has yet to be identified. A CRIM-supplied CSV can extend local coverage. Pass `--crim-addresses file.csv` once per file to the build command. The CSV may use `número de catastro,dirección física,municipio` or `catastro,address,municipio`. The builder reads those three fields and keeps source counts separate. [Catastro Digital guide](https://catastro.crimpr.net/cdprpc/help/CDPRPC_ManualUsuario_20200708.pdf) · [CRIM contact](https://portal.crim360.com/crimpr/CMS/13.html)
+
+For a build from existing inputs, run `python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs --parcels derived/pr-parcel-inputs`. Omit `--parcels` for the earlier road and school index. The OSM and Census inputs are the [Puerto Rico PBF](https://download.geofabrik.de/north-america/us/puerto-rico.html) and [municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
 
 A missing house number has no exact address result. Omitting `--rural` builds the smaller house-only index.
-For reproducible builds use the release's four archived rural inputs together with its two identified OSM and
-municipio inputs. Fetching again requests the publisher's current edition of each endpoint.
+To reproduce the road and school preview, use the release's four archived rural inputs and its identified OSM and municipio inputs. For a parcel build, retain the parcel input directory as well. The coverage report fingerprints the raw parcel and permit snapshots.
+
+Run the builder and reader regressions with `python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search`.
 
 Road measures come from [Puerto Rico HPMS 2024](https://geo.dot.gov/server/rest/services/Hosted/HPMS_FULL_PR_2024/FeatureServer/0).
 Area labels come from [Census barrios](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/1)

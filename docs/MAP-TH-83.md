@@ -102,3 +102,76 @@ toilets 216, shelters 206, beaches 173, schools 141, supermarkets 137, fuel 105.
 
 The place finder has 1,291 rows: 111 places (1 city, 11 towns, 72 villages, 15 neighbourhoods, 4 quarters, 4 islands
 and others) and 1,180 named help points. 273 rows carry a second name, the English one where OpenStreetMap has it.
+
+## What was checked, and how
+
+`tools/check_region_map.py` passed all 37 file checks and all 14 engine checks on the build above. With `--engine`,
+every connection blocked and an empty library:
+
+- **Map display.** Tiles at zoom 10, 13 and 16 around Patong beach: roads, water, land, beaches and place labels at the
+  wider zooms, 219 building outlines in one zoom-16 tile.
+- **Pins.** 62 pin groups around Patong.
+- **Nearest help.** Pharmacies at 0.15, 0.18 and 0.19 km from the middle of Patong beach, the police at 0.28 km.
+- **Place search, in both scripts.** "Vachira" finds Vachira Phuket Hospital (โรงพยาบาลวชิระภูเก็ต) by its English
+  name; "Bangkok Hospital Phuket" finds it (โรงพยาบาลกรุงเทพ ภูเก็ต) and Bangkok Hospital Siriroj; ป่าตอง finds the town
+  of Patong, and ภูเก็ต the city.
+- **What the app is told.** 39 kinds, within 98.26, 7.47, 98.63, 8.35, the extent of the data inside the box.
+
+`tools/test_build_region_map.py`: 9 tests pass with pyosmium.
+
+It was also opened in a browser through `python3 server.py`, which serves the same `web/` interface the desktop app
+shows. The map drew the whole island and the streets of Patong in light and dark mode, and the "Nearest to the map
+center" list filled in. The browser's request log showed 63 requests, all to the local server; the one 404 was
+`home-area.json`, which is meant to be absent.
+
+**Not checked:** the packaged desktop app, and installing through setup (no installer or manifest entry is part of this).
+
+## What is and is not in it
+
+**In it**
+
+- Streets and paths of every class `tools/build_map.py` draws, with the same zoom rules, for Phuket, the Phang Nga
+  shore across the Sarasin bridge and the islands in the box.
+- Beaches, streams, ponds, wetland, land use, parks and building outlines from OpenStreetMap.
+- Place labels in Thai, with the English name as a second name where OpenStreetMap has one, and help points in the
+  classes the engine already names (`HELP` in `server.py`).
+
+**Not in it**
+
+- **Tsunami evacuation.** For the whole box, OpenStreetMap has 2 nodes tagged `emergency=assembly_point`, 1
+  `emergency=siren` and 3 with "tsunami" in their name or description (counted from the same extract; ways and areas
+  not counted). The tool does not keep assembly points either. The evacuation routes and signs along the Andaman coast
+  are not in this map, and OpenStreetMap is not a source for them yet. Whether the Department of Disaster Prevention
+  and Mitigation publishes them as open data was not checked.
+- **Addresses.** REGIONS-TH.md found no open address points for Thailand. Roads are in the map but not in the place
+  finder, so a street or *soi* cannot be searched by name.
+- **Terrain, contours and the 3D view**, **crops** and the **water and dam inventory**.
+- **`buildings.sqlite`.** Outlines are in `national.sqlite`; there are no heights.
+- **Shelters as an emergency plan.** The 206 "shelter" points are OpenStreetMap structures tagged `amenity=shelter`,
+  all but one with no name. Bus shelters are left out. None is tagged as a tsunami or emergency shelter.
+
+**Known limits**
+
+- **Visitors' spellings find shops, not towns.** Town labels are in Thai, and their English names are kept in each
+  row's detail line. Place search ranks names that start with the query before everything else, so "Patong" lists
+  twelve shops, offices and pharmacies and never the town, which OpenStreetMap spells "Pa Tong" in English; "Kata"
+  never finds the town; "Karon" finds it fifth and "Chalong" sixth. ป่าตอง and "Pa Tong" find it first. In a
+  province full of visitors who type in Latin letters, this matters more than anywhere else built so far.
+- **Hospital rows are not all hospitals.** The 29 hospital rows are 23 places when rows within 150 m are grouped, 4
+  have no name, and some are clinics tagged as hospitals (Siam International Clinic and Dr. Bangla Clinic in Patong
+  are shown under "Hospitals"). "Nearest hospital" can
+  name a place that does not take emergencies.
+- **Every place's detail line says "Phuket"**, the `--name` given, including places in Phang Nga.
+- **Completeness follows OpenStreetMap.** 1,117 help points have no name. Nothing was compared against an official
+  count.
+- **The page header, the units and the credits are the US map's.** The header says "what was mapped by 25 Oct 2026",
+  while this map's date is in `meta` (`data_as_of`, 17 November 2026). Distances are in miles at wider zooms, the search
+  box asks for a "town or ZIP", the home view and the "US" button point at the United States, and the credit line lists
+  US sources that are not in this map. The same holds for the Bangkok and Paraguay maps.
+
+## Licence and attribution
+
+All data in this map is from OpenStreetMap, © OpenStreetMap contributors, under the Open Database License 1.0, taken
+from Geofabrik's Thailand extract. A database built from it, which this map is, is offered under the ODbL as well. The
+credit and the date of the data are written into `meta` in `national.sqlite` and `map.sqlite`, and into
+`TH-83.build.json`. The app's map already shows "© OpenStreetMap contributors".

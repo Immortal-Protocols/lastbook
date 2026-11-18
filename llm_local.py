@@ -32,6 +32,27 @@ RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook 
 IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds without a question before the model is stopped, to give its memory back
 START_WAIT = 600          # longest a question waits for a load that has stopped getting further; each step forward starts the wait again
 
+
+def _seconds(name, default):
+    try:
+        value = float(os.environ.get(name, default))
+        return value if 0 < value < 86400 else default
+    except (TypeError, ValueError):
+        return default
+
+
+QUEUE_WAIT = _seconds('LASTBOOK_AI_QUEUE_S', 30)
+ROUND_WAIT = _seconds('LASTBOOK_AI_ROUND_S', 300)
+PROMPT_STALL = _seconds('LASTBOOK_AI_PROMPT_STALL_S', 180)
+TOKEN_STALL = _seconds('LASTBOOK_AI_TOKEN_STALL_S', 60)
+CANCEL_GRACE = _seconds('LASTBOOK_AI_CANCEL_GRACE_S', 3)
+
+
+class GenerationError(RuntimeError):
+    def __init__(self, message, code, request_id=None):
+        super().__init__(message)
+        self.code, self.request_id = code, request_id
+
 STATE_FILE = paths.DATA / 'derived' / 'llm' / 'state.json'   # where the file was found, its check, the on/off setting
 
 
@@ -253,8 +274,12 @@ class Local:
         return [str(self.runner), '--model', str(self.path), '--ctx', str(CTX), '--threads', str(threads), *extra]
 
     # -- running ----------------------------------------------------------------------------------------------------------
-    def ensure_running(self, on_wait=None, cancelled=lambda: False):
+    def ensure_running(self, on_wait=None, cancelled=lambda: False, deadline=None):
         """Starts the model if it is stopped and waits until it is ready. Returns None when ready, else a sentence why not."""
+        if cancelled():
+            return 'stopped'
+        if deadline is not None and time.monotonic() >= deadline:
+            return 'The local AI reached the time limit. Open the source pages below, or try a shorter question.'
         with self.lock:
             if not self.enabled():
                 return 'The local AI is turned off.'
@@ -265,12 +290,13 @@ class Local:
                 return self.message or 'The local AI is not set up on this computer.'
             if self.state != 'loading':
                 self._spawn()
+            waiting_for = self.proc
         t0 = time.time()
         # Progress is timestamped by the reader under the same lock. Check the
         # deadline and stop atomically so progress at the boundary cannot be lost.
-        with self.lock:
-            waiting_for = self.proc
         while True:
+            if deadline is not None and time.monotonic() >= deadline:
+                return 'The local AI reached the time limit. Open the source pages below, or try a shorter question.'
             with self.lock:
                 if self.proc is not waiting_for:
                     return self.message or 'The local AI start was interrupted.'
@@ -298,19 +324,32 @@ class Local:
 
     def _spawn(self):
         import queue
-        self.state, self.pct, self.message = 'loading', None, ''
         logs = paths.DATA / 'derived' / 'logs'
-        logs.mkdir(parents=True, exist_ok=True)
-        err = open(logs / 'local-ai.log', 'ab')
-        err.write(f'\n--- {time.strftime("%Y-%m-%d %H:%M:%S")} start\n'.encode())
-        err.flush()
-        self.proc = subprocess.Popen(self._argv(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err, bufsize=0, **_quiet())
-        _tie_to_this_process(self.proc)
-        err.close()
-        self.events = queue.Queue()
-        self.t_spawn = self.t_progress = time.time()
-        self.furthest = 0
-        threading.Thread(target=self._read, args=(self.proc, self.events), daemon=True, name='local-ai-read').start()
+        proc = None
+        try:
+            logs.mkdir(parents=True, exist_ok=True)
+            with (logs / 'local-ai.log').open('ab') as err:
+                err.write(f'\n--- {time.strftime("%Y-%m-%d %H:%M:%S")} start\n'.encode())
+                err.flush()
+                proc = subprocess.Popen(self._argv(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err, bufsize=0, **_quiet())
+            self.proc = proc
+            self.state, self.pct, self.message = 'loading', None, ''
+            _tie_to_this_process(proc)
+            self.events = queue.Queue()
+            self.t_spawn = self.t_progress = time.time()
+            self.furthest = 0
+            threading.Thread(target=self._read, args=(proc, self.events), daemon=True, name='local-ai-read').start()
+        except (OSError, RuntimeError):
+            if proc is not None:
+                self._retire(proc, 'startup failed')
+                for stream in (proc.stdin, proc.stdout):
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
+            self.proc = self.events = self.ready_info = None
+            self.state, self.pct = 'stopped', None
+            self.message = 'The local AI could not start. Open the source pages below, or try again.'
 
     def _read(self, proc, events):
         for raw in proc.stdout:
@@ -402,49 +441,166 @@ class Local:
                 self.stop(f'not used for {IDLE_STOP} s')
 
     # -- one model turn ---------------------------------------------------------------------------------------------------
-    def generate(self, segments, max_tokens, cancelled, on_text):
-        """Streams one answer. on_text(piece). Returns the 'done' event, or raises RuntimeError with a plain sentence."""
-        with self.gen_lock:
+    def _retire(self, proc, why):
+        """A runner that did not finish cannot safely service the next conversation."""
+        with self.lock:
+            if self.proc is proc:
+                self.proc = None
+                if self.state != 'off':
+                    self.state, self.pct, self.message = 'stopped', None, ''
+        if proc and proc.poll() is None:
+            print(f'local AI: retiring runner ({why})', flush=True)
+            try:
+                proc.kill()
+                proc.wait(timeout=1)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+
+    def generate(self, segments, max_tokens, cancelled, on_text, on_event=None, deadline=None):
+        """One bounded turn. Queued cancellation never interrupts someone else's answer.
+
+        Native progress is request-correlated and contains only phases, counts and timings.
+        A timed-out/abandoned process is retired before releasing the conversation lock.
+        """
+        import queue
+        started = time.monotonic()
+        deadline = min(deadline if deadline is not None else float('inf'), started + ROUND_WAIT)
+        with self.lock:
+            self.next_id += 1
+            rid = self.next_id
+        acquired, proc, terminal = False, None, False
+        queue_ms = 0
+
+        def report(phase, **fields):
+            event = dict(phase=phase, request_id=rid, **fields)
+            if os.environ.get('LASTBOOK_AI_TRACE_PHASES') == '1':
+                # Opt-in diagnostics survive a closed SSE connection. Never log tokens, prompts,
+                # native messages, paths, tool arguments or unrestricted event dictionaries.
+                allowed = ('phase', 'request_id', 'reason', 'code', 'queue_ms', 'total_ms', 'prompt_ms',
+                           'gen_ms', 'first_token_ms', 'n_prompt', 'n_reused', 'n_processed', 'n_gen')
+                trace = {k: event[k] for k in allowed if k in event}
+                trace.update(at_monotonic_s=round(time.monotonic(), 6), at_unix_s=round(time.time(), 6))
+                print('local AI phase: ' + json.dumps(trace, separators=(',', ':')), flush=True)
+            if on_event:
+                on_event(event)
+
+        def failure(code, message, **fields):
+            report('error', code=code, **fields, queue_ms=queue_ms if acquired else int((time.monotonic() - started) * 1000), total_ms=int((time.monotonic() - started) * 1000))
+            raise GenerationError(message, code, rid)
+
+        def stopped(reason='cancel', native=None):
+            elapsed = int((time.monotonic() - started) * 1000)
+            fields = {k: native[k] for k in ('prompt_ms', 'gen_ms', 'n_prompt', 'n_reused', 'n_gen') if k in (native or {})}
+            fields.update(reason=reason, queue_ms=queue_ms if acquired else elapsed, total_ms=elapsed)
+            report('cancelled', **fields)
+            return dict(ev='done', id=rid, **fields)
+
+        report('queued')
+        try:
+            while not acquired:
+                if cancelled():
+                    return stopped()
+                now = time.monotonic()
+                if now >= deadline:
+                    failure('deadline', 'The local AI reached the time limit. Open the source pages below, or try a shorter question.')
+                if now - started >= QUEUE_WAIT:
+                    failure('queue_timeout', 'The local AI is busy with another question. Open the source pages below, or try again shortly.')
+                acquired = self.gen_lock.acquire(timeout=min(0.1, deadline - now, QUEUE_WAIT - (now - started)))
+            queue_ms = int((time.monotonic() - started) * 1000)
+            if cancelled():
+                return stopped()
+            # A previous queued answer may have retired its runner after our caller checked readiness.
+            why = self.ensure_running(cancelled=cancelled, deadline=deadline)
+            if why == 'stopped':
+                return stopped()
+            if why:
+                failure('deadline' if time.monotonic() >= deadline else 'unavailable', why)
             with self.lock:
                 proc, events = self.proc, self.events
                 if not proc or self.state != 'ready':
-                    raise RuntimeError(self.message or 'The local AI is not running.')
-                self.next_id += 1
-                rid = self.next_id
+                    failure('unavailable', self.message or 'The local AI is not running.')
                 self.last_used = time.time()
-            while not events.empty():       # anything left from an answer that was stopped
-                events.get_nowait()
+            while True:
+                try:
+                    events.get_nowait()  # only old request events; this request has not been sent
+                except queue.Empty:
+                    break
             req = {'op': 'gen', 'id': rid, 'segments': segments, 'max_tokens': max_tokens, 'temp': 0.2, 'top_k': 64, 'top_p': 0.95,
                    'min_p': 0.05, 'seed': 1234 + rid, 'stop': ['<|tool_response>']}
             try:
                 proc.stdin.write((json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8'))
-            except OSError:
-                raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
-            sent_cancel = False
-            import queue
+            except (OSError, ValueError):
+                failure('runner_exit', 'The local AI stopped unexpectedly. Ask again to restart it.')
+            last_progress, phase = time.monotonic(), 'prompt'
+            report(phase, queue_ms=queue_ms)
+            cancel_at, cancel_reason = None, None
             while True:
-                if cancelled() and not sent_cancel:
-                    sent_cancel = True
-                    try:
-                        proc.stdin.write(b'{"op":"cancel"}\n')
-                    except OSError:
-                        pass
+                now = time.monotonic()
+                if cancel_at is None:
+                    if cancelled():
+                        cancel_reason = 'cancel'
+                    elif now >= deadline:
+                        cancel_reason = 'deadline'
+                    elif now - last_progress >= (TOKEN_STALL if phase == 'generation' else PROMPT_STALL):
+                        cancel_reason = 'stall'
+                    if cancel_reason:
+                        cancel_at = now
+                        report('cancelling', reason=cancel_reason, queue_ms=queue_ms, total_ms=int((now - started) * 1000))
+                        try:
+                            proc.stdin.write((json.dumps({'op': 'cancel', 'id': rid}) + '\n').encode())
+                        except (OSError, ValueError):
+                            pass
+                elif now - cancel_at >= CANCEL_GRACE:
+                    self._retire(proc, cancel_reason)
+                    terminal = True
+                    if cancel_reason == 'cancel':
+                        return stopped()
+                    failure(cancel_reason, 'The local AI reached the time limit. Open the source pages below, or try a shorter question.')
                 try:
-                    ev = events.get(timeout=0.2)
+                    ev = events.get(timeout=0.1)
                 except queue.Empty:
                     continue
                 kind = ev.get('ev')
                 if kind == 'exit':
-                    raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
+                    if cancel_reason == 'cancel':
+                        terminal = True
+                        return stopped()
+                    failure('runner_exit', 'The local AI stopped unexpectedly. Ask again to restart it.')
                 if ev.get('id') != rid:
                     continue
-                if kind == 'tok':
-                    on_text(ev['t'])
-                elif kind == 'done':
+                if kind in ('phase', 'tok'):
+                    last_progress = time.monotonic()
+                if kind == 'phase':
+                    phase = ev.get('phase', phase)
+                    allowed = ('n_prompt', 'n_reused', 'n_processed', 'prompt_ms', 'gen_ms')
+                    report(phase, queue_ms=queue_ms, **{k: ev[k] for k in allowed if k in ev})
+                elif kind == 'tok':
+                    if phase != 'generation':  # works with an older runner too
+                        phase = 'generation'
+                        report(phase, queue_ms=queue_ms)
+                    if cancel_at is None:
+                        on_text(ev['t'])
+                elif kind in ('done', 'error'):
+                    terminal = True
                     self.last_used = time.time()
+                    if cancel_reason and cancel_reason != 'cancel':
+                        failure(cancel_reason, 'The local AI reached the time limit. Open the source pages below, or try a shorter question.')
+                    if kind == 'error' and cancel_reason != 'cancel':
+                        failure(ev.get('code') or 'native_error', _plain_error(ev))
+                    if cancel_reason == 'cancel' or ev.get('reason') == 'cancel':
+                        return stopped(native=ev)
+                    if ev.get('reason') == 'length':
+                        metrics = {k: ev[k] for k in ('prompt_ms', 'gen_ms', 'first_token_ms', 'n_prompt', 'n_reused', 'n_gen') if k in ev}
+                        failure('output_limit', 'The local AI reached its answer length limit. This answer is incomplete. Open the source pages below, or ask a narrower question.', reason='length', **metrics)
+                    ev.update(queue_ms=queue_ms, total_ms=int((time.monotonic() - started) * 1000))
+                    allowed = ('reason', 'queue_ms', 'total_ms', 'prompt_ms', 'gen_ms', 'first_token_ms', 'n_prompt', 'n_reused', 'n_gen')
+                    report('complete', **{k: ev[k] for k in allowed if k in ev})
                     return ev
-                elif kind == 'error':
-                    raise RuntimeError(_plain_error(ev))
+        finally:
+            if proc is not None and not terminal:
+                self._retire(proc, 'request interrupted')
+            if acquired:
+                self.gen_lock.release()
 
 
 LOCAL = Local()

@@ -278,6 +278,10 @@ class _Sock:
     def makefile(self, mode, buffering=-1):
         return io.BufferedReader(io.BytesIO(self.raw))
 
+    def lastbook_cancelled(self):
+        """The shared Handler can observe shell cancellation even before its next write."""
+        return self.ex.stopped
+
     def settimeout(self, t):
         pass
 
@@ -344,7 +348,7 @@ class Exchange:
         self.t0 = time.time()
 
     def cancel(self):
-        """The web view gave up on this request. The Handler stops at its next write, and a worker waiting on the budget wakes at once."""
+        """The web view gave up on this request. The Handler can observe the private cancellation hook while waiting; a worker waiting on the budget wakes at once."""
         if self.stopped:
             return
         self.stopped = True

@@ -114,6 +114,7 @@ issue before any code.
 [REGIONS-GB-LONDON.md](REGIONS-GB-LONDON.md) does the same for Greater London as one region.
 [REGIONS-ES.md](REGIONS-ES.md) does the same for Spain's 17 autonomous communities and its two autonomous cities.
 [REGIONS-FR.md](REGIONS-FR.md) does the same for France's 18 regions, with figures from a trial build.
+[MAP-FR-BN.md](MAP-FR-BN.md) is that trial build, three départements, made repeatable by one command.
 
 ## Checking a map change
 

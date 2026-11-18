@@ -22,7 +22,11 @@ class AddressSearchTests(unittest.TestCase):
             ('18001', 'Nine Mile Road', 'Example', 'CA', '90001', 34.0, -118.0),
             ('23001', 'Maple Avenue', 'Kansas City', 'MO', '64105', 39.0997, -94.5786),
             ('21', 'W 9 ST', 'Example', 'CA', '90001', 34.01, -118.01),
+            ('123', 'Main Street', 'North Hollywood', 'CA', '91601', 34.16, -118.37),
+            ('123', 'North Main Street', 'North Hollywood', 'CA', '91601', 34.17, -118.38),
         ])
+        self.write_state('MN', [('10', 'Oak Avenue', 'Saint Paul', 'MN', '55101', 44.95, -93.09)])
+        self.write_state('MO', [('10', 'Oak Avenue', 'St. Louis', 'MO', '63101', 38.63, -90.20)])
 
     def tearDown(self):
         self.temp.cleanup()
@@ -72,6 +76,27 @@ class AddressSearchTests(unittest.TestCase):
     def test_ordinal_street(self):
         result = find_addresses('21 ninth st Example CA', self.geo)
         self.assertEqual(result[0]['name'], '21 W 9 ST')
+
+    def test_city_with_direction_or_saint_matches_stored_title_case(self):
+        result = find_addresses('123 Main St North Hollywood', self.geo)
+        self.assertIn('123 Main Street', [row['name'] for row in result])
+        result = find_addresses('123 North Main Street North Hollywood CA', self.geo)
+        self.assertEqual(result[0]['name'], '123 North Main Street')
+        self.assertEqual(find_addresses('123 Main St Hollywood North', self.geo), [])
+        for query in ('10 Oak Ave Saint Paul MN', '10 Oak Ave St Paul MN', '10 Oak Ave Saint Paul'):
+            with self.subTest(query=query):
+                result = find_addresses(query, self.geo)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['name'], '10 Oak Avenue')
+                self.assertEqual(result[0]['detail'], 'Saint Paul, MN, 55101')
+
+    def test_city_punctuation_is_ignored(self):
+        for query in ('10 Oak Ave St Louis MO', '10 Oak Ave Saint Louis MO', '10 Oak Ave St. Louis MO'):
+            with self.subTest(query=query):
+                result = find_addresses(query, self.geo)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['detail'], 'St. Louis, MO, 63101')
+        self.assertEqual(find_addresses('10 Oak Ave Saint Louis Park MO', self.geo), [])
 
     def test_plain_zip_remains_place_query(self):
         self.assertFalse(is_address_query('48375'))

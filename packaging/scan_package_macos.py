@@ -166,6 +166,11 @@ def main():
     problems += sparkle_problems(a.app)
     if 'ui_language' not in modules:
         problems.append('missing module from the package: ui_language')
+    comparisons = Path(__file__).resolve().parents[1] / 'content' / 'source-disagreements.json'
+    if comparisons.is_file():
+        shipped = [a.app / 'Contents' / d / 'content' / comparisons.name for d in ('Resources', 'Frameworks')]
+        if not any(p.is_file() for p in shipped):
+            problems.append('missing from the package: content/source-disagreements.json')
     print(f'files {n_files}, native binaries {n_macho}, modules looked inside {n_mods}')
     print(f'remote_storage string: {remote_hits or "nowhere"} (the module itself is refused above)')
     print(f'/Users/... strings: { {u: w[:3] for u, w in user_paths.items()} or "none"}')

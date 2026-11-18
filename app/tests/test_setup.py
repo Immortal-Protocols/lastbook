@@ -50,6 +50,7 @@ class Files:
         self.corrupt = {}         # name -> how many more answers carry a flipped byte
         self.ignore_range = set()
         self.ignore_once = {}     # name -> how many more Range requests get a 200 with the whole file
+        self.stray = {}           # name -> one entry per Range request, in order: True answers that one with a 200 and the whole file
         self.redirect = {}        # name -> Location
         self.pace = 0             # seconds to sleep per 64 KiB
         self.lock = threading.Lock()
@@ -88,6 +89,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if rng and F.ignore_once.get(name):
                 F.ignore_once[name] -= 1
                 once = True
+            if rng and F.stray.get(name):
+                once = F.stray[name].pop(0) or once
         if rng and name not in F.ignore_range and not once:     # like R2: If-Range is ignored
             start = int(rng.split('=')[1].split('-')[0])
             self.send_response(206)
@@ -175,7 +178,7 @@ class Base(unittest.TestCase):
 
     def setUp(self):
         F = self.files
-        F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
+        F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.stray.clear(); F.redirect.clear()
         F.pace = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
@@ -405,6 +408,17 @@ class Downloads(Base):
             p = self.dl('model.gguf').run()
         self.assertEqual(Path(p).read_bytes(), self.model)
         self.assertEqual([r for _, r, _ in self.files.log], [None, 'bytes=700000-', 'bytes=700000-'])   # asked again, not from 0
+
+    def test_stray_200s_with_progress_between_do_not_restart(self):
+        """The one more ask is per hiccup, not per download: after a stray 200, bytes that arrive earn the next stray 200 another
+        ask. (Seen on downloads.lastbook.org: 44 GB of the All library were dropped at the second stray 200 of one download.)"""
+        self.files.cut_after['model.gguf'] = [700_000, 0, 1_500_000]     # the stray 200 takes an entry too: the 0 is for it
+        self.files.stray['model.gguf'] = [True, False, True]
+        with fast_backoff():
+            p = self.dl('model.gguf').run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        self.assertEqual([r for _, r, _ in self.files.log],
+                         [None, 'bytes=700000-', 'bytes=700000-', 'bytes=1500000-', 'bytes=1500000-'])   # never from 0 again
 
     def test_pause_mid_file(self):
         self.files.pace = 0.01

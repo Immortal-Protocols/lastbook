@@ -31,8 +31,10 @@ Britain** in one piece: places, postcodes, rivers, terrain and buildings. The ga
   separate licence condition for Northern Ireland postcodes.
 - **Addresses.** No open UK dataset with address text and coordinates was found. This is the biggest difference from the
   US, where Overture supplies addresses.
-- **Terrain** is either coarser than the US source (OS Terrain 50, 50 m) or a surface model (Copernicus GLO-30).
-- **Crops.** No open source with orchard, vineyard or berry classes was confirmed.
+- **Terrain** is either coarser than the US source (OS Terrain 50, 50 m) or a surface model (Copernicus GLO-30). The South
+  West pilot used GLO-30.
+- **Crops.** No open source with orchard, vineyard or berry classes was confirmed. The South West pilot used OSM
+  `landuse=orchard` and `landuse=vineyard` instead, which has no crop types and no berries.
 
 ## What a region is
 
@@ -139,7 +141,7 @@ the box of the *projected* rectangle and over-covers in the far west (it put Sco
 | Terrain (`terrain.sqlite`) | USGS 3DEP, 1 arc-second | Copernicus DEM GLO-30, one source for the whole UK including Northern Ireland, resampled as needed; OS Terrain 50 (GB, 50 m) as a bare-earth cross-check | ESA / Airbus; OS | Copernicus licence as in REGIONS.md; OS OpenData (see licence notes) | both pages opened; GLO-30 tile completeness for the UK not checked |
 | Water (`water.sqlite`) | NHD | OSM waterways and water areas from Geofabrik's United Kingdom extract; OS Open Rivers (GB) as a cross-check | OSM contributors; OS | ODbL; OS OpenData | Geofabrik and OS pages opened |
 | Dams | NID | OSM `waterway=dam` and reservoir areas; the NERC/UKCEH list of 273 reservoirs (90 % of UK storage) as a cross-check | OSM contributors; NERC | ODbL; OGL | both opened; the list is from 2018 |
-| Crops (`crops.sqlite`) | USDA Cropland Data Layer | **No open source confirmed**; see notes. Proposed: leave the layer out of a first UK build | | | CROME and UKCEH opened |
+| Crops (`crops.sqlite`) | USDA Cropland Data Layer | **No open crop map confirmed**; see notes. South West pilot: OSM `landuse=orchard` and `landuse=vineyard` areas, drawn as an overlay with a record per area (no crop type, no berries) | OSM contributors | ODbL | CROME and UKCEH opened; OSM landuse tried in the pilot |
 | Buildings (`buildings.sqlite`) | Microsoft US footprints, OSM heights | OSM buildings, or Microsoft's footprints taken directly; OS OpenMap - Local (GB, generalised) as an alternative | OSM contributors; Microsoft; OS | ODbL; CDLA Permissive 2.0; OS OpenData | all opened; UK coverage by source not measured |
 | Places (`places.sqlite`) | GNIS, Census gazetteers, OSM | OS Open Names (settlements, roads, postcode points; GB only); OSM named places for Northern Ireland | OS; OSM contributors | OS OpenData (OGL claimed, see notes); ODbL | Open Names opened |
 | Postcodes | Census ZIP code areas | Code-Point Open (GB, about 1.7 million postcodes); Northern Ireland **unresolved** | OS; ONS | OS OpenData plus a Royal Mail notice | opened |
@@ -173,7 +175,8 @@ checked.
   data on any internet site or passing it to third parties, and needs a reseller agreement for commercial use.
 - Scotland's 2019 crop map page (opened) names no fruit class and no download; Wales was not checked; no Northern
   Ireland crop map was found.
-- OSM `landuse=orchard` and `landuse=vineyard` were not looked at; they are an untested candidate.
+- OSM `landuse=orchard` and `landuse=vineyard` were tried in the South West pilot (see "The South West pilot" below): 3,128
+  orchards and 236 vineyards, with no crop type and no berries, and only what volunteers have mapped.
 
 **Buildings.** Overture's buildings theme is under the ODbL because it includes OSM; it lists Microsoft footprints under
 the ODbL too. Microsoft's own repository says CDLA Permissive 2.0 and lists a 2023 update with 7.6 million UK
@@ -278,7 +281,8 @@ What this means for the replacements:
   0800 111 999 were seen in search only. 112 and 101 were not checked.
 - **Weather warnings.** The Met Office's warnings feeds are **not under an open licence**: the RSS terms require a working
   link to the full article, let the Met Office stop the feed, and keep all rights. They suit live display, not an offline copy.
-- **Units.** UK guides would use metric measures, while the map code shows contours in feet (see below).
+- **Units.** UK guides would use metric measures. The map code shows contours in feet unless the map set's `map-set.json`
+  says `units: metric`, which the South West pilot does.
 
 ## Licence notes and attribution
 
@@ -318,7 +322,9 @@ the maintainers keep data licences.
   `addr:unit`, `addr:flats`).
 - **Bilingual names.** Open Names carries Welsh and Gaelic names beside English ones (opened); the rules for street names
   were not read.
-- **What the current code does with that** (read in this repository and tried against examples on 17 November 2026):
+- **What the code on `main` does with that** (read in this repository and tried against examples on 17 November 2026; this
+  branch adds accent folding as a retry, UK postcode reading in `_parts()`, and a town-not-state reading in
+  `find_addresses()` when no US index is installed; the other points are unchanged):
   - `normalize()` in `engine/address_search.py` keeps only `a-z` and `0-9`, so Welsh circumflexed letters (â ê î ô û ŵ ŷ)
     become spaces; they need folding on both sides, as umlauts do in REGIONS-DE.md.
   - `is_address_query()` needs a number first, so "10 Downing Street" is an address, "Flat 2, 10 High Street" and "Rose
@@ -343,16 +349,19 @@ REGIONS-DE.md.
 2. **The box rule**, as in REGIONS.md, here from ONS generalised boundaries.
 3. **12 regions or 4.** Nine English regions give maps comparable to a US state; four nations would give a 1.6 GB England.
 4. **London.** Whether the South East map should also carry London's addresses.
-5. **Terrain.** One surface model (GLO-30) for the whole UK, or OS Terrain 50 for Great Britain, or bare-earth lidar for
-   England, Scotland and Wales with something else for Northern Ireland.
-6. **Crops.** Whether to ship without the layer, or to look at OSM `landuse` tags.
-7. **Addresses.** Whether postcode and road-name search, with OSM house numbers where mapped, is acceptable in place of
-   full address search, and whether Northern Ireland's postcodes can be had under a licence.
+5. **Terrain.** The South West pilot used one surface model (GLO-30), which includes trees and buildings in its heights.
+   Whether to use it for the whole UK, or OS Terrain 50 for Great Britain, or bare-earth lidar for England, Scotland and
+   Wales with something else for Northern Ireland.
+6. **Crops.** The pilot shows OSM orchards and vineyards, which has no crop types and no berries. Whether that is good
+   enough to ship, or the layer is left out until an open crop map exists.
+7. **Addresses.** The pilot's OSM address search finds houses by number, street, town or postcode, but only where a volunteer
+   mapped the house (about 79 % of its 805,786 addresses carry a postcode). Whether that is acceptable in place of full
+   address search, and whether Northern Ireland's postcodes can be had under a licence.
 8. **Northern Ireland as a whole.** It is outside OS's open products, has its own postcode licence, and its map box takes
    in part of the Republic.
 9. **New help-point kinds**: defibrillators from OSM, and flood warning areas from the Environment Agency.
-10. **Units.** The map code shows contour intervals in feet (`web/map.js`); a UK map would use metres, and miles are fine for
-    distance.
+10. **Units.** Done on this branch for a map set that says `units: metric`: metres for contours, distances and the scale bar.
+    Whether UK roads should show miles is not decided; the pilot shows kilometres throughout.
 11. **London and Northern Ireland in two proposals.** [REGIONS-GB-LONDON.md](REGIONS-GB-LONDON.md) proposes `GB-LON` on its
     own, and [REGIONS-IE.md](REGIONS-IE.md) proposes Northern Ireland as part of an island-wide region. See "Related
     proposals" above for what differs.
@@ -377,10 +386,30 @@ REGIONS-DE.md.
   AddressBase replacement; Northern Ireland Pointer's price; the 2018 Home Office and January 2026 MHCLG fire station
   datasets; the 105 and gas emergency numbers; the NRW and SEPA data licences; the Environment Agency's 2023 reservoir
   data release.
+- **Built and tried on 17 and 18 November 2026** (the South West pilot, `GB-SW`): see the next section.
 - **Not checked:** the OGL v3.0 text; the Open Names and Code-Point Open licence files; Code-Point Open's coordinate fields;
-  the ONS Postcode Directory's coordinates and postcode count; GLO-30 completeness for the UK; the Environment Agency DTM
+  the ONS Postcode Directory's coordinates and postcode count; GLO-30 completeness for the UK outside the South West; the Environment Agency DTM
   page itself and a single national download; Scotland's full lidar coverage; Wales's completeness and licence wording;
   Northern Ireland's 50 m DTM licence (OpenDataNI refused the fetch); Wales and Northern Ireland crop data; Scottish
-  Water's reservoir data; Scottish address sources; OSM address completeness; the Royal Mail addressing guidance; St John
+  Water's reservoir data; Scottish address sources; how complete OSM addresses are against a reference list; the Royal Mail addressing guidance; St John
   Ambulance and RHS terms; the numbers 112 and 101; the ISO 3166-2:GB page; and whether ITL January 2025 is the latest ITL
   edition.
+
+## The South West pilot
+
+A South West (`GB-SW`) map set was built on 17 and 18 November 2026 to see what the proposal's sources give in practice. It
+is one region, built from public sources on one machine, and none of its data is in this repository. Figures are counts of
+what was built, not measures of how complete the data is.
+
+| Layer | Source used | What came out | Limits found |
+|---|---|---|---|
+| Streets, places, help points | Geofabrik England extract, cut to the box | 4.3 million features, 33,000 help points | Needs an empty `map.sqlite` beside `national.sqlite` for street tiles |
+| Addresses | OSM house numbers, from Geofabrik's England `.osm.pbf` | 805,786 addresses, 79 % with a postcode | Only houses a volunteer mapped; the other 21 % cannot be found by postcode |
+| Terrain | Copernicus GLO-30, 17 one-degree tiles | 4,979 tiles; a Dartmoor tile reads 155-617 m against High Willhays at about 621 m | A surface model: heights include trees and buildings |
+| Water | OSM lakes and reservoirs, OSM `waterway=dam` | 112 reservoirs, 1,530 named lakes, 147 dams | No ponds layer; dams carry a name and owner at most |
+| Crops | OSM `landuse=orchard` and `landuse=vineyard` | 3,128 orchards, 236 vineyards | No crop type, no berries, volunteer-mapped |
+| Atlas | none | not built | Minerals and other resource records have no open UK source here |
+
+The tools are `tools/build_map.py` (box cut), `tools/build_addresses_osm.py`, `tools/build_terrain.py`,
+`tools/build_water.py` and `tools/build_crops_osm.py`. Source extracts for a region as large as England are 1.7 GB (PBF)
+and 3.2 GB (GeoPackage) because Geofabrik has no South West extract; the box is cut during the build.

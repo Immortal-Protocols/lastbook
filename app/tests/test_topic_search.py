@@ -5,8 +5,8 @@
 
 Accented words stay whole and fold (niño finds nino), short words in Chinese, Hindi, Hebrew and Arabic count,
 typed symbols never reach a RegExp, Turkish İ folds to i, and every English query in the list ranks exactly as it
-did before. Words used outside the US (torch, rubbish, 999) find the guide their US word finds.
-Needs Node on PATH; skipped without it. Never packaged."""
+did before. Words used outside the US (torch, rubbish, 999, 108, power cut, hydro, forest fire) find the guide
+their US word finds. Needs Node on PATH; skipped without it. Never packaged."""
 import json, re, shutil, subprocess, tempfile, unicodedata, unittest
 from pathlib import Path
 
@@ -74,6 +74,7 @@ MATCH = [  # text, word, expected
 SAME_AS = {
     'torch': 'flashlight', 'rubbish': 'garbage', 'rubbish pickup': 'trash pickup', 'tinned food': 'canned food',
     '999': '911', '112': '911', '111': '911', 'adrenaline': 'epinephrine',
+    '108': '911', 'geyser': 'water heater',
 }
 # These sit in a guide's keywords only, so they open the same guide first but pick no choice of their own.
 # In a hint, "bushfire" would also answer "bus" and "barbecue" would answer "bar" (a search word matches the
@@ -81,13 +82,33 @@ SAME_AS = {
 SAME_GUIDE = {
     'bushfire': 'wildfire', 'bushfire smoke': 'wildfire smoke', 'heatwave': 'heat wave', 'barbecue': 'grill',
     'bbq': 'grill', 'sanitiser': 'sanitizer', 'hand sanitiser': 'hand sanitizer',
+    'heatstroke': 'heat stroke',
+    'snowstorm': 'winter storm', 'snow squall': 'winter storm', 'whiteout': 'winter storm',
+    'polar vortex': 'winter storm', 'wind chill': 'winter storm', 'arctic outflow': 'winter storm',
+    'warming centre': 'winter storm', 'aqhi': 'air quality', 'AQHI': 'air quality',
+    'cooling centre': 'cooling center', 'washroom': 'sanitation',
+}
+# Words used in India and Canada with no single US twin among the guides: [guide, choice] that comes first.
+FIRST = {
+    'power cut': ['power', 'first-hours'], 'cyclone': ['disaster', 'flood'], 'monsoon': ['disaster', 'flood'],
+    'borewell': ['water', 'outside'], 'tubewell': ['water', 'outside'], 'loose motions': ['hurt', 'diarrhea'],
+    'hydro': ['power', 'first-hours'], 'hydro is out': ['power', 'first-hours'],
+    'hydro outage': ['power', 'first-hours'], 'ice storm': ['shelter', 'cold'], 'freezing rain': ['shelter', 'cold'],
+    'extreme cold': ['shelter', 'cold'], 'cold snap': ['shelter', 'cold'], 'blizzard': ['shelter', 'cold'],
+    'furnace': ['shelter', 'cold'], 'furnace is out': ['shelter', 'cold'], 'frostnip': ['hurt', 'heatcold'],
+    'forest fire': ['disaster', 'wildfire'], 'forest fires': ['disaster', 'wildfire'],
+    'forest fire smoke': ['disaster', 'smoke'], 'Hydro': ['power', 'first-hours'], 'Frostnip': ['hurt', 'heatcold'],
 }
 # Searches the new words must not disturb: [guide, choice] that comes first.
 UNDISTURBED = {
     'bus': ['disaster', 'no-car'], 'no bus': ['disaster', 'no-car'], 'bar soap': ['sanitation', 'hands'],
     'heat wave': ['shelter', 'heat'], 'grill': ['food', 'cook'], 'canned food': ['food', 'cook'],
+    'cut': ['hurt', 'bleeding'], 'well': ['land', 'water-source'], 'storm': ['disaster', 'flood'],
+    'ice': ['water', 'inhome'], 'micro-hydro': ['energy', None], 'wind': ['disaster', 'hurricane'],
+    'winter storm': ['shelter', 'cold'], 'furnace smells like gas': ['power', 'gas'], 'gas furnace': ['power', 'gas'],
+    'lost in the forest': ['comms', 'signal'],
 }
-TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *UNDISTURBED})
+TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *FIRST, *UNDISTURBED})
 
 # A made-up topic in Spanish and Chinese: found by Spanish words and by a single Han character.
 OWN = {'id': 'own', 'title': 'Agua potable', 'short': 'Hervir el agua', 'keywords': ['水'], 'choices': []}
@@ -195,7 +216,7 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, us=us, segmenter=r['segmenter']):
                     self.assertTrue(top[q])
                     self.assertEqual(top[q][0][0], top[us][0][0])
-            for q, first in UNDISTURBED.items():
+            for q, first in [*FIRST.items(), *UNDISTURBED.items()]:
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][0], first)
 

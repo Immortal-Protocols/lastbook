@@ -6,6 +6,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fileUrl = p => '/' + String(p || '').split('/').map(encodeURIComponent).join('/');
 const main = $('#main');
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
+if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
 
 /* ---------------------------------------------------------------- icons -- */
 const I = {
@@ -195,6 +196,7 @@ function backButton(from, fallback = 'Back') {
   else if (href.startsWith('#/saved')) label = 'Saved';
   else if (href.startsWith('#/map')) label = 'Map';
   else if (href.startsWith('#/videos')) label = 'Videos';
+  else if (href.startsWith('#/guides')) label = 'Guides';
   else if (href.startsWith('#/watch')) label = 'Video';
   else if (href.startsWith('#/read')) label = 'Back to page';
   else if (href.startsWith('#/library') || href.startsWith('#/shelf') || href.startsWith('#/collection') || href.startsWith('#/encyclopedias') || href.startsWith('#/prepare')) label = 'Library';
@@ -244,7 +246,7 @@ function parse() {
   return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
 }
 // The sidebar row each page belongs to. Reading pages stay under Library, articles under Encyclopedias; search results select no row.
-const NAV_OF = { '': 'videos', t: '', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
+const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
 let leaving = null;  // cleanup hook for the current view (player, chat stream…)
 async function route() {
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
@@ -277,7 +279,7 @@ async function route() {
   try {
     if (v !== 'map') MapView.stop();
     await topics().catch(() => { });
-    if (!v) await home();
+    if (!v || v === 'guides') await home();
     else if (v === 't') await topicPage(parts[1], parts[2]);
     else if (v === 'ask') await Chat.page(main, parts.slice(1), q);
     else if (v === 'videos') await (parts[1] ? videoRow(parts[1], q) : videosHome());
@@ -487,7 +489,7 @@ async function topicPage(id, open) {
   const sec = (icon, title, items) => items && items.length ? `<details class="more"><summary>${ico(icon)}<span>${title} <span class="n">· ${items.length}</span></span></summary><div class="body"><ul class="list">${items.map(i => rowItem({ ...i, preview: true })).join('')}</ul></div></details>` : '';
   const vids = topicVideos(t);
   const related = (t.related || []).map(topicById).filter(Boolean);
-  main.innerHTML = `<div class="ghero" ${tcStyle(id)}><div class="ghero-in">${crumbs([['Videos', '#/videos'], [learn ? 'Learn a skill' : 'Need help now', learn ? '#/library' : '#/'], [SHORT[id] || t.title]])}
+  main.innerHTML = `<div class="ghero" ${tcStyle(id)}><div class="ghero-in">${crumbs([['Guides', '#/guides'], [learn ? 'Learn a skill' : 'Need help now', learn ? '#/library' : '#/guides'], [SHORT[id] || t.title]])}
       <div class="row1"><span class="ico">${ico(t.id)}</span><h1>${esc(t.title)}</h1></div><p class="lead">${esc(t.intro || '')}</p>
       <div class="vactions" style="margin-bottom:0">${askLink('topic:' + id, 'Ask a question about this')}</div></div></div>
     <div class="gcols" ${tcStyle(id)}><div>
@@ -559,6 +561,45 @@ async function videoRow(row, q) {
   add(first);
 }
 
+// Video formats some computers can't play, by the code an MP4 file gives its video track: the name to show, and what to ask the player.
+const UNPLAYABLE = { av01: ['AV1', 'video/mp4; codecs="av01.0.05M.08"'], vp09: ['VP9', 'video/mp4; codecs="vp09.00.10.08"'], hvc1: ['HEVC', 'video/mp4; codecs="hvc1.1.6.L93.B0"'], hev1: ['HEVC', 'video/mp4; codecs="hev1.1.6.L93.B0"'] };
+// The format codes of an MP4 file's tracks ("av01", "mp4a"), read from the file's own index. [] when they can't be read (not an MP4, say).
+// An MP4 is a row of boxes, each starting with its length and a four-letter name. This reads the start of each box until it finds
+// the index ("moov"), then reads only that: never the pictures or the sound.
+async function videoFormats(url) {
+  let size = 0;
+  const part = async (at, n) => {
+    const r = await fetch(url, { headers: { Range: `bytes=${at}-${at + n - 1}` } });
+    size = +(/\/(\d+)$/.exec(r.headers.get('Content-Range') || '') || [])[1] || 0;
+    if (r.status !== 206 || !size) throw new Error('no byte range');
+    return new DataView(await r.arrayBuffer());
+  };
+  const name = (v, at) => String.fromCharCode(v.getUint8(at), v.getUint8(at + 1), v.getUint8(at + 2), v.getUint8(at + 3));
+  const found = [];
+  const inside = (v, at, end) => {   // the boxes between at and end; a track's format is the first name in its "stsd" box
+    while (at + 8 <= end) {
+      let n = v.getUint32(at), head = 8;
+      if (n === 1 && at + 16 <= end) { n = Number(v.getBigUint64(at + 8)); head = 16 } else if (n === 0) n = end - at;
+      if (n < head || at + n > end) return;
+      const type = name(v, at + 4);
+      if (type === 'stsd' && n >= head + 16) found.push(name(v, at + head + 12));
+      else if (['moov', 'trak', 'mdia', 'minf', 'stbl'].includes(type)) inside(v, at + head, at + n);
+      at += n;
+    }
+  };
+  for (let at = 0, i = 0; i < 64; i++) {
+    const v = await part(at, 16);
+    if (v.byteLength < 16) break;
+    let n = v.getUint32(0);
+    if (n === 1) n = Number(v.getBigUint64(8)); else if (n === 0) n = size - at;
+    if (n < 8) break;
+    if (name(v, 4) === 'moov') { if (n <= 32 * 1024 * 1024) { const m = await part(at, n); inside(m, 0, m.byteLength) } break }
+    at += n;
+    if (at + 16 > size) break;
+  }
+  return found;
+}
+
 async function watch(id, t, from) {
   const d = await api('/api/doc/' + encodeURIComponent(id));
   setTitle(d.title);
@@ -570,6 +611,7 @@ async function watch(id, t, from) {
   <div class="watch">
     <div>
       <div class="player"><video id="vid" controls preload="metadata" playsinline src="${fileUrl(d.path)}${t ? '#t=' + t : ''}"></video></div>
+      <div class="video-speed"><label for="videoSpeed">Playback speed</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">Stored on the remote drive “${esc(d.remote)}”. It plays only while that computer is reachable.</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
@@ -583,8 +625,24 @@ async function watch(id, t, from) {
   <div id="morev"></div>
   <details class="about-src"><summary>About this video</summary><div class="in"><dl><dt>Channel</dt><dd>${esc(d.publisher || '—')}</dd><dt>Kind</dt><dd>${esc(d.trust)}</dd><dt>Length</dt><dd>${fmtDur(d.duration) || 'unknown'}</dd>${d.notes ? `<dt>Note</dt><dd>${esc(d.notes)}</dd>` : ''}${d.source_url ? `<dt>Online original</dt><dd>${esc(hostOf(d.source_url))} <span class="muted">(online; not needed here)</span></dd>` : ''}</dl></div></details>`;
   const vid = $('#vid');
+  const speed = $('#videoSpeed');
+  speed.addEventListener('change', () => { vid.playbackRate = Number(speed.value) });
+  // Native controls may also change the rate. Keep the visible control in sync.
+  vid.addEventListener('ratechange', () => {
+    const value = String(vid.playbackRate);
+    if (![...speed.options].some(option => option.value === value)) speed.add(new Option(value + '×', value));
+    speed.value = value;
+  });
   if (d.thumb) vid.poster = fileUrl(d.thumb);
-  vid.addEventListener('error', () => vid.closest('.player').insertAdjacentHTML('afterend', `<div class="err">${d.remote ? `This video is on the remote drive “${esc(d.remote)}”, which isn’t reachable right now. The transcript below still works.` : `This video file couldn’t be played here. <a href="${fileUrl(d.path)}" target="_blank" rel="noopener">Open the file directly</a>.`}</div>`), { once: true });
+  vid.addEventListener('error', async () => {
+    const say = why => vid.closest('.player')?.insertAdjacentHTML('afterend', `<div class="err">${why}</div>`);
+    if (d.remote) return say(`This video is on the remote drive “${esc(d.remote)}”, which isn’t reachable right now. The transcript below still works.`);
+    // Say why when the reason is the format: some library videos are AV1, which a computer without an AV1 decoder (a Mac before the M3) can't play.
+    const f = (await videoFormats(fileUrl(d.path)).catch(() => [])).map(x => UNPLAYABLE[x]).find(x => x && !vid.canPlayType(x[1]));
+    if (!vid.isConnected) return;   // the person has gone to another page
+    say(f ? `This video is saved in the ${f[0]} format, which this computer can’t play in Lastbook. Try another video player that supports ${f[0]}, such as VLC: the file is in your Lastbook data folder, at <b style="overflow-wrap:anywhere">library-data/${esc(d.path)}</b>.`
+      : `This video file couldn’t be played here. <a href="${fileUrl(d.path)}" target="_blank" rel="noopener">Open the file directly</a>.`);
+  }, { once: true });
   if (resumeAt) {
     $('#resYes').onclick = () => { vid.currentTime = resumeAt; vid.play().catch(() => { }); $('#resume').remove() };
     $('#resNo').onclick = () => { vid.currentTime = 0; vid.play().catch(() => { }); $('#resume').remove() };

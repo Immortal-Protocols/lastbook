@@ -51,7 +51,8 @@ class Files:
         self.ignore_range = set()
         self.ignore_once = {}     # name -> how many more Range requests get a 200 with the whole file
         self.redirect = {}        # name -> Location
-        self.busy = {}            # name -> list of (status, Retry-After or None) answers to give before serving it again
+        self.answers = {}         # name -> answers to give in turn: (status, Retry-After or None), 'whole' (a 200 with the whole
+                                  # file, even to a Range, that leaves cut_after for the next) or None (served as usual)
         self.pace = 0             # seconds to sleep per 64 KiB
         self.lock = threading.Lock()
 
@@ -74,11 +75,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             return
         with F.lock:
-            busy = F.busy[name].pop(0) if F.busy.get(name) else None
-        if busy:
-            self.send_response(busy[0])
-            if busy[1] is not None:
-                self.send_header('Retry-After', str(busy[1]))
+            answer = F.answers[name].pop(0) if F.answers.get(name) else None
+        if isinstance(answer, tuple):
+            self.send_response(answer[0])
+            if answer[1] is not None:
+                self.send_header('Retry-After', str(answer[1]))
             self.send_header('Content-Length', '0')
             self.end_headers()
             return
@@ -93,9 +94,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 F.corrupt[name] -= 1
                 body = bytes([body[0] ^ 0xff]) + body[1:]
         start, rng = 0, self.headers.get('Range')
-        once = False
+        once = answer == 'whole'
         with F.lock:
-            if rng and F.ignore_once.get(name):
+            if rng and not once and F.ignore_once.get(name):
                 F.ignore_once[name] -= 1
                 once = True
         if rng and name not in F.ignore_range and not once:     # like R2: If-Range is ignored
@@ -110,7 +111,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         cut = None
         with F.lock:
-            if F.cut_after.get(name):
+            if F.cut_after.get(name) and answer != 'whole':
                 cut = F.cut_after[name].pop(0)
         sent = start
         try:
@@ -185,7 +186,7 @@ class Base(unittest.TestCase):
 
     def setUp(self):
         F = self.files
-        F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear(); F.busy.clear()
+        F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear(); F.answers.clear()
         F.pace = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
@@ -341,7 +342,7 @@ class Downloads(Base):
         """downloads.lastbook.org cut a 388 GB download, then answered its resume with 503 for minutes: more 503s in a row than
         NETWORK_TRIES. A busy server is waited on longer, and the download finishes from where it was cut."""
         self.files.cut_after['model.gguf'] = [700_000]
-        self.files.busy['model.gguf'] = [None] + [(503, None)] * (download.NETWORK_TRIES + 2) + [(429, None)]   # None: served (and cut)
+        self.files.answers['model.gguf'] = [None] + [(503, None)] * (download.NETWORK_TRIES + 2) + [(429, None)]   # None: served (and cut)
         with fast_backoff():
             p = self.dl('model.gguf').run()
         self.assertEqual(Path(p).read_bytes(), self.model)
@@ -355,7 +356,7 @@ class Downloads(Base):
         for retry_after in (None, 600):
             with self.subTest(retry_after=retry_after):
                 self.files.log.clear()
-                self.files.busy['model.gguf'] = [(503, retry_after)] * 30
+                self.files.answers['model.gguf'] = [(503, retry_after)] * 30
                 waits, d = [], self.dl('model.gguf')
                 d.control.sleep = waits.append
                 with self.assertRaises(download.Failed) as e:
@@ -364,10 +365,34 @@ class Downloads(Base):
                 self.assertEqual(sum(waits), download.BUSY_LIMIT)
                 self.assertEqual(len(self.files.log), len(waits) + 1)      # one last ask after the last wait
 
+    def test_progress_renews_the_busy_budget(self):
+        """Bytes that arrive before a connection breaks are progress, so the busy waits before them no longer count against
+        BUSY_LIMIT. Before, only the broken-connection count was reset there, and this ran out of budget on the fourth ask."""
+        self.files.cut_after['model.gguf'] = [700_000]
+        self.files.answers['model.gguf'] = [(503, None), None, (503, None), (503, None)]
+        waits, d = [], self.dl('model.gguf')
+        d.control.sleep = waits.append
+        with mock.patch.object(download, 'BUSY_BACKOFF', (10,) * 6), mock.patch.object(download, 'BUSY_LIMIT', 20), \
+                mock.patch.object(download, 'BACKOFF', (0,) * 6):
+            p = d.run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        self.assertEqual(waits, [10, 0, 10, 10])
+        self.assertEqual(self.files.log[-1][1], 'bytes=700000-')
+
+    def test_progress_renews_the_stray_200_allowance(self):
+        """A 200 to a resume is asked about once more before starting over. After progress that allowance is there again, so a
+        second passing 200 hours into a large download does not throw away what is downloaded."""
+        self.files.cut_after['model.gguf'] = [500_000, 1_000_000]
+        self.files.answers['model.gguf'] = [None, 'whole', None, 'whole']
+        with fast_backoff():
+            p = self.dl('model.gguf').run()
+        self.assertEqual(Path(p).read_bytes(), self.model)
+        self.assertEqual([r for _, r, _ in self.files.log], [None, 'bytes=500000-', 'bytes=500000-', 'bytes=1000000-', 'bytes=1000000-'])
+
     def test_pause_during_busy_wait_then_resume(self):
         """Pause wakes a wait on a busy server at once, the bytes already downloaded are kept, and the next run resumes from them."""
         self.files.cut_after['model.gguf'] = [700_000]
-        self.files.busy['model.gguf'] = [None, (503, 300)]
+        self.files.answers['model.gguf'] = [None, (503, 300)]
         control, waits = download.Control(), []
         d = download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model), control,
                               allowed=ALLOWED, context=self.ctx, waiting=waits.append)
@@ -384,7 +409,7 @@ class Downloads(Base):
 
     def test_retry_after_is_honoured(self):
         waits = []
-        self.files.busy['model.gguf'] = [(503, 7), (503, 'Wed, 21 Oct 2015 07:28:00 GMT'), (503, 99999)]
+        self.files.answers['model.gguf'] = [(503, 7), (503, 'Wed, 21 Oct 2015 07:28:00 GMT'), (503, 99999)]
         d = self.dl('model.gguf')
         d.control.sleep = waits.append
         with fast_backoff():
@@ -645,7 +670,7 @@ class Jobs(Base):
     def test_job_shows_busy_wait(self):
         """While the server is busy, the item says when the next try is, with no rate. Pausing then drops it, and resume finishes."""
         self.files.cut_after['Lastbook-Small.zip'] = [700_000]
-        self.files.busy['Lastbook-Small.zip'] = [None, (503, 300)]
+        self.files.answers['Lastbook-Small.zip'] = [None, (503, 300)]
         s = self.setup()
         s.start('small', False)
         t0 = time.time()

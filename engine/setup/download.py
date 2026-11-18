@@ -255,13 +255,14 @@ class Download:
         h, start = self._rehash(start) if start else (hashlib.sha256(), 0)
         etag = meta.get('etag')
         tries = busy = waited = 0       # broken connections, busy answers, and seconds waited on them, with no progress
-        ignored_once = False
+        ignored_once = False            # a 200 to a Range already asked about since the last progress
         while start < self.size:
             self.control.check()
             try:
                 got = self._fetch(start, etag, h, ctx)
                 start, etag = got
                 tries = busy = waited = 0
+                ignored_once = False
             except Stopped:
                 raise
             except Failed:
@@ -281,6 +282,7 @@ class Download:
                 now = self.done_bytes()
                 if now > start:
                     tries = busy = waited = 0
+                    ignored_once = False
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
                 wait = min(max(BUSY_BACKOFF[min(busy, len(BUSY_BACKOFF) - 1)], b.wait), BUSY_LIMIT - waited)
@@ -298,7 +300,11 @@ class Download:
                 if disk_full(e):
                     raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                 now = self.done_bytes()     # h already holds every byte written: it is updated just after each write
-                tries = 0 if now > start else tries + 1
+                if now > start:
+                    tries = busy = waited = 0
+                    ignored_once = False
+                else:
+                    tries += 1
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
                 if tries >= NETWORK_TRIES:

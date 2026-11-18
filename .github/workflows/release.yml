@@ -13,11 +13,6 @@ on:
         description: Release version (defaults to the tag, or today's date)
         required: false
         type: string
-      build_local_ai:
-        description: Build the optional local AI runner
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -48,7 +43,6 @@ jobs:
     uses: ./.github/workflows/release-linux.yml
     with:
       version: ${{ needs.version.outputs.version }}
-      build_local_ai: ${{ github.event_name == 'push' && true || inputs.build_local_ai }}
     secrets: inherit
 
   report:

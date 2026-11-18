@@ -7,7 +7,6 @@
 # DIST  The app folder that build_app_windows.sh made (dist\Lastbook, with Lastbook.exe).
 # OUT   Build output. The installer lands at OUT\Lastbook-<version>-Setup.exe.
 # CLANG llvm-mingw's clang.exe (the toolchain of packaging/llm/build_llm_windows.sh), for the front in packaging/setup_stub/.
-# LASTBOOK_VERSION Optional version override (default: VERSION in packaging/lastbook_setup.py).
 # SIGNTOOL, SIGNING_DLIB, SIGNING_METADATA optionally enable Azure Artifact Signing.
 # Set all three to Windows paths. The metadata file names the signing account and certificate profile.
 #
@@ -19,7 +18,7 @@ HEREW="$(cygpath -w "$HERE")"
 PY="${PY:?Set PY to a CPython 3.14 python.exe}"
 DIST="${DIST:?Set DIST to the built app folder}"
 OUT="${OUT:?Set OUT to an output folder}"
-VERSION="${LASTBOOK_VERSION:-$("$PY" -I -B -c "import ast,sys;t=open(sys.argv[1],encoding='utf-8').read();print([n.value.value for n in ast.parse(t).body if isinstance(n,ast.Assign) and getattr(n.targets[0],'id','')=='VERSION'][0])" "$HEREW\\lastbook_setup.py")}"
+VERSION="$("$PY" -I -B -c "import ast,sys;t=open(sys.argv[1],encoding='utf-8').read();print([n.value.value for n in ast.parse(t).body if isinstance(n,ast.Assign) and getattr(n.targets[0],'id','')=='VERSION'][0])" "$HEREW\\lastbook_setup.py")"
 OUTU="$(cygpath -u "$OUT")"
 mkdir -p "$OUTU/tmp/localappdata" "$OUTU/tmp/pyinstaller" "$OUTU/payload"
 export TEMP="$OUT\\tmp" TMP="$OUT\\tmp" LOCALAPPDATA="$OUT\\tmp\\localappdata" PYINSTALLER_CONFIG_DIR="$OUT\\tmp\\pyinstaller"

@@ -1,15 +1,15 @@
 #!/bin/bash
-# Builds Lastbook_<version>_<arch>.deb for Ubuntu 24.04 LTS, x86_64 or aarch64. Run inside Ubuntu 24.04 of the same architecture
-# (a container is fine) from a checkout:
+# Builds Lastbook_<version>_<arch>.deb for Ubuntu 24.04 or 26.04 LTS, x86_64 or aarch64. Run inside that release of the same
+# architecture (a container is fine) from a checkout:
 #   apt-get install -y python3 python3-venv python3-pil dpkg-dev binutils   (the script installs them itself when run as root)
 #   bash packaging/linux/build_app_linux.sh
 # Each release has its own python3, and the wheels in lib/ are built for one Python only, so each release gets its own .deb:
-#   Ubuntu 24.04  python3 3.12  Lastbook_<version>_amd64.deb               Version: <version>
-#   Ubuntu 26.04  python3 3.14  Lastbook_<version>_ubuntu26.04_amd64.deb   Version: <version>+ubuntu26.04
+#   Ubuntu 24.04  python3 3.12  Lastbook_<version>_<arch>.deb               Version: <version>
+#   Ubuntu 26.04  python3 3.14  Lastbook_<version>_ubuntu26.04_<arch>.deb   Version: <version>+ubuntu26.04
 # The two hold different files, so they have different versions; +ubuntu26.04 sorts after <version>, so apt takes it as the newer one.
 #
 # Environment:
-#   LASTBOOK_VERSION             package version (default 1.1.9)
+#   LASTBOOK_VERSION             package version (default 1.1.11)
 #   LASTBOOK_BUILD_OUT           exact output folder (default derived/app-build/linux/<date-time>)
 #   LASTBOOK_BUILD_ROOT          parent for timestamped output (default derived/app-build/linux)
 #   LASTBOOK_CLEAN=1             remove LASTBOOK_BUILD_OUT before building
@@ -32,18 +32,25 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$(dirname "$(dirname "$HERE")")"
 APP_VERSION="${LASTBOOK_VERSION:-1.1.11}"
-BUILD="$ROOT/derived/app-build/linux"
-OUT="$BUILD/$(date +%Y%m%d-%H%M%S)"
+BUILD="${LASTBOOK_BUILD_ROOT:-$ROOT/derived/app-build/linux}"
+OUT="${LASTBOOK_BUILD_OUT:-$BUILD/$(date +%Y%m%d-%H%M%S)}"
+OUT="$(realpath -m "$OUT")"
 STAGE="$OUT/root"
 OPT="$STAGE/opt/lastbook"
-LLM="$ROOT/derived/llm/bin-linux"
+LLM="${LASTBOOK_LLM:-$ROOT/derived/llm/bin-linux}"
+PACKS="${LASTBOOK_PACKS:-$ROOT/derived/release/manifest-v1.json}"
+case "$(uname -m)" in
+  x86_64) DEB_ARCH=amd64 ;;
+  aarch64|arm64) DEB_ARCH=arm64 ;;
+  *) echo "build on x86_64 or aarch64" >&2; exit 1 ;;
+esac
 export PYTHONDONTWRITEBYTECODE=1
 
 if [ "${LASTBOOK_CLEAN:-0}" = 1 ]; then rm -rf "$OUT"; fi
 OS="$(. /etc/os-release; echo "$ID $VERSION_ID")"
 case "$OS" in                         # the release, its own python3, and the .deb's version and file name
-  "ubuntu 24.04") WANT_PY=3.12; DEB_VERSION="$APP_VERSION"; DEB="$OUT/Lastbook_${APP_VERSION}_amd64.deb" ;;
-  "ubuntu 26.04") WANT_PY=3.14; DEB_VERSION="$APP_VERSION+ubuntu26.04"; DEB="$OUT/Lastbook_${APP_VERSION}_ubuntu26.04_amd64.deb" ;;
+  "ubuntu 24.04") WANT_PY=3.12; DEB_VERSION="$APP_VERSION"; DEB="$OUT/Lastbook_${APP_VERSION}_${DEB_ARCH}.deb" ;;
+  "ubuntu 26.04") WANT_PY=3.14; DEB_VERSION="$APP_VERSION+ubuntu26.04"; DEB="$OUT/Lastbook_${APP_VERSION}_ubuntu26.04_${DEB_ARCH}.deb" ;;
   *) echo "build on Ubuntu 24.04 or 26.04 (this is $OS): the wheels must match its python3" >&2; exit 1 ;;
 esac
 if [ "$(id -u)" = 0 ] && ! { python3 -c 'import venv, PIL' 2>/dev/null && pkg-config --exists gstreamer-base-1.0; }; then

@@ -7,11 +7,6 @@ on:
         description: Release version, for example 1.2.0
         required: true
         type: string
-      build_local_ai:
-        description: Build the optional local AI runner
-        required: false
-        type: boolean
-        default: true
     secrets:
       LASTBOOK_PACKS_MANIFEST_B64:
         required: false
@@ -21,11 +16,6 @@ on:
         description: Release version, for example 1.2.0
         required: true
         type: string
-      build_local_ai:
-        description: Build the optional local AI runner
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -71,7 +61,6 @@ jobs:
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev curl
 
       - name: Build the local AI runner
-        if: ${{ inputs.build_local_ai }}
         run: |
           sudo apt-get install -y build-essential git cmake ninja-build glslc libvulkan-dev spirv-headers
           bash packaging/llm/build_llm_linux.sh

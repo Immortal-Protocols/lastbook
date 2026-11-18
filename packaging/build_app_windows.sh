@@ -12,8 +12,6 @@
 # PACKS      What first-run setup can install (docs/SETUP-API.md): the packs file publish-packs writes. Defaults to
 #            derived\release\manifest-v1.json. packaging/release_manifest.py turns it into setup\manifest-v1.json, as on the Mac.
 # SMALL_FROM Optional release folder (Lastbook-Small.zip and SHA256SUMS.txt) for when the packs file has no Small pack.
-# ALLOW_EMPTY_MANIFEST=1 writes a manifest with no packs when PACKS is missing (CI builds before publish-packs).
-# LASTBOOK_VERSION Optional version override (default: VERSION in packaging/lastbook_setup.py).
 # SCAN_TERMS Optional text file of words that must not appear in the package, one a line: machine names, user names.
 #            It stays out of the repository, because the list itself names them.
 #
@@ -78,17 +76,14 @@ PYCHECK
 # web/ and content/ as they ship, not the source folders: see ship_edits.json
 "$PY" -I -B "$ROOTW\\packaging\\ship_app_files.py" "$OUT\\ship"
 # What setup can install, checked against engine/setup/manifest.validate and download.py's allowed hosts by release_manifest.py
-MANIFEST_ARGS=(--packs "$PACKS" --out "$OUT\\ship\\setup\\manifest-v1.json")
-if [ -n "${SMALL_FROM:-}" ]; then MANIFEST_ARGS+=(--small-from "$SMALL_FROM"); fi
-if [ ! -f "$(cygpath -u "$PACKS")" ] && [ "${ALLOW_EMPTY_MANIFEST:-0}" = 1 ]; then MANIFEST_ARGS+=(--allow-empty); fi
-"$PY" -I -B "$ROOTW\\packaging\\release_manifest.py" "${MANIFEST_ARGS[@]}"
+"$PY" -I -B "$ROOTW\\packaging\\release_manifest.py" --packs "$PACKS" ${SMALL_FROM:+--small-from "$SMALL_FROM"} --out "$OUT\\ship\\setup\\manifest-v1.json"
 
 # Release gate: setup's downloader must verify every allowed host through roots.pem alone, and refuse a site outside it.
 "$PY" -I -B "$ROOTW\\packaging\\check_tls_roots.py" || { echo "check_tls_roots.py failed: refresh engine/setup/roots.pem before shipping" >&2; exit 1; }
 
 # Version information, as the installer has: name, version and this build's stamp. Windows shows it in Properties and the
 # Task Manager. The stamp also makes each build a file of its own, which Smart App Control judges afresh (see WINDOWS-SETUP-TESTS.md).
-VERSION="${LASTBOOK_VERSION:-$("$PY" -I -B -c "import ast,sys;t=open(sys.argv[1],encoding='utf-8').read();print([n.value.value for n in ast.parse(t).body if isinstance(n,ast.Assign) and getattr(n.targets[0],'id','')=='VERSION'][0])" "$ROOTW\\packaging\\lastbook_setup.py")}"
+VERSION="$("$PY" -I -B -c "import ast,sys;t=open(sys.argv[1],encoding='utf-8').read();print([n.value.value for n in ast.parse(t).body if isinstance(n,ast.Assign) and getattr(n.targets[0],'id','')=='VERSION'][0])" "$ROOTW\\packaging\\lastbook_setup.py")"
 STAMP="${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
 cat > "$OUTU/version.txt" <<VERSIONINFO
 VSVersionInfo(ffi=FixedFileInfo(filevers=(${VERSION//./, }, 0), prodvers=(${VERSION//./, }, 0)),

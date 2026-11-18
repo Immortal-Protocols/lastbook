@@ -4,7 +4,7 @@
 #   bash packaging/llm/build_llm_macos.sh
 # Output: derived/llm/bin-mac/lastbook-llm
 set -euo pipefail
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+HERE="$(dirname "$(/bin/realpath "$0")")"
 ROOT="$(dirname "$(dirname "$HERE")")"
 TAG=b12032       # the build the small-model evaluation ran on
 COMMIT=dde879bc4f954b809892fd0d660515f42536394a

@@ -1,14 +1,14 @@
 """Local retrieval service shared by the web app and the assistant.
 
 Keyword search (the library's own FTS5/BM25 index, read only) + meaning-based search (bge-small-en-v1.5 run locally
-with onnxruntime) fused with reciprocal-rank fusion. Every passage carries provenance: catalog id, PDF file page or
+with onnxruntime, or on a Mac by lastbook-llm --embed) fused with reciprocal-rank fusion. Every passage carries provenance: catalog id, PDF file page or
 video timestamp, and which retriever found it.
 
 The semantic index lives in derived/index/ (SSD): semantic.sqlite (chunks, per-document signatures) and vectors.f16
 (append-only float16 rows). It grows incrementally: documents whose catalog signature changed or that are new get
 (re)embedded; nothing in library-data is written.
 """
-import hashlib, html, json, math, os, re, sqlite3, sys, threading, time
+import hashlib, html, json, math, os, re, sqlite3, subprocess, sys, threading, time
 from pathlib import Path
 
 import engine.paths as lastbook_paths
@@ -27,15 +27,21 @@ TELEMETRY = 'onnxruntime not loaded'
 # This app stays offline. Read when onnxruntime is imported: the Mac build otherwise opens a usage store and connects to
 # Microsoft's collector, whatever disable_telemetry_events says. The Windows build has no such switch: see engine/quiet_onnx.py.
 os.environ['ORT_DISABLE_TELEMETRY'] = '1'
+GGUF = MODEL / 'bge-small-en-v1.5-f32.gguf'   # the same model in the form llama.cpp reads
+ENGINE = None   # what makes the vectors: 'llama' (lastbook-llm --embed), 'onnx' (onnxruntime) or None (keyword search only)
 try:
     import numpy as np
-    AVAILABLE = (MODEL / 'model.onnx').exists()
-    if AVAILABLE:  # with no model there is no reason to load it at all
+    from llm_local import runner_path
+    if sys.platform == 'darwin' and GGUF.exists() and runner_path():
+        ENGINE = 'llama'  # a Mac ships without onnxruntime: the program that runs the local AI makes the vectors, and onnxruntime is never loaded
+    AVAILABLE = ENGINE == 'llama' or (MODEL / 'model.onnx').exists()
+    if AVAILABLE and not ENGINE:  # with no model there is no reason to load it at all
         if os.name == 'nt':  # before the import, which already writes usage events to Windows. If this fails, the import is not reached.
             from engine import quiet_onnx
             quiet_onnx.silence()
         import onnxruntime as ort
         from tokenizers import Tokenizer
+        ENGINE = 'onnx'
         try:
             if hasattr(ort, 'disable_telemetry_events'):
                 ort.disable_telemetry_events()
@@ -48,6 +54,7 @@ try:
             TELEMETRY = f'disable_telemetry_events failed: {type(e).__name__}'
 except Exception as e:  # semantic search is optional; keyword search keeps working
     AVAILABLE = False
+    ENGINE = None
     IMPORT_ERROR = str(e)
 
 
@@ -74,6 +81,41 @@ class Embedder:
         v = out[:, 0, :]  # bge uses the [CLS] vector
         v = v / np.linalg.norm(v, axis=1, keepdims=True).clip(1e-9)
         return v.astype(np.float32)
+
+
+class RunnerEmbedder:
+    """The same vectors from lastbook-llm --embed (llama.cpp), for a Mac. The program starts at the first text and stays;
+    it speaks only through its pipes and leaves when Lastbook closes them."""
+
+    def __init__(self):
+        self.proc = None
+        self.lock = threading.Lock()
+
+    def _wait(self, ev):
+        for raw in self.proc.stdout:
+            j = json.loads(raw)
+            if j.get('ev') == 'error':
+                raise RuntimeError(f"lastbook-llm: {j.get('msg')}")
+            if j.get('ev') == ev:
+                return j
+        raise RuntimeError('lastbook-llm stopped')
+
+    def embed(self, texts):
+        with self.lock:
+            try:
+                if self.proc is None or self.proc.poll() is not None:
+                    self.proc = subprocess.Popen([str(runner_path()), '--embed', '--model', str(GGUF)], stdin=subprocess.PIPE,
+                                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                    self._wait('ready')
+                self.proc.stdin.write((json.dumps({'op': 'embed', 'texts': list(texts), 'max_tokens': 320}) + '\n').encode())
+                self.proc.stdin.flush()
+                vectors = self._wait('embedding')['vectors']
+            except Exception:
+                if self.proc:   # start it again at the next text
+                    self.proc.kill()
+                    self.proc = None
+                raise
+        return np.array(vectors, dtype=np.float32).reshape(-1, DIM)
 
 
 def norm_ws(s):
@@ -157,7 +199,7 @@ class Index:
           CREATE TABLE IF NOT EXISTS gaps(doc_id TEXT PRIMARY KEY, reason TEXT);''')
         db.close()
         self.lock = threading.RLock()
-        self.emb = Embedder() if AVAILABLE else None
+        self.emb = (RunnerEmbedder() if ENGINE == 'llama' else Embedder()) if AVAILABLE else None
         self.mat = None
         self.active = None
         self.status = {'state': 'starting' if AVAILABLE else 'off', 'chunks': 0, 'docs': 0, 'pending': None, 'rate': None}

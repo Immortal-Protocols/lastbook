@@ -924,7 +924,16 @@ class Shell:
         body = self.read_body(req.Content) if method == 'POST' else None
         document = args.ResourceContext == self.n.Core.CoreWebView2WebResourceContext.Document
         deferral = args.GetDeferral()
-        self.b.fetch(method, uri, headers, body, lambda r: self.answer(args, deferral, method, r), is_document=document)
+        try:
+            self.b.fetch(method, uri, headers, body, lambda r: self.answer(args, deferral, method, r), is_document=document)
+        except Exception:
+            traceback.print_exc()
+            try:        # the page would wait for this answer forever
+                args.Response = self.env.CreateWebResourceResponse(None, 500, 'Internal Error', '')
+            except Exception:
+                traceback.print_exc()
+            finally:
+                deferral.Complete()
 
     def read_body(self, stream):
         """A page can POST any size. One byte past the limit is enough for the bridge to refuse it, so no more than that is read."""

@@ -232,8 +232,19 @@ class _Task(B.Sink):
         if self.ex:
             self.ex.cancel()
 
+    def _fail(self):
+        """Tell WebKit this request will not be answered, unless it has already stopped it (WebKit raises if a stopped task is touched)."""
+        if self.stopped:
+            return
+        self.stopped = True
+        try:
+            self.task.didFailWithError_(Foundation.NSError.errorWithDomain_code_userInfo_(Foundation.NSURLErrorDomain, Foundation.NSURLErrorNetworkConnectionLost, None))
+        except Exception:
+            traceback.print_exc()
+
     def _broke(self):
         traceback.print_exc()
+        self._fail()
         self.stop()
         self.forget(self)
 
@@ -280,6 +291,7 @@ class SchemeHandler(Foundation.NSObject, protocols=[objc.protocolNamed('WKURLSch
         self.live.pop(id(t.task), None)
 
     def webView_startURLSchemeTask_(self, webview, task):
+        t = None
         try:
             req = task.request()
             t = _Task(task, self._forget, self.pulse)
@@ -290,6 +302,14 @@ class SchemeHandler(Foundation.NSObject, protocols=[objc.protocolNamed('WKURLSch
             t.ex = self.bridge.start(method, str(req.URL().absoluteString()), headers, body, t)
         except Exception:
             traceback.print_exc()
+            if t is not None:
+                t._fail()
+                self._forget(t)
+            else:
+                try:
+                    task.didFailWithError_(Foundation.NSError.errorWithDomain_code_userInfo_(Foundation.NSURLErrorDomain, Foundation.NSURLErrorNetworkConnectionLost, None))
+                except Exception:
+                    traceback.print_exc()
 
     def webView_stopURLSchemeTask_(self, webview, task):
         try:

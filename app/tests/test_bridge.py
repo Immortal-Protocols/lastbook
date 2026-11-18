@@ -102,6 +102,14 @@ class TestHandler(server.Handler):
             self.end_headers()
             self.wfile.write(b'z' * 10)
             return
+        if p in ('/documents/t/diemid', '/documents/t/diemid-nolen', '/documents/t/diemid-big'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/octet-stream')
+            if p != '/documents/t/diemid-nolen':
+                self.send_header('Content-Length', str(20 * MiB if p.endswith('big') else 1000))
+            self.end_headers()
+            self.wfile.write(b'z' * (17 * MiB if p.endswith('big') else 10))
+            raise RuntimeError('deliberate mid-body')
         if p == '/documents/t/redirect':
             self.send_response(302)
             self.send_header('Location', '/documents/plain.txt?a="<b>')
@@ -276,7 +284,9 @@ class Both:
     def real_pdf(self):
         path = DATA / 'library-data' / 'documents' / 'real.pdf'
         if not path.exists():
-            path.write_bytes(fixture_pdf())
+            tmp = path.with_name(f'.real-{os.getpid()}.tmp')      # whole or not at all: another run of the suite shares this folder and may be reading it
+            tmp.write_bytes(fixture_pdf())
+            os.replace(tmp, path)
         return '/documents/real.pdf'
 
     def test_pdf_file_is_never_handed_over(self):
@@ -702,6 +712,37 @@ class Both:
         self.assertEqual(r.status, 200)
         if self.mode == 'stream':
             self.assertFalse(r.ok)
+
+    def test_exception_mid_body_is_not_a_clean_end(self):
+        for p in ('/documents/t/diemid', '/documents/t/diemid-nolen'):
+            r = self.get(p)
+            if self.mode == 'stream':
+                self.assertFalse(r.ok, p)
+            else:
+                self.assertEqual(r.status, 502, p)
+
+    def test_exception_mid_body_leaves_no_spool(self):
+        before = tmp_files()
+        r = self.get('/documents/t/diemid-big')
+        if self.mode == 'stream':
+            self.assertFalse(r.ok)
+        else:
+            self.assertEqual(r.status, 502)
+        self.assertEqual(tmp_files(), before)
+
+    def test_buffered_end_failure_still_answers(self):
+        if self.mode != 'buffer':
+            self.skipTest('buffer mode only')
+        orig = B._Buffered._end
+
+        def bad(ex):
+            raise OSError('spool close failed')
+        B._Buffered._end = bad
+        try:
+            r = self.get('/documents/plain.txt')
+        finally:
+            B._Buffered._end = orig
+        self.assertEqual(r.status, 502)
 
     # ---- where things may go
     def test_frame_rule(self):

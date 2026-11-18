@@ -204,9 +204,28 @@ class _Task(B.Sink):
         else:
             GLib.idle_add(self._head, status, reason, headers)
 
+    def _fail(self):
+        """This request will not be answered: tell WebKit (if it has not been given a response yet) and let go of the pipe."""
+        req, self.req = self.req, None
+        if req is not None:
+            try:
+                req.finish_error(GLib.Error.new_literal(Gio.io_error_quark(), 'failed', Gio.IOErrorEnum.FAILED))
+            except Exception:
+                traceback.print_exc()
+        if self.r is not None:       # WebKit never got the read end, so nobody else will close it
+            try:
+                os.close(self.r)
+            except OSError:
+                pass
+            self.r = None
+        self.stop()
+
     def _head(self, status, reason, headers):
+        if self.req is None:         # already failed
+            return False
         try:
             stream = Gio.UnixInputStream.new(self.r, True)
+            self.r = None            # the stream owns it now
             length = -1
             h = Soup.MessageHeaders.new(Soup.MessageHeadersType.RESPONSE)
             ctype = None
@@ -228,7 +247,7 @@ class _Task(B.Sink):
             req.finish_with_response(res)
         except Exception:
             traceback.print_exc()
-            self.stop()
+            self._fail()
         return False
 
     def data(self, chunk, ack):
@@ -483,6 +502,7 @@ class Shell:
 
     # ---- the scheme
     def on_scheme(self, req):
+        t = None
         try:
             if req.get_web_view() is not self.view:
                 req.finish_error(GLib.Error.new_literal(Gio.io_error_quark(), 'refused', Gio.IOErrorEnum.PERMISSION_DENIED))
@@ -495,6 +515,13 @@ class Shell:
             t.ex = self.bridge.start(method, str(req.get_uri()), headers, body, t)
         except Exception:
             traceback.print_exc()
+            if t is not None:
+                t._fail()
+            else:
+                try:
+                    req.finish_error(GLib.Error.new_literal(Gio.io_error_quark(), 'failed', Gio.IOErrorEnum.FAILED))
+                except Exception:
+                    traceback.print_exc()
 
     # ---- what may load where
     def on_policy(self, view, decision, kind):

@@ -198,7 +198,7 @@ const MapView = (() => {
     if (info.country) for (const k of ['orchard', 'vineyard', 'berries', 'perennial_veg']) CAVEAT[k] = 'Mapped in OpenStreetMap by volunteers: an orchard or vineyard may be missing, old or grubbed up, and the map does not say what grows there. Trees and vines keep producing for decades but need winter pruning. Private farmland — ask first.';
     if (info.country) {   // names and notes that say US or California belong to the US map sets
       const name = (id, label) => { const l = LAYERS.find(x => x.id === id); if (l) l.label = label };
-      name('mineral', 'Mines & quarries'); name('boat', 'Boat launches & marinas'); name('orchard', 'Orchards'); name('vineyard', 'Vineyards');
+      name('mineral', 'Mines & quarries'); name('boat', 'Boat launches & marinas'); name('community', 'Community centres, town halls & libraries'); name('dam', 'Dams'); name('orchard', 'Orchards'); name('vineyard', 'Vineyards');
       GROUPS.find(g => g[0] === 'food')[1] = 'Food that keeps growing'; GROUPS.find(g => g[0] === 'resource')[1] = 'Natural resources (mapped places)';
       CAVEAT.mineral = 'Mapped in OpenStreetMap: an old mine, quarry or shaft, not proof of anything recoverable, and not necessarily safe or open. Old workings, shafts and flooded quarries can be deadly.';
       CAVEAT.boat_launch = 'Mapped in OpenStreetMap by volunteers: check current access, and the tides on the coast.';
@@ -538,6 +538,7 @@ const MapView = (() => {
     const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000].find(m => m / mpp > 60) || 100000;
     const el = $('mscale'); if (el) el.innerHTML = `<span style="display:inline-block;width:${Math.round(nice / mpp)}px;border:2px solid #333;border-top:0;height:6px;vertical-align:middle"></span> ${nice >= 1000 ? nice / 1000 + ' km' : nice + ' m'}${st.metric ? '' : ` · ${(nice / 1609.34 < 1 ? Math.round(nice * 3.281) + ' ft' : (nice / 1609.34).toFixed(nice < 5000 ? 1 : 0) + ' mi')}`}`;
     const at = el && el.parentNode.querySelector('.mapattr'); if (at) at.style.maxWidth = Math.max(120, el.parentNode.clientWidth - el.offsetWidth - 34) + 'px';   // the credits wrap before they reach the scale bar, however long it is
+    const ms = $('mstatus'); if (ms && at) ms.style.bottom = Math.max(34, at.offsetHeight + 14) + 'px';   // and the status pill sits above a credit that has wrapped to several lines
   }
 
   function hitAt(x, y, touch) {

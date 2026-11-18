@@ -270,6 +270,9 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
   Setup downloads it directly from Hugging Face. The model is never part of the app or of this repository. The runner,
   `lastbook-llm`, is our own small program (`packaging/llm/lastbook_llm.cpp`) on llama.cpp tag b12032: Metal on a Mac,
   Vulkan with CPU fallbacks on Windows and Linux.
+- **Sharing downloads from a server.** `tools/seed.py` downloads the files whose torrent the manifest pins and seeds them
+  with rqbit, on the command line, for a Linux server. See
+  [docs/DOWNLOAD-SHARING.md](docs/DOWNLOAD-SHARING.md#sharing-from-a-server-command-line).
 - **Meaning-based search** uses BAAI's bge-small-en-v1.5 (ONNX) through onnxruntime, on Windows only; the Mac build uses
   keyword search.
 

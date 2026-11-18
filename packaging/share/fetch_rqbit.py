@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Fetches the pinned rqbit release for one platform into derived/share/, for the build to bundle (engine/setup/share.py).
 
-  python3 -I -B packaging/share/fetch_rqbit.py win-x64|mac-universal|linux-x64|linux-arm64 [--out derived/share] [--from FILE]
+  python3 -I -B packaging/share/fetch_rqbit.py [win-x64|mac-universal|linux-x64|linux-arm64] [--out derived/share] [--from FILE]
+
+With no platform, the one this machine runs (tools/seed.py, the command-line sharer, finds it in derived/share/ there).
 
 The file must match the size and SHA-256 in packaging/share/rqbit.json (GitHub's own digests for the release), or nothing is
 written. --from checks and copies a file already downloaded instead. A build tool: the app itself never fetches rqbit.
@@ -9,6 +11,8 @@ written. --from checks and copies a file already downloaded instead. A build too
 import argparse
 import hashlib
 import json
+import os
+import platform
 import shutil
 import ssl
 import sys
@@ -21,13 +25,28 @@ ROOT = HERE.parents[1]
 RELEASES = 'https://github.com/ikatson/rqbit/releases/download'
 
 
+def this_machine():
+    """The pinned platform this machine runs, or None."""
+    m = platform.machine().lower()
+    if sys.platform.startswith('linux'):
+        return {'x86_64': 'linux-x64', 'amd64': 'linux-x64', 'aarch64': 'linux-arm64', 'arm64': 'linux-arm64'}.get(m)
+    if sys.platform == 'darwin':
+        return 'mac-universal'
+    if os.name == 'nt' and m in ('amd64', 'x86_64'):
+        return 'win-x64'
+    return None
+
+
 def main():
     pins = json.loads((HERE / 'rqbit.json').read_text(encoding='utf-8'))
     ap = argparse.ArgumentParser()
-    ap.add_argument('platform', choices=sorted(pins['files']))
+    ap.add_argument('platform', nargs='?', choices=sorted(pins['files']), help='default: this machine')
     ap.add_argument('--out', default=str(ROOT / 'derived' / 'share'))
     ap.add_argument('--from', dest='src', help='a copy already downloaded, to check and use')
     a = ap.parse_args()
+    a.platform = a.platform or this_machine()
+    if a.platform not in pins['files']:
+        sys.exit(f'No pinned rqbit for this machine ({sys.platform}, {platform.machine()}). Name one of: {", ".join(sorted(pins["files"]))}')
     pin = pins['files'][a.platform]
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

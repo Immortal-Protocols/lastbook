@@ -154,6 +154,8 @@ as one map.
 [REGIONS-BO.md](REGIONS-BO.md) does the same for Bolivia as one country-wide region, with its nine departments as an
 alternative.
 
+[REGIONS-CR.md](REGIONS-CR.md) does the same for Costa Rica as one country-wide region, with Isla del Coco and the Gran Área Metropolitana noted.
+
 ### To do: maps for every place on Earth
 
 The goal is a detailed map for any place a person lives.

@@ -78,3 +78,47 @@ python3 server.py --data /path/to/ChonBuriData --port 8890
 # then open the address it prints, choose Map, and go to:  #/map?lat=12.9276&lon=100.8771&z=14   (Pattaya)
 # the province:  #/map?lat=13.05&lon=101.15&z=9.2
 ```
+
+## The build this was checked with
+
+| | |
+|---|---|
+| Source file | `thailand-latest.osm.pbf` (Geofabrik's file of 17 November), 330,447,194 bytes |
+| Source SHA-256 | `6a2908238debf96dd36e5c66bbaff19da7ab1f77b08bc8e106fd78b9fa3a6759` |
+| Source MD5 (matches Geofabrik's `.md5`) | `de5d72d732c387d2edda85ab571230bb` |
+| OpenStreetMap data up to | 2026-11-17T21:24:30Z (from the file's header) |
+| Built on | 17 November 2026, Windows 11 (10.0.22631), Python 3.12.7, pyosmium 4.3.2 from PyPI |
+| Build time | 565 seconds, reading the whole country and keeping the box |
+| Box | 100.51, 12.35, 101.87, 13.75 (west, south, east, north) |
+
+| File | Bytes | SHA-256 |
+|---|---|---|
+| `derived/geo/national.sqlite` | 109,752,320 | `fc1c53722077ee4f66788e3105630c3a23d69d18c0b700078a86370f66537ea2` |
+| `derived/geo/map.sqlite` | 36,864 | `f694303d8af09c5a5862d3c2a73ba12be39ecbd6725cb59f9cfeefc2f816cf1d` |
+| `derived/geo/places.sqlite` | 1,085,440 | `dbe19064979449f5e0efe7fcafd4a7e2fd9fc7be812b0a4c57f49f6f33c4e3b7` |
+| `derived/geo/national-status.json` | 59 | `c62f201abf8a0d3d23af479d36067bae87596f9602f1d38212049ac0cbc98c72` |
+| `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
+
+The map was built once; whether a second build gives the same bytes on Windows was not tested (#80 reports identical
+checksums for two builds on a Mac). Geofabrik replaces `thailand-latest` every day, so a later download gives a
+different source checksum and slightly different counts.
+
+What the map holds:
+
+| Layer | Features | | Layer | Features |
+|---|---|---|---|---|
+| Roads | 334,642 (30,298 with a name or number) | | Land use and parks | 15,770 |
+| Building outlines | 286,112 | | Water areas | 6,113 |
+| Streams, canals and drains | 4,615 | | Wetland | 1,177 |
+| Place labels | 777 | | Railways | 521 |
+| Islands | 117 | | Beaches | 108 |
+| Sea | 1 polygon, cut to the box | | | |
+
+Help points: 7,908 in 39 classes, 5,693 of them with a name. The largest: convenience stores 2,083, fuel 852, schools
+684, toilets 531, pharmacies 361, parks 324, supermarkets 312, shelters 298. For emergencies: hospitals 169 (156
+places when rows within 150 m are grouped), clinics 158, police 122, drinking water 110, doctors 105, fire stations
+34. The full list is in `TH-20.build.json`.
+
+The place finder has 6,470 rows: 777 places (5 cities, 65 towns, 13 suburbs, 46 quarters, 381 villages, 223
+neighbourhoods and others) and 5,693 named help points. 1,998 rows carry a second name, the English one where
+OpenStreetMap has it.

@@ -120,3 +120,75 @@ supermarkets 1,186, schools 1,023, kindergartens 801, convenience stores 725, fu
 The place finder has 12,308 rows: 3,724 places (2 cities, 49 towns, 133 suburbs, 208 quarters, 449 villages, 2,262
 hamlets, 317 neighbourhoods, 303 localities and 1 island) and 8,584 named help points. 149 rows carry a second name, the
 English one where OpenStreetMap has it.
+
+## What was checked, and how
+
+`tools/check_region_map.py` passed all 37 file checks and all 16 engine checks on the build above. With `--engine`,
+every connection blocked and an empty library:
+
+- **Map display.** Tiles at zoom 10, 13 and 16 around the centre of Roskilde: roads, water, land, railways and place
+  labels at the wider zooms, 143 building outlines in one zoom-16 tile.
+- **Pins.** 13 pin groups around the centre of Roskilde.
+- **Nearest help.** A pharmacy at 0.18 km, Roskilde Privathospital at 0.39 km, another pharmacy at 0.5 km and the
+  police station at 0.52 km.
+- **Place search, with Danish letters.** "Roskilde", "Køge", "Næstved", "Holbæk", "Kalundborg", "Nykøbing Falster" and
+  "Vordingborg" find the towns first; "Sjællands Universitetshospital" finds both its Køge and its Nykøbing F. sites.
+  "Roskilde Domkirke" finds the city: places of worship are not a kept class, so the search falls back to "Roskilde".
+- **What the app is told.** 40 kinds, within 10.73, 54.56, 12.69, 56.13, the extent of the data inside the box.
+
+`tools/test_build_region_map.py`: 9 tests pass with pyosmium.
+
+It was also opened in a browser through `python3 server.py`, which serves the same `web/` interface the desktop app
+shows. The map drew the whole region, Roskilde and Nykøbing Falster, Roskilde in dark mode as well, and the "Nearest to the map
+center" list filled in. The browser's request log showed 90 requests, all to the local server; the one 404 was
+`home-area.json`, which is meant to be absent.
+
+**Not checked:** the packaged desktop app, and installing through setup (no installer or manifest entry is part of this).
+
+## What is and is not in it
+
+**In it**
+
+- Streets and paths of every class `tools/build_map.py` draws, with the same zoom rules, for all of Zealand, Lolland,
+  Falster, Møn and the islands in the box, and for Langeland and the east of Funen.
+- Lakes, streams and drains, wetland, beaches, land use, parks and building outlines from OpenStreetMap.
+- Place labels and help points in the classes the engine already names (`HELP` in `server.py`).
+
+**Not in it**
+
+- **Addresses.** Denmark's address register is open (REGIONS-DK.md), but the tool does not build an address index, and
+  the engine could not read Danish addresses yet: the street comes before the number. Roads are in the map but not in
+  the place finder, so a street cannot be searched by name.
+- **Terrain, contours and the 3D view**, **crops** and the **water and dam inventory**. Denmark's elevation model and
+  coastal dike layer are described in REGIONS-DK.md.
+- **`buildings.sqlite`.** Outlines are in `national.sqlite`; there are no heights.
+- **Government lists.** Defibrillators, warning sirens and public shelters have no open national list (REGIONS-DK.md).
+  Every point here is from OpenStreetMap.
+- **Shelters as an emergency plan.** The 1,408 "shelter" points are OpenStreetMap structures tagged `amenity=shelter`,
+  233 of them with a name. In Denmark as a whole over half of these are lean-tos at nature camping sites
+  (REGIONS-DK.md). Bus shelters are left out. None is a public shelter (*sikringsrum*).
+- **Fehmarn.** Inside the box, the north of the island is drawn as sea (see "The id and the box").
+
+**Known limits**
+
+- **Danish letters typed without them find nothing.** As in MAP-DK-84.md: "Koge", "Naestved", "Holbaek" and "Soro"
+  find no rows at all, while "Køge", "Næstved", "Holbæk" and "Sorø" find the towns first. The place finder's index folds
+  accents, but `ø`, `æ` and `å` are letters of their own.
+- **Islands are not found by name.** "Møn" finds the hamlet of Mønge first, and "Lolland" finds the fire service and the
+  town hall; the islands themselves are not places in the place finder.
+- **Hospital rows are not hospitals.** The 107 hospital rows are 58 places when rows within 150 m are grouped, and 4
+  have no name; 40 of them are in the capital region.
+- **Every place's detail line says "Sjælland"**, the `--name` given, including the places in Copenhagen and on Funen.
+- **Completeness follows OpenStreetMap.** 7,358 help points have no name. Nothing was compared against an official
+  count.
+- **The page header, the units and the credits are the US map's.** The header says "what was mapped by 25 Oct 2026",
+  while this map's date is in `meta` (`data_as_of`, 17 November 2026). Distances are in miles at wider zooms, the search
+  box asks for a "town or ZIP", the home view and the "US" button point at the United States, and the credit line lists
+  US sources that are not in this map. The same holds for the other region maps.
+
+## Licence and attribution
+
+All data in this map is from OpenStreetMap, © OpenStreetMap contributors, under the Open Database License 1.0, taken
+from Geofabrik's Denmark extract. A database built from it, which this map is, is offered under the ODbL as well. The
+credit and the date of the data are written into `meta` in `national.sqlite` and `map.sqlite`, and into
+`DK-85.build.json`. The app's map already shows "© OpenStreetMap contributors".

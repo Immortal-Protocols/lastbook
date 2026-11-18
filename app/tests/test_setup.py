@@ -1278,6 +1278,28 @@ class RegionMaps(Maps):
         self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
         self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-car')
 
+    def test_country_pack_is_not_a_us_state(self):
+        """A country pack (kind 'country', no country field) must stay distinct from a US state, so the picker can group
+        it by country instead of under the United States (web/setup.js countryOf). Covers the eu-se / se-sto pair."""
+        m = self.manifest().current
+        m['maps'] = [
+            {'id': 'eu-se', 'title': 'Sweden', 'kind': 'country'},
+            {'id': 'se-sto', 'title': 'Stockholm', 'kind': 'region', 'country': 'Sweden'},
+            {'id': 'us-wdc', 'title': 'Washington, D.C.', 'kind': 'region', 'country': 'United States of America'},
+            {'id': 'CA', 'title': 'California', 'kind': 'state'},
+        ]
+        v = manifest.validate(m, ALLOWED)
+        self.assertIsNotNone(v)
+        by_id = {x['id']: x for x in v['maps']}
+        self.assertEqual(by_id['eu-se']['kind'], 'country')
+        self.assertEqual(by_id['eu-se']['country'], '')
+        self.assertEqual(by_id['se-sto']['kind'], 'region')
+        self.assertEqual(by_id['se-sto']['country'], 'Sweden')
+        self.assertEqual(by_id['us-wdc']['kind'], 'region')
+        self.assertEqual(by_id['us-wdc']['country'], 'United States of America')
+        self.assertEqual(by_id['CA']['kind'], 'state')
+        self.assertEqual(by_id['CA']['country'], '')
+
 
 class ContentRevisions(Base):
     def revised_manifest(self, revision='2026-11-13-small-v2', actual_revision=None):

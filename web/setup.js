@@ -91,7 +91,11 @@
   /* state and region maps (docs/SETUP-API.md, State maps; docs/MAPS.md, Region maps). The person picks the area; Lastbook never looks for where it is */
   const US = 'United States';
   const US_COUNTRIES = new Set(['united states', 'united states of america']);
-  const countryOf = m => { const c = String((m && m.country) || '').trim(); return !c || US_COUNTRIES.has(c.toLowerCase()) ? US : c };   // state maps carry no country; DC is "United States of America"
+  const countryOf = m => {
+    const c = String((m && m.country) || '').trim();
+    if (c) return US_COUNTRIES.has(c.toLowerCase()) ? US : c;
+    return (m && m.kind) === 'state' ? US : (String((m && m.title) || '').trim() || 'Other');   // state maps carry no country; DC is "United States of America"; a country or region pack without one is its own area
+  };
   const isUSMap = m => countryOf(m) === US;
   const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => {   // by country, then name, as people look for theirs
     const ca = countryOf(a), cb = countryOf(b);
@@ -289,6 +293,7 @@
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
     let hint = !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${replacing ? `. This replaces ${mapName(now)}.` : ''}${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
     if (unavailable) hint = (bytes ? hint : 'Your area map is already included.') + ' Street-address search is not available for this area yet.';
+    if (sel && sel.kind !== 'state') hint += ' The place finder is not available for this map yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
       ${now === 'us' ? '<p class="s-mapnote">All includes the US and Washington, D.C. Pick a state for street-address search, or another country to download that map instead (it replaces the US map).</p>' : ''}

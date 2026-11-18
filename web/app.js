@@ -13,6 +13,26 @@ if (CAN_CONTRIBUTE) $('#sideContribute').hidden = false;
 if (IN_WINDOW && window.LBUpdate) LBUpdate.watch($('#sideUpdate'));   // the opt-in "Update available" row (web/update.js); hidden unless notices are on and found one
 $('.skip').addEventListener('click', e => { e.preventDefault(); main.focus() });
 
+/* Appearance stays on this device; the shared initializer also covers setup/manage. */
+function appearanceControls(root = document) { Appearance.controls(root) }
+function syncWikiTheme() {
+  const wf = typeof $ === 'function' ? $('#wframe') : document.querySelector?.('#wframe');
+  if (!wf) return;
+  try {
+    const fd = wf.contentDocument;
+    if (fd && fd.documentElement && typeof lookOf === 'function') lookOf(fd);
+  } catch { }
+}
+Appearance.onChange(syncWikiTheme);
+document.addEventListener('change', e => {
+  if (!e.target.matches('[data-appearance]')) return;
+  const choice = e.target.value;
+  if (!['system', 'light', 'dark'].includes(choice)) return;
+  Appearance.apply(choice);
+  try { localStorage.setItem('sg.theme', choice) } catch { toast('Appearance changed for this visit. This browser could not save it.') }
+});
+appearanceControls();
+
 /* ---------------------------------------------------------------- icons -- */
 const I = {
   water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/>',
@@ -1171,6 +1191,8 @@ const roman = n => { let s = ''; for (const [v, r] of [[1000, 'm'], [900, 'cm'],
 // (the system accent in the apps, Lastbook green in a browser).
 function lookOf(fd) {
   const cs = getComputedStyle(html), r = fd.documentElement.style;
+  const theme = html.dataset.theme;
+  if (theme) r.colorScheme = theme; else r.removeProperty('color-scheme');
   const probe = document.createElement('i'); probe.style.color = 'var(--accent)'; probe.hidden = true; document.body.append(probe);
   r.setProperty('--lb-link', getComputedStyle(probe).color); probe.remove();
   for (const [k, v] of [['--lb-ink', '--ink'], ['--lb-ink2', '--ink2'], ['--lb-line', '--line2'], ['--lb-font', '--font'], ['--lb-display', '--display']]) { const x = cs.getPropertyValue(v).trim(); if (x) r.setProperty(k, x) }

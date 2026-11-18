@@ -4,6 +4,14 @@ Lastbook is a community built and maintained offline survival library for Mac, W
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.
 Chat answers questions using the library, including the offline encyclopedias when they are present, and links to its sources.
 
+Choose **Appearance** in the sidebar or phone header for System, Light or Dark.
+On phones, answer sources start collapsed; selecting a citation opens its source card.
+If the local AI is unavailable, matching library pages remain visible. **Export chat**
+works for completed, failed and stopped answers and saves a Markdown file locally.
+Exports contain conversation text, omit internal diagnostics and redact labeled credentials
+and user home paths; arbitrary private text in a conversation cannot be identified automatically.
+
+
 Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 
 > Lastbook’s original code and documentation are licensed under the [MIT License](LICENSE).

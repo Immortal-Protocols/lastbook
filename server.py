@@ -1676,7 +1676,10 @@ def pack_datasets(have):
                 source = 'elevation data'
         out.append({'label': f'Elevation ({source})', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
     if BLDGDB.exists():
-        out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
+        if map_set_meta().get('country'):  # no Microsoft footprints: the outlines are the street map's, and the file holds heights for the 3D view
+            out.append({'label': 'Building outlines and heights for 3D (OpenStreetMap)', 'status': f'For {area}, outlines from street level zoom; heights only where a volunteer mapped them'})
+        else:
+            out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
     if CROPDB.exists():
         out.append({'label': 'Orchards and vineyards (OpenStreetMap)' if map_set_meta().get('country') else 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
     return out

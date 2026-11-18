@@ -408,9 +408,10 @@ what was built, not measures of how complete the data is.
 | Terrain | Copernicus GLO-30, 17 one-degree tiles | 4,979 tiles; a Dartmoor tile reads 155-617 m against High Willhays at about 621 m | A surface model: heights include trees and buildings |
 | Water | OSM lakes and reservoirs, OSM `waterway=dam` | 112 reservoirs, 1,530 named lakes, 147 dams | No ponds layer; dams carry a name and owner at most |
 | Crops | OSM `landuse=orchard` and `landuse=vineyard` | 3,128 orchards, 236 vineyards | No crop type, no berries, volunteer-mapped |
+| Buildings | OSM buildings with a height or storey count (the file the 3D view reads); outlines come from the street map | 419,263 buildings with heights, about one in six of the outlines | Only buildings a volunteer gave a height or storeys to are extruded in 3D; Microsoft's footprints were not used |
 | Place finder | Named places and help points from the map file; postcodes and postcode districts from the OSM address index | 8,668 places, 23,049 named points, 52,310 postcodes, 349 postcode districts | A postcode exists only if an OSM address carries it, and its point is the middle of those addresses; OS Code-Point Open and Open Names (every postcode) not used, as their licence files were not read |
 | Atlas | OSM mines, quarries, mine shafts and adits; slipways and marinas | 1,169 mineral records and 737 boat launches | OSM says what a place is, not whether it is safe or in use; quarries mapped only as relations are missed; no fish-stocking or oil and gas well records |
 
 The tools are `tools/build_map.py` (box cut), `tools/build_addresses_osm.py`, `tools/build_terrain.py`,
-`tools/build_water.py`, `tools/build_crops_osm.py`, `tools/build_atlas_osm.py` and `tools/build_places_osm.py`. Source extracts for a region as large as England are 1.7 GB (PBF)
+`tools/build_water.py`, `tools/build_crops_osm.py`, `tools/build_atlas_osm.py`, `tools/build_places_osm.py` and `tools/build_osm_heights.py` (with a box). Source extracts for a region as large as England are 1.7 GB (PBF)
 and 3.2 GB (GeoPackage) because Geofabrik has no South West extract; the box is cut during the build.

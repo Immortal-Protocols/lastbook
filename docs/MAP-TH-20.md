@@ -122,3 +122,73 @@ places when rows within 150 m are grouped), clinics 158, police 122, drinking wa
 The place finder has 6,470 rows: 777 places (5 cities, 65 towns, 13 suburbs, 46 quarters, 381 villages, 223
 neighbourhoods and others) and 5,693 named help points. 1,998 rows carry a second name, the English one where
 OpenStreetMap has it.
+
+## What was checked, and how
+
+`tools/check_region_map.py` passed all 37 file checks and all 16 engine checks on the build above. With `--engine`,
+every connection blocked and an empty library:
+
+- **Map display.** Tiles at zoom 10, 13 and 16 around central Pattaya: roads, water, land, railways, beaches and place
+  labels at the wider zooms, 262 building outlines in one zoom-16 tile.
+- **Pins.** 34 pin groups around central Pattaya.
+- **Nearest help.** Pharmacies at 0.04, 0.05 and 0.11 km, a police box at 0.24 km.
+- **Place search, in both scripts.** พัทยา finds the city of Pattaya; "Bang Saen", "Si Racha" and "Laem Chabang" find
+  the towns by their English names (บางแสน, ศรีราชา, แหลมฉบัง); "Chonburi Hospital" finds โรงพยาบาลชลบุรี, and
+  "Bangkok Hospital Pattaya" finds โรงพยาบาลกรุงเทพพัทยา.
+- **What the app is told.** 39 kinds, within 100.51, 12.52, 101.87, 13.75, the extent of the data inside the box.
+
+`tools/test_build_region_map.py`: 9 tests pass with pyosmium.
+
+It was also opened in a browser through `python3 server.py`, which serves the same `web/` interface the desktop app
+shows. The map drew the province, Pattaya and Si Racha in light and dark mode, and the "Nearest to the map center" list
+filled in. The browser's request log showed 68 requests, all to the local server; the one 404 was `home-area.json`,
+which is meant to be absent.
+
+**Not checked:** the packaged desktop app, and installing through setup (no installer or manifest entry is part of this).
+
+## What is and is not in it
+
+**In it**
+
+- Streets and paths of every class `tools/build_map.py` draws, with the same zoom rules, for Chon Buri and the parts of
+  Bangkok, Samut Prakan, Chachoengsao and Rayong inside the box.
+- The Eastern line railways, streams, canals, ponds, wetland, beaches, land use, parks and building outlines from
+  OpenStreetMap.
+- Place labels in Thai, with the English name as a second name where OpenStreetMap has one, and help points in the
+  classes the engine already names (`HELP` in `server.py`).
+
+**Not in it**
+
+- **Addresses.** REGIONS-TH.md found no open address points for Thailand. Roads are in the map but not in the place
+  finder, so a street or *soi* cannot be searched by name.
+- **Terrain, contours and the 3D view**, **crops** and the **water and dam inventory**. REGIONS-TH.md lists
+  the national flood layers and their licence labels.
+- **`buildings.sqlite`.** Outlines are in `national.sqlite`; there are no heights.
+- **Shelters as an emergency plan.** The 298 "shelter" points are OpenStreetMap structures tagged `amenity=shelter`, 43
+  of them with a name. Bus shelters are left out. None is tagged as an emergency shelter.
+
+**Known limits**
+
+- **"Pattaya" finds the city nineteenth.** Town labels are in Thai, and their English names are kept in each row's
+  detail line. Place search ranks names that start with the query before everything else, so "Pattaya" lists a garage,
+  a dentist, a garden centre, the fire station and fourteen more before the city, in 19th place of 20. "Jomtien" finds
+  the beach but not the neighbourhood, whose English name in OpenStreetMap is the official transcription "Chom
+  Thian"; and "Sri Racha", a common spelling, finds only a fisheries station; "Si Racha", as OpenStreetMap
+  spells it, finds the town first. พัทยา finds the city first.
+- **Hospital rows are not all hospitals.** The 169 hospital rows are 156 places when rows within 150 m are grouped, and
+  7 have no name; 53 of them are in Bangkok and 32 in Rayong.
+- **Every place's detail line says "Chon Buri"**, the `--name` given, including the places in Bangkok and the other
+  provinces in the box.
+- **Completeness follows OpenStreetMap.** 2,215 help points have no name. Nothing was compared against an official
+  count.
+- **The page header, the units and the credits are the US map's.** The header says "what was mapped by 25 Oct 2026",
+  while this map's date is in `meta` (`data_as_of`, 17 November 2026). Distances are in miles at wider zooms, the search
+  box asks for a "town or ZIP", the home view and the "US" button point at the United States, and the credit line lists
+  US sources that are not in this map. The same holds for the Bangkok and Paraguay maps.
+
+## Licence and attribution
+
+All data in this map is from OpenStreetMap, © OpenStreetMap contributors, under the Open Database License 1.0, taken
+from Geofabrik's Thailand extract. A database built from it, which this map is, is offered under the ODbL as well. The
+credit and the date of the data are written into `meta` in `national.sqlite` and `map.sqlite`, and into
+`TH-20.build.json`. The app's map already shows "© OpenStreetMap contributors".

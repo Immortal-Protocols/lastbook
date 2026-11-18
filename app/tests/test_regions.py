@@ -128,15 +128,74 @@ class Packs(Base):
         regions.select(self.data, 'US-PA-lehigh-pocono')
         regions.install(self.data, self.pack)
         self.assertEqual(regions.chosen(self.data), 'US-PA-lehigh-pocono')   # the pack's state already: the area stays
+        s = regions.install(self.data, self.ny_pack())
+        self.assertEqual(s['region'], 'US-NY')
+        self.assertEqual(s['pack']['region'], 'US-NY')
+        self.assertEqual(self.catalog_ids() & (PA_IDS | {'region-us-ny-a'}), {'region-us-ny-a'})
+
+    def ny_pack(self):
+        """A one-document pack for another state."""
         ny = self.tmp / 'ny'
         (ny / 'documents' / 'regions' / 'us-ny').mkdir(parents=True)
         (ny / 'documents' / 'regions' / 'us-ny' / 'a.html').write_text('<p>test</p>', encoding='utf-8')
         (ny / 'region-pack.json').write_text(json.dumps({'region': 'US-NY'}), encoding='utf-8')
         (ny / 'catalog.json').write_text(json.dumps([{'id': 'region-us-ny-a', 'kind': 'html', 'title': 'NY test', 'path': 'documents/regions/us-ny/a.html', 'region': 'US-NY'}]), encoding='utf-8')
-        s = regions.install(self.data, regions.build(ny, self.tmp / 'ny.zip'))
-        self.assertEqual(s['region'], 'US-NY')
-        self.assertEqual(s['pack']['region'], 'US-NY')
-        self.assertEqual(self.catalog_ids() & (PA_IDS | {'region-us-ny-a'}), {'region-us-ny-a'})
+        return regions.build(ny, self.tmp / 'ny.zip')
+
+    def snapshot(self, sqlite=True):
+        """Everything an install changes: the catalog, the search rows, region-set.json and every file in the library."""
+        files = {str(f.relative_to(self.data)): f.read_bytes() for f in sorted(self.data.rglob('*'))
+                 if f.is_file() and (sqlite or f.suffix != '.sqlite')}
+        return (self.catalog_ids(), self.search_ids(), files)
+
+    def test_a_failed_write_leaves_the_pack_that_was_there(self):
+        regions.install(self.data, self.ny_pack())
+        before = self.snapshot()
+        real, calls = Path.write_bytes, []
+
+        def second_fails(path, blob):
+            calls.append(path)
+            if len(calls) == 2:
+                raise OSError(28, 'No space left on device')
+            return real(path, blob)
+
+        with mock.patch.object(Path, 'write_bytes', second_fails):
+            with self.assertRaises(OSError):
+                regions.install(self.data, self.pack)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(self.snapshot(), before)   # no stray files, and no empty us-pa folder
+        self.assertEqual(regions.read_set(self.data)['pack']['region'], 'US-NY')
+        self.assertEqual(regions.remove(self.data), 'US-NY')   # still tracked, so it can still be taken out
+
+    def test_a_failure_after_the_files_are_in_place_puts_everything_back(self):
+        regions.install(self.data, self.pack)
+        regions.select(self.data, 'US-PA-lehigh-pocono')
+        before = self.snapshot()
+        real = regions._write_json
+
+        def set_file_fails(path, obj):
+            if Path(path).name == regions.SET_FILE:
+                raise OSError(5, 'Input/output error')
+            return real(path, obj)
+
+        with mock.patch.object(regions, '_write_json', set_file_fails):
+            with self.assertRaises(OSError):
+                regions.install(self.data, self.ny_pack())
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(regions.chosen(self.data), 'US-PA-lehigh-pocono')
+
+    def test_installing_the_same_pack_again_replaces_it(self):
+        regions.install(self.data, self.pack)
+        before = self.snapshot(sqlite=False), self.row_count()
+        regions.install(self.data, self.pack)
+        self.assertEqual((self.snapshot(sqlite=False), self.row_count()), before)   # the search file's bytes may move; its rows don't
+
+    def row_count(self):
+        con = sqlite3.connect(self.lib / 'search.sqlite')
+        try:
+            return con.execute('SELECT COUNT(*) FROM pages').fetchone()[0]
+        finally:
+            con.close()
 
     def bad_pack(self, change):
         """The test pack, with one change made to its zip."""

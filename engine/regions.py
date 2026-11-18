@@ -11,8 +11,8 @@ A prototype for review. It keeps to the design's parts, at the smallest size tha
 - `region-set.json`, in the data folder beside `library-data/` (where `map-set.json` lives), records the region the
   person chose and the pack installed. Lastbook never detects location: the region is only ever what the person picked.
 
-Installing writes the catalog in one rename and the search rows in one transaction, and checks every file before it
-touches the library. The real version would go through setup's staged switch (docs/SETUP-API.md), like the state maps.
+Installing checks every file before it touches the library, and is all or nothing: if any step fails, the library is
+left as it was, with the pack that was there before still installed. The real version would go through setup's staged switch (docs/SETUP-API.md), like the state maps.
 Nothing here opens a connection: a pack is a file already on this computer.
 """
 import hashlib
@@ -141,10 +141,14 @@ def read_set(data):
 def _write_json(path, obj):
     path = Path(path)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix='.' + path.name + '.')
-    with os.fdopen(fd, 'w', encoding='utf-8') as f:
-        json.dump(obj, f, indent=1, ensure_ascii=False)
-        f.write('\n')
-    os.replace(tmp, path)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(obj, f, indent=1, ensure_ascii=False)
+            f.write('\n')
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def chosen(data):
@@ -250,6 +254,18 @@ def read_pack(zip_path):
         return m, records, rows, regions, files
 
 
+def _prune(lib, rels):
+    """Remove the folders that held rels (a pack's own folders under documents/regions/), once they are empty."""
+    stop = {lib, lib / 'documents', lib / 'text', lib / 'regions'}
+    for folder in sorted({(lib / rel).parent for rel in rels}, key=lambda p: -len(p.parts)):
+        while folder not in stop and lib in folder.parents:
+            try:
+                folder.rmdir()
+            except OSError:
+                break
+            folder = folder.parent
+
+
 def remove(data):
     """Take the installed pack's records, search rows, files and region files out of the library. Returns the code removed."""
     data = Path(data)
@@ -270,14 +286,7 @@ def remove(data):
             (lib / rel).unlink()
         except FileNotFoundError:
             pass
-    stop = {lib, lib / 'documents', lib / 'text', lib / 'regions'}
-    for folder in sorted({(lib / rel).parent for rel in pack.get('files', [])}, key=lambda p: -len(p.parts)):
-        while folder not in stop and lib in folder.parents:   # the pack's own folders, once empty
-            try:
-                folder.rmdir()
-            except OSError:
-                break
-            folder = folder.parent
+    _prune(lib, pack.get('files', []))
     s.pop('pack', None)
     _write_json(data / SET_FILE, s)
     return code
@@ -296,27 +305,72 @@ def install(data, zip_path, select_region=True):
     clash = {r['id'] for r in records} & {r['id'] for r in cat if not str(r.get('id', '')).startswith(prefix)}
     if clash:
         raise Refused(f'The library already has a document with the id {sorted(clash)[0]}.')
-    remove(data)
-    for rel, blob in files.items():
-        p = lib / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_bytes(blob)
-    (lib / 'regions').mkdir(exist_ok=True)
-    for rel, blob in regions.items():
-        (lib / rel).write_bytes(blob)
-    con = sqlite3.connect(lib / 'search.sqlite')
-    with con:
+    # All or nothing: until the last step, any failure puts the library back as it was, the old pack still installed.
+    # 1. Write every new file beside where it goes, under a hidden name. The library is unchanged until this is done.
+    # 2. Set the old pack's files aside, and move the new files into place.
+    # 3. Change the search rows in one transaction, left open; write the catalog and region-set.json, each in one rename.
+    # 4. Commit the search rows. Only then are the old pack's files thrown away.
+    s = read_set(data)
+    old = s.get('pack') or {}
+    old_prefix = id_prefix(old['region']) if old.get('region') else None
+    old_rels = old.get('files', []) + old.get('regions', [])
+    new = {**files, **regions}
+    staged, aside, placed = {}, [], []
+    con = None
+    try:
+        for rel, blob in new.items():
+            p = lib / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_name('.' + p.name + '.installing')
+            staged[rel] = tmp
+            tmp.write_bytes(blob)
+        for rel in old_rels:
+            p = lib / rel
+            if p.exists():
+                keep = p.with_name('.' + p.name + '.previous')
+                os.replace(p, keep)
+                aside.append((p, keep))
+        for rel, tmp in staged.items():
+            os.replace(tmp, lib / rel)
+            placed.append(lib / rel)
+        con = sqlite3.connect(lib / 'search.sqlite')
+        if old_prefix:
+            con.execute('DELETE FROM pages WHERE doc_id LIKE ?', (old_prefix + '%',))
         con.executemany(f'INSERT INTO pages({",".join(SEARCH_FIELDS)}) VALUES ({",".join("?" * len(SEARCH_FIELDS))})',
                         [tuple(row.get(f) for f in SEARCH_FIELDS) for row in rows])
+        kept = [r for r in cat if not (old_prefix and str(r.get('id', '')).startswith(old_prefix))]
+        _write_json(lib / 'catalog.json', kept + records)
+        had_set, before = (data / SET_FILE).exists(), dict(s)
+        s['pack'] = {'region': code, 'revision': m.get('revision', ''), 'ids': sorted(r['id'] for r in records),
+                     'files': sorted(files), 'regions': sorted(regions)}
+        if select_region and (not valid(s.get('region')) or state_of(s.get('region')) != code):
+            s['region'] = m.get('default_region') if valid(m.get('default_region')) and state_of(m['default_region']) == code else code
+        try:
+            _write_json(data / SET_FILE, s)
+            con.commit()
+        except BaseException:
+            _write_json(lib / 'catalog.json', cat)
+            if had_set:
+                _write_json(data / SET_FILE, before)
+            else:
+                (data / SET_FILE).unlink(missing_ok=True)
+            raise
+    except BaseException:
+        if con is not None:
+            con.rollback()
+            con.close()
+        for p in placed:
+            p.unlink(missing_ok=True)
+        for p, keep in aside:
+            os.replace(keep, p)
+        for tmp in staged.values():
+            tmp.unlink(missing_ok=True)
+        _prune(lib, [rel for rel in new if rel not in old_rels])
+        raise
     con.close()
-    cat = json.loads((lib / 'catalog.json').read_text(encoding='utf-8'))
-    _write_json(lib / 'catalog.json', cat + records)
-    s = read_set(data)
-    s['pack'] = {'region': code, 'revision': m.get('revision', ''), 'ids': sorted(r['id'] for r in records),
-                 'files': sorted(files), 'regions': sorted(regions)}
-    if select_region and (not valid(s.get('region')) or state_of(s.get('region')) != code):
-        s['region'] = m.get('default_region') if valid(m.get('default_region')) and state_of(m['default_region']) == code else code
-    _write_json(data / SET_FILE, s)
+    for _, keep in aside:
+        keep.unlink(missing_ok=True)
+    _prune(lib, old_rels)
     return s
 
 

@@ -149,15 +149,27 @@ class Seeder:
         return n
 
     def running(self):
-        """[(data folder, [torrent paths])] of the processes still running."""
+        """[(data folder, [torrent paths])] of the processes still running. The watcher of one that has ended on its own goes too."""
         with self.lock:
-            return [(f, t) for p, f, t, _, _ in self.procs if p.poll() is None]
+            out = []
+            for p, f, t, _, _ in self.procs:
+                if p.poll() is None:
+                    out.append((f, t))
+                else:
+                    _unwatch(p)
+            return out
 
     def readings(self):
-        """{process: bytes uploaded so far} of the processes running."""
+        """{process: bytes uploaded so far} of the processes running. The watcher of one that has ended on its own goes too."""
         with self.lock:
             procs = list(self.procs)
-        return {(p.pid, port): uploaded(port, secret) for p, _, _, port, secret in procs if p.poll() is None}
+        out = {}
+        for p, _, _, port, secret in procs:
+            if p.poll() is None:
+                out[(p.pid, port)] = uploaded(port, secret)
+            else:
+                _unwatch(p)
+        return out
 
     def shared(self):
         """All the bytes uploaded to other people so far, with what the running processes say now."""
@@ -208,26 +220,37 @@ def _spawn(args, secret):
     return p
 
 
-# The Mac watcher: notes rqbit's start time, waits for the end of a pipe only Lastbook writes to, then ends rqbit if that number
-# is still the same process (a number used again by another process is never hit).
+# The Mac watcher: notes rqbit's start time, waits for the end of a pipe only Lastbook writes to, then ends rqbit only if that
+# number still has the start time it noted. ps gives it to the second, so a number used again by another process is very
+# unlikely to be hit.
 _WATCH = 's=$(/bin/ps -o lstart= -p "$1"); read -r _; [ -n "$s" ] && [ "$(/bin/ps -o lstart= -p "$1")" = "$s" ] && kill -TERM "$1"'
+_WATCH_LOCK = threading.Lock()
 
 
 def _watch(p):
     """Mac: no job object and no parent-death signal, and the app's Quit (NSApplication terminate:, which calls exit()) and its
     start again after setup (os.execv, app/main.py relaunch) both skip atexit. So each rqbit gets a watcher, a /bin/sh holding the
     read end of a pipe whose write end only this process has: however Lastbook ends (Quit, a crash, Force Quit, that exec), the
-    pipe closes and the watcher ends rqbit. Stopping rqbit ends its watcher first (_unwatch)."""
+    pipe closes and the watcher ends rqbit. Stopping rqbit ends its watcher first (_unwatch). If the watcher cannot start, rqbit
+    is ended at once and OSError raised, so it never runs untied: Seeder.start and Swarm.start report that sharing or
+    BitTorrent could not start."""
     try:
         p.watcher = subprocess.Popen(['/bin/sh', '-c', _WATCH, 'lastbook-rqbit-watch', str(p.pid)], stdin=subprocess.PIPE,
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
     except OSError as e:
-        print(f'setup: sharing is not tied to Lastbook ({e}); it stops when Lastbook exits normally', flush=True)
+        p.terminate()
+        try:
+            p.wait(5)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+        raise OSError(f'rqbit could not be tied to Lastbook ({e})') from e
 
 
 def _unwatch(p):
-    """Ends p's watcher, if it has one, before Lastbook stops p itself."""
-    w = getattr(p, 'watcher', None)
+    """Ends p's watcher, if it has one: before Lastbook stops p itself, or once p has ended on its own."""
+    with _WATCH_LOCK:                                # one caller takes it, even from two threads at once
+        w, p.watcher = getattr(p, 'watcher', None), None
     if w is None:
         return
     if w.poll() is None:
@@ -320,10 +343,13 @@ class Swarm:
     def poll(self):
         """Bytes rqbit has fetched from other people so far (its own count), or None. What it uploaded goes to the tally."""
         from . import download
-        if not self.proc or self.proc.poll() is not None or self.id is None:
+        p = self.proc
+        if p is not None and p.poll() is not None:
+            _unwatch(p)                              # rqbit ended on its own: its watcher goes too
+        if not p or p.poll() is not None or self.id is None:
             return None
         if self.tally is not None:
-            self.tally.add({('swarm', self.proc.pid, self.port): uploaded(self.port, self.secret)})
+            self.tally.add({('swarm', p.pid, self.port): uploaded(self.port, self.secret)})
         r = download.local_api(self.port, self.secret, 'GET', f'/torrents/{self.id}/stats/v1')
         try:
             n = json.loads(r[1])['live']['snapshot']['fetched_bytes'] if r and r[0] == 200 else None

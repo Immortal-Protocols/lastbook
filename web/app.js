@@ -477,7 +477,7 @@ async function topicPage(id, open) {
     : `<div class="sit${open === c.id ? ' open' : ''}" id="c-${esc(c.id)}">
       <button aria-expanded="${open === c.id}" aria-controls="cb-${esc(c.id)}" data-choice="${esc(c.id)}"><span class="dot"></span><span class="tx"><b>${esc(c.label)}</b>${c.hint ? `<span>${esc(c.hint)}</span>` : ''}</span><span class="chev">${ico('down')}</span></button>
       <div class="body" id="cb-${esc(c.id)}"><div class="rcards">${(c.read || []).map(rcard).join('') || '<p class="muted">Nothing picked for this yet — try searching.</p>'}</div></div></div>`).join('');
-  const limLi = l => `<li>${esc(l.text)}${l.src ? ` <span class="cite">— <a href="${hrefFor(l)}">${esc(l.src.publisher || l.src.title)}${l.page ? ', p. ' + l.page : ''}</a></span>` : l.zim ? ` <span class="cite">— <a href="${hrefFor(l)}">encyclopedia</a></span>` : ''}</li>`;
+  const limLi = l => `<li>${esc(l.text)}${l.src ? ` <span class="lim-src">— <a href="${hrefFor(l)}">${esc(l.src.publisher || l.src.title)}${l.page ? ', p. ' + l.page : ''}</a></span>` : l.zim ? ` <span class="lim-src">— <a href="${hrefFor(l)}">encyclopedia</a></span>` : ''}</li>`;
   const LIM = 4, lims = t.limits || [];
   const limits = lims.length ? `<section class="limits" aria-labelledby="lim"><h2 id="lim">${ico('warn')}Stop and get help when…</h2><ul>${lims.slice(0, LIM).map(limLi).join('')}</ul>${lims.length > LIM ? `<details><summary>Show all ${lims.length} warnings</summary><ul>${lims.slice(LIM).map(limLi).join('')}</ul></details>` : ''}</section>` : '';
   const disagree = (t.gaps?.disagree || []).length ? `<div class="disagree"><b>Sources disagree</b><ul>${t.gaps.disagree.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';

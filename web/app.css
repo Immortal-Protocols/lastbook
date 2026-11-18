@@ -441,8 +441,8 @@ p{margin:.45em 0}
 .limits h2 svg{width:22px;height:22px;flex:none}
 .limits ul{margin:0;padding-left:20px}
 .limits li{margin:8px 0;line-height:1.45;font-size:15.5px}
-.limits .cite{font-size:13.5px;color:var(--ink3)}
-.limits .cite a{color:inherit}
+.limits .lim-src{font-size:13.5px;color:var(--ink3)}
+.limits .lim-src a{color:inherit}
 .limits details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:750;font-size:15px;color:var(--stop)}
 .disagree{margin:16px 0;padding:14px 16px;border-radius:var(--r);background:var(--warn-bg);border:1px solid var(--warn-line);font-size:15.5px}
 .disagree b{color:var(--warn)}

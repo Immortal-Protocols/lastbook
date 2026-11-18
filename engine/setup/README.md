@@ -4,12 +4,12 @@ The contract is `docs/SETUP-API.md`. This package fills it in.
 
 | File | What it does |
 |---|---|
-| `download.py` | The only module in Lastbook that opens a network connection. It uses HTTPS on port 443 to `ALLOWED_HOSTS` (and `*.hf.co`) and takes no proxy: it uses `http.client`, which never reads proxy settings. A redirect is followed only to an allowed address. A download resumes with Range. The ETag is compared here, because R2 ignores If-Range. The SHA-256 is computed while the file streams in. |
+| `download.py` | The only module in Lastbook that opens a network connection. It uses HTTPS on port 443 to `ALLOWED_HOSTS` (and `*.hf.co`) and takes no proxy: it uses `http.client`, which never reads proxy settings. A redirect is followed only to an allowed address. A download resumes with Range. The ETag is compared here, because R2 ignores If-Range. A large file comes in 32 MiB pieces over several connections at once, lowest first; `Hosts` shares each server's connections among the job's files (smallest first) and backs off on 503. Every byte is judged as it is on the disk: each piece is read back and compared with what arrived, and the file's SHA-256 is fed in order. A zip that does not match is repaired member by member from its central directory instead of downloaded again. |
 | `roots.pem` | The only root certificates the downloader trusts: 11 roots from Mozilla's bundle, those the allowed hosts' chains end in, plus their siblings. The system's trust store is never used. Rebuild with `packaging/setup_roots.py <certifi cacert.pem>`. The package scans require it. |
 | `manifest.py` | Loads the bundled `setup/manifest-v1.json`, plus one fetch of `https://downloads.lastbook.org/manifest-v1.json` when setup opens. The fetched copy is used only if it validates and every URL is allowed. |
 | `hardware.py` | Reads the OS, processor type, RAM, unified memory, GPUs and VRAM (DXGI through ctypes on Windows) and free space per disk. It estimates whether the AI fits, or measures it with `lastbook-llm --measure` and `llm_local.judge`. |
 | `install.py` | Checks a zip before writing anything: zip-slip, absolute paths, links, case clashes, encryption and the size against `installed_bytes`. Unpacks so that a stopped unpack can resume. Does the one-rename switch, keeps the old library, and rolls back if the new one does not open. |
-| `api.py` | Handles `/api/setup/*`, runs the job (`job.json`, pause, resume, cancel and retry), recognizes files already on the computer, makes the recommendation, and provides setup mode's `SetupServer` for the bridge. |
+| `api.py` | Handles `/api/setup/*`, runs the job (`job.json`, pause, resume, cancel and retry; every item downloads at once, and they are put in place in order), recognizes files already on the computer, makes the recommendation, and provides setup mode's `SetupServer` for the bridge. |
 
 ## How it runs
 

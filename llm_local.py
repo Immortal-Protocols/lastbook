@@ -65,13 +65,16 @@ def _load():
 
 
 def _save(d):
+    tmp = None
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = STATE_FILE.with_suffix('.tmp')
+        tmp = STATE_FILE.with_suffix(f'.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}.tmp')   # one of its own, so writes never share a file
         tmp.write_text(json.dumps(d, indent=1), encoding='utf-8')
         os.replace(tmp, STATE_FILE)
     except OSError as e:
         print('local AI: could not save its state:', e, flush=True)
+        if tmp:
+            tmp.unlink(missing_ok=True)
 
 
 def _stamp(p):
@@ -85,8 +88,7 @@ def mark_checked(path, sha256):
     p = Path(path)
     if p.name != FILE or p.stat().st_size != SIZE or str(sha256).lower() != SHA256:
         raise ValueError('not the model file')
-    LOCAL.saved['checked'] = _stamp(p)
-    _save(LOCAL.saved)
+    LOCAL.remember(checked=_stamp(p))
 
 
 # ----------------------------------------------------------------------------------------------------------- the model --
@@ -107,6 +109,7 @@ class Local:
     def __init__(self):
         self.lock = threading.RLock()
         self.gen_lock = threading.Lock()       # one answer at a time: the model holds one conversation
+        self.saved_lock = threading.Lock()     # one change to the saved settings, and its write to disk, at a time
         self.state, self.pct, self.message = 'absent', None, ''
         self.path, self.fit, self.ready_info = None, None, None
         self.proc, self.events, self.last_used = None, None, 0
@@ -128,9 +131,14 @@ class Local:
     def enabled(self):
         return self.saved.get('enabled', True)
 
+    def remember(self, **settings):
+        with self.saved_lock:
+            self.saved.update(settings)
+            _save(self.saved)
+
     def available(self):
         """True when a question can be answered: running, or ready to start."""
-        return self.state in ('ready', 'stopped', 'loading')
+        return self.enabled() and self.state in ('ready', 'stopped', 'loading')
 
     # -- finding and checking the file ------------------------------------------------------------------------------------
     def start_background(self):
@@ -169,6 +177,8 @@ class Local:
             wrong = wrong or (p, size)
         if not found:
             with self.lock:
+                if not self.enabled():
+                    return
                 if wrong:
                     p, size = wrong
                     done = size < SIZE
@@ -182,14 +192,17 @@ class Local:
         if self.saved.get('checked') != stamp:
             if not self._check(found):
                 return
-            self.saved['checked'] = stamp
-            _save(self.saved)
+            self.remember(checked=stamp)
         with self.lock:
+            if not self.enabled():
+                return
             self.path = found
         self._measure()
 
     def _check(self, p):
         with self.lock:
+            if not self.enabled():     # turned off since discover began: leave it off
+                return False
             self.state, self.pct, self.message = 'checking', 0, ''
         h = hashlib.sha256()
         done = 0
@@ -201,18 +214,22 @@ class Local:
                     self.pct = int(done * 100 / SIZE)
         except OSError as e:
             with self.lock:
-                self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
+                if self.enabled():
+                    self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
             return False
         if h.hexdigest() != SHA256:
             with self.lock:
-                self.state, self.pct = 'wrong', None
-                self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
+                if self.enabled():
+                    self.state, self.pct = 'wrong', None
+                    self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
             return False
-        return True
+        return self.enabled()
 
     def _measure(self):
         """llama.cpp's fitting decides where each part of the model goes; this then checks the whole fits this computer."""
         with self.lock:
+            if not self.enabled():
+                return
             self.state, self.pct, self.message = 'measuring', None, ''
         try:
             out = subprocess.run(self._argv(['--measure']), stdin=subprocess.DEVNULL, capture_output=True, timeout=180, **_quiet())
@@ -221,6 +238,8 @@ class Local:
             fit, out = None, None
             print('local AI: measuring failed:', type(e).__name__, e, flush=True)
         with self.lock:
+            if not self.enabled():
+                return
             if not fit:
                 self.state, self.message = 'error', 'The local AI program could not read the model file.'
                 if out is not None:
@@ -241,6 +260,8 @@ class Local:
     def ensure_running(self, on_wait=None, cancelled=lambda: False):
         """Starts the model if it is stopped and waits until it is ready. Returns None when ready, else a sentence why not."""
         with self.lock:
+            if not self.enabled():
+                return 'The local AI is turned off.'
             if self.state == 'ready' and self.proc and self.proc.poll() is None:
                 self.last_used = time.time()
                 return None
@@ -339,8 +360,7 @@ class Local:
                 proc.kill()
 
     def set_enabled(self, on):
-        self.saved['enabled'] = bool(on)
-        _save(self.saved)
+        self.remember(enabled=bool(on))
         if on:
             with self.lock:
                 if self.state == 'off':
@@ -362,47 +382,55 @@ class Local:
     # -- one model turn ---------------------------------------------------------------------------------------------------
     def generate(self, segments, max_tokens, cancelled, on_text):
         """Streams one answer. on_text(piece). Returns the 'done' event, or raises RuntimeError with a plain sentence."""
-        with self.gen_lock:
-            with self.lock:
-                proc, events = self.proc, self.events
-                if not proc or self.state != 'ready':
-                    raise RuntimeError(self.message or 'The local AI is not running.')
-                self.next_id += 1
-                rid = self.next_id
-                self.last_used = time.time()
-            while not events.empty():       # anything left from an answer that was stopped
-                events.get_nowait()
-            req = {'op': 'gen', 'id': rid, 'segments': segments, 'max_tokens': max_tokens, 'temp': 0.2, 'top_k': 64, 'top_p': 0.95,
-                   'min_p': 0.05, 'seed': 1234 + rid, 'stop': ['<|tool_response>']}
-            try:
-                proc.stdin.write((json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8'))
-            except OSError:
-                raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
-            sent_cancel = False
-            import queue
-            while True:
-                if cancelled() and not sent_cancel:
-                    sent_cancel = True
-                    try:
-                        proc.stdin.write(b'{"op":"cancel"}\n')
-                    except OSError:
-                        pass
+        while not self.gen_lock.acquire(timeout=0.2):      # another answer is being written: wait, but a stop still counts
+            if cancelled():
+                return {'ev': 'done', 'reason': 'cancel'}
+        try:
+            return self._generate(segments, max_tokens, cancelled, on_text)
+        finally:
+            self.gen_lock.release()
+
+    def _generate(self, segments, max_tokens, cancelled, on_text):
+        with self.lock:
+            proc, events = self.proc, self.events
+            if not proc or self.state != 'ready':
+                raise RuntimeError(self.message or 'The local AI is not running.')
+            self.next_id += 1
+            rid = self.next_id
+            self.last_used = time.time()
+        while not events.empty():       # anything left from an answer that was stopped
+            events.get_nowait()
+        req = {'op': 'gen', 'id': rid, 'segments': segments, 'max_tokens': max_tokens, 'temp': 0.2, 'top_k': 64, 'top_p': 0.95,
+               'min_p': 0.05, 'seed': 1234 + rid, 'stop': ['<|tool_response>']}
+        try:
+            proc.stdin.write((json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8'))
+        except OSError:
+            raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
+        sent_cancel = False
+        import queue
+        while True:
+            if cancelled() and not sent_cancel:
+                sent_cancel = True
                 try:
-                    ev = events.get(timeout=0.2)
-                except queue.Empty:
-                    continue
-                kind = ev.get('ev')
-                if kind == 'exit':
-                    raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
-                if ev.get('id') != rid:
-                    continue
-                if kind == 'tok':
-                    on_text(ev['t'])
-                elif kind == 'done':
-                    self.last_used = time.time()
-                    return ev
-                elif kind == 'error':
-                    raise RuntimeError(_plain_error(ev))
+                    proc.stdin.write(b'{"op":"cancel"}\n')
+                except OSError:
+                    pass
+            try:
+                ev = events.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            kind = ev.get('ev')
+            if kind == 'exit':
+                raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
+            if ev.get('id') != rid:
+                continue
+            if kind == 'tok':
+                on_text(ev['t'])
+            elif kind == 'done':
+                self.last_used = time.time()
+                return ev
+            elif kind == 'error':
+                raise RuntimeError(_plain_error(ev))
 
 
 LOCAL = Local()

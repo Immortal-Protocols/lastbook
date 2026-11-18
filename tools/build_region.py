@@ -39,7 +39,7 @@ def run(label, args, env=None):
 
 def build(code, src, regions, as_of_iso, as_of_text, workers):
     gpkg, pbf, dem = src / 'england.gpkg', src / 'england.osm.pbf', src / 'dem'
-    boxes = {r['code']: r['bbox']['padded_0_15'] for r in json.load(open(REPO / 'docs/regions-uk-proposed.json'))['regions']}
+    boxes = {r['code']: r['bbox']['padded_0_15'] for r in json.loads((REPO / 'docs/regions-uk-proposed.json').read_text(encoding='utf-8'))['regions']}
     bbox = ','.join(str(v) for v in boxes[code])      # --bbox=... keeps a negative west value from reading as a flag
     out = regions / code
     geo = out / 'derived/geo'

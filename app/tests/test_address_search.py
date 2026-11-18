@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from engine.address_search import (find_addresses, is_address_query, is_german_address_query,
-                                   normalize, normalize_de)
+from engine.address_search import (Scheme, find_addresses, is_address_query,
+                                   is_street_first_address_query, normalize, normalize_as)
 
 
 class AddressSearchTests(unittest.TestCase):
@@ -117,7 +117,7 @@ class GermanAddressTests(unittest.TestCase):
                 ('7', 'Calwer Straße', 'Stuttgart', '', 48.7740, 9.1775, 'Stuttgart-Mitte'),
             ]
             db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?)',
-                           [(num, street, normalize_de(street), city, 'DE-BW-ST', zip_code, lat, lon, district)
+                           [(num, street, normalize_as('de-1', street), city, 'DE-BW-ST', zip_code, lat, lon, district)
                             for num, street, city, zip_code, lat, lon, district in rows])
             db.execute("INSERT INTO meta VALUES ('norm','de-1')")
             db.execute("INSERT INTO meta VALUES ('source','OpenStreetMap (ODbL 1.0)')")
@@ -154,7 +154,7 @@ class GermanAddressTests(unittest.TestCase):
 
     def test_one_letter_street_head_is_not_searched_as_a_prefix(self):
         self.assertEqual(find_addresses('B 10 5', self.geo), [])
-        self.assertFalse(is_german_address_query('B 10 5'))
+        self.assertFalse(is_street_first_address_query('B 10 5'))
 
     def test_street_name_with_number_is_not_the_house(self):
         hit, = find_addresses('Straße des 17. Juni 5', self.geo)
@@ -165,9 +165,19 @@ class GermanAddressTests(unittest.TestCase):
         self.assertEqual(find_addresses('Königstraße 28, 80331 München', self.geo), [])
 
     def test_postcode_and_city_are_place_queries(self):
-        self.assertFalse(is_german_address_query('70173 Stuttgart'))
-        self.assertFalse(is_german_address_query('Stuttgart'))
-        self.assertTrue(is_german_address_query('Hauptstraße 5'))
+        self.assertFalse(is_street_first_address_query('70173 Stuttgart'))
+        self.assertFalse(is_street_first_address_query('Stuttgart'))
+        self.assertTrue(is_street_first_address_query('Hauptstraße 5'))
+
+    def test_index_without_a_norm_meta_does_not_break_street_first_search(self):
+        db = sqlite3.connect(self.geo / 'addresses' / 'CA.sqlite')
+        try:
+            db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL,district TEXT)')
+            db.commit()
+        finally:
+            db.close()
+        hit, = find_addresses('Königstraße 28', self.geo)
+        self.assertEqual(hit['name'], 'Königstraße 28')
 
     def test_app_route_reaches_the_german_index(self):
         import server
@@ -177,6 +187,34 @@ class GermanAddressTests(unittest.TestCase):
                 patch.object(server, 'home_area', return_value=None):
             hit, = server.places('Hauptstraße 5')
             self.assertEqual((hit['name'], hit['kind']), ('Hauptstraße 5', 'Street address'))
+
+
+class SchemeDataTests(unittest.TestCase):
+    """A second street-first country is data in a Scheme, not new engine code."""
+
+    def setUp(self):
+        self.scheme = Scheme(
+            chars={'İ': 'i', 'I': 'i', 'ı': 'i', 'Ğ': 'g', 'ğ': 'g', 'Ü': 'u', 'ü': 'u',
+                   'Ş': 's', 'ş': 's', 'Ö': 'o', 'ö': 'o', 'Ç': 'c', 'ç': 'c',
+                   'Â': 'a', 'â': 'a', 'Î': 'i', 'î': 'i', 'Û': 'u', 'û': 'u'},
+            words={'caddesi': 'cd', 'sokagi': 'sk'},
+            markers=('no',),
+            number_pick='last',
+            street_kinds=('cd', 'sk'),
+            form_suffixes=('cd', 'sk'),
+            place_stop=('istanbul',),
+            name='{street} No: {num}',
+        )
+
+    def test_marker_and_folded_letters(self):
+        number, street, postcode, qualifier = self.scheme.parse('Süleyman Seba Caddesi No: 22 Beşiktaş')
+        self.assertEqual((number, street, postcode, qualifier),
+                         ('22', ['suleyman', 'seba', 'caddesi'], '', ['besiktas']))
+        self.assertEqual(self.scheme.normalize('İstiklâl Caddesi'), 'istiklal cd')
+
+    def test_street_name_may_start_with_a_number(self):
+        number, street, postcode, qualifier = self.scheme.parse('19 Mayıs Caddesi 135')
+        self.assertEqual((number, street), ('135', ['19', 'mayis', 'caddesi']))
 
 
 if __name__ == '__main__':

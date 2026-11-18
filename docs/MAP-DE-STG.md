@@ -60,16 +60,16 @@ same extract to the city boundary instead, which keeps the output small enough t
 
 ## German address matching (`de-1`)
 
-- `normalize_de()` expands `ä ö ü ß` to `ae oe ue ss`, strips other accents, and folds street words:
+- The `de-1` scheme (a data entry in `SCHEMES` in `engine/address_search.py`; the engine holds no
+  code per country) expands `ä ö ü ß` to `ae oe ue ss`, strips other accents, and folds street words:
   `straße`/`strasse`/`str.` → `str`, `platz` → `pl`, `sankt` → `st`.
 - The query is read street first: everything before the house number is the street, the first number that is not a
   five-digit postcode is the house number, a detached letter (`12 a`) is joined to it, and the second half of a range
   (`5-7`) is dropped: the first endpoint is the address.
 - A leading postcode (`70173 Stuttgart`) stays a place query, and a query whose street or city does not match returns
   nothing rather than a nearby house.
-- `engine/address_search.py` tries the US scheme first for number-first queries, then `de-1` when such an index is
-  installed, then `tr-1`. A German query with both Istanbul and Stuttgart installed therefore still resolves to the
-  German index, and a Turkish query falls through to the Turkish one.
+- `engine/address_search.py` tries the US scheme first for number-first queries, then each installed
+  street-first scheme in turn: an index is only searched under the scheme its own `meta.norm` declares.
 
 ## Limits
 

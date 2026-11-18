@@ -1395,7 +1395,7 @@ def water_places(q, limit=10, near=None):
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
         return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
-    if address_search.is_german_address_query(q):
+    if address_search.is_street_first_address_query(q):
         # 'Hauptstraße 5' is street first: an address only when an installed index has that house
         found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
         if found:

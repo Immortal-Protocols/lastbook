@@ -399,12 +399,12 @@ def build_national():
 
 
 def build_addresses(addresses):
-    from engine.address_search import normalize_de
+    from engine.address_search import normalize_as
     path = GEO / 'addresses' / f'{REGION}.sqlite'
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = []
     for street, number, city, postcode, district, lat, lon in addresses.values():
-        norm = normalize_de(street)
+        norm = normalize_as('de-1', street)
         if not norm:
             continue
         rows.append((number, street, norm, city, REGION, postcode, lat, lon, district))

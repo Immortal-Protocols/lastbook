@@ -4,6 +4,14 @@ Lastbook is an offline survival library for Mac, Windows and Linux. It puts manu
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.
 Chat answers questions using the library and links to its sources.
 
+Choose **Appearance** in the sidebar or phone header for System, Light or Dark.
+On phones, answer sources start collapsed; selecting a citation opens its source card.
+If the local AI is unavailable, matching library pages remain visible. **Export chat**
+works for completed, failed and stopped answers and saves a Markdown file locally.
+Exports contain conversation text, omit internal diagnostics and redact labeled credentials
+and user home paths; arbitrary private text in a conversation cannot be identified automatically.
+
+
 Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 
 > Lastbook’s original code and documentation are licensed under the [MIT License](LICENSE).
@@ -220,7 +228,7 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
 ## Tests
 
 ```bash
-python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq
+python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_chat_ui app.tests.test_validate_topics app.tests.test_libq
 ```
 
 `test_bridge` needs a data folder (`LASTBOOK_DATA`); the others run without a library. `packaging/test_pack_tools.py SAMPLE

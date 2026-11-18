@@ -14,26 +14,44 @@ const Chat = (() => {
   const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
     video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
     topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
-  const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
+  const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…', queued: 'Waiting for the local AI…', prompt: 'Preparing the question…', generation: 'Writing the answer…' };
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
-  const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
+  const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2, queued: -1, prompt: 1, generation: 2 };
   function progress(m) {
     const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
     const stages = STAGES.map((t, i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${t}</li>`).join('');
     return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
   }
-  let chats = load(), live = {};   // live[chatId] = {abort, state, steps}
+  let storageError = '';
+  let chats = load(), live = {};   // live[chatId] = {abort, running}
+  const sourceOpen = new Map();
   let status = null;
 
-  function load() { try { return JSON.parse(localStorage.getItem('sg.chats')) || [] } catch { return [] } }
+  function load() {
+    try {
+      if (localStorage.getItem('sg.chatKeep') === 'no') return [];
+      const saved = JSON.parse(localStorage.getItem('sg.chats') || '[]');
+      if (!Array.isArray(saved)) throw new Error('invalid history');
+      return saved.filter(c => c && typeof c.id === 'string' && typeof c.title === 'string' && Array.isArray(c.messages)).map(c => ({ ...c,
+        messages: c.messages.filter(m => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string').map(m => m.running ? { ...m, running: false, error: 'This answer was interrupted when the page closed.' } : m) }));
+    } catch { storageError = 'Chat history could not be read. New chats are available for this visit.'; return [] }
+  }
   const keep = () => { try { return localStorage.getItem('sg.chatKeep') !== 'no' } catch { return true } };
-  function persist() { if (!keep()) return; try { localStorage.setItem('sg.chats', JSON.stringify(chats.slice(0, 60))) } catch { } }
+  function persist() {
+    if (!keep()) return true;
+    try { localStorage.setItem('sg.chats', JSON.stringify(chats.slice(0, 60))); storageError = ''; storageNotice(); return true }
+    catch { storageError = 'Chat history could not be saved. Keep this page open and export any chats you need.'; storageNotice(); return false }
+  }
+  function storageNotice() {
+    const el = $('#chatStorage'); if (!el) return;
+    el.hidden = !storageError; el.textContent = storageError;
+  }
   const byId = id => chats.find(c => c.id === id);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const count = () => chats.length;
 
-  async function getStatus() {
-    try { status = await (await fetch('/api/assistant/status')).json() } catch { status = { online: false, error: 'server' } }
+  async function getStatus(signal) {
+    try { status = await (await fetch('/api/assistant/status', { signal })).json() } catch { status = { online: false, error: 'server' } }
     return status;
   }
 
@@ -57,15 +75,18 @@ const Chat = (() => {
           <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
           <p class="small muted">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
           <button class="btn plain" id="clearChats">Delete all chats</button>
+          <label class="appearance">Appearance<select data-appearance aria-label="Chat appearance"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
         </div>
       </aside>
       <section class="chat-main">
         <div class="chat-top">
           <button class="btn plain chat-histbtn" id="openSide" aria-label="Show chats">${ico("clock")}<span>Chats</span></button>
           <div class="chat-status" id="chatStatus" aria-live="polite"></div>
+          <button class="btn plain chat-export" type="button" id="exportChat" hidden>Export chat</button>
           <a class="btn plain" href="#/ask" id="newChat" aria-label="New chat">${ico('ask')}<span>New</span></a>
         </div>
         ${q.get('from') && !cur ? `<div style="margin:2px 0 8px">${backButton(q.get('from'))}</div>` : ''}
+        <p class="chat-storage notice small" id="chatStorage" role="status" hidden></p>
         <div class="ai-setup" id="aiSetup" hidden></div>
         <div class="chat-log" id="chatLog" role="log" aria-live="polite" aria-label="Conversation"></div>
         <form class="composer" id="composer">
@@ -78,7 +99,7 @@ const Chat = (() => {
           <p class="comp-note">Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.</p>
         </form>
       </section></div>`;
-    renderSide(); renderCtx(); renderLog();
+    renderSide(); renderCtx(); renderLog(); setBusy(busy()); storageNotice(); appearanceControls(main);
     const ta = $('#chatIn');
     ta.addEventListener('input', autosize);
     ta.addEventListener('keydown', e => {
@@ -86,14 +107,15 @@ const Chat = (() => {
       if (e.key === 'Escape') stop();
     });
     $('#composer').addEventListener('submit', e => { e.preventDefault(); if (busy()) return stop(); send(ta.value) });
+    $('#exportChat').onclick = () => { if (cur) exportChat(cur) };
     $('#openSide').onclick = () => $('#chatSide').classList.add('open');
     $('#closeSide').onclick = () => $('#chatSide').classList.remove('open');
     $('#keepChats').onchange = e => {
-      try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { }
-      if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast('Chats will be forgotten when you close this page') } else { persist(); toast('Chats will be kept on this device') }
+      try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { e.target.checked = keep(); storageError = 'The chat history setting could not be saved.'; storageNotice(); return }
+      if (!e.target.checked) { try { localStorage.removeItem('sg.chats'); storageError = ''; storageNotice(); toast('Chats will be forgotten when you close this page') } catch { storageError = 'Saved chats could not be removed. This browser is blocking local storage.'; storageNotice() } } else if (persist()) toast('Chats will be kept on this device')
     };
-    $('#clearChats').onclick = () => { if (!confirm('Delete all chats on this device?')) return; Object.values(live).forEach(l => l.abort && l.abort()); chats = []; try { localStorage.removeItem('sg.chats') } catch { } location.hash = '#/ask' };
-    leaving = () => { document.removeEventListener('keydown', escStop) };
+    $('#clearChats').onclick = () => { if (!confirm('Delete all chats on this device?')) return; Object.values(live).forEach(l => l.abort && l.abort()); chats = []; try { localStorage.removeItem('sg.chats'); storageError = '' } catch { storageError = 'Saved chats could not be deleted. This browser is blocking local storage.' } location.hash = '#/ask'; cur = null; renderSide(); renderLog(); storageNotice() };
+    leaving = () => { document.removeEventListener('keydown', escStop); clearTimeout(polling) };
     document.addEventListener('keydown', escStop);
     statusLine();
     const initial = q.get('q');
@@ -176,6 +198,7 @@ const Chat = (() => {
     const el = $('#csList'); if (!el) return;
     el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${c.messages.filter(m => m.role === 'user').length} question${c.messages.filter(m => m.role === 'user').length > 1 ? 's' : ''}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="Delete this chat">×</button></li>`).join('')
       : '<li class="muted small" style="padding:8px 4px">No chats yet.</li>';
+    const ex = $('#exportChat'); if (ex) ex.hidden = !cur || !cur.messages.length;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
     // the list fades at an edge with more chats past it, so a row cut off there reads as more to scroll to
@@ -224,23 +247,31 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b><button type="button" class="btn plain" data-act="stop">Stop</button>${progress(m)}${steps ? `<details class="also work-details"><summary>Search progress (${m.steps.length})</summary><ul class="steps">${steps}</ul></details>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
+    if (m.stopped && !m.error) h += '<p class="notice small">Answer stopped. Any text below may be incomplete.</p>';
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
-    if (m.fallback) h += srcCards(m.fallback, true);
+    if (running && found.length) h += sourceGroup(found.slice(0, 6), 'Pages found so far', i, 'found', true);
+    if (m.fallback?.length) h += sourceGroup(m.fallback, 'Matching library pages', i, 'fallback', true, true);
     if (!running && m.content) {
       const cited = m.cited || [];
-      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
+      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${esc(m.invalid.join(', '))}); those markers were removed.</p>`;
       h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
-      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcCards(cited, false)}`;
+      if (cited.length) h += sourceGroup(cited, 'Sources', i, 'cited', false);
       else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');
       if (other.length) h += `<details class="also"><summary>Also looked at (${other.length}, not used)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
       if ((m.steps || []).length) h += `<details class="also"><summary>How it searched (${m.steps.length} ${m.steps.length === 1 ? 'step' : 'steps'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
-      h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">Copy</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Save answer</button><button class="btn plain" data-act="export">Export chat</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Ask again</button>` : ''}</div>`;
+    }
+    if (!running) {
+      h += `<div class="ans-actions">${m.content ? `<button class="btn plain" data-act="copy" data-i="${i}">Copy</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Save answer</button>` : ''}<button class="btn plain" data-act="export">Export chat</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Ask again</button>` : ''}</div>`;
     }
     return h;
+  }
+  function sourceGroup(sources, label, i, kind, compact, fallback = false) {
+    const key = cur.id + ':' + i + ':' + kind;
+    const open = sourceOpen.has(key) ? sourceOpen.get(key) : fallback || matchMedia('(min-width: 700px)').matches;
+    return `<details class="chat-sources ${fallback ? 'fallback-sources' : ''}" data-source-group="${esc(key)}" ${open ? 'open' : ''}><summary>${esc(label)} <span class="source-count">${sources.length}</span><span class="source-hint">Open a page to check</span></summary>${srcCards(sources, compact)}</details>`;
   }
   function stepText(s) {
     // s.args is the model's own tool call, as it sent it: use only plain text and numbers from it, never convert anything else.
@@ -344,6 +375,7 @@ const Chat = (() => {
   function wire(el) {
     $$('[data-act]', el).forEach(b => b.onclick = () => {
       const i = +b.dataset.i, m = cur.messages[i];
+      if (b.dataset.act === 'stop') stop();
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast('Copied'), () => toast('Couldn’t copy')) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
@@ -352,23 +384,31 @@ const Chat = (() => {
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
     });
+    $$('[data-source-group]', el).forEach(d => d.ontoggle = () => sourceOpen.set(d.dataset.sourceGroup, d.open));
     // citation chips scroll to their card instead of changing the route
-    $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
+    $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c) { const group = c.closest('details'); if (group) group.open = true; c.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
   }
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
     let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
-    if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
+    if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${s.kind === 'place' ? '(offline map reference)' : srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${new Date().toLocaleString()}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
-    for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
+    let md = `# ${exportText(c.title)}\n\nExported from Lastbook (offline library) on ${new Date().toLocaleString()}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
+    for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${exportText(m.content)}\n` : `\n## Answer\n\n${m.stopped ? '[Answer stopped; may be incomplete.]\n\n' : m.error ? '[Answer failed; any text may be incomplete.]\n\n' : m.running ? '[Answer still in progress.]\n\n' : ''}${m.content ? exportText(plain(m)) : '(No written answer.)'}${m.fallback?.length ? '\n\nMatching library pages:\n' + m.fallback.map(s => exportText(s.title) + (s.page ? ', page ' + s.page : '') + (s.kind === 'place' ? '' : ' ' + srcHref(s).replace(/&?from=[^&]*/, ''))).join('\n') : ''}\n`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
-    a.download = `survival-chat-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `lastbook-chat-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
-    toast('Saved as a file on this device');
+    toast('Chat export requested. Check your downloads.');
+  }
+  // Export conversation and library references only, never diagnostics, origins or storage metadata.
+  function exportText(value) {
+    return String(value || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+      .replace(/\b(Bearer)\s+[^\s]+/gi, '$1 [redacted]')
+      .replace(/\b(api[_ -]?key|access[_ -]?token|password|secret)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi, '$1=[redacted]')
+      .replace(/(?:\/Users\/|\/home\/|[A-Z]:\\Users\\)[^\s)"<>]+/gi, '[local path]');
   }
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
@@ -394,12 +434,13 @@ const Chat = (() => {
     c.messages.push(m);
     c.updated = Date.now(); persist();
     const ta = $('#chatIn'); if (ta) { ta.value = ''; autosize() }
-    renderSide(); renderCtx(); renderLog(); setBusy(true); scrollEnd(true);
     const idx = c.messages.length - 1, ctl = new AbortController();
     live[c.id] = { running: true, abort: () => ctl.abort() };
+    renderSide(); renderCtx(); renderLog(); setBusy(true); scrollEnd(true);
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
-      const st = await getStatus();
+      const st = await getStatus(ctl.signal);
+      if (ctl.signal.aborted) throw new DOMException('Stopped', 'AbortError');
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local && localLine(st.local)[1] });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
@@ -414,39 +455,40 @@ const Chat = (() => {
           const chunk = buf.slice(0, k); buf = buf.slice(k + 2);
           if (!chunk.startsWith('data:')) continue;
           let ev; try { ev = JSON.parse(chunk.slice(5)) } catch { continue }
-          onEvent(m, ev);
+          await onEvent(m, ev, text, ctl.signal);
           redraw();
         }
       }
-      if (m.running && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
+      if (!m.complete && !m.stopped && !m.error) m.error = 'The answer was interrupted. Any text shown may be incomplete. You can ask again.';
     } catch (e) {
       if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
-      else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text) }
+      else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text, ctl.signal) }
       else m.error = e.message || 'Something went wrong.';
     }
+    if (!m.complete && m.content) m.cited = (m.sources || []).filter(s => s.key && m.content.includes('[' + s.key + ']'));
     m.running = false; delete m.state;
-    if (m.stopped && m.content) m.content += '\n\n(Stopped.)';
     live[c.id].running = false;
     c.updated = Date.now(); persist();
     if (cur === c) { updateBot(idx); setBusy(false); scrollEnd(); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }
   }
-  function onEvent(m, ev) {
-    if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct }
+  async function onEvent(m, ev, question, signal) {
+    if (ev.type === 'runtime' && ['queued', 'prompt', 'generation'].includes(ev.phase)) m.state = ev.phase;
+    else if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct }
     else if (ev.type === 'found') m.steps.push({ name: 'found', count: ev.count });
     else if (ev.type === 'tool') { if (ev.phase === 'start') m.steps.push({ name: ev.name, args: ev.args }); else { const s = [...m.steps].reverse().find(x => x.name === ev.name && !x.summary); if (s) s.summary = ev.summary } m.state = 'searching' }
     else if (ev.type === 'sources') m.sources = ev.sources;
     else if (ev.type === 'delta') m.content += ev.text;
     else if (ev.type === 'reset') m.content = '';
-    else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
+    else if (ev.type === 'done') { m.complete = true; m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
-      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
+      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; await fallback(m, question, signal) }
       else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
     }
     else if (ev.type === 'stopped') m.stopped = true;
   }
-  async function fallback(m, q) {
-    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += ' The library search also found nothing for this question.' }
-    catch { m.fallback = [] }
+  async function fallback(m, q, signal) {
+    try { if (signal?.aborted) return; const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8', { signal }); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += ' The library search also found nothing for this question.' }
+    catch (e) { if (e.name === 'AbortError') { m.stopped = true; return } m.fallback = []; m.searchError = true; m.error += ' Library search could not finish. You can try again or browse the library.' }
   }
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }
   function setBusy(on) {

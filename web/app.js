@@ -8,6 +8,17 @@ const main = $('#main');
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
 
+/* Appearance stays on this device; the shared initializer also covers setup/manage. */
+function appearanceControls(root = document) { Appearance.controls(root) }
+document.addEventListener('change', e => {
+  if (!e.target.matches('[data-appearance]')) return;
+  const choice = e.target.value;
+  if (!['system', 'light', 'dark'].includes(choice)) return;
+  Appearance.apply(choice);
+  try { localStorage.setItem('sg.theme', choice) } catch { toast('Appearance changed for this visit. This browser could not save it.') }
+});
+appearanceControls();
+
 /* ---------------------------------------------------------------- icons -- */
 const I = {
   water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9 14a3 3 0 0 0 3 3"/>',

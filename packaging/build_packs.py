@@ -1,20 +1,21 @@
 """Builds Lastbook's download packs from derived/packs/pack-spec.json. A pack is a data folder: point LASTBOOK_DATA at it.
 
   python -I -B build_packs.py snapshot
-  python -I -B build_packs.py map base|us|<state code, such as RI>
+  python -I -B build_packs.py map base|us|<state code, such as RI>|<region code, such as ve-a>
   python -I -B build_packs.py build small|medium|all|corporals-corner|firearms-hunting [--map base|us|RI] [--sample N] [--snapshot DIR] [--fetched DIR]
 
 Everything comes from one frozen snapshot of the catalog and search file, so the indexer can run throughout. The library is only read: files that do not change are APFS
 clones, and a page that changes is written as a new file here. Run it again and it does only what changed, and anything no longer in the pack goes.
 Writes derived/packs/<pack>/ (the pack: pack.json, pack-manifest.tsv, pack-contents.tsv, the Sources page) and derived/packs/<pack>-build/ (for the owner, never shipped: what was
 left out and why). --sample takes a few records of each kind that are on this computer, into <pack>-sample. A video on a Studio is copied only if it is already under --fetched;
-this tool opens no network connection. Without it the record is left out, reported, and the build exits 1.
+this tool opens no network connection, except building a region map, which downloads its Geofabrik extract. Without it the record is left out, reported, and the build exits 1.
 The owner's renames always apply (pack-spec.json collection_renames, path_renames, note_edits, and packaging/ship_edits.json id_prefixes, which the shipped guides use too).
 Needs a Python whose html.parser reads as a browser does: derived/app-build/mac-venv/bin/python3 or the library's own.
 """
 import argparse
 import csv
 import ctypes
+from contextlib import closing
 import datetime
 import fnmatch
 import hashlib
@@ -29,8 +30,10 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
+import urllib.request
 import zipfile
 import zlib
 from collections import Counter, defaultdict
@@ -59,6 +62,7 @@ def load_module(name, path):
 
 
 SHIP = load_module('ship_app_files', PROJECT / 'packaging' / 'ship_app_files.py')    # what an app build ships: the guides' IDs and the ID renames come from here
+REGION_SPECS = load_module('region_specs', PROJECT / 'packaging' / 'region_specs.py')    # the non-US region maps (docs/MAPS.md, "Region maps")
 PATH_RENAMES = {**SPEC['path_renames'], **{f'text/{a}': f'text/{b}' for a, b in SHIP.PREFIXES.items()}}   # a record's text file is named by its ID
 MAP_CREDIT = 'OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth'   # as on the map itself, web/map.js
 
@@ -1457,23 +1461,98 @@ def us_set(src, dest):
     clone(GEO / 'socal-cells.json', geo / 'socal-cells.json')
 
 
+def fetch_region_gpkg(url):
+    """The region's GeoPackage, downloaded and unzipped once into derived/packs/maps/region-source/. Only the build machine does this."""
+    name = Path(urllib.parse.urlsplit(url).path).name
+    folder = OUT / 'maps' / 'region-source' / name.removesuffix('.zip')
+    gpkg = folder / 'source.gpkg'
+    if gpkg.is_file():
+        return gpkg
+    folder.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=folder) as work:
+        archive = Path(work) / name
+        print(f'downloading {url}', flush=True)
+        urllib.request.urlretrieve(url, archive)
+        with zipfile.ZipFile(archive) as z:
+            members = [entry for entry in z.infolist() if entry.filename.endswith('.gpkg')]
+            if len(members) != 1:
+                raise ValueError(f'{name}: expected one GeoPackage, found {len(members)}')
+            staged = Path(work) / 'source.gpkg'
+            with z.open(members[0]) as src, staged.open('wb') as dst:
+                shutil.copyfileobj(src, dst)
+        stamp = re.search(r'-(\d{6})-free\.gpkg\.zip$', name)
+        source_date = datetime.datetime.strptime(stamp[1], '%y%m%d').date().isoformat() if stamp else None
+        receipt = {'url': url, 'bytes': archive.stat().st_size, 'sha256': sha256_file(archive),
+                   'retrieved_at': datetime.date.today().isoformat(), 'snapshot_date': source_date,
+                   'gpkg_bytes': staged.stat().st_size}
+        (folder / 'source-receipt.json').write_text(json.dumps(receipt, indent=1) + '\n', encoding='utf-8')
+        staged.replace(gpkg)
+    return gpkg
+
+
+def region_source_date(inputs):
+    """Only an explicit, consistent source-receipt date is a snapshot date; build day is not."""
+    dates = []
+    for gpkg in inputs:
+        try:
+            receipt = json.loads((gpkg.parent / 'source-receipt.json').read_text(encoding='utf-8'))
+            stamp = datetime.date.fromisoformat(receipt['snapshot_date'])
+            if receipt.get('gpkg_bytes') != gpkg.stat().st_size:
+                return 'not recorded'
+        except (OSError, ValueError, TypeError, KeyError):
+            return 'not recorded'
+        dates.append(stamp.isoformat())
+    return dates[0] if dates and len(set(dates)) == 1 else 'not recorded'
+
+
+def region_set(dest, code):
+    """A clipped region map; opted-in regions also build named-place search from the same inputs."""
+    spec = REGION_SPECS.REGIONS[code]
+    sources = spec['extracts'] if 'extracts' in spec else [spec['extract']]
+    gpkg, *others = [fetch_region_gpkg(url) for url in sources]
+    geo = dest / 'derived' / 'geo'
+    geo.mkdir(parents=True, exist_ok=True)
+    box = spec['bbox']
+    subprocess.run([sys.executable, '-I', '-B', str(PROJECT / 'tools' / 'build_map.py'), str(gpkg), str(geo / 'map.sqlite'),
+                    ','.join(f'{v:.6f}' for v in box), spec['source'], *map(str, others)], check=True)
+    if spec.get('places'):
+        subprocess.run([sys.executable, '-I', '-B', str(PROJECT / 'tools' / 'build_places_gpkg.py'),
+                        *map(str, [gpkg, *others]), '--out', str(geo / 'places.sqlite'),
+                        '--region', spec['country'], '--bbox=' + ','.join(map(str, box))], check=True)
+    db = sqlite3.connect(f'file:{geo}/map.sqlite?immutable=1', uri=True)
+    features = db.execute('SELECT count(*) FROM feat').fetchone()[0]
+    cells = sorted(r[0] for r in db.execute('SELECT DISTINCT CAST((minx+180)/0.05 AS INT)*100000+CAST((miny+90)/0.05 AS INT) FROM feat_idx WHERE maxx-minx<0.05'))
+    db.close()
+    with closing(sqlite3.connect(geo / 'map.sqlite')) as db:
+        db.execute("UPDATE meta SET value=? WHERE key='data_as_of'", (region_source_date([gpkg, *others]),))
+        db.commit()
+    (geo / 'national-status.json').write_text(json.dumps({'state': 'complete', 'stage': 'ready', 'features': features}), encoding='utf-8')
+    (geo / 'detail-cells.json').write_text(json.dumps({'name': code, 'bbox': box, 'cells': cells}), encoding='utf-8')
+
+
 def build_map(name):
-    src = geo_source()
     dest = OUT / 'maps' / name
     start = time.time()
     if dest.exists():
         shutil.rmtree(dest)
     os.makedirs(dest)
-    if name == 'base':
-        base_set(src, dest)
-    elif name == 'us':
-        us_set(src, dest)
-    elif re.fullmatch(r'[A-Z]{2}', name):
-        state_set(src, dest, name)
+    if name in REGION_SPECS.REGIONS:
+        region_set(dest, name)
     else:
-        raise SystemExit(f'unknown map set {name}')
+        src = geo_source()
+        if name == 'base':
+            base_set(src, dest)
+        elif name == 'us':
+            us_set(src, dest)
+        elif re.fullmatch(r'[A-Z]{2}', name):
+            state_set(src, dest, name)
+        else:
+            raise SystemExit(f'unknown map set {name}')
     size = {f.relative_to(dest).as_posix(): f.stat().st_size for f in dest.rglob('*') if f.is_file()}
-    (dest / 'map-set.json').write_text(json.dumps({'name': name, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - start)}, indent=1), encoding='utf-8')
+    info = {'name': name, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - start)}
+    if name in REGION_SPECS.REGIONS and REGION_SPECS.REGIONS[name].get('places'):
+        info['sha256'] = {rel: sha256_file(dest / rel) for rel in size}
+    (dest / 'map-set.json').write_text(json.dumps(info, indent=1), encoding='utf-8')
     print(json.dumps({'map': name, 'bytes': sum(size.values()), 'files': size, 'seconds': round(time.time() - start)}, indent=1))
 
 

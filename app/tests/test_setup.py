@@ -490,7 +490,10 @@ class Unpacking(Base):
 class Jobs(Base):
     def test_first_run_end_to_end(self):
         s = self.setup()
-        st = s.state()
+        # The fixture is tiny; the host disk's real 5–20 GB reserve must not
+        # decide whether this synthetic library is recommended.
+        with mock.patch.object(hardware, 'disk_of', return_value=(10 ** 12, 2 * 10 ** 12)):
+            st = s.state()
         self.assertEqual(st['mode'], 'first-run')
         self.assertEqual(st['recommend']['pack'], 'small')
         self.assertNotIn('url', json.dumps(st['manifest']))
@@ -929,6 +932,24 @@ def make_map(path, state='CA', extra=None):
     return files
 
 
+def make_region_map(path, region='ve-a', extra=None, places=False, hashes=False):
+    """A region map zip: only map.sqlite, detail-cells.json, national-status.json and map-set.json, under LastbookData/."""
+    files = {'derived/geo/map.sqlite': os.urandom(300_000),
+             'derived/geo/detail-cells.json': json.dumps({'name': region, 'bbox': [-67.1, 10.4, -66.8, 10.56], 'cells': []}).encode(),
+             'derived/geo/national-status.json': b'{"state":"complete"}'}
+    if places:
+        files['derived/geo/places.sqlite'] = b'synthetic named-place index'
+    info = {'name': region, 'files': {k: len(v) for k, v in files.items()}}
+    if hashes:
+        info['sha256'] = {k: sha(v) for k, v in files.items()}
+    files['map-set.json'] = json.dumps(info).encode()
+    files.update(extra or {})
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_STORED) as z:
+        for k, v in files.items():
+            z.writestr('LastbookData/' + k, v)
+    return files
+
+
 class Maps(Base):
     def map_manifest(self, extra=None):
         files = make_map(self.tmp / 'Lastbook-Map-CA.zip', extra=extra)
@@ -1034,7 +1055,8 @@ class Maps(Base):
             a = s.start('small', False)['need_bytes']
             b = s.start('small', False, map_id='CA')['need_bytes']
         self.assertEqual(b - a, mf.map('CA')['download_bytes'] + mf.map('CA')['installed_bytes'])
-        self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
+        with mock.patch.object(hardware, 'disk_of', return_value=(10 ** 12, 2 * 10 ** 12)):
+            self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
         self.assertIn('maps', s.state()['manifest'])
         self.assertEqual(s.start(None, False, map_id='CA')['code'], 'nothing')    # first run: a library first
 
@@ -1178,6 +1200,147 @@ class AddressIndexes(Maps):
         fetched['address_indexes'][0]['files'][0]['sha256'] = '0' * 64
         merged = manifest.merge(validated, fetched)
         self.assertEqual(merged['address_indexes'][0]['files'], validated['address_indexes'][0]['files'])
+
+
+class RegionMaps(Maps):
+    def region_manifest(self, extra=None, places=False, hashes=False):
+        files = make_region_map(self.tmp / 'Lastbook-Map-ve-a.zip', extra=extra, places=places, hashes=hashes)
+        data = (self.tmp / 'Lastbook-Map-ve-a.zip').read_bytes()
+        self.files.data['Lastbook-Map-ve-a.zip'] = data
+        m = self.manifest().current
+        m['maps'] = [{'id': 've-a', 'title': 'Caracas (Distrito Capital)', 'kind': 'region', 'country': 'Venezuela',
+                      'includes': 'Local streets, buildings, water and places to get help',
+                      'installed_bytes': sum(map(len, files.values())),
+                      'download_bytes': len(data), 'available': True,
+                      'files': [{'name': 'Lastbook-Map-ve-a.zip', 'url': f'{self.base}/Lastbook-Map-ve-a.zip', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]}]
+        return manifest.Manifest(bundled=m, remote=None, allowed=ALLOWED, context=self.ctx), files
+
+    def installed_search_region(self):
+        with zipfile.ZipFile(self.tmp / 'Lastbook-Small.zip') as archive:
+            pack_files = {i.filename.removeprefix('LastbookData/'): archive.read(i) for i in archive.infolist() if not i.is_dir()}
+        receipt = 'path\tbytes\tsha256\n' + ''.join(f'{p}\t{len(data)}\t{sha(data)}\n' for p,data in pack_files.items())
+        pack_files['pack-manifest.tsv'] = receipt.encode()
+        self.installed = make_pack(self.tmp / 'Lastbook-Small.zip', files=pack_files)
+        self.zip = (self.tmp / 'Lastbook-Small.zip').read_bytes()
+        self.files.data['Lastbook-Small.zip'] = self.zip
+        mf, files = self.region_manifest(places=True,hashes=True)
+        s = self.setup(manifest=mf);s.start('small',False,map_id='ve-a')
+        self.assertEqual(self.wait(s)['state'],'done')
+        lib,note = api.startup(self.settings);api.opened(self.settings,lib,note)
+        self.files.log.clear()
+        return lib,mf,files
+
+    def test_healthy_region_place_repair_fetches_nothing(self):
+        lib,mf,files = self.installed_search_region()
+        s = self.setup('manage',current=lib,manifest=mf)
+        j = s.start(repair=True)
+        self.assertEqual([i['kind'] for i in j['items']],['pack','map'])
+        self.assertEqual(self.wait(s)['state'],'done')
+        self.assertEqual(self.files.log,[])
+        self.assertFalse(api._pending_file(self.settings).exists())
+        self.assertEqual((lib/'derived/geo/places.sqlite').read_bytes(),files['derived/geo/places.sqlite'])
+
+    def test_region_place_repair_restores_missing_truncated_and_same_size_corruption(self):
+        lib,mf,files = self.installed_search_region()
+        for damage in ('missing','truncated','same-size'):
+            with self.subTest(damage=damage):
+                index = lib/'derived/geo/places.sqlite';original = index.read_bytes()
+                if damage=='missing':index.unlink()
+                else:index.write_bytes(b'x' if damage=='truncated' else bytes([original[0]^1])+original[1:])
+                self.files.log.clear()
+                s = self.setup('manage',current=lib,manifest=mf);s.start(repair=True)
+                self.assertEqual(self.wait(s)['state'],'done')
+                self.assertEqual([n for n,_,_ in self.files.log],['Lastbook-Map-ve-a.zip'])
+                lib,note = api.startup(self.settings)
+                self.assertIsNone(note.get('error'))
+                self.assertEqual((lib/'derived/geo/places.sqlite').read_bytes(),files['derived/geo/places.sqlite'])
+                install.check_map(lib,verify_hashes=True)
+                api.opened(self.settings,lib,note)
+
+    def test_content_repair_preserves_healthy_region_and_places_without_map_download(self):
+        lib,mf,files = self.installed_search_region()
+        big = lib/'library-data/big.bin';data = big.read_bytes();big.write_bytes(bytes([data[0]^1])+data[1:])
+        s = self.setup('manage',current=lib,manifest=mf);s.start(repair=True)
+        self.assertEqual(self.wait(s)['state'],'done')
+        self.assertEqual([n for n,_,_ in self.files.log],['Lastbook-Small.zip'])
+        lib,note = api.startup(self.settings);self.assertIsNone(note.get('error'))
+        self.assertEqual(install.map_name(lib),'ve-a')
+        self.assertEqual((lib/'derived/geo/places.sqlite').read_bytes(),files['derived/geo/places.sqlite'])
+        self.assertEqual((lib/'library-data/big.bin').read_bytes(),data)
+        install.check_map(lib,verify_hashes=True)
+        api.opened(self.settings,lib,note)
+
+    def test_repair_replaces_damaged_content_and_place_index_in_one_staged_library(self):
+        lib,mf,files = self.installed_search_region()
+        (lib/'library-data/big.bin').write_bytes(b'broken content')
+        (lib/'derived/geo/places.sqlite').write_bytes(b'broken index')
+        s = self.setup('manage',current=lib,manifest=mf);s.start(repair=True)
+        self.assertEqual(self.wait(s)['state'],'done')
+        self.assertEqual([n for n,_,_ in self.files.log],['Lastbook-Small.zip','Lastbook-Map-ve-a.zip'])
+        lib,note = api.startup(self.settings);self.assertIsNone(note.get('error'))
+        self.assertEqual((lib/'derived/geo/places.sqlite').read_bytes(),files['derived/geo/places.sqlite'])
+        self.assertNotEqual((lib/'library-data/big.bin').read_bytes(),b'broken content')
+        install.check_map(lib,verify_hashes=True);api.opened(self.settings,lib,note)
+
+    def test_unknown_damaged_region_is_reported_unavailable_without_replacing_content(self):
+        lib,mf,files = self.installed_search_region()
+        (lib/'derived/geo/places.sqlite').unlink()
+        raw = json.loads(json.dumps(mf.current));raw['maps']=[]
+        unavailable = manifest.Manifest(bundled=raw,remote=None,allowed=ALLOWED,context=self.ctx)
+        before = (lib/'library-data/catalog.json').read_bytes()
+        s = self.setup('manage',current=lib,manifest=unavailable);s.start(repair=True)
+        j = self.wait(s);self.assertEqual(j['state'],'failed');self.assertEqual(j['error']['code'],'unavailable')
+        self.assertEqual(self.files.log,[])
+        self.assertEqual((lib/'library-data/catalog.json').read_bytes(),before)
+        self.assertFalse(api._pending_file(self.settings).exists())
+
+    def test_unknown_healthy_region_is_preserved_during_content_repair(self):
+        lib,mf,files = self.installed_search_region()
+        raw = json.loads(json.dumps(mf.current));raw['maps']=[]
+        unavailable = manifest.Manifest(bundled=raw,remote=None,allowed=ALLOWED,context=self.ctx)
+        (lib/'library-data/big.bin').write_bytes(b'broken')
+        s = self.setup('manage',current=lib,manifest=unavailable);s.start(repair=True)
+        self.assertEqual(self.wait(s)['state'],'done')
+        self.assertEqual([n for n,_,_ in self.files.log],['Lastbook-Small.zip'])
+        lib,note = api.startup(self.settings);self.assertIsNone(note.get('error'))
+        self.assertEqual((lib/'derived/geo/places.sqlite').read_bytes(),files['derived/geo/places.sqlite'])
+        install.check_map(lib,verify_hashes=True);api.opened(self.settings,lib,note)
+
+    def test_region_map_installs_without_address_index(self):
+        mf, files = self.region_manifest()
+        s = self.setup(manifest=mf)
+        j = s.start('small', False, map_id='ve-a')
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'map'])      # Venezuela has no address index
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, _ = api.startup(self.settings)
+        self.assertEqual(install.map_name(lib), 've-a')
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), files['derived/geo/map.sqlite'])
+        self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
+        self.assertTrue((lib / 'library-data/catalog.json').is_file())
+        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-a')
+
+    def test_region_manifest_validates_and_merges(self):
+        mf, _ = self.region_manifest()
+        validated = manifest.validate(mf.current, ALLOWED)
+        self.assertIsNotNone(validated)
+        self.assertEqual(validated['maps'][0]['kind'], 'region')
+        self.assertEqual(validated['maps'][0]['country'], 'Venezuela')
+        bad = json.loads(json.dumps(mf.current))
+        bad['maps'][0]['id'] = '../ve-a'
+        self.assertIsNone(manifest.validate(bad, ALLOWED))
+        merged = manifest.merge(mf.current, {**mf.current, 'maps': []})
+        self.assertEqual([x['id'] for x in merged['maps']], ['ve-a'])
+
+    def test_region_map_zip_with_other_files_refused(self):
+        mf, _ = self.region_manifest(extra={'library-data/catalog.json': b'{}'})
+        cur = self.parent / 'LastbookData'
+        (cur / 'library-data').mkdir(parents=True)
+        (cur / 'library-data/catalog.json').write_text('{"mine": 1}')
+        s = self.setup('manage', current=cur, manifest=mf)
+        s.start(None, False, map_id='ve-a')
+        j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'unpack')
+        self.assertEqual((cur / 'library-data/catalog.json').read_text(), '{"mine": 1}')
 
 
 class ContentRevisions(Base):

@@ -9,8 +9,8 @@ release, packaging/share/). Lastbook itself opens no port and connects to nothin
     saving no DHT state,
   - with only the torrents Lastbook hands it, each checked against its pinned pieces root first,
   - checking each file against its torrent before it uploads a byte (its own check, --overwrite),
-  - tied to Lastbook: on Windows a job object ends it with the app, on Linux the parent-death signal, and on a Mac it is ended
-    when the app exits.
+  - tied to Lastbook: on Windows a job object ends it with the app, on Linux the parent-death signal, and on a Mac a watcher
+    that ends it once Lastbook has ended, however it ends (_watch).
 Peers it meets see this computer's address, as with any BitTorrent program; the setting says so.
 """
 import atexit
@@ -179,6 +179,7 @@ class Seeder:
         with self.lock:
             procs, self.procs = self.procs, []
         for p, _, _, _, _ in procs:
+            _unwatch(p)
             if p.poll() is None:
                 p.terminate()
         for p, _, _, _, _ in procs:
@@ -202,7 +203,37 @@ def _spawn(args, secret):
     p = subprocess.Popen(args, **kw)
     if os.name == 'nt':
         _tie(p)
+    elif sys.platform == 'darwin':
+        _watch(p)
     return p
+
+
+# The Mac watcher: notes rqbit's start time, waits for the end of a pipe only Lastbook writes to, then ends rqbit if that number
+# is still the same process (a number used again by another process is never hit).
+_WATCH = 's=$(/bin/ps -o lstart= -p "$1"); read -r _; [ -n "$s" ] && [ "$(/bin/ps -o lstart= -p "$1")" = "$s" ] && kill -TERM "$1"'
+
+
+def _watch(p):
+    """Mac: no job object and no parent-death signal, and the app's Quit (NSApplication terminate:, which calls exit()) and its
+    start again after setup (os.execv, app/main.py relaunch) both skip atexit. So each rqbit gets a watcher, a /bin/sh holding the
+    read end of a pipe whose write end only this process has: however Lastbook ends (Quit, a crash, Force Quit, that exec), the
+    pipe closes and the watcher ends rqbit. Stopping rqbit ends its watcher first (_unwatch)."""
+    try:
+        p.watcher = subprocess.Popen(['/bin/sh', '-c', _WATCH, 'lastbook-rqbit-watch', str(p.pid)], stdin=subprocess.PIPE,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+    except OSError as e:
+        print(f'setup: sharing is not tied to Lastbook ({e}); it stops when Lastbook exits normally', flush=True)
+
+
+def _unwatch(p):
+    """Ends p's watcher, if it has one, before Lastbook stops p itself."""
+    w = getattr(p, 'watcher', None)
+    if w is None:
+        return
+    if w.poll() is None:
+        w.kill()                                     # killed in its read: it never gets to end anything
+        w.wait()
+    w.stdin.close()
 
 
 _SPAWNER, _SPAWNER_LOCK = None, threading.Lock()
@@ -308,6 +339,7 @@ class Swarm:
         atexit.unregister(self.stop)
         if self.tally is not None and p.poll() is None:
             self.tally.add({('swarm', p.pid, self.port): uploaded(self.port, self.secret)})
+        _unwatch(p)
         if p.poll() is None:
             p.terminate()
         try:

@@ -1,7 +1,9 @@
 """Read-only address lookup using the state indexes installed with offline maps."""
+import functools
 import math
 import re
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 from engine.paths import ro_uri
@@ -38,9 +40,25 @@ def normalize(text):
     return ' '.join(WORDS.get(word, word) for word in re.sub(r'[^a-z0-9 ]+', ' ', text.lower()).split())
 
 
+NUMBER_FIRST = re.compile(r'^\s*\d[\w-]*\s+\S')
+
+
 def is_address_query(query):
-    """A standalone ZIP remains a place query. A number followed by words is an address."""
-    return bool(re.match(r'^\s*\d[\w-]*\s+\S', query))
+    """A standalone ZIP remains a place query. A number followed by words is an address.
+
+    French writing also puts a comma after the number ('12, rue Saint-Pierre'); that form is accepted before a French
+    street word. Some of those words open a US street too ('1200, R Street'): such a query finds no house and then
+    goes on to the place finder (goes_on_to_places), where it went before."""
+    return bool(NUMBER_FIRST.match(query) or FR_COMMA_QUERY.match(query))
+
+
+def goes_on_to_places(query, region=False):
+    """For an address query that found no house: is it tried as a place next?
+
+    Yes for one that is an address only by the French comma form: it was a place query before that form existed. Yes
+    too, where a region outside the US is installed, for a postcode and its commune: '14000 Caen' is not house 14000.
+    Never for a number followed by words on a US map: 'Address not found' stays the answer."""
+    return not NUMBER_FIRST.match(query) or bool(region and re.match(r'\s*\d{5}\s', query))
 
 
 def street_forms(street):
@@ -77,15 +95,198 @@ def _parts(query):
     return number, normalize(' '.join(remainder)).split(), state, postcode
 
 
+# French indexes, built by tools/build_addresses_ban.py from the Base Adresse Nationale. Such an index says so in its
+# meta table (country = FR); a file named after a US state, or the legacy addresses.sqlite, is always read the US way.
+# French text is folded (é -> e, œ -> oe) where the US rules above drop accented letters ('Église' -> 'glise'). The US
+# indexes were built with those rules, so the US side keeps them: folding there too needs every state rebuilt.
+FR_WORDS = {
+    'r': 'rue', 'av': 'avenue', 'ave': 'avenue', 'bd': 'boulevard', 'bld': 'boulevard', 'blvd': 'boulevard',
+    'boul': 'boulevard', 'ch': 'chemin', 'che': 'chemin', 'chem': 'chemin', 'imp': 'impasse', 'rte': 'route',
+    'all': 'allee', 'pl': 'place', 'sq': 'square', 'res': 'residence', 'lot': 'lotissement', 'pas': 'passage',
+    'rpt': 'rond point', 'vlge': 'village', 'ham': 'hameau', 'ld': 'lieu dit', 'fg': 'faubourg', 'fbg': 'faubourg',
+    'crs': 'cours', 'sen': 'sentier', 'prom': 'promenade', 'mte': 'montee', 'st': 'saint', 'ste': 'sainte',
+    'gal': 'general', 'gen': 'general', 'mal': 'marechal', 'dr': 'docteur', 'pdt': 'president', 'cdt': 'commandant',
+    'mgr': 'monseigneur', 'nd': 'notre dame',
+}
+FR_DROP = {'de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'au', 'aux'}   # 'Place du Général de Gaulle' = 'place Général de Gaulle'
+FR_TYPES = {'rue', 'avenue', 'boulevard', 'chemin', 'impasse', 'route', 'allee', 'place', 'square', 'residence',
+            'lotissement', 'passage', 'rond', 'point', 'village', 'hameau', 'lieu', 'dit', 'faubourg', 'cours', 'quai',
+            'sentier', 'promenade', 'montee', 'venelle', 'ruelle', 'saint', 'sainte'}
+FR_REPEATS = ('bis', 'ter', 'quater', 'quinquies')
+# Only words a US address does not start with: 'avenue', 'boulevard', 'place' and 'route' are left out.
+FR_COMMA_QUERY = re.compile(r'^\s*\d+\s*(?:bis|ter|quater|quinquies|[a-z])?\s*,\s*(?:rue|r|bd|chemin|che|impasse|imp|'
+                            r'all[ée]e|all|rte|quai|venelle|ruelle|sentier|hameau|lotissement|r[ée]sidence|'
+                            r'lieu[- ]dit)\b', re.IGNORECASE)
+FOLD = str.maketrans({'œ': 'oe', 'Œ': 'OE', 'æ': 'ae', 'Æ': 'AE', 'ß': 'ss'})
+
+
+def fold(text):
+    """'Bonnœil' -> 'bonnoeil', 'Église' -> 'eglise': letters lose their accents instead of being dropped."""
+    text = unicodedata.normalize('NFKD', text.translate(FOLD))
+    return ''.join(char for char in text if not unicodedata.combining(char)).lower()
+
+
+def normalize_fr(text):
+    """'Place du Général de Gaulle' and 'pl general de gaulle' -> 'place general gaulle'. Index and query share it."""
+    words = []
+    for word in re.sub(r'[^a-z0-9 ]+', ' ', fold(text)).split():
+        words += FR_WORDS.get(word, word).split()
+    return ' '.join(word for word in words if word not in FR_DROP)
+
+
+def _parts_fr(query):
+    """'1 bis, rue Écuyère 14000 Caen' -> ('1bis', ['rue', 'ecuyere'], ['caen'], '14000').
+
+    The postcode comes before the commune in French; words after it can only be the place."""
+    tokens = re.sub(r'[^a-z0-9 ]+', ' ', fold(query)).split()
+    if not tokens:   # digits and letters of another script: nothing a French index holds
+        return '', [], [], ''
+    number = tokens.pop(0)
+    if len(tokens) > 1 and number.isdigit():
+        word = tokens[0]
+        if word in FR_REPEATS or (len(word) == 1 and word.isalpha() and word not in FR_WORDS
+                                  and FR_WORDS.get(tokens[1], tokens[1]).split()[0] in FR_TYPES):
+            number += tokens.pop(0)
+    cut = next((index for index, token in enumerate(tokens) if re.fullmatch(r'\d{5}', token)), None)
+    postcode, before, after = '', tokens, []
+    if cut is not None:
+        postcode, before, after = tokens[cut], tokens[:cut], tokens[cut + 1:]
+        if 'cedex' in after:
+            after = after[:after.index('cedex')]
+    return number, normalize_fr(' '.join(before)).split(), normalize_fr(' '.join(after)).split(), postcode
+
+
+@functools.lru_cache(maxsize=4096)
+def _french_places(city):
+    """The index stores 'Cherbourg-en-Cotentin (Tourlaville)' for an address in a delegated commune."""
+    match = re.fullmatch(r'(.*?) \((.*)\)', city or '')
+    commune, delegated = (match[1], match[2]) if match else (city or '', '')
+    names = [normalize_fr(commune)]
+    if delegated:
+        old = normalize_fr(delegated)
+        names += [old, f'{old} {names[0]}', f'{names[0]} {old}']
+    return commune, delegated, tuple(names)
+
+
+def _french_place(city, typed):
+    return any(name.startswith(typed) for name in _french_places(city)[2])
+
+
+def _french_number(num):
+    match = re.fullmatch(r'(\d+)([a-z]+)', num)
+    if not match:
+        return num
+    return f'{match[1]} {match[2]}' if match[2] in FR_REPEATS else match[1] + match[2].upper()
+
+
+def _french_country(path):
+    """Only an index that is not named after a US state is opened to read its country."""
+    if path.stem.upper() in STATE_CODES:
+        return None
+    try:
+        connection = sqlite3.connect(ro_uri(path), uri=True)
+    except sqlite3.Error:
+        return None
+    try:
+        row = connection.execute("SELECT value FROM meta WHERE key = 'country'").fetchone()
+    except sqlite3.Error:
+        row = None
+    if row and str(row[0]).upper() == 'FR':
+        connection.create_function('fr_place', 2, _french_place, deterministic=True)
+        return connection
+    connection.close()
+    return None
+
+
+def _find_french(connections, query, limit, near):
+    number, before, after, postcode = _parts_fr(query)
+    for count in range(len(before), 0, -1):
+        street_words = before[:count]
+        if all(word in FR_TYPES for word in street_words):
+            continue
+        street = ' '.join(street_words)
+        city = ' '.join(before[count:] + after)
+        conditions = ['num IN (?, ?)', 'norm >= ?', 'norm < ?']
+        parameters = [number, number.upper(), street, street + '￿']
+        if postcode:
+            conditions.append('zip = ?')
+            parameters.append(postcode)
+        if city:
+            conditions.append('fr_place(city, ?)')
+            parameters.append(city)
+        sql = ('SELECT num,street,city,state,zip,lat,lon,norm FROM addr WHERE '
+               + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT ?')
+        rows = []
+        for connection in connections:
+            try:
+                rows.extend(connection.execute(sql, [*parameters, limit * 3]).fetchall())
+            except sqlite3.Error:
+                continue
+        if not rows:
+            continue
+
+        def rank(row):
+            distance = 0
+            if near:
+                distance = (row[5] - near[0]) ** 2 + ((row[6] - near[1]) * math.cos(math.radians(near[0]))) ** 2
+            # A row found through its lieu-dit (norm is not its street) comes after rows found by their street.
+            return (row[7] != normalize_fr(row[1]), bool(city) and city not in _french_places(row[2])[2],
+                    len(row[7]), distance, row[2], row[1])
+        results, seen = [], set()
+        for num, name, city_name, _, zip_code, lat, lon, _ in sorted(rows, key=rank):
+            key = (num, name, lat, lon)
+            if key in seen:
+                continue
+            seen.add(key)
+            commune, delegated, _ = _french_places(city_name)
+            place = ' '.join(part for part in (zip_code, commune) if part)
+            results.append({
+                'name': f'{_french_number(num)} {name}', 'kind': 'Street address',
+                'detail': ', '.join(part for part in (delegated, place) if part),
+                'lat': lat, 'lon': lon, 'source': 'Base Adresse Nationale', 'onMap': True,
+            })
+            if len(results) == limit:
+                break
+        return results
+    return []
+
+
 def find_addresses(query, geo_directory, limit=8, near=None):
     """Return exact house-number matches from installed indexes, never a guessed house."""
     if not is_address_query(query):
         return []
+    geo_directory = Path(geo_directory)
+    paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
+    french = []
+    try:
+        for path in paths[:]:
+            connection = _french_country(path)
+            if connection:
+                french.append(connection)
+                paths.remove(path)
+        # A French index is read with French rules whatever the query ends with ('Bellême' is not Maine).
+        found = _find_french(french, query, limit, near) if french else []
+        found_us = _find_us(query, geo_directory, paths, limit, near)
+    finally:
+        for connection in french:
+            connection.close()
+    if not found:
+        return found_us
+    if not found_us:
+        return found
+    both = found_us + found
+    if near:
+        both.sort(key=lambda r: (r['lat'] - near[0]) ** 2 + ((r['lon'] - near[1]) * math.cos(math.radians(near[0]))) ** 2)
+    return both[:limit]
+
+
+def _find_us(query, geo_directory, paths, limit, near):
+    """The US lookup, unchanged: US words, a state name or code at the end, the ZIP last."""
+    if len(query.split()) < 2:  # '12,rue Haute' passes is_address_query for the French side only
+        return []
     number, words, state, postcode = _parts(query)
     if not words:
         return []
-    geo_directory = Path(geo_directory)
-    paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
     if state:
         paths = [path for path in paths if path.stem.upper() == state]
     legacy = geo_directory / 'addresses.sqlite'

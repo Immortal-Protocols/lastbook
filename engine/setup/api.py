@@ -103,7 +103,8 @@ class Setup:
         self._llm = llm_local
         self.lock = threading.RLock()
         self.job, self.control, self.thread = None, None, None
-        self._worker = threading.local()      # .job: the job the current worker thread started with
+        self._worker = threading.local()      # .job, .run: the job and the run token the current worker thread started with
+        self._run_id = 0      # bumped by every worker start and by cancel: a worker holding an older one is stale
         self.sources = {}          # file name -> a file already on this computer the person chose with `use`
         self.ai_measure, self.measuring = None, False
         self.deleting = set()
@@ -434,7 +435,7 @@ class Setup:
         if repair:
             return self._start_repair(ai)
         with self.lock:
-            if self.job and self.job['state'] in ACTIVE + ('paused',):
+            if self._running() or self.job and self.job['state'] in ACTIVE + ('paused',):
                 return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
             pack = self.manifest.pack(pack_id) if pack_id else None
             if pack_id and (not pack or not pack['available']):
@@ -541,6 +542,12 @@ class Setup:
             self._run()
             return self.public_job()
 
+    def _running(self):
+        """A worker thread is still alive (a cancelled one that outlived cancel()'s join, say): it may still be writing into the work
+        folder, so no new job starts, or drops leftovers, until it has stopped."""
+        t = self.thread
+        return bool(t and t.is_alive() and t is not threading.current_thread())
+
     def _was_rejected(self, path):
         try:
             st = os.stat(path)
@@ -559,7 +566,7 @@ class Setup:
         """Re-check the open library's files (pack-manifest.tsv) and the model's SHA-256. What is wrong is fetched again: the pack is
         downloaded and switched to as in an upgrade, the model replaced in place. Nothing is downloaded if all is well."""
         with self.lock:
-            if self.job and self.job['state'] in ACTIVE + ('paused',):
+            if self._running() or self.job and self.job['state'] in ACTIVE + ('paused',):
                 return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
             cur = self.current_info()
             if self.mode != 'manage' or not cur:
@@ -622,7 +629,8 @@ class Setup:
 
     def _run(self):
         self.control = download.Control()
-        self.thread = threading.Thread(target=self._work, args=(self.control,), daemon=True, name='setup-job')
+        self._run_id += 1
+        self.thread = threading.Thread(target=self._work, args=(self.control, self._run_id), daemon=True, name='setup-job')
         self.thread.start()
 
     def pause(self):
@@ -661,6 +669,7 @@ class Setup:
                 return None
             if job['state'] in ACTIVE and self.control:
                 self.control.stop('cancelled')
+            self._run_id += 1       # a worker that outlives the join is stale for good, even if retry() reuses this job
         self._join()
         with self.lock:
             if job['state'] != 'done' or job['plan'].get('switch'):     # a staged library not yet switched to can still be dropped
@@ -832,7 +841,7 @@ class Setup:
     def _stale(self):
         """True in a worker that is no longer the job's: cancelled (and not joined in time) or replaced by a newer job."""
         job = getattr(self._worker, 'job', None)
-        return job is not None and (job is not self.job or (job.get('error') or {}).get('code') == 'cancelled')
+        return job is not None and (job is not self.job or self._worker.run != self._run_id or (job.get('error') or {}).get('code') == 'cancelled')
 
     def _set(self, it, state, **kw):
         with self.lock:
@@ -861,8 +870,8 @@ class Setup:
         except OSError as e:
             print('setup: could not save the job:', e, flush=True)
 
-    def _work(self, control):
-        job = self._worker.job = self.job
+    def _work(self, control, run):
+        job, self._worker.job, self._worker.run = self.job, self.job, run
         plan = job['plan']
         it = None
         try:

@@ -80,6 +80,46 @@ class SwitchFailure(Base):
         self.check_intact(cur)
         self.assertFalse((new / 'models' / 'model.gguf').exists())
 
+    def test_failed_rollback_of_the_carry_still_puts_the_old_library_back(self):
+        cur, new = self.old_with_files()
+        real = os.replace
+
+        def flaky(a, b, *x, **k):
+            if Path(a).name == 'NJ.sqlite' and Path(b).is_relative_to(new):
+                raise OSError('busy')
+            if Path(a).is_relative_to(new) and Path(b).is_relative_to(cur.parent / 'LastbookData.old') or Path(a).name == 'model.gguf' and Path(a).is_relative_to(new):
+                raise OSError('rollback busy')
+            return real(a, b, *x, **k)
+        with mock.patch.object(os, 'replace', flaky), self.assertRaises(install.Refused):
+            install.switch(new, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+
+    def test_failed_rollback_after_the_second_rename_still_puts_the_old_library_back(self):
+        cur, new = self.old_with_files()
+        real = os.replace
+
+        def flaky(a, b, *x, **k):
+            if Path(a) == new:
+                raise OSError('busy')
+            if Path(a).name == 'model.gguf' and Path(b).is_relative_to(cur) and not Path(a).is_relative_to(cur):
+                raise OSError('rollback busy')
+            return real(a, b, *x, **k)
+        with mock.patch.object(os, 'replace', flaky), self.assertRaises(install.Refused):
+            install.switch(new, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+
+    def test_refused_says_where_the_old_library_is_when_it_cannot_be_put_back(self):
+        cur, new = self.old_with_files()
+        real = os.replace
+
+        def flaky(a, b, *x, **k):
+            if Path(a) == new or Path(b) == cur and Path(a).name.startswith('LastbookData.old'):
+                raise OSError('busy')
+            return real(a, b, *x, **k)
+        with mock.patch.object(os, 'replace', flaky), self.assertRaises(install.Refused) as c:
+            install.switch(new, cur)
+        self.assertIn('LastbookData.old', c.exception.message)
+
     def test_opened_keeps_work_folder_when_switch_failed(self):
         cur, new = self.old_with_files()
         work = self.parent / 'LastbookData.setup'
@@ -203,7 +243,8 @@ class StaleWorker(Base):
                 self_._set(it, 'unpacking')
                 self_._fail(it, 'network', 'late failure')
             except Exception as e:
-                errors.append(e)
+                errors.append((threading.current_thread(), e))
+        self.errors = errors
         with mock.patch.object(api.Setup, '_do_pack', stuck), \
                 mock.patch.object(api.Setup, '_join', lambda self_: self_.thread.join(0.2)):
             s.start('small', False)
@@ -230,6 +271,38 @@ class StaleWorker(Base):
             s.job = newer
         s, j = self.run_stuck(swap)
         self.assertEqual((newer['state'], newer['error']), ('waiting', None))
+
+    def test_retry_after_cancel_does_not_revive_the_cancelled_worker(self):
+        old = []
+        s, j = self.run_stuck(lambda s: (old.append(s.thread), s.retry()))
+        late = [e for t, e in self.errors if t is old[0]]
+        self.assertTrue(late and isinstance(late[0], download.Stopped), late)     # the first worker's write was refused
+
+    def test_resume_after_cancel_does_not_revive_the_cancelled_worker(self):
+        old = []
+
+        def then(s):
+            old.append(s.thread)
+            s.job['state'] = 'paused'
+            s.job['error'] = None
+            s.resume()
+        s, j = self.run_stuck(then)
+        late = [e for t, e in self.errors if t is old[0]]
+        self.assertTrue(late and isinstance(late[0], download.Stopped), late)
+
+    def test_new_job_is_refused_while_the_cancelled_worker_is_still_running(self):
+        out = []
+        work = api._work_for(self.parent / 'LastbookData')
+        keep = work / 'unpack' / 'LastbookData' / 'x.txt'
+
+        def then(s):
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_text('x')
+            out.append(s.start('small', False))
+            out.append(s.start(repair=True))
+        self.run_stuck(then)
+        self.assertEqual([o.get('code') for o in out], ['busy', 'busy'])
+        self.assertTrue(keep.exists())          # nothing was dropped under the old worker
 
     def test_cancel_with_nothing_running_still_says_nothing_changed(self):
         s = self.setup()
@@ -351,6 +424,26 @@ class ManifestRace(Base):
         with mock.patch.object(download, 'fetch_small', flaky), mock.patch.object(manifest, 'RETRY_S', 0):
             self.assertEqual(s.state()['manifest']['packs'], [])
             self.assertEqual([p['id'] for p in s.state()['manifest']['packs']], ['small', 'all'])
+
+    def test_concurrent_states_start_one_fetch(self):
+        calls = []
+        real = threading.Thread
+
+        def slow_thread(*a, **k):
+            time.sleep(0.2)          # the window between "no fetch yet" and the fetch being recorded
+            return real(*a, **k)
+
+        def fetch(*a, **k):
+            calls.append(1)
+            time.sleep(0.5)
+        mf = manifest.Manifest(bundled={'version': 1, 'published': '', 'packs': [], 'models': [], 'maps': []},
+                               remote='https://127.0.0.1/manifest-v1.json', allowed=ALLOWED, context=self.ctx)
+        with mock.patch.object(download, 'fetch_small', fetch), mock.patch.object(manifest.threading, 'Thread', slow_thread), \
+                mock.patch.object(manifest, 'WAIT_S', 3):
+            ts = [real(target=mf.fetch_once) for _ in range(3)]
+            [t.start() for t in ts]
+            [t.join(10) for t in ts]
+        self.assertEqual(len(calls), 1)
 
     def test_a_bundled_manifest_never_waits(self):
         calls = []

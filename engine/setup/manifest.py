@@ -133,6 +133,7 @@ class Manifest:
         self.source = 'bundled'
         self.remote, self.allowed, self.context = remote, allowed, context
         self.fetching, self.tried = None, 0
+        self._lock = threading.Lock()
 
     def fetch_once(self):
         """Starts the one fetch. With no packs at all (running from source: nothing bundled) it waits a few seconds for it, so the
@@ -140,11 +141,12 @@ class Manifest:
         if not self.remote:
             return
         empty = not self.current['packs']
-        t = self.fetching
-        if not t or (empty and not t.is_alive() and time.time() - self.tried >= RETRY_S):
-            self.tried = time.time()
-            t = self.fetching = threading.Thread(target=self._fetch, daemon=True, name='setup-manifest')
-            t.start()
+        with self._lock:      # state() is polled: two calls must not both start a fetch (the wait below is outside the lock)
+            t = self.fetching
+            if not t or (empty and not t.is_alive() and time.time() - self.tried >= RETRY_S):
+                self.tried = time.time()
+                t = self.fetching = threading.Thread(target=self._fetch, daemon=True, name='setup-manifest')
+                t.start()
         if empty and t.is_alive():
             t.join(WAIT_S)
 

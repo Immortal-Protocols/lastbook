@@ -5,6 +5,8 @@ MODEL_URL; clients never see it. Tools can read the public survival library (cat
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
 import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import http.client
+from typing import NamedTuple
 import retrieval
 from engine.paths import ro_uri
 
@@ -393,6 +395,15 @@ GROUPED = re.compile(r'\[\s*[SM]\d+(?:\s*[,;]\s*[SM]\d+)+\s*\]')   # how Gemma o
 SYSTEM_TEXT_ONLY = SYSTEM.replace(', view_page when a diagram or table matters', '').replace(
     'scanned pages without text (unless you view the page image)', 'pictures, diagrams or scanned pages without text')
 ROUND_TOKENS = 1800
+try:
+    CHAT_WAIT = max(1, min(86400, float(os.environ.get('LASTBOOK_AI_CHAT_S', 300))))
+except (TypeError, ValueError):
+    CHAT_WAIT = 300
+
+
+class _RoundFailure(NamedTuple):
+    code: str
+    text: str
 
 
 def _http_round(msgs, tools, cancelled, wrote, set_state):
@@ -405,7 +416,8 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
         resp = model_open(req, timeout=180)
     except Exception as e:
         return f'The local model is not responding ({type(e).__name__}).'
-    calls, content = {}, ''
+    calls, content, finished = {}, '', False
+    interrupted = _RoundFailure('incomplete_stream', 'The model response was interrupted. Any answer text is incomplete. Open the source pages or try again.')
     try:
         for raw in resp:
             if cancelled():
@@ -415,6 +427,7 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
                 continue
             data = line[5:].strip()
             if data == '[DONE]':
+                finished = True
                 break
             try:
                 ch = json.loads(data)['choices'][0]
@@ -432,14 +445,29 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
                 f = tc.get('function') or {}
                 c['name'] += f.get('name') or ''
                 c['args'] += f.get('arguments') or ''
+            reason = ch.get('finish_reason')
+            if reason == 'length':
+                return _RoundFailure('output_limit', 'The model reached its output limit. Any answer text is incomplete. Open the source pages or try a shorter question.')
+            if reason in ('stop', 'tool_calls', 'function_call'):
+                finished = True
+            elif reason:
+                return _RoundFailure('incomplete_stream', 'The model did not finish its answer. Open the source pages or try again.')
+    except http.client.IncompleteRead:
+        return interrupted
     except (socket.timeout, urllib.error.URLError, ConnectionError) as e:
+        if content or calls:
+            return interrupted
         return f'The local model stopped responding ({type(e).__name__}).'
     finally:
         resp.close()
+    if cancelled():
+        return 'stopped'
+    if not finished:
+        return interrupted
     return content, calls
 
 
-def _local_round(msgs, tools, cancelled, wrote, set_state):
+def _local_round(msgs, tools, cancelled, wrote, set_state, on_runtime=None, deadline=None):
     """One model turn from the local AI, in the same shape as _http_round."""
     import llm_local
     segs = _fit_prompt(msgs, tools, llm_local)
@@ -454,7 +482,9 @@ def _local_round(msgs, tools, cancelled, wrote, set_state):
             wrote(visible[sent[0]:])
             sent[0] = len(visible)
     try:
-        done = LOCAL.generate(segs, ROUND_TOKENS, cancelled, piece)
+        done = LOCAL.generate(segs, ROUND_TOKENS, cancelled, piece, on_event=on_runtime, deadline=deadline)
+    except llm_local.GenerationError as e:
+        return _RoundFailure(e.code, str(e))
     except RuntimeError as e:
         return str(e)
     if done.get('reason') == 'cancel':
@@ -488,7 +518,25 @@ def _fit_prompt(msgs, tools, llm_local):
 def chat(messages, about, emit, cancelled):
     """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early."""
     t0 = time.time()
+    started = time.monotonic()
+    deadline = None
     sess = Session()
+    runtime_rounds, last_runtime = [], {}
+
+    def stop_if_needed():
+        if cancelled():
+            emit({'type': 'stopped', 'reason': 'cancel', 'request_id': last_runtime.get('request_id'),
+                  'sources': list(sess.sources.values())})
+            return True
+        if deadline is not None and time.monotonic() >= deadline:
+            emit({'type': 'error', 'error': 'timeout', 'reason': 'deadline', 'request_id': last_runtime.get('request_id'),
+                  'text': 'The local AI reached the time limit. Open the source pages below, or try a shorter question.',
+                  'sources': list(sess.sources.values())})
+            return True
+        return False
+
+    if stop_if_needed():
+        return
     msgs = [{'role': 'system', 'content': SYSTEM}]
     ctx = context_for(about, sess)
     if ctx:
@@ -525,6 +573,9 @@ def chat(messages, about, emit, cancelled):
     local = local_on()
     tools = [t for t in TOOLS if t['function']['name'] != 'view_page'] if local else TOOLS   # the local model reads text only
     if local:
+        deadline = started + CHAT_WAIT
+        if stop_if_needed():
+            return
         msgs[0] = {'role': 'system', 'content': SYSTEM_TEXT_ONLY}
         set_state('starting')
         shown = [None]
@@ -533,7 +584,9 @@ def chat(messages, about, emit, cancelled):
             if pct != shown[0]:
                 shown[0] = pct
                 emit({'type': 'state', 'state': 'starting', 'pct': pct})
-        why = LOCAL.ensure_running(loading, cancelled)
+        why = LOCAL.ensure_running(loading, cancelled, deadline=deadline)
+        if stop_if_needed():
+            return
         if why == 'stopped':
             emit({'type': 'stopped'})
             return
@@ -547,13 +600,32 @@ def chat(messages, about, emit, cancelled):
         first['at'] = first['at'] or time.time() - t0
         emit({'type': 'delta', 'text': piece})
     for rnd in range(MAX_ROUNDS + 1):
+        if stop_if_needed():
+            return
         last = rnd == MAX_ROUNDS
         if last:
             msgs.append({'role': 'system', 'content': 'Stop searching now. Write the answer using only the sources already retrieved, with their keys. If they are not enough, say what is missing under "Not found in the library:".'})
         set_state('thinking' if rnd == 0 else 'reading')
-        got = (_local_round if local else _http_round)(msgs, None if last else tools, cancelled, wrote, set_state)
+        round_tools = None if last else tools
+        if local:
+            def runtime(event):
+                last_runtime.clear()
+                last_runtime.update(event)
+                emit(dict(event, type='runtime', round=rnd + 1))
+                if event.get('phase') == 'complete':
+                    runtime_rounds.append(dict(event, round=rnd + 1))
+
+            got = _local_round(msgs, round_tools, cancelled, wrote, set_state, runtime, deadline)
+        else:
+            got = _http_round(msgs, round_tools, cancelled, wrote, set_state)
+        if stop_if_needed():
+            return
         if got in ('stopped', None):
             emit({'type': 'stopped'} if got else {'type': 'error', 'error': 'model_unavailable', 'text': 'The local model stopped responding.'})
+            return
+        if isinstance(got, _RoundFailure):
+            emit({'type': 'error', 'error': got.code, 'reason': got.code, 'request_id': last_runtime.get('request_id'),
+                  'text': got.text, 'sources': list(sess.sources.values())})
             return
         if isinstance(got, str):
             emit({'type': 'error', 'error': 'model_unavailable', 'text': got})
@@ -572,6 +644,8 @@ def chat(messages, about, emit, cancelled):
             {'id': c['id'] or f'call_{i}', 'type': 'function', 'function': {'name': c['name'], 'arguments': c['args'] or '{}'}} for i, c in sorted(calls.items())]})
         extra = []
         for i, c in sorted(calls.items()):
+            if stop_if_needed():
+                return
             try:
                 args = json.loads(c['args'] or '{}')
             except ValueError:
@@ -589,6 +663,8 @@ def chat(messages, about, emit, cancelled):
         emit({'type': 'sources', 'sources': list(sess.sources.values())})
         if content:  # text written before tool calls is discarded from the final answer
             emit({'type': 'reset'})
+    if stop_if_needed():
+        return
     if not answer.strip():
         emit({'type': 'error', 'error': 'empty', 'text': 'The model did not produce an answer. The passages it found are listed below.',
               'sources': list(sess.sources.values())})
@@ -607,4 +683,5 @@ def chat(messages, about, emit, cancelled):
     valid = [k for k in valid if k not in invalid]
     emit({'type': 'done', 'answer': answer, 'sources': [sess.sources[k] for k in valid],
           'consulted': [v for k, v in sess.sources.items() if k not in valid], 'invalid': invalid, 'tools': tool_log,
-          'latency': {'first_token_s': round(first_tok, 2) if first_tok else None, 'total_s': round(time.time() - t0, 2)}})
+          'latency': {'first_token_s': round(first_tok, 2) if first_tok else None, 'total_s': round(time.time() - t0, 2),
+                      **({'rounds': runtime_rounds} if local else {})}})

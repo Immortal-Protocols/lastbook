@@ -1381,7 +1381,15 @@ def stub_chat(messages, about, emit, cancelled):
     emit({'type': 'done', 'answer': 'x', 'sources': [], 'consulted': [], 'invalid': [], 'latency': {}})
 
 
-assistant.model_status, assistant.chat = stub_status, stub_chat
+def setUpModule():
+    # Importing this module during combined discovery must not replace another
+    # suite's assistant. Install the fixture only while these tests run.
+    assistant.model_status, assistant.chat = stub_status, stub_chat
+
+
+def tearDownModule():
+    assistant.model_status, assistant.chat = REAL_STATUS, REAL_CHAT
+
 
 if __name__ == '__main__':
     prog = unittest.main(exit=False, verbosity=2 if '-v' in sys.argv else 1)

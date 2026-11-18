@@ -275,7 +275,8 @@ def main(argv=None, allowed=None, context=None, command=None, extra=(), recheck=
               f'  python3 {ROOT / "packaging" / "share" / "fetch_rqbit.py"}', flush=True)
         return 1
     control, stop = download.Control(), stop or threading.Event()
-    _on_signals(control, stop)
+    threading.Thread(target=lambda: (stop.wait(), control.stop('paused')), daemon=True, name='seed-stop').start()  # a download stops where it is
+    _on_signals(stop)
     said_nothing = False
     try:
         while not stop.is_set():
@@ -284,7 +285,7 @@ def main(argv=None, allowed=None, context=None, command=None, extra=(), recheck=
                 print(NOTHING_YET if a.all or a.only else NOTHING_PINNED, flush=True)
                 said_nothing = True
             need, free = needed(chosen, folder, state), shutil.disk_usage(folder).free
-            if need + MARGIN > free:
+            if need and need + MARGIN > free:          # nothing left to download needs no space
                 print(f'These files need {gb(need)} more on the disk under {folder}, and it has {gb(free)} free. '
                       'Free some space, or choose fewer files with --only (--list shows them).', flush=True)
                 return 1
@@ -330,9 +331,9 @@ def main(argv=None, allowed=None, context=None, command=None, extra=(), recheck=
     return 0
 
 
-def _on_signals(control, stop):
-    """Ctrl-C or SIGTERM stops the download where it is (kept) and rqbit. The handler only writes a byte; a thread does the rest,
-    so nothing in it waits on a lock the interrupted code may hold. A second Ctrl-C ends at once."""
+def _on_signals(stop):
+    """Ctrl-C or SIGTERM sets `stop`: the download stops where it is (kept), then rqbit. The handler only writes a byte; a thread
+    does the rest, so nothing in it waits on a lock the interrupted code may hold. A second Ctrl-C ends at once."""
     if threading.current_thread() is not threading.main_thread():
         return
     r, w = os.pipe()
@@ -340,7 +341,6 @@ def _on_signals(control, stop):
     def watch():
         os.read(r, 1)
         print('\nStopping...', flush=True)
-        control.stop('paused')
         stop.set()
 
     def handler(signum, frame):

@@ -1292,6 +1292,7 @@ import base64, json, os, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 record, args = sys.argv[1], sys.argv[2:]
 open(record, 'a', encoding='utf-8').write(json.dumps(args) + '\n')
+open(record + '.pids', 'a', encoding='utf-8').write(f'{os.getpid()}\n')
 auth = 'Basic ' + base64.b64encode(os.environ.get('RQBIT_HTTP_BASIC_AUTH_USERPASS', '').encode()).decode()
 
 
@@ -3346,6 +3347,26 @@ class AddressIndexes(Maps):
         self.assertEqual(merged['address_indexes'][0]['files'], validated['address_indexes'][0]['files'])
 
 
+def alive(pid):
+    """Whether the process is still running (without signalling it: on Windows os.kill would end it)."""
+    if os.name == 'nt':
+        import ctypes
+        k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        h = k32.OpenProcess(0x1000, False, pid)                 # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            return bool(k32.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259     # STILL_ACTIVE
+        finally:
+            k32.CloseHandle(h)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
 def load_seed():
     """tools/seed.py, the command-line sharer, as a module."""
     spec = importlib.util.spec_from_file_location('lastbook_seed', ROOT / 'tools' / 'seed.py')
@@ -3397,6 +3418,44 @@ class ServerSeeding(WithRqbit):
             t.join(30)
         self.assertFalse(t.is_alive(), 'seed.py did not stop')
         return out.get('code'), buf.getvalue()
+
+    def test_stopped_mid_download_keeps_it_and_goes_on(self):
+        """Ctrl-C while a file comes from the servers and from other people at once: the download stops where it is, rqbit (the
+        swarm's) ends, and the same command then goes on from what is there instead of starting over."""
+        src = self.tmp / 'swarm-source.zip'
+        src.write_bytes(self.zip)
+        for name, value in (('SEGMENT', self.PIECE), ('SEGMENTED_MIN', 0), ('WINDOW', 4), ('HARVEST_EVERY', 0.05)):
+            p = mock.patch.object(download, name, value)
+            p.start()
+            self.addCleanup(p.stop)
+        env = mock.patch.dict(os.environ, {'FAKE_SWARM_SOURCE': str(src), 'FAKE_SWARM_NAME': 'Lastbook-Small.zip',
+                                           'FAKE_SWARM_PIECE': str(self.PIECE), 'FAKE_SWARM_PACE': '0.3'})
+        env.start()
+        self.addCleanup(env.stop)
+        self.files.pace = 0.2
+        part = self.out / '.lastbook-seed' / 'swarm' / 'Lastbook-Small.zip'
+        code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: part.exists() and part.stat().st_size > 0
+                                   and len(_requested(self.files.log, 'Lastbook-Small.zip')) >= 6)
+        self.assertEqual(code, 0, text)
+        self.assertIn('from other people too', text)
+        self.assertNotIn('is here', text)
+        self.assertFalse((self.out / 'Lastbook-Small.zip').exists())
+        pids = [int(x) for x in Path(str(self.record) + '.pids').read_text().split()]
+        self.assertTrue(pids)
+        self.assertFalse([p for p in pids if alive(p)], 'rqbit was left running')
+        before = len(_requested(self.files.log, 'Lastbook-Small.zip'))
+        self.files.pace = 0
+        code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: (self.out / 'Lastbook-Small.zip').exists())
+        self.assertEqual((self.out / 'Lastbook-Small.zip').read_bytes(), self.zip)
+        asked = _requested(self.files.log, 'Lastbook-Small.zip')[before:]
+        self.assertLess(sum(b - a + 1 for a, b in asked), len(self.zip))         # went on: not every byte asked for again
+
+    def test_a_full_disk_that_holds_every_file_still_shares(self):
+        code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: self.added.exists())
+        with mock.patch.object(self.seed.shutil, 'disk_usage', return_value=mock.Mock(free=0)):
+            code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: len(self.added.read_text().splitlines()) >= 2)
+        self.assertEqual(code, 0, text)
+        self.assertNotIn('need', text)
 
     def test_list_says_what_can_be_shared(self):
         code, text = self.run_seed('--list', '--manifest', self.manifest_file())

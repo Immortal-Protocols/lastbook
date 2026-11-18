@@ -26,8 +26,9 @@ const MapView = (() => {
     ['fire', 'Fire stations', 'F', '#ef6c00', 'fire_station', 'help'],
     ['police', 'Police', 'P', '#1a4f9c', 'police', 'help'],
     ['shelter', 'Shelters (structures)', '⌂', '#455a64', 'shelter', 'help'],
+    ['assembly', 'Emergency assembly points', 'A', '#ad1457', 'assembly_point', 'help'],
     ['community', 'Community centers, town halls & libraries', 'C', '#8e24aa', 'community_centre,town_hall,library', 'help'],
-    ['water', 'Drinking-water taps', 'W', '#0277bd', 'drinking_water', 'water'],
+    ['water', 'Drinking-water taps & water points', 'W', '#0277bd', 'drinking_water,water_point,water_tank', 'water'],
     ['reservoir', 'Reservoirs & named lakes', '≈', '#1565c0', 'reservoir,lake', 'water'],
     ['pond', 'Unnamed ponds (1+ acre, year-round)', '≈', '#5e9fd0', 'pond', 'water'],
     ['dam', 'Dams (with storage & purpose)', 'D', '#6d4c41', 'dam', 'water'],
@@ -47,7 +48,7 @@ const MapView = (() => {
   const GROUPS = [['help', 'Emergency help'], ['water', 'Water'], ['supply', 'Supplies & camping'], ['food', 'Food that keeps growing (2025 crop maps)'], ['resource', 'Natural resources (historical records)']];
   const BY_CLS = {}; for (const l of LAYERS) for (const c of l.cls) BY_CLS[c] = l;
   const DEFAULT_LAYERS = ['hospital', 'clinic', 'pharmacy', 'fire', 'police', 'shelter', 'water', 'reservoir', 'fish', 'boat'];
-  const PRESETS = [['Emergency', ['hospital', 'clinic', 'dentist', 'pharmacy', 'fire', 'police', 'shelter', 'community']], ['Water', ['water', 'spring', 'reservoir', 'pond', 'dam', 'fish', 'boat']],
+  const PRESETS = [['Emergency', ['hospital', 'clinic', 'dentist', 'pharmacy', 'fire', 'police', 'shelter', 'assembly', 'community']], ['Water', ['water', 'spring', 'reservoir', 'pond', 'dam', 'fish', 'boat']],
     ['Supplies', ['food', 'hardware', 'fuel', 'camp']], ['Food trees', ['orchard', 'vineyard', 'berries']], ['Resources', ['fish', 'boat', 'mineral', 'well']], ['All', LAYERS.map(l => l.id)]];
   const LEGACY = { all_resources: ['fish', 'boat', 'mineral', 'well'], mineral: ['mineral'], oil_gas_well: ['well'], fish_stocking: ['fish'], boat_launch: ['boat'] };
   const FIELD = { commod1: 'Commodity', commod2: 'Also', commod3: 'Also', ore: 'Ore', dev_stat: 'Recorded status', oper_type: 'Operation', yr_lst_prd: 'Last production year',
@@ -176,21 +177,39 @@ const MapView = (() => {
     fetch('/api/map/info').then(r => r.json()).then(info => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
-      describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
+      describe(info);
+      if (openWhole) fit(wholeMap(), 0.92, true);   // explicit coordinates in the link always win; openWhole already fits the set's own data
+      coverage(); draw();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
-        (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
+        (info.region || (st.have && !st.have.size) ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
     }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
-      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return; st.national = info.national; coverage();
+      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return; st.national = info.national; coverage(); applyAvailability(info);
         if (info.aerial_rev !== st.aerialRev) { st.aerialRev = info.aerial_rev; st.aerialDetail = info.aerial_detail; for (const v of st.aerial?.values() || []) v.close?.(); st.aerial = new Map(); draw() }  // new sharp photos: new URLs
         if (info.version !== st.ver) { st.ver = info.version; st.gen++; st.pinBox = null; draw(); loadPins() } } catch { }
     }, 60000);
     if (!openWhole) { draw(); settle() }
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
+  function applyAvailability(info) {   // a map file still being built, or absent, must not offer or fetch its layers
+    st.noTerrain = info.terrain === false;
+    if (st.noTerrain) { st.style.relief = false; st.style.contours = false }
+    if ($('map-3d')) $('map-3d').hidden = st.noTerrain;
+    st.noCrops = info.crops === false;
+  }
   function describe(info) {
+    if (info.region) {
+      const at = document.querySelector('.mapattr'), src = (info.meta && info.meta.source) || '';
+      if (at) at.textContent = src ? `© ${src} · Natural Earth` : '© OpenStreetMap contributors · Natural Earth';
+      const stamp = ((info.meta && info.meta.data_as_of) || '').slice(0, 10), head = document.querySelector('.maphead p');
+      if (stamp && head) {   // the header must quote this map's own data date, not the US build's
+        const d = new Date(stamp + 'T00:00:00Z');
+        if (!isNaN(d)) head.textContent = `Offline: works with no internet. Shows what was mapped by ${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]} ${d.getUTCFullYear()} — not damage, closures or hazards.`;
+      }
+    }
+    applyAvailability(info);
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     if (!info.layers) return;
@@ -247,7 +266,7 @@ const MapView = (() => {
       ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${n}</button>`).join('')}<button data-p="">None</button></div>`}
       <fieldset class="style"><legend>Map style</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>Aerial photos (USGS / USDA)</span></label>`}
-        <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>
+        ${st.noTerrain ? '' : `<label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>`}
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>Contour lines (from zoom 11)</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
       ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${gl}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(l.label)}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
@@ -605,7 +624,7 @@ const MapView = (() => {
     return t.contours[step] = lines;
   }
   function terrainLayer(g, V, noRelief) {
-    if (!st.style.relief && !st.style.contours) return;
+    if (st.noTerrain || (!st.style.relief && !st.style.contours)) return;
     const tz = Math.max(TZ0, Math.min(tzMax(st.lat, st.lon), Math.floor(st.z + 0.01))), f = 2 ** (st.z - tz), ts = 256 * f;
     const cx = lon2x(st.lon, tz), cy = lat2y(st.lat, tz), w = V.w, h = V.h;
     const x0 = Math.floor(cx - w / 2 / ts), x1 = Math.floor(cx + w / 2 / ts), y0 = Math.max(0, Math.floor(cy - h / 2 / ts)), y1 = Math.min(2 ** tz - 1, Math.floor(cy + h / 2 / ts));
@@ -710,7 +729,7 @@ const MapView = (() => {
   }
   // Orchard / vineyard colour overlay (/api/map/crops/z/x/y.png, zoom 7-13)
   function cropLayer(g, V) {
-    if (st.z < 7) return;
+    if (st.noCrops || st.z < 7) return;
     const tz = Math.min(13, Math.floor(st.z + 0.01)), ts = 256 * 2 ** (st.z - tz), cx = lon2x(st.lon, tz), cy = lat2y(st.lat, tz), w = V.w, h = V.h;
     const x0 = Math.floor(cx - w / 2 / ts), x1 = Math.floor(cx + w / 2 / ts), y0 = Math.max(0, Math.floor(cy - h / 2 / ts)), y1 = Math.min(2 ** tz - 1, Math.floor(cy + h / 2 / ts));
     st.crops = st.crops || new Map();

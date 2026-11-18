@@ -1045,6 +1045,7 @@ TILE_POI = {'hospital', 'clinic', 'doctors', 'pharmacy', 'chemist', 'fire_statio
 HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharmacy': 'Pharmacy', 'chemist': 'Pharmacy',
         'dentist': 'Dentist', 'fire_station': 'Fire station', 'police': 'Police', 'drinking_water': 'Drinking water tap',
         'fountain': 'Fountain (not necessarily drinkable)', 'water_tower': 'Water tower', 'water_works': 'Water works',
+        'water_point': 'Water point', 'water_tank': 'Water tank', 'assembly_point': 'Emergency assembly point',
         'spring': 'Spring (untested)', 'toilet': 'Public toilet', 'shelter': 'Shelter (structure)',
         'community_centre': 'Community centre', 'town_hall': 'Town hall', 'school': 'School', 'library': 'Library',
         'supermarket': 'Supermarket', 'convenience': 'Convenience store', 'doityourself': 'Hardware / DIY store',
@@ -1394,7 +1395,14 @@ def water_places(q, limit=10, near=None):
 
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        if found or not address_search.is_postcode_place_query(q, HERE / 'derived' / 'geo'):
+            return found    # '70173 Stuttgart' is number-first too, but a place where an installed index knows it
+    elif address_search.is_street_first_address_query(q):
+        # 'Hauptstraße 5' is street first: an address only when an installed index has that house
+        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        if found:
+            return found
     if not PLACEDB.exists():
         return []
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
@@ -1434,14 +1442,16 @@ def places(q, limit=20, near=None):
     home = near or home_area()
     rows.sort(key=lambda r: (norm(r[0]) != ql, not norm(r[0]).startswith(ql), r[5] > 2 and norm(r[0]) == ql and importance(r),
                              -round(near_bonus(home, r[3], r[4])), r[5]))
+    region_bounds = map_contents().get('bounds') if region_of_national() else None
     seen, out = set(), []
     for name, kind, detail, lat, lon, rank, src in rows:
         k = (name.lower(), round(lat, 2), round(lon, 2))
         if k in seen:
             continue
         seen.add(k)
+        in_region = bool(region_bounds and region_bounds[0] <= lon <= region_bounds[2] and region_bounds[1] <= lat <= region_bounds[3])
         out.append({'name': name, 'kind': kind, 'detail': detail, 'lat': lat, 'lon': lon, 'source': src,
-                    'onMap': bool(pack_info()) or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
+                    'onMap': bool(pack_info()) or in_region or 32.5 < lat < 35.9 and -121.4 < lon < -114.1})
         if len(out) >= limit:
             break
     water = water_places(q, near=near)
@@ -1516,7 +1526,7 @@ def _distinct(path, sql):
 @functools.lru_cache(maxsize=1)
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
-    kinds, boxes = set(), []
+    kinds, boxes, declared = set(), [], None
     for path in (MAPDB, HERE / 'derived/geo/national.sqlite'):
         kinds |= set(_distinct(path, 'SELECT DISTINCT cls FROM poi'))
         if Path(path).exists():
@@ -1525,19 +1535,48 @@ def map_contents():
                 box = db.execute('SELECT MIN(lon),MIN(lat),MAX(lon),MAX(lat) FROM poi').fetchone()
                 if box and box[0] is not None:
                     boxes.append(box)
-            except sqlite3.Error:
+                row = db.execute("SELECT value FROM meta WHERE key='bounds'").fetchone()
+                if row and isinstance(row[0], str):
+                    parts = [float(part) for part in row[0].split(',')]
+                    if len(parts) == 4 and -180 <= parts[0] < parts[2] <= 180 and -90 <= parts[1] < parts[3] <= 90:
+                        declared = parts          # the set declares its own cut; POI extents crop districts without help points
+            except (sqlite3.Error, ValueError):
                 pass
             finally:
                 db.close()
     for path in (LIB / 'geography/resources/atlas.sqlite', WATERDB, CROPDB):
         kinds |= set(_distinct(path, 'SELECT DISTINCT kind FROM resource'))
     contours = any(r for r in _distinct(TERRAINDB, 'SELECT 1 FROM tile WHERE z>=11 LIMIT 1'))
-    bounds = None
-    if boxes:
+    bounds = declared
+    if bounds is None and boxes:
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
-        if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
-            bounds = None
-    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    if bounds is not None and bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
+        bounds = None
+    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes) or declared is not None, 'contours': contours,
+            'region': region_of_national()}
+
+
+def region_of_national():
+    """The region code a non-US map set carries in national.sqlite, or None for a US state map and the base map."""
+    path = HERE / 'derived/geo/national.sqlite'
+    if not path.exists():
+        return None
+    try:
+        db = sqlite3.connect(ro_uri(path), uri=True)
+        try:
+            row = db.execute("SELECT value FROM meta WHERE key='region'").fetchone()
+        finally:
+            db.close()
+    except sqlite3.Error:
+        return None
+    code = row[0] if row else None
+    if not isinstance(code, str):
+        return None
+    code = code.strip()
+    # Region ids are ISO 3166-2 style ('DE-STG', 'TR-34'): a bare two-letter code is a US state
+    # or a country the US list also claims ('DE', 'CA'), never a region id this app can trust.
+    return code if re.fullmatch(r'[A-Z]{2}(?:-[A-Z0-9]+)+', code) else None
+
 
 
 def map_info():
@@ -1615,11 +1654,35 @@ def map_info():
     if AERIALDB.exists():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
-    extra = {'aerial': has_aerial()}
-    if pack:
-        extra.update(map_contents())
-        geo = pack_datasets(extra)
+    extra = {'aerial': has_aerial(), 'terrain': TERRAINDB.exists(), 'crops': CROPDB.exists()}
+    region = region_of_national()   # cheap and uncached: a set installed after startup is seen on the next poll
+    if pack or region:
+        contents = map_contents()
+        contents['region'] = region
+        extra.update(contents)
+        geo = region_datasets(extra, meta.get('source') or '', meta.get('help_points') or '') if region else pack_datasets(extra)
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
+
+
+def region_datasets(have, source='', help_points=''):
+    """The panel beside a map set outside the US: only the files this set really holds, and their licence."""
+    code = have.get('region') or 'this area'
+    out = [{'label': f'Streets, buildings, water, land use and named places for {code} (OpenStreetMap)', 'status': 'Shown at every zoom level' if have.get('detail') else 'Not in this map set'}]
+    if have.get('detail'):
+        help_credit = f' ({help_points})' if help_points else ' (OpenStreetMap)'
+        out.append({'label': f'Help points: hospitals, clinics, pharmacies, fire stations, police, drinking water and more{help_credit}', 'status': 'Shown when you zoom in'})
+    if PLACEDB.exists():
+        out.append({'label': 'Place finder: city districts, streets, postcodes and named places (OpenStreetMap)', 'status': 'Used by "Find an address, town or place"'})
+    address_index = HERE / 'derived/geo/addresses' / f'{code}.sqlite'
+    if address_index.exists():
+        addr_source = address_search._index_info(address_index)[1] or 'OpenStreetMap'
+        out.append({'label': f'Street addresses ({addr_source})', 'status': 'Exact house numbers only; a house that is not mapped cannot be found'})
+    if not have.get('terrain'):
+        out.append({'label': 'Elevation is not in this map set', 'status': 'The map draws no contours and no 3D view for this set'})
+    if not have.get('crops'):
+        out.append({'label': 'Crops are not in this map set', 'status': 'No orchard, vineyard or berry layer for this set'})
+    out.append({'label': source or '© OpenStreetMap contributors, ODbL 1.0', 'status': 'Cut to the boundary this set carries'})
+    return out
 
 
 def pack_datasets(have):

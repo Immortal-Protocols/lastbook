@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from engine.address_search import find_addresses, is_address_query, normalize
+from engine.address_search import (Scheme, find_addresses, is_address_query, is_postcode_place_query,
+                                   is_street_first_address_query, normalize, normalize_as)
 
 
 class AddressSearchTests(unittest.TestCase):
@@ -96,6 +97,183 @@ class AddressSearchTests(unittest.TestCase):
         with patch.object(server, 'HERE', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
             self.assertEqual(server.places('18003 nine mile'), [])
             lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None)
+
+
+class GermanAddressTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.geo = Path(self.temp.name) / 'root' / 'derived' / 'geo'
+        (self.geo / 'addresses').mkdir(parents=True)
+        db = sqlite3.connect(self.geo / 'addresses' / 'DE-BW-ST.sqlite')
+        try:
+            db.executescript(
+                'CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL,district TEXT);'
+                "CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT);")
+            rows = [
+                ('5', 'Hauptstraße', 'Stuttgart', '70173', 48.7758, 9.1829, 'Stuttgart-Mitte'),
+                ('28', 'Königstraße', 'Stuttgart', '70173', 48.7784, 9.1800, 'Stuttgart-Mitte'),
+                ('12A', 'Berliner Straße', 'Stuttgart', '70376', 48.8156, 9.2275, 'Bad Cannstatt'),
+                ('5', 'Straße des 17. Juni', 'Stuttgart', '70178', 48.7770, 9.1740, 'Stuttgart-West'),
+                ('7', 'Calwer Straße', 'Stuttgart', '', 48.7740, 9.1775, 'Stuttgart-Mitte'),
+                ('5', '19 Mai Straße', 'Stuttgart', '70173', 48.7700, 9.1700, 'Stuttgart-Mitte'),
+                ('5', 'Am 17. Juni', 'Stuttgart', '70178', 48.7760, 9.1730, 'Stuttgart-West'),
+                ('5', 'Calwer Straße', 'Stuttgart', '70173', 48.7741, 9.1776, 'Stuttgart-Mitte'),
+                ('5', 'Calwer Straße', 'Stuttgart', '', 48.8000, 9.2200, 'Bad Cannstatt'),
+                ('9', 'Marktstraße', 'Stuttgart', '70173', 48.8010, 9.2210, 'Bad Cannstatt'),
+                ('51', 'Abelsbergstraße', 'Stuttgart', '70190', 48.7860, 9.2050, 'Stuttgart-Ost'),
+                ('128', 'Mercedes-Benz Werk 1 (Untertürkheim)', 'Stuttgart', '70327', 48.7840, 9.2480, 'Untertürkheim'),
+            ]
+            db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?)',
+                           [(num, street, normalize_as('de-1', street), city, 'DE-BW-ST', zip_code, lat, lon, district)
+                            for num, street, city, zip_code, lat, lon, district in rows])
+            db.execute("INSERT INTO meta VALUES ('norm','de-1')")
+            db.execute("INSERT INTO meta VALUES ('source','OpenStreetMap (ODbL 1.0)')")
+            db.commit()
+        finally:
+            db.close()
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_street_first_order_and_umlaut_spellings(self):
+        for query in ('Königstraße 28', 'Koenigstrasse 28', 'Königstr. 28 Stuttgart', 'Königstraße 28, 70173 Stuttgart'):
+            with self.subTest(query=query):
+                found = find_addresses(query, self.geo)
+                self.assertEqual([hit['name'] for hit in found], ['Königstraße 28'])
+                self.assertEqual(found[0]['lat'], 48.7784)
+
+    def test_letter_and_range_house_numbers(self):
+        for query in ('Berliner Straße 12a', 'Berliner Str. 12 A'):
+            with self.subTest(query=query):
+                self.assertEqual([hit['name'] for hit in find_addresses(query, self.geo)],
+                                 ['Berliner Straße 12A'])
+
+    def test_range_house_numbers_use_the_first_endpoint(self):
+        for query in ('Hauptstraße 5-7, 70173 Stuttgart', 'Hauptstraße 5-7a Stuttgart'):
+            with self.subTest(query=query):
+                hit, = find_addresses(query, self.geo)
+                self.assertEqual(hit['name'], 'Hauptstraße 5')
+
+    def test_postcode_does_not_hide_a_house_whose_own_postcode_is_missing(self):
+        hit, = find_addresses('Calwer Straße 7, 70173 Stuttgart', self.geo)
+        self.assertEqual(hit['name'], 'Calwer Straße 7')
+        self.assertEqual(find_addresses('Calwer Straße 7, 99999 Stuttgart', self.geo), [])
+
+    def test_one_letter_street_head_is_not_searched_as_a_prefix(self):
+        self.assertEqual(find_addresses('B 10 5', self.geo), [])
+        self.assertFalse(is_street_first_address_query('B 10 5'))
+
+    def test_street_name_with_number_is_not_the_house(self):
+        hit, = find_addresses('Straße des 17. Juni 5', self.geo)
+        self.assertEqual(hit['name'], 'Straße des 17. Juni 5')
+
+    def test_unknown_house_or_city_returns_nothing(self):
+        self.assertEqual(find_addresses('Hauptstraße 999 Stuttgart', self.geo), [])
+        self.assertEqual(find_addresses('Königstraße 28, 80331 München', self.geo), [])
+
+    def test_postcode_and_city_are_place_queries(self):
+        self.assertFalse(is_street_first_address_query('70173 Stuttgart'))
+        self.assertFalse(is_street_first_address_query('Stuttgart'))
+        self.assertTrue(is_street_first_address_query('Hauptstraße 5'))
+
+    def test_street_name_starting_with_a_number_is_reachable(self):
+        hit, = find_addresses('19 Mai Straße 5', self.geo)
+        self.assertEqual(hit['name'], '19 Mai Straße 5')
+
+    def test_number_first_spelling_does_not_borrow_the_street_first_index(self):
+        self.assertEqual(find_addresses('28 Koenigstrasse', self.geo), [])
+
+    def test_qualifier_decides_before_postcode_preference(self):
+        hit, = find_addresses('Calwer Straße 5, 70173 Bad Cannstatt', self.geo)
+        self.assertEqual(hit['lat'], 48.8000)
+
+    def test_later_number_candidate_is_tried_when_the_first_fails(self):
+        hit, = find_addresses('Am 17. Juni 5', self.geo)
+        self.assertEqual(hit['name'], 'Am 17. Juni 5')
+        hit, = find_addresses('Mercedes-Benz Werk 1 (Untertürkheim) 128', self.geo)
+        self.assertEqual(hit['name'], 'Mercedes-Benz Werk 1 (Untertürkheim) 128')
+
+    def test_numeric_slash_suffix_does_not_match_the_base_house(self):
+        self.assertEqual(find_addresses('Abelsbergstraße 51/1', self.geo), [])
+        self.assertEqual(find_addresses('Abelsbergstraße 51 / 1 Stuttgart', self.geo), [])
+        hit, = find_addresses('Abelsbergstraße 51', self.geo)
+        self.assertEqual(hit['name'], 'Abelsbergstraße 51')
+
+    def test_postcode_place_helper_and_liskov_patterns(self):
+        self.assertTrue(is_postcode_place_query('70173 Stuttgart', self.geo))
+        self.assertTrue(is_postcode_place_query('70376, Bad Cannstatt', self.geo))
+        self.assertFalse(is_postcode_place_query('70173 München', self.geo))
+
+    def test_index_without_a_norm_meta_does_not_break_street_first_search(self):
+        db = sqlite3.connect(self.geo / 'addresses' / 'CA.sqlite')
+        try:
+            db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL,district TEXT)')
+            db.commit()
+        finally:
+            db.close()
+        hit, = find_addresses('Königstraße 28', self.geo)
+        self.assertEqual(hit['name'], 'Königstraße 28')
+
+    def test_region_code_must_be_iso_shaped_text(self):
+        import server
+        national = self.geo / 'national.sqlite'
+        cases = (('DE-STG', 'DE-STG'), ('TR-34', 'TR-34'), ('DE', None), ('CA', None),
+                 ('ca-on', None), ('US', None), ('', None), (b'DE-STG', None), (12345, None))
+        with patch.object(server, 'HERE', self.geo.parents[1]):
+            for value, want in cases:
+                national.unlink(missing_ok=True)
+                db = sqlite3.connect(national)
+                try:
+                    db.execute('CREATE TABLE meta(key TEXT PRIMARY KEY,value)')
+                    db.execute("INSERT INTO meta VALUES ('region',?)", (value,))
+                    db.commit()
+                finally:
+                    db.close()
+                with self.subTest(value=value):
+                    self.assertEqual(server.region_of_national(), want)
+
+    def test_app_route_reaches_the_german_index(self):
+        import server
+        with patch.object(server, 'HERE', self.geo.parents[1]), \
+                patch.object(server, 'PLACEDB', self.geo / 'no-places.sqlite'), \
+                patch.object(server, 'WATERDB', self.geo / 'no-water.sqlite'), \
+                patch.object(server, 'home_area', return_value=None):
+            hit, = server.places('Hauptstraße 5')
+            self.assertEqual((hit['name'], hit['kind']), ('Hauptstraße 5', 'Street address'))
+
+
+class SchemeDataTests(unittest.TestCase):
+    """A second street-first country is data in a Scheme, not new engine code."""
+
+    def setUp(self):
+        self.scheme = Scheme(
+            chars={'İ': 'i', 'I': 'i', 'ı': 'i', 'Ğ': 'g', 'ğ': 'g', 'Ü': 'u', 'ü': 'u',
+                   'Ş': 's', 'ş': 's', 'Ö': 'o', 'ö': 'o', 'Ç': 'c', 'ç': 'c',
+                   'Â': 'a', 'â': 'a', 'Î': 'i', 'î': 'i', 'Û': 'u', 'û': 'u'},
+            words={'caddesi': 'cd', 'sokagi': 'sk'},
+            markers=('no',),
+            number_pick='last',
+            street_kinds=('cd', 'sk'),
+            form_suffixes=('cd', 'sk'),
+            place_stop=('istanbul',),
+            name='{street} No: {num}',
+        )
+
+    def test_marker_and_folded_letters(self):
+        number, street, postcode, qualifier = self.scheme.parse('Süleyman Seba Caddesi No: 22 Beşiktaş')
+        self.assertEqual((number, street, postcode, qualifier),
+                         ('22', ['suleyman', 'seba', 'caddesi'], '', ['besiktas']))
+        self.assertEqual(self.scheme.normalize('İstiklâl Caddesi'), 'istiklal cd')
+
+    def test_unknown_scheme_modes_are_refused(self):
+        with self.assertRaises(ValueError):
+            Scheme(chars={}, words={}, postcode_policy='loose')
+        with self.assertRaises(ValueError):
+            Scheme(chars={}, words={}, number_pick='middle')
+
+    def test_street_name_may_start_with_a_number(self):
+        number, street, postcode, qualifier = self.scheme.parse('19 Mayıs Caddesi 135')
+        self.assertEqual((number, street), ('135', ['19', 'mayis', 'caddesi']))
 
 
 if __name__ == '__main__':

@@ -192,9 +192,9 @@ const Chat = (() => {
       log.innerHTML = `<div class="chat-empty">
         <div class="ce-mark">${ico('ask')}</div>
         <h1>Chat</h1>
-        <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
+        <p class="lead">Ask about the manuals, guides, transcripts and maps on this device. Open the linked sources to check an answer.</p>
         <div class="starters">${(st ? st.map(t => ['ask', t]) : STARTERS).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
-        <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+        <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files.</p></div>`;
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
       return;
@@ -225,13 +225,17 @@ const Chat = (() => {
     const found = m.sources || [];
     let h = '';
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (m.stopped && !m.error) h += '<p class="notice small">Answer stopped. Any text below may be incomplete.</p>';
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
-    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
+    if (m.content) {
+      const [notice, body] = answerParts(m), linked = m.cited || [];
+      h += `<div class="answer">${notice ? `<div class="verified-notice">${md(notice, { cited: linked, running: m.running })}</div><hr>` : ''}<div class="answer-body">${md(body, { cited: bodySources(m), running: m.running })}</div></div>`;
+    }
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcCards(m.fallback, true);
     if (!running && m.content) {
       const cited = m.cited || [];
-      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
+      if (!m.error && unavailableKeys(m).length) h += `<p class=\"notice small\">${esc(citationWarning(m))}</p>`;
       h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
       if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcCards(cited, false)}`;
       else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
@@ -278,9 +282,24 @@ const Chat = (() => {
   }
 
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
-  function md(text, m) {
-    const keys = new Set((m.cited || m.sources || []).map(s => s.key));
-    const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : '';
+  function unavailableKeys(m) {
+    return Array.isArray(m.invalid) ? m.invalid.filter(k => typeof k === 'string' && /^[SM]\d+$/.test(k)) : [];
+  }
+  function citationWarning(m) {
+    return `This answer is unverified. Evidence for these citation keys was unavailable: ${unavailableKeys(m).join(', ')}.`;
+  }
+  function answerParts(m) {
+    const notice = m.verifiedNotice, prefix = notice + '\n\n---\n\n';
+    return notice && m.content.startsWith(prefix) ? [notice, m.content.slice(prefix.length)] : ['', m.content];
+  }
+  function bodySources(m) {
+    const invalid = new Set(unavailableKeys(m));
+    return (m.cited || []).filter(s => !invalid.has(s.key));
+  }
+  function md(text, { cited, sources, running }) {
+    const keys = new Set((cited || sources || []).map(s => s.key));
+    const hasCitation = s => Array.from(s.matchAll(/\[([SM]\d+)\]/g)).some(([, k]) => keys.has(k));
+    const cite = k => keys.has(k) ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : `[${k}]`;
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
@@ -301,7 +320,7 @@ const Chat = (() => {
     const flush = () => {
       if (!table) return;
       const head = table.length > 1 && SEP.test(table[1]) ? cells(table[0]) : null, rows = table.slice(head ? 2 : 0).filter(r => !SEP.test(r)).map(cells);
-      const cited = section !== 'main' || m.running || /\[[SM]\d+\]/.test(table.join(' ') + ' ' + before);
+      const cited = section !== 'main' || running || hasCitation(table.join(' ') + ' ' + before);
       const no = cited ? '' : ' title="Not linked to a source"', width = head ? head.length : (rows[0] || []).length;
       // A row with more or fewer cells than the header would put numbers under the wrong heading, so show the lines as written.
       if (rows.some(r => r.length !== width)) out += `<p class="ans-raw${cited ? '' : ' uncited'}"${no}>${table.map(inline).join('<br>')}</p>`;
@@ -309,8 +328,8 @@ const Chat = (() => {
       table = null; before = '';  // a key before one table says nothing about the next
     };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
-      if (section !== 'main' || m.running) return inline(raw);
-      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
+      if (section !== 'main' || running) return inline(raw);
+      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => hasCitation(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
     };
     for (let ln of lines) {
       const t = ln.trim();
@@ -355,9 +374,20 @@ const Chat = (() => {
     // citation chips scroll to their card instead of changing the route
     $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
   }
+  function draftWarning(m) {
+    if (unavailableKeys(m).length) return citationWarning(m);
+    if (m.stopped) return 'Answer stopped; may be incomplete.';
+    if (m.error) return 'Answer failed; any text may be incomplete.';
+    if (m.running) return 'Answer still in progress.';
+    return m.complete === false ? 'This answer is incomplete.' : '';
+  }
   function plain(m) {
-    const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-    let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    const links = (text, sources) => {
+      const keys = new Set(sources.map(s => s.key));
+      return text.replace(/\[([SM]\d+)\]/g, (marker, k) => keys.has(k) ? `[${k.replace(/^S/, '')}]` : marker);
+    };
+    const [notice, body] = answerParts(m), warning = draftWarning(m);
+    let t = (warning ? `[${warning}]\n\n` : '') + (notice ? links(notice, m.cited || []) + '\n\n---\n\n' : '') + links(body, bodySources(m));
     if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
@@ -372,7 +402,12 @@ const Chat = (() => {
   }
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
-    return c.messages.filter(m => m.content).map(m => {
+    return c.messages.filter(m => {
+      if (!m.content) return false;
+      if (m.role === 'user') return true;
+      const done = m.complete === true || (m.complete == null && Array.isArray(m.cited) && Array.isArray(m.consulted));
+      return done && !m.stopped && !m.error && !m.running && !unavailableKeys(m).length;
+    }).map(m => {
       if (m.role !== 'assistant') return { role: m.role, content: m.content };
       const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
       return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? ', p. ' + map[k].page : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
@@ -401,7 +436,7 @@ const Chat = (() => {
     try {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local && localLine(st.local)[1] });
-      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
+      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = '';
@@ -418,14 +453,14 @@ const Chat = (() => {
           redraw();
         }
       }
-      if (m.running && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
+      if (!m.complete && !m.stopped && !m.error) m.error = 'The answer was interrupted. Any text shown may be incomplete. You can ask again.';
     } catch (e) {
       if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
       else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text) }
       else m.error = e.message || 'Something went wrong.';
     }
+    if (!m.complete && !m.consulted && !m.fallback?.length) m.consulted = m.sources;
     m.running = false; delete m.state;
-    if (m.stopped && m.content) m.content += '\n\n(Stopped.)';
     live[c.id].running = false;
     c.updated = Date.now(); persist();
     if (cur === c) { updateBot(idx); setBusy(false); scrollEnd(); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }
@@ -437,9 +472,18 @@ const Chat = (() => {
     else if (ev.type === 'sources') m.sources = ev.sources;
     else if (ev.type === 'delta') m.content += ev.text;
     else if (ev.type === 'reset') m.content = '';
-    else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
+    else if (ev.type === 'done') {
+      m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency;
+      m.complete = !unavailableKeys(m).length;
+      if (!m.complete) m.error = citationWarning(m);
+    }
     else if (ev.type === 'error') {
-      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
+      if (ev.error === 'invalid_citations') {
+        m.complete = false; m.content = ev.answer ?? m.content; m.cited = ev.verified_sources || [];
+        m.consulted = ev.consulted || []; m.invalid = ev.invalid; m.verifiedNotice = ev.verified_notice;
+        m.error = citationWarning(m);
+      }
+      else if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
       else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
     }
     else if (ev.type === 'stopped') m.stopped = true;

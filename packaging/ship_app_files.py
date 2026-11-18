@@ -68,6 +68,15 @@ def main():
             data.pop('_about', None)
         (out / 'content' / rel).write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding='utf-8')
         written.append(out / 'content' / rel)
+    comparisons = ROOT / 'content' / 'source-disagreements.json'
+    shipped_comparisons = out / 'content' / comparisons.name
+    if comparisons.is_file():
+        data = comparisons.read_bytes()
+        json.loads(data)
+        shipped_comparisons.write_bytes(data)
+        written.append(shipped_comparisons)
+    else:
+        shipped_comparisons.unlink(missing_ok=True)
     bad = [str(EDITS['text'].keys() - used)] if EDITS['text'].keys() - used else []    # an edit that matched nothing: the guide changed, so look again
     for p in written:
         m = LEFT.search(p.read_text(encoding='utf-8', errors='replace'))

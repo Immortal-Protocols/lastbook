@@ -345,7 +345,14 @@ class Exchange:
         except Exception:
             traceback.print_exc()
             self.note = 'exception'
-        self._end()
+        try:
+            self._end()
+        except Exception:
+            traceback.print_exc()
+            self._end_failed()
+
+    def _end_failed(self):
+        pass
 
     def write(self, b):
         if self.stopped:
@@ -529,7 +536,7 @@ class _Streamed(Exchange):
             self.announced = 0
             self._send_head()
         short = self.method != 'HEAD' and self.announced is not None and not self.swallow and self.sent < self.announced and self.status not in (204, 304)
-        cut = self.note == 'unknown-length-over-limit'
+        cut = self.note in ('unknown-length-over-limit', 'exception')
         self.sink.finish(not (short or cut))
         self.b._log_end(self, 'short' if short or cut else 'finished')
 
@@ -538,6 +545,7 @@ class _Buffered(Exchange):
     def __init__(self, bridge, method, target, raw, lane, is_document, done):
         super().__init__(bridge, method, target, raw, lane, is_document)
         self.done_cb = done
+        self.done_sent = False
         self.mem = bytearray()
         self.spool = None        # (open file, path)
         self.named = None
@@ -593,6 +601,15 @@ class _Buffered(Exchange):
         self.mem = bytearray()
         self.budget.release_all(self)
 
+    def _end_failed(self):
+        if self.stopped or self.done_sent:
+            return
+        self._drop_memory()
+        self._drop_spool()
+        status, reason, hs, text = _plain(502, 'Bad Gateway', b'incomplete answer')
+        self.done_sent = True
+        self.done_cb(Response(status, reason, hs, body=text))
+
     def _drop_spool(self):
         if self.spool:
             self.spool[0].close()
@@ -614,6 +631,11 @@ class _Buffered(Exchange):
             self.mem = bytearray(TOO_LARGE)
         if not self.head_done:
             self.status, self.reason, self.note = 502, 'No Answer', self.note or 'no-answer'
+        elif self.note == 'exception' and self.status not in (204, 304) and self.method != 'HEAD' and (self.announced is None or self.sent < self.announced):
+            self._drop_memory()      # the handler died mid-body: what is held is not the answer it announced
+            self._drop_spool()
+            self.status, self.reason, self.headers, text = _plain(502, 'Bad Gateway', b'incomplete answer')
+            self.named, self.mem = None, bytearray(text)
         headers = self.headers
         if self.spool:
             self.spool[0].close()
@@ -625,6 +647,7 @@ class _Buffered(Exchange):
             self.mem = bytearray()
         resp.lane = self.lane.name
         self.b._log_end(self, 'finished', size=self.size)
+        self.done_sent = True
         self.done_cb(resp)
 
 

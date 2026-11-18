@@ -197,5 +197,59 @@ class EndingAPage(unittest.TestCase):
         self.assertEqual(self.kills, [])
 
 
+class FakeTask:
+    def __init__(self, fail_response=False):
+        self.failed, self.fail_response = [], fail_response
+
+    def request(self):
+        import Foundation
+        r = Foundation.NSMutableURLRequest.requestWithURL_(Foundation.NSURL.URLWithString_('lastbook://app/x'))
+        r.setHTTPMethod_('GET')
+        return r
+
+    def didReceiveResponse_(self, res):
+        if self.fail_response:
+            raise RuntimeError('deliberate')
+
+    def didFailWithError_(self, err):
+        self.failed.append(err)
+
+
+class AnExceptionStillAnswers(unittest.TestCase):
+    def setUp(self):
+        self.quiet = S.traceback.print_exc
+        S.traceback.print_exc = lambda *a, **k: None
+
+    def tearDown(self):
+        S.traceback.print_exc = self.quiet
+
+    def test_start_that_raises_fails_the_task(self):
+        class Bridge:
+            def start(self, *a):
+                raise RuntimeError('deliberate')
+        h = S.SchemeHandler.alloc().init()
+        h.setBridge_(Bridge())
+        task = FakeTask()
+        h.webView_startURLSchemeTask_(None, task)
+        self.assertEqual(len(task.failed), 1)
+        self.assertEqual(h.live, {})
+
+    def test_head_that_raises_fails_the_task_once(self):
+        forgot = []
+        task = FakeTask(fail_response=True)
+        t = S._Task(task, forgot.append, Pulse())
+        t._head(200, [])
+        t._head(200, [])
+        self.assertEqual(len(task.failed), 1)
+        self.assertEqual(forgot, [t])
+
+    def test_a_stopped_task_is_not_failed(self):
+        task = FakeTask(fail_response=True)
+        t = S._Task(task, lambda t: None, Pulse())
+        t.stop()
+        t._head(200, [])
+        self.assertEqual(task.failed, [])
+
+
 if __name__ == '__main__':
     unittest.main()

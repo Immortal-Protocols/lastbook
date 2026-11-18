@@ -85,8 +85,9 @@ downloads (`Download._run_swarm`):
     uploads a byte.
   - Lastbook asks rqbit every 15 seconds how much it has uploaded, and adds that up across runs in
     `<settings>/setup/shared.json`. Library and local AI shows the total ("… shared with other people so far").
-- rqbit ends with Lastbook: through a Windows job object however Lastbook ends, through the parent-death signal on Linux, and at
-  exit on a Mac.
+- rqbit ends with Lastbook, however Lastbook ends: through a Windows job object, the parent-death signal on Linux, and on a Mac
+  a small watcher that ends rqbit once a pipe only Lastbook holds closes (the app's Quit and its start again after setup skip
+  atexit).
 - Turning it off stops rqbit and keeps the files. **Delete kept files** removes them. The library is never touched.
 - People with a torrent client (qBittorrent, Transmission, aria2c) can download or seed the same torrent. Setup's existing
   "Use the file you already have" checks a file got that way before using it.

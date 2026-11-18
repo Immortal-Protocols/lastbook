@@ -1721,6 +1721,91 @@ class Sharing(Base):
         self.assertEqual(seeder.running(), [])
 
 
+_LASTBOOK_ENDS = r'''
+import os, sys, threading, time
+sys.path.insert(0, sys.argv[1])
+from engine.setup import share
+p = share._spawn([sys.executable, '-I', '-c', 'import time; time.sleep(300)'], 'x')
+print(p.pid, flush=True)
+time.sleep(0.5)
+how = sys.argv[2]
+if how == 'quit':                              # as Quit in app/shell_macos.py: NSApplication terminate:, which calls exit()
+    import AppKit, Foundation
+
+    class D(Foundation.NSObject):
+        def applicationWillTerminate_(self, note):
+            threading.Timer(2, os._exit, [0]).start()
+
+        def applicationDidFinishLaunching_(self, note):
+            AppKit.NSApplication.sharedApplication().performSelector_withObject_afterDelay_('terminate:', None, 0.1)
+    app = AppKit.NSApplication.sharedApplication()
+    app.setActivationPolicy_(AppKit.NSApplicationActivationPolicyProhibited)
+    d = D.alloc().init()
+    app.setDelegate_(d)
+    app.run()
+elif how == 'exec':                            # as app/main.py relaunch() once setup has finished
+    os.execv('/bin/sleep', ['/bin/sleep', '2'])
+elif how == 'exit':                            # an exit that skips atexit
+    os._exit(0)
+else:
+    time.sleep(300)                            # killed from outside
+'''
+
+
+@unittest.skipUnless(sys.platform == 'darwin', 'Mac only')
+class MacSharingEnds(unittest.TestCase):
+    """On a Mac nothing in the kernel ends rqbit with Lastbook, and Quit (exit() from NSApplication) and the start again after
+    setup (os.execv) skip atexit: before share._watch, the rqbit of each was left running, seeding, after Lastbook had gone."""
+
+    def alive(self, pid):
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+
+    def test_rqbit_ends_however_lastbook_ends(self):
+        hows = ['exit', 'kill', 'exec']
+        try:
+            import AppKit  # noqa: F401
+            hows.append('quit')
+        except ImportError:
+            pass
+        for how in hows:
+            with self.subTest(how=how):
+                app = subprocess.Popen([sys.executable, '-I', '-B', '-c', _LASTBOOK_ENDS, str(ROOT), how], stdout=subprocess.PIPE, text=True)
+                pid = int(app.stdout.readline())
+                if how == 'kill':
+                    time.sleep(1)
+                    app.kill()                         # SIGKILL: Force Quit, a crash
+                app.wait(30)
+                app.stdout.close()
+                t0 = time.time()
+                while self.alive(pid) and time.time() - t0 < 10:
+                    time.sleep(0.1)
+                if self.alive(pid):
+                    os.kill(pid, signal.SIGKILL)
+                    self.fail(f'rqbit outlived Lastbook ({how})')
+
+    def test_stopping_rqbit_ends_its_watcher_first(self):
+        tmp = shorttemp.mkdtemp('lastbook-watch-')
+        self.addCleanup(shutil.rmtree, tmp, True)
+        seeder = share.Seeder([sys.executable, '-I', '-c', 'import time; time.sleep(300)'])
+        self.assertEqual(seeder.start({str(tmp): [str(tmp / 'a.torrent')]}), 1)
+        p = seeder.procs[0][0]
+        w = p.watcher
+        self.assertIsNone(w.poll())
+        seeder.stop()
+        self.assertIsNotNone(w.poll())
+        self.assertEqual(w.returncode, -signal.SIGKILL)  # ended in its read, so it never sent anything
+        self.assertIsNotNone(p.poll())
+        swarm = share.Swarm(b'')
+        swarm.proc = share._spawn([sys.executable, '-I', '-c', 'import time; time.sleep(300)'], 'x')
+        w = swarm.proc.watcher
+        swarm.stop()
+        self.assertEqual(w.returncode, -signal.SIGKILL)
+
+
 class _HeldRead:
     """The first read of a piece's body by a download connection gets its bytes, then waits on `release` before handing them over
     (`entered` says it is waiting): Pause comes between a read and the write of what it brought."""

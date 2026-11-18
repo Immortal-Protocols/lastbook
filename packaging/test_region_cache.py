@@ -8,6 +8,7 @@ import sqlite3
 import tempfile
 import unittest
 import zipfile
+import zlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -76,6 +77,27 @@ class RegionCache(unittest.TestCase):
         self.zipped.write_bytes(b'PK partial')
         self.assertEqual(self.fetch().read_bytes(), self.good)
         self.download.assert_called_once()
+
+    def test_damaged_deflate_member_is_downloaded_again(self):
+        with zipfile.ZipFile(self.zipped, 'w', compression=zipfile.ZIP_DEFLATED) as z:
+            z.writestr('region.gpkg', self.good)
+        with zipfile.ZipFile(self.zipped) as z:
+            self.assertIsNone(z.testzip())
+            info = z.getinfo('region.gpkg')
+        data = bytearray(self.zipped.read_bytes())
+        header = info.header_offset
+        name_len = int.from_bytes(data[header + 26:header + 28], 'little')
+        extra_len = int.from_bytes(data[header + 28:header + 30], 'little')
+        offset = header + 30 + name_len + extra_len
+        data[offset] |= 0x06   # reserved DEFLATE block type, leaving the ZIP headers intact
+        self.zipped.write_bytes(data)
+        with zipfile.ZipFile(self.zipped) as z:
+            with self.assertRaises(zlib.error):
+                z.testzip()
+        self.assertEqual(self.fetch().read_bytes(), self.good)
+        self.download.assert_called_once()
+        with zipfile.ZipFile(self.zipped) as z:
+            self.assertIsNone(z.testzip())
 
     def invalid_archive_retry(self, payload, name='region.gpkg'):
         self.archive(self.zipped, payload, name)

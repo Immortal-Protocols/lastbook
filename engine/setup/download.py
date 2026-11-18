@@ -20,6 +20,12 @@
     The .json then says "parallel": true, and bytes_done is the hashed run: a resume keeps that and fetches the window again.
   - Giving up on broken connections says which: 'unreachable' when the host that broke never answered this download at all (a
     network that resets or blocks it, or no internet), else 'network' (it answered, then the connection kept breaking).
+  - A file whose BitTorrent v2 pieces root is pinned in the manifest (engine/setup/torrent.py) comes in pieces that hold whole
+    torrent pieces, and the run takes a piece only once its torrent pieces match their hashes as it is read back. So its pieces
+    may also come from mirrors: any https host, listed in Lastbook's manifest or added by the person, each with connections of
+    its own. A mirror that sends one wrong piece, or does not answer as a mirror should, is not asked again, and its pieces go
+    back to the others. A mirror never fails the download, never moves the ETag, and never spends the busy server's wait. The
+    file's SHA-256 is still the last word.
   - Nothing here runs unless the person started or resumed a download (or opened setup: one GET of the manifest).
 
 Tests pass their own `allowed` and `context` to reach a local test server. The product never does.
@@ -61,6 +67,7 @@ PIECE = 16 * 2 ** 20                # bytes asked for in one Range
 AHEAD = 2 * CONNECTIONS             # pieces handed out past the first unfinished one: the most the .part runs ahead of bytes_done
 SAMPLES = 3                         # stretches of a partial file compared with the server's when its ETag changed: start, middle, end
 SAMPLE = 1024 * 1024                # bytes in each
+PIECE_TRIES = 3                     # times a piece from the file's own address may fail its torrent hash before the download stops
 
 
 class Stopped(Exception):
@@ -252,14 +259,28 @@ def _cancellable_body(conn, response, stopping, timeout):
     sock.recv_into = recv_into
 
 
-def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, stopping=None, answered=None):
+def _netloc(url):
+    return (urllib.parse.urlsplit(url).netloc or '').lower()
+
+
+def _mirror_allowed(url, mirrors):
+    """An https address on one of this file's mirrors (host and port as listed), with no user name or password."""
+    try:
+        u = urllib.parse.urlsplit(url)
+        return u.scheme == 'https' and not u.username and not u.password and u.netloc.lower() in mirrors
+    except ValueError:
+        return False
+
+
+def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, stopping=None, answered=None, mirrors=()):
     """(connection, response, final url) for a GET from byte `start` (to byte `end`, included, when given), after following
     allowed redirects. `opened(conn)`, when given, hears of each connection, so another thread can close it. With `stopping`
     (an Event), connecting and the TLS handshake end soon after it is set, raising Stopped, rather than at the timeout.
     `answered(host)`, when given, hears of each host that sent an answer; a connection error carries the host it was for
-    (`.lastbook_host`), so a caller can tell a host that never answers from one whose connection broke."""
+    (`.lastbook_host`), so a caller can tell a host that never answers from one whose connection broke.
+    mirrors: the hosts (host:port) of this file's mirrors, which may be asked as well."""
     for _ in range(MAX_REDIRECTS + 1):
-        if not url_allowed(url, allowed):
+        if not (url_allowed(url, allowed) or _mirror_allowed(url, mirrors)):
             raise Failed('network', 'Lastbook refused to download from an address it does not know.')
         u = urllib.parse.urlsplit(url)
         if stopping is not None:
@@ -361,16 +382,22 @@ class Download:
     while pieces may lie past bytes done). run() returns once the whole file is there and its SHA-256 matches, renamed to <dest>.
     Raises Stopped, Failed or BadChecksum. progress(done, total, phase) is called as bytes arrive; phase is 'downloading' or
     'verifying'. waiting(seconds) is called before each wait on a busy server, over one connection or several. `connections`
-    (default CONNECTIONS) is how many at once for a file of PARALLEL_MIN or more; 1 means one."""
+    (default CONNECTIONS) is how many at once for a file of PARALLEL_MIN or more; 1 means one. pieces: the file's
+    torrent.Pieces (its piece hashes, already checked against the pinned pieces root), or None. mirrors: other https addresses
+    of the same file, asked only with pieces, each over as many connections as the file's own address."""
 
     def __init__(self, url, dest, size, sha256, control, progress=lambda d, t, p: None, allowed=None, context=None, timeout=TIMEOUT,
-                 waiting=lambda s: None, connections=None):
+                 waiting=lambda s: None, connections=None, pieces=None, mirrors=()):
         self.url, self.dest, self.size, self.sha256 = url, str(dest), int(size), sha256.lower()
         self.part, self.meta = self.dest + '.part', self.dest + '.part.json'
         self.control, self.progress, self.waiting = control, progress, waiting
         self.allowed, self.context, self.timeout = allowed, context, timeout
         self.connections = connections
         self.answered = set()           # hosts that sent any answer to this download (a redirect counts)
+        self.pieces = pieces if pieces is not None and pieces.size == self.size else None
+        self.sources = [url] + ([m for m in dict.fromkeys(mirrors) if m != url] if self.pieces else [])
+        self.mirror_hosts = frozenset(_netloc(m) for m in self.sources[1:])
+        self.banned = set()             # mirrors not asked again in this run
 
     def _gave_up(self, e):
         """The Failed for connections that kept breaking: 'unreachable' (with the host) when the host they broke on never
@@ -430,6 +457,8 @@ class Download:
         start = self.done_bytes()
         if start and not meta.get('etag'):
             start = 0            # nothing to tell the server which file those bytes came from
+        if self.pieces and self._parallel_wanted():
+            start -= start % self.pieces.length     # pieces hold whole torrent pieces: go on from the start of one
         with open(self.part, 'ab') as f:
             f.truncate(start)
         h, start = self._rehash(start) if start else (hashlib.sha256(), 0)
@@ -646,9 +675,12 @@ class Download:
 
     def _pieces(self, h, start, etag, ctx):
         n = CONNECTIONS if self.connections is None else self.connections
-        st = _Pieces(start, self.size, etag)
-        workers = [threading.Thread(target=self._worker, args=(st, ctx), daemon=True, name=f'download-{i}')
-                   for i in range(min(n, st.count))]
+        P = self.pieces
+        st = _Pieces(start, self.size, etag, piece=max(PIECE, P.length) if P else None, checked=P is not None)
+        st.banned = self.banned
+        workers = [threading.Thread(target=self._worker, args=(st, ctx, None if k == 0 else src), daemon=True,
+                                    name=f'download-{i}' if k == 0 else f'download-m{k}-{i}')
+                   for k, src in enumerate(self.sources) if src not in self.banned for i in range(min(n, st.count))]
         meta = {'url': self.url, 'size': self.size, 'sha256': self.sha256, 'etag': etag, 'bytes_done': start, 'parallel': True}
         _save_meta(self.meta, meta)
         saved = time.time()
@@ -656,7 +688,7 @@ class Download:
         for w in workers:
             w.start()
         try:
-            with open(self.part, 'rb') as rf:
+            with open(self.part, 'rb', buffering=0 if P else -1) as rf:     # unbuffered when a piece may be read again
                 while start < self.size:
                     self.control.check()
                     with st.cv:
@@ -671,14 +703,22 @@ class Download:
                             i += 1
                     for i in ready:                 # hash the run that just became whole, in order
                         a, b = st.span(i)
+                        h2 = h.copy() if P else h   # with a pinned torrent, the run takes the piece once its torrent pieces match
+                        check = _TorrentCheck(P, a) if P else None
                         rf.seek(a)
                         while a < b:
                             self.control.check()
                             chunk = rf.read(min(8 * CHUNK, b - a))
                             if not chunk:
                                 raise OSError('the partial file is shorter than the pieces written to it')
-                            h.update(chunk)
+                            h2.update(chunk)
+                            if check:
+                                check.update(chunk)
                             a += len(chunk)
+                        if check and check.wrong:
+                            self._wrong_piece(st, i)    # fetched again; raises Failed once the file's own address keeps sending it wrong
+                            break
+                        h = h2
                         start = b
                         with st.cv:
                             st.done.pop(i)
@@ -714,28 +754,77 @@ class Download:
                     pass
         return h, start, st.etag
 
-    def _worker(self, st, ctx):
-        """Takes pieces in order and fetches each, trying again where a connection broke. Hands any error to the coordinator."""
+    def _worker(self, st, ctx, mirror=None):
+        """Takes pieces in order and fetches each, trying again where a connection broke. Hands any error to the coordinator.
+        mirror: the address this connection asks instead of the file's own. A mirror that fails is dropped, not the download:
+        the piece it had goes back to the others."""
         try:
             with open(self.part, 'r+b', buffering=0) as f:
-                while True:
+                while not (mirror and mirror in st.banned):
                     i = st.take()
                     if i is None:
                         return
-                    self._piece(st, i, f, ctx)
+                    try:
+                        done = self._piece(st, i, f, ctx, mirror)
+                    except _MirrorFailed as e:
+                        st.put_back(i)
+                        if mirror not in st.banned:
+                            st.banned.add(mirror)
+                            print(f'setup: not using the mirror {_netloc(mirror)} for {os.path.basename(self.dest)}: {e}', flush=True)
+                        return
+                    if not done and not st.stopping.is_set():
+                        st.put_back(i)          # its mirror was dropped while it came: another connection takes it
         except BaseException as e:      # noqa: B036 -- one place to hear it: the thread that hashes, and raises
             st.fail(e)
 
-    def _piece(self, st, i, f, ctx):
+    def _wrong_piece(self, st, i):
+        """Piece i was on the disk as it came, but its torrent pieces do not match: its source sent wrong bytes. A mirror is not
+        asked again; the file's own address may send it PIECE_TRIES times. The piece is fetched again, or Failed is raised."""
+        name, src = os.path.basename(self.dest), st.source.get(i, self.url)
+        print(f'setup: the piece of {name} at {st.span(i)[0]} does not match its torrent piece hash; fetching it again', flush=True)
+        if src != self.url:
+            if src not in st.banned:
+                st.banned.add(src)
+                print(f'setup: not using the mirror {_netloc(src)} for {name} again: it sent a wrong piece', flush=True)
+        else:
+            st.redos[i] = st.redos.get(i, 0) + 1
+            if st.redos[i] >= PIECE_TRIES:
+                raise Failed('checksum', f'Part of {name} kept coming out different from its published hash. '
+                                         'What was downloaded is kept: try again later.', kept=True)
+        st.redo(i)
+
+    def _piece(self, st, i, f, ctx, mirror=None):
+        """Piece i over one connection, to the file's own address or a mirror. True once all of it is written. A mirror's
+        trouble raises _MirrorFailed, and it never reaches the shared ETag, busy wait or error."""
         a, b = st.span(i)
         pos, tries, stray = a, 0, False
+        src = mirror or self.url
         while pos < b:
-            if st.stopping.is_set():
-                return
+            if st.stopping.is_set() or (mirror and mirror in st.banned):
+                return False
             try:
-                conn, r, _ = _open(self.url, pos, st.etag, self.allowed, ctx, self.timeout, end=b - 1, opened=st.opened,
-                                   stopping=st.stopping, answered=self.answered.add)
+                conn, r, _ = _open(src, pos, None if mirror else st.etag, self.allowed, ctx, self.timeout, end=b - 1,
+                                   opened=st.opened, stopping=st.stopping, answered=self.answered.add, mirrors=self.mirror_hosts)
                 try:
+                    if mirror:
+                        if r.status in (429,) or 500 <= r.status < 600:
+                            raise OSError(f'HTTP {r.status}')    # busy: tried again on its own, never the shared wait
+                        cr = _content_range(r.getheader('Content-Range'))
+                        if r.status != 206 or not cr or cr[0] != pos or cr[1] != self.size:
+                            raise _MirrorFailed(f'HTTP {r.status} {r.getheader("Content-Range") or ""}'.strip())
+                        f.seek(pos)
+                        while pos < b:
+                            if st.stopping.is_set() or mirror in st.banned:
+                                return False
+                            chunk = r.read1(min(CHUNK, b - pos))
+                            if not chunk:
+                                raise ConnectionError('the connection closed early')
+                            _write_all(f, chunk)
+                            f.flush()
+                            pos += len(chunk)
+                            tries = 0
+                            st.progress(i, pos - a)
+                        continue
                     if 500 <= r.status < 600 or r.status == 429:
                         raise _Busy(r.status, r.getheader('Retry-After'))     # up but busy: wait, as over one connection
                     if r.status >= 400:
@@ -747,7 +836,7 @@ class Download:
                             print(f'setup: the server sent the whole file to the piece at {pos}; asking again', flush=True)
                             st.closed(conn)
                             if st.stopping.wait(1):
-                                return
+                                return False
                             continue
                         raise _Restart(r.getheader('ETag'), whole=True)
                     if r.status != 206:
@@ -761,7 +850,7 @@ class Download:
                     f.seek(pos)
                     while pos < b:
                         if st.stopping.is_set():
-                            return
+                            return False
                         chunk = r.read1(min(CHUNK, b - pos))
                         if not chunk:
                             raise ConnectionError('the connection closed early')
@@ -772,41 +861,75 @@ class Download:
                         st.progress(i, pos - a)
                 finally:
                     st.closed(conn)
-            except (_Restart, Failed, Stopped):
+            except (_Restart, Failed, Stopped) as e:
+                if mirror and isinstance(e, Failed):
+                    raise _MirrorFailed(e.message) from e           # e.g. a redirect to an address Lastbook does not know
                 raise
             except _Busy as e:
                 if st.stopping.is_set():
-                    return
+                    return False
                 wait, new = st.busy_wait(e)             # Failed('server') once the shared budget is spent
                 if new:
                     print(f'setup: the server is busy at {pos} of {self.size} ({e}); trying again in {wait}s', flush=True)
                 while wait > 0:                         # until the shared wait ends, also if another connection extended it
                     if st.stopping.wait(wait):          # Pause, Cancel or another connection's error ends the wait at once
-                        return
+                        return False
                     wait = st.busy_rest()
             except ssl.SSLCertVerificationError:
+                if mirror:
+                    raise _MirrorFailed('its certificate could not be confirmed')
                 raise Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '
                                         'A network that intercepts secure connections (some offices, hotels) can cause this.')
             except (OSError, http.client.HTTPException, ValueError) as e:
                 if st.stopping.is_set():
-                    return
+                    return False
                 if disk_full(e):
                     raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                 tries += 1
                 if tries >= NETWORK_TRIES:
+                    if mirror:
+                        raise _MirrorFailed(f'its connection kept breaking ({type(e).__name__})')
                     raise self._gave_up(e)
-                print(f'setup: piece at {pos} of {self.size} broke: {type(e).__name__}: {e}; trying again', flush=True)
+                print(f'setup: piece at {pos} of {self.size} from {_netloc(src)} broke: {type(e).__name__}: {e}; trying again', flush=True)
                 if st.stopping.wait(BACKOFF[min(tries - 1, len(BACKOFF) - 1)]):
-                    return
-        st.finish(i)
+                    return False
+        st.finish(i, src)
+        return True
+
+
+class _TorrentCheck:
+    """Bytes from `a` (where a torrent piece starts), fed in any chunks: .wrong once a torrent piece among them that has ended
+    does not match its hash."""
+
+    def __init__(self, pieces, a):
+        self.P, self.pos, self.k = pieces, a, a // pieces.length
+        self.h, self.wrong = pieces.hasher(self.k), False
+
+    def update(self, b):
+        view = memoryview(b)
+        while view:
+            end = self.P.span(self.k)[1]
+            n = min(len(view), end - self.pos)
+            self.h.update(view[:n])
+            self.pos += n
+            view = view[n:]
+            if self.pos == end:
+                self.wrong = self.wrong or self.h.digest() != self.P.hashes[self.k]
+                self.k += 1
+                self.h = self.P.hasher(self.k)
 
 
 class _Pieces:
-    """What the connections share: which pieces are handed out, done, how far each has got, the ETag, and the first error."""
+    """What the connections share: which pieces are handed out, done, how far each has got, the ETag, and the first error.
+    checked: the file's torrent pieces are checked as the run is read back, so a piece can come back to be fetched again (redo),
+    and the connections wait for that until the run is whole."""
 
-    def __init__(self, start, size, etag):
+    def __init__(self, start, size, etag, piece=None, checked=False):
         self.base, self.size, self.etag = start, size, etag
-        self.count = -(-(size - start) // PIECE)
+        self.piece, self.checked = piece or PIECE, checked
+        self.count = -(-(size - start) // self.piece)
+        self.again = []                 # pieces to fetch again (wrong, or left by a mirror), handed out before new ones
+        self.source, self.redos, self.banned = {}, {}, set()
         self.next = self.first = 0      # piece numbers, counted from `start`
         self.done, self.got = {}, {}
         self.error = None
@@ -818,17 +941,37 @@ class _Pieces:
         self.announce = None            # a new wait's seconds, for the coordinator to pass to waiting() (and so to the countdown)
 
     def span(self, i):
-        a = self.base + i * PIECE
-        return a, min(a + PIECE, self.size)
+        a = self.base + i * self.piece
+        return a, min(a + self.piece, self.size)
 
     def take(self):
         with self.cv:
-            while self.next < self.count and self.next - self.first >= AHEAD and not self.stopping.is_set():
+            while not self.stopping.is_set():
+                if self.again:
+                    return self.again.pop(0)
+                if self.next < self.count and self.next - self.first < AHEAD:
+                    self.next += 1
+                    return self.next - 1
+                if self.next >= self.count and not (self.checked and self.first < self.count):
+                    return None
                 self.cv.wait(0.5)
-            if self.next >= self.count or self.stopping.is_set():
-                return None
-            self.next += 1
-            return self.next - 1
+            return None
+
+    def put_back(self, i):
+        """A piece a connection could not finish (its mirror was dropped): the next connection free takes it from its start."""
+        with self.cv:
+            self.got.pop(i, None)
+            self.again.append(i)
+            self.cv.notify_all()
+
+    def redo(self, i):
+        """A finished piece whose torrent pieces did not match: fetched again, before any new one."""
+        with self.cv:
+            self.done.pop(i, None)
+            self.got.pop(i, None)
+            self.source.pop(i, None)
+            self.again.append(i)
+            self.cv.notify_all()
 
     def progress(self, i, n):
         with self.cv:
@@ -869,9 +1012,11 @@ class _Pieces:
         with self.cv:
             return max(0.0, self.resume_at - time.monotonic())
 
-    def finish(self, i):
+    def finish(self, i, src=None):
         with self.cv:
             self.done[i] = True        # its bytes stay counted in .got until the hashed run reaches it
+            if src:
+                self.source[i] = src
             self.cv.notify_all()
 
     def same(self, etag):
@@ -935,3 +1080,8 @@ class _Busy(Exception):
             self.wait = max(0, min(int(retry_after or 0), MAX_RETRY_AFTER))
         except ValueError:
             self.wait = 0           # an HTTP date, or nonsense: use the backoff alone
+
+
+class _MirrorFailed(Exception):
+    """A mirror that did not answer as a mirror should (a wrong range, size or status, a redirect elsewhere, a certificate it
+    could not prove, a connection that kept breaking): it is not asked again, and the download goes on without it."""

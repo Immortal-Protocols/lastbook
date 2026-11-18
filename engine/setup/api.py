@@ -19,12 +19,14 @@ import sys
 import threading
 import time
 import traceback
+import urllib.parse
 import uuid
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 from .. import model_server
-from . import download, hardware, install
+from . import download, hardware, install, torrent
+from . import manifest as mf
 from .manifest import Manifest
 
 DATA_NAME = install.DATA_NAME
@@ -575,7 +577,8 @@ class Setup:
         self.manifest.fetch_once()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
-                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(), 'model_server': self.model_server()}
+                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(), 'model_server': self.model_server(),
+                'sharing': self.sharing()}
 
     # ------------------------------------------------------------------------- a model server on this computer (#78) --
     def model_server(self):
@@ -612,6 +615,31 @@ class Setup:
                 self._save_settings(s)
             if self.on_model_server:
                 self.on_model_server(base, model)
+
+    def sharing(self):
+        return {'mirrors': self._mirror_bases()}
+
+    def _mirror_bases(self):
+        return [m for m in self._settings().get('mirrors', []) if isinstance(m, str) and mf.mirror_ok(m, self.allowed)]
+
+    def mirrors(self, add=None, remove=None):
+        """The person's own mirrors: https addresses that hold the same tree as Lastbook's download site (a file's path there is
+        added to the address). They are asked only for files whose pieces root is pinned, and every piece is checked."""
+        s = self._settings()
+        have = self._mirror_bases()
+        if add is not None:
+            add = str(add).strip()
+            if not mf.mirror_ok(add, self.allowed) or urllib.parse.urlsplit(add).query:
+                return {'error': 'That is not an https address Lastbook can use as a mirror.', 'code': 'mirror'}
+            if add not in have:
+                if len(have) >= mf.MAX_MIRRORS:
+                    return {'error': f'Lastbook takes at most {mf.MAX_MIRRORS} mirrors.', 'code': 'mirror'}
+                have.append(add)
+        if remove is not None:
+            have = [m for m in have if m != remove]
+        s['mirrors'] = have
+        self._save_settings(s)
+        return {'mirrors': have}
 
     def public_job(self):
         with self.lock:
@@ -1414,9 +1442,11 @@ class Setup:
         while True:
             if not part or it['state'] != 'downloading':
                 self._set(it, 'downloading')
+            pieces = self._pieces_for(f, work)
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
                                   lambda done, total, phase: tracker.progress(offset + done, it['bytes_total'], phase),
-                                  allowed=self.allowed, context=self.context, waiting=tracker.waiting)
+                                  allowed=self.allowed, context=self.context, waiting=tracker.waiting,
+                                  pieces=pieces, mirrors=self._mirrors_for(f) if pieces else ())
             try:
                 return d.run(), True
             except download.BadChecksum:
@@ -1429,6 +1459,45 @@ class Setup:
                 if e.code == 'unreachable':       # what the person needs to get the file another way, then choose it (use)
                     e.extra.update(name=name, size=f['size'], url=f['url'], sha256=f['sha256'])
                 raise
+
+    def _pieces_for(self, f, work):
+        """The file's BitTorrent v2 piece hashes when the manifest pins its pieces root and its torrent adds up to that root, else
+        None: the file then comes from its own address only, checked by its SHA-256 as before. The torrent is kept beside the
+        download (it is what the file is shared with), and fetched from Lastbook's site only."""
+        t = f.get('torrent')
+        if not t:
+            return None
+        keep = work / 'downloads' / (f['name'] + '.torrent')
+        for fetched in (False, True):
+            if fetched:
+                data = download.fetch_small(t['url'], limit=torrent.MAX_TORRENT, allowed=self.allowed, context=self.context, timeout=30)
+            else:
+                try:
+                    data = keep.read_bytes()
+                except OSError:
+                    data = None
+            if not data:
+                continue
+            try:
+                pieces = torrent.piece_hashes(data, f['name'], f['size'], t['pieces_root'], t['piece_length'], t['infohash_v2'])
+            except torrent.Bad as e:
+                print(f'setup: the torrent of {f["name"]} was not used: {e}', flush=True)
+                continue
+            if fetched:
+                try:
+                    keep.write_bytes(data)
+                except OSError:
+                    pass
+            return pieces
+        return None
+
+    def _mirrors_for(self, f):
+        """The manifest's mirrors of a file, then the person's own (a mirror of Lastbook's site: the file's path is added to it)."""
+        out = list(f.get('mirrors') or [])
+        if mf._from(f['url'], mf.LIBRARY_HOSTS, self.allowed):
+            path = urllib.parse.urlsplit(f['url']).path
+            out += [base.rstrip('/') + path for base in self._mirror_bases()]
+        return out
 
     def _do_pack(self, it, plan, work, control):
         pack = plan['pack']
@@ -1570,7 +1639,8 @@ class Setup:
 
     def _do_model(self, it, plan, work, control):
         m = plan['model']
-        path, ours = self._get_file(it, {'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256']}, plan, work, control, 0)
+        path, ours = self._get_file(it, {'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256'],
+                                         **{k: m[k] for k in ('torrent', 'mirrors') if k in m}}, plan, work, control, 0)
         lib = (work / 'unpack' / DATA_NAME) if plan['switch'] else Path(self.current or plan['target'])
         dest = lib / 'models' / m['file']
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -1968,6 +2038,7 @@ ROUTES = {
     ('POST', 'stop-server'): lambda s, b: s.stop_server(),
     ('GET', 'updates'): lambda s, b: _updates(),
     ('POST', 'updates'): lambda s, b: _set_update_notice(b.get('notify')),
+    ('POST', 'mirrors'): lambda s, b: s.mirrors(b.get('add'), b.get('remove')),
 }
 
 

@@ -76,6 +76,7 @@ so ask before adding many.
 | `places.sqlite` | `tools/build_places.py` | USGS GNIS, Census gazetteers, named OpenStreetMap places |
 | address indexes | `tools/build_addresses.py`, then `packaging/address_indexes.py` | Overture Maps addresses |
 | the place finder where there are no US gazetteers (the UK) | `tools/build_places_osm.py` | The map file's named places and help points, and the postcodes in an OpenStreetMap address index |
+| a whole UK region's map set in one run (the UK) | `tools/build_region.py` | Runs the OpenStreetMap builders above in order for a region code from `docs/regions-uk-proposed.json`, with a Geofabrik GeoPackage and `.osm.pbf` and Copernicus cells you downloaded; writes a library-shaped folder and its `map-set.json` |
 | the atlas where there are no US sources (the UK) | `tools/build_atlas_osm.py` | OpenStreetMap mines, quarries, slipways and marinas from a Geofabrik `.osm.pbf` (ODbL); needs `pyosmium` on the build machine only |
 | address indexes where Overture has none (the UK) | `tools/build_addresses_osm.py` | OpenStreetMap addresses from a Geofabrik `.osm.pbf` (ODbL); needs `pyosmium` on the build machine only |
 | a state map | `packaging/build_packs.py map <ST>`, published by `packaging/state_maps.py` | The base map, then every row inside the state's box |

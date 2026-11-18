@@ -65,8 +65,27 @@ enum Gemma4 {
     ]
 
     static func tier(forFile name: String) -> Tier? { tiers.first { $0.file == name } }
+    static func tier(id: String) -> Tier? { tiers.first { $0.id == id } }
     static func bestTier(forRAM ram: UInt64) -> Tier {
         tiers.filter { UInt64($0.memoryBytes) <= ram }.max(by: { $0.memoryBytes < $1.memoryBytes }) ?? tiers.last!
+    }
+
+    /// The one file discovery may load: the tier or custom file the person chose in Setup. With no choice recorded (the
+    /// regular iPad app) this stays the pinned 26B, as before. "none" means no file.
+    static func selectedFile(_ defaults: UserDefaults = .standard) -> String? {
+        guard let chosen = defaults.string(forKey: "LBPhoneModelTier") else { return file }
+        switch chosen {
+        case "none":
+            return nil
+        case "custom":
+            return defaults.string(forKey: "LBPhoneCustomModel").flatMap { name in
+                name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : name
+            }
+        case "auto":
+            return bestTier(forRAM: ProcessInfo.processInfo.physicalMemory).file
+        default:
+            return tier(id: chosen)?.file ?? file
+        }
     }
 }
 

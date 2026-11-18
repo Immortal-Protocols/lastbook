@@ -91,6 +91,7 @@ class ChatStore(private val context: Context) {
     var pendingAbout: String? = null
     var pendingAboutLabel: String? = null
     var status: Rec = LastbookCore.chat.status()
+    @Volatile private var inFlight = false
 
     init { load() }
 
@@ -184,6 +185,8 @@ class ChatStore(private val context: Context) {
 
     fun send(text: String) {
         val q = text.trim(); if (q.isEmpty()) return
+        if (inFlight) return
+        inFlight = true
         var c = current
         if (c == null) {
             c = Conversation(title = q.take(70))
@@ -201,51 +204,63 @@ class ChatStore(private val context: Context) {
         val about = conv.about
         val original = q
         scope.launch {
-            val st = withContext(Dispatchers.IO) { LastbookCore.chat.status() }
-            val sourceRecs = withContext(Dispatchers.IO) {
-                runCatching { LastbookCore.chat.sources(about?.let { "$original $it" } ?: original, 8) }.getOrDefault(emptyList())
-            }
-            val sources = sourceRecs.map { ChatSource.from(it) }
-            val can = withContext(Dispatchers.IO) { LastbookCore.chat.canGenerate() }
-            withContext(Dispatchers.Main) {
-                status = st
-                reply.fallback = sources
-                if (!can) {
-                    reply.running = false
-                    reply.phase = null
-                    reply.error = if (sources.isEmpty()) "The library has nothing on this question. Try fewer or different words."
-                    else "No written answer: the local AI is not installed, so these library pages match your question."
-                    persist(); revision++
-                } else {
-                    reply.phase = "writing"; revision++
+            try {
+                val st = withContext(Dispatchers.IO) { LastbookCore.chat.status() }
+                // Resolve "Ask about this" into the real page or transcript text, not just search words.
+                val aboutRec = about?.let { marker ->
+                    withContext(Dispatchers.IO) { runCatching { LastbookCore.chat.contextFor(marker) }.getOrNull() }
                 }
-            }
-            if (!can) return@launch
-            scope.launch {
-                kotlinx.coroutines.delay(600_000)
-                if (reply.running) {
-                    LastbookCore.chat.stop()
-                    withContext(Dispatchers.Main) {
+                val searchText = if (aboutRec != null) "$original ${aboutRec.str("excerpt").orEmpty()}" else original
+                val found = withContext(Dispatchers.IO) {
+                    runCatching { LastbookCore.chat.sources(searchText, 8) }.getOrDefault(emptyList())
+                }
+                // Keep source keys aligned with the prompt's [S1], [S2]… labels, with the asked-about item first.
+                val sourceRecs = (if (aboutRec != null) listOf(aboutRec) + found else found)
+                    .mapIndexed { i, r -> r + mapOf("key" to "S${i + 1}") }
+                val sources = sourceRecs.map { ChatSource.from(it) }
+                val can = withContext(Dispatchers.IO) { LastbookCore.chat.canGenerate() }
+                withContext(Dispatchers.Main) {
+                    status = st
+                    reply.fallback = sources
+                    if (!can) {
                         reply.running = false
                         reply.phase = null
-                        reply.error = "The local AI is taking too long on this phone. These library pages match your question."
+                        reply.error = if (sources.isEmpty()) "The library has nothing on this question. Try fewer or different words."
+                        else "No written answer: the local AI is not installed, so these library pages match your question."
                         persist(); revision++
+                    } else {
+                        reply.phase = "writing"; revision++
                     }
                 }
-            }
-            val answer = runCatching { LastbookCore.chat.generate(original, sourceRecs) }.getOrNull()
-            withContext(Dispatchers.Main) {
-                reply.running = false
-                reply.phase = null
-                if (answer.isNullOrBlank()) {
-                    reply.error = "The local AI could not write an answer. These library pages match your question."
-                } else {
-                    reply.content = answer
-                    reply.sources = sources.filter { answer.contains("[${it.key}]") }.ifEmpty { sources.take(3) }
-                    reply.error = null
+                if (!can) return@launch
+                scope.launch {
+                    kotlinx.coroutines.delay(600_000)
+                    if (reply.running) {
+                        LastbookCore.chat.stop()
+                        withContext(Dispatchers.Main) {
+                            reply.running = false
+                            reply.phase = null
+                            reply.error = "The local AI is taking too long on this phone. These library pages match your question."
+                            persist(); revision++
+                        }
+                    }
                 }
-                conv.updated = System.currentTimeMillis()
-                persist(); revision++
+                val answer = runCatching { LastbookCore.chat.generate(original, sourceRecs) }.getOrNull()
+                withContext(Dispatchers.Main) {
+                    reply.running = false
+                    reply.phase = null
+                    if (answer.isNullOrBlank()) {
+                        reply.error = "The local AI could not write an answer. These library pages match your question."
+                    } else {
+                        reply.content = answer
+                        reply.sources = sources.filter { answer.contains("[${it.key}]") }.ifEmpty { sources.take(3) }
+                        reply.error = null
+                    }
+                    conv.updated = System.currentTimeMillis()
+                    persist(); revision++
+                }
+            } finally {
+                inFlight = false
             }
         }
     }

@@ -1,10 +1,7 @@
 package local.lastbook.android.ui
 
 import android.annotation.SuppressLint
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,9 +46,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import local.lastbook.core.LastbookCore
-import local.lastbook.core.WebResponse
 import org.json.JSONArray
-import java.io.ByteArrayInputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
@@ -140,14 +135,7 @@ fun ZimScreen(name: String, onBack: () -> Unit) {
                             settings.allowFileAccess = false
                             settings.builtInZoomControls = true
                             settings.displayZoomControls = false
-                            webViewClient = object : WebViewClient() {
-                                override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                                    val url = request?.url ?: return null
-                                    if (url.host != "lastbook.local") return null
-                                    val r: WebResponse = LastbookCore.web.handle(url.encodedPath.orEmpty(),
-                                        url.queryParameterNames.associate { it to url.getQueryParameter(it).orEmpty() })
-                                    return WebResourceResponse(r.mime.substringBefore(';'), null, r.status, "OK", r.headers, ByteArrayInputStream(r.bytes))
-                                }
+                            webViewClient = object : LocalWebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     loading = false
                                     canBack = view?.canGoBack() == true

@@ -2,10 +2,7 @@ package local.lastbook.android.ui
 
 import android.annotation.SuppressLint
 import android.graphics.BitmapFactory
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -49,9 +46,7 @@ import kotlinx.coroutines.withContext
 import local.lastbook.core.LastbookCore
 import local.lastbook.core.PdfPages
 import local.lastbook.core.Rec
-import local.lastbook.core.WebResponse
 import local.lastbook.core.s
-import java.io.ByteArrayInputStream
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,7 +85,8 @@ fun ReaderScreen(id: String, startPage: Int, onBack: () -> Unit, onAsk: (String,
         TopAppBar(title = { Text(doc?.s("title") ?: "Reading", maxLines = 1) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } },
             actions = {
-                TextButton(onClick = { onAsk("doc:$id:${page - 1}", doc?.s("title") ?: "This page") }) { Text("Ask about this") }
+                // The page index in the library is 1-based (as desktop and the search index use it).
+                TextButton(onClick = { onAsk("doc:$id:$page", doc?.s("title") ?: "This page") }) { Text("Ask about this") }
             })
     }) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
@@ -119,14 +115,7 @@ fun ReaderScreen(id: String, startPage: Int, onBack: () -> Unit, onAsk: (String,
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = false
                         settings.domStorageEnabled = false
-                        webViewClient = object : WebViewClient() {
-                            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                                val url = request?.url ?: return null
-                                if (url.host != "lastbook.local") return null
-                                val r: WebResponse = LastbookCore.web.handle(url.encodedPath.orEmpty(), url.queryParameterNames.associate { it to url.getQueryParameter(it).orEmpty() })
-                                return WebResourceResponse(r.mime.substringBefore(';'), null, r.status, "OK", r.headers, ByteArrayInputStream(r.bytes))
-                            }
-                        }
+                        webViewClient = LocalWebViewClient()
                         loadUrl("https://lastbook.local/" + d.s("path"))
                     }
                 })

@@ -225,7 +225,11 @@ class MapEngine(private val library: Library) {
                         }
                     }
                     if (rows.size >= limit) {
-                        for (r in rows.take(limit)) {
+                        // Pick by distance before truncating: the SQL has no ORDER BY, so the rows arrive in arbitrary order.
+                        val nearest = rows.sortedBy { r ->
+                            Geo.haversine(lat, lon, r[1] as Double, r[2] as Double).first
+                        }
+                        for (r in nearest.take(limit)) {
                             val (d, b) = Geo.haversine(lat, lon, r[1] as Double, r[2] as Double)
                             val detail = runCatching { JSONObject(r[3] as String).toStringMap() }.getOrElse { emptyMap() }
                             out += P(cls, HELP[cls] ?: cls, r[0] as String, r[1] as Double, r[2] as Double, round(d * 100) / 100, b, Geo.summary(cls, detail), r[4] as String)

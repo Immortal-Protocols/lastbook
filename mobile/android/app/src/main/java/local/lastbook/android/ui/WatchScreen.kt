@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import android.app.PictureInPictureParams
 import android.util.Rational
+import android.view.WindowManager
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Dispatchers
@@ -112,6 +114,23 @@ fun WatchScreen(id: String, onBack: () -> Unit, onOpen: (String) -> Unit, onAsk:
         cues = raw.map { c -> Cue((c["t"] as? Number)?.toDouble(), c.s("text")) }
         txNote = tx?.str("notes")
         related = withContext(Dispatchers.IO) { LastbookCore.videos.related(id).map { VideoItem.from(it) } }
+    }
+
+    DisposableEffect(player) {
+        val p = player
+        val activity = context as? android.app.Activity
+        fun keepOn(on: Boolean) {
+            if (on) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) = keepOn(isPlaying)
+        }
+        p?.addListener(listener)
+        onDispose {
+            p?.removeListener(listener)
+            keepOn(false)
+        }
     }
 
     LaunchedEffect(player) {

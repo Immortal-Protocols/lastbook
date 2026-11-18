@@ -97,7 +97,7 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
     val packs = remember { catalog.packs }
     var packId by remember { mutableStateOf(packs.firstOrNull { it.id == "small" }?.id ?: packs.firstOrNull()?.id ?: "small") }
     var stateId by remember { mutableStateOf<String?>(null) }
-    var wantAI by remember { mutableStateOf(true) }
+    var wantAI by remember { mutableStateOf(LastbookCore.chat.aiEnabled()) }
     val totalRam = remember {
         runCatching { File("/proc/meminfo").readLines().first { it.startsWith("MemTotal:") }.split(Regex("\\s+"))[1].toLong() * 1024 }
             .getOrDefault(8L * 1024 * 1024 * 1024)
@@ -152,6 +152,8 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
         if (stateId == null) { error = "Choose your state first."; return }
         if (!p.fits) { error = "There is not enough room: this needs ${bytes(p.peakBytes)} free and there is ${bytes(p.freeBytes)}."; return }
         running = true
+        LastbookCore.chat.setAiEnabled(wantAI)
+        if (wantAI) LastbookCore.chat.setSelectedModel(selectedModelFile(modelId, customName))
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             notifyPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -190,11 +192,11 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
         ProgressScreen(
             plan = plan, progress = progress, paused = paused,
             onPause = { paused = true },
-            onResume = { paused = false; val p = plan ?: buildPlan(); running = true; scope.launch {
+            onResume = { paused = false; error = null; val p = plan ?: buildPlan(); running = true; scope.launch {
                 try {
                     LastbookCore.installer.run(p, { progress = it; if (paused) throw kotlinx.coroutines.CancellationException("paused") }, isCancelled = { paused })
                     LastbookCore.paths.installJobFile.delete(); LastbookCore.reloadLibrary(); running = false; done = true
-                } catch (e: kotlinx.coroutines.CancellationException) { running = false } catch (e: Exception) { running = false; error = e.message }
+                } catch (e: kotlinx.coroutines.CancellationException) { running = false } catch (e: Exception) { running = false; error = e.message ?: "Install failed." }
             } },
             onCancel = { paused = true; running = false; progress = null },
             onDone = onDone,
@@ -282,7 +284,10 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
                         Text(if (wantAI) "Answers are written on this phone from the library only." else "Without it, Chat shows the library pages that match.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = wantAI, onCheckedChange = { wantAI = it })
+                    Switch(checked = wantAI, onCheckedChange = {
+                        wantAI = it
+                        LastbookCore.chat.setAiEnabled(it)
+                    })
                 }
                 if (wantAI) {
                     Box {
@@ -326,9 +331,12 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(mf.name + (if (isCatalog) " (installed)" else " (unverified custom model)"),
                                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                            TextButton(onClick = { mf.delete(); LastbookCore.chat.release(); rootPath = LastbookCore.paths.root.absolutePath }) {
-                                Text("Delete")
-                            }
+                            TextButton(onClick = {
+                                mf.delete()
+                                if (LastbookCore.chat.selectedModelFile() == mf.name) LastbookCore.chat.setSelectedModel(null)
+                                LastbookCore.chat.release()
+                                rootPath = LastbookCore.paths.root.absolutePath
+                            }) { Text("Delete") }
                         }
                     }
                 }
@@ -410,6 +418,10 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
         StatePicker(maps, stateId) { stateId = it; showStatePicker = false }
     }
 }
+
+private fun selectedModelFile(id: String?, custom: String?): String? =
+    if (custom != null) (if (custom.endsWith(".gguf", ignoreCase = true)) custom else "$custom.gguf")
+    else LastbookCore.installCatalog.model(id ?: "")?.files?.firstOrNull()?.name
 
 private fun modelLabel(catalog: local.lastbook.core.install.InstallCatalog, id: String?, custom: String?): String =
     when {

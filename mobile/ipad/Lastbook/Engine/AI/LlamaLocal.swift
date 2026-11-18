@@ -197,30 +197,20 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
         discovering = true
         lock.unlock()
         var found: URL?, wrong: (URL, Int64)?
-        for folder in places() {
-            let p = folder.appendingPathComponent(Gemma4.file)
-            guard let a = try? FileManager.default.attributesOfItem(atPath: p.path), (a[.type] as? FileAttributeType) == .typeRegular,
-                  let size = (a[.size] as? NSNumber)?.int64Value else { continue }
-            if size == Gemma4.size { found = p; break }
-            if wrong == nil { wrong = (p, size) }
-        }
-        if found == nil && wrong == nil {
-            for tier in Gemma4.tiers where tier.file != Gemma4.file {
-                for folder in places() {
-                    let p = folder.appendingPathComponent(tier.file)
-                    guard let a = try? FileManager.default.attributesOfItem(atPath: p.path), (a[.type] as? FileAttributeType) == .typeRegular,
-                          let size = (a[.size] as? NSNumber)?.int64Value else { continue }
-                    if size == tier.size { found = p; break }
+        let expectedFile = Gemma4.selectedFile()
+        let expectedTier = expectedFile.flatMap { Gemma4.tier(forFile: $0) }
+        if let expectedFile {
+            for folder in places() {
+                let p = folder.appendingPathComponent(expectedFile)
+                guard let a = try? FileManager.default.attributesOfItem(atPath: p.path), (a[.type] as? FileAttributeType) == .typeRegular,
+                      let size = (a[.size] as? NSNumber)?.int64Value else { continue }
+                // A pinned tier must be exactly its published size; a chosen custom file is checked by its GGUF header below.
+                if let expectedTier, size != expectedTier.size {
+                    if wrong == nil { wrong = (p, size) }
+                    continue
                 }
-                if found != nil { break }
-            }
-        }
-        if found == nil && wrong == nil {
-            for folder in places() where folder.lastPathComponent == "models" {
-                if let items = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]),
-                   let custom = items.filter({ $0.pathExtension.lowercased() == "gguf" }).first {
-                    found = custom; break
-                }
+                found = p
+                break
             }
         }
         lock.lock()
@@ -228,9 +218,10 @@ final class LlamaLocal: LocalModel, @unchecked Sendable {
             defer { discovering = false; wantLoad = false; lock.unlock() }
             pct = nil; path = nil
             if let (p, size) = wrong {
+                let expectedSize = expectedTier?.size ?? Gemma4.size
                 state = "wrong"
-                message = "The file in \(folderName(p)) is \(gb(size)) of \(gb(Gemma4.size)). " +
-                    (size < Gemma4.size ? "The copy may not have finished." : "It is not the file Lastbook expects.")
+                message = "The file in \(folderName(p)) is \(gb(size)) of \(gb(expectedSize)). " +
+                    (size < expectedSize ? "The copy may not have finished." : "It is not the file Lastbook expects.")
             } else { state = "absent"; message = "" }
             return
         }

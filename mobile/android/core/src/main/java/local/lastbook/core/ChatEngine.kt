@@ -21,6 +21,25 @@ class ChatEngine(
 ) {
     private val llama = AtomicLong(0L)
     @Volatile private var llamaPath: String? = null
+    private val prefs = context.getSharedPreferences("lastbook", android.content.Context.MODE_PRIVATE)
+    private val genLock = java.util.concurrent.locks.ReentrantLock()
+
+    /** Whether local AI answers are allowed. The file may stay installed while this is off. */
+    fun aiEnabled(): Boolean = prefs.getBoolean("aiEnabled", true)
+
+    fun setAiEnabled(on: Boolean) {
+        prefs.edit().putBoolean("aiEnabled", on).apply()
+        if (!on) release()
+    }
+
+    /** The exact model file chosen in Setup; discovery never guesses from file size. */
+    fun selectedModelFile(): String? = prefs.getString("aiModelFile", null)?.takeIf { it.isNotEmpty() }
+
+    fun setSelectedModel(fileName: String?) {
+        prefs.edit().apply {
+            if (fileName.isNullOrEmpty()) remove("aiModelFile") else putString("aiModelFile", fileName)
+        }.apply()
+    }
 
     private val stop = setOf("a", "an", "and", "are", "aren", "as", "at", "be", "been", "but", "by", "can", "do", "does", "doesn",
         "don", "during", "for", "from", "get", "got", "had", "has", "have", "help", "how", "i", "if", "in", "into", "is", "isn",
@@ -87,9 +106,10 @@ class ChatEngine(
             "(" + g.joinToString(" OR ") { "(lower(c1) LIKE ? OR lower(c6) LIKE ?)" } + ")"
         }
         val scoreExpr = baseWords.joinToString(" + ") { "(CASE WHEN lower(c1) LIKE ? THEN 3 ELSE 0 END)" }
+        // Bind in SQL order: the WHERE placeholders come first, then the ORDER BY score, then LIMIT.
         val args = ArrayList<String>()
-        for (w in baseWords) args += "%${w.replace("%", "")}%"
         for (g in groups) for (t in g) { args += "%${t.replace("%", "")}%"; args += "%${t.replace("%", "")}%" }
+        for (w in baseWords) args += "%${w.replace("%", "")}%"
         args += limit.toString()
         runCatching {
             db.rawQuery("SELECT c0,c1,c2,c3,c4,c5,c6 FROM pages_content WHERE $cond ORDER BY ($scoreExpr) DESC LIMIT ?", args.toTypedArray()).use { c ->
@@ -153,6 +173,58 @@ class ChatEngine(
         return (if (start > 0) "… " else "") + text.substring(start, end).replace(Regex("\\s+"), " ").trim() + (if (end < text.length) " …" else "")
     }
 
+    /**
+     * The page or transcript behind "Ask about this": `doc:<id>:<page>` or `video:<id>:<seconds>`. Returns a source-like
+     * record whose excerpt is the actual text, so the model can answer about what the person was reading or watching.
+     */
+    fun contextFor(marker: String): Rec? {
+        val parts = marker.split(":", limit = 3)
+        if (parts.size < 3) return null
+        val n = parts[2].toDoubleOrNull() ?: return null
+        catalog.ensure(library)
+        val rec = catalog.get(parts[1]) ?: return null
+        val title = Catalog.cleanTitle(rec)
+        val publisher = rec.s("publisher")
+        return when (parts[0]) {
+            "doc" -> {
+                val page = n.toInt()
+                val body = pageBody(parts[1], page) ?: return null
+                if (body.isBlank()) return null
+                mapOf(
+                    "key" to "S0", "kind" to rec.s("kind"), "doc_id" to parts[1], "title" to title,
+                    "publisher" to publisher, "page" to page, "t" to JSONObject.NULL,
+                    "excerpt" to body.replace(Regex("\\s+"), " ").trim().take(3000),
+                )
+            }
+            "video" -> {
+                val cues = videos.transcript(parts[1])?.arr("cues") ?: return null
+                val timed = cues.mapNotNull { c ->
+                    val t = (c["t"] as? Number)?.toDouble() ?: return@mapNotNull null
+                    c.s("text").takeIf { it.isNotBlank() }?.let { t to it }
+                }
+                val near = timed.filter { (t, _) -> t in (n - 45)..(n + 120) }.joinToString(" ") { it.second }
+                val text = near.ifBlank { timed.joinToString(" ") { it.second }.take(3000) }
+                if (text.isBlank()) return null
+                mapOf(
+                    "key" to "S0", "kind" to "video", "doc_id" to parts[1], "title" to title,
+                    "publisher" to publisher, "page" to JSONObject.NULL, "t" to n,
+                    "excerpt" to text.take(3000),
+                )
+            }
+            else -> null
+        }
+    }
+
+    /** The stored page body from the library's own search index, used for "Ask about this" in the reader. */
+    private fun pageBody(docId: String, page: Int): String? {
+        val db = library.db("search.sqlite") ?: return null
+        return runCatching {
+            db.rawQuery("SELECT c6 FROM pages_content WHERE c0=? AND c5=? LIMIT 1", arrayOf(docId, page.toString())).use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull()
+    }
+
     fun status(): Rec {
         val model = localModelFile()
         val state = if (model == null) "absent" else "stopped"
@@ -172,6 +244,12 @@ class ChatEngine(
 
     /** One answer written on this phone from the retrieved sources. Returns null when the runtime or model cannot start. */
     fun generate(question: String, sources: List<Rec>): String? {
+        // The native bridge shares one context and one output buffer: never let two answers overlap.
+        if (!genLock.tryLock()) return null
+        return try { generateUnlocked(question, sources) } finally { genLock.unlock() }
+    }
+
+    private fun generateUnlocked(question: String, sources: List<Rec>): String? {
         val model = localModelFile() ?: return null
         var h = llama.get()
         if (h == 0L || llamaPath != model.path) {
@@ -219,9 +297,12 @@ class ChatEngine(
     }
 
     fun localModelFile(): File? {
+        if (!aiEnabled()) return null
         val dir = library.root?.resolve("models") ?: paths.modelsDir
         if (!dir.isDirectory) return null
-        return dir.listFiles()?.filter { it.isFile && it.name.endsWith(".gguf") && isGguf(it) }?.maxByOrNull { it.length() }
+        val chosen = selectedModelFile() ?: return null
+        val f = File(dir, chosen)
+        return f.takeIf { it.isFile && it.name.endsWith(".gguf") && isGguf(it) }
     }
 
     private fun isGguf(f: File): Boolean = runCatching {

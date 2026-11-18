@@ -2,10 +2,7 @@ package local.lastbook.android.ui
 
 import android.annotation.SuppressLint
 import android.net.Uri
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,13 +41,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import local.lastbook.core.LastbookCore
 import local.lastbook.core.Rec
-import local.lastbook.core.WebResponse
 import local.lastbook.core.d
 import local.lastbook.core.s
 import local.lastbook.core.toStringMap
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayInputStream
 
 private const val MAP_CSS = """
 html.lb-embed .side,html.lb-embed header.top,html.lb-embed .tabbar,html.lb-embed .maphead,html.lb-embed .maptools,
@@ -101,20 +96,7 @@ fun MapScreen() {
                     settings.builtInZoomControls = false
                     settings.useWideViewPort = true
                     settings.loadWithOverviewMode = true
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                            val url = request?.url ?: return null
-                            if (url.host != "lastbook.local") return null
-                            val path = url.encodedPath.orEmpty().ifEmpty { "/" }
-                            val query = url.queryParameterNames.associate { it to (url.getQueryParameter(it) ?: "") }
-                            val r: WebResponse = LastbookCore.web.handle(path, query, request?.method ?: "GET")
-                            val headers = HashMap<String, String>()
-                            headers["Cache-Control"] = r.headers["Cache-Control"] ?: "no-store"
-                            r.headers["Content-Security-Policy"]?.let { headers["Content-Security-Policy"] = it }
-                            return WebResourceResponse(r.mime.substringBefore(';'), null, r.status, if (r.status in 200..299) "OK" else "Not Found",
-                                headers, ByteArrayInputStream(r.bytes))
-                        }
-
+                    webViewClient = object : LocalWebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             loading = false

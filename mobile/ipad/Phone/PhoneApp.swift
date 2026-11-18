@@ -85,6 +85,7 @@ struct PhoneSetupSheet: View {
                     .pickerStyle(.menu)
                     .onChange(of: selectedTierID) { _, v in
                         UserDefaults.standard.set(v, forKey: "LBPhoneModelTier")
+                        if v != "custom" { UserDefaults.standard.removeObject(forKey: "LBPhoneCustomModel") }
                         if v == "custom" { pickingCustomGGUF = true }
                         else if v == "none" { LocalAI.shared.model?.setEnabled(false) }
                         else { LocalAI.shared.model?.setEnabled(true) }
@@ -112,6 +113,13 @@ struct PhoneSetupSheet: View {
                             if !isPinned {
                                 Button("Remove", role: .destructive) {
                                     try? FileManager.default.removeItem(at: u)
+                                    if UserDefaults.standard.string(forKey: "LBPhoneCustomModel") == u.lastPathComponent {
+                                        UserDefaults.standard.removeObject(forKey: "LBPhoneCustomModel")
+                                        if UserDefaults.standard.string(forKey: "LBPhoneModelTier") == "custom" {
+                                            UserDefaults.standard.set("auto", forKey: "LBPhoneModelTier")
+                                            selectedTierID = "auto"
+                                        }
+                                    }
                                     refreshModels()
                                     LocalAI.shared.model?.discover()
                                 }.font(.caption2)
@@ -160,6 +168,8 @@ struct PhoneSetupSheet: View {
         do {
             if FileManager.default.fileExists(atPath: dst.path) { try FileManager.default.removeItem(at: dst) }
             try FileManager.default.copyItem(at: src, to: dst)
+            UserDefaults.standard.set("custom", forKey: "LBPhoneModelTier")
+            UserDefaults.standard.set(name, forKey: "LBPhoneCustomModel")
             customIsError = false
             customNote = "Imported \(name) (unverified custom model)."
             refreshModels()

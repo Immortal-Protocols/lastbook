@@ -396,8 +396,10 @@
   function checkLine(ck) {
     if (!ck || !ck.at) return 'Not checked on this computer yet. Checking reads every file and downloads nothing.';
     const when = new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-    const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired` : ck.damaged ? `${ck.damaged} damaged or missing` : 'every file as published';
-    return `Last checked ${esc(when)} · ${what}${ck.model_ok === false && !ck.repaired ? ' · the local AI file did not match' : ''}`;
+    const ai = ck.model_ok === false, files = (ck.damaged || 0) - (ai ? 1 : 0);   // 'damaged' counts the AI file too
+    const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired`
+      : [files ? `${files} damaged or missing` : '', ai ? 'the local AI file did not match' : ''].filter(Boolean).join(' · ') || 'every file as published';
+    return `Last checked ${esc(when)} · ${what}`;
   }
   async function act(path, done, body) {
     const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? 'This Lastbook cannot do that yet.' : e.message }));
@@ -550,7 +552,7 @@
 
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   function checkedView() {
-    const r = (S.job && S.job.result) || {}, bad = r.damaged || 0, ai = r.model_ok === false;
+    const r = (S.job && S.job.result) || {}, ai = r.model_ok === false, bad = (r.damaged || 0) - (ai ? 1 : 0);   // library files; the AI file apart
     const what = [bad ? `${bad} ${bad === 1 ? 'file is' : 'files are'} damaged or missing` : '', ai ? 'the local AI file does not match its published copy' : ''].filter(Boolean).join(', and ');
     main.innerHTML = bad || ai
       ? `<div class="s-done">${ico('warn', 's-big')}<h1>Something needs repair</h1>

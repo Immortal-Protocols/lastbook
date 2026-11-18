@@ -568,7 +568,12 @@ class Setup:
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             if not pack or not pack['available']:
                 return {'error': f'Lastbook cannot tell which library this is, so it cannot {"check" if check_only else "repair"} it. Download a library instead.', 'code': 'unavailable'}
-            model = self.manifest.model() if (cur['model'] if check_only else (ai or cur['model'])) else None   # a check looks only at what is installed
+            # A model file in models/ is checked (and repaired) whatever its size: current_info() names a model only when its size
+            # already matches, so a model one byte short would otherwise be skipped and the library called clean. A check looks only
+            # at what is installed; a truly absent model stays "not installed".
+            m = self.manifest.model()
+            present = bool(m) and (self.current / 'models' / m['file']).is_file()
+            model = m if (present if check_only else (ai or present)) else None
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model', 'map')}
@@ -1091,6 +1096,8 @@ class Setup:
             os.replace(tmp, dest)
         plan['model_file'] = str(Path(plan['target']) / 'models' / m['file']) if plan['switch'] else str(dest)
         plan['model_sha256'] = m['sha256']           # what _get_file just matched: the streamed or re-read hash equalled this
+        if plan.get('repair'):
+            plan['model_ok'] = not ours              # Repair downloaded it only if the installed one was damaged or missing
         if not plan['switch'] and self.current:      # the library open now: the AI can use it at once
             self._mark_checked(dest, m['sha256'])
 
@@ -1115,8 +1122,9 @@ class Setup:
             elif plan.get('map_new'):
                 install.stage_switch(_pending_file(self.settings_dir), plan['map_new'], plan['target'], kind='map')
             if plan.get('repair') and 'damaged' in plan:   # a full check ran (Check now, or Repair's first step): keep when, and what it found
-                result = {'at': _now(), 'damaged': len(plan['damaged']), 'model_ok': plan.get('model_ok'),
-                          'repaired': bool(plan['damaged']) and not plan.get('check_only')}
+                bad = len(plan['damaged']) + (plan.get('model_ok') is False)   # a model that does not match counts as damaged
+                result = {'at': _now(), 'damaged': bad, 'model_ok': plan.get('model_ok'),
+                          'repaired': bool(bad) and not plan.get('check_only')}
                 self.job['result'] = result
                 s = self._settings()
                 s.setdefault('checks', {})[plan['target']] = result

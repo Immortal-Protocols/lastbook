@@ -1733,7 +1733,7 @@ class Manage(Base):
         s.start(check=True)
         j = self.wait(s)
         self.assertEqual(j['state'], 'done', j)
-        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (1, False, False))
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (2, False, False))
         self.assertEqual(self.files.log, [])                             # a check never downloads, even with damage found
         for path, digest in damaged:
             self.assertEqual(sha(path.read_bytes()), digest)             # and changes nothing: Repair is the person's choice
@@ -1741,9 +1741,32 @@ class Manage(Base):
         s.start(repair=True)                                             # then Repair fixes it, and the check it ran is kept
         j = self.wait(s)
         self.assertEqual(j['state'], 'done', j)
-        self.assertEqual((j['result']['damaged'], j['result']['repaired']), (1, True))
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (2, False, True))
         self.assertEqual(sorted(n for n, _, _ in self.files.log), ['Lastbook-Small.zip', 'model.gguf'])
         self.assertEqual(s.current_info()['checked']['repaired'], True)
+
+    def test_check_now_finds_a_model_of_the_wrong_size(self):
+        lib = self.installed_library()
+        model = lib / 'models' / 'model.gguf'
+        model.write_bytes(self.model[:-1])                               # one byte short: current_info() no longer names a model
+        s = self.setup('manage', current=lib)
+        self.assertIsNone(s.current_info()['model'])
+        self.files.log.clear()
+        j = s.start(check=True)
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'model'])
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertIs(j['result']['model_ok'], False)
+        self.assertGreaterEqual(j['result']['damaged'], 1)
+        self.assertEqual(self.files.log, [])
+        self.assertEqual(model.read_bytes(), self.model[:-1])           # the file is unchanged
+        s.job = None
+        s.start(repair=True)                                             # and Repair, as the check offers, replaces it
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (1, False, True))
+        self.assertEqual(sorted(n for n, _, _ in self.files.log), ['model.gguf'])
+        self.assertEqual(model.read_bytes(), self.model)
 
     def test_check_now_without_the_model_or_a_library(self):
         lib = self.installed_library()

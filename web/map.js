@@ -161,7 +161,7 @@ const MapView = (() => {
       if (typeof Terrain3D === 'undefined') return toastMap('3D view unavailable');
       closeCard();
       const w = cv.clientWidth, h = cv.clientHeight;
-      Terrain3D.open($('mapwrap'), { lat: st.lat, lon: st.lon, z: st.z, w, h, texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y), getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
+      Terrain3D.open($('mapwrap'), { metric: st.metric, lat: st.lat, lon: st.lon, z: st.z, w, h, texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y), getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
         geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon) });
     };
     document.addEventListener('fullscreenchange', st.onFull = () => { const f = document.fullscreenElement === $('mapwrap'); if (!f) $('mapwrap')?.classList.remove('max'); syncFull() });

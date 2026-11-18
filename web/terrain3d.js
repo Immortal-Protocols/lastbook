@@ -224,6 +224,7 @@ const Terrain3D = (() => {
       B.list = list; buildBldg(ex); render();
       if (!list.length) return '';
       const measured = list.filter(f => f.osm).length, guessed = list.filter(f => !f.est).length;
+      if (o.metric) return `${list.length.toLocaleString()} buildings${capped ? ' (nearest shown)' : ''} with mapped heights (OpenStreetMap); buildings without one are not shown`;   // a map set in metres: no satellite estimates
       return `${list.length.toLocaleString()} buildings${capped ? ' (nearest shown)' : ''} · ${measured ? `${measured.toLocaleString()} with mapped heights (OpenStreetMap), the rest ` : 'heights are '}satellite estimates${guessed ? `; ${guessed.toLocaleString()} without one shown one storey tall` : ''}`;
     }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
@@ -281,7 +282,7 @@ const Terrain3D = (() => {
     me.ro = new ResizeObserver(render); me.ro.observe(cv);
     setEx();
     const rel = hmax - hmin;
-    const base = rel < 1 ? 'No elevation data here (ocean or outside the US).' : `${matchMedia('(pointer: coarse)').matches ? 'Drag to turn and tilt · pinch to zoom' : 'Drag to rotate · scroll to zoom · shift-drag to tilt'} · ${Math.round(hmin * 3.28084).toLocaleString()}–${Math.round(hmax * 3.28084).toLocaleString()} ft`;
+    const base = rel < 1 ? (o.metric ? 'No elevation data here (sea or outside this map).' : 'No elevation data here (ocean or outside the US).') : `${matchMedia('(pointer: coarse)').matches ? 'Drag to turn and tilt · pinch to zoom' : 'Drag to rotate · scroll to zoom · shift-drag to tilt'} · ${o.metric ? `${Math.round(hmin).toLocaleString()}–${Math.round(hmax).toLocaleString()} m` : `${Math.round(hmin * 3.28084).toLocaleString()}–${Math.round(hmax * 3.28084).toLocaleString()} ft`}`;
     hint.textContent = base + (W <= BLDG_MAX_SPAN && Hm <= BLDG_MAX_SPAN ? ' · loading buildings…' : '');
     const note = await loadBldg();
     if (!me.alive) return;

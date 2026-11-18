@@ -32,7 +32,6 @@
   "funnel cloud",
   "thunderstorms",
   "hail",
-  "hailstorms",
   "chemical",
   "shelter in place",
   "radiation",
@@ -306,7 +305,7 @@
   {
    "id": "thunderstorm",
    "label": "Thunderstorm, lightning or hail",
-   "hint": "Thunder nearby, caught outside, swimming or boating, hail while driving",
+   "hint": "Thunder nearby, caught outside, swimming or boating, hail while driving, hailstorms",
    "read": [
     {
      "doc": "d0fbb2e051cd46",

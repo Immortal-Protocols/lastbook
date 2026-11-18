@@ -428,7 +428,14 @@ class Station:
         return self.running()
 
     def running(self):
-        return self.proc is not None and self.proc.poll() is None
+        """True while rqbit runs. The watcher of one that has ended on its own goes too."""
+        p = self.proc
+        if p is None:
+            return False
+        if p.poll() is None:
+            return True
+        _unwatch(p)
+        return False
 
     def add(self, name, torrent_data):
         """Shares the file `name` in the folder by its torrent (already checked against its pin). True once rqbit took it; rqbit
@@ -459,6 +466,7 @@ class Station:
             self.shared()                      # the last reading, before the count goes with the process
         self.proc = None
         atexit.unregister(self.stop)
+        _unwatch(p)                            # its watcher first, so it never acts on a process ended here
         if p.poll() is None:
             p.terminate()
         try:

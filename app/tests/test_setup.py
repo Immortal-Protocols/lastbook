@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
+import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socket, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -52,6 +52,7 @@ class Files:
         self.ignore_once = {}     # name -> how many more Range requests get a 200 with the whole file
         self.redirect = {}        # name -> Location
         self.pace = 0             # seconds to sleep per 64 KiB
+        self.hold = {}            # name -> (byte, reached, release): an answer that gets to `byte` sets `reached`, then waits for `release`
         self.lock = threading.Lock()
 
 
@@ -88,13 +89,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if rng and F.ignore_once.get(name):
                 F.ignore_once[name] -= 1
                 once = True
+        end = len(body)                                         # past the last byte sent
         if rng and name not in F.ignore_range and not once:     # like R2: If-Range is ignored
-            start = int(rng.split('=')[1].split('-')[0])
+            a, _, b = rng.split('=')[1].partition('-')
+            start = int(a)
+            if b:
+                end = min(int(b) + 1, len(body))
             self.send_response(206)
-            self.send_header('Content-Range', f'bytes {start}-{len(body) - 1}/{len(body)}')
+            self.send_header('Content-Range', f'bytes {start}-{end - 1}/{len(body)}')
         else:
             self.send_response(200)
-        self.send_header('Content-Length', str(len(body) - start))
+        self.send_header('Content-Length', str(end - start))
         self.send_header('ETag', F.etag.get(name, '"e1"'))
         self.send_header('Accept-Ranges', 'bytes')
         self.end_headers()
@@ -103,9 +108,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if F.cut_after.get(name):
                 cut = F.cut_after[name].pop(0)
         sent = start
+        with F.lock:
+            hold = F.hold.get(name)
         try:
-            while sent < len(body):
-                n = min(64 * 1024, len(body) - sent)
+            while sent < end:
+                n = min(64 * 1024, end - sent)
+                if hold and sent <= hold[0] < sent + n:
+                    self.wfile.write(body[sent:hold[0]])
+                    self.wfile.flush()
+                    sent = hold[0]
+                    hold[1].set()
+                    hold[2].wait(10)
+                    n = min(64 * 1024, end - sent)
                 if cut is not None and sent + n > cut:
                     self.wfile.write(body[sent:cut])
                     self.wfile.flush()
@@ -176,6 +190,9 @@ class Base(unittest.TestCase):
     def setUp(self):
         F = self.files
         F.data.clear(); F.etag.clear(); F.log.clear(); F.cut_after.clear(); F.corrupt.clear(); F.ignore_range.clear(); F.ignore_once.clear(); F.redirect.clear()
+        for _, _, release in F.hold.values():
+            release.set()
+        F.hold.clear()
         F.pace = 0
         self.tmp = shorttemp.mkdtemp('lastbook-setup-')
         self.home = self.tmp / 'home'
@@ -418,6 +435,200 @@ class Downloads(Base):
         self.files.pace = 0
         d.control = download.Control()
         self.assertEqual(Path(d.run()).read_bytes(), self.model)
+
+
+def pieces(n=4, piece=256 * 1024):
+    """Several connections for a test-sized file: anything of 1 MiB or more, in pieces of `piece`."""
+    return mock.patch.multiple(download, CONNECTIONS=n, PARALLEL_MIN=MiB, PIECE=piece, AHEAD=2 * n)
+
+
+class ParallelDownloads(Base):
+    def setUp(self):
+        super().setUp()
+        self.big = os.urandom(3 * MiB + 4321)
+        self.files.data['big.bin'] = self.big
+
+    def dl(self, sha256=None, size=None, control=None, connections=None):
+        return download.Download(f'{self.base}/big.bin', self.tmp / 'dl' / 'big.bin', size or len(self.big), sha256 or sha(self.big),
+                                 control or download.Control(), allowed=ALLOWED, context=self.ctx, connections=connections)
+
+    def ranges(self):
+        return [r for n, r, _ in self.files.log if n == 'big.bin']
+
+    def test_pieces(self):
+        seen = []
+        d = self.dl()
+        d.progress = lambda done, total, phase: seen.append(done)
+        with pieces():
+            p = d.run()
+        self.assertEqual(Path(p).read_bytes(), self.big)
+        self.assertFalse(Path(d.part).exists() or Path(d.meta).exists())
+        r = self.ranges()
+        self.assertEqual(len(r), 13)                                       # 3 MiB + a bit in 256 KiB pieces
+        self.assertTrue(all(x and x.startswith('bytes=') and not x.endswith('-') for x in r), r)   # every one closed: bytes=a-b
+        self.assertEqual(sorted(int(x[6:].split('-')[0]) for x in r), [i * 256 * 1024 for i in range(13)])
+        self.assertEqual(seen[-1], len(self.big))
+        self.assertTrue(all(b >= a for a, b in zip(seen, seen[1:])), 'progress went back')
+
+    def test_small_file_one_connection(self):
+        with pieces():
+            p = download.Download(f'{self.base}/model.gguf', self.tmp / 'm', 1000, sha(self.model[:1000]), download.Control(),
+                                  allowed=ALLOWED, context=self.ctx)
+            self.files.data['model.gguf'] = self.model[:1000]
+            p.run()
+        self.assertEqual([r for n, r, _ in self.files.log if n == 'model.gguf'], [None])
+
+    def test_one_connection_asked_for(self):
+        with pieces():
+            self.dl(connections=1).run()
+        self.assertEqual(self.ranges(), [None])
+
+    def test_cut_pieces_try_again(self):
+        self.files.cut_after['big.bin'] = [200_000] * 3     # the first three answers cut: mid piece for the first, at once for later ones
+        with pieces(), fast_backoff():
+            p = self.dl().run()
+        self.assertEqual(Path(p).read_bytes(), self.big)
+        self.assertEqual(len(self.ranges()), 16)
+        self.assertIn('bytes=200000-262143', self.ranges())            # the cut piece carried on from where it broke
+
+    def test_pause_and_resume(self):
+        reached, release = threading.Event(), threading.Event()
+        self.files.hold['big.bin'] = (5 * 256 * 1024 + 1000, reached, release)    # one answer stops partway into piece 5
+        c = download.Control()
+        d = self.dl(control=c)
+
+        def pause():
+            if reached.wait(30):
+                c.stop('paused')
+            release.set()
+        t = threading.Thread(target=pause, daemon=True)
+        t.start()
+        with pieces(), self.assertRaises(download.Stopped):
+            d.run()
+        t.join(30)
+        self.files.hold.clear()
+        meta = json.loads(Path(d.meta).read_text())
+        self.assertTrue(meta['parallel'])
+        self.assertEqual(meta['bytes_done'] % (256 * 1024), 0)           # a whole number of pieces, hashed
+        self.assertEqual(d.done_bytes(), meta['bytes_done'])
+        self.assertLessEqual(meta['bytes_done'], os.path.getsize(d.part))
+        self.files.pace = 0
+        self.files.log.clear()
+        d.control = download.Control()
+        with pieces():
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        self.assertTrue(all(int(x[6:].split('-')[0]) >= meta['bytes_done'] for x in self.ranges()))   # nothing hashed is fetched again
+
+    def test_pause_during_stalled_handshake(self):
+        """A server that takes the connection but never answers the TLS handshake: pause ends the run and every worker within a
+        couple of seconds, not at the 30 s network timeout."""
+        lsn = socket.socket()
+        lsn.bind(('127.0.0.1', 0))
+        lsn.listen(8)
+        held, accepted = [], threading.Semaphore(0)
+
+        def accept():
+            while True:
+                try:
+                    s, _ = lsn.accept()
+                except OSError:
+                    return
+                held.append(s)
+                accepted.release()
+        threading.Thread(target=accept, daemon=True).start()
+        self.files.redirect['big.bin'] = f'https://127.0.0.1:{lsn.getsockname()[1]}/big.bin'
+        c = download.Control()
+        d = self.dl(control=c, connections=2)
+        err = []
+
+        def run():
+            try:
+                with pieces():
+                    d.run()
+            except BaseException as e:      # noqa: B036
+                err.append(e)
+        runner = threading.Thread(target=run, daemon=True)
+        try:
+            runner.start()
+            for _ in range(2):
+                self.assertTrue(accepted.acquire(timeout=10), 'the workers never connected')
+            time.sleep(0.3)                 # both are in the handshake now, waiting for a ServerHello that never comes
+            t0 = time.monotonic()
+            c.stop('paused')
+            runner.join(10)
+            took = time.monotonic() - t0
+            self.assertFalse(runner.is_alive(), 'run() was still going 10 s after the pause')
+            self.assertEqual(len(err), 1)
+            self.assertIsInstance(err[0], download.Stopped)
+            self.assertLess(took, 2)
+            self.assertEqual([t.name for t in threading.enumerate() if t.name.startswith('download-')], [])
+        finally:
+            lsn.close()
+            for s in held:
+                s.close()
+
+    def test_resume_after_kill_ignores_unhashed_bytes(self):
+        """Bytes past bytes_done may be holes or half a piece: a resume trusts only the hashed run."""
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(self.big[:512 * 1024] + b'\0' * (1024 * 1024))
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': 512 * 1024, 'parallel': True}))
+        with pieces():
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        self.assertEqual(min(int(x[6:].split('-')[0]) for x in self.ranges()), 512 * 1024)
+
+    def test_resume_from_one_connection_file(self):
+        """A .part left by one connection (no "parallel" in its .json) carries on in pieces from its length."""
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(self.big[:700_000])
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': 600_000}))
+        with pieces():
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        self.assertEqual(min(int(x[6:].split('-')[0]) for x in self.ranges()), 700_000)
+
+    def test_etag_changed_starts_over(self):
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        Path(d.part).write_bytes(b'x' * 512 * 1024)
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"old"', 'bytes_done': 512 * 1024, 'parallel': True}))
+        self.files.etag['big.bin'] = '"new"'
+        with pieces():
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        self.assertIn('bytes=0-262143', self.ranges())
+
+    def test_server_ignores_range_goes_to_one_connection(self):
+        self.files.ignore_range.add('big.bin')
+        with pieces(), fast_backoff():
+            p = self.dl().run()
+        self.assertEqual(Path(p).read_bytes(), self.big)
+        self.assertEqual(self.ranges()[-1], None)                          # finished as one plain GET
+        self.assertNotIn('parallel', json.dumps(self.files.log))
+
+    def test_one_stray_200_keeps_pieces(self):
+        self.files.ignore_once['big.bin'] = 1
+        with pieces():
+            p = self.dl().run()
+        self.assertEqual(Path(p).read_bytes(), self.big)
+        self.assertEqual(len(self.ranges()), 14)                           # 13 pieces, one asked for twice
+        self.assertNotIn(None, self.ranges())                              # never went back to one plain GET
+
+    def test_wrong_checksum(self):
+        d = self.dl(sha256='0' * 64)
+        with pieces(), self.assertRaises(download.BadChecksum):
+            d.run()
+        self.assertFalse(Path(d.part).exists())
+
+    def test_wrong_size_on_server(self):
+        d = self.dl(size=len(self.big) + 10)
+        with pieces(), self.assertRaises(download.BadChecksum):
+            d.run()
+
+    def test_redirect_to_unknown_host_refused(self):
+        self.files.redirect['big.bin'] = 'https://evil.example/big.bin'
+        with pieces(), self.assertRaises(download.Failed) as e:
+            self.dl().run()
+        self.assertEqual(e.exception.code, 'network')
 
 
 class Unpacking(Base):

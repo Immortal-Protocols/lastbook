@@ -151,7 +151,7 @@ supply extra directions with `--crim-addresses file.csv`. Accepted headers inclu
 `número de catastro,dirección física,municipio` and `catastro,address,municipio`. The builder reads
 those three fields and reports the additional coverage separately.
 
-#### Prepare a municipio for offline use
+#### Prepare selected areas for offline use
 
 Before losing connectivity, build the parcel-enabled index above or start with a copy of an existing parcel-enabled `PR.sqlite`. From this checkout and the same Python environment, run the municipal builder. For example, to add the Planning Board’s land-use consultation records for Utuado:
 
@@ -161,13 +161,13 @@ python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.
 
 This downloads the parcel number, municipio and two location fields from the [Planning Board consulta layer](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/20). A consultation can describe a tract shared by several homes. Coverage depends on which parcels appear in the source. The command reports how many wordings it added and how many additional parcels now have searchable wording.
 
-For a local CRIM physical-address file, use `--crim-addresses file.csv` with the headers above. You can combine both options, or run with just the CSV while disconnected. The builder reads the selected municipio, preserves the recorded wording, and joins it only to land numbers mapped to that municipio. It creates a separate output file and keeps the input intact. To include another municipio, use the previous output as the next input and choose a fresh output path.
+For a local CRIM physical-address file, use `--crim-addresses file.csv` with the headers above. You can combine both options, or run with just the CSV while disconnected. Both preparation tools accept repeated `--municipio` selections, regional presets and `--all`. The builder reads the selected municipios, preserves the recorded wording, and joins it to land numbers mapped to the reported municipio. It creates a separate output file. Multiple selected municipios are imported together in one pass.
 
 To use the result, quit Lastbook, keep a backup of your index, and copy the prepared `PR.sqlite` to `derived/geo/addresses/PR.sqlite` inside your Lastbook data folder. Reopen a reader built from this branch, open the map, and enter the address with its municipio. Keep the prepared file if you reinstall an official address pack. Searching works offline. For a shared description, open **Show matches** to inspect the numbered parcel boundaries.
 
-#### Collect CRIM physical addresses for a municipio
+#### Collect CRIM physical addresses for selected areas
 
-The connected preparation tool can operate the **Parcela** prefix search in the [public CRIM viewer](https://catastro.crimpr.net/cdprpc/). It opens a fresh browser, submits the mapped grid prefixes for the selected municipio, and reads the displayed **Parcela**, **Dirección física** and **Municipio** fields. It preserves the address wording and punctuation. Install the build tool and its browser before running it:
+The connected preparation tool can operate the **Parcela** prefix search in the [public CRIM viewer](https://catastro.crimpr.net/cdprpc/). It opens a fresh browser, submits the mapped grid prefixes for the selected area, and reads the displayed **Parcela**, **Dirección física** and **Municipio** fields. It preserves the address wording and punctuation. Install the build tool and its browser before running it:
 
 ```sh
 python -m pip install playwright==1.65.2
@@ -176,7 +176,23 @@ python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-utu
 python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --municipio Utuado --crim-addresses derived/pr-crim-utuado/addresses.csv
 ```
 
-The collector follows the viewer's **Load more** control until every displayed card is read. It saves each completed prefix in `prefixes.sqlite` and waits between searches. Run the same command to resume after interruption. `addresses.csv` preserves the original nonblank physical address and reported municipio for every returned land number in the local roster. The index builder joins records whose reported municipio agrees with the mapped parcel. `summary.json` reports collected parcels, matching municipios, blank addresses, missing parcels and unqueried parcels. A shared grid may include land outside the selected municipio. The collector keeps records for the local municipio roster.
+Choose the whole island with `--all`, combine presets with repeated `--region`, or choose individual municipios. `--plan` shows the resolved municipio list and mapped parcel and prefix counts. For example:
+
+```sh
+python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite --all --plan
+python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite --region metro --region east --plan
+python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-custom --municipio Utuado --municipio Jayuya
+python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-island --all
+python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --all --crim-addresses derived/pr-crim-island/addresses.csv
+```
+
+Presets expand to explicit municipio lists. Overlapping selections and shared search prefixes are deduplicated. `metro` uses the nine-municipio San Juan metropolitan group in Guaynabo's 2024 planning memorandum. `east`, `north`, `south`, `central` and `capital` follow the Tourism Company's municipal lists. `west` combines its Porta del Sol Norte and Sur groups. The east preset includes Vieques and Culebra. Inspect the members with `--plan` and combine presets and individual municipios to choose an area. [Metro definition](https://jp.pr.gov/wp-content/uploads/2024/08/Memorial-Justificativo-sobre-Posible-Enmienda-Menor-PUT-PR-2015_PT-MAG_2024_VEDA.pdf) · [Tourism Company groups](https://tourism.pr.gov/regions/)
+
+Area selection controls supplemental address collection. The input Puerto Rico pack supplies the statewide base map and parcel outlines.
+
+The collector follows the viewer's **Load more** control until every displayed card is read. It saves each completed prefix in `prefixes.sqlite` and waits between searches. Run the same command to resume after interruption, or expand the selection in the same directory. Earlier single-municipio checkpoints are upgraded automatically. Each completed prefix records the mapped land numbers it covered. Adding a neighboring municipio revisits a shared prefix when it contains additional selected parcels. Cached records are retained, and `addresses.csv` exports the current selection.
+
+The CSV preserves the original nonblank physical address and reported municipio for every returned land number in the selected roster. The index builder joins records whose reported municipio agrees with the mapped parcel. `summary.json` reports the selected municipios, collected parcels, matching municipios, blank addresses, missing parcels and unqueried parcels.
 
 Use `--prefix 000-000` to test a particular mapped grid, or `--show-browser` to watch the search. A new output directory starts a fresh snapshot. A changed viewer layout or incomplete result stops the run and leaves completed prefixes available for resumption. Follow the installation step above to use the prepared index offline. The browser and collector run on the preparation computer. The Lastbook reader searches the resulting SQLite file.
 

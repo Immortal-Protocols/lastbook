@@ -97,3 +97,20 @@ class MunicipalIndex(unittest.TestCase):
                 row, = municipal.planning_records(town)
                 self.assertEqual(row, {'catastro':'001-002-003-01', 'address':'Calle Luna', 'municipio':town})
                 self.assertIn(name, request.call_args.kwargs['where'])
+
+    def test_import_selected_municipios_together(self):
+        import server
+        path = self.root / 'several.csv'
+        with path.open('w', newline='', encoding='utf-8') as stream:
+            writer = csv.writer(stream)
+            writer.writerow(['catastro', 'address', 'municipio'])
+            writer.writerow(['00100200301', 'Bo. Peña, solar 1', 'San Sebastián'])
+            writer.writerow(['00100200303', 'Bo. Peña, solar 1', 'Aguada'])
+            writer.writerow(['00100200302', 'Bo. Peña, solar 1', 'Other Town'])
+        result = municipal.prepare(self.original, self.output, whole_island=True, csv_paths=[path])
+        self.assertEqual(result['municipios'], ['Aguada', 'San Sebastián'])
+        self.assertEqual(result['new_parcels_with_wording'], 2)
+        with patch.object(server, 'HERE', self.root):
+            first, = server.places('Bo Peña, solar 1, San Sebastián')
+            second, = server.places('Bo Peña, solar 1, Aguada')
+            self.assertEqual((first['parcelNumber'], second['parcelNumber']), ('001-002-003-01', '001-002-003-03'))

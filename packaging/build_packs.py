@@ -1460,19 +1460,39 @@ def us_set(src, dest):
 
 
 def fetch_region_gpkg(spec):
-    """The region's GeoPackage, downloaded and unzipped once per extract into derived/packs/maps/region-source/. Only the build machine does this."""
+    """The region's GeoPackage, downloaded and unzipped once per extract into derived/packs/maps/region-source/.
+    The download and the extraction each write to a temporary path and are promoted only once they pass a check, so a
+    failed download or extraction is redone, never mistaken for a complete cache entry. Only the build machine does this."""
     url = spec['extract']
-    folder = OUT / 'maps' / 'region-source' / url.rstrip('/').split('/')[-1].removesuffix('.zip')
+    name = url.rstrip('/').split('/')[-1]
+    folder = OUT / 'maps' / 'region-source' / name.removesuffix('.zip')
     folder.mkdir(parents=True, exist_ok=True)
     gpkg = next(folder.glob('*.gpkg'), None)
     if gpkg is None:
-        zipped = folder / url.rstrip('/').split('/')[-1]
+        zipped = folder / name
         if not zipped.exists():
             print(f'downloading {url}', flush=True)
-            urllib.request.urlretrieve(url, zipped)
+            tmp = folder / f'{name}.tmp{os.getpid()}'
+            urllib.request.urlretrieve(url, tmp)
+            with zipfile.ZipFile(tmp) as z:
+                if z.testzip() is not None:
+                    tmp.unlink()
+                    raise SystemExit(f'{name} downloaded incomplete, so it is not kept')
+            os.replace(tmp, zipped)
+        tmpdir = folder / f'extract.tmp{os.getpid()}'
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        tmpdir.mkdir()
         with zipfile.ZipFile(zipped) as z:
-            z.extractall(folder)
-        gpkg = next(folder.glob('*.gpkg'))
+            z.extractall(tmpdir)
+        extracted = next(tmpdir.glob('*.gpkg'))
+        db = sqlite3.connect(f'file:{extracted}?immutable=1', uri=True)
+        ok = db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+        db.close()
+        if not ok:
+            raise SystemExit(f'{extracted.name} extracted incomplete, so it is not kept')
+        gpkg = folder / extracted.name
+        os.replace(extracted, gpkg)
+        shutil.rmtree(tmpdir, ignore_errors=True)
     return gpkg
 
 

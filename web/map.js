@@ -105,7 +105,7 @@ const MapView = (() => {
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
-        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or Puerto Rico catastro number</label><input id="pq" type="search" placeholder="Address, place, ZIP or catastro" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
+        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
         <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers <b id="layer-count"></b></button>
       </div>
       <div class="map-pop" id="pres" hidden></div>
@@ -934,7 +934,7 @@ const MapView = (() => {
     }
     function list() {
       const items = [...st.parcels, ...other];
-      const header = total ? `${total} possible parcel${total === 1 ? '' : 's'}. ${st.parcels.length < total ? 'Showing ' + st.parcels.length + '. ' : ''}Select a number to inspect its boundary.` :
+      const header = total ? `${total} possible parcel${total === 1 ? '' : 's'}. ${st.parcels.length < total ? 'Showing ' + st.parcels.length + '. ' : ''}Select a match to see its boundary.` :
         `${items.length} match${items.length === 1 ? '' : 'es'}`;
       if (total && !expanded) {
         const shown = st.parcels.length < total ? ` · ${st.parcels.length} on map` : '';
@@ -957,12 +957,13 @@ const MapView = (() => {
         const r = await fetch('/api/places?' + query).then(reply => reply.json());
         if (!active()) return;
         if (!r.length && !more) {
-          const rural = /(?:^|[^a-z])(?:k\.?\s*m\.?s?|kil[oó]met(?:ros?|res?|ers?))(?=\W|\d|$)|\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])/i.test(q);
+          const rural = /(?:^|[^a-z])(?:k\.?\s*m\.?s?|kil[oó]met(?:ros?|res?|ers?))(?=\W|\d|$)|\d[.,]\d+\s+(?:de la\s+)?(?:carr(?:etera)?|pr[- ])/i.test(q)
+            || (/\b(?:pr|carr(?:etera)?|ctra|ruta)[.\s#-]*\d{1,4}\b/i.test(q) && /\b(?:barrio|bo|sector|sect|sec|solar|lote|lot|int|interior|municipio)\b/i.test(q));
           const catastro = /^(?:\s*(?:catastro|crim|n[uú]mero de catastro)|\s*(?:\d{11,14}|\d{3}-\d{3}-\d{3}-\d{2})(?:\b|$))/i.test(q);
           let message = 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.';
           if (catastro || rural || looksLikeAddress(q)) {
             message = catastro ? 'Parcel number not found in the offline index. For the land boundary, try the 11-digit base number.' :
-              rural ? 'No matching parcel or road kilometer in the offline data. Check the route, kilometer and barrio.' :
+              rural ? 'No match for these directions in the offline map. Check the road, kilometer and barrio. You can also search for a nearby town or school.' :
                 'Address not found in your offline data. Check the house number and street.';
             if (IN_WINDOW) message += ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.';
           }

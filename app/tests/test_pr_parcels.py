@@ -58,6 +58,8 @@ class ParcelSearch(unittest.TestCase):
         self.assertEqual((len(first),len(second)),(20,4))
         self.assertEqual(len({r['parcelNumber'] for r in first+second}),24)
         self.assertTrue(all(r['kind']=='Possible parcel' and r['parcelCount']==24 and r['rings'] for r in first+second))
+        self.assertEqual(first[0]['name'], 'Solar 1 · PR-19 km 4.4')
+        self.assertEqual(second[-1]['name'], 'Solar 24 · PR-19')
         self.assertIn('km unrecorded',second[-1]['detail'])
         self.assertEqual(self.search(query,100),[])
         self.assertEqual(self.search(query.replace('Las Peñas','Otro')),[])
@@ -69,10 +71,21 @@ class ParcelSearch(unittest.TestCase):
             hit, = self.search(q)
             self.assertEqual(hit['parcelNumber'],'001-002-003-03')
             self.assertEqual(hit['kind'],'Possible parcel')
-            for part in ('lot 3','interior 7','sector sol'):
-                self.assertIn(part,hit['detail'])
+            self.assertEqual(hit['name'], 'Solar 3 · PR-19 km 4.4')
+            for part in ('Interior 7','Sector sol','Bo. Las Peñas','Villa Ejemplo'):
+                self.assertIn(part, hit['detail'])
         for q in (query.replace('Sol,','Luna,'),query.replace('Int. 7','Int. 8'),query.replace('Lote 3','Lot 99')):
             self.assertEqual(self.search(q),[])
+
+    def test_directions_display_when_no_solar_is_recorded(self):
+        with sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite') as db:
+            db.execute("UPDATE pr_parcel_address SET lot='' WHERE route=19")
+        rows = self.search('PR-19 km 4.4, Bo. Las Peñas, Villa Ejemplo')
+        by_parcel = {r['parcelNumber']: r for r in rows}
+        self.assertEqual(by_parcel['001-002-003-01']['name'], 'Sector sol · PR-19 km 4.4')
+        self.assertEqual(by_parcel['001-002-003-04']['name'], 'Interior · PR-19 km 4.4')
+        self.assertEqual(by_parcel['001-002-003-05']['name'], 'PR-19 km 4.4')
+        self.assertTrue(all(r['parcelNumber'] not in r['name'] and r['parcelNumber'] not in r['detail'] for r in rows))
 
     @unittest.skipUnless(os.environ.get('LASTBOOK_TEST_PARCEL_MODEL') == '1', 'opt-in test with the pinned local Gemma')
     def test_real_gemma_parcel_directions(self):

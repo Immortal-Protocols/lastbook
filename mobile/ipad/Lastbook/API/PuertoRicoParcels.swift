@@ -60,13 +60,18 @@ enum PuertoRicoParcels {
         }
         return keys.dropFirst(min(keys.count, max(0,offset))).prefix(limit).compactMap { base in
             guard let r = best[base], var item = outline(db,base) else { return nil }
-            let km = r["meters"]?.int.map { "km " + PuertoRicoModel.kilometer(Int($0)) } ?? "km unrecorded"
+            let km = r["meters"]?.int.map { PuertoRicoModel.kilometer(Int($0)) }
             let lot = r["lot"]?.text ?? "", sector = r["sector"]?.text ?? "", access = r["access"]?.text ?? ""
-            let parts = ["PR-\(a.route)", km, lot.isEmpty ? "" : "lot " + lot, sector.isEmpty ? "" : "sector " + sector,
-                         r["interior"]?.int == 1 ? ("interior " + access).trimmingCharacters(in: .whitespaces) : ""]
+            let road = "PR-\(a.route)" + (km.map { " km " + $0 } ?? "")
+            let qualifiers = [lot.isEmpty ? "" : "Solar " + lot.uppercased(), sector.isEmpty ? "" : "Sector " + sector,
+                              r["interior"]?.int == 1 ? ("Interior " + access).trimmingCharacters(in: .whitespaces) : ""]
+                .filter { !$0.isEmpty }
+            item["name"] = (qualifiers.first.map { $0 + " · " } ?? "") + road
             item["kind"] = "Possible parcel"
             item["parcelCount"] = keys.count
-            item["detail"] = (item["detail"] as? String ?? "") + " · " + parts.filter { !$0.isEmpty }.joined(separator: ", ") + " · " + (r["source"]?.text ?? "")
+            let detail = [qualifiers.dropFirst().joined(separator: ", "), item["detail"] as? String ?? "",
+                          km == nil ? "km unrecorded" : "", r["source"]?.text ?? ""]
+            item["detail"] = detail.filter { !$0.isEmpty }.joined(separator: " · ")
             return item
         }
     }

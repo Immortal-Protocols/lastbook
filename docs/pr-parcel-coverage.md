@@ -1,4 +1,4 @@
-# Puerto Rico parcel search by municipio
+# Puerto Rico rural address search by municipio
 
 The November 17, 2026 build found **62,164 distinct parcels with a searchable numbered-road address** in Planning Board permits. All 78 municipios have matches. The CRIM map supplied boundaries for **1,292,468 distinct land numbers**. Thirteen numbers occur in two municipios. Each appears in both boundary counts below. The builder skips those numbers when attaching addresses.
 

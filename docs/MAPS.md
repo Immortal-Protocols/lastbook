@@ -110,18 +110,19 @@ same on-device index. Gemma keeps the supplied solar or lote, sector and interio
 It can read a parcel address that omits the kilometer. A result from this path displays the interpretation. A busy, disabled or absent model leaves
 the ordinary reader available. A map request stops waiting after 60 seconds.
 
-With the parcel index installed, enter a **número de catastro** in the same search box to see the land
-boundary. Enter the 11-digit base number with or without its hyphens, or the full number with a
-three-digit suffix. A recorded nonzero account suffix opens the shared land boundary. An unknown
-account suffix returns no result. Leading zeros count.
-
-For a typed road address, the map numbers and outlines the possible parcels. Select a number
-to inspect it, or open **Show matches** for the list. **All matches** returns to the group. **Show more parcels** adds the
-next page. A candidate uses the same recorded lot, sector and interior details as the query.
+When the directions match land records, the map outlines the possible parcels and numbers the pins.
+Open **Show matches** to compare them. Each row shows the recorded road and kilometer, when known.
+A solar, sector or interior detail helps distinguish parcels on the same road. The barrio and municipio
+appear underneath. Select a pin or a row to inspect the boundary. **All matches** returns to the group.
+**Show more parcels** adds the next page. Each candidate satisfies the supplied lot, sector and interior details.
 Even a single candidate is labeled **Possible parcel**. When a source lists the road and area
 but omits the requested kilometer, the result says **km unrecorded**. The parcel marker lies
 within the recorded land boundary. Its position does not identify an entrance or a building.
 These screenshots use invented parcels. [Numbered boundaries](pr-parcels-map.png) · [Match list](pr-parcels-list.png)
+
+If a property document gives a **número de catastro**, pasting it into the same box opens the recorded
+land boundary directly. The reader accepts an 11-digit land number with or without hyphens and a full
+account number with a recorded suffix. Leading zeros count.
 
 To build a parcel-enabled Puerto Rico pack, use Python 3.11 or newer in a separate build environment on a computer with internet access. The command fetches the islandwide public inputs directly from their publishers and writes `Lastbook-Addresses-PR.zip`, `PR.sqlite` and `PR.coverage.json` in the chosen directory. Reusing the directory reuses its source files. Using a new directory fetches a new snapshot.
 
@@ -142,7 +143,11 @@ The November 2026 build found 1,292,468 distinct land numbers. The two permit la
 [SIP permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/8) ·
 [ARPE permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/16)
 
-The Planning Board's parcel layer has land numbers and boundaries. CRIM's *dirección física* is a separate source. The Catastro Digital guide describes individual lookups. An islandwide physical-address export with published redistribution terms has yet to be identified. A CRIM-supplied CSV can extend local coverage. Pass `--crim-addresses file.csv` once per file to the build command. The CSV may use `número de catastro,dirección física,municipio` or `catastro,address,municipio`. The builder reads those three fields and keeps source counts separate. [Catastro Digital guide](https://catastro.crimpr.net/cdprpc/help/CDPRPC_ManualUsuario_20200708.pdf) · [CRIM contact](https://portal.crim360.com/crimpr/CMS/13.html)
+The public build uses the land number to connect the address on a permit to its mapped boundary.
+It works with those public sources alone. If a builder already has a CRIM physical-address CSV, it can
+supply extra directions with `--crim-addresses file.csv`. Accepted headers include
+`número de catastro,dirección física,municipio` and `catastro,address,municipio`. The builder reads
+those three fields and reports the additional coverage separately.
 
 For a build from existing inputs, run `python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs --parcels derived/pr-parcel-inputs`. Omit `--parcels` for the earlier road and school index. The OSM and Census inputs are the [Puerto Rico PBF](https://download.geofabrik.de/north-america/us/puerto-rico.html) and [municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
 

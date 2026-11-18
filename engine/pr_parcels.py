@@ -82,10 +82,13 @@ def candidates(db, address, offset=0, limit=PAGE):
     result = []
     for base, (meters, lot, sector, inside, access, source) in ordered[offset:offset + limit]:
         item = outline(db, base)
-        info = [f'PR-{address.route}', f'km {meters / 1000:g}' if meters is not None else 'km unrecorded',
-                'lot ' + lot if lot else '', 'sector ' + sector if sector else '',
-                ('interior ' + access).strip() if inside else '']
-        item.update(kind='Possible parcel', parcelCount=len(ordered),
-                    detail=item['detail'] + ' · ' + ', '.join(v for v in info if v) + ' · ' + source)
+        road = f'PR-{address.route}' + (f' km {meters / 1000:g}' if meters is not None else '')
+        qualifiers = [part for part in (f'Solar {lot.upper()}' if lot else '',
+                                        f'Sector {sector}' if sector else '',
+                                        ('Interior ' + access).rstrip() if inside else '') if part]
+        name = f'{qualifiers[0]} · {road}' if qualifiers else road
+        detail = [', '.join(qualifiers[1:]), item['detail'], 'km unrecorded' if meters is None else '', source]
+        item.update(name=name, kind='Possible parcel', parcelCount=len(ordered),
+                    detail=' · '.join(part for part in detail if part))
         result.append(item)
     return result

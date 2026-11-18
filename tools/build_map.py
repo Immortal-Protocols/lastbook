@@ -5,16 +5,36 @@ map database the app can draw offline.
   python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
-the original archive is only read. Output tables:
+the original archive is only read. Another Geofabrik "free" GeoPackage works the same way; give its own
+description so the file does not claim to be Southern California (the defaults are the SoCal ones):
+
+  python3 tools/build_map.py basse-normandie.gpkg national.sqlite --source "OpenStreetMap contributors, via Geofabrik
+    basse-normandie-latest-free.gpkg.zip (ODbL 1.0)" --data-as-of 2026-11-16T21:22:36Z --bounds=-2.11,48.02,1.13,49.88
+    --region "Basse-Normandie (Calvados, Manche, Orne)" --no-buildings
+
+--no-buildings leaves out building outlines, for a region whose outlines come from derived/geo/buildings.sqlite;
+--no-waterways leaves out river and stream lines, for a region whose lines come from derived/geo/water.sqlite.
+Output tables:
   feat(id, layer, cls, name, minz, geom)   geom = packed int32 lon/lat * 1e6 (see pack())
   feat_idx (R*Tree on bbox)
   poi(id, cls, name, lon, lat)             help-relevant points (hospitals, pharmacies, water...)
   meta(key, value)
 """
-import math, sqlite3, struct, sys, time
+import argparse, math, sqlite3, struct, time
 from array import array
+from pathlib import Path
 
-SRC, DST = sys.argv[1], sys.argv[2]
+ap = argparse.ArgumentParser(description='Geofabrik free GeoPackage -> offline map database')
+ap.add_argument('src', help='extracted .gpkg (read only)')
+ap.add_argument('dst', help='map database to write (its four tables are replaced)')
+ap.add_argument('--source', default='OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)', help='meta.source')
+ap.add_argument('--data-as-of', default='2026-10-25T21:21:21Z', help='meta.data_as_of: the date in the extract\'s README')
+ap.add_argument('--bounds', default='-121.36,32.50,-114.10,35.89', help='meta.bounds: west,south,east,north')
+ap.add_argument('--region', help='meta.region: a plain name for the area, when it is not Southern California')
+ap.add_argument('--no-buildings', action='store_true', help='leave out building outlines')
+ap.add_argument('--no-waterways', action='store_true', help='leave out river and stream lines, for a region whose lines come from derived/geo/water.sqlite')
+ARGS = ap.parse_args()
+SRC, DST = ARGS.src, ARGS.dst
 Q = 1e6
 
 ROAD_Z = {'motorway': 5, 'trunk': 6, 'motorway_link': 10, 'trunk_link': 10, 'primary': 8, 'primary_link': 12,
@@ -121,7 +141,7 @@ def area_z(minx, maxx, miny, maxy, base):
 
 def main():
     t0 = time.time()
-    src = sqlite3.connect(SRC)
+    src = sqlite3.connect(Path(SRC).resolve().as_uri() + '?mode=ro', uri=True)
     dst = sqlite3.connect(DST)
     dst.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
       DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
@@ -164,7 +184,7 @@ def main():
     for parts, (cls,) in each('gis_osm_protected_areas_a_free', 'fclass'):
         add('land', 'park', None, area_z(*bbox(parts), 8), [simplify(p, 0.00002) for p in parts])
     print('land', fid[0], round(time.time() - t0), flush=True)
-    for parts, (cls, name) in each('gis_osm_waterways_free'):
+    for parts, (cls, name) in () if ARGS.no_waterways else each('gis_osm_waterways_free'):
         add('waterway', cls, name, 10 if cls == 'river' else 13, parts)
     for parts, (cls, name) in each('gis_osm_railways_free'):
         add('rail', cls, name, 10 if cls == 'rail' else 13, parts)
@@ -174,7 +194,7 @@ def main():
         add('road', cls, label, ROAD_Z.get(cls, 15), parts)
     print('roads', fid[0], round(time.time() - t0), flush=True)
     dst.commit()
-    for parts, (cls, name) in each('gis_osm_buildings_a_free'):
+    for parts, (cls, name) in () if ARGS.no_buildings else each('gis_osm_buildings_a_free'):
         add('bldg', cls or '', None, 15, [simplify(parts[0], 0.000002)])
     print('buildings', fid[0], round(time.time() - t0), flush=True)
     dst.commit()
@@ -185,22 +205,28 @@ def main():
                 z = 5
             add('place', cls, name, z, parts)
     pid = 0
-    for table in ('gis_osm_pois_free', 'gis_osm_pois_a_free', 'gis_osm_natural_free', 'gis_osm_natural_a_free'):
+    # Geofabrik files fuel stations under "traffic", not "pois"; only fuel is taken from those tables.
+    for table in ('gis_osm_pois_free', 'gis_osm_pois_a_free', 'gis_osm_natural_free', 'gis_osm_natural_a_free',
+                  'gis_osm_traffic_free', 'gis_osm_traffic_a_free'):
+        if not src.execute('SELECT 1 FROM sqlite_master WHERE name=?', (table,)).fetchone():
+            continue
         for parts, (cls, name) in each(table):
             if cls not in POI_KEEP:
                 continue
             if table == 'gis_osm_natural_free' and cls not in ('spring',):
+                continue
+            if table.startswith('gis_osm_traffic') and cls != 'fuel':
                 continue
             minx, maxx, miny, maxy = bbox(parts)
             pid += 1
             dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)', (pid, cls, name, (minx + maxx) / 2, (miny + maxy) / 2))
     dst.execute('CREATE INDEX poi_cls ON poi(cls, lon, lat)')
     dst.executemany('INSERT INTO meta VALUES (?,?)', [
-        ('source', 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
-        ('data_as_of', '2026-10-25T21:21:21Z'),
-        ('bounds', '-121.36,32.50,-114.10,35.89'),
+        ('source', ARGS.source),
+        ('data_as_of', ARGS.data_as_of),
+        ('bounds', ARGS.bounds),
         ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
-    ])
+    ] + ([('region', ARGS.region)] if ARGS.region else []))
     dst.commit()
     print('done features', fid[0], 'pois', pid, round(time.time() - t0), 's', flush=True)
 

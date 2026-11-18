@@ -20,14 +20,12 @@ The fetch step needs the network and osmium-tool (brew install osmium-tool) for 
 check do not touch the network. No other dependency.
 """
 import argparse
-import datetime
 import hashlib
 import json
 import math
 import re
 import shutil
 import sqlite3
-import struct
 import subprocess
 import sys
 import time
@@ -48,7 +46,8 @@ REPORT = BASE / 'build.json'
 Q = 1e6
 
 PBF_URL = 'https://download.geofabrik.de/europe/germany/baden-wuerttemberg-latest.osm.pbf'
-BOUNDARY_URL = ('https://nominatim.openstreetmap.org/search?q=Stuttgart&format=json&polygon_geojson=1&limit=1')
+BOUNDARY_OSM_ID = 62375
+BOUNDARY_URL = ('https://nominatim.openstreetmap.org/lookup?osm_ids=R62375&format=json&polygon_geojson=1')
 BOUNDARY_UA = 'lastbook-region-builder/1.0 (offline map build; hello@lastbook.org)'
 ATTRIBUTION = '© OpenStreetMap contributors'
 LICENCE = 'ODbL 1.0'
@@ -70,12 +69,10 @@ PLACE_Z = {'city': 6, 'town': 9, 'village': 11, 'borough': 9, 'suburb': 12, 'qua
 POI_AMENITY = {'hospital', 'clinic', 'doctors', 'pharmacy', 'dentist', 'veterinary', 'fire_station', 'police',
                'drinking_water', 'toilet', 'shelter', 'community_centre', 'town_hall', 'school', 'library',
                'kindergarten', 'college', 'university', 'nursing_home', 'post_office', 'courthouse', 'embassy',
-               'fuel', 'shelter', 'water_point'}
-POI_AMENITY_ALIAS = {'toilets': 'toilet', 'townhall': 'town_hall', 'dentists': 'dentist', 'childcare': 'kindergarten',
-                     'doctors': 'doctors'}
+               'fuel', 'water_point'}
+POI_AMENITY_ALIAS = {'toilets': 'toilet', 'townhall': 'town_hall', 'dentists': 'dentist', 'childcare': 'kindergarten'}
 POI_SHOP = {'supermarket', 'convenience', 'doityourself', 'hardware', 'garden_centre', 'bicycle'}
 POI_MAN_MADE = {'water_tower', 'water_works', 'water_tank', 'comms_tower'}
-POI_STOP = {'stuttgart', 'baden-wuerttemberg', 'bw', 'deutschland', 'de'}
 
 
 def log(*args):
@@ -92,9 +89,11 @@ def sha256(path):
 
 def download(url, dest, headers=None):
     log('download', url)
+    part = dest.with_suffix(dest.suffix + '.part')
     request = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(request, timeout=180) as response, open(dest, 'wb') as out:
+    with urllib.request.urlopen(request, timeout=180) as response, open(part, 'wb') as out:
         shutil.copyfileobj(response, out, 1 << 22)
+    part.replace(dest)          # an interrupted download never poses as the cached file
     return dest
 
 
@@ -183,6 +182,9 @@ def fetch():
         hit = json.loads(boundary_file.read_text(encoding='utf-8'))[0]
     except (IndexError, json.JSONDecodeError) as error:
         raise SystemExit(f'{boundary_file} has no usable boundary: {error}')
+    if hit.get('osm_id') != BOUNDARY_OSM_ID or (hit.get('geojson') or {}).get('type') not in ('Polygon', 'MultiPolygon'):
+        raise SystemExit(f'{boundary_file} is not OpenStreetMap relation {BOUNDARY_OSM_ID}: '
+                         f"osm_id={hit.get('osm_id')} geometry={(hit.get('geojson') or {}).get('type')}")
     polygon = {'type': 'Feature', 'properties': {'name': hit.get('display_name', 'Stuttgart')},
                'geometry': hit['geojson']}
     (WORK / 'stuttgart-boundary.geojson').write_text(json.dumps(polygon), encoding='utf-8')
@@ -197,13 +199,14 @@ def fetch():
         subprocess.run(['osmium', 'export', '--overwrite', '--add-unique-id', 'type_id',
                         '--geometry-types', 'point,linestring,polygon', '--output-format', 'geojsonseq',
                         '--output', str(stream), str(city)], check=True)
-    data_as_of = None
     try:
         info = subprocess.run(['osmium', 'fileinfo', '-e', str(pbf)], check=True, capture_output=True, text=True).stdout
         found = re.search(r'osmosis_replication_timestamp=(\S+)', info)
         data_as_of = found.group(1) if found else None
-    except (subprocess.CalledProcessError, OSError):
-        pass
+    except (subprocess.CalledProcessError, OSError) as error:
+        raise SystemExit(f'cannot read the extract timestamp from {pbf}: {error}')
+    if not data_as_of:
+        raise SystemExit(f'{pbf} carries no osmosis_replication_timestamp; refusing to invent a data date')
     sizes = {}
     for path in (pbf, city, stream):
         sizes[path.name] = {'bytes': path.stat().st_size, 'sha256': sha256(path)}
@@ -212,7 +215,7 @@ def fetch():
             {'name': 'OpenStreetMap via Geofabrik baden-wuerttemberg-latest.osm.pbf', 'url': PBF_URL,
              'licence': f'{LICENCE}, {ATTRIBUTION}', 'data_as_of': data_as_of,
              'fetched': time.strftime('%Y-%m-%dT%H:%M:%S')},
-            {'name': 'Stuttgart city boundary, OpenStreetMap relation 62375 via Nominatim', 'url': BOUNDARY_URL,
+            {'name': f'Stuttgart city boundary, OpenStreetMap relation {BOUNDARY_OSM_ID} via Nominatim', 'url': BOUNDARY_URL,
              'licence': f'{LICENCE}, {ATTRIBUTION}', 'fetched': time.strftime('%Y-%m-%dT%H:%M:%S')},
         ],
         'files': sizes,
@@ -240,8 +243,6 @@ def map_poi(tags):
         return 'spring'
     if tags.get('emergency') == 'assembly_point':
         return 'assembly_point'
-    if tags.get('leisure') == 'sports_centre':
-        return None
     return None
 
 
@@ -289,8 +290,9 @@ def fetched_data_as_of():
         stamp = fetched['sources'][0].get('data_as_of') or ''
     except (OSError, ValueError, IndexError, KeyError):
         stamp = ''
-    return stamp[:10] or datetime.datetime.fromtimestamp(
-        (SOURCE / 'baden-wuerttemberg.osm.pbf').stat().st_mtime, datetime.timezone.utc).strftime('%Y-%m-%d')
+    if not stamp:
+        raise SystemExit('fetched.json carries no data_as_of; run fetch again instead of dating the set by file time')
+    return stamp[:10]
 
 
 def build_national():
@@ -301,8 +303,10 @@ def build_national():
       CREATE TABLE poi(id INTEGER PRIMARY KEY, cls TEXT, name TEXT, lon REAL, lat REAL);
       CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);''')
     features = pois = 0
-    addresses = {}
+    addresses = []
     seen_address = set()
+    seen_poi = set()
+    skipped_numbers = skipped_lines = lines = 0
     bounds = None
 
     def add_feature(layer, cls, name, minz, parts):
@@ -317,36 +321,42 @@ def build_national():
         dst.execute('INSERT INTO feat_idx VALUES (?,?,?,?,?,?,?)', (features, minx, maxx, miny, maxy, minz, 30))
 
     def add_address(tags, lon, lat):
-        number = (tags.get('addr:housenumber') or '').strip()
+        nonlocal skipped_numbers
+        raw = (tags.get('addr:housenumber') or '').strip()
         street = (tags.get('addr:street') or '').strip()
-        if not number or not street or lon is None or lat is None:
+        if not raw or not street or lon is None or lat is None:
             return
-        number = re.sub(r'\s+', '', number).upper()
-        match = re.match(r'\d{1,4}[A-Z]?', number)
-        if not match:
+        numbers = []
+        for part in re.split(r'[;,]', re.sub(r'\s+', '', raw).upper().replace('–', '-')):
+            match = re.fullmatch(r'(\d{1,4}[A-Z]?)(?:-\d{1,4}[A-Z]?)?', part)
+            if match:
+                numbers.append(match.group(1))     # a range ('2-4') is one building, found at its first number
+            else:
+                skipped_numbers += 1               # '51/1' is a different house; never truncate it into 51
+        if not numbers:
             return
-        number = match.group(0)
         postcode = (tags.get('addr:postcode') or '').strip()
         if not re.fullmatch(r'\d{5}', postcode):
             postcode = ''
         district = (tags.get('addr:suburb') or tags.get('addr:district') or '').strip()
         city = (tags.get('addr:city') or 'Stuttgart').strip()
-        key = (number, street, postcode, round(lat, 5), round(lon, 5))
-        if key in seen_address:
-            return
-        seen_address.add(key)
-        # keyed by postcode and district too: the same street and number exist in more than one district, and a
-        # postcode-less object must not overwrite a mapped one
-        addresses[(street, number, postcode, district)] = (street, number, city, postcode, district, round(lat, 6), round(lon, 6))
+        for number in dict.fromkeys(numbers):
+            key = (number, street, postcode, district, round(lat, 5), round(lon, 5))
+            if key in seen_address:
+                continue
+            seen_address.add(key)
+            addresses.append((street, number, city, postcode, district, round(lat, 6), round(lon, 6)))
 
     with open(WORK / 'stuttgart.geojsonseq', encoding='utf-8') as stream:
         for line in stream:
             line = line.strip()
             if not line:
                 continue
+            lines += 1
             try:
                 obj = json.loads(line)
             except json.JSONDecodeError:
+                skipped_lines += 1
                 continue
             props = obj.get('properties') or {}
             kind, parts = geojson_parts(obj.get('geometry') or {})
@@ -365,6 +375,10 @@ def build_national():
                 add_feature(layer, cls, name, minz, geometry)
             cls = map_poi(props)
             if cls:
+                poi_key = (cls, props.get('name'), round(lon, 6), round(lat, 6))
+                if poi_key in seen_poi:
+                    continue              # osmium exports an area POI as line and polygon; count it once
+                seen_poi.add(poi_key)
                 pois += 1
                 dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)',
                             (pois, cls, props.get('name'), round(lon, 6), round(lat, 6)))
@@ -395,7 +409,10 @@ def build_national():
         empty.commit()
     finally:
         empty.close()
-    return {'features': features, 'pois': pois, 'addresses': len(addresses), 'bounds': bounds}, addresses
+    if lines and skipped_lines > lines // 1000:
+        raise SystemExit(f'{skipped_lines:,} of {lines:,} export lines did not parse; refusing a partly-garbled set')
+    return {'features': features, 'pois': pois, 'addresses': len(addresses), 'bounds': bounds,
+            'skipped_house_numbers': skipped_numbers, 'skipped_export_lines': skipped_lines}, addresses
 
 
 def build_addresses(addresses):
@@ -403,7 +420,7 @@ def build_addresses(addresses):
     path = GEO / 'addresses' / f'{REGION}.sqlite'
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = []
-    for street, number, city, postcode, district, lat, lon in addresses.values():
+    for street, number, city, postcode, district, lat, lon in addresses:
         norm = normalize_as('de-1', street)
         if not norm:
             continue
@@ -442,10 +459,6 @@ def build_places():
         def add(kind, items):
             db.executemany(insert, items)
             counts[kind] = len(items)
-
-        def center(geom):
-            _, _, x, y = struct.unpack_from('<iiii', geom)
-            return x / Q, y / Q
 
         add('city', [('Stuttgart', 'city', 'Baden-Württemberg, Germany', 48.7758, 9.1829, 0, 'OpenStreetMap')])
 
@@ -491,7 +504,7 @@ def build_places():
             districts = {}
             for district, lat, lon in addr.execute("SELECT district, lat, lon FROM addr WHERE district <> ''"):
                 districts.setdefault(district, []).append((lat, lon))
-            add('district', [(name, 'district (Stadtbezirk)', 'Stuttgart', sorted(points)[len(points) // 2][0],
+            add('district', [(name, 'suburb (Stadtteil, as tagged in addresses)', 'Stuttgart', sorted(points)[len(points) // 2][0],
                               sorted(points)[len(points) // 2][1], 2, 'OpenStreetMap')
                              for name, points in sorted(districts.items())])
         finally:
@@ -506,11 +519,15 @@ def build_places():
 
 
 def build():
+    global DATA, GEO
     if not (WORK / 'stuttgart.geojsonseq').exists():
         raise SystemExit('run fetch first: tools/build_region_de_stg.py fetch')
     fetched = json.loads((SOURCE / 'fetched.json').read_text(encoding='utf-8'))
-    if DATA.exists():
-        shutil.rmtree(DATA)
+    real_data, real_geo = DATA, GEO
+    tmp = BASE / 'data.tmp'          # build beside the live set; a crash never deletes a working map
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    DATA, GEO = tmp, tmp / 'derived' / 'geo'
     GEO.mkdir(parents=True)
     started = time.time()
     counts = {}
@@ -529,6 +546,10 @@ def build():
     for f in sorted(DATA.rglob('*')):
         if f.is_file():
             outputs[f.relative_to(DATA).as_posix()] = {'bytes': f.stat().st_size, 'sha256': sha256(f)}
+    DATA, GEO = real_data, real_geo
+    if DATA.exists():
+        shutil.rmtree(DATA)
+    tmp.rename(DATA)
     report = {'region': REGION, 'built': time.strftime('%Y-%m-%dT%H:%M:%S'), 'sources': fetched,
               'counts': counts, 'outputs': outputs,
               'note': 'map-set.json lists the map files; the address index is a separate sidecar, as for US states.'}
@@ -553,6 +574,8 @@ def check():
                f'{rel}: size and SHA-256 as built')
     map_set = json.loads((DATA / 'map-set.json').read_text(encoding='utf-8'))
     expect(map_set['name'] == REGION, f'map-set.json name is {REGION}')
+    expect(map_set['files'] == {rel: (DATA / rel).stat().st_size for rel in map_set['files']},
+           'map-set.json sizes match the files')
     for rel in [*map_set['files'], f'derived/geo/addresses/{REGION}.sqlite']:
         db = sqlite3.connect(f'file:{DATA / rel}?mode=ro', uri=True)
         expect(db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok', f'{rel}: SQLite integrity')
@@ -561,27 +584,37 @@ def check():
     nat = sqlite3.connect(f'file:{GEO / "national.sqlite"}?mode=ro', uri=True)
     roads = nat.execute("SELECT count(*) FROM feat WHERE layer='road'").fetchone()[0]
     bldgs = nat.execute("SELECT count(*) FROM feat WHERE layer='bldg'").fetchone()[0]
-    expect(roads > 5000, f'streets from OpenStreetMap: {roads:,} road ways')
-    expect(bldgs > 50000, f'building outlines in Stuttgart: {bldgs:,}')
-    for cls, low in (('hospital', 20), ('pharmacy', 80), ('fire_station', 10), ('police', 5),
-                     ('clinic', 10), ('drinking_water', 40)):
+    expect(roads > 50000, f'streets from OpenStreetMap: {roads:,} road ways')
+    expect(bldgs > 90000, f'building outlines in Stuttgart: {bldgs:,}')
+    for cls, low in (('hospital', 10), ('pharmacy', 70), ('fire_station', 20), ('police', 20),
+                     ('clinic', 10), ('drinking_water', 60), ('assembly_point', 40)):
         n = nat.execute('SELECT count(*) FROM poi WHERE cls=?', (cls,)).fetchone()[0]
         expect(n >= low, f'help points {cls}: {n:,} (expected at least {low:,})')
-    bounds = nat.execute("SELECT value FROM meta WHERE key='bounds'").fetchone()[0]
+    bounds = [float(part) for part in nat.execute("SELECT value FROM meta WHERE key='bounds'").fetchone()[0].split(',')]
+    outside = nat.execute('SELECT count(*) FROM poi WHERE lon < ? OR lon > ? OR lat < ? OR lat > ?',
+                          bounds).fetchone()[0]
+    expect(outside == 0, f'every help point within the set bounds ({outside} outside)')
+    unknown = sorted({cls for (cls,) in nat.execute('SELECT DISTINCT cls FROM poi')} - set(server.HELP))
+    expect(not unknown, f'every help point class is one the app can show ({unknown} not in server.HELP)')
     nat.close()
 
     addr = sqlite3.connect(f'file:{GEO / "addresses" / (REGION + ".sqlite")}?mode=ro', uri=True)
     n, bad_zip = addr.execute("SELECT count(*), sum(zip <> '' AND zip NOT GLOB '[0-9][0-9][0-9][0-9][0-9]') FROM addr").fetchone()
-    expect(n > 20000, f'addresses in Stuttgart: {n:,}')
+    expect(n > 60000, f'addresses in Stuttgart: {n:,}')
     expect(not bad_zip, f'every present postcode is five digits ({bad_zip} malformed)')
-    samples = addr.execute("SELECT street, num, city FROM addr WHERE length(street) > 8 LIMIT 3").fetchall()
+    outside = addr.execute('SELECT count(*) FROM addr WHERE lon < ? OR lon > ? OR lat < ? OR lat > ?',
+                           bounds).fetchone()[0]
+    expect(outside == 0, f'every address within the set bounds ({outside} outside)')
     addr.close()
 
-    for street, num, city in samples:
-        query = f'{street} {num}, {city}'
+    for query, name, lat, lon in (('Königstraße 28, Stuttgart', 'Königstraße 28', 48.7790, 9.1785),
+                                  ('Calwer Straße 16, Stuttgart', 'Calwer Straße 16', 48.7775, 9.1752),
+                                  ('Magstadter Straße 2, Stuttgart', 'Magstadter Straße 2', None, None)):
         found = find_addresses(query, GEO)
-        expect(bool(found) and found[0]['name'] == f'{street} {num}',
-               f'address search "{query}" -> {found[0]["name"] if found else "nothing"}')
+        ok = bool(found) and found[0]['name'] == name
+        if ok and lat is not None:
+            ok = abs(found[0]['lat'] - lat) < 0.002 and abs(found[0]['lon'] - lon) < 0.003
+        expect(ok, f'address search "{query}" -> {found[0]["name"] if found else "nothing"}')
     expect(find_addresses('Hauptstraße 99999 Stuttgart', GEO) == [], 'an unknown house number returns nothing')
 
     places = sqlite3.connect(f'file:{GEO / "places.sqlite"}?mode=ro', uri=True)

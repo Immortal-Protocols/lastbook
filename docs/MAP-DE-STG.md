@@ -36,7 +36,7 @@ SHA-256 of each download and output, and the data date of the extract.
 |---|---|
 | `derived/geo/national.sqlite` | `feat` and `feat_idx` (roads, water, wetland, land use, buildings, railways, waterways, named places), `poi` (help points), `meta` (`source`, `data_as_of`, `bounds`, `region`, `help_points`) |
 | `derived/geo/map.sqlite` | Empty schema, as for Istanbul; the app opens it for compatibility |
-| `derived/geo/places.sqlite` | Place finder rows: the city, Stadtbezirke seen in addresses, streets, postcodes and named points of interest, with the FTS index |
+| `derived/geo/places.sqlite` | Place finder rows: the city, suburbs seen in addresses, streets, postcodes and named points of interest, with the FTS index |
 | `derived/geo/addresses/DE-STG.sqlite` | Street addresses with `meta.norm = 'de-1'` |
 | `map-set.json` | Names and sizes of the three map files above |
 
@@ -46,9 +46,9 @@ SHA-256 of each download and output, and the data date of the extract.
 |---|---|
 | Extract data date | 2026-11-17 21:24 UTC (`osmosis_replication_timestamp`) |
 | Features | 204,905 (69,596 road ways, 122,901 building outlines, water, land use, railways, named places) |
-| Help points | 3,808 (27 hospitals, 109 pharmacies, 67 fire stations, 48 police, 21 clinics, 87 drinking-water taps) |
-| Addresses | 86,618, each kept per postcode and Stadtbezirk; a house with no mapped postcode is still found |
-| Places | 4,414 streets, 42 postcodes, 58 Stadtbezirke, 260 OSM place names |
+| Help points | 2,829 (16 hospitals, 101 pharmacies, 36 fire stations, 32 police, 16 clinics, 87 drinking-water taps, 73 emergency assembly points) |
+| Addresses | 90,464; a house with no mapped postcode is still found. Mapped numbers that are not one house (`51/1`, 4,737 in this build) are skipped and counted in `build.json`, never truncated into another house |
+| Places | 4,414 streets, 42 postcodes, 56 suburbs as tagged in addresses, 260 OSM place names |
 | Data folder | 44 MB |
 
 ## Why the code and not DE-BW

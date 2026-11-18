@@ -48,12 +48,12 @@ def sample(folder, towns, size):
     return selected
 
 
-def includes(geo, query, land):
-    if not address_search.is_address_query(query):
+def includes(geo, query, land, model=None):
+    if len(query) > 400 or not address_search.is_address_query(query):
         return False
     offset = 0
     while True:
-        rows = address_search.find_addresses(query, geo, parcel_offset=offset, parcel_limit=30)
+        rows = address_search.find_addresses(query, geo, model=model, parcel_offset=offset, parcel_limit=30)
         parcels = [row for row in rows if row['kind'] == 'Possible parcel']
         if any(row['parcelNumber'] == land for row in parcels):
             return True
@@ -62,7 +62,7 @@ def includes(geo, query, land):
             return False
 
 
-def evaluate(database, folder, size):
+def evaluate(database, folder, size, model=None):
     with sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True) as db, tempfile.TemporaryDirectory() as tmp:
         geo = Path(tmp)
         (geo / 'addresses').mkdir()
@@ -85,7 +85,13 @@ def evaluate(database, folder, size):
                 short = f'{town}, km {km}, PR-{road}'
                 full = directions if f' {fold(town)} ' in f' {fold(directions)} ' else f'{directions}, {town}'
                 counts['road_km_municipio_returned_parcel'] += includes(geo, short, land)
-                counts['source_directions_returned_parcel'] += includes(geo, full, land)
+                baseline = includes(geo, full, land)
+                counts['source_directions_returned_parcel'] += baseline
+                if model is not None:
+                    assisted = includes(geo, full, land, model)
+                    counts['gemma_enabled_returned_parcel'] += assisted
+                    counts['gemma_enabled_gained'] += assisted and not baseline
+                    counts['gemma_enabled_lost'] += baseline and not assisted
         return dict(counts)
 
 
@@ -94,7 +100,20 @@ if __name__ == '__main__':
     parser.add_argument('database', type=Path)
     parser.add_argument('sources', type=Path, help='Snapshot directory from fetch_pr_parcels.py')
     parser.add_argument('--per-municipio', type=int, default=3)
+    parser.add_argument('--gemma', action='store_true', help='also replay full directions with Lastbook’s local model enabled')
     args = parser.parse_args()
     if args.per_municipio < 1:
         parser.error('--per-municipio must be positive')
-    print(json.dumps(evaluate(args.database, args.sources, args.per_municipio), indent=2))
+    model = None
+    try:
+        if args.gemma:
+            import llm_local
+            model = llm_local.LOCAL
+            model.discover()
+            problem = model.ensure_running()
+            if problem or not model.enabled() or not model.available():
+                parser.error(problem or 'Enable the installed local model before running --gemma.')
+        print(json.dumps(evaluate(args.database, args.sources, args.per_municipio, model), indent=2))
+    finally:
+        if model is not None:
+            model.stop('Finished permit address evaluation')

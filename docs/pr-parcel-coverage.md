@@ -105,3 +105,22 @@ Run `python tools/check_pr_permit_coverage.py path/to/PR.sqlite path/to/parcel-i
 | [CRIM parcel boundaries](https://sigejp.pr.gov/server/rest/services/crim/crim_feb_2025/MapServer/0) | 1,292,823 | `e94ab3e8398832ea8b6da24e1344f0c20e4ec8b0788367f8cdf80c4f79d2246f` |
 | [SIP permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/8) | 221,173 | `783f2239cfd60e0d88f80ab297e51b2c08ff1122ac69feef8a8a5819b7609a73` |
 | [ARPE permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/16) | 431,605 | `3b028fa55743b962fcf157dbfee297a03a2a7dc9ec8e37467727878221bd7671` |
+
+### Replaying the same 234 directions with Medium Gemma
+
+With Gemma enabled, Lastbook returned the expected parcel in **78 of 234** cases, the same 78 as the deterministic reader. In 37 of the 78, it was the only parcel candidate. The fallback called Gemma on 105 of the 156 misses. Lastbook accepted 43 of those readings under its checks that the road, kilometer and qualifiers come from the query. None added the expected parcel. To repeat the paired benchmark, add `--gemma` to the command above with the local runner and Medium model installed.
+
+A second experiment scored a Gemma reading for every direction, including those the normal fallback skipped. It used the same validation and parcel lookup, and supplied only the directions to the model. Gemma alone recovered **74 of 234**. All 74 were also parser hits. In the other four parser hits, the model reading failed validation. Falling back to the parser in those cases restored all four.
+
+| Why the expected parcel was missing | Cases |
+| --- | ---: |
+| The recorded land number had no boundary in the index | 80 |
+| The boundary was in a different municipio from the permit, and road/km/municipio lookup missed | 10 |
+| The boundary was in the same municipio but had no address row for that road | 4 |
+| Road/km/municipio found the parcel, and a spelling or formatting substitution also recovered it using the full directions | 5 |
+| Road/km/municipio found the parcel, but the permit's barrio wording differed from the mapped barrio | 24 |
+| Road/km/municipio found the parcel, but additional words such as a camino, building or parcela number entered the locality field | 33 |
+
+The five substitutions covered an unhyphenated ZIP+4, `Mameyes 1` / `Mameyes I`, `Saint Just` / `St. Just`, and two alternate barrio spellings. Each brought the expected parcel into the results. Only one produced a single parcel candidate. The 24 barrio differences need local evidence before treating the names as interchangeable. Of the four parcels without an address row for the road, three permits had conflicting municipio prefixes. The fourth named both a carretera and a ramal, which the index builder could not represent as a single road.
+
+We also tested keeping the permit's full wording. We matched normalized directions within the permit municipio against the public ARPE snapshot, kept all candidate land numbers, and required the existing account-prefix and boundary-municipio checks. Adding those results to normal search recovered **61 additional recorded parcels (139/234 total)**. In 58 of the 61, the wording matched just one joined parcel. This test reuses the wording on the sampled permit. Only 13 of those 61 had a second ARPE record ID with the same normalized wording and parcel. Separately collected or independently rephrased directions would be needed to measure how well this approach handles a resident's own wording.

@@ -137,6 +137,11 @@ def main():
     roots = [a.app / 'Contents' / d / 'engine' / 'setup' / 'roots.pem' for d in ('Resources', 'Frameworks')]
     if not any(r.is_file() for r in roots):    # setup's downloader trusts only these roots; without them it downloads nothing
         problems.append('missing from the package: engine/setup/roots.pem')
+    comparisons = Path(__file__).resolve().parents[1] / 'content' / 'source-disagreements.json'
+    if comparisons.is_file():
+        shipped = [a.app / 'Contents' / d / 'content' / comparisons.name for d in ('Resources', 'Frameworks')]
+        if not any(p.is_file() for p in shipped):
+            problems.append('missing from the package: content/source-disagreements.json')
     print(f'files {n_files}, native binaries {n_macho}, modules looked inside {n_mods}')
     print(f'remote_storage string: {remote_hits or "nowhere"} (the module itself is refused above)')
     print(f'/Users/... strings: { {u: w[:3] for u, w in user_paths.items()} or "none"}')

@@ -1131,8 +1131,8 @@ CLUSTER_PX = 46
 
 
 def _resource_summary(cls, detail):
-    keys = {'mineral': ('commod1', 'commod2', 'dev_stat'), 'oil_gas_well': ('WellTypeLabel', 'FieldName', 'API'),
-            'fish_stocking': ('FishType', 'Counties'), 'boat_launch': ('Water_Body', 'Facility_Type'),
+    keys = {'mineral': ('feature', 'commodity', 'status', 'commod1', 'commod2', 'dev_stat'), 'oil_gas_well': ('WellTypeLabel', 'FieldName', 'API'),
+            'fish_stocking': ('FishType', 'Counties'), 'boat_launch': ('feature', 'Water_Body', 'Facility_Type'),
             'dam': ('purpose', 'river', 'county'), 'reservoir': ('reservoir_type', 'water_type', 'state'),
             'orchard': ('crop',), 'vineyard': ('crop',), 'berries': ('crop',), 'perennial_veg': ('crop',), 'lake': ('water_type', 'state'), 'pond': ('water_type', 'state')}.get(cls, ())
     out = [str(detail.get(k)) for k in keys if detail.get(k)]
@@ -1140,6 +1140,10 @@ def _resource_summary(cls, detail):
         out.insert(0, 'NOT drinking water')
     if detail.get('area_acres'):
         out.insert(0, f"{detail['area_acres']:,} acres")
+    if detail.get('area_ha'):
+        out.insert(0, f"{detail['area_ha']:,} ha")
+    if detail.get('crop_ha'):
+        out.append(f"{detail['crop_ha']:,} ha mapped")
     if detail.get('crop_acres'):
         out.append(f"about {round(detail['crop_acres']):,} acres in this block")
     if detail.get('normal_storage_af'):

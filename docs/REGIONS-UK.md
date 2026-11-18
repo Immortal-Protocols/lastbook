@@ -408,8 +408,8 @@ what was built, not measures of how complete the data is.
 | Terrain | Copernicus GLO-30, 17 one-degree tiles | 4,979 tiles; a Dartmoor tile reads 155-617 m against High Willhays at about 621 m | A surface model: heights include trees and buildings |
 | Water | OSM lakes and reservoirs, OSM `waterway=dam` | 112 reservoirs, 1,530 named lakes, 147 dams | No ponds layer; dams carry a name and owner at most |
 | Crops | OSM `landuse=orchard` and `landuse=vineyard` | 3,128 orchards, 236 vineyards | No crop type, no berries, volunteer-mapped |
-| Atlas | none | not built | Minerals and other resource records have no open UK source here |
+| Atlas | OSM mines, quarries, mine shafts and adits; slipways and marinas | 1,169 mineral records and 737 boat launches | OSM says what a place is, not whether it is safe or in use; quarries mapped only as relations are missed; no fish-stocking or oil and gas well records |
 
 The tools are `tools/build_map.py` (box cut), `tools/build_addresses_osm.py`, `tools/build_terrain.py`,
-`tools/build_water.py` and `tools/build_crops_osm.py`. Source extracts for a region as large as England are 1.7 GB (PBF)
+`tools/build_water.py`, `tools/build_crops_osm.py` and `tools/build_atlas_osm.py`. Source extracts for a region as large as England are 1.7 GB (PBF)
 and 3.2 GB (GeoPackage) because Geofabrik has no South West extract; the box is cut during the build.

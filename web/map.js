@@ -55,7 +55,7 @@ const MapView = (() => {
     FishType: 'Fish', Counties: 'County', WeekOfPlantStart: 'Stocked (week of)', Water_Body: 'Water', Facility_Type: 'Facility', County: 'County', Owner: 'Owner',
     other_names: 'Also called', purpose: 'Main purpose', purposes: 'All purposes', river: 'River / stream', city: 'Nearest town', owner: 'Owner',
     normal_storage_af: 'Normal storage (acre-ft)', max_storage_af: 'Max storage (acre-ft)', surface_acres: 'Surface (acres)', height_ft: 'Height (ft)', year: 'Built',
-    dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', area_ha: 'Area (hectares)', crop_ha: 'Hectares of it (mapped outline)', water_type: 'Water present',
+    dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', area_ha: 'Area (hectares)', crop_ha: 'Hectares of it (mapped outline)', feature: 'Kind of site', commodity: 'Produces', water_type: 'Water present',
     reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block', year: 'Satellite crop map year',
     FUEL_SALES: 'Fuel sales', NO_OF_RAMP_LANE_USE_ONE_TIME: 'Ramp lanes', FISH_CLEANING: 'Fish cleaning', Comments: 'Notes', Website: 'Website' };
   const CAVEAT = { mineral: 'USGS mineral record: an occurrence or past mine, not proof of recoverable ore, access or safety. Old workings can be deadly.',
@@ -196,6 +196,13 @@ const MapView = (() => {
     st.noContours = info.contours === false;
     // What the installed map set says about itself (map-set.json: units, country, credit); a US map set says nothing and keeps feet and ZIP codes.
     if (info.country) for (const k of ['orchard', 'vineyard', 'berries', 'perennial_veg']) CAVEAT[k] = 'Mapped in OpenStreetMap by volunteers: an orchard or vineyard may be missing, old or grubbed up, and the map does not say what grows there. Trees and vines keep producing for decades but need winter pruning. Private farmland — ask first.';
+    if (info.country) {   // names and notes that say US or California belong to the US map sets
+      const name = (id, label) => { const l = LAYERS.find(x => x.id === id); if (l) l.label = label };
+      name('mineral', 'Mines & quarries'); name('boat', 'Boat launches & marinas'); name('orchard', 'Orchards'); name('vineyard', 'Vineyards');
+      GROUPS.find(g => g[0] === 'food')[1] = 'Food that keeps growing'; GROUPS.find(g => g[0] === 'resource')[1] = 'Natural resources (mapped places)';
+      CAVEAT.mineral = 'Mapped in OpenStreetMap: an old mine, quarry or shaft, not proof of anything recoverable, and not necessarily safe or open. Old workings, shafts and flooded quarries can be deadly.';
+      CAVEAT.boat_launch = 'Mapped in OpenStreetMap by volunteers: check current access, and the tides on the coast.';
+    }
     if (info.country) CAVEAT.dam = 'Mapped dam (OpenStreetMap). Keep away from spillways and outlets — currents and sudden releases drown people.';
     st.metric = info.units === 'metric'; st.postal = info.country === 'GB' ? 'postcode' : 'ZIP'; st.area = info.country === 'GB' ? 'region' : 'state';
     if (st.postal === 'postcode') { const q = $('pq'); if (q) { q.placeholder = 'Find an address, town or postcode'; q.previousElementSibling.textContent = 'Find an address, town, postcode or place' } }

@@ -9,7 +9,7 @@ Packs come from derived/release/manifest-v1.json, which session publish-packs wr
 from llm_local.py's constants (file, size, SHA-256, revision), so the two cannot drift. memory_bytes is llama.cpp's measure of
 the model and its context (device + host bytes from lastbook-llm --measure): MEASURED_MEMORY below, or measured again with --measure.
 --small-from builds the Small pack's entry from a release folder's SHA256SUMS.txt when the packs file has none (before
-publish-packs has written it). --allow-empty writes a manifest with no packs instead of stopping, for CI builds. Every URL must be on an allowed host (engine/setup/download.py) or the build stops.
+publish-packs has written it). --allow-empty writes a manifest with no packs instead of stopping, for local development builds only; release workflows use packaging/check_release_manifest.py and refuse an empty manifest. Every URL must be on an allowed host (engine/setup/download.py) or the build stops.
 The packaging spec bundles the output as setup/manifest-v1.json.
 """
 import argparse
@@ -70,7 +70,7 @@ def main():
     ap.add_argument('--measure', help='a copy of the model file to measure memory_bytes from')
     ap.add_argument('--small-from', help='a release folder holding Lastbook-Small.zip and SHA256SUMS.txt')
     ap.add_argument('--allow-empty', action='store_true',
-                    help='write a manifest with no packs when the packs file is missing or empty (CI builds before publish-packs)')
+                    help='write a manifest with no packs when the packs file is missing or empty (local development only; release builds must not use this)')
     a = ap.parse_args()
     try:
         src = json.loads(Path(a.packs).read_text(encoding='utf-8'))

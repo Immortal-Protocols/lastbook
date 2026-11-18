@@ -68,7 +68,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             python3 python3-venv python3-pil dpkg-dev binutils file gcc pkg-config \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev rpm curl xz-utils
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev curl
 
       - name: Build the local AI runner
         if: ${{ inputs.build_local_ai }}
@@ -84,15 +84,12 @@ jobs:
           mkdir -p derived/release
           if [ -n "${MANIFEST_B64:-}" ]; then
             printf '%s' "$MANIFEST_B64" | base64 -d > derived/release/manifest-v1.json
-          elif [ -n "${MANIFEST_URL:-}" ]; then
-            curl -fsSL "$MANIFEST_URL" -o derived/release/manifest-v1.json
-          fi
-          if [ -s derived/release/manifest-v1.json ]; then
-            echo "LASTBOOK_ALLOW_EMPTY_MANIFEST=0" >> "$GITHUB_ENV"
           else
-            rm -f derived/release/manifest-v1.json
-            echo "LASTBOOK_ALLOW_EMPTY_MANIFEST=1" >> "$GITHUB_ENV"
+            URL="${MANIFEST_URL:-https://downloads.lastbook.org/manifest-v1.json}"
+            curl -fsSL "$URL" -o derived/release/manifest-v1.json
           fi
+          test -s derived/release/manifest-v1.json
+          python3 -I -B packaging/check_release_manifest.py derived/release/manifest-v1.json
 
       - name: Build the .deb
         env:
@@ -101,23 +98,47 @@ jobs:
           LASTBOOK_CLEAN: "1"
         run: bash packaging/linux/build_app_linux.sh
 
-      - name: Build the RPM, portable tarball and AppImage
+      # RPM, tarball and AppImage are left out of this first build-only release: they are not verified yet.
+      - name: Check the bundled manifest
         run: |
           OUT="$PWD/build/linux-${{ matrix.arch }}"
-          bash packaging/linux/build_rpm.sh "$OUT/root" "$LASTBOOK_VERSION" "${{ matrix.deb_arch }}" "$OUT"
-          bash packaging/linux/build_tarball.sh "$OUT/root" "$LASTBOOK_VERSION" "${{ matrix.arch }}" "$OUT"
-          bash packaging/linux/build_appimage.sh "$OUT/root" "$LASTBOOK_VERSION" "${{ matrix.arch }}" "$OUT"
+          python3 -I -B packaging/check_release_manifest.py "$OUT/root/opt/lastbook/setup/manifest-v1.json"
+
+      - name: Check Videos, Map and the local AI
+        run: python3 -I -B packaging/smoke_library.py --require-ai
 
       - name: Collect artifacts
         run: |
           OUT="$PWD/build/linux-${{ matrix.arch }}"
           mkdir -p dist
           cp "$OUT"/Lastbook_*_*.deb dist/
-          cp "$OUT"/*.rpm dist/
-          cp "$OUT"/*.tar.xz dist/
-          cp "$OUT"/Lastbook-*.AppImage dist/
           (cd dist && sha256sum * > "SHA256SUMS-linux-${{ matrix.arch }}.txt")
           ls -lh dist
+
+      - name: Install and launch the .deb in a clean Ubuntu
+        run: |
+          python3 -B app/tests/fixture.py
+          DEB="$(find dist -maxdepth 1 -name '*.deb' -print -quit)"
+          docker run --rm \
+            -v "$PWD/dist:/dist" \
+            -v "$PWD/derived/app-build/testdata:/fixture:ro" \
+            -v "$PWD:/repo:ro" \
+            -v "$PWD/packaging/linux/smoke_deb.sh:/smoke_deb.sh:ro" \
+            ubuntu:24.04 bash /smoke_deb.sh "/dist/$(basename "$DEB")" /fixture /repo
+
+      - name: Record the version and checksums
+        run: |
+          {
+            echo "### Linux ${{ matrix.arch }}"
+            echo
+            echo "- Version: \`${LASTBOOK_VERSION}\`"
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Install/launch: clean Ubuntu 24.04 container, Videos, Map and local-AI checks passed"
+            echo
+            echo '```'
+            cat "dist/SHA256SUMS-linux-${{ matrix.arch }}.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -37,7 +37,9 @@ License:        MIT
 URL:            https://lastbook.org
 BuildArch:      $RPM_ARCH
 AutoReqProv:    no
+# The bundled wheels in /opt/lastbook/lib are built for Ubuntu 24.04's python3 3.12. A newer system python cannot load them.
 Requires:       python3 >= 3.12
+Requires:       python3 < 3.13
 Requires:       python3-gobject
 Requires:       gtk3
 Requires:       webkit2gtk4.1

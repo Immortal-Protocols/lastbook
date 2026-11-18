@@ -1,4 +1,7 @@
-name: Release
+name: Release build (test artifacts)
+
+# Build-only for now: tag pushes and manual runs upload the Linux package and its checksums through Actions. Nothing is
+# published to the public Releases page; a release step can be added back once the build and installation checks pass.
 
 on:
   push:
@@ -15,14 +18,9 @@ on:
         required: false
         type: boolean
         default: true
-      publish:
-        description: Create a GitHub release from the built files
-        required: false
-        type: boolean
-        default: false
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 jobs:
@@ -45,7 +43,7 @@ jobs:
           echo "version=${V#v}" >> "$GITHUB_OUTPUT"
 
   linux:
-    name: Linux
+    name: Linux .deb
     needs: version
     uses: ./.github/workflows/release-linux.yml
     with:
@@ -53,27 +51,9 @@ jobs:
       build_local_ai: ${{ github.event_name == 'push' && true || inputs.build_local_ai }}
     secrets: inherit
 
-  macos:
-    name: macOS
-    needs: version
-    uses: ./.github/workflows/release-macos.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-      build_local_ai: ${{ github.event_name == 'push' && true || inputs.build_local_ai }}
-    secrets: inherit
-
-  windows:
-    name: Windows
-    needs: version
-    uses: ./.github/workflows/release-windows.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-    secrets: inherit
-
-  publish:
-    name: Publish GitHub release
-    needs: [version, linux, macos, windows]
-    if: ${{ github.event_name == 'push' || inputs.publish }}
+  report:
+    name: Linux build report
+    needs: [version, linux]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -85,14 +65,33 @@ jobs:
       - name: Write checksums
         run: |
           cd dist
-          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' ! -name 'BUILD-REPORT.md' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           ls -lh
 
-      - name: Create the release
-        uses: softprops/action-gh-release@v2
+      - name: Write the build report
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "# Lastbook release build ${VERSION}"
+            echo
+            echo "- Actions run: ${RUN_URL}"
+            echo "- Target: Linux .deb (amd64 and arm64)"
+            echo
+            echo "## Checksums"
+            echo '```'
+            cat dist/SHA256SUMS.txt
+            echo '```'
+          } > dist/BUILD-REPORT.md
+          cat dist/BUILD-REPORT.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', needs.version.outputs.version) }}
-          name: Lastbook ${{ needs.version.outputs.version }}
-          files: dist/*
-          generate_release_notes: true
-          fail_on_unmatched_files: false
+          name: release-report
+          path: |
+            dist/BUILD-REPORT.md
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

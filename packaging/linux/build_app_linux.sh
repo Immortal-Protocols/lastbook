@@ -11,7 +11,7 @@
 #   LASTBOOK_CLEAN=1             remove LASTBOOK_BUILD_OUT before building
 #   LASTBOOK_LLM                 local AI runner folder (default derived/llm/bin-linux)
 #   LASTBOOK_PACKS               packs manifest (default derived/release/manifest-v1.json)
-#   LASTBOOK_ALLOW_EMPTY_MANIFEST=1  write an empty setup manifest when LASTBOOK_PACKS is missing
+#   LASTBOOK_ALLOW_EMPTY_MANIFEST=1  local development only: write an empty setup manifest when LASTBOOK_PACKS is missing
 #   SKIP_TLS_GATE=1              skip the roots.pem gate (not for releases)
 #
 # What the .deb holds (nothing is written outside these at install, and nothing at all at removal but these):
@@ -60,6 +60,9 @@ if [ ! -f "$PACKS" ] && [ "${LASTBOOK_ALLOW_EMPTY_MANIFEST:-0}" = 1 ]; then
   MANIFEST_ARGS+=(--allow-empty)
 fi
 python3 -I -B "$ROOT/packaging/release_manifest.py" "${MANIFEST_ARGS[@]}"
+if [ "${LASTBOOK_ALLOW_EMPTY_MANIFEST:-0}" != 1 ]; then
+  python3 -I -B "$ROOT/packaging/check_release_manifest.py" "$OUT/ship/setup/manifest-v1.json"
+fi
 if [ "${SKIP_TLS_GATE:-}" != 1 ]; then   # release gate: every download host verifies through engine/setup/roots.pem only
   python3 -I -B "$ROOT/packaging/check_tls_roots.py" || { echo "TLS roots gate failed: refresh engine/setup/roots.pem (packaging/setup_roots.py)" >&2; exit 1; }
 fi

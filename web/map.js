@@ -91,8 +91,9 @@ const MapView = (() => {
     return HOME;
   }
   const wholeMap = () => st.bounds || US;
-  async function page(main, q) {
+  async function page(main, q, current = () => true) {   // current(): false once the router has moved on
     await localHome();
+    if (!current()) return;   // left while the home area loaded: build nothing
     stop();   // entering the map again (a new address, Back): the last visit's listeners and timers end first
     const home = load('mapHome', HOME);
     const lat = parseFloat(q.get('lat')), lon = parseFloat(q.get('lon')), z = parseFloat(q.get('z'));

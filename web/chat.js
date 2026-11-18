@@ -46,7 +46,7 @@ const Chat = (() => {
     if (id && !cur) { swap('#/ask'); return }
     const about = q.get('about'), me = routeSeq;
     aboutCtx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
-    if (me !== routeSeq) return;   // the person has gone to another page
+    if (stale(me)) return;   // the person has gone to another page
     document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
     $('#tbTitle').textContent = cur ? cur.title : 'Chat';
     main.innerHTML = `<div class="chat">

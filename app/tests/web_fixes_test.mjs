@@ -49,7 +49,7 @@ test('a wiki address keeps each segment encoded, so a ? in a title does not star
 });
 
 /* 2. a slow earlier route must not touch the page the person has since opened */
-function router(views) {
+function router(views, extra = []) {
   const main = { innerHTML: '', classList: any(), onkeydown: null }, document = { body: { className: '' }, activeElement: null };
   const over = {
     main, document, navStack: [], scrolls: {}, current: null, swapping: false, navAt: 0, navEnd: 0, keepNav() { }, _replace() { }, history: { state: null },
@@ -57,9 +57,9 @@ function router(views) {
     topics: async () => [], emptyState: (i, t, m) => 'ERR ' + t, setTitle() { }, notFound() { }, startHere() { }, restoreScroll() { },
     requestAnimationFrame() { }, scrollY: 0, ...views,
   };
-  const code = [grab(APP, /^let routeSeq\b|^let leaving\b/), grab(APP, /^async function route\(/),
-    ...['library', 'videosHome'].map(n => grab(APP, new RegExp('^async function ' + n + '\\('))) ].join('\n');
-  const r = load(code, over, 'route, library, videosHome');
+  const code = [grab(APP, /^let routeSeq\b|^let leaving\b/), grab(APP, /^const stale\b/), grab(APP, /^let searchSeq\b/), grab(APP, /^async function route\(/),
+    ...['library', 'videosHome', ...extra].map(n => grab(APP, new RegExp('^(async )?function ' + n + '\\('))) ].join('\n');
+  const r = load(code, over, 'route, library, videosHome, ' + extra.join(', '));
   const go = h => { over.hash = h; return r.route() };
   return { main, document, over, go, ...r };
 }
@@ -78,6 +78,26 @@ test('a slow view stops writing once the person has gone elsewhere', async () =>
   const a = t.go('#/library'), b = t.go('#/about');
   await b; release([]); await a;
   assert.equal(t.main.innerHTML, 'ABOUT');
+});
+
+// every view that waits before it writes must leave main alone once the person has moved on
+for (const [name, hash, gated] of [['home', '#/guides', 'continueItems'], ['savedPage', '#/saved', 'recents'], ['encyclopedias', '#/encyclopedias', 'zimsHere'], ['about', '#/about', 'libInfo']])
+  test('stale ' + name + ' does not render over a newer page', async () => {
+    let release; const gate = new Promise(r => release = r);
+    const t = router({ [gated]: () => gate.then(() => name === 'encyclopedias' ? [] : name === 'about' ? {} : name === 'savedPage' ? [] : []), prepareHub: async () => { t.main.innerHTML = 'NEW' }, store: { get: () => [] }, api: async () => ({}) }, [name]);
+    const a = t.go(hash); await sleep(5);   // the view is under way, waiting
+    const b = t.go('#/prepare');
+    await b; release(); await a; await sleep(5);
+    assert.equal(t.main.innerHTML, 'NEW');
+  });
+test('stale search results and collection pages do not write into the newer page', async () => {
+  let release; const gate = new Promise(r => release = r), writes = [];
+  const el = () => new Proxy({}, { set: (t, k, v) => (k === 'innerHTML' && writes.push(v), true), get: (t, k) => k === 'insertAdjacentHTML' ? (_, v) => writes.push(v) : any() });
+  const t = router({ api: () => gate.then(() => ({ results: [], expanded: [], items: [], more: false })), $: () => el(), $$: () => [], topicMatches: () => [], prepareHub: async () => { } }, ['results', 'collectionPage']);
+  const a = t.results('x', 'read'), c = t.collectionPage('n', '#/library');
+  await sleep(5); await t.go('#/prepare'); writes.length = 0;
+  release(); await a; await c; await sleep(5);
+  assert.deepEqual(writes, []);
 });
 
 /* 3, 4. chat */
@@ -144,6 +164,20 @@ test('map: page() twice leaks nothing, and stop() frees all of it', async () => 
   MapView.stop();
   assert.equal(keys.size + fulls.size + timers.size, 0);
   assert.equal(obs.size, 0, 'resize observers');
+});
+
+test('map: leaving while the home area loads builds nothing', async () => {
+  const keys = new Set(), timers = new Set(), raf = [];
+  const document = { addEventListener: (t, f) => keys.add(f), removeEventListener: (t, f) => keys.delete(f), getElementById: () => any(), fullscreenElement: null, title: '', querySelector: () => null };
+  let n = 0;
+  const { MapView } = load(src('map.js'), {
+    document, ResizeObserver: class { observe() { } disconnect() { } }, fetch: () => new Promise(() => { }), setInterval: () => { timers.add(++n); return n }, clearInterval: id => timers.delete(id),
+    requestAnimationFrame: f => raf.push(f), localStorage: { getItem: () => null, setItem() { } }, Terrain3D: { close() { } }, location: { protocol: 'lastbook:' }, main: any(),
+  }, 'MapView');
+  let current = true;
+  const p = MapView.page(any(), new URLSearchParams(), () => current);
+  current = false; await p; await sleep(5);
+  assert.equal(keys.size + timers.size + raf.length, 0);
 });
 
 /* 7. 3D view: closing while elevation loads must not call back into the closed map */

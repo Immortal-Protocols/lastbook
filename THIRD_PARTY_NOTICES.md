@@ -48,6 +48,7 @@ The Mac source fallback comes from the `pypdfium2-5.15.2-py3-none-macosx_13_0_ar
 | nlohmann/json, used by llama.cpp's `common/` | as vendored in b12032 | MIT | https://github.com/nlohmann/json | Checked: `licenses/LICENSE-jsonhpp` |
 | Sparkle 2 (`Sparkle.framework`, Mac builds with Update now only: `docs/UPDATE-NOW-MAC.md`) | 2.10.1, pinned in `packaging/sparkle.lock.json` | MIT; its bundled components are listed in its `LICENSE` | https://sparkle-project.org | Its `LICENSE` ships as `Contents/Resources/LICENSE-Sparkle.txt` in Update now builds; not in the default build |
 | LLVM libc++, libunwind, OpenMP runtime (`libc++.dll`, `libunwind.dll`, `libomp.dll`, Windows runner) | llvm-mingw 20261020 | Apache-2.0 WITH LLVM-exception | https://github.com/mstorsjo/llvm-mingw | Checked: ships as `LICENSE-llvm-mingw.txt` |
+| rqbit (Windows build only for now; fetched by `packaging/share/fetch_rqbit.py`, pinned in `packaging/share/rqbit.json`) | 9.1.0 | Apache-2.0 (Igor Katson) | https://github.com/ikatson/rqbit | Upstream: `LICENSE` in the repository |
 
 Build-only tools (uv, CMake, Ninja, glslc/shaderc, Vulkan and SPIR-V headers, pyinstaller-hooks-contrib, altgraph,
 macholib, setuptools, packaging) are used to make the apps, and none of their code is bundled except as their licences

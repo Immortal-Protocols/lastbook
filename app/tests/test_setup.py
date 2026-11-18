@@ -16,7 +16,7 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path[:0] = [str(HERE.parent), str(ROOT)]
-from engine.setup import api, download, hardware, install, manifest, torrent  # noqa: E402
+from engine.setup import api, download, hardware, install, manifest, share, torrent  # noqa: E402
 from app.tests import multipart_fixture, shorttemp  # noqa: E402
 
 ALLOWED = {'127.0.0.1'}     # an address, not 'localhost': Windows tries ::1 first, which the test server does not listen on
@@ -1483,6 +1483,242 @@ class Mirrored(Base):
         repinned = with_file(torrent={**f['torrent'], 'pieces_root': 'cd' * 32}, mirrors=[f'{self.mirror_base}/evil.zip'])
         kept = manifest.merge(good, repinned)['packs'][0]['files'][0]                           # another pin: nothing taken
         self.assertEqual((kept['torrent']['pieces_root'], kept['mirrors']), (self.zip_pin['pieces_root'], f['mirrors']))
+
+
+FAKE_RQBIT = r'''
+import base64, json, os, sys, threading, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+record, args = sys.argv[1], sys.argv[2:]
+open(record, 'a', encoding='utf-8').write(json.dumps(args) + '\n')
+auth = 'Basic ' + base64.b64encode(os.environ.get('RQBIT_HTTP_BASIC_AUTH_USERPASS', '').encode()).decode()
+
+
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def answer(self, code, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        if self.headers.get('Authorization') != auth:
+            return self.answer(401, {'error': 'unauthorized'})
+        body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
+        if self.path.startswith('/torrents?'):
+            from urllib.parse import parse_qs, urlsplit
+            q = parse_qs(urlsplit(self.path).query)
+            open(record + '.added', 'a', encoding='utf-8').write(json.dumps({k: v[0] for k, v in q.items()}) + '\n')
+            threading.Thread(target=swarm, args=(q['output_folder'][0],), daemon=True).start()
+            return self.answer(200, {'id': 0, 'details': {}})
+        return self.answer(404, {})
+
+    def do_GET(self):
+        if self.headers.get('Authorization') != auth:
+            return self.answer(401, {'error': 'unauthorized'})
+        if self.path == '/torrents/0/stats/v1':
+            return self.answer(200, {'state': 'live', 'live': {'snapshot': {'fetched_bytes': WROTE[0]}}})
+        if self.path == '/stats':
+            try:
+                up = int(open(record + '.uploaded').read())
+            except (OSError, ValueError):
+                up = 0
+            return self.answer(200, {'counters': {'uploaded_bytes': up, 'fetched_bytes': 0}})
+        return self.answer(404, {})
+
+
+WROTE = [0]
+
+
+def swarm(folder):
+    # like rqbit in a swarm: the file's pieces from the front, into the very file Lastbook downloads into, never cut short;
+    # FAKE_SWARM_SKIP: pieces no peer has; FAKE_SWARM_BAD: pieces a bad peer sends wrong (left wrong)
+    src = open(os.environ['FAKE_SWARM_SOURCE'], 'rb').read()
+    piece, pace = int(os.environ['FAKE_SWARM_PIECE']), float(os.environ.get('FAKE_SWARM_PACE', '0.02'))
+    skip = {int(x) for x in os.environ.get('FAKE_SWARM_SKIP', '').split(',') if x}
+    bad = {int(x) for x in os.environ.get('FAKE_SWARM_BAD', '').split(',') if x}
+    path = os.path.join(folder, os.environ['FAKE_SWARM_NAME'])
+    for k in range(-(-len(src) // piece)):
+        time.sleep(pace)
+        if k in skip:
+            continue
+        b = bytearray(src[k * piece:(k + 1) * piece])
+        if k in bad:
+            b[7] ^= 0xff
+        with open(path, 'r+b' if os.path.exists(path) else 'w+b') as f:
+            f.seek(k * piece)
+            f.write(b)
+        WROTE[0] += len(b)
+
+
+if '--http-api-listen-addr' in args:
+    port = int(args[args.index('--http-api-listen-addr') + 1].rsplit(':', 1)[1])
+    ThreadingHTTPServer(('127.0.0.1', port), H).serve_forever()
+time.sleep(120)
+'''
+
+
+class Sharing(Base):
+    """Keeping downloads and seeding them (engine/setup/share.py), with a stand-in for rqbit that writes down how it was started
+    and waits, as rqbit would while it seeds."""
+    PIECE = 64 * 1024
+
+    def setUp(self):
+        super().setUp()
+        path = self.tmp / 'Lastbook-Small.zip'
+        data, self.pin = torrent.make(path, 'Lastbook-Small.zip', self.PIECE)
+        self.files.data['Lastbook-Small.zip.torrent'] = data
+        self.record = self.tmp / 'rqbit-calls.txt'
+        fake = self.tmp / 'fake_rqbit.py'
+        fake.write_text(FAKE_RQBIT)
+        self.command = [sys.executable, '-I', '-B', str(fake), str(self.record)]
+
+    def shared_manifest(self):
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': self.installed, 'available': True,
+                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip),
+                                   'sha256': sha(self.zip), 'kind': 'zip',
+                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': self.pin['pieces_root'],
+                                               'infohash_v2': self.pin['infohash_v2'], 'piece_length': self.PIECE}}]}],
+             'models': []}
+        return manifest.Manifest(bundled=manifest.validate(m, ALLOWED), remote=None, allowed=ALLOWED, context=self.ctx)
+
+    def calls(self, n=1, timeout=20):
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            try:
+                lines = [json.loads(l) for l in self.record.read_text(encoding='utf-8').splitlines() if l.strip()]
+                if len(lines) >= n:
+                    return lines
+            except OSError:
+                pass
+            time.sleep(0.05)
+        self.fail('rqbit was not started')
+
+    def install_shared(self, on=True):
+        s = self.setup(manifest=self.shared_manifest(), share_command=self.command)
+        if on:
+            self.assertTrue(s.set_share(True)['on'])
+        s.start('small', False)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        return lib
+
+    def test_rqbit_outlives_the_thread_that_started_it(self):
+        """Seeding is started from threads that end at once (a request's, the one at startup). On Linux the parent-death signal
+        comes when that thread ends, so rqbit must be started from one that does not."""
+        seeder = share.Seeder(command=self.command)
+        self.addCleanup(seeder.stop)
+        folder = self.tmp / 'kept'
+        folder.mkdir()
+        t = threading.Thread(target=seeder.start, args=({str(folder): [str(folder / 'x.torrent')]},))
+        t.start()
+        t.join()
+        self.calls()
+        time.sleep(1.0)
+        self.assertEqual(len(seeder.running()), 1, 'rqbit ended with the thread that started it')
+
+    def test_kept_and_seeded(self):
+        lib = self.install_shared()
+        kept = self.parent / 'LastbookData.share'
+        self.assertEqual((kept / 'Lastbook-Small.zip').read_bytes(), self.zip)              # kept, not deleted
+        self.assertTrue((kept / 'Lastbook-Small.zip.torrent').is_file())
+        self.assertFalse((self.parent / 'LastbookData.setup').exists())
+        m = self.setup('manage', current=lib, manifest=self.shared_manifest(), share_command=self.command)
+        args = self.calls()[0]                                                                # the app opened: seeding started
+        self.assertEqual(args[args.index('download'):], ['download', '--overwrite', '-o', str(kept), str(kept / 'Lastbook-Small.zip.torrent')])
+        self.assertTrue(args[args.index('--http-api-listen-addr') + 1].startswith('127.0.0.1:'))     # its control API: this computer only
+        for flag in ('--disable-dht-persistence', '--disable-upnp-port-forward'):
+            self.assertIn(flag, args)
+        t0 = time.time()
+        while not m.seeder.running() and time.time() - t0 < 10:
+            time.sleep(0.05)
+        Path(str(self.record) + '.uploaded').write_text('12345')
+        t0 = time.time()
+        while m.state()['sharing']['shared_bytes'] != 12345 and time.time() - t0 < 10:
+            time.sleep(0.1)
+        st = m.state()['sharing']
+        self.assertEqual((st['on'], st['seeding'], st['kept_bytes'], st['shared_bytes']), (True, 1, len(self.zip), 12345))
+        self.assertEqual(m.set_share(False)['seeding'], 0)                                   # off: rqbit stops, the files stay
+        self.assertTrue((kept / 'Lastbook-Small.zip').is_file())
+        r = m.delete_kept()
+        self.assertEqual(r['freed_bytes'], len(self.zip))
+        self.assertFalse((kept / 'Lastbook-Small.zip').exists())
+        self.assertTrue((lib / 'library-data' / 'catalog.json').is_file())                  # the library is not touched
+
+    def test_off_by_default(self):
+        lib = self.install_shared(on=False)
+        self.assertFalse((self.parent / 'LastbookData.share').exists())
+        m = self.setup('manage', current=lib, manifest=self.shared_manifest(), share_command=self.command)
+        self.assertEqual(m.seed_now(), 0)
+        self.assertFalse(self.record.exists())
+
+    def test_a_kept_torrent_that_does_not_add_up_is_not_seeded(self):
+        lib = self.install_shared()
+        t = self.parent / 'LastbookData.share' / 'Lastbook-Small.zip.torrent'
+        d = torrent.bdecode(t.read_bytes())
+        d[b'info'][b'name'] = b'Other.zip'
+        t.write_bytes(torrent.bencode(d))
+        m = self.setup('manage', current=lib, manifest=self.shared_manifest(), share_command=self.command)
+        time.sleep(0.5)
+        self.assertEqual(m.seed_now(), 0)
+        self.assertFalse(self.record.exists())
+
+    def test_not_offered_without_rqbit(self):
+        with mock.patch.object(share, 'binary', lambda: None):
+            s = self.setup(manifest=self.shared_manifest())
+            self.assertFalse(s.state()['sharing']['available'])
+            self.assertEqual(s.set_share(True)['code'], 'unavailable')
+
+    def test_shared_bytes_add_up_across_runs(self):
+        """rqbit counts what it uploaded from 0 each time it starts: the total adds each run's count, and is kept in its own file."""
+        tally = share.Tally(self.tmp / 'shared.json')
+        seeder = share.Seeder(self.command, tally)
+        counter = Path(str(self.record) + '.uploaded')
+        self.assertEqual(seeder.start({str(self.tmp): [str(self.tmp / 'a.torrent')]}), 1)
+        port, secret = seeder.procs[0][3], seeder.procs[0][4]
+        self.wait_for_api(port, secret)
+        self.assertEqual(download.local_api(port, 'not-the-password', 'GET', '/stats')[0], 401)   # only Lastbook can ask it
+        counter.write_text('100')
+        self.assertEqual(seeder.shared(), 100)
+        counter.write_text('250')
+        self.assertEqual(seeder.shared(), 250)
+        counter.write_text('300')
+        seeder.stop()                                                   # a last reading before the process goes
+        self.assertEqual(tally.total(), 300)
+        counter.write_text('40')                                        # a new run counts from 0 again
+        seeder.start({str(self.tmp): [str(self.tmp / 'a.torrent')]})
+        self.wait_for_api(seeder.procs[0][3], seeder.procs[0][4])
+        self.assertEqual(seeder.shared(), 340)
+        seeder.stop()
+        self.assertEqual(share.Tally(self.tmp / 'shared.json').total(), 340)
+
+    def wait_for_api(self, port, secret):
+        t0 = time.time()
+        while time.time() - t0 < 20:
+            r = download.local_api(port, secret, 'GET', '/stats')
+            if r and r[0] == 200:
+                return
+            time.sleep(0.05)
+        self.fail('the stand-in for rqbit never answered')
+
+    def test_local_api_refuses_what_is_not_a_port_on_this_computer(self):
+        for port, path in ((0, '/stats'), (70000, '/stats'), ('80', '/stats'), (8080, 'stats'), (8080, 'http://example.org/')):
+            self.assertIsNone(download.local_api(port, 'x', 'GET', path))
+
+    def test_seeder_stops_its_processes(self):
+        seeder = share.Seeder(self.command)
+        self.assertEqual(seeder.start({str(self.tmp): [str(self.tmp / 'a.torrent'), str(self.tmp / 'b.torrent')]}, upload_bps=1000), 2)
+        args = self.calls()[0]
+        self.assertEqual(args[args.index('--ratelimit-upload') + 1], '1000')
+        self.assertEqual(len(seeder.running()), 1)
+        seeder.stop()
+        self.assertEqual(seeder.running(), [])
 
 
 class Unpacking(Base):

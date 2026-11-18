@@ -93,7 +93,8 @@ def fold_de(text):
 
 
 def normalize_de(text):
-    """Scheme 'de-1': 'Königstraße' -> 'koenigstr', 'Berliner Straße' -> 'berliner str'."""
+    """Scheme 'de-1': 'Königstraße' -> 'koenigstrasse', 'Berliner Straße' -> 'berliner str'."""
+    # Suffixes fold as whole words; a compound keeps its letters and the range query matches by prefix.
     words = re.sub(r'[^a-z0-9 ]+', ' ', fold_de(text)).split()
     return ' '.join(DE_WORDS.get(word, word) for word in words)
 
@@ -118,8 +119,8 @@ def _parts_de(query):
     rest = tokens[number_index + 1:]
     if rest and re.fullmatch(r'[a-z]', rest[0]):
         number += rest.pop(0).upper()                  # '12 a' as written on many German letters
-    while rest and re.fullmatch(r'\d{1,4}', rest[0]):
-        rest.pop(0)                                   # the second half of a range ('5-7')
+    while rest and re.fullmatch(r'\d{1,4}[a-z]?', rest[0]):
+        rest.pop(0)                                   # the second half of a range ('5-7', '5-7a')
     postcode = ''
     for index, token in enumerate(rest):
         if re.fullmatch(r'\d{5}', token):
@@ -127,8 +128,8 @@ def _parts_de(query):
             rest.pop(index)
             break
     qualifier = [token for token in rest if token not in _DE_PLACE_STOP]
-    if not street or not any(re.search(r'[a-z]', word) for word in street):
-        return None
+    if not street or len(' '.join(street)) < 3 or not any(re.search(r'[a-z]', word) for word in street):
+        return None                                  # 'B 10 5' must not answer Bodoweg 10
     return number, street, postcode, qualifier
 
 
@@ -144,6 +145,18 @@ def _de_street_forms(words):
     if mapped[-1] not in ('str', 'pl', 'weg', 'allee', 'gasse', 'damm', 'ring', 'steige'):
         forms.append(f'{base} str')
     return list(dict.fromkeys(forms))
+
+
+def _de_postcode_fits(connection, postcode, district, city):
+    """Whether this index uses that postcode for the district (or city) an address without one belongs to."""
+    column, value = ('district', district) if district else ('city', city)
+    if not value:
+        return False
+    try:
+        return connection.execute(f'SELECT 1 FROM addr WHERE zip = ? AND {column} = ? LIMIT 1',
+                                  (postcode, value)).fetchone() is not None
+    except sqlite3.Error:
+        return False
 
 
 def _de_place_matches(qualifier, city, district):
@@ -169,12 +182,14 @@ def _find_de(parts, geo_directory, limit, near):
             for form in _de_street_forms(words):
                 conditions = ['num IN (?, ?)', 'norm >= ?', 'norm < ?']
                 parameters = [number, number.lower(), form, form + '\uffff']
-                if postcode:
-                    conditions.append('zip = ?')
-                    parameters.append(postcode)
                 sql = ('SELECT num,street,city,state,zip,lat,lon,norm,district FROM addr WHERE '
                        + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT 500')
                 found = connection.execute(sql, parameters).fetchall()
+                if postcode:   # a mapped house with no postcode of its own still answers a postcode this district really uses; a wrong one answers nothing
+                    exact = [row for row in found if row[4] == postcode]
+                    loose = [row for row in found if not row[4]
+                             and _de_postcode_fits(connection, postcode, row[8] or '', row[2] or '')]
+                    found = exact or loose
                 rows.extend((*row, source) for row in found if not qual or _de_place_matches(qual, row[2], row[8]))
         except sqlite3.Error:
             continue

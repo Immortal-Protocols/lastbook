@@ -114,6 +114,7 @@ class GermanAddressTests(unittest.TestCase):
                 ('28', 'Königstraße', 'Stuttgart', '70173', 48.7784, 9.1800, 'Stuttgart-Mitte'),
                 ('12A', 'Berliner Straße', 'Stuttgart', '70376', 48.8156, 9.2275, 'Bad Cannstatt'),
                 ('5', 'Straße des 17. Juni', 'Stuttgart', '70178', 48.7770, 9.1740, 'Stuttgart-West'),
+                ('7', 'Calwer Straße', 'Stuttgart', '', 48.7740, 9.1775, 'Stuttgart-Mitte'),
             ]
             db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?)',
                            [(num, street, normalize_de(street), city, 'DE-BW-ST', zip_code, lat, lon, district)
@@ -141,8 +142,19 @@ class GermanAddressTests(unittest.TestCase):
                                  ['Berliner Straße 12A'])
 
     def test_range_house_numbers_use_the_first_endpoint(self):
-        hit, = find_addresses('Hauptstraße 5-7, 70173 Stuttgart', self.geo)
-        self.assertEqual(hit['name'], 'Hauptstraße 5')
+        for query in ('Hauptstraße 5-7, 70173 Stuttgart', 'Hauptstraße 5-7a Stuttgart'):
+            with self.subTest(query=query):
+                hit, = find_addresses(query, self.geo)
+                self.assertEqual(hit['name'], 'Hauptstraße 5')
+
+    def test_postcode_does_not_hide_a_house_whose_own_postcode_is_missing(self):
+        hit, = find_addresses('Calwer Straße 7, 70173 Stuttgart', self.geo)
+        self.assertEqual(hit['name'], 'Calwer Straße 7')
+        self.assertEqual(find_addresses('Calwer Straße 7, 99999 Stuttgart', self.geo), [])
+
+    def test_one_letter_street_head_is_not_searched_as_a_prefix(self):
+        self.assertEqual(find_addresses('B 10 5', self.geo), [])
+        self.assertFalse(is_german_address_query('B 10 5'))
 
     def test_street_name_with_number_is_not_the_house(self):
         hit, = find_addresses('Straße des 17. Juni 5', self.geo)

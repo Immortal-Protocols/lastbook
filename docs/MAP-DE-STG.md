@@ -47,8 +47,8 @@ SHA-256 of each download and output, and the data date of the extract.
 | Extract data date | 2026-11-17 21:24 UTC (`osmosis_replication_timestamp`) |
 | Features | 204,905 (69,596 road ways, 122,901 building outlines, water, land use, railways, named places) |
 | Help points | 3,808 (27 hospitals, 109 pharmacies, 67 fire stations, 48 police, 21 clinics, 87 drinking-water taps) |
-| Addresses | 85,593, all with a five-digit postcode where one is mapped |
-| Places | 4,414 streets, 39 postcodes, 55 Stadtbezirke, 260 OSM place names |
+| Addresses | 86,618, each kept per postcode and Stadtbezirk; a house with no mapped postcode is still found |
+| Places | 4,414 streets, 42 postcodes, 58 Stadtbezirke, 260 OSM place names |
 | Data folder | 44 MB |
 
 ## Why the code and not DE-BW

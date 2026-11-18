@@ -178,7 +178,7 @@ const MapView = (() => {
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
       describe(info);
       const outside = info.bounds && !(st.lat >= info.bounds[1] && st.lat <= info.bounds[3] && st.lon >= info.bounds[0] && st.lon <= info.bounds[2]);
-      if (openWhole || (outside && !load('mapHome', null))) fit(wholeMap(), 0.92, true);   // a region map opens where its own data is
+      if (openWhole || (outside && !home && !q.get('pin'))) fit(wholeMap(), 0.92, true);   // a region map opens where its own data is, unless a household area or a linked pin says otherwise
       coverage(); draw();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (info.region || (st.have && !st.have.size) ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
@@ -186,13 +186,17 @@ const MapView = (() => {
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
-      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return; st.national = info.national; coverage();
+      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return; st.national = info.national; coverage(); applyAvailability(info);
         if (info.aerial_rev !== st.aerialRev) { st.aerialRev = info.aerial_rev; st.aerialDetail = info.aerial_detail; for (const v of st.aerial?.values() || []) v.close?.(); st.aerial = new Map(); draw() }  // new sharp photos: new URLs
         if (info.version !== st.ver) { st.ver = info.version; st.gen++; st.pinBox = null; draw(); loadPins() } } catch { }
     }, 60000);
     if (!openWhole) { draw(); settle() }
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
+  function applyAvailability(info) {   // a map file still being built, or absent, must not offer or fetch its layers
+    if (info.terrain === false) { st.noTerrain = true; st.style.relief = false; st.style.contours = false; $('map-3d')?.remove() }
+    if (info.crops === false) st.noCrops = true;
+  }
   function describe(info) {
     if (info.region) {
       const at = document.querySelector('.mapattr'); if (at) at.textContent = '© OpenStreetMap contributors · Natural Earth'
@@ -202,8 +206,7 @@ const MapView = (() => {
         if (!isNaN(d)) head.textContent = `Offline: works with no internet. Shows what was mapped by ${d.getUTCDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]} ${d.getUTCFullYear()} — not damage, closures or hazards.`;
       }
     }
-    if (info.terrain === false) { st.noTerrain = true; st.style.relief = false; st.style.contours = false; $('map-3d')?.remove() }
-    if (info.crops === false) st.noCrops = true;
+    applyAvailability(info);
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     if (!info.layers) return;

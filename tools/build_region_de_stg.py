@@ -335,7 +335,9 @@ def build_national():
         if key in seen_address:
             return
         seen_address.add(key)
-        addresses[(street, number)] = (street, number, city, postcode, district, round(lat, 6), round(lon, 6))
+        # keyed by postcode and district too: the same street and number exist in more than one district, and a
+        # postcode-less object must not overwrite a mapped one
+        addresses[(street, number, postcode, district)] = (street, number, city, postcode, district, round(lat, 6), round(lon, 6))
 
     with open(WORK / 'stuttgart.geojsonseq', encoding='utf-8') as stream:
         for line in stream:
@@ -450,17 +452,18 @@ def build_places():
         national = sqlite3.connect(f'file:{GEO / "national.sqlite"}?mode=ro', uri=True)
         try:
             place_rows = []
-            for cls, name, geom in national.execute(
-                    "SELECT cls, name, geom FROM feat WHERE layer='place' AND name IS NOT NULL AND name <> ''"):
-                lon, lat = center(geom)
-                place_rows.append((name, cls, 'Stuttgart (OpenStreetMap)', lat, lon, 2, 'OpenStreetMap'))
+            for cls, name, minx, maxx, miny, maxy in national.execute(
+                    "SELECT f.cls, f.name, i.minx, i.maxx, i.miny, i.maxy FROM feat f JOIN feat_idx i ON i.id = f.id "
+                    "WHERE f.layer='place' AND f.name IS NOT NULL AND f.name <> ''"):
+                place_rows.append((name, cls, 'Stuttgart (OpenStreetMap)', (miny + maxy) / 2, (minx + maxx) / 2, 2,
+                                   'OpenStreetMap'))
             add('osm_place', place_rows)
 
             streets = {}
-            for name, geom in national.execute(
-                    "SELECT name, geom FROM feat WHERE layer='road' AND name IS NOT NULL AND name <> ''"):
-                lon, lat = center(geom)
-                streets.setdefault(name, []).append((lat, lon))
+            for name, minx, maxx, miny, maxy in national.execute(
+                    "SELECT f.name, i.minx, i.maxx, i.miny, i.maxy FROM feat f JOIN feat_idx i ON i.id = f.id "
+                    "WHERE f.layer='road' AND f.name IS NOT NULL AND f.name <> ''"):
+                streets.setdefault(name, []).append(((miny + maxy) / 2, (minx + maxx) / 2))
             street_rows = []
             for name, points in sorted(streets.items()):
                 points.sort()

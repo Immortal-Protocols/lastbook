@@ -1659,7 +1659,7 @@ def region_datasets(have):
     if address_index.exists():
         out.append({'label': 'Street addresses (OpenStreetMap)', 'status': 'Exact house numbers only; a house that is not mapped cannot be found'})
     out.append({'label': 'Elevation, crops and dams are not in this map set', 'status': 'There is no open nation-wide source for them outside the US; the map draws no contours and no 3D view'})
-    out.append({'label': '© OpenStreetMap contributors, ODbL 1.0', 'status': 'Data from geofabrik.de, cut to the region boundary'})
+    out.append({'label': '© OpenStreetMap contributors, ODbL 1.0', 'status': 'Data from geofabrik.de, cut to the boundary this set carries'})
     return out
 
 

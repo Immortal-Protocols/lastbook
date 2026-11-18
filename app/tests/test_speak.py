@@ -40,7 +40,7 @@ def words(s):
 @unittest.skipUnless(NODE, 'needs Node')
 class Speakable(unittest.TestCase):
     def run_js(self, *texts):
-        r = subprocess.run([NODE, '-e', RUN, str(ROOT / 'web/speak.js'), json.dumps(texts)], capture_output=True, text=True, check=True)
+        r = subprocess.run([NODE, '-e', RUN, str(ROOT / 'web/speak.js'), json.dumps(texts)], capture_output=True, text=True, encoding='utf-8', check=True)
         return json.loads(r.stdout)
 
     def test_cleaned_for_listening(self):
@@ -58,6 +58,27 @@ class Speakable(unittest.TestCase):
         self.assertTrue(all(len(p) <= 220 for p in got['pieces']), [len(p) for p in got['pieces']])
         self.assertEqual(words(' '.join(got['pieces'])), words(got['clean']))
         self.assertIn('(Have you tried pressing harder first?)', ' '.join(got['pieces']))
+
+    def test_numbers_are_kept(self):
+        # A first-aid library: a reading must never change a number.
+        minus, alone, decimal, time, bullet = self.run_js('Keep below\n-18 °C', 'Mix\n10\ndrops per litre', 'Give 0.5 ml.',
+                                                          'Take it at 10:30 each day.', 'Do this:\n- 2 tablets\n– wash hands')
+        self.assertIn('-18', minus['clean'])
+        self.assertIn('10', alone['clean'])
+        self.assertIn('Mix 10 drops per litre', ' '.join(alone['pieces']))
+        self.assertTrue(any('0.5' in p for p in decimal['pieces']), decimal['pieces'])
+        self.assertEqual(decimal['pieces'], ['Give 0.5 ml.'])
+        self.assertEqual(time['pieces'], ['Take it at 10:30 each day.'])
+        self.assertIn('- 2 tablets', bullet['clean'])                     # a dash before a digit is not taken for a bullet
+        self.assertIn('wash hands', bullet['clean'])
+        self.assertNotIn('–', bullet['clean'])                            # a dash bullet before words still goes
+
+    def test_page_number_only_at_the_ends(self):
+        first, last, inside = self.run_js('12\nBoil water for one minute.', 'Boil water for one minute.\n  Page 12  \n',
+                                          'Boil water for\n1\nminute.')
+        self.assertEqual(first['clean'], 'Boil water for one minute.')
+        self.assertEqual(last['clean'], 'Boil water for one minute.')
+        self.assertEqual(inside['clean'], 'Boil water for 1 minute.')
 
     def test_nothing_to_say(self):
         a, b = self.run_js('', '   12   \n\n  ●  \n')

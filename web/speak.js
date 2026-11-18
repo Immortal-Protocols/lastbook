@@ -23,11 +23,14 @@ const Speak = (() => {
   });
 
   // Text pulled from a PDF reads badly as it is: words broken across lines, bullets, page numbers on lines of their own.
+  // Numbers are never changed: a dash before a digit is a minus (-18 °C), and a number alone on a line inside the page is part
+  // of the text (a table cell, a quantity), so only one at the very start or end of the page is taken for a page number.
   function speakable(text) {
     return String(text || '')
       .replace(/(\p{L})[-\u00ad]\s*\n\s*(\p{Ll})/gu, '$1$2')          // recom-\nmended
-      .replace(/^[ \t]*(?:page\s+)?\d{1,4}[ \t]*$/gim, '')              // a page number alone on its line
-      .replace(/^[ \t]*[●•▪◦·∙\-–—*]+[ \t]*/gm, '')                       // bullets
+      .replace(/^\s*(?:page\s+)?\d{1,4}[ \t]*(?:\n|$)/i, '')             // a page number alone on the first line
+      .replace(/(?:^|\n)[ \t]*(?:page\s+)?\d{1,4}\s*$/i, '')             // ... or on the last line
+      .replace(/^[ \t]*(?:[●•▪◦·∙*]+[ \t]*|[-–—]+[ \t]+(?!\d))/gm, '')   // bullets; a dash only with a space after it, no digit
       .replace(/[ \t]*\n[ \t]*\n\s*/g, '\u2029')                          // paragraphs
       .replace(/\s+/g, ' ')
       .replace(/\u2029/g, '\n')
@@ -36,7 +39,8 @@ const Speak = (() => {
   function pieces(text) {
     const out = [];
     for (const para of speakable(text).split('\n')) {
-      const sentences = para.match(/[^.!?;:]+(?:[.!?;:]+["”’)]?|$)/g) || [];
+      // A sentence ends at . ! ? ; : but not at a . or : between two digits (0.5 ml, 10:30), which would be read as two pieces.
+      const sentences = para.match(/(?:\d[.:](?=\d)|[^.!?;:])+(?:[.!?;:]+["”’)]?|$)/g) || [];
       let cur = '';
       for (let s of sentences.map(x => x.trim()).filter(Boolean)) {
         while (s.length > MAX) {           // a very long sentence: break it at a comma or a space

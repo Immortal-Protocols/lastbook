@@ -219,7 +219,7 @@ class Session:
 
     def add(self, d):
         for k, v in self.sources.items():
-            if v.get('doc_id') == d.get('doc_id') and v.get('page') == d.get('page') and v.get('t') == d.get('t') and v.get('kind') != 'place':
+            if v.get('doc_id') == d.get('doc_id') and v.get('page') == d.get('page') and v.get('slide') == d.get('slide') and v.get('t') == d.get('t') and v.get('kind') != 'place':
                 return k
         if d.get('kind') == 'place':
             self.m += 1
@@ -263,13 +263,15 @@ def run_tool(name, args, sess, extra_msgs):
         pages = [int(p) for p in (args.get('pages') or [1])][:3]
         pub = S.public(r)
         out = []
+        if not texts:
+            return '(no text in this document — it may be scanned pictures; use view_page for a PDF)', {'doc_id': d, 'title': pub['title'], 'pages': pages}
         for p in pages:
-            if not 1 <= p <= max(1, len(texts)):
+            if not 1 <= p <= len(texts):
                 out.append(f'(page {p} does not exist; the document has {len(texts)} pages)')
                 continue
             body = re.sub(r'[ \t]{2,}', ' ', texts[p - 1]).strip()[:3500] or '(no text on this page — it may be a picture; use view_page)'
             src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'],
-                   'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
+                   'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 'slide': None if r['kind'] == 'pdf' else p, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
             out.append(_src_block(sess.add(src), src, body))
         return '\n\n'.join(out), {'doc_id': d, 'title': pub['title'], 'pages': pages}
     if name == 'view_page':
@@ -354,7 +356,7 @@ def context_for(about, sess):
         p = int(p or 1)
         body = re.sub(r'[ \t]{2,}', ' ', texts[p - 1]).strip()[:4000] if 0 < p <= len(texts) else ''
         src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'],
-               'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
+               'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 'slide': None if r['kind'] == 'pdf' else p, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
         k = sess.add(src)
         return f"The person is looking at this page right now (questions like 'this' refer to it):\n" + _src_block(k, src, body or '(no extractable text on this page; use view_page)') + f"\nDocument id for tools: {d}"
     if kind == 'video':

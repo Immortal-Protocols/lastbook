@@ -394,15 +394,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
    if not self.file_ok(path,folders=True):
     self.send_error(404);return
    try:
-    size=path.stat().st_size;m=re.match(r'bytes=(\d+)-(\d*)',self.headers['Range'])
-    if not m:raise ValueError('Bad range')
-    start=int(m.group(1));end=min(int(m.group(2)) if m.group(2) else size-1,size-1)
-    if start>end:raise ValueError('Bad range')
-    self.send_response(206);self.send_header('Content-Type',mimetypes.guess_type(path)[0] or 'video/mp4');self.send_header('Accept-Ranges','bytes');self.send_header('Content-Range',f'bytes {start}-{end}/{size}');self.send_header('Content-Length',str(end-start+1));self.end_headers()
     with path.open('rb') as f:
+     size=os.fstat(f.fileno()).st_size;m=re.match(r'bytes=(\d+)-(\d*)',self.headers['Range'])
+     if not m:raise ValueError('Bad range')
+     start=int(m.group(1));end=min(int(m.group(2)) if m.group(2) else size-1,size-1)
+     if start>end:raise ValueError('Bad range')
+     self.send_response(206);self.send_header('Content-Type',mimetypes.guess_type(path)[0] or 'video/mp4');self.send_header('Accept-Ranges','bytes');self.send_header('Content-Range',f'bytes {start}-{end}/{size}');self.send_header('Content-Length',str(end-start+1));self.end_headers()
      f.seek(start);left=end-start+1
      while left:
-      b=f.read(min(left,1024**2));self.wfile.write(b);left-=len(b)
+      b=f.read(min(left,1024**2))
+      if not b:break  # the file shrank after the headers went out: stop, the client sees a short body
+      self.wfile.write(b);left-=len(b)
    except CLIENT_GONE:pass
    except Exception:self.send_error(416)
    return

@@ -111,3 +111,78 @@ emergencies: drinking water 325, pharmacies 198 (and 205 chemists), doctors 137,
 The place finder has 10,245 rows: 2,666 places (2 cities, 41 towns, 126 suburbs, 157 quarters, 350 villages, 1,452
 hamlets, 295 neighbourhoods, 242 localities and 1 island) and 7,579 named help points. 140 rows carry a second name,
 the English one where OpenStreetMap has it.
+
+## What was checked, and how
+
+`tools/check_region_map.py` passed all 37 file checks and all 12 engine checks on the build above. With `--engine`,
+every connection blocked and an empty library:
+
+- **Map display.** Tiles at zoom 10, 13 and 16 around Copenhagen's city hall square: roads, water, land, railways and
+  place labels at the wider zooms, 78 building outlines in one zoom-16 tile.
+- **Pins.** 80 pin groups around the city hall square.
+- **Nearest help.** Pharmacies at 0.3 and 0.36 km, and the police at Copenhagen Central Station at 0.5 km. Around Rønne
+  on Bornholm: a pharmacy at 0.73 km, the police at 1.41 km and Bornholms Hospital at 1.45 km.
+- **Place search, with Danish letters.** "Rigshospitalet" finds the hospital; "Nørrebro", "Rønne" and "Hillerød" find
+  the district and the two towns; "Tivoli" finds the gardens; "Elsinore" finds Helsingør by its English name; "Kgs.
+  Lyngby" finds Kongens Lyngby.
+- **What the app is told.** 40 kinds, within 11.54, 54.83, 15.19, 56.13, the extent of the data inside the box.
+
+`tools/test_build_region_map.py`: 9 tests pass with pyosmium.
+
+It was also opened in a browser through `python3 server.py`, which serves the same `web/` interface the desktop app
+shows. The map drew at city and street zooms in light and dark mode, on Zealand and on Bornholm; pins and the "Nearest
+to the map center" list filled in; and the search box took the map to Rigshospitalet. The browser's request log showed
+92 requests, all to the local server; the one 404 was `home-area.json`, which is meant to be absent.
+
+**Not checked:** the packaged desktop app, and installing through setup (no installer or manifest entry is part of this).
+
+## What is and is not in it
+
+**In it**
+
+- Streets and paths of every class `tools/build_map.py` draws, with the same zoom rules, for north-east Zealand, most of
+  the rest of Zealand, Bornholm and Ertholmene.
+- Lakes, streams and drains, wetland, beaches, land use, parks and building outlines from OpenStreetMap.
+- Place labels and help points in the classes the engine already names (`HELP` in `server.py`).
+
+**Not in it**
+
+- **Addresses.** Denmark's address register is open (REGIONS-DK.md), but the tool does not build an address index, and
+  the engine could not read Danish addresses yet: the street comes before the number. Roads are in the map but not in
+  the place finder, so a street cannot be searched by name.
+- **Terrain, contours and the 3D view**, **crops** and the **water and dam inventory**. Denmark's elevation model and
+  coastal dike layer are described in REGIONS-DK.md.
+- **`buildings.sqlite`.** Outlines are in `national.sqlite`; there are no heights.
+- **Government lists.** Defibrillators, warning sirens and public shelters have no open national list (REGIONS-DK.md).
+  Every point here is from OpenStreetMap.
+- **Shelters as an emergency plan.** Most of the 1,095 "shelter" points are lean-tos at nature camping sites and picnic
+  shelters. Bus shelters are left out. None is a public shelter (*sikringsrum*).
+- **Sweden.** Inside the box, Skåne is drawn as sea (see "The id and the box").
+
+**Known limits**
+
+- **Danish letters typed without them find nothing.** The place finder's index (FTS5 `unicode61`) folds accents, but
+  `ø`, `æ` and `å` are letters of their own, not accented ones. "Kobenhavn", "Koebenhavn", "Hillerod" and "Christianso"
+  find nothing, and "Helsingor" finds only the Swedish consulate. Someone on a keyboard without these letters cannot
+  find Copenhagen by its Danish name.
+- **"Copenhagen" does not find the city.** The English name is kept in the row's detail line, and name matches rank
+  first, so the first twelve results are shops, clinics and schools with "Copenhagen" in their names. "København" finds
+  the city first.
+- **Hospital rows are not hospitals.** The 95 hospital rows are 47 places when rows within 150 m are grouped:
+  OpenStreetMap often has one hospital as a point and again as each of its buildings. More than half of them (53) are
+  in Region Sjælland, because the box holds most of Zealand.
+- **Every place's detail line says "Hovedstaden"**, the `--name` given, including places in Region Sjælland.
+- **Completeness follows OpenStreetMap.** 6,404 help points have no name. Nothing was compared against an official
+  count.
+- **The page header, the units and the credits are the US map's.** The header says "what was mapped by 25 Oct 2026",
+  while this map's date is in `meta` (`data_as_of`, 17 November 2026) and is not shown yet. Distances are in miles at
+  wider zooms, the search box asks for a "town or ZIP" and its "no place" message for "a 5-digit ZIP", the home view
+  and the "US" button point at the United States, and the credit line lists USGS, USDA, NOAA and other US sources that
+  are not in this map. The same holds for the Bangkok and Paraguay maps.
+
+## Licence and attribution
+
+All data in this map is from OpenStreetMap, © OpenStreetMap contributors, under the Open Database License 1.0, taken
+from Geofabrik's Denmark extract. A database built from it, which this map is, is offered under the ODbL as well. The
+credit and the date of the data are written into `meta` in `national.sqlite` and `map.sqlite`, and into
+`DK-84.build.json`. The app's map already shows "© OpenStreetMap contributors".

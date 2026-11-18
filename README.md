@@ -85,6 +85,10 @@ The setup contract, including state maps, is in [docs/SETUP-API.md](docs/SETUP-A
 
 ## What's where
 
+Ontario maps are supported in desktop source builds. See [docs/ONTARIO.md](docs/ONTARIO.md)
+for building and installing a local map, its layer coverage, and the remaining
+steps before Ontario can appear in a published installer.
+
 | Path | What it is |
 |---|---|
 | `app/` | The desktop app: entry point (`main.py`), the no-port bridge, the macOS, Windows and Linux shells, and tests (`app/tests/`). |
@@ -220,7 +224,7 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
 ## Tests
 
 ```bash
-python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq
+python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_ontario
 ```
 
 `test_bridge` needs a data folder (`LASTBOOK_DATA`); the others run without a library. `packaging/test_pack_tools.py SAMPLE

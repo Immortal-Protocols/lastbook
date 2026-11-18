@@ -2,9 +2,11 @@
 import math
 import re
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 from engine.paths import ro_uri
+from engine.regions import canonical_region
 
 # Keep normalization compatible with tools/build_addresses.py.
 WORDS = {
@@ -14,6 +16,7 @@ WORDS = {
     'square': 'sq', 'north': 'n', 'south': 's', 'east': 'e', 'west': 'w',
     'mount': 'mt', 'saint': 'st',
 }
+CANADIAN_WORDS = {**WORDS, 'chemin': 'ch', 'nord': 'n', 'sud': 's', 'est': 'e', 'ouest': 'w'}
 STATE_NAMES = (
     'Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|'
     'District of Columbia|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|'
@@ -34,8 +37,14 @@ for number, word in enumerate(ORDINALS):
 TO_WORDS = {value: key for key, value in TO_DIGITS.items()}
 
 
-def normalize(text):
-    return ' '.join(WORDS.get(word, word) for word in re.sub(r'[^a-z0-9 ]+', ' ', text.lower()).split())
+def normalize(text, country='US'):
+    text = text.lower()
+    words = WORDS
+    if country == 'CA':
+        text = unicodedata.normalize('NFKD', text)
+        text = ''.join(c for c in text if not unicodedata.combining(c))
+        words = CANADIAN_WORDS
+    return ' '.join(words.get(word, word) for word in re.sub(r'[^a-z0-9 ]+', ' ', text).split())
 
 
 def is_address_query(query):
@@ -53,15 +62,22 @@ def street_forms(street):
     return list(dict.fromkeys(forms))
 
 
-def _parts(query):
+def _parts(query, ontario_available=False, default_country='US'):
     number, remainder = query.strip().split(None, 1)
     number = number.upper()
-    remainder = re.sub(r'[^a-z0-9 ]+', ' ', remainder.lower()).split()
+    remainder = re.sub(r'\s+Canada\s*$', '', remainder, flags=re.I)
+    canadian_postcode = re.search(r'\b([ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z])\s*(\d[ABCEGHJ-NPRSTV-Z]\d)\s*$', remainder, re.I)
+    postcode = ''
+    if canadian_postcode:
+        postcode = ''.join(canadian_postcode.groups()).upper()
+        remainder = remainder[:canadian_postcode.start()]
+    explicit_ontario = bool(re.search(r'\bCA-ON\b', remainder, re.I))
+    remainder = re.sub(r'\bCA-ON\b', 'Ontario', remainder, flags=re.I)
+    remainder = re.sub(r'[^\w ]+', ' ', remainder.lower()).split()
     # A ZIP+4 ("62704-1234", or "62704 1234" once the hyphen is gone) is the same place as its five-digit ZIP, which the
     # index keeps: drop the four extra digits so the ZIP and the state before it are still read.
     if len(remainder) > 1 and re.fullmatch(r'\d{4}', remainder[-1]) and re.fullmatch(r'\d{5}', remainder[-2]):
         remainder.pop()
-    postcode = ''
     if remainder and re.fullmatch(r'\d{5}', remainder[-1]):
         postcode = remainder.pop()
     state = ''
@@ -69,23 +85,28 @@ def _parts(query):
         if len(remainder) <= count:
             continue
         name = ' '.join(remainder[-count:])
-        code = STATES.get(name) or (name.upper() if count == 1 and name.upper() in STATE_CODES else '')
+        canada = name == 'on' or (name == 'ontario' and (ontario_available or canadian_postcode or explicit_ontario))
+        code = ('CA-ON' if canada else
+                STATES.get(name) or (name.upper() if count == 1 and name.upper() in STATE_CODES else ''))
         if code:
             state = code
             remainder = remainder[:-count]
             break
-    return number, normalize(' '.join(remainder)).split(), state, postcode
+    country = 'CA' if state == 'CA-ON' or canadian_postcode else default_country
+    return number, normalize(' '.join(remainder), country).split(), state, postcode
 
 
 def find_addresses(query, geo_directory, limit=8, near=None):
     """Return exact house-number matches from installed indexes, never a guessed house."""
     if not is_address_query(query):
         return []
-    number, words, state, postcode = _parts(query)
-    if not words:
-        return []
     geo_directory = Path(geo_directory)
     paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
+    ontario = any(path.stem.upper() == 'CA-ON' for path in paths)
+    country = 'CA' if ontario and len(paths) == 1 else 'US'
+    number, words, state, postcode = _parts(query, ontario, country)
+    if not words:
+        return []
     if state:
         paths = [path for path in paths if path.stem.upper() == state]
     legacy = geo_directory / 'addresses.sqlite'
@@ -111,7 +132,7 @@ def find_addresses(query, geo_directory, limit=8, near=None):
                     conditions.append('state = ?')
                     parameters.append(state)
                 if postcode:
-                    conditions.append('zip = ?')
+                    conditions.append("upper(replace(zip, ' ', '')) = ?" if not postcode.isdigit() else 'zip = ?')
                     parameters.append(postcode)
                 if city:
                     conditions.append('lower(city) LIKE ?')
@@ -135,6 +156,10 @@ def find_addresses(query, geo_directory, limit=8, near=None):
                     if key in seen:
                         continue
                     seen.add(key)
+                    if canonical_region(state_code) == 'CA-ON':
+                        state_code = 'ON'
+                        compact = zip_code.replace(' ', '').upper()
+                        zip_code = compact[:3] + ' ' + compact[3:] if len(compact) == 6 else zip_code
                     results.append({
                         'name': f'{num} {name}', 'kind': 'Street address',
                         'detail': ', '.join(part for part in (city_name, state_code, zip_code) if part),

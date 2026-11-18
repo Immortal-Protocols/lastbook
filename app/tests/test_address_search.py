@@ -22,6 +22,11 @@ class AddressSearchTests(unittest.TestCase):
             ('18001', 'Nine Mile Road', 'Example', 'CA', '90001', 34.0, -118.0),
             ('23001', 'Maple Avenue', 'Kansas City', 'MO', '64105', 39.0997, -94.5786),
             ('21', 'W 9 ST', 'Example', 'CA', '90001', 34.01, -118.01),
+            ('100', 'Euclid Avenue', 'Ontario', 'CA', '91762', 34.06, -117.65),
+        ])
+        self.write_state('CA-ON', [
+            ('100', 'Queen Street West', 'Toronto', 'CA-ON', 'M5H2N2', 43.65, -79.38),
+            ('100', 'Rue de l’Église', 'Ottawa', 'CA-ON', 'K1A 0B1', 45.42, -75.69),
         ])
 
     def tearDown(self):
@@ -33,7 +38,7 @@ class AddressSearchTests(unittest.TestCase):
             db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL)')
             db.execute('CREATE INDEX addr_num_norm ON addr(num,norm)')
             db.executemany('INSERT INTO addr VALUES(?,?,?,?,?,?,?,?)',
-                           [(num, street, normalize(street), city, st, z, lat, lon)
+                           [(num, street, normalize(street, 'CA' if st == 'CA-ON' else 'US'), city, st, z, lat, lon)
                             for num, street, city, st, z, lat, lon in rows])
             db.commit()
         finally:
@@ -72,6 +77,36 @@ class AddressSearchTests(unittest.TestCase):
     def test_ordinal_street(self):
         result = find_addresses('21 ninth st Example CA', self.geo)
         self.assertEqual(result[0]['name'], '21 W 9 ST')
+
+    def test_ontario_province_and_postal_code(self):
+        for query in ('100 Queen St W Toronto ON M5H 2N2',
+                      '100 Queen Street West, Toronto, Ontario, M5H2N2',
+                      '100 Queen St W Toronto CA-ON M5H 2N2 Canada'):
+            with self.subTest(query=query):
+                result = find_addresses(query, self.geo)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['detail'], 'Toronto, ON, M5H 2N2')
+
+    def test_ontario_does_not_ignore_wrong_postcode_or_city(self):
+        self.assertEqual(find_addresses('100 Queen St W Toronto ON M5H 9Z9', self.geo), [])
+        self.assertEqual(find_addresses('100 Queen St W Ottawa ON', self.geo), [])
+        self.assertEqual(find_addresses('100 Queen St W Toronto CA', self.geo), [])
+
+    def test_french_street_accents(self):
+        result = find_addresses('100 rue de l\'eglise Ottawa Ontario K1A0B1', self.geo)
+        self.assertEqual(result[0]['detail'], 'Ottawa, ON, K1A 0B1')
+
+    def test_ontario_california_with_only_us_indexes(self):
+        (self.geo / 'addresses/CA-ON.sqlite').unlink()
+        result = find_addresses('100 Euclid Ave Ontario', self.geo)
+        self.assertEqual(result[0]['detail'], 'Ontario, CA, 91762')
+
+    def test_us_normalization_remains_compatible_with_existing_indexes(self):
+        self.assertEqual(normalize('José Est Road'), 'jos est rd')
+        self.assertEqual(normalize('José Est Road', 'CA'), 'jose e rd')
+
+    def test_postal_code_alone_remains_place_query(self):
+        self.assertFalse(is_address_query('M5H 2N2'))
 
     def test_plain_zip_remains_place_query(self):
         self.assertFalse(is_address_query('48375'))

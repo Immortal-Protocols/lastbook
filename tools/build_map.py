@@ -11,10 +11,10 @@ the original archive is only read. Output tables:
   poi(id, cls, name, lon, lat)             help-relevant points (hospitals, pharmacies, water...)
   meta(key, value)
 """
-import math, sqlite3, struct, sys, time
+import argparse, math, sqlite3, struct, sys, time, unicodedata
 from array import array
+from pathlib import Path
 
-SRC, DST = sys.argv[1], sys.argv[2]
 Q = 1e6
 
 ROAD_Z = {'motorway': 5, 'trunk': 6, 'motorway_link': 10, 'trunk_link': 10, 'primary': 8, 'primary_link': 12,
@@ -110,6 +110,64 @@ def bbox(parts):
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def polygon_spans(parts, y):
+    """Interior x intervals at a latitude, with holes excluded regardless of winding."""
+    crossings = []
+    for ring in parts:
+        for i in range(0, len(ring) - 2, 2):
+            x0, y0, x1, y1 = ring[i:i + 4]
+            if (y0 > y) != (y1 > y):
+                crossings.append(x0 + (y - y0) * (x1 - x0) / (y1 - y0))
+    crossings.sort()
+    return list(zip(crossings[::2], crossings[1::2]))
+
+
+def polygon_point(parts):
+    """Choose an interior label/search point near the largest polygon's mid-latitude.
+
+    GeoPackage parts contain closed rings. A scanline between vertex latitudes
+    avoids boundaries; its widest interior interval avoids holes and gaps between
+    islands. A centroid or bounding-box centre can fall outside a concave town.
+    """
+    rings = [p for p in parts if len(p) >= 8]
+    if not rings:
+        return None
+
+    def area(ring):
+        return abs(sum(ring[i] * ring[i + 3] - ring[i + 2] * ring[i + 1]
+                       for i in range(0, len(ring) - 2, 2)))
+
+    largest = max(rings, key=area)
+    if not area(largest):
+        return None
+    middle = (min(largest[1::2]) + max(largest[1::2])) / 2
+    ys = sorted(set(y for ring in rings for y in ring[1::2]))
+    lat = min(((a + b) / 2 for a, b in zip(ys, ys[1:])), key=lambda y: abs(y - middle))
+    spans = polygon_spans(rings, lat)
+    if not spans:
+        return None
+    left, right = max(spans, key=lambda span: span[1] - span[0])
+    return [(left + right) / 2, lat]
+
+
+def latin_place_key(name):
+    """Match the complete Latin-script name in a multilingual settlement label.
+
+    For example, 'ᒨᓱᓂᔾ Moosonee' and 'Moosonee' share a key, while
+    'Moosonee North' remains different. The original source names are retained.
+    """
+    chars, has_latin = [], False
+    for char in unicodedata.normalize('NFKD', name).casefold():
+        if unicodedata.combining(char):
+            continue
+        if 'LATIN' in unicodedata.name(char, ''):
+            chars.append(char)
+            has_latin = True
+        else:
+            chars.append(char if char.isdecimal() else ' ')
+    return ' '.join(''.join(chars).split()) if has_latin else ''
+
+
 def area_z(minx, maxx, miny, maxy, base):
     """Small polygons only appear when zoomed in."""
     size = max(maxx - minx, maxy - miny)
@@ -119,10 +177,10 @@ def area_z(minx, maxx, miny, maxy, base):
     return max(base, min(16, z))
 
 
-def main():
+def build(source, destination, *, source_label=None, data_as_of='2026-10-25T21:21:21Z', bounds='-121.36,32.50,-114.10,35.89'):
     t0 = time.time()
-    src = sqlite3.connect(SRC)
-    dst = sqlite3.connect(DST)
+    src = sqlite3.connect(Path(source).resolve().as_uri() + '?mode=ro', uri=True)
+    dst = sqlite3.connect(destination)
     dst.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
       DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
       CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, minz INTEGER, geom BLOB);
@@ -178,12 +236,41 @@ def main():
         add('bldg', cls or '', None, 15, [simplify(parts[0], 0.000002)])
     print('buildings', fid[0], round(time.time() - t0), flush=True)
     dst.commit()
+    def add_place(cls, pop, name, parts):
+        z = PLACE_Z.get(cls, 14)
+        if cls in ('city', 'town') and pop and int(pop) > 300000:
+            z = 5
+        add('place', cls, name, z, parts)
+
+    point_places, point_aliases = {}, {}
     for parts, (cls, pop, name) in each('gis_osm_places_free', 'fclass,population,name'):
         if name:
-            z = PLACE_Z.get(cls, 14)
-            if cls in ('city', 'town') and pop and int(pop) > 300000:
-                z = 5
-            add('place', cls, name, z, parts)
+            add_place(cls, pop, name, parts)
+            points = [p for p in parts if len(p) == 2]
+            point_places.setdefault((cls, name.casefold()), []).extend(points)
+            key = latin_place_key(name)
+            if key:
+                point_aliases.setdefault((cls, key), []).extend(points)
+    # Some settlements exist only as areas in Geofabrik. Store one interior point
+    # so both the map labels and Ontario's place-name index use the same location.
+    if src.execute("SELECT 1 FROM sqlite_master WHERE name='gis_osm_places_a_free'").fetchone():
+        for parts, (cls, pop, name) in each('gis_osm_places_a_free', 'fclass,population,name'):
+            if not name:
+                continue
+            # Prefer an explicitly mapped centre inside this area, while retaining
+            # different settlements that happen to share the same name.
+            if any(left <= x <= right for x, y in point_places.get((cls, name.casefold()), [])
+                   for left, right in polygon_spans(parts, y)):
+                continue
+            # A polygon's English name may also appear in a multilingual town
+            # point. Use that explicitly mapped centre for the English alias,
+            # retaining the original label. Require one unambiguous point inside
+            # this area; never match a name fragment or a distant namesake.
+            centres = {tuple(p) for p in point_aliases.get((cls, latin_place_key(name)), [])
+                       if any(left <= p[0] <= right for left, right in polygon_spans(parts, p[1]))}
+            point = list(next(iter(centres))) if len(centres) == 1 else polygon_point(parts)
+            if point is not None:
+                add_place(cls, pop, name, [point])
     pid = 0
     for table in ('gis_osm_pois_free', 'gis_osm_pois_a_free', 'gis_osm_natural_free', 'gis_osm_natural_a_free'):
         for parts, (cls, name) in each(table):
@@ -196,13 +283,20 @@ def main():
             dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)', (pid, cls, name, (minx + maxx) / 2, (miny + maxy) / 2))
     dst.execute('CREATE INDEX poi_cls ON poi(cls, lon, lat)')
     dst.executemany('INSERT INTO meta VALUES (?,?)', [
-        ('source', 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
-        ('data_as_of', '2026-10-25T21:21:21Z'),
-        ('bounds', '-121.36,32.50,-114.10,35.89'),
+        ('source', source_label or 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
+        ('data_as_of', data_as_of),
+        ('bounds', bounds),
         ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
     ])
     dst.commit()
+    src.close()
+    dst.close()
     print('done features', fid[0], 'pois', pid, round(time.time() - t0), 's', flush=True)
 
 
-main()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('source')
+    parser.add_argument('destination')
+    args = parser.parse_args()
+    build(args.source, args.destination)

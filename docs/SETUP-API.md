@@ -35,6 +35,12 @@ Re-read a file just before editing it. Commit nothing and switch no branch: the 
 
 ## The manifest (`manifest-v1.json`)
 
+Ontario desktop support uses the map/address id `CA-ON`; `CA` remains California.
+Address ids accept two-letter US codes or an uppercase country/subdivision id
+(`AA-BBB`, one to three subdivision characters). All US map coverage includes
+only US state ids, so selecting Ontario downloads and replaces the map. See
+[ONTARIO.md](ONTARIO.md) for the current layers and local build workflow.
+
 The app carries a copy made at build time (`packaging/release_manifest.py` → bundled `setup/manifest-v1.json`). Setup may
 also fetch `https://downloads.lastbook.org/manifest-v1.json` (one GET, only when the person opens setup online) to learn of
 packs published after the app was built. A fetched manifest is used only if it parses, its `version` is 1, and every URL is

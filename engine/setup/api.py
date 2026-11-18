@@ -449,7 +449,7 @@ class Setup:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
             mp = self.manifest.map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
-                return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
+                return {'error': 'That region’s map is not available yet.', 'code': 'unavailable'}
             requested_address = address_id
             address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
             if address_id in ('base', 'us'):
@@ -457,7 +457,7 @@ class Setup:
             addresses = self.manifest.address_index(address_id) if address_id else None
             if not addresses or not addresses['available']:
                 if requested_address:
-                    return {'error': 'That state’s address search is not available yet.', 'code': 'unavailable'}
+                    return {'error': 'That region’s address search is not available yet.', 'code': 'unavailable'}
                 addresses = None
             if folder and self.current and install._real(Path(folder).expanduser()) == install._real(self.current):
                 folder = None      # the window sends the shown folder, which in manage mode is the open library itself
@@ -712,9 +712,16 @@ class Setup:
                     if p.stat().st_size != f['size']:
                         return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'code': 'size'}
                     self.sources[name] = str(p)
+                    # A chosen map may have a separately pinned address archive
+                    # beside it. Both files still pass _get_file's SHA-256 check.
+                    addresses = self.manifest.address_index(x['id'])
+                    for companion in (addresses or {}).get('files', []):
+                        local = p.parent / companion['name']
+                        if local.is_file() and local.stat().st_size == companion['size']:
+                            self.sources[companion['name']] = str(local)
                     if self.mode == 'manage':
                         return self.start(None, False, None, {name: str(p)}, explicit=True, map_id=x['id'])
-                    return self.public_job() or {'job': None, 'noted': True}
+                    return self.public_job() or {'job': None, 'noted': True, 'kind': 'map', 'id': x['id']}
         for entry in self.manifest.current.get('address_indexes', []):
             for file in entry['files']:
                 if file['name'] != name:
@@ -724,7 +731,7 @@ class Setup:
                 self.sources[name] = str(p)
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
-                return self.public_job() or {'job': None, 'noted': True}
+                return self.public_job() or {'job': None, 'noted': True, 'kind': 'addresses', 'id': entry['id']}
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:

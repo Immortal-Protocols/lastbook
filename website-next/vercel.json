@@ -37,7 +37,7 @@
       ]
     },
     {
-      "source": "/((?!og\\.png|favicon\\.svg|favicon\\.ico|apple-touch-icon\\.png).*)",
+      "source": "/((?!og\\.png|og-survive-rebuild-v2\\.png|favicon\\.svg|favicon\\.ico|apple-touch-icon\\.png).*)",
       "headers": [
         {
           "key": "Cross-Origin-Resource-Policy",
@@ -86,7 +86,7 @@
       ]
     },
     {
-      "source": "/(favicon.svg|favicon.ico|apple-touch-icon.png|og.png|site.webmanifest)",
+      "source": "/(favicon.svg|favicon.ico|apple-touch-icon.png|og.png|og-survive-rebuild-v2.png|site.webmanifest)",
       "headers": [
         {
           "key": "Cache-Control",

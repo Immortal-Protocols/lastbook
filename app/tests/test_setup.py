@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
+import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -869,9 +869,10 @@ class Manage(Base):
 
     def test_repair_damaged_file_and_model(self):
         lib = self.installed_library()
-        big = lib / 'library-data' / 'big.bin'
-        big.write_bytes(b'\0' + big.read_bytes()[1:])
-        (lib / 'models' / 'model.gguf').write_bytes(b'\0' + self.model[1:])
+        for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):
+            data = bytearray(path.read_bytes())
+            data[0] ^= 1
+            path.write_bytes(data)
         s = self.setup('manage', current=lib)
         s.start(repair=True)
         j = self.wait(s)
@@ -909,7 +910,7 @@ class Manage(Base):
         r = s.pick()
         self.assertEqual(r['path'], str(self.tmp))
         self.assertGreater(r['free_bytes'], 0)
-        if sys.platform == 'darwin':
+        if sys.platform == 'darwin' and importlib.util.find_spec('Foundation'):   # the disk name needs PyObjC (packaging/requirements_macos.txt)
             self.assertTrue(r['disk'])
         self.assertEqual(self.setup(pick_folder=lambda: None).pick(), {'path': None, 'cancelled': True})
         self.assertTrue(all('name' in d for d in hardware.detect([self.parent])['disks']))
@@ -1332,7 +1333,7 @@ class Recommend(Base):
 
     def test_hardware_here(self):
         hw = hardware.detect([self.parent])
-        self.assertIn(hw['os'], ('macos', 'windows'))
+        self.assertIn(hw['os'], ('macos', 'windows', 'linux'))
         self.assertGreater(hw['ram_bytes'], 2 ** 30)
         self.assertTrue(hw['disks'] and hw['disks'][0]['free_bytes'] > 0)
 

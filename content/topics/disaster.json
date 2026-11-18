@@ -1,9 +1,9 @@
 {
  "id": "disaster",
  "mode": "now",
- "title": "Stay safe in an earthquake, fire, flood or tsunami",
- "short": "Earthquake, tsunami, wildfire, home fire, flood, shelter-in-place",
- "intro": "What official guides say to do during and right after an earthquake, tsunami warning, wildfire or wildfire smoke, home fire, flood, or chemical or radiation emergency — and how to get a go-bag and family plan ready beforehand.",
+ "title": "Stay safe in an earthquake, storm, fire, flood or tsunami",
+ "short": "Earthquake, tsunami, hurricane, tornado, thunderstorm, wildfire, home and high-rise fire, flood, shelter-in-place",
+ "intro": "What official guides say to do during and right after an earthquake, tsunami warning, hurricane, tornado or thunderstorm, wildfire or wildfire smoke, home or high-rise fire, flood, or chemical or radiation emergency, and how to plan an evacuation without a car — and how to get a go-bag and family plan ready beforehand.",
  "keywords": [
   "earthquake",
   "drop cover hold on",
@@ -13,6 +13,7 @@
   "evacuate",
   "high ground",
   "wildfire",
+  "bushfire",
   "smoke",
   "N95",
   "air quality",
@@ -21,6 +22,16 @@
   "escape plan",
   "flood",
   "floodwater",
+  "cyclone",
+  "monsoon",
+  "storms",
+  "hurricanes",
+  "typhoons",
+  "storm surge",
+  "tornadoes",
+  "funnel cloud",
+  "thunderstorms",
+  "hail",
   "chemical",
   "shelter in place",
   "radiation",
@@ -28,7 +39,15 @@
   "fallout",
   "go bag",
   "kit",
-  "family plan"
+  "family plan",
+  "high-rise",
+  "apartment fire",
+  "elevator",
+  "stairs",
+  "no car",
+  "public transit",
+  "bus",
+  "paratransit"
  ],
  "choices": [
   {
@@ -115,7 +134,7 @@
   {
    "id": "wildfire",
    "label": "A wildfire is near — evacuate or trapped",
-   "hint": "Evacuation order, fire approaching, trapped at home or in a car",
+   "hint": "Evacuation order, forest fires approaching, trapped at home or in a car",
    "read": [
     {
      "doc": "2848f4bffb8109",
@@ -140,7 +159,7 @@
   {
    "id": "smoke",
    "label": "Wildfire smoke is making the air bad",
-   "hint": "Smoky air, not ordered to evacuate",
+   "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate",
    "read": [
     {
      "doc": "a90ff7e6f3cf01",
@@ -180,9 +199,38 @@
    ]
   },
   {
+   "id": "highrise-fire",
+   "label": "Fire in an apartment or high-rise building",
+   "hint": "Alarm in the building, smoke in the hallway, stairs or elevator",
+   "read": [
+    {
+     "doc": "27757fb5d39987",
+     "label": "USFA: leaving a high-rise apartment in a fire",
+     "note": "U.S. Fire Administration page: high-rise fires are especially dangerous; leave, close the door behind you, pull the alarm, take the stairs, not the elevator unless firefighters direct it."
+    },
+    {
+     "doc": "cae1149a714fc3",
+     "page": 1,
+     "label": "Red Cross: if you can't reach the exit stairs",
+     "note": "Red Cross sheet (2014): if trapped, call 911, close doors, hang a white sheet outside the window; practice reaching the fire stairs or a safe place in your unit."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 35,
+     "label": "CERT: no elevators, hot doors, and being trapped in a room",
+     "note": "CERT 2019 annex: never using an elevator to escape, checking a door for heat and smoke, and sealing gaps with wet cloth if all exits are blocked."
+    },
+    {
+     "doc": "5cf2ec3dc27738",
+     "label": "Know two ways out of your building",
+     "note": "Ready.gov page (2026): in a high-rise, knowing the closest exit and a second way out, not using elevators, and keeping right on stairwells so emergency workers can come up."
+    }
+   ]
+  },
+  {
    "id": "flood",
    "label": "Flooding or a flood warning",
-   "hint": "Rising water, flooded roads, storm",
+   "hint": "Rising water, flooded roads, storm, cyclone or monsoon",
    "read": [
     {
      "doc": "d0fbb2e051cd46",
@@ -195,6 +243,118 @@
      "page": 12,
      "label": "Turn Around, Don't Drown and flood steps",
      "note": "Are You Ready: how little moving water can sweep you or a car away, going to higher levels, and after-flood electrocution risks."
+    }
+   ]
+  },
+  {
+   "id": "hurricane",
+   "label": "A hurricane is coming — evacuate or stay",
+   "hint": "Hurricanes, typhoons, storm surge, evacuation order, high winds",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 15,
+     "label": "FEMA: how to stay safe when a hurricane threatens",
+     "note": "FEMA 2024 sheet: evacuating when told, the safest room for high winds, not climbing into a closed attic in a flood, generators outdoors only, and dangers after."
+    },
+    {
+     "doc": "1f738924576334",
+     "page": 8,
+     "label": "Deciding to stay or go",
+     "note": "FEMA hurricane guide (2020): leaving at once when told to evacuate, reaching higher ground before floodwater, and why staying can mean days without power, water or roads."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 58,
+     "label": "CERT: if you stay, and during the hurricane",
+     "note": "CERT 2019 annex: a small interior windowless room above flood level, leaving a mobile home for a sturdy building, and keeping generators 20 feet from doors and windows."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 59,
+     "label": "The eye of the storm, tornadoes and flooding",
+     "note": "CERT 2019 annex: sturdy cover from high winds, why the calm eye does not mean the storm is over, tornadoes at landfall, and floodwater dangers."
+    }
+   ]
+  },
+  {
+   "id": "tornado",
+   "label": "Tornado warning — where to go now",
+   "hint": "Tornadoes, funnel cloud, sirens, trailer home, caught in a car or outside",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 26,
+     "label": "FEMA: under a tornado warning, find shelter now",
+     "note": "FEMA 2024 sheet: safe room or basement, otherwise a small interior room on the lowest floor away from windows, not under an overpass, and protecting head and neck."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 91,
+     "label": "CERT: signs of a tornado, watches and warnings",
+     "note": "CERT 2019 annex: why mobile and manufactured homes are unsafe, signs such as a roaring sound or a debris cloud, and what to do at a watch or a warning."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 92,
+     "label": "In a car or outside, and if you are trapped after",
+     "note": "CERT 2019 annex: why not to outrun a tornado or stop under an overpass, covering head and neck, and signalling for help if trapped under debris."
+    }
+   ]
+  },
+  {
+   "id": "thunderstorm",
+   "label": "Thunderstorm, lightning or hail",
+   "hint": "Thunder nearby, caught outside, swimming or boating, hail while driving",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 25,
+     "label": "FEMA: how to stay safe when a thunderstorm threatens",
+     "note": "FEMA 2024 sheet: going indoors when thunder roars, avoiding running water and landline phones, sheltering in a car with a metal top and sides if needed, and flooded roads."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 84,
+     "label": "CERT: watches, warnings and getting indoors",
+     "note": "CERT 2019 annex: what a severe thunderstorm watch and warning mean, why a sturdy building is safest, and securing the yard against high winds."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 85,
+     "label": "Caught outdoors in a thunderstorm",
+     "note": "CERT 2019 annex: shelters that do not protect, a metal-topped car as a last option, hail while driving, and how lightning travels through water and plumbing."
+    }
+   ]
+  },
+  {
+   "id": "no-car",
+   "label": "I may need to evacuate and have no car",
+   "hint": "Bus, train, paratransit, a ride from neighbors or family",
+   "read": [
+    {
+     "doc": "cecc1671ae4d02",
+     "page": 20,
+     "label": "Are You Ready: planning evacuation without a car",
+     "note": "FEMA Are You Ready? guide (2020): planning transportation with family, friends or local government if you have no car, and checking on neighbors who may need a ride."
+    },
+    {
+     "doc": "2848f4bffb8109",
+     "page": 5,
+     "label": "Public transportation and paratransit in an evacuation",
+     "note": "FEMA wildfire guide (written 2014, reposted 2020): arranging shared rides and asking local emergency management how evacuation by public transportation or paratransit works, including staging areas."
+    },
+    {
+     "doc": "cecc1671ae4d02",
+     "page": 19,
+     "label": "Meeting places and backup ways to get out",
+     "note": "FEMA Are You Ready? (2020): meeting places in several directions that everyone can reach, and learning alternate routes and backup modes of transportation out of your area."
+    },
+    {
+     "doc": "53da8d3443e35e",
+     "page": 1,
+     "label": "Commuter plan: write down routes, buses and trains",
+     "note": "Ready.gov fill-in form (2013): normal and alternative routes between work and home, public transportation lines and stops, and taxi and local bus numbers."
     }
    ]
   },
@@ -297,6 +457,26 @@
    "page": 29
   },
   {
+   "text": "When the calm eye of a hurricane passes over, the storm is not over; stay inside until emergency officials say it is safe.",
+   "doc": "9681a68ebd07f5",
+   "page": 59
+  },
+  {
+   "text": "Mobile and manufactured homes are unsafe in a tornado; choose a sturdier shelter before a watch or warning.",
+   "doc": "9681a68ebd07f5",
+   "page": 91
+  },
+  {
+   "text": "Do not try to outrun a tornado in a vehicle, and do not stop under a freeway, overpass or trees.",
+   "doc": "9681a68ebd07f5",
+   "page": 92
+  },
+  {
+   "text": "In a thunderstorm, avoid running water and landline phones; electricity can travel through plumbing and phone lines.",
+   "doc": "d0fbb2e051cd46",
+   "page": 25
+  },
+  {
    "text": "Young children and older adults should not use fire extinguishers; ask the fire department for training.",
    "doc": "fc85c36f9ccfab"
   },
@@ -304,6 +484,15 @@
    "text": "Outdoor areas, vehicles and mobile homes do NOT provide adequate shelter from nuclear fallout.",
    "doc": "d0fbb2e051cd46",
    "page": 21
+  },
+  {
+   "text": "In a high-rise fire, use the stairs; do not use the elevator unless the fire department tells you to.",
+   "doc": "27757fb5d39987"
+  },
+  {
+   "text": "Never open a door that feels hot. If smoke, heat or flames block every exit, stay in the room with the door closed and call the fire department to say where you are.",
+   "doc": "9681a68ebd07f5",
+   "page": 35
   }
  ],
  "prepare": [

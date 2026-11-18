@@ -50,7 +50,6 @@ The data holds more classes than `web/map.js` has layers for (`tools/build_map.p
 |---|---|
 | `school` | 13,862 |
 | `fountain` | 4,971 |
-| `dentist` | 2,769 |
 | `post_office` | 2,224 |
 | `car_repair` | 1,444 |
 | `park` | 1,102 |
@@ -104,6 +103,17 @@ expect source files that are hundreds of gigabytes.
 Coverage outside the US needs a decision on each of these first: which open source replaces each federal list, under
 what licence, what a "state" is elsewhere, and how addresses are written. That is a design discussion to have in an
 issue before any code.
+
+[REGIONS.md](REGIONS.md) proposes answers for Ontario, British Columbia and Guyana, as a starting point for that issue.
+[REGIONS-AR.md](REGIONS-AR.md) does the same for Argentina's provinces and the Autonomous City of Buenos Aires.
+[REGIONS-LK.md](REGIONS-LK.md) does the same for Sri Lanka as one island-wide region.
+[REGIONS-TH.md](REGIONS-TH.md) does the same for Thailand's provinces and Bangkok.
+[REGIONS-DE.md](REGIONS-DE.md) does the same for Germany's 16 states.
+[REGIONS-PY.md](REGIONS-PY.md) does the same for Paraguay as one country-wide region.
+[REGIONS-IE.md](REGIONS-IE.md) does the same for the island of Ireland, including Northern Ireland, as one region.
+[REGIONS-GB-LONDON.md](REGIONS-GB-LONDON.md) does the same for Greater London as one region.
+[REGIONS-ES.md](REGIONS-ES.md) does the same for Spain's 17 autonomous communities and its two autonomous cities.
+[REGIONS-FR.md](REGIONS-FR.md) does the same for France's 18 regions, with figures from a trial build.
 
 ## Checking a map change
 

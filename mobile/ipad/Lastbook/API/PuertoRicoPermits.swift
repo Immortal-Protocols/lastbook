@@ -53,7 +53,7 @@ enum PuertoRicoPermits {
         }
         return out as String
     }
-    static func signature(_ text: String, _ town: String) -> (String,String)? {
+    static func signature(_ text: String, _ town: String, locality: Bool = false) -> (String,String)? {
         guard let g = grammar else { return nil }
         var raw = plain(text).replacing(g.prefix,with:"")
         let zips = raw.allMatches(g.postal)
@@ -89,6 +89,12 @@ enum PuertoRicoPermits {
             .map { $0.split(whereSeparator:{ $0.isWhitespace }).joined(separator:" ") }.filter { !$0.isEmpty }
         let labels = parts.map { String($0.prefix(while:{ $0 != " " })) }
         let allowed = Set(["km","road","barrio","sector","interior","solar","parcela","urbanizacion","comunidad","calle","camino","edificio"])
+        let fields = Set(labels)
+        if locality, !fields.isDisjoint(with:["barrio","sector","urbanizacion","comunidad"]),
+           !fields.contains("road"), !fields.contains("km"), fields.isSubset(of:allowed),
+           fields.count == labels.count, parts.allSatisfy({ $0.contains(" ") }) {
+            return ("locality " + parts.sorted().joined(separator:"|"),postal)
+        }
         guard labels.contains("road"), labels.contains("km"), Set(labels).count == labels.count,
               Set(labels).isSubset(of:allowed) else { return literal }
         return ("parts " + parts.sorted().joined(separator:"|"),postal)
@@ -98,19 +104,45 @@ enum PuertoRicoPermits {
         guard db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'") != nil else { return [:] }
         let text = plain(query)
         var result = [String:Evidence]()
+        let verbatim = db.one("SELECT 1 FROM sqlite_master WHERE name='pr_local_verbatim'") != nil
         for row in db.query("SELECT name FROM municipios ORDER BY name") {
             guard let name = row["name"]?.text else { continue }
             let town = plain(name)
-            guard text.contains(town), let (key,postal) = signature(text,town) else { continue }
-            let rows = db.query("""
-                SELECT base,source,wording FROM pr_permit_wording
-                WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
-                ORDER BY base,source,wording
-                """, [town,key,postal,postal,postal])
-            for r in rows {
-                if let base = r["base"]?.text, result[base] == nil,
-                   let source = r["source"]?.text, let wording = r["wording"]?.text {
-                    result[base] = (source,wording)
+            guard text.contains(town) else { continue }
+            if verbatim {
+                let raw = query.trimmingCharacters(in:.whitespacesAndNewlines)
+                var withoutTown = raw
+                if let delimiter = raw.lastIndex(where: { $0 == "," || $0 == ";" }),
+                   plain(String(raw[raw.index(after:delimiter)...])) == town {
+                    withoutTown = String(raw[..<delimiter]).trimmingCharacters(in:.whitespacesAndNewlines)
+                }
+                let exact = db.query("""
+                    SELECT base,source,wording FROM pr_permit_wording WHERE town=? AND source IN ('CRIM','JP consulta')
+                    AND wording COLLATE NOCASE IN (?,?) ORDER BY base,source,wording
+                    """, [town,raw,withoutTown])
+                for r in exact {
+                    if let base = r["base"]?.text, result[base] == nil,
+                       let source = r["source"]?.text, let wording = r["wording"]?.text {
+                        result[base] = (source,wording)
+                    }
+                }
+            }
+            guard let (key,postal) = signature(text,town) else { continue }
+            var keys = [key]
+            if key.hasPrefix("literal "), let (other,_) = signature(text,town,locality:true), other != key {
+                keys.append(other)
+            }
+            for key in keys {
+                let rows = db.query("""
+                    SELECT base,source,wording FROM pr_permit_wording
+                    WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
+                    ORDER BY base,source,wording
+                    """, [town,key,postal,postal,postal])
+                for r in rows {
+                    if let base = r["base"]?.text, result[base] == nil,
+                       let source = r["source"]?.text, let wording = r["wording"]?.text {
+                        result[base] = (source,wording)
+                    }
                 }
             }
         }

@@ -1395,9 +1395,18 @@ def water_places(q, limit=10, near=None):
 def places(q, limit=20, near=None, parcel_offset=0):
     if len(q) > 400:
         return []
-    if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near, model=assistant.LOCAL,
-                                             parcel_offset=parcel_offset, parcel_limit=min(limit, 30))
+    is_address = address_search.is_address_query(q)
+    if is_address:
+        addresses = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near,
+                                                  model=assistant.LOCAL, parcel_offset=parcel_offset, parcel_limit=min(limit, 30))
+        if addresses:
+            return addresses
+    if limit > 0:
+        wording = address_search.locality_wording(q, HERE / 'derived' / 'geo', parcel_offset, min(limit, 30))
+        if wording is not None:
+            return wording
+    if is_address:
+        return []
     if not PLACEDB.exists():
         return []
     db = sqlite3.connect(ro_uri(PLACEDB), uri=True)

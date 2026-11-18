@@ -75,6 +75,26 @@ def _parts(query):
     return number, normalize(' '.join(remainder)).split(), state, postcode
 
 
+def locality_wording(query, geo_directory, offset, limit):
+    if not re.search(r'[,;\s]', query.strip()):
+        return None
+    path = Path(geo_directory) / 'addresses' / 'PR.sqlite'
+    if not path.is_file():
+        return None
+    db = None
+    try:
+        db = sqlite3.connect(ro_uri(path), uri=True)
+        matches = pr_permit.matches(db, query)
+        if not matches:
+            return None
+        return pr_parcels.candidates(db, None, max(0, offset), limit, matches)
+    except sqlite3.Error:
+        return None
+    finally:
+        if db is not None:
+            db.close()
+
+
 def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_offset=0, parcel_limit=None):
     """Find indexed street addresses or explicitly labeled rural road references."""
     key = pr_parcels.number(query)

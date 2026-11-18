@@ -151,12 +151,26 @@ supply extra directions with `--crim-addresses file.csv`. Accepted headers inclu
 `número de catastro,dirección física,municipio` and `catastro,address,municipio`. The builder reads
 those three fields and reports the additional coverage separately.
 
+#### Prepare a municipio for offline use
+
+Before losing connectivity, build the parcel-enabled index above or start with a copy of an existing parcel-enabled `PR.sqlite`. From this checkout and the same Python environment, run the municipal builder. For example, to add the Planning Board’s land-use consultation records for Utuado:
+
+```sh
+python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --municipio Utuado --planning-board
+```
+
+This downloads the parcel number, municipio and two location fields from the [Planning Board consulta layer](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/20). A consultation can describe a tract shared by several homes. Coverage depends on which parcels appear in the source. The command reports how many wordings it added and how many additional parcels now have searchable wording.
+
+For a local CRIM physical-address file, use `--crim-addresses file.csv` with the headers above. You can combine both options, or run with just the CSV while disconnected. The builder reads the selected municipio, preserves the recorded wording, and joins it only to land numbers mapped to that municipio. It creates a separate output file and keeps the input intact. To include another municipio, use the previous output as the next input and choose a fresh output path.
+
+To use the result, quit Lastbook, keep a backup of your index, and copy the prepared `PR.sqlite` to `derived/geo/addresses/PR.sqlite` inside your Lastbook data folder. Reopen a reader built from this branch, open the map, and enter the address with its municipio. Keep the prepared file if you reinstall an official address pack. Searching works offline. For a shared description, open **Show matches** to inspect the numbered parcel boundaries.
+
 For a build from existing inputs, run `python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs --parcels derived/pr-parcel-inputs`. Omit `--parcels` for the earlier road and school index. The OSM and Census inputs are the [Puerto Rico PBF](https://download.geofabrik.de/north-america/us/puerto-rico.html) and [municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
 
 A missing house number has no exact address result. Omitting `--rural` builds the smaller house-only index.
 To reproduce the road and school preview, use the release's four archived rural inputs and its identified OSM and municipio inputs. For a parcel build, retain the parcel input directory as well. The coverage report fingerprints the raw parcel and permit snapshots.
 
-Run the builder and reader regressions with `python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search`.
+Run the builder and reader regressions with `python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels tools.test_prepare_pr_municipio app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search`.
 
 Road measures come from [Puerto Rico HPMS 2024](https://geo.dot.gov/server/rest/services/Hosted/HPMS_FULL_PR_2024/FeatureServer/0).
 Area labels come from [Census barrios](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/1)

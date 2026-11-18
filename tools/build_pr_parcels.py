@@ -33,7 +33,7 @@ CRIM_MUNICIPIOS = {
     '73': 'Patillas', '74': 'Maunabo', '75': 'Yabucoa', '76': 'Vieques', '77': 'Culebra',
     '79': 'San Juan', '80': 'Canóvanas', '81': 'Florida',
 }
-PREFIXED_ACCOUNT = re.compile(r'([0-9]{2})-([0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{2}-[0-9]{3})')
+PREFIXED_ACCOUNT = re.compile(r'([0-9]{2})-([0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{2}(?:-[0-9]{3})?)')
 
 
 def pages(folder, entry):
@@ -150,9 +150,21 @@ def labels(db, records, source):
         if len(key) == 14 and key[11:] != '000':
             db.execute('INSERT OR IGNORE INTO pr_account VALUES (?)', (key,))
         wording = (row['address'] or '').strip()
-        if source in ('SIP permit', 'ARPE permit') and town and wording:
-            signature = pr_permit.key(wording, town, source=True)
+        if town and wording:
+            searchable = wording
+            if source == 'CRIM':
+                searchable = re.sub(r'(?:(?:^|,)\s*(?:PR|Puerto Rico))+(?:,\s*(00000|00[679]\d{2}(?:-\d{4})?))?\s*$',
+                                    lambda m: ', ' + m[1] if m[1] and m[1] != '00000' else '', wording, flags=re.I)
+                searchable = re.sub(r'\s*,\s*', ', ', searchable)
+                searchable = re.sub(r'(?:^|(?<=,))\s*\.\s*,', '', searchable).strip(' ,.')
+            if fold(searchable) in ('', 'n a', 'sin direccion', 'no disponible', town):
+                continue
+            signature = pr_permit.key(searchable, town, source=True, locality=source in ('CRIM', 'JP consulta'))
             if signature:
+                if source in ('CRIM', 'JP consulta'):
+                    db.execute('''DELETE FROM pr_permit_wording WHERE town=? AND source IN ('CRIM','JP consulta')
+                        AND wording COLLATE NOCASE=? AND wording=? AND base=? AND source=?
+                        AND (signature<>? OR postal<>?)''', (town, wording, wording, key[:11], source, *signature))
                 db.execute('INSERT OR IGNORE INTO pr_permit_wording VALUES (?,?,?,?,?,?)',
                            (town, *signature, key[:11], source, wording))
         values = address_fields(wording)
@@ -181,6 +193,7 @@ def build(db, folder, rural, csv_files=()):
         CREATE UNIQUE INDEX pr_parcel_evidence ON pr_parcel_address
         (base,route,coalesce(meters,-1),lot,sector,interior,access,postal,landmark,source);""")
     db.execute(pr_permit.SCHEMA)
+    db.execute(pr_permit.VERBATIM_INDEX)
     for name in ('sip', 'arpe'):
         labels(db, pages(folder, manifest[name]), name.upper() + ' permit')
     csv_hashes = []
@@ -204,7 +217,8 @@ def build(db, folder, rural, csv_files=()):
     for town, total, permits, crim in counts:
         coverage[town] = {'addressed_parcels': total, 'permit_parcels': permits, 'crim_address_parcels': crim}
     return {'parcels': n, 'addressed_parcels': db.execute('SELECT count(DISTINCT base) FROM pr_parcel_address').fetchone()[0],
-            'permit_wordings': db.execute('SELECT count(*) FROM pr_permit_wording').fetchone()[0],
+            'permit_wordings': db.execute("SELECT count(*) FROM pr_permit_wording WHERE source IN ('SIP permit','ARPE permit')").fetchone()[0],
+            'wordings_by_source': dict(db.execute('SELECT source,count(*) FROM pr_permit_wording GROUP BY source')),
             'address_coverage_by_municipio': coverage,
             'address_sources': dict(db.execute('SELECT source,count(*) FROM pr_parcel_address GROUP BY source')),
             'municipios': dict(db.execute('SELECT municipio,count(DISTINCT base) FROM pr_parcel GROUP BY municipio')),

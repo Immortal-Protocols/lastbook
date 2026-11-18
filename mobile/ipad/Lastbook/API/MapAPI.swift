@@ -1125,9 +1125,19 @@ fileprivate final class MapEngine: @unchecked Sendable {
 
     func places(_ q: String, limit: Int = 20, near: (Double, Double)?, parcelOffset: Int = 0) throws -> [[String: Any]] {
         guard q.unicodeScalars.count <= 400 else { return [] }
-        if AddressSearch.isAddressQuery(q) {
-            return AddressSearch.find(q, limit: min(limit, 8), near: near, parcelOffset: parcelOffset, parcelLimit: min(limit, 30))
+        let isAddress = AddressSearch.isAddressQuery(q)
+        if isAddress {
+            let rows = AddressSearch.find(q, limit: min(limit, 8), near: near, parcelOffset: parcelOffset, parcelLimit: min(limit, 30))
+            if !rows.isEmpty { return rows }
         }
+        if limit > 0, q.firstMatch(#"[,;\s]"#) != nil,
+           let index = Library.shared.db("addresses/PR.sqlite", geo: true) {
+            let wording = PuertoRicoPermits.matches(q, index)
+            if !wording.isEmpty {
+                return PuertoRicoParcels.find(nil, index, limit: min(limit, 30), offset: max(0, parcelOffset), wording: wording)
+            }
+        }
+        if isAddress { return [] }
         guard let db = placeDB else { return [] }
         let ws = words(q)
         if ws.isEmpty { return [] }

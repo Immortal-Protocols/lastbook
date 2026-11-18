@@ -67,7 +67,7 @@ def plain(text):
     return ' '.join(pr_rural.plain(text).split()).strip(' ,;.')
 
 
-def key(text, town, *, source=False):
+def key(text, town, *, source=False, locality=False):
     prefix, postal, literal, intro, aliases = grammar()
     raw = prefix.sub('', plain(text))
     postcodes = postal.findall(raw)
@@ -94,6 +94,11 @@ def key(text, town, *, source=False):
         return '|' + m[1] + ' ' + m[2] + ('.' + frac if frac else '') + '|'
     parts = [' '.join(s.split()) for s in re.split(r'[|,;]', MEASURE.sub(measure, raw)) if s.strip()]
     labels = [s.partition(' ')[0] for s in parts]
+    if (locality and {'barrio', 'sector', 'urbanizacion', 'comunidad'}.intersection(labels)
+            and 'road' not in labels and 'km' not in labels
+            and set(labels) <= LABELS and len(set(labels)) == len(labels)
+            and all(' ' in part for part in parts)):
+        return ('locality ' + '|'.join(sorted(parts)), zip_code)
     if (labels.count('road') != 1 or labels.count('km') != 1 or len(set(labels)) != len(labels)
             or not set(labels) <= LABELS):
         return literal_key
@@ -104,22 +109,43 @@ SCHEMA = """CREATE TABLE pr_permit_wording(town TEXT, signature TEXT, postal TEX
             PRIMARY KEY(town,signature,postal,base,source,wording)) WITHOUT ROWID"""
 
 
+VERBATIM_INDEX = """CREATE INDEX IF NOT EXISTS pr_local_verbatim ON pr_permit_wording(town,wording COLLATE NOCASE)
+                   WHERE source IN ('CRIM','JP consulta')"""
+
+
 def matches(db, query):
     if not db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'").fetchone():
         return {}
     text = plain(query)
     result = {}
+    verbatim = db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_local_verbatim'").fetchone()
     for name, in db.execute('SELECT name FROM municipios ORDER BY name'):
         town = plain(name)
         if town not in text:
             continue
+        if verbatim:
+            raw = query.strip()
+            # Retain the original punctuation and postal suffix when pasting the recorded wording.
+            head = re.split(r'[,;]', raw)
+            without_town = raw
+            if len(head) > 1 and plain(head[-1]) == town:
+                without_town = raw[:len(raw)-len(head[-1])-1].rstrip()
+            for base, source, wording in db.execute("""SELECT base,source,wording FROM pr_permit_wording
+                    WHERE town=? AND source IN ('CRIM','JP consulta') AND wording COLLATE NOCASE IN (?,?)
+                    ORDER BY base,source,wording""", (town,raw,without_town)):
+                result.setdefault(base, (source,wording))
         signature = key(text, town)
         if not signature:
             continue
-        value, postal = signature
-        rows = db.execute("""SELECT base,source,wording FROM pr_permit_wording
-            WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
-            ORDER BY base,source,wording""", (town,value,postal,postal,postal))
-        for base, source, wording in rows:
-            result.setdefault(base, (source, wording))
+        signatures = [signature]
+        if signature[0].startswith('literal '):
+            alternative = key(text, town, locality=True)
+            if alternative != signature:
+                signatures.append(alternative)
+        for value, postal in signatures:
+            rows = db.execute("""SELECT base,source,wording FROM pr_permit_wording
+                WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
+                ORDER BY base,source,wording""", (town,value,postal,postal,postal))
+            for base, source, wording in rows:
+                result.setdefault(base, (source, wording))
     return result

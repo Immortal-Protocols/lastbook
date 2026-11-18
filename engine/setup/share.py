@@ -304,36 +304,15 @@ class Swarm:
 
     def start(self, folder):
         """rqbit on `folder`, the torrent added (its data file is the one in there). True once it took the torrent."""
-        from . import download
         prog = list(self.command) if self.command else ([str(binary())] if binary() else None)
         if not prog:
             return False
-        self.port, self.secret = download.loopback_port(), secrets.token_urlsafe(24)
-        base = [a for a in ('--disable-dht-persistence', '--disable-upnp-port-forward') if a not in self.extra]   # rqbit refuses a flag twice
-        base += [] if '-v' in self.extra else ['-v', 'warn']
-        args = prog + base + ['--http-api-listen-addr', f'127.0.0.1:{self.port}'] + self.extra + ['server', 'start', '--disable-persistence', str(folder)]
-        try:
-            self.proc = _spawn(args, self.secret)
-        except OSError as e:
-            print(f'setup: BitTorrent could not start: {e}', flush=True)
+        started = _server(prog, self.extra, folder, 'BitTorrent')
+        if started is None:
             return False
+        self.proc, self.port, self.secret = started
         atexit.register(self.stop)            # ended at a normal exit too, where nothing else ties it to Lastbook
-        t0 = time.time()
-        while time.time() - t0 < 20 and self.proc.poll() is None:
-            r = download.local_api(self.port, self.secret, 'GET', '/stats')
-            if r and r[0] == 200:
-                break
-            time.sleep(0.1)
-        if self.proc.poll() is not None:
-            print(f'setup: BitTorrent stopped as it started (rqbit exit code {self.proc.returncode})', flush=True)
-        query = 'overwrite=true&output_folder=' + urllib.parse.quote(str(folder), safe='')
-        if self.peers:
-            query += '&initial_peers=' + urllib.parse.quote(','.join(self.peers), safe='')
-        r = download.local_api(self.port, self.secret, 'POST', '/torrents?' + query, body=self.torrent)
-        try:
-            self.id = int(json.loads(r[1])['id']) if r and r[0] == 200 else None
-        except (ValueError, KeyError, TypeError):
-            self.id = None
+        self.id = _add(self.port, self.secret, self.torrent, folder, self.peers)
         if self.id is None:
             print('setup: BitTorrent did not take the torrent; downloading from the servers only', flush=True)
             self.stop()
@@ -366,6 +345,120 @@ class Swarm:
         if self.tally is not None and p.poll() is None:
             self.tally.add({('swarm', p.pid, self.port): uploaded(self.port, self.secret)})
         _unwatch(p)
+        if p.poll() is None:
+            p.terminate()
+        try:
+            p.wait(15)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(15)
+
+
+def _server(prog, extra, folder, what):
+    """Starts `rqbit server start` on folder (nothing saved), its control API on 127.0.0.1 behind a password made for it, and
+    waits until it answers: (process, API port, password), or None. extra: arguments before 'server'."""
+    from . import download
+    port, secret = download.loopback_port(), secrets.token_urlsafe(24)
+    extra = list(extra)
+    base = [a for a in ('--disable-dht-persistence', '--disable-upnp-port-forward') if a not in extra]   # rqbit refuses a flag twice
+    base += [] if '-v' in extra else ['-v', 'warn']
+    args = prog + base + ['--http-api-listen-addr', f'127.0.0.1:{port}'] + extra + ['server', 'start', '--disable-persistence', str(folder)]
+    try:
+        proc = _spawn(args, secret)
+    except OSError as e:
+        print(f'setup: {what} could not start: {e}', flush=True)
+        return None
+    t0 = time.time()
+    while time.time() - t0 < 20 and proc.poll() is None:
+        r = download.local_api(port, secret, 'GET', '/stats')
+        if r and r[0] == 200:
+            break
+        time.sleep(0.1)
+    if proc.poll() is not None:
+        print(f'setup: {what} stopped as it started (rqbit exit code {proc.returncode})', flush=True)
+    return proc, port, secret
+
+
+def _add(port, secret, data, folder, peers=(), timeout=5):
+    """Adds a torrent to the rqbit at 127.0.0.1:port, its data in folder, which rqbit checks against the torrent first
+    (overwrite: nothing there is thrown away). Its id there, or None."""
+    from . import download
+    query = 'overwrite=true&output_folder=' + urllib.parse.quote(str(folder), safe='')
+    if peers:
+        query += '&initial_peers=' + urllib.parse.quote(','.join(peers), safe='')
+    r = download.local_api(port, secret, 'POST', '/torrents?' + query, body=data, timeout=timeout)
+    try:
+        n = json.loads(r[1])['id'] if r and r[0] == 200 else None
+        return n if isinstance(n, int) and not isinstance(n, bool) else None
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+class Station:
+    """A server that shares Lastbook's downloads (tools/seed.py): one rqbit for as long as it runs, `server start` with nothing
+    saved, listening for peers on a fixed port (so a firewall can let them in), no UPnP, its control API on 127.0.0.1 behind a
+    password made for it. Torrents are added one at a time as their files are ready, without checking the others again; rqbit
+    checks each file against its torrent before it uploads a byte of it. tally: where the uploaded bytes are added up.
+    extra: more arguments before 'server' (tests: no DHT, loopback only)."""
+
+    def __init__(self, folder, listen_port=None, upload_bps=None, command=None, extra=(), tally=None):
+        self.folder, self.listen_port, self.upload_bps = Path(folder), listen_port, upload_bps
+        self.command, self.extra, self.tally = command, list(extra), tally
+        self.proc, self.port, self.secret, self.added = None, None, None, {}
+
+    def available(self):
+        return bool(self.command or binary())
+
+    def start(self):
+        """True once rqbit answers."""
+        prog = list(self.command) if self.command else ([str(binary())] if binary() else None)
+        if not prog:
+            return False
+        extra = list(self.extra)
+        if self.listen_port:
+            extra += ['--listen-port', str(int(self.listen_port))]
+        if self.upload_bps:
+            extra += ['--ratelimit-upload', str(int(self.upload_bps))]
+        started = _server(prog, extra, self.folder, 'sharing')
+        if started is None:
+            return False
+        self.proc, self.port, self.secret = started
+        atexit.register(self.stop)
+        self.added = {}
+        return self.running()
+
+    def running(self):
+        return self.proc is not None and self.proc.poll() is None
+
+    def add(self, name, torrent_data):
+        """Shares the file `name` in the folder by its torrent (already checked against its pin). True once rqbit took it; rqbit
+        may take a while to check a large file before it offers any of it. A torrent added before is not added again."""
+        if name in self.added:
+            return True
+        if not self.running():
+            return False
+        n = _add(self.port, self.secret, torrent_data, self.folder, timeout=600)
+        if n is None:
+            return False
+        self.added[name] = n
+        return True
+
+    def shared(self):
+        """All the bytes uploaded to other people so far, with what this rqbit says now (0 without a tally)."""
+        if self.tally is None:
+            return 0
+        if not self.running():
+            return self.tally.total()
+        return self.tally.add({('station', self.proc.pid, self.port): uploaded(self.port, self.secret)})
+
+    def stop(self):
+        p = self.proc
+        if p is None:
+            return
+        if self.tally is not None and p.poll() is None:
+            self.shared()                      # the last reading, before the count goes with the process
+        self.proc = None
+        atexit.unregister(self.stop)
         if p.poll() is None:
             p.terminate()
         try:

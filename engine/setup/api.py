@@ -103,6 +103,7 @@ class Setup:
         self._llm = llm_local
         self.lock = threading.RLock()
         self.job, self.control, self.thread = None, None, None
+        self._worker = threading.local()      # .job: the job the current worker thread started with
         self.sources = {}          # file name -> a file already on this computer the person chose with `use`
         self.ai_measure, self.measuring = None, False
         self.deleting = set()
@@ -490,7 +491,7 @@ class Setup:
                 if any(target.iterdir()):
                     return {'error': f'There is already a folder called {DATA_NAME} there that is not a library. Choose another place.', 'code': 'folder'}
             work = _work_for(target)
-            srcs = dict(self.sources)
+            srcs = {k: v for k, v in self.sources.items() if not self._was_rejected(v)}     # a file that failed its SHA-256 is not hashed again
             srcs.update(sources or {})
             for f in self.found():
                 if f.get('size_ok') and f['name'] not in srcs and f['kind'] in ('pack', 'model', 'map', 'addresses'):
@@ -513,6 +514,7 @@ class Setup:
             if free < need:
                 return {'error': f'This needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space or choose another disk.',
                         'code': 'no_space', 'need_bytes': need, 'free_bytes': free}
+            self._drop_leftovers(work)
             items = []
             if pack:
                 items.append({'id': pack['id'], 'kind': 'pack', 'title': pack['title'], 'state': 'waiting', 'bytes_done': 0,
@@ -539,6 +541,20 @@ class Setup:
             self._run()
             return self.public_job()
 
+    def _was_rejected(self, path):
+        try:
+            st = os.stat(path)
+        except OSError:
+            return False
+        return self.rejected.get(str(path)) == (st.st_size, st.st_mtime_ns)
+
+    def _drop_leftovers(self, work):
+        """A new job replacing a failed one starts from empty unpack folders: install.unpack treats a same-size file as done, so an old
+        job's leftovers would be built into the new library. Downloads stay (they are checked by SHA-256); retry and resume never come here."""
+        if self.job and self.job['state'] == 'failed':
+            for sub in ('unpack', 'unpack-map', 'unpack-addresses'):
+                shutil.rmtree(Path(work) / sub, ignore_errors=True)
+
     def _start_repair(self, ai):
         """Re-check the open library's files (pack-manifest.tsv) and the model's SHA-256. What is wrong is fetched again: the pack is
         downloaded and switched to as in an upgrade, the model replaced in place. Nothing is downloaded if all is well."""
@@ -555,6 +571,7 @@ class Setup:
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model')}
+            self._drop_leftovers(work)
             items = [{'id': pack['id'], 'kind': 'pack', 'title': pack['title'], 'state': 'waiting', 'bytes_done': 0,
                       'bytes_total': pack['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None}]
             if model:
@@ -653,7 +670,8 @@ class Setup:
                 except OSError:
                     pass
                 job['state'] = 'failed'
-                job['error'] = {'code': 'cancelled', 'message': 'Cancelled. Nothing was changed.'}
+                still = bool(self.thread and self.thread.is_alive() and self.thread is not threading.current_thread())
+                job['error'] = {'code': 'cancelled', 'message': 'Cancelled. Lastbook was still finishing a step, so a few files it was writing may be left in the work folder.' if still else 'Cancelled. Nothing was changed.'}
                 for it in job['items']:
                     if it['state'] != 'done':
                         it['state'] = 'failed'
@@ -671,7 +689,8 @@ class Setup:
         for sub in ('downloads', 'unpack', 'unpack-map', 'unpack-addresses'):
             shutil.rmtree(work / sub, ignore_errors=True)
 
-    def use(self, path):
+    def use(self, path, folder=None, ai=False, map_id=None, address_id=None):
+        """folder, ai, map_id, address_id: what is chosen on screen; they go with a library zip, as `start` would take them."""
         p = Path(path or '').expanduser()
         if not str(path or '').strip() or not p.exists():
             return {'error': 'Lastbook cannot find that file or folder.', 'code': 'missing'}
@@ -684,7 +703,7 @@ class Setup:
                     known.add(model['file'])
                 inside = sorted(c for c in p.iterdir() if c.name in known and c.is_file()) if p.is_dir() else []
                 if inside:          # the person explicitly chose this folder
-                    return self.use(str(inside[0]))
+                    return self.use(str(inside[0]), folder, ai, map_id, address_id)
                 return {'error': f'“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.', 'code': 'not_library'}
             if not os.access(lib, os.W_OK):
                 return {'error': f'Lastbook cannot save in “{lib.name}”. Move it somewhere you can save to, then choose it there.', 'code': 'folder'}
@@ -705,7 +724,7 @@ class Setup:
                     if not pk['available']:
                         return {'error': 'That library is not available in this version.', 'code': 'unavailable'}
                     self.sources[name] = str(p)
-                    return self.start(pk['id'], False, None, {name: str(p)}, explicit=True)
+                    return self.start(pk['id'], bool(ai), folder, {name: str(p)}, explicit=True, map_id=map_id or None, address_id=address_id or None)
         for x in self.manifest.current.get('maps', []):
             for f in x['files']:
                 if f['name'] == name:
@@ -714,7 +733,7 @@ class Setup:
                     self.sources[name] = str(p)
                     if self.mode == 'manage':
                         return self.start(None, False, None, {name: str(p)}, explicit=True, map_id=x['id'])
-                    return self.public_job() or {'job': None, 'noted': True}
+                    return {'job': None, 'noted': True, 'kind': 'map'}
         for entry in self.manifest.current.get('address_indexes', []):
             for file in entry['files']:
                 if file['name'] != name:
@@ -724,7 +743,7 @@ class Setup:
                 self.sources[name] = str(p)
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
-                return self.public_job() or {'job': None, 'noted': True}
+                return {'job': None, 'noted': True, 'kind': 'addresses'}
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:
@@ -732,7 +751,7 @@ class Setup:
             self.sources[name] = str(p)
             if self.mode == 'manage':
                 return self.start(None, True, None, {name: str(p)}, explicit=True)
-            return self.public_job() or {'job': None, 'noted': True}
+            return {'job': None, 'noted': True, 'kind': 'model'}
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
 
     def finish(self):
@@ -810,8 +829,15 @@ class Setup:
         return {'ok': True, 'deleting': path}
 
     # ------------------------------------------------------------------------------------------------------ the work --
+    def _stale(self):
+        """True in a worker that is no longer the job's: cancelled (and not joined in time) or replaced by a newer job."""
+        job = getattr(self._worker, 'job', None)
+        return job is not None and (job is not self.job or (job.get('error') or {}).get('code') == 'cancelled')
+
     def _set(self, it, state, **kw):
         with self.lock:
+            if self._stale():
+                raise download.Stopped('cancelled')       # a late worker writes nothing
             if it is not None:
                 it['state'] = state
                 it.update(kw)
@@ -820,6 +846,8 @@ class Setup:
 
     def _fail(self, it, code, message, **extra):
         with self.lock:
+            if self._stale():
+                return
             err = {'code': code, 'message': message, **extra}
             if it is not None:
                 it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', err, 0, None
@@ -834,7 +862,7 @@ class Setup:
             print('setup: could not save the job:', e, flush=True)
 
     def _work(self, control):
-        job = self.job
+        job = self._worker.job = self.job
         plan = job['plan']
         it = None
         try:
@@ -852,13 +880,18 @@ class Setup:
                 else:
                     self._do_model(it, plan, work, control)
                 with self.lock:
+                    if self._stale():
+                        raise download.Stopped('cancelled')
                     it['state'], it['rate_bps'], it['eta_s'] = 'done', 0, None
                     self._save_job()
             it = None
+            with self.lock:
+                if self._stale():
+                    raise download.Stopped('cancelled')
             self._finish_job(plan, work)
         except download.Stopped as s:
             with self.lock:
-                if s.why == 'paused':
+                if s.why == 'paused' and not self._stale():
                     if it is not None:
                         it['state'], it['rate_bps'], it['eta_s'] = 'paused', 0, None
                     job['state'] = 'paused'
@@ -872,10 +905,10 @@ class Setup:
                 self._fail(it, 'no_space', 'The disk filled up. Free some space, then try again.')
             else:
                 traceback.print_exc()
-                self._fail(it, 'unpack' if it and job['state'] == 'unpacking' else 'network', f'Lastbook could not write a file ({type(e).__name__}: {e.strerror or e}).')
+                self._fail(it, 'unpack' if it and job['state'] == 'unpacking' else 'folder', f'Lastbook could not write a file ({type(e).__name__}: {e.strerror or e}).')
         except Exception as e:
             traceback.print_exc()
-            self._fail(it, 'activate', f'Setup stopped on an internal error ({type(e).__name__}).')
+            self._fail(it, 'internal', f'Setup stopped on an internal error ({type(e).__name__}).')
 
     def _get_file(self, it, f, plan, work, control, offset):
         """The file, checked against its SHA-256: one already on this computer, or a download. Returns its path."""
@@ -934,6 +967,12 @@ class Setup:
                 plan['switch'] = False
                 return
             need = install.need_bytes(pack, None, set(plan['sources']))
+            try:
+                install.check_map(Path(plan['target']))
+                plan['keep_map'] = True       # an installed state map that is whole stays: only what is wrong is fetched
+                need += install.map_bytes(plan['target'])
+            except install.Refused:
+                plan['keep_map'] = False
             free, _ = hardware.disk_of(work.parent)
             if free < need:
                 raise download.Failed('no_space', f'{len(bad)} files need fetching again. That needs {_gb(need)} free, and the disk has {_gb(free)}.')
@@ -959,7 +998,7 @@ class Setup:
             if metadata.get('content_revision') != pack['revision']:
                 raise install.Refused('unpack', 'The library content version does not match this download.')
         current = self.current_info() or {}
-        if (not plan.get('repair') and not plan.get('map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
+        if ((plan.get('keep_map') if plan.get('repair') else not plan.get('map')) and Path(plan['target']) == self.current and current.get('pack') == pack['id']
                 and current.get('map') not in (None, 'base')):
             install.copy_map(self.current, lib)
         install._write_json(lib / 'setup-pack.json', {'pack': pack['id'], 'installed': _now(), 'files': [f['name'] for f in pack['files']]})
@@ -1188,11 +1227,13 @@ def opened(settings_dir, data, note):
             job = json.loads(_job_file(settings_dir).read_text(encoding='utf-8'))
         except (OSError, ValueError):
             job = None
-        if note or (isinstance(job, dict) and job.get('state') == 'done'):
-            shutil.rmtree(work, ignore_errors=True)
-            s.pop('work', None)
+        failed = bool(note and note.get('error'))
+        if failed or note or (isinstance(job, dict) and job.get('state') == 'done'):
+            if not failed:
+                shutil.rmtree(work, ignore_errors=True)     # a failed switch keeps its work folder: nothing in it is ours to throw away
+                s.pop('work', None)
             try:
-                _job_file(settings_dir).unlink()
+                _job_file(settings_dir).unlink()        # either way the finished job is not shown again
             except OSError:
                 pass
     s['old'] = [o for o in s.get('old', []) if Path(o).exists()]
@@ -1234,7 +1275,7 @@ ROUTES = {
     ('POST', 'resume'): lambda s, b: s.resume(),
     ('POST', 'cancel'): lambda s, b: s.cancel(),
     ('POST', 'retry'): lambda s, b: s.retry(),
-    ('POST', 'use'): lambda s, b: s.use(b.get('path')),
+    ('POST', 'use'): lambda s, b: s.use(b.get('path'), b.get('folder'), bool(b.get('ai')), b.get('map') or None, b.get('address_id') or None),
     ('POST', 'finish'): lambda s, b: s.finish(),
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),

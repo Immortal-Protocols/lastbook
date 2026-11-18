@@ -75,6 +75,7 @@
   let pollT = 0;
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
   let note = '', noteOk = false;
+  let emptyTries = 0;     // times state was asked again because the manifest came back with no libraries
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
@@ -165,6 +166,8 @@
     else if (cur() || S.mode === 'manage' || MANAGE_ASKED) view = cur() ? 'manage' : 'choose';
     $('#sBack').hidden = !cur();
     render(true);
+    // From source there is no bundled manifest: the engine may still be fetching it. Ask again while the list is empty.
+    if (!packs().length && view !== 'job' && emptyTries++ < 8) setTimeout(() => { if (!packs().length && view !== 'job') load() }, 2500);
   }
 
   /* ------------------------------------------------------------ views */
@@ -330,10 +333,17 @@
   async function useFile(path, btn) {
     if (btn) btn.disabled = true;
     try {
-      const r = await call('use', { path });
+      const r = await call('use', { path, ...chosen() });   // a library zip is installed as chosen on screen: folder, AI and state
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'The local AI file will be used. No need to download it.'; return }
-      S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
+      if (r && r.noted) {   // a model, map or address file kept for the start that follows; only the model is the AI's tick
+        S = await call('state').catch(() => S);
+        const kind = r.kind || 'model';
+        if (kind === 'model') choice.ai = true;
+        chooseView(); const n = $('#haveNote'); n.hidden = false;
+        n.textContent = kind === 'model' ? 'The local AI file will be used. No need to download it.' : `The ${kind === 'map' ? 'map' : 'address search'} file will be used. No need to download it.`;
+        return;
+      }
+      repair = null; S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
       const n = $('#haveNote'); n.hidden = false; n.textContent = e.message;
@@ -342,10 +352,13 @@
   async function start() {
     if (mapMissing()) { $('#mapSel')?.focus(); return }
     const b = $('#start'); b.disabled = true;
-    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
+    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ...chosen() }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
     if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'Setup could not start.'; return }
-    S.job = r; go('job'); poll();
+    repair = null; S.job = r; go('job'); poll();
+  }
+  function chosen() {   // what is picked on screen, as `start` and `use` both take it
+    return { ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder };
   }
 
   /* ---- manage */
@@ -398,7 +411,7 @@
   /* ---- job */
   const STEPS = { pack: [['downloading', 'Download'], ['verifying', 'Check'], ['unpacking', 'Unpack'], ['activating', 'Finish']],
                   model: [['downloading', 'Download'], ['verifying', 'Check'], ['activating', 'Finish']] };
-  STEPS.map = [['downloading', 'Download'], ['unpacking', 'Unpack']];   // the engine's map item: waiting, downloading, unpacking, done
+  STEPS.map = [['downloading', 'Download'], ['verifying', 'Check'], ['unpacking', 'Unpack'], ['activating', 'Finish']];   // the engine's map item: downloading, verifying, unpacking, activating
   STEPS.addresses = STEPS.map;
   const WORD = { waiting: 'Waiting', downloading: 'Downloading', paused: 'Paused', verifying: 'Checking', unpacking: 'Unpacking', activating: 'Finishing', done: 'Done', failed: 'Stopped' };
   const ACTIVE = new Set(['waiting', 'downloading', 'verifying', 'unpacking', 'activating']);
@@ -418,9 +431,13 @@
       checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
       unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
       activate: ['The new library is ready but could not be switched in.', 'Retry, or close Lastbook and open it again.', 'retry'],
+      folder: ['Lastbook could not read or write a file in its folder.', 'Check the folder and the disk are still there and allow saving, then retry.', 'retry'],
+      internal: ['Setup stopped on an unexpected problem.', 'Retry, or go back and choose again.', 'retry'],
       cancelled: ['The download was cancelled.', 'Start again when you are ready.', 'back'],
     }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
-    return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
+    const said = esc(errText(e) || '');   // the engine's own words, under the headline: what exactly went wrong
+    const detail = said && !['found_mismatch', 'cancelled', 'no_space'].includes(code) && said !== T[0] ? `<p class="s-detail"><small>${said}</small></p>` : '';
+    return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b>${detail}<p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
       <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p></div></div>`;
   }
   function itemHTML(it, j) {
@@ -479,7 +496,7 @@
         <div class="s-items">${j.items.map(it => itemHTML(it, j)).join('')}</div>
         ${j.state === 'failed' ? '' : `<div class="s-go left">${confirmCancel
           ? `<span class="s-confirm"><span>Stop and throw away the download?</span><button class="btn danger" data-act="cancel-yes">Stop</button><button class="btn plain" data-act="cancel-no">Keep going</button></span>`
-          : `${j.state === 'paused' ? `<button class="btn" data-act="resume">${ico('play')}Resume</button>` : j.state === 'downloading' || j.state === 'waiting' ? `<button class="btn plain" data-act="pause">${ico('pause')}Pause</button>` : ''}
+          : `${j.state === 'paused' ? `<button class="btn" data-act="resume">${ico('play')}Resume</button>` : j.state === 'downloading' || j.state === 'waiting' || j.state === 'verifying' ? `<button class="btn plain" data-act="pause">${ico('pause')}Pause</button>` : ''}
              <button class="btn plain" data-act="cancel">${ico('x')}Cancel</button>`}</div>`}`;
       main.querySelectorAll('[data-act]').forEach(b => b.onclick = () => jobAct(b.dataset.act, b));
       const again = had && main.querySelector(`[data-act="${had}"]`) || (had && main.querySelector('[data-act]'));
@@ -493,13 +510,13 @@
     if (fresh.length) { void main.offsetWidth; fresh.forEach(b => b.classList.remove('new')) }   // a new screen shows the bar where it is, without growing from nothing
   }
   async function jobAct(a, b) {
-    if (a === 'back') { S = await call('state').catch(() => S); S.job = null; shortfall = null; go('choose'); return }   // fresh: found[] may now mark a file as not matching
+    if (a === 'back') { repair = null; S = await call('state').catch(() => S); S.job = null; shortfall = null; go('choose'); return }   // fresh: found[] may now mark a file as not matching
     if (a === 'cancel') { confirmCancel = true; jobView(S.job); main.querySelector('[data-act="cancel-no"]').focus(); return }
     if (a === 'cancel-no') { confirmCancel = false; jobView(S.job); return }
     if (a === 'cancel-yes') { confirmCancel = false; a = 'cancel' }
     b.disabled = true; lastAct = a;
     try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { }
-    if (a === 'cancel') { S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = 'The download was cancelled.'; return }
+    if (a === 'cancel') { repair = null; S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = 'The download was cancelled.'; return }
     jobView(S.job);
     poll();
   }

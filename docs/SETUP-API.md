@@ -38,7 +38,8 @@ Re-read a file just before editing it. Commit nothing and switch no branch: the 
 The app carries a copy made at build time (`packaging/release_manifest.py` → bundled `setup/manifest-v1.json`). Setup may
 also fetch `https://downloads.lastbook.org/manifest-v1.json` (one GET, only when the person opens setup online) to learn of
 packs published after the app was built. A fetched manifest is used only if it parses, its `version` is 1, and every URL is
-on an allowed host.
+on an allowed host. With no bundled manifest (running from source) `state` waits a few seconds for that first fetch rather than
+answering with an empty list, and a failed fetch is tried again by a later `state` (not within 15 s); the page asks again while `packs` is empty.
 
 ```json
 {
@@ -92,7 +93,7 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/start` `{pack, ai: true or false, folder?}` | the new `job`, or `{error, need_bytes, free_bytes}` |
 | `GET /api/setup/job` | `job` |
 | `POST /api/setup/pause`, `/resume`, `/cancel`, `/retry` | `job` |
-| `POST /api/setup/use` `{path}` | uses a library or file already on this computer: `job` (verify, then unpack or activate) |
+| `POST /api/setup/use` `{path, folder?, ai?, map?, address_id?}` | uses a library or file already on this computer: `job` (verify, then unpack or activate). For a library zip, `folder`, `ai`, `map` and `address_id` are what is chosen on screen and are passed to `start` as they are. A model, map or address file in first-run setup is only remembered for the next `start`: `{job: null, noted: true, kind: "model" \| "map" \| "addresses"}` (never an earlier job) |
 | `POST /api/setup/finish` | `{ok: true}`; the app then opens the library (see below) |
 | `POST /api/setup/pick` | `{path}` from the system's folder picker, or `{path: null}`: a place to install (`start {folder}`) or something to `use` (a LastbookData, a folder holding one, or a folder holding a pack zip) |
 | `POST /api/setup/delete-old` `{path}` | deletes a `LastbookData.old-*` setup moved aside itself (listed in `current.old`): `{ok, deleting}` |
@@ -117,7 +118,7 @@ error}], error, started, folder}`. Each item also has `source`: `"found"` when i
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,
 `activating`, `done`, or `failed` (with `error`: a plain sentence and a `code`: `no_space`, `network`, `checksum`, `unpack`,
-`activate`, `cancelled`, and `found_mismatch`: a file already on this computer (`use`) did not match its published SHA-256; the error carries `file`, the file is left untouched and no longer offered, and `retry` downloads it instead). The job lives in the app's own settings folder (`<settings>/setup/job.json`, with a staged switch in `<settings>/setup/pending.json`; never in `LastbookData.setup`, whose contents are not obeyed: audit E3), so a restart picks it up as `paused` and resumes
+`activate`, `folder` (a file in the library or work folder could not be read or written: the message says which error), `internal` (an unexpected error), `cancelled` (the message says whether anything was left behind), and `found_mismatch`: a file already on this computer (`use`) did not match its published SHA-256; the error carries `file`, the file is left untouched and no longer offered, and `retry` downloads it instead). The job lives in the app's own settings folder (`<settings>/setup/job.json`, with a staged switch in `<settings>/setup/pending.json`; never in `LastbookData.setup`, whose contents are not obeyed: audit E3), so a restart picks it up as `paused` and resumes
 with HTTP Range from the bytes already on disk. A corrupt download (wrong SHA-256) is deleted and downloaded once more
 automatically, then fails with `checksum`.
 
@@ -179,4 +180,4 @@ Built by setup-backend (2026-11-12):
   `state.manifest.maps` lists the entries (without URLs).
 - `found[]` also lists a `Lastbook-Map-*.zip` already on this computer (`kind: "map"`); `use` on it starts the map job
   in manage mode, or is used by the next `start` in first-run setup.
-- Repair skips the map files when a `map-set.json` is present; those are checked against it instead.
+- Repair skips the map files when a `map-set.json` is present; those are checked against it instead. A whole installed state map is kept (copied into the repaired library, and counted in the space check); a damaged one is not.

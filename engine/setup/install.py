@@ -282,17 +282,25 @@ def switch(new_lib, target):
     old = None
     if target.exists():
         old = old_name(target)
-        if is_library(target):
-            carry_over(target, new_lib)
         try:
             os.replace(target, old)
         except OSError as e:
             raise Refused('activate', f'Lastbook could not move the old library aside ({type(e).__name__}). Close anything using it, then try again.')
+    carried = []
+    if old and is_library(old):      # only once the old one is safely aside: a failure from here on can put every file back
+        try:
+            carried = carry_over(old, new_lib)
+        except OSError as e:          # part-way through: everything goes back where it was
+            carry_over(new_lib, old)
+            os.replace(old, target)
+            raise Refused('activate', f'Lastbook could not move the model and address files ({type(e).__name__}).')
     try:
         os.replace(new_lib, target)
     except OSError as e:
         if old:
             os.replace(old, target)
+            if carried:
+                carry_over(new_lib, target)      # the model and address files go home again
         raise Refused('activate', f'Lastbook could not put the new library in place ({type(e).__name__}).')
     return old
 

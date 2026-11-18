@@ -21,7 +21,7 @@ The contract is `docs/SETUP-API.md`. This package fills it in.
 
 - `POST /api/setup/pick` returns `{path, free_bytes, disk}` from the system's folder picker, or `{path: null, cancelled: true}`. A chosen folder can be the install place (`start {folder}`) or something to `use`: a LastbookData folder, a folder holding one, or a folder holding a pack zip.
 - `POST /api/setup/remove-ai` deletes the model file from the open library.
-- `POST /api/setup/start {repair: true, ai}` re-checks every file against `pack-manifest.tsv` and the model's SHA-256, and fetches again only what is wrong (the whole pack zip, then switches as an upgrade does).
+- `POST /api/setup/start {repair: true, ai}` re-checks every file against `pack-manifest.tsv` and the model's SHA-256, and fetches again only what is wrong (the whole pack zip, then switches as an upgrade does). An installed state map that is whole is carried over; the model and address files are carried over by a switch only after the old library has been moved aside, and go back if the switch fails.
 - `POST /api/setup/delete-old {path}` deletes a `LastbookData.old-*` that setup itself moved aside. These are listed in `state.current.old`.
 - `state.recommend` also carries `folder` and `need_bytes` (per pack). Each `found` entry is `{kind: library|pack|model, path, name, id, size, size_ok}`.
 

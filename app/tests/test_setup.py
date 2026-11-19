@@ -1609,6 +1609,55 @@ class Sharing(Base):
         api.opened(self.settings, lib, note)
         return lib
 
+    def test_a_library_installed_without_sharing_can_download_to_share(self):
+        """Installed with sharing off, the pack's zip was deleted once it was unpacked. The settings page then offers to download it
+        again to share it: a job that keeps the zip in <library>.share with its torrent and seeds it, leaves the library as it is,
+        and has nothing to open at the end."""
+        lib = self.install_shared(on=False)
+        self.assertFalse((self.parent / 'LastbookData.share').exists())
+        before = sorted(p.relative_to(lib).as_posix() for p in lib.rglob('*'))
+        relaunched = []
+        m = self.setup('manage', current=lib, manifest=self.shared_manifest(), share_command=self.command, on_finish=relaunched.append)
+        self.addCleanup(m.seeder.stop)
+        st = m.state()['sharing']
+        self.assertEqual((st['on'], st['missing'], st['missing_bytes']),
+                         (False, [{'name': 'Lastbook-Small.zip', 'size': len(self.zip)}], len(self.zip)))
+        j = m.share_get()
+        self.assertEqual([(i['kind'], i['id'], i['title']) for i in j['items']], [('share', 'Lastbook-Small.zip', 'Small library')])
+        j = self.wait(m)
+        self.assertEqual(j['state'], 'done', j)
+        kept = self.parent / 'LastbookData.share'
+        self.assertEqual((kept / 'Lastbook-Small.zip').read_bytes(), self.zip)
+        self.assertTrue((kept / 'Lastbook-Small.zip.torrent').is_file())
+        args = self.calls()[-1]                                                           # and it is seeded from there
+        self.assertEqual(args[args.index('download'):], ['download', '--overwrite', '-o', str(kept), str(kept / 'Lastbook-Small.zip.torrent')])
+        st = m.state()['sharing']
+        self.assertEqual((st['on'], st['missing'], st['missing_bytes'], st['kept_bytes']), (True, [], 0, len(self.zip)))
+        self.assertEqual(m.finish(), {'ok': True, 'shared': True})                        # nothing to open: no relaunch
+        self.assertIsNone(m.public_job())
+        self.assertEqual(relaunched, [])
+        self.assertFalse((self.parent / 'LastbookData.setup').exists())
+        self.assertEqual(sorted(p.relative_to(lib).as_posix() for p in lib.rglob('*')), before)   # the library is untouched
+        self.assertEqual(m.share_get()['code'], 'nothing')
+
+    def test_downloading_to_share_says_why_not(self):
+        lib = self.install_shared(on=False)
+        m = self.setup('manage', current=lib, manifest=self.shared_manifest(), share_command=self.command)
+        self.addCleanup(m.seeder.stop)
+        with mock.patch.object(hardware, 'disk_of', lambda path: (len(self.zip), None)):
+            self.assertEqual(m.share_get()['code'], 'no_space')                           # room for the zip, not the margin
+        with mock.patch.object(share, 'binary', lambda: None):
+            n = self.setup('manage', current=lib, manifest=self.shared_manifest())
+            self.assertFalse(n.state()['sharing']['available'])
+            self.assertEqual(n.share_get()['code'], 'unavailable')
+        self.files.data['Lastbook-Small.zip.torrent'] = b'd4:infod4:name3:abcee'           # not the published torrent: nothing to share
+        self.files.log.clear()
+        m.share_get()
+        j = self.wait(m)
+        self.assertEqual((j['state'], j['error']['code']), ('failed', 'unavailable'))
+        self.assertNotIn('Lastbook-Small.zip', [name for name, _, _ in self.files.log])    # so the zip was not downloaded
+        self.assertFalse((self.parent / 'LastbookData.share' / 'Lastbook-Small.zip').exists())
+
     def test_rqbit_outlives_the_thread_that_started_it(self):
         """Seeding is started from threads that end at once (a request's, the one at startup). On Linux the parent-death signal
         comes when that thread ends, so rqbit must be started from one that does not."""
@@ -2196,6 +2245,39 @@ class Swarming(Base):
         self.assertEqual(j['state'], 'done', j)
         self.assertFalse((downloads / 'swarm' / 'Lastbook-Small.zip').exists())
         self.assertEqual(len([n for n in self.record.read_text(encoding='utf-8').splitlines() if 'server' in n]), 1)   # one swarm rqbit
+
+    def test_downloading_to_share_comes_from_people_too(self):
+        """A library installed with sharing off, its download then fetched again to share it: with BitTorrent on that comes from
+        other people too, through the same way as any download, and is kept and seeded."""
+        zpath = self.tmp / 'Lastbook-Small.zip'
+        installed = make_pack(zpath, {'library-data/catalog.json': b'{"records": []}', 'pack.json': b'{"name": "small"}',
+                                     'library-data/big.bin': os.urandom(2 * MiB)})
+        zdata = zpath.read_bytes()
+        self.files.data['Lastbook-Small.zip'] = zdata
+        data, pin = torrent.make(zpath, 'Lastbook-Small.zip', self.PIECE)
+        self.files.data['Lastbook-Small.zip.torrent'] = data
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': installed, 'available': True,
+                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(zdata),
+                                   'sha256': sha(zdata), 'kind': 'zip',
+                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': pin['pieces_root'],
+                                               'infohash_v2': pin['infohash_v2'], 'piece_length': self.PIECE}}]}], 'models': []}
+        mf = manifest.Manifest(bundled=manifest.validate(m, ALLOWED), remote=None, allowed=ALLOWED, context=self.ctx)
+        s = self.setup(manifest=mf, share_command=self.command)                     # installed with sharing off
+        s.start('small', False)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        self.files.pace = 0.2
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_SOURCE': str(zpath), 'FAKE_SWARM_NAME': 'Lastbook-Small.zip'}):
+            mg = self.setup('manage', current=lib, manifest=mf, share_command=self.command)
+            self.addCleanup(mg.seeder.stop)
+            r = mg.share_get()
+            self.assertEqual(r.get('state'), 'waiting', r)
+            j = self.wait(mg)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertGreater(j['items'][0].get('from_peers', 0), 0)
+        self.assertEqual((self.parent / 'LastbookData.share' / 'Lastbook-Small.zip').read_bytes(), zdata)
 
     def test_a_job_downloads_from_people(self):
         """The whole job with BitTorrent on: the pack comes partly from other people, and the item says how much."""

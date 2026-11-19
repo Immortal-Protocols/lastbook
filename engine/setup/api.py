@@ -356,6 +356,8 @@ class Setup:
             plan_files = plan['map']['files']
         elif it['kind'] == 'addresses' and plan.get('addresses'):
             plan_files = plan['addresses']['files']
+        elif it['kind'] == 'share' and plan.get('share'):
+            plan_files = [f for f in plan['share'] if f['name'] == it['id']]
         else:
             plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
         n = 0
@@ -626,10 +628,75 @@ class Setup:
 
     def sharing(self):
         """The person's mirrors, and sharing: whether this build can share (it has rqbit), whether it is on, and the kept files."""
-        kept = self._kept()
+        kept, missing = self._kept(), self._not_kept()
         return {'mirrors': self._mirror_bases(), 'available': self.seeder.available(), 'on': bool(self._settings().get('share')),
                 'seeding': sum(len(t) for _, t in self.seeder.running()), 'kept': [{'name': f['name'], 'size': f['size']} for f, _, _, _ in kept],
-                'kept_bytes': sum(f['size'] for f, _, _, own in kept if own), 'shared_bytes': self.seeder.shared()}
+                'kept_bytes': sum(f['size'] for f, _, _, own in kept if own), 'shared_bytes': self.seeder.shared(),
+                'missing': [{'name': f['name'], 'size': f['size']} for f, _ in missing], 'missing_bytes': sum(f['size'] for f, _ in missing)}
+
+    def _not_kept(self):
+        """The downloads the open library came from that the manifest pins a torrent for but are not kept to share: [(file entry,
+        title of what it is)]. A library installed before sharing was on (or with it off) has its pack's zip deleted once it was
+        unpacked; these can be downloaded again to share (share_get). The model is shared from the library itself, so it is never
+        among them."""
+        if self.mode != 'manage' or not self.current:
+            return []
+        cur = self.current_info() or {}
+        owned = []
+        pack = self.manifest.pack(cur['pack']) if cur.get('pack') else None
+        if pack:
+            owned += [(f, pack['title'] + ' library') for f in pack['files']]
+        mp = self.manifest.map(cur['map']) if cur.get('map') else None
+        if mp:
+            owned += [(f, mp['title'] + ' map') for f in mp['files']]
+        for aid in cur.get('address_indexes') or []:
+            a = self.manifest.address_index(aid)
+            if a:
+                owned += [(f, a['title'] + ' address search') for f in a['files']]
+        kept = {f['name'] for f, _, _, _ in self._kept()}
+        return [(f, title) for f, title in owned if f.get('torrent') and f['name'] not in kept]
+
+    def share_get(self):
+        """Manage mode: downloads again, to share them, the files the open library came from that are not kept (_not_kept), and
+        turns sharing on. It is a job like any other (pause, resume, cancel), with BitTorrent on, so what rqbit takes from other
+        people is shared as soon as it has it. Nothing in the library changes: each file is checked and kept in <library>.share
+        with its torrent, and seeded from there."""
+        if not self.seeder.available():
+            return {'error': 'This copy of Lastbook cannot share downloads.', 'code': 'unavailable'}
+        with self.lock:
+            if self.job and self.job['state'] in ACTIVE + ('paused',):
+                return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
+            missing = self._not_kept()
+            if not missing:
+                return {'error': 'Everything this library came from is kept to share already.', 'code': 'nothing'}
+            target = self.current
+            parent, work = target.parent, _work_for(target)
+            need = 0
+            for f, _ in missing:      # what an earlier run of this already downloaded is on the disk already
+                swarmed = download.swarm_done(work / 'downloads' / f['name'])
+                if swarmed is None:
+                    try:
+                        swarmed = os.path.getsize(work / 'downloads' / (f['name'] + '.part'))
+                    except OSError:
+                        swarmed = 0
+                need += max(0, f['size'] - swarmed)
+            free, _ = hardware.disk_of(parent)
+            if free < need + 512 * 2 ** 20:
+                return {'error': f'Keeping it to share needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space first.',
+                        'code': 'no_space', 'need_bytes': need, 'free_bytes': free}
+            items = [{'id': f['name'], 'kind': 'share', 'title': title, 'state': 'waiting', 'bytes_done': 0, 'bytes_total': f['size'],
+                      'rate_bps': 0, 'eta_s': None, 'error': None} for f, title in missing]
+            self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'items': items, 'error': None, 'started': _now(), 'folder': str(target),
+                        'plan': {'share': [f for f, _ in missing], 'parent': str(parent), 'target': str(target), 'work': str(work),
+                                 'sources': {}, 'explicit': False, 'retried': {}, 'switch': False}}
+            s = self._settings()
+            s['share'], s['work'] = True, str(work)
+            self._save_settings(s)
+            _tag_sources(self.job)
+            self._save_job()
+            self._run()
+        self.seed_now()               # what is kept already is shared meanwhile
+        return self.public_job()
 
     def set_share(self, on):
         """Turns sharing on or off. On: what is kept is seeded now, and what is downloaded from now on is kept. Off: seeding stops;
@@ -1326,6 +1393,17 @@ class Setup:
                 return {'error': 'A copy has no library to open here. It is on the drive.', 'code': 'nothing'}
             plan = job['plan']
             folder = plan.get('use_library') or plan['target']
+            if plan.get('share'):     # nothing to open: the library is as it was, and the kept files are being shared
+                self.job = None
+                try:
+                    _job_file(self.settings_dir).unlink()
+                except OSError:
+                    pass
+                shutil.rmtree(plan['work'], ignore_errors=True)
+                s = self._settings()
+                s.pop('work', None)
+                self._save_settings(s)
+                return {'ok': True, 'shared': True}
         if not self.on_finish:
             return {'ok': True, 'restart': True, 'folder': folder}
         threading.Timer(0.4, self.on_finish, [folder]).start()     # after this answer has reached the window
@@ -1440,6 +1518,8 @@ class Setup:
                     self._do_map(it, plan, work, control)
                 elif it['kind'] == 'addresses':
                     self._do_addresses(it, plan, work, control)
+                elif it['kind'] == 'share':
+                    self._do_share(it, plan, work, control)
                 elif plan.get('check_only'):
                     self._check_model(it, plan, control)
                 else:
@@ -1734,12 +1814,12 @@ class Setup:
     def _keeping(self):
         return bool(self._settings().get('share')) and self.seeder.available()
 
-    def _done_with(self, plan, work, got, entries):
+    def _done_with(self, plan, work, got, entries, keep=None):
         """The downloaded files of an item once it is in place (entries: their manifest entries): deleted, or with sharing on,
         kept with their torrent in <library>.share to be seeded (a file of the person's own, `use`d, is theirs and stays where it
         is)."""
         files = {f['name']: f for f in entries}
-        keep = self._keeping()
+        keep = self._keeping() if keep is None else keep
         for path, ours in got:
             if not ours:
                 continue
@@ -1764,6 +1844,16 @@ class Setup:
         if ok:
             ok = _sha256(p, control, lambda d, t: tracker.progress(d, t, 'verifying')) == m['sha256']
         plan['model_ok'] = ok
+
+    def _do_share(self, it, plan, work, control):
+        """A file the open library came from, downloaded again to share it (share_get): checked, and kept in <library>.share with its
+        torrent; nothing is unpacked. Without a torrent that adds up to its pin there is nothing to share, so it is not downloaded."""
+        f = next(x for x in plan['share'] if x['name'] == it['id'])
+        if self._pieces_for(f, work) is None:
+            raise download.Failed('unavailable', f'The torrent for {f["name"]} could not be fetched, or is not the published one, so it '
+                                                 'cannot be shared. Try again later.')
+        got = self._get_file(it, f, plan, work, control, 0)
+        self._done_with(plan, work, [got], [f], keep=True)
 
     def _do_model(self, it, plan, work, control):
         m = plan['model']
@@ -1889,6 +1979,8 @@ def _tag_sources(job):
             names = [f['name'] for f in plan['addresses']['files']]
         elif it['kind'] == 'model' and plan.get('model'):
             names = [plan['model']['file']]
+        elif it['kind'] == 'share' and plan.get('share'):
+            names = [it['id']]
         else:
             names = []
         it['source'] = 'found' if names and all(n in plan['sources'] for n in names) else 'download'
@@ -2174,6 +2266,7 @@ ROUTES = {
     ('POST', 'mirrors'): lambda s, b: s.mirrors(b.get('add'), b.get('remove')),
     ('POST', 'share'): lambda s, b: s.set_share(b.get('on') is True),
     ('POST', 'share-delete'): lambda s, b: s.delete_kept(),
+    ('POST', 'share-get'): lambda s, b: s.share_get(),
 }
 
 

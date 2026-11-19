@@ -129,6 +129,18 @@ SCENARIOS['sharing'] = dict(mode='manage', hardware=hw('windows', ram=32, free=2
                             recommend={'pack': 'medium', 'ai': False, 'why': ''},
                             sharing={'on': True, 'seeding': 2, 'kept': [{'name': 'Lastbook-Medium.zip', 'size': 66400000000}], 'kept_bytes': 66400000000,
                                      'shared_bytes': 214_700_000_000, 'mirrors': ['https://mirror.example/lastbook']})
+# Installed before sharing was on: the All library's download was not kept, so Library and local AI offers to download it to share
+SCENARIOS['share-missing'] = dict(mode='manage', hardware=hw('windows', ram=32, free=4000), current={'folder': WIN, 'pack': 'all', 'model': None, 'map': 'base'},
+                                  recommend={'pack': 'all', 'ai': False, 'why': ''},
+                                  sharing={'on': False, 'missing': [{'name': 'Lastbook-All.zip', 'size': 387_878_571_619}], 'missing_bytes': 387_878_571_619})
+# ... and that download, to share, under way: what comes from other people is shared as soon as it is in
+SCENARIOS['share-job'] = dict(mode='manage', hardware=hw('windows', ram=32, free=4000), current={'folder': WIN, 'pack': 'all', 'model': None, 'map': 'base'},
+                              recommend={'pack': 'all', 'ai': False, 'why': ''}, sharing={'on': True},
+                              snapshot={'id': 'j1', 'state': 'downloading', 'error': None, 'folder': WIN, 'items': [
+                                  _item('Lastbook-All.zip', 'share', 'All library', 'downloading', 141_300_000_000, 387_878_571_619,
+                                        rate_bps=31_400_000, eta_s=7_850, from_peers=118_600_000_000)]})
+SCENARIOS['share-done'] = dict(SCENARIOS['share-job'], snapshot={**SCENARIOS['share-job']['snapshot'], 'state': 'done', 'items': [
+    {**SCENARIOS['share-job']['snapshot']['items'][0], 'state': 'done', 'bytes_done': 387_878_571_619, 'rate_bps': 0, 'eta_s': None}]})
 # BitTorrent on while the All library downloads, part of it from other people. A fixed picture of a job, which does not move:
 # `snapshot` is the job as the engine sends it.
 SCENARIOS['swarm'] = dict(hardware=hw('windows', ram=32, free=2000), recommend={'pack': 'all', 'ai': False, 'why': ''},

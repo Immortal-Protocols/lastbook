@@ -89,6 +89,12 @@ downloads (`Download._run_swarm`):
   a small watcher that ends rqbit once a pipe only Lastbook holds closes (the app's Quit and its start again after setup skip
   atexit).
 - Turning it off stops rqbit and keeps the files. **Delete kept files** removes them. The library is never touched.
+- **Becoming a seeder after installing.** A library installed with sharing off (or before Lastbook could share) has had its
+  download deleted once it was unpacked, so there is nothing of it to seed. Library and local AI then offers **Download to share**:
+  a job that downloads those files again (`POST /api/setup/share-get`), with BitTorrent on, so the pieces rqbit takes from
+  other people are shared as soon as it has them while the servers fill in the rest. Each file is checked as any download is,
+  then kept in `<library>.share` with its torrent and seeded from there. The library itself does not change, and the shared
+  total counts from then on.
 - People with a torrent client (qBittorrent, Transmission, aria2c) can download or seed the same torrent. Setup's existing
   "Use the file you already have" checks a file got that way before using it.
 

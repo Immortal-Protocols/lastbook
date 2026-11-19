@@ -115,10 +115,23 @@ SCENARIOS = {
 SCENARIOS['hostile']['hardware']['disks'][0]['name'] = X
 
 
+def _item(id_, kind, title, state, done, total, **kw):
+    return {'id': id_, 'kind': kind, 'title': title, 'state': state, 'bytes_done': done, 'bytes_total': total, 'rate_bps': 0, 'eta_s': None,
+            'error': None, 'source': 'download', **kw}
+
+
 SCENARIOS['sharing'] = dict(mode='manage', hardware=hw('windows', ram=32, free=2000), current={'folder': WIN, 'pack': 'medium', 'model': None, 'map': 'base'},
                             recommend={'pack': 'medium', 'ai': False, 'why': ''},
                             sharing={'on': True, 'seeding': 2, 'kept': [{'name': 'Lastbook-Medium.zip', 'size': 66400000000}], 'kept_bytes': 66400000000,
-                                     'mirrors': ['https://mirror.example/lastbook']})
+                                     'shared_bytes': 214_700_000_000, 'mirrors': ['https://mirror.example/lastbook']})
+# BitTorrent on while the All library downloads, part of it from other people. A fixed picture of a job, which does not move:
+# `snapshot` is the job as the engine sends it.
+SCENARIOS['swarm'] = dict(hardware=hw('windows', ram=32, free=2000), recommend={'pack': 'all', 'ai': False, 'why': ''},
+                          sharing={'on': True},
+                          snapshot={'id': 'j1', 'state': 'downloading', 'error': None, 'folder': WIN, 'items': [
+                              _item('all', 'pack', 'All', 'downloading', 141_300_000_000, 387_878_571_619, rate_bps=31_400_000, eta_s=7_850,
+                                    from_peers=118_600_000_000),
+                              _item('AZ', 'map', 'Arizona', 'waiting', 0, 1_536_419_242)]})
 
 RATE = 2.2 * GB        # pretend bytes per second, so a whole run takes about half a minute
 STEP_S = 2.5           # seconds each of checking, unpacking and finishing takes
@@ -139,6 +152,8 @@ class Stub:
         self.sharing = {'mirrors': [], 'available': True, 'on': False, 'seeding': 0, 'kept': [], 'kept_bytes': 0}
         if s.get('sharing'):
             self.sharing.update(s['sharing'])
+        if 'snapshot' in s:
+            self.job = {**copy.deepcopy(s['snapshot']), 'frozen': True, 'started': time.time()}
         if 'job' in s:
             j = s['job']
             self._make(j['pack'], j['ai'])
@@ -221,6 +236,8 @@ class Stub:
 
     def tick(self):
         j = self.job
+        if j and j.get('frozen'):
+            return
         if not j or j['state'] in ('paused', 'failed', 'done'):
             if j:
                 self.last = time.time()

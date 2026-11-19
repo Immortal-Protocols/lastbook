@@ -100,7 +100,8 @@ class _Item:
 
 class Setup:
     def __init__(self, mode, settings_dir, default_parent, current=None, manifest=None, allowed=None, context=None,
-                 on_finish=None, pick_folder=None, look_for_libraries=None, home=None, llm_local=None, default_why=None, share_command=None):
+                 on_finish=None, pick_folder=None, look_for_libraries=None, home=None, llm_local=None, default_why=None, share_command=None,
+                 swarm_extra=(), swarm_peers=()):
         """mode: 'first-run' or 'manage'. current: the open library (manage). on_finish(folder): the app opens that library
         (it relaunches). pick_folder(): a folder the person chose, or None. look_for_libraries(): LastbookData folders found."""
         self.mode, self.current = mode, Path(current) if current else None
@@ -117,6 +118,7 @@ class Setup:
         self.deleting = set()
         self.rejected = {}         # path -> (size, mtime) of a file already here that failed its SHA-256: not offered or used again
         self.seeder = share.Seeder(share_command, share.Tally(self.settings_dir / 'setup' / 'shared.json'))
+        self.share_command, self.swarm_extra, self.swarm_peers = share_command, list(swarm_extra), list(swarm_peers)   # tests: rqbit's stand-in
         self.job = self._load_job()
         if self.mode == 'manage' and self.current and self._settings().get('share'):
             threading.Thread(target=self.seed_now, daemon=True, name='setup-share').start()
@@ -235,6 +237,10 @@ class Setup:
             plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
         n = 0
         for f in plan_files:
+            swarmed = download.swarm_done(Path(plan['work']) / 'downloads' / f['name'])
+            if swarmed is not None:             # coming from other people too: its data is in BitTorrent's folder, its .json says how far
+                n += swarmed
+                continue
             for p in (Path(plan['work']) / 'downloads' / f['name'], Path(plan['work']) / 'downloads' / (f['name'] + '.part')):
                 try:
                     n += p.stat().st_size
@@ -620,6 +626,10 @@ class Setup:
                 need += cur['map_bytes']
             for name in names:     # what an earlier run already downloaded is on the disk already
                 if name in have:
+                    continue
+                swarmed = download.swarm_done(work / 'downloads' / name)
+                if swarmed is not None:     # coming from other people too: its data is in BitTorrent's folder, its .json says how far
+                    need -= swarmed
                     continue
                 for done in (work / 'downloads' / (name + '.part'), work / 'downloads' / name):
                     try:
@@ -1030,8 +1040,9 @@ class Setup:
             print(f'setup: {src} does not match; downloading instead', flush=True)
         dest = work / 'downloads' / name
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
+            swarmed = download.swarm_done(dest)
             try:
-                still = f['size'] - os.path.getsize(str(dest) + '.part')
+                still = f['size'] - (swarmed if swarmed is not None else os.path.getsize(str(dest) + '.part'))
             except OSError:
                 still = f['size']
             free, _ = hardware.disk_of(work)
@@ -1041,10 +1052,16 @@ class Setup:
         while True:
             self._set(it, 'downloading')
             pieces = self._pieces_for(f, work)
+            swarm, part = self._swarm_for(f, work, pieces)
+            peers_before = it.get('from_peers', 0)
+
+            def peers(n, before=peers_before):
+                it['from_peers'] = before + n
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
                                   lambda done, total, phase: tracker.progress(offset + done, it['bytes_total'], phase),
                                   allowed=self.allowed, context=self.context, waiting=tracker.waiting,
-                                  pieces=pieces, mirrors=self._mirrors_for(f) if pieces else ())
+                                  pieces=pieces, mirrors=self._mirrors_for(f) if pieces else (),
+                                  swarm=swarm, part=part, on_peers=peers)
             try:
                 return d.run(), True
             except download.BadChecksum:
@@ -1084,6 +1101,23 @@ class Setup:
                     pass
             return pieces
         return None
+
+    def _swarm_for(self, f, work, pieces):
+        """With BitTorrent on, a file with a pinned torrent big enough to come in pieces also comes from other people: (share.Swarm,
+        where the file is downloaded to, in a folder of its own that rqbit writes into too). Otherwise (None, None), and a file left
+        in that folder by an earlier run goes back to <name>.part, so the download goes on from what is there."""
+        downloads = work / 'downloads'
+        in_swarm, part = downloads / 'swarm' / f['name'], downloads / (f['name'] + '.part')
+        t = downloads / (f['name'] + '.torrent')
+        if pieces and self._settings().get('share') and self.seeder.available() and f['size'] >= download.PARALLEL_MIN and t.is_file():
+            in_swarm.parent.mkdir(parents=True, exist_ok=True)
+            if part.exists() and not in_swarm.exists():
+                os.replace(part, in_swarm)
+            return share.Swarm(t.read_bytes(), wanted=lambda: bool(self._settings().get('share')), tally=self.seeder.tally,
+                               command=self.share_command, extra=self.swarm_extra, peers=self.swarm_peers), in_swarm
+        if in_swarm.exists() and not part.exists():
+            os.replace(in_swarm, part)
+        return None, None
 
     def _mirrors_for(self, f):
         """The manifest's mirrors of a file, then the person's own (a mirror of Lastbook's site: the file's path is added to it)."""

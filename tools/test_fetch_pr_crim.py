@@ -199,7 +199,8 @@ class PublicPrefixResults(unittest.TestCase):
           <span data-dojo-attach-point="numSpan" id="counter"></span><div id="cards"></div>
           <button class="load-more-button" onclick="more()">Load more</button></div></div>
           <div class="jimu-message" id="message" style="display:none"><div class="content">Query failed !</div>
-          <button onclick="document.getElementById('message').style.display='none'">OK</button></div>
+          <div role="button" aria-disabled="true">OK</div>
+          <div role="button" tabindex="0" onclick="document.getElementById('message').style.display='none'">OK</div></div>
           <script>
           let attempts=0, moreAttempts=0, mode='apply';
           function card(n) { return `<table class="attrTable"><tr><td>Parcela</td><td>${dijit_form_ValidationTextBox_0.value}-003-0${n}</td></tr>

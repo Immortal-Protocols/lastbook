@@ -203,7 +203,7 @@ class PublicSearch:
         self.sequence = 0
         page.set_default_timeout(90000)
         page.goto(VIEWER, wait_until='domcontentloaded')
-        page.get_by_role('button', name='OK', exact=True).click()
+        page.get_by_role('button', name='OK', exact=True, disabled=False).click()
         page.locator('.jimu-anchorbar-iconitem[settingid^="widgets_Query_Widget_"]').click()
         self.widget = page.locator('.jimu-widget-query')
         self.widget.locator('.tasks-table tr').filter(has_text=re.compile(r'^Parcela$')).click()
@@ -216,7 +216,7 @@ class PublicSearch:
         message = self.page.locator('.jimu-message:visible').filter(has_text=re.compile(r'Query failed\s*!')).first
         if message.count():
             element = message.element_handle()
-            message.get_by_text('OK', exact=True).click()
+            message.get_by_role('button', name='OK', exact=True, disabled=False).click()
             self.page.wait_for_function('element => !element.isConnected || !element.getClientRects().length', arg=element)
             raise PublicQueryFailed('The public viewer reports Query failed !')
 

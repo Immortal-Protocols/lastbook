@@ -98,15 +98,35 @@ downloads (`Download._run_swarm`):
 - People with a torrent client (qBittorrent, Transmission, aria2c) can download or seed the same torrent. Setup's existing
   "Use the file you already have" checks a file got that way before using it.
 
-## For the maintainers
+## For the maintainers: torrents at release
 
-```bash
-python3 -I -B packaging/make_torrent.py derived/release/<release>/Lastbook-All.zip --url https://downloads.lastbook.org/Lastbook-All.zip --manifest derived/release/manifest-v1.json
-```
+The torrent of a file has to be pinned in the manifest the app is built with: a manifest fetched later never adds a pin to a
+file the app knows (`manifest.merge`), so a server cannot change what the app trusts. So torrents are made at release, on the
+machine that has the release files, in three steps after publish-packs has written the packs file:
 
-This writes `Lastbook-All.zip.torrent` (upload it beside the zip) and pins it in the packs file, which
-`packaging/release_manifest.py` then bundles. The default piece length is 16 MiB, the downloader's piece (`download.PIECE`),
-which makes about 740 KB of piece hashes for 388 GB.
+1. Make and pin every torrent of the release, with one command:
+
+   ```bash
+   python3 -I -B packaging/make_torrent.py --release derived/release/<release> --manifest derived/release/manifest-v1.json
+   ```
+
+   For each file the packs file lists (packs, maps, address indexes) that is in that folder (`--release` again for more
+   folders), it checks the file's size and SHA-256 against its entry, writes `<file>.torrent` beside it, and pins it in the
+   entry. Each file is read once: about an hour for the 388 GB pack on a network share, minutes on a fast local disk. A file
+   already pinned with its `.torrent` beside it is skipped (`--force` makes it again), and the packs file is saved after each
+   file, so a run that stops goes on from there. A file whose SHA-256 is not the pinned one stops the run before anything is
+   written for it.
+2. Upload each `.torrent` it lists next to its file on `downloads.lastbook.org`, at `<file's address>.torrent`.
+3. Run `packaging/release_manifest.py` and build the app as usual: the pins go into its bundled manifest. Copies of the app built
+   before cannot share the files they were built with; a file they do not know yet, which a fetched manifest adds with its
+   pin, they can.
+
+The torrents are deterministic: no creation date, and the file's own address as the only web seed. Anyone with the same file
+can run the same command and get the same torrent, byte for byte, to check one. The default piece length is 16 MiB, the
+downloader's piece (`download.PIECE`), which makes about 740 KB of piece hashes for 388 GB. One file alone:
+`make_torrent.py <file> --url <its address> [--manifest <packs file>]`.
+
+The Windows build's rqbit:
 
 ```bash
 python3 -I -B packaging/share/fetch_rqbit.py win-x64

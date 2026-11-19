@@ -3,7 +3,7 @@
    No external tiles or libraries. */
 const MapView = (() => {
   const EXT = 512;            // tile coordinate extent sent by the server
-  const MINZ = 3, MAXZ = 19, DATAZ = 17;
+  const MINZ = 0, MAXZ = 19, DATAZ = 17;
   let HOME = null;   // a household's own opening place, from web/home-area.json: a local file never packaged. "Set as my area" wins over it.
   const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';
   const US = [-124.8, 24.4, -66.9, 49.4];  // lower 48
@@ -79,7 +79,7 @@ const MapView = (() => {
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
-  const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
+  const dist = km => km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(km < 10 ? 1 : 0) + ' km';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
   const layerOf = cls => BY_CLS[cls] || { sym: '•', col: '#555', label: cls };
@@ -90,7 +90,8 @@ const MapView = (() => {
     if (!askedHome && !IN_WINDOW) { askedHome = true; try { const r = await fetch('/ui/home-area.json'); if (r.ok) HOME = await r.json() } catch { } }
     return HOME;
   }
-  const wholeMap = () => st.bounds || US;
+  // Extract bounds include neighboring Alaska and polar features; overview fits Canada itself.
+  const wholeMap = () => st.canada?.overview_bounds || st.bounds || US;
   async function page(main, q) {
     await localHome();
     const home = load('mapHome', HOME);
@@ -101,17 +102,17 @@ const MapView = (() => {
     if (!on.length) on = DEFAULT_LAYERS;
     main.classList.add('map-page');
     document.title = 'Map · Lastbook';
-    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
+    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><label class="map-area"><span class="sr">Show map area</span><select id="map-area" aria-label="Show map area"><option value="" selected>Map area…</option><option value="us">US — lower 48</option></select></label><p class="small muted">Offline: works with no internet. <span id="map-date">Mapped records — not live services, closures or hazards. See layer source dates.</span></p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
-        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
+        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find a town or mapped place</label><input id="pq" type="search" placeholder="Find a town or mapped place" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
         <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers <b id="layer-count"></b></button>
       </div>
       <div class="map-pop" id="pres" hidden></div>
       <div class="map-pop layers" id="layers" hidden></div>
       <div class="mapctl"><span class="zgrp" role="group" aria-label="Zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">−</button></span>
-        <button id="zhome" aria-label="Go to my area" title="My area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button><button id="map-us" aria-label="Whole United States" title="Whole US">US</button>
+        <button id="zhome" aria-label="Go to my area" title="My area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button>
         <button id="map-full" aria-label="Full screen" title="Full screen">${FULL[0]}</button><button id="map-3d" aria-label="3D terrain view" title="3D view">3D</button><button id="map-photo" aria-label="Aerial photos" aria-pressed="false" title="Aerial photos">🛰</button></div>
       <div class="map-card" id="card" hidden></div>
       <div class="map-tip" id="tip" hidden></div>
@@ -128,9 +129,9 @@ const MapView = (() => {
     const tools = main.querySelector('.maptools');
     const fitMap = () => {
       const w = $('mapwrap'); if (!w) return;
-      const top = w.getBoundingClientRect().top + scrollY, tb = document.querySelector('.tabbar'), beside = tools.getBoundingClientRect().top < w.getBoundingClientRect().bottom;
+      const top = w.getBoundingClientRect().top + scrollY, tb = document.querySelector('.tabbar'), beside = tools.getBoundingClientRect().left >= w.getBoundingClientRect().right - 1;
       main.style.setProperty('--map-top', Math.round(top) + 'px');
-      main.style.setProperty('--map-bottom', (beside ? parseFloat(getComputedStyle(main).paddingBottom) + parseFloat(getComputedStyle(document.body).paddingBottom) : (tb && tb.offsetParent ? tb.offsetHeight : 0) + 16) + 'px');
+      main.style.setProperty('--map-bottom', (beside ? parseFloat(getComputedStyle(main).paddingBottom) + parseFloat(getComputedStyle(document.body).paddingBottom) : (tb && getComputedStyle(tb).display !== 'none' ? tb.getBoundingClientRect().height : 0) + 16) + 'px');
     };
     fitMap(); window.onresize = fitMap;   // the router clears window.onresize on the next page
     // The tools column scrolls on its own when it is taller than the map, and fades at an edge with more past it, as the chat list does
@@ -152,7 +153,12 @@ const MapView = (() => {
     $('zin').onclick = () => zoomAt(1, cv.clientWidth / 2, cv.clientHeight / 2);
     $('zout').onclick = () => zoomAt(-1, cv.clientWidth / 2, cv.clientHeight / 2);
     $('zhome').onclick = () => { const h = load('mapHome', HOME); if (h) go(h.lat, h.lon, h.z); else { closeCard(); fit(wholeMap(), 0.92, true) } };
-    $('map-us').onclick = () => { closeCard(); fit(wholeMap(), 0.92, true) };
+    $('map-area').onchange = e => {
+      const value = e.target.value;
+      const box = value === 'canada' ? wholeMap() : value === 'us' ? US : value === 'all' ? st.bounds : st.canada?.regions?.find(r => r.id === value)?.bounds;
+      if (box) { closeCard(); fit(box, 0.88, true) }
+      // Keep the chosen destination visible after fitting the map.
+    };
     $('map-full').onclick = toggleFull;
     $('map-photo').onclick = () => setPhoto(!st.style.aerial);
     $('map-photo').classList.toggle('on', !!st.style.aerial); $('map-photo').setAttribute('aria-pressed', !!st.style.aerial);
@@ -170,13 +176,13 @@ const MapView = (() => {
     $('pf').onsubmit = e => { e.preventDefault(); findPlace($('pq').value.trim()) };
     $('pq').addEventListener('input', () => { if (!$('pq').value) $('pres').hidden = true });
     $('layers-btn').onclick = () => { const p = $('layers'), open = p.hidden; p.hidden = !open; $('layers-btn').setAttribute('aria-expanded', open); $('pres').hidden = true; if (open) { $('card').hidden = true; renderLayers() } };
-    st.onKey = e => { if (e.key === 'Escape' && st) { if (!$('layers').hidden) { $('layers').hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') } else if (!$('pres').hidden) $('pres').hidden = true; else if (!$('card').hidden) closeCard(); else if ($('mapwrap').classList.contains('max')) toggleFull() } };
+    st.onKey = e => { if (e.key === 'Escape' && st) { if (!$('layers').hidden) { $('layers').hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false'); $('layers-btn').focus({ preventScroll: true }) } else if (!$('pres').hidden) $('pres').hidden = true; else if (!$('card').hidden) closeCard(); else if ($('mapwrap').classList.contains('max')) toggleFull() } };
     document.addEventListener('keydown', st.onKey);
     layerCount();
     fetch('/api/map/info').then(r => r.json()).then(info => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
-      describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
+      describe(info); fitMap(); if (openWhole) { fit(wholeMap(), 0.92, true); $('map-area').value = st.canada ? 'canada' : st.bounds ? 'all' : 'us' } coverage(); draw();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
     }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
@@ -193,12 +199,21 @@ const MapView = (() => {
   function describe(info) {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
+    st.canada = info.canada || null;
+    const date = $('map-date');
+    if (date) date.textContent = st.canada
+      ? `Installed Canada OSM data: ${st.canada.data_as_of}. US layers retain their own source dates. Mapped records are not live services, closures or hazards.`
+      : 'Mapped records — not live services, closures or hazards. See layer source dates.';
+    const area = $('map-area');
+    if (area) area.innerHTML = '<option value="" selected>Map area…</option>' +
+      (st.canada ? '<option value="canada">Canada — all</option>' : info.bounds ? '<option value="all">Whole installed map</option>' : '') +
+      '<option value="us">US — lower 48</option>' +
+      (st.canada?.regions?.length ? '<optgroup label="Canada regions">' + st.canada.regions.map(r => `<option value="${escH(r.id)}">${escH(r.label)}</option>`).join('') + '</optgroup>' : '');
     if (!info.layers) return;
     st.have = new Set(info.layers); st.bounds = info.bounds;
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
     layerCount();
     if (!st.have.size) $('near').closest('section').hidden = true;
-    if (info.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
   }
   const offered = l => !st.have || (l && l.cls.some(c => st.have.has(c)));
   function toastMap(m) { if (typeof toast === 'function') toast(m) }
@@ -214,7 +229,11 @@ const MapView = (() => {
     else { w.classList.add('max'); w.requestFullscreen?.().catch(() => { }) }  // CSS fallback keeps working where the Fullscreen API is missing (iPhone)
     syncFull();
   }
-  function syncFull() { const w = $('mapwrap'), b = $('map-full'); if (!w || !b) return; const on = w.classList.contains('max'); b.innerHTML = FULL[on ? 1 : 0]; b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = on ? 'Exit full screen (Esc)' : 'Full screen'; document.body.classList.toggle('map-maxed', on); draw() }
+  function syncFull() { const w = $('mapwrap'), b = $('map-full'); if (!w || !b) return; const on = w.classList.contains('max'); b.innerHTML = FULL[on ? 1 : 0]; b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = on ? 'Exit full screen (Esc)' : 'Full screen'; document.body.classList.toggle('map-maxed', on);
+    // Keep the same area control available inside the fullscreen top layer.
+    const area = $('map-area')?.closest('.map-area'), heading = document.querySelector('.maphead');
+    if (area && heading) { if (on) w.querySelector('.map-top').append(area); else heading.insertBefore(area, heading.querySelector('p')) }
+    draw() }
 
   function coverage() {
     const n = st?.national, el = $('mstatus'); if (!el) return;
@@ -222,6 +241,7 @@ const MapView = (() => {
     const b = st.bounds, outside = b && (st.lon < b[0] || st.lon > b[2] || st.lat < b[1] || st.lat > b[3]);
     st.coverNote = n && n.state === 'building' && !inSoCal
       ? `US streets still being converted (${((n.features || 0) / 1e6).toFixed(1)}M roads & features so far) — gaps fill in automatically.`
+      : st.canada ? 'Installed Canada layer: mapped roads, places and selected services; no Canadian imagery, elevation or routing. US layers retain their own coverage. Neither region reports live opening status.'
       : outside ? 'Outside the area this map details, only main roads, towns and water show.'
       : st.have && !st.have.size && st.z >= 9 ? 'This download has the base map only: main roads, towns and water.' : '';
     statusLine();
@@ -229,7 +249,8 @@ const MapView = (() => {
   function statusLine(msg) {
     const el = $('mstatus'); if (!el || !st) return;
     if (msg != null) st.pinMsg = msg;
-    const parts = [st.pinMsg, st.coverNote].filter(Boolean);
+    // Canada's static coverage limits remain in the header and dataset panel, not over the map.
+    const parts = [st.pinMsg, st.coverNote?.startsWith('Installed Canada layer:') ? '' : st.coverNote].filter(Boolean);
     el.innerHTML = parts.map(escH).join('<br>'); el.hidden = !parts.length;
   }
 
@@ -252,7 +273,7 @@ const MapView = (() => {
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
       ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${gl}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(l.label)}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
       ${st.have && !st.have.size ? '' : '<p class="small muted" style="margin:6px 2px 0">Numbers are places in the current view.</p>'}`;
-    box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') };
+    box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false'); $('layers-btn').focus({ preventScroll: true }) };
     box.querySelectorAll('label.ly input').forEach(i => i.onchange = () => { i.checked ? st.on.add(i.value) : st.on.delete(i.value); layersChanged() });
     box.querySelectorAll('[data-style]').forEach(i => i.onchange = () => { if (i.dataset.style === 'aerial') return setPhoto(i.checked); st.style[i.dataset.style] = i.checked; save('mapStyle', st.style); draw() });
     box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { st.on = new Set((PRESETS.find(p => p[0] === b.dataset.p)?.[1] || []).filter(id => offered(LAYERS.find(l => l.id === id)))); layersChanged(); renderLayers() });
@@ -330,7 +351,7 @@ const MapView = (() => {
 
   function pan(dx, dy) {
     const zf = st.z, wx = lon2x(st.lon, zf) - dx / 256, wy = lat2y(st.lat, zf) - dy / 256;
-    st.lon = ((x2lon(wx, zf) + 540) % 360) - 180; st.lat = Math.max(-80, Math.min(80, y2lat(wy, zf))); draw();
+    st.lon = ((x2lon(wx, zf) + 540) % 360) - 180; st.lat = Math.max(-85.0511, Math.min(85.0511, y2lat(wy, zf))); draw();
   }
   function zoomAt(dz, px, py, smooth) {
     const cv = st.cv, w = cv.clientWidth, h = cv.clientHeight;
@@ -343,10 +364,11 @@ const MapView = (() => {
   function go(lat, lon, z) { Object.assign(st, { lat, lon, z: Math.max(MINZ, Math.min(MAXZ, z)) }); settle() }
   function fit(b, share = 0.7, free) {  // [west, south, east, north] into part of the view
     const w = st.cv.clientWidth * share, h = st.cv.clientHeight * share;
-    const dx = Math.max(1e-9, lon2x(b[2], 0) - lon2x(b[0], 0)), dy = Math.max(1e-9, lat2y(b[1], 0) - lat2y(b[3], 0));
+    const east = b[2] < b[0] ? b[2] + 360 : b[2];
+    const dx = Math.max(1e-9, lon2x(east, 0) - lon2x(b[0], 0)), dy = Math.max(1e-9, lat2y(b[1], 0) - lat2y(b[3], 0));
     const z = Math.min(Math.log2(w / 256 / dx), Math.log2(h / 256 / dy), 17);
     const cy = y2lat((lat2y(b[1], 0) + lat2y(b[3], 0)) / 2, 0);
-    go(cy, (b[0] + b[2]) / 2, free ? Math.max(MINZ, z) : Math.min(17, Math.max(Math.floor(z * 2) / 2, st.z + 1.5)));
+    go(cy, ((b[0] + east) / 2 + 180) % 360 - 180, free ? Math.max(MINZ, z) : Math.min(17, Math.max(Math.floor(z * 2) / 2, st.z + 1.5)));
   }
   function settle(keepList) {
     if (!st) return;
@@ -416,7 +438,13 @@ const MapView = (() => {
     for (const feature of fc.features) {
       const polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
       g.beginPath();
-      for (const poly of polys) for (const ring of poly) { ring.forEach(([lo, la], i) => { const [x, y] = px(la, lo, V); i ? g.lineTo(x, y) : g.moveTo(x, y) }); g.closePath() }
+      for (const poly of polys) for (const ring of poly) {
+        let previous = null;
+        const points = ring.map(([lo, la]) => { if (previous !== null) lo += 360 * Math.round((previous - lo) / 360); previous = lo; return [lo, la] });
+        const middle = points.length ? (Math.min(...points.map(p => p[0])) + Math.max(...points.map(p => p[0]))) / 2 : 0;
+        const shift = 360 * Math.round((st.lon - middle) / 360);
+        points.forEach(([lo, la], i) => { const [x, y] = px(la, lo + shift, V); i ? g.lineTo(x, y) : g.moveTo(x, y) }); g.closePath();
+      }
       feature.properties?.kind === 'lake' ? (g.fillStyle = C.water, g.fill('evenodd')) : fc === world ? (g.fill('evenodd'), g.stroke()) : g.stroke();
     }
   }
@@ -427,7 +455,7 @@ const MapView = (() => {
     if (cv.width !== Math.round(w * R) || cv.height !== Math.round(h * R)) { cv.width = Math.round(w * R); cv.height = Math.round(h * R) }
     const g = st.ctx; g.setTransform(R, 0, 0, R, 0, 0);
     g.fillStyle = C.ocean; g.fillRect(0, 0, w, h);
-    const tz = Math.max(MINZ, Math.min(DATAZ, Math.floor(st.z + 0.01)));
+    const tz = Math.max(3, Math.min(DATAZ, Math.floor(st.z + 0.01)));
     const ts = 256 * 2 ** (st.z - tz), cx = lon2x(st.lon, tz), cy = lat2y(st.lat, tz);
     const V = { w, h, tz, ts, cx, cy };
     if (world) { g.fillStyle = C.land; g.strokeStyle = '#aab5a5'; g.lineWidth = .7; outline(g, world, V) }
@@ -446,7 +474,7 @@ const MapView = (() => {
         for (const l of t.labels) labels.push({ ...l, sx: sx + l.x * ts, sy: sy + l.y * ts });
       } else {
         if (!t?.failed) loading++;
-        for (let up = 1; up <= 5 && tz - up >= MINZ; up++) {  // a lower-zoom parent stands in while loading
+        for (let up = 1; up <= 5 && tz - up >= 3; up++) {  // a lower-zoom parent stands in while loading
           const pz = tz - up, f = 2 ** up, ppx = Math.floor(wx / f), ppy = Math.floor(ty / f), pt = st.tiles.get(tileKey(pz, ppx, ppy));
           if (pt && pt.canvas && pt.photo === !!st.style.aerial) { const S = pt.canvas.width / f; g.drawImage(pt.canvas, (wx - ppx * f) * S, (ty - ppy * f) * S, S, S, sx, sy, ts + 0.5, ts + 0.5); break }
         }

@@ -1515,7 +1515,11 @@ def fetch_region_gpkg(spec):
     if not zipped.exists():
         print(f'downloading {url}', flush=True)
         tmp = folder / f'{name}.tmp{os.getpid()}'
-        urllib.request.urlretrieve(url, tmp)
+        try:
+            urllib.request.urlretrieve(url, tmp)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
         try:
             with zipfile.ZipFile(tmp) as z:
                 bad = z.testzip() is not None

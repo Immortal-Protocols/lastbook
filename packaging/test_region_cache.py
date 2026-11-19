@@ -120,6 +120,15 @@ class RegionCache(unittest.TestCase):
         self.download.assert_called_once()
         self.assertFalse(list(self.folder.glob(f'{self.zipped.name}.tmp*')))
 
+    def test_interrupted_download_cleans_tmp(self):
+        def interrupted(url, dest):
+            Path(dest).write_bytes(b'PK partial')
+            raise build_packs.urllib.error.URLError('connection reset')
+        self.download.side_effect = interrupted
+        with self.assertRaises(build_packs.urllib.error.URLError):
+            self.fetch()
+        self.assertFalse(list(self.folder.glob(f'{self.zipped.name}.tmp*')))
+
     def invalid_archive_retry(self, payload, name='region.gpkg'):
         self.archive(self.zipped, payload, name)
         with self.assertRaises(SystemExit):

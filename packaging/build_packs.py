@@ -1516,10 +1516,14 @@ def fetch_region_gpkg(spec):
         print(f'downloading {url}', flush=True)
         tmp = folder / f'{name}.tmp{os.getpid()}'
         urllib.request.urlretrieve(url, tmp)
-        with zipfile.ZipFile(tmp) as z:
-            if z.testzip() is not None:
-                tmp.unlink()
-                raise SystemExit(f'{name} downloaded incomplete, so it is not kept')
+        try:
+            with zipfile.ZipFile(tmp) as z:
+                bad = z.testzip() is not None
+        except (zipfile.BadZipFile, zlib.error):
+            bad = True
+        if bad:
+            tmp.unlink()
+            raise SystemExit(f'{name} downloaded incomplete, so it is not kept')
         os.replace(tmp, zipped)
 
     tmpdir = folder / f'extract.tmp{os.getpid()}'

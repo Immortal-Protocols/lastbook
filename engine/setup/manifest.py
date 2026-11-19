@@ -13,6 +13,7 @@ REMOTE = 'https://downloads.lastbook.org/manifest-v1.json'
 SHA = re.compile(r'^[0-9a-f]{64}$')
 LIBRARY_HOSTS = frozenset({'downloads.lastbook.org'})   # packs and state maps come from Lastbook's own download site only
 MODEL_HOSTS = frozenset({'huggingface.co'})             # the model from Hugging Face only (it redirects to its own CDN hosts)
+LOCAL_MAP_DIR = Path(__file__).resolve().parents[2] / 'derived' / 'regions' / 'spain'
 
 
 def _from(url, hosts, allowed):
@@ -106,6 +107,34 @@ def load_bundled(paths=None):
     return {'version': 1, 'published': '', 'packs': [], 'models': [], 'maps': []}
 
 
+def load_local_maps(directory):
+    """Read the source build's map-only catalog. Archive paths come from IDs, never from the catalog or the network."""
+    try:
+        catalog = json.loads((directory / 'manifest-v1.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(catalog, dict) or catalog.get('version') != 1 or not isinstance(catalog.get('maps'), list):
+        return []
+    maps = {}
+    for entry in catalog['maps']:
+        if not isinstance(entry, dict) or not isinstance(entry.get('id'), str) or not re.fullmatch(r'ES(?:-[A-Z]{2})?', entry['id']):
+            continue
+        code = entry['id']
+        files = entry.get('files')
+        if not isinstance(files, list) or len(files) != 1 or not isinstance(files[0], dict):
+            continue
+        file = files[0]
+        name, size, sha = f'Lastbook-Map-{code}.zip', file.get('size'), file.get('sha256')
+        installed = entry.get('installed_bytes')
+        if (file.get('name') != name or not _int(size) or not size or not _int(installed) or not installed
+                or not isinstance(sha, str) or not SHA.fullmatch(sha)):
+            continue
+        maps[code] = {'id': code, 'title': str(entry.get('title') or code), 'kind': 'region', 'local': True,
+                      'includes': str(entry.get('includes') or ''), 'available': True, 'installed_bytes': installed,
+                      'download_bytes': size, 'files': [{'name': name, 'size': size, 'sha256': sha, 'kind': 'zip'}]}
+    return list(maps.values())
+
+
 def merge(bundled, fetched):
     """What the app was built with stays (audit E1): for an id the bundled manifest pins (it has files, or the model's file),
     its addresses, sizes and SHA-256 are kept and the fetched copy may only change whether it is available. A fetched copy may
@@ -126,11 +155,32 @@ def merge(bundled, fetched):
 class Manifest:
     """The bundled manifest at once; a fetched one replaces it when it arrives and is newer or the same date."""
 
-    def __init__(self, bundled=None, remote=REMOTE, allowed=None, context=None):
-        self.current = bundled or load_bundled()
+    def __init__(self, bundled=None, remote=REMOTE, allowed=None, context=None, local_maps=None):
+        self._hosted = bundled or load_bundled()
+        if local_maps is None and bundled is None and not getattr(sys, 'frozen', False):
+            local_maps = LOCAL_MAP_DIR
+        self.local_dir = Path(local_maps) if local_maps is not None else None
+        self._local = load_local_maps(self.local_dir) if self.local_dir else []
         self.source = 'bundled'
         self.remote, self.allowed, self.context = remote, allowed, context
         self.fetching = None
+
+    @property
+    def current(self):
+        hosted = self._hosted
+        if not self._local:
+            return hosted
+        maps = hosted.get('maps', [])
+        ids = {entry['id'] for entry in maps}
+        return {**hosted, 'maps': maps + [entry for entry in self._local if entry['id'] not in ids]}
+
+    def local_files(self):
+        if self.local_dir is not None:
+            for entry in self.current.get('maps', []):
+                if entry.get('local'):
+                    path = self.local_dir / entry['files'][0]['name']
+                    if not path.is_symlink():
+                        yield path
 
     def fetch_once(self):
         if self.fetching or not self.remote:
@@ -147,7 +197,7 @@ class Manifest:
         except ValueError:
             m = None
         if m:      # merge() keeps every pinned entry, so a fetched copy can only add or mark available, whatever its date
-            self.current, self.source = merge(self.current, m), 'fetched'
+            self._hosted, self.source = merge(self._hosted, m), 'fetched'
 
     def pack(self, pid):
         return next((p for p in self.current['packs'] if p['id'] == pid), None)
@@ -164,8 +214,10 @@ class Manifest:
 
     def public(self):
         strip = lambda f: {k: v for k, v in f.items() if k != 'url'}
-        return {'source': self.source, 'published': self.current['published'],
-                'packs': [{**p, 'files': [strip(f) for f in p['files']]} for p in self.current['packs']],
-                'models': [strip(m) for m in self.current['models']],
-                'maps': [{**x, 'files': [strip(f) for f in x['files']]} for x in self.current.get('maps', [])],
-                'address_indexes': [{**x, 'files': [strip(f) for f in x['files']]} for x in self.current.get('address_indexes', [])]}
+        loading = self.fetching is not None and self.fetching.is_alive()
+        current = self.current
+        return {'source': self.source, 'loading': loading, 'published': current['published'],
+                'packs': [{**p, 'files': [strip(f) for f in p['files']]} for p in current['packs']],
+                'models': [strip(m) for m in current['models']],
+                'maps': [{**x, 'files': [strip(f) for f in x['files']]} for x in current.get('maps', [])],
+                'address_indexes': [{**x, 'files': [strip(f) for f in x['files']]} for x in current.get('address_indexes', [])]}

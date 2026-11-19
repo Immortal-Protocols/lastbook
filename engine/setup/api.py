@@ -319,6 +319,7 @@ class Setup:
         if self.current:
             places += [self.current / 'models', self.current]
         candidates = [Path(p) for p in self.sources.values()]
+        candidates.extend(self.manifest.local_files())
         for place in places:
             try:
                 candidates.extend(c for c in place.iterdir() if c.name in files or (c.name.startswith('Lastbook-') and c.name.endswith('.zip')))
@@ -463,7 +464,7 @@ class Setup:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
             mp = self.manifest.map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
-                return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
+                return {'error': 'That map is not available yet.', 'code': 'unavailable'}
             requested_address = address_id
             address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
             if address_id in ('base', 'us'):
@@ -733,11 +734,13 @@ class Setup:
             for f in x['files']:
                 if f['name'] == name:
                     if p.stat().st_size != f['size']:
+                        if x.get('local'):
+                            return {'error': f'{name} is incomplete. Rebuild the local map packs and try again.', 'code': 'size'}
                         return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'code': 'size'}
                     self.sources[name] = str(p)
                     if self.mode == 'manage':
                         return self.start(None, False, None, {name: str(p)}, explicit=True, map_id=x['id'])
-                    return self.public_job() or {'job': None, 'noted': True}
+                    return {'noted': True, 'map': x['id']}
         for entry in self.manifest.current.get('address_indexes', []):
             for file in entry['files']:
                 if file['name'] != name:
@@ -904,25 +907,29 @@ class Setup:
         """The file, checked against its SHA-256: one already on this computer, or a download. Returns its path."""
         tracker = _Item(it)
         name, src = f['name'], plan['sources'].get(f['name'])
-        if src and os.path.isfile(src) and name in plan.setdefault('verified', []):
+        verified = plan.setdefault('verified', [])
+        if f.get('url') and src and os.path.isfile(src) and name in verified:
             return src, False
         explicit_use = bool(plan.get('explicit'))
         if src and os.path.isfile(src):
             self._set(it, 'verifying')
             digest = _sha256(src, control, lambda d, t: tracker.progress(offset + d, it['bytes_total'], 'verifying'))
             if digest == f['sha256']:
-                plan['verified'].append(name)
+                verified.append(name)
                 return src, False
             st = os.stat(src)
             self.rejected[src] = (st.st_size, st.st_mtime_ns)
             plan['sources'].pop(name, None)       # a retry downloads it instead; the file itself is left where it is, untouched
             it['source'] = 'download'
             plan['explicit'] = False
-            if explicit_use:
+            if explicit_use and f.get('url'):
                 folder = Path(src).parent.name or str(Path(src).parent)
                 raise download.Failed('found_mismatch', f'The {name} in {folder} doesn’t match the published file, so it was not used. '
                                                         'It was left as it is. Download it instead?', file=src)
-            print(f'setup: {src} does not match; downloading instead', flush=True)
+            if f.get('url'):
+                print(f'setup: {src} does not match; downloading instead', flush=True)
+        if not f.get('url'):
+            raise download.Failed('local_map_file', f'Lastbook needs an intact copy of {name}. Rebuild the local map packs, then open setup again.')
         dest = work / 'downloads' / name
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
             try:
@@ -1005,6 +1012,18 @@ class Setup:
         staged = work / 'unpack-map'
         for path, _ in got:
             install.check_zip(path, mp['installed_bytes'], install.map_member)
+        receipt = staged / 'archives.json'
+        archives = {f['name']: f['sha256'] for f in mp['files']}
+        try:
+            previous = json.loads(receipt.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            previous = None
+        if previous != archives:
+            # Unpack resumes by size. Only reuse files from the same archives.
+            if staged.exists():
+                shutil.rmtree(staged)
+            staged.mkdir()
+            install._write_json(receipt, archives)
         for path, _ in got:
             lib = install.unpack(path, staged, mp['installed_bytes'], control, lambda d, t: tracker.progress(d, t, 'unpacking'), allowed=install.map_member)
         if install.map_name(lib) != mp['id']:

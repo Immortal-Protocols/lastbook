@@ -36,6 +36,7 @@ import engine.paths as lastbook_paths  # noqa: E402  (data folder and program fo
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
+from engine.setup.install import map_set  # noqa: E402
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
 LIB = lastbook_paths.LIB
@@ -1395,6 +1396,8 @@ def water_places(q, limit=10, near=None):
 
 def places(q, limit=20, near=None):
     if address_search.is_address_query(q):
+        if spanish_map():
+            return []   # Libraries may retain their US address indexes when the map switches.
         return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
     if not PLACEDB.exists():
         return []
@@ -1433,8 +1436,17 @@ def places(q, limit=20, near=None):
             size[k] = 2 if hit[0] is None else hit[0]
         return size[k]
     home = near or home_area()
-    rows.sort(key=lambda r: (norm(r[0]) != ql, not norm(r[0]).startswith(ql), r[5] > 2 and norm(r[0]) == ql and importance(r),
-                             -round(near_bonus(home, r[3], r[4])), r[5]))
+    nationwide = (spanish_map() or {}).get('name') == 'ES'
+
+    def place_order(row):
+        name = norm(row[0])
+        exact = name == ql
+        # The country overview's center can be closer to a small locality with the same name.
+        exact_city = nationwide and exact and row[1] in ('city', 'national capital', 'state capital')
+        return (not exact, not name.startswith(ql), not exact_city, row[5] > 2 and exact and importance(row),
+                -round(near_bonus(home, row[3], row[4])), row[5])
+
+    rows.sort(key=place_order)
     seen, out = set(), []
     for name, kind, detail, lat, lon, rank, src in rows:
         k = (name.lower(), round(lat, 2), round(lon, 2))
@@ -1541,9 +1553,29 @@ def map_contents():
     return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
 
 
+@functools.lru_cache(maxsize=1)
+def spanish_map():
+    info = map_set(HERE)
+    if not info or info.get('country') != 'ES':
+        return None
+    bounds = info.get('bounds')
+    if (isinstance(bounds, list) and len(bounds) == 4 and all(type(v) in (int, float) for v in bounds)
+            and -180 <= bounds[0] < bounds[2] <= 180 and -90 <= bounds[1] < bounds[3] <= 90
+            and all(isinstance(info.get(k), str) for k in ('title', 'credit', 'data_as_of'))):
+        return info
+    return None
+
+
 def map_info():
     db = mapdb()
     meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db else {}
+    region = spanish_map()
+    national = {k: v for k, v in national_status().items() if k not in ('source', 'database')}
+    if region:
+        return {**map_contents(), 'bounds': region['bounds'], 'region': region['title'], 'credit': region['credit'],
+                'meta': {**meta, 'data_as_of': region['data_as_of']}, 'aerial': False, 'version': data_version(), 'national': national,
+                'datasets': [{'label': region['title'], 'status': 'Offline streets, buildings, water, named places and help points'},
+                             {'label': 'OpenStreetMap via Geofabrik', 'status': f'Data from {region["data_as_of"]}'}]}
     geo = []
     for rel, label, status in [
         ('geography/openstreetmap/socal-latest-free.gpkg.zip', 'Southern California streets, buildings, water and places (OpenStreetMap)', 'Shown on this map'),
@@ -1620,7 +1652,7 @@ def map_info():
     if pack:
         extra.update(map_contents())
         geo = pack_datasets(extra)
-    return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
+    return {**extra, 'meta': meta, 'datasets': geo, 'national': national, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
 
 
 def pack_datasets(have):

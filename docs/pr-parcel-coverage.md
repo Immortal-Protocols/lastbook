@@ -2,7 +2,7 @@
 
 The November 17, 2026 build found **62,164 distinct parcels with a searchable numbered-road address** in Planning Board permits. All 78 municipios have matches. The CRIM map supplied boundaries for **1,292,468 distinct land numbers**. Thirteen numbers occur in two municipios. Each appears in both boundary counts below. The builder skips those numbers when attaching addresses.
 
-The permit column counts each land number once, however many permits or accounts mention it. A record needs a numbered road and a matching parcel boundary. Some records also supply a kilometer, lot, sector or interior access. This build used only the public inputs. A CRIM physical-address export can add records for land that has no usable permit address. [Parcel and permit sources](MAPS.md#puerto-rico-street-addresses-and-land-parcels)
+The permit column counts each land number once, however many permits or accounts mention it. A record needs a numbered road and a matching parcel boundary. Some records also supply a kilometer, lot, sector or interior access. This build used only the public inputs. A locally prepared CRIM physical-address CSV can add records for land that has no usable permit address. [Parcel and permit sources](MAPS.md#puerto-rico-street-addresses-and-land-parcels)
 
 | Municipio | Land numbers with a boundary | Land numbers with a numbered-road permit address |
 | --- | ---: | ---: |
@@ -149,3 +149,98 @@ python tools/rephrase_pr_permits.py new/PR.sqlite parcel-inputs queries.jsonl
 python tools/check_pr_permit_coverage.py old/PR.sqlite parcel-inputs --rephrasings queries.jsonl
 python tools/check_pr_permit_coverage.py new/PR.sqlite parcel-inputs --rephrasings queries.jsonl
 ```
+
+## Locally prepared CRIM physical-address supplement
+
+The local collection completed on November 19, 2026 (UTC), covering all **23,071 mapped grid prefixes** for **1,292,468 land numbers across all 78 municipios** through the public CRIM viewer's Parcela form. It saved returned nonblank physical-address wording for mapped land numbers, with each land number and reported municipio, to a local CSV. Every saved CSV field was checked against the checkpoint. All **17 reported-empty grids** were rechecked with exact searches, bracketed by known nonempty controls.
+
+The resulting index has CRIM wording on **1,156,106 distinct parcels**. Combining those records with the existing SIP and ARPE wording reaches **1,166,265 parcels**, compared with **116,649** from those permits alone. SIP/ARPE wording counts any recorded permit wording; it is broader than the numbered-road column in the first table (62,164). The table below isolates these three sources; optional Planning Board consultation rows are excluded from the comparison. The tested local index retains its earlier consultation supplement.
+
+The import excluded **20,352 placeholder-only records**, **10,863 records with conflicting reported municipios**, **16 administrative-only records**, and **12 records whose mapped land number had an ambiguous or missing municipio**. Every eligible collected tuple was checked for inclusion, and the previous wordings and map tables were checked for preservation. The collector retained **2 distinct records with unusable land numbers** separately, without assigning them to a parcel.
+
+**2,612 sampled source-based map cases** covered all 78 municipios with AI off, including original wording, reordered raw fields, street-style inputs, ZIPs, field-ending periods, shared wording and the highest-multiplicity wording in each municipio. Desktop's socket-free bridge and compiled Swift agreed on the checked result pages, counts, order, coordinates and boundaries. **2,214 negative cases passed**: unused ZIP and lot queries returned no parcels; altered-municipio queries did not return the original reference parcels. **116 cases** exercised more than 200 candidates, checking the first, middle and last pages. Sets of 200 or fewer were checked on every page. Python modules loaded directly from the installed Mac executable's embedded archive replayed the same 2,612 map cases against the installed index, with the same results. This check does not operate the app window.
+
+A recorded wording is evidence that a source links that description to a land boundary. Several parcels can share it. These are source-availability and regression results; they do not measure unique homes or entrances. Additional street queries removed recognized country fillers and moved one municipio field to the end; unrecognized suffixes stayed in place. Reordered cases preserve each original field. Signature-derived renderings were supplementary checks. Raw data and local indexes remain local. The contribution supplies the collector, builder, instructions, invented fixtures and these aggregate counts. [Preparation instructions](MAPS.md#collect-crim-physical-addresses-for-selected-areas) · [Public viewer](https://catastro.crimpr.net/cdprpc/)
+
+| Municipio | Mapped land numbers | SIP/ARPE wording | CRIM wording | Combined SIP/ARPE/CRIM |
+| --- | ---: | ---: | ---: | ---: |
+| Adjuntas | 7,199 | 879 | 6,092 | 6,186 |
+| Aguada | 17,252 | 2,222 | 15,045 | 15,302 |
+| Aguadilla | 25,500 | 2,704 | 23,653 | 23,791 |
+| Aguas Buenas | 9,011 | 1,268 | 8,257 | 8,320 |
+| Aibonito | 10,278 | 1,178 | 9,204 | 9,313 |
+| Añasco | 10,905 | 1,396 | 9,500 | 9,677 |
+| Arecibo | 38,665 | 2,947 | 32,938 | 33,212 |
+| Arroyo | 8,447 | 749 | 7,398 | 7,509 |
+| Barceloneta | 10,078 | 577 | 8,525 | 8,592 |
+| Barranquitas | 8,999 | 957 | 7,025 | 7,207 |
+| Bayamón | 66,346 | 1,885 | 63,117 | 63,218 |
+| Cabo Rojo | 28,821 | 3,083 | 26,652 | 26,847 |
+| Caguas | 47,089 | 2,644 | 44,629 | 44,766 |
+| Camuy | 14,826 | 1,232 | 12,441 | 12,594 |
+| Canóvanas | 15,720 | 1,200 | 14,672 | 14,781 |
+| Carolina | 45,458 | 2,116 | 43,496 | 43,622 |
+| Cataño | 7,844 | 696 | 6,723 | 6,769 |
+| Cayey | 18,040 | 2,197 | 16,796 | 16,889 |
+| Ceiba | 5,884 | 527 | 5,397 | 5,442 |
+| Ciales | 7,858 | 670 | 6,447 | 6,531 |
+| Cidra | 15,092 | 1,218 | 14,035 | 14,113 |
+| Coamo | 16,549 | 1,584 | 14,794 | 14,945 |
+| Comerío | 5,677 | 587 | 4,353 | 4,477 |
+| Corozal | 11,906 | 1,177 | 9,463 | 9,661 |
+| Culebra | 1,512 | 257 | 1,311 | 1,327 |
+| Dorado | 13,937 | 1,526 | 12,857 | 12,973 |
+| Fajardo | 15,685 | 1,677 | 14,194 | 14,303 |
+| Florida | 4,905 | 262 | 4,050 | 4,090 |
+| Guánica | 8,198 | 740 | 7,357 | 7,422 |
+| Guayama | 19,391 | 1,857 | 17,499 | 17,630 |
+| Guayanilla | 7,493 | 731 | 6,304 | 6,401 |
+| Guaynabo | 25,363 | 2,127 | 22,907 | 23,053 |
+| Gurabo | 16,266 | 1,495 | 15,297 | 15,376 |
+| Hatillo | 15,417 | 1,359 | 13,086 | 13,256 |
+| Hormigueros | 6,970 | 762 | 6,343 | 6,396 |
+| Humacao | 23,101 | 2,144 | 21,256 | 21,421 |
+| Isabela | 23,051 | 2,468 | 20,547 | 20,735 |
+| Jayuya | 5,253 | 638 | 4,406 | 4,486 |
+| Juana Díaz | 18,974 | 1,527 | 17,105 | 17,249 |
+| Juncos | 15,820 | 1,279 | 14,745 | 14,831 |
+| Lajas | 12,197 | 1,357 | 10,832 | 10,932 |
+| Lares | 11,890 | 1,090 | 9,148 | 9,312 |
+| Las Marías | 4,104 | 529 | 3,399 | 3,473 |
+| Las Piedras | 14,984 | 1,544 | 13,621 | 13,749 |
+| Loíza | 7,693 | 559 | 6,957 | 7,056 |
+| Luquillo | 8,346 | 927 | 7,741 | 7,818 |
+| Manatí | 16,607 | 1,498 | 14,257 | 14,385 |
+| Maricao | 2,334 | 238 | 1,797 | 1,838 |
+| Maunabo | 5,298 | 596 | 4,439 | 4,514 |
+| Mayagüez | 31,420 | 4,141 | 28,358 | 28,631 |
+| Moca | 16,119 | 1,893 | 14,061 | 14,294 |
+| Morovis | 9,637 | 822 | 8,064 | 8,170 |
+| Naguabo | 11,291 | 1,096 | 10,168 | 10,267 |
+| Naranjito | 8,544 | 774 | 7,684 | 7,784 |
+| Orocovis | 8,373 | 864 | 6,593 | 6,743 |
+| Patillas | 8,331 | 885 | 7,057 | 7,163 |
+| Peñuelas | 8,819 | 947 | 7,481 | 7,586 |
+| Ponce | 55,492 | 1,358 | 51,054 | 51,166 |
+| Quebradillas | 11,000 | 1,138 | 10,025 | 10,120 |
+| Rincón | 7,620 | 896 | 6,809 | 6,886 |
+| Río Grande | 19,486 | 1,926 | 18,462 | 18,578 |
+| Sabana Grande | 10,262 | 1,141 | 8,917 | 9,055 |
+| Salinas | 14,222 | 1,302 | 12,483 | 12,650 |
+| San Germán | 14,932 | 1,705 | 12,773 | 12,992 |
+| San Juan | 91,258 | 10,860 | 82,751 | 83,180 |
+| San Lorenzo | 15,266 | 1,714 | 13,393 | 13,505 |
+| San Sebastián | 21,239 | 2,291 | 18,612 | 18,835 |
+| Santa Isabel | 9,409 | 648 | 8,738 | 8,803 |
+| Toa Alta | 24,325 | 1,715 | 22,381 | 22,514 |
+| Toa Baja | 27,833 | 2,697 | 24,762 | 24,914 |
+| Trujillo Alto | 18,875 | 2,072 | 17,689 | 17,827 |
+| Utuado | 13,777 | 1,275 | 9,931 | 10,135 |
+| Vega Alta | 12,716 | 1,209 | 10,758 | 10,912 |
+| Vega Baja | 22,050 | 1,912 | 19,062 | 19,226 |
+| Vieques | 6,071 | 687 | 5,470 | 5,541 |
+| Villalba | 6,730 | 789 | 5,583 | 5,728 |
+| Yabucoa | 13,214 | 1,417 | 11,308 | 11,520 |
+| Yauco | 15,937 | 1,595 | 13,572 | 13,750 |
+
+13 land numbers occur in two municipios and appear in both mapped counts; wording columns and island totals count each land number once.

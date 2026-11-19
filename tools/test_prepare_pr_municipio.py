@@ -135,6 +135,30 @@ class MunicipalIndex(unittest.TestCase):
             for text in (locality, road, relative):
                 self.assertEqual(set(pr_permit.matches(db, text + ', San Sebastián')), expected)
 
+    def test_unrecognized_wording_remains_searchable_without_inventing_fields(self):
+        import server
+        wording = 'BO. PEÑA | SECTOR EL SOL, SOLAR A-7, 00600, 00700'
+        self.assertIsNone(pr_permit.key(wording, 'san sebastian', source=True, locality=True))
+        path = self.root / 'unrecognized.csv'
+        with path.open('w', encoding='utf-8', newline='') as stream:
+            writer = csv.writer(stream)
+            writer.writerow(['catastro', 'address', 'municipio'])
+            for base in ('00100200301', '00100200302'):
+                writer.writerow([base, wording, 'San Sebastián'])
+            for address in ('San Sebastián, PR, 00600', '00600', 'PR, Puerto Rico, 00000'):
+                writer.writerow(['00100200303', address, 'Aguada'])
+                writer.writerow(['00100200301', address, 'San Sebastián'])
+        result = municipal.prepare(self.original, self.output, 'San Sebastián', csv_paths=[path])
+        self.assertEqual((result['new_wordings'], result['new_parcels_with_wording']), (2, 2))
+        with closing(sqlite3.connect(self.output)) as db:
+            self.assertEqual(db.execute('SELECT DISTINCT signature,postal FROM pr_permit_wording').fetchall(), [('verbatim','')])
+        with patch.object(server, 'HERE', self.root):
+            rows = server.places(wording + ', San Sebastián')
+            self.assertEqual([r['parcelNumber'] for r in rows], ['001-002-003-01', '001-002-003-02'])
+            self.assertTrue(all(r['name'] == wording and r['rings'] for r in rows))
+            self.assertEqual(server.places(wording.replace('A-7','A-8') + ', San Sebastián'), [])
+            self.assertEqual(server.places(wording + ', Aguada'), [])
+
     def test_barrio_only_wording_does_not_override_gazetteer(self):
         import server
         with closing(sqlite3.connect(self.original)) as db, db:

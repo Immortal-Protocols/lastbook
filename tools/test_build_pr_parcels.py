@@ -39,6 +39,15 @@ class ParcelBuild(unittest.TestCase):
                              [('00100200304','CARR 19 KM 4.4 SOLAR A-7')])
             self.assertEqual(db.execute('SELECT base,route,meters,lot,source FROM pr_parcel_address').fetchall(),
                              [('00100200304', 19, 4400, 'a7', 'ARPE permit')])
+            wording = 'BO. SOL | SOLAR A-7, 00600, 00700'
+            build.labels(db, [{'catastro':'00100200304','address':wording,'municipio':'San Sebastián'}], 'JP consulta')
+            self.assertEqual(db.execute("SELECT signature,wording FROM pr_permit_wording WHERE source='JP consulta'").fetchall(),
+                             [('verbatim',wording)])
+            build.labels(db, [{'catastro':'00100200304','address':wording,'municipio':'San Sebastián'}], 'ARPE permit')
+            self.assertEqual(db.execute("SELECT count(*) FROM pr_permit_wording WHERE source='ARPE permit' AND signature='verbatim'").fetchone(), (0,))
+            build.labels(db, [{'catastro':'00100200304','address':'San Sebastián, PR, 00600','municipio':'San Sebastián'}], 'JP consulta')
+            build.labels(db, [{'catastro':'00100200304','address':'PR, Puerto Rico, 00000','municipio':'San Sebastián'}], 'JP consulta')
+            self.assertEqual(db.execute("SELECT count(*) FROM pr_permit_wording WHERE source='JP consulta'").fetchone(), (1,))
 
     def test_sources_geometry_and_address_join(self):
         with tempfile.TemporaryDirectory() as temp, sqlite3.connect(':memory:') as db:

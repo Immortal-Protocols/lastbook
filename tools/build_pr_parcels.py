@@ -130,6 +130,14 @@ def csv_records(path):
             yield {'catastro': row[number], 'address': row[address], 'municipio': row[town]}
 
 
+def local_content(text, town):
+    prefix, postal, *_ = pr_permit.grammar()
+    raw = postal.sub(',', prefix.sub('', pr_permit.plain(text)))
+    raw = pr_permit.town_field(town).sub(',', raw)
+    raw = re.sub(r'(?:^|[,;])\s*(?:pr|puerto rico|00000)\s*(?=[,;]|$)', ',', raw)
+    return bool(re.search(r'[a-z0-9]', raw))
+
+
 def labels(db, records, source):
     for row in records:
         value = str(row['catastro'] or '').strip()
@@ -159,7 +167,12 @@ def labels(db, records, source):
                 searchable = re.sub(r'(?:^|(?<=,))\s*\.\s*,', '', searchable).strip(' ,.')
             if fold(searchable) in ('', 'n a', 'sin direccion', 'no disponible', town):
                 continue
+            if source in ('CRIM', 'JP consulta') and not local_content(searchable, town):
+                continue
             signature = pr_permit.key(searchable, town, source=True, locality=source in ('CRIM', 'JP consulta'))
+            if signature is None and source in ('CRIM', 'JP consulta'):
+                # An unfamiliar format must still be searchable by its original wording.
+                signature = ('verbatim', '')
             if signature:
                 if source in ('CRIM', 'JP consulta'):
                     db.execute('''DELETE FROM pr_permit_wording WHERE town=? AND source IN ('CRIM','JP consulta')

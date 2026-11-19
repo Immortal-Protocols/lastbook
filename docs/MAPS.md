@@ -116,6 +116,8 @@ When the barrio is in the saved gazetteer, `Barrio Las Peñas, Villa Ejemplo` fi
 
 Newly prepared indexes also match reordered labelled fields with or without a final period on the barrio, sector or lot. Internal kilometer decimals and the supplied lot, sector, municipio and ZIP still have to agree. The index keeps the original wording and signatures for older readers.
 
+Non-placeholder CRIM and consultation wording that cannot be parsed is retained for an exact paste with its municipio. A municipio or ZIP alone does not become a parcel address. Unparsed wording does not supply inferred road, lot or sector fields.
+
 When the directions match land records, the map outlines the possible parcels and numbers the pins.
 Open **Show matches** to compare them. Each row shows the recorded road and kilometer, when known.
 A solar, sector or interior detail helps distinguish parcels on the same road. The barrio and municipio

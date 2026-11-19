@@ -54,6 +54,34 @@ class PublicPrefixResults(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT count(*) FROM prefix').fetchone(), (0,))
         self.assertEqual(self.db.execute('SELECT count(*) FROM record').fetchone(), (0,))
 
+    def test_incomplete_public_numbers_are_retained_without_parcel_assignment(self):
+        bad = self.row(' 001-002-003- ', address='Original wording, accents á, #7')
+        rows = [self.row(), bad, bad]
+        partitioned = fetch.split_results('001-0', ['001-002'], rows, 3)
+        fetch.save_prefix(self.db, '001-002', partitioned['001-002'], 3, self.roster)
+        self.assertEqual(self.db.execute('SELECT * FROM unusable_number').fetchall(),
+                         [('001-002', bad['Parcela'], bad['Dirección física'], bad['Municipio'])])
+        self.assertEqual(self.db.execute('SELECT count(*) FROM record').fetchone(), (1,))
+        summary = fetch.write_results(self.db, self.directory, 'Villa Ejemplo', self.roster, set())
+        self.assertEqual(summary['unusable_number_records'], 1)
+        self.assertEqual(self.db.execute("SELECT displayed FROM prefix WHERE value='001-002'").fetchone(), (3,))
+        self.assertEqual(summary['returned_parcels'], 1)
+        # A subsequent successful recheck replaces this grid's quarantine too.
+        fetch.save_prefix(self.db, '001-002', [self.row()], 1, self.roster)
+        self.assertEqual(self.db.execute('SELECT count(*) FROM unusable_number').fetchone(), (0,))
+        for raw in ('002-002-003-', '001-003-003-', '001-002-text-', '001-0', ''):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                fetch.save_prefix(self.db, '001-002', [self.row(raw)], 1, self.roster)
+        self.assertEqual(self.db.execute('SELECT count(*) FROM record').fetchone(), (1,))
+
+    def test_existing_checkpoint_gets_quarantine_without_changing_saved_records(self):
+        fetch.save_prefix(self.db, '001-002', [self.row()], 1, self.roster)
+        before = self.db.execute('SELECT * FROM record').fetchall(), self.db.execute('SELECT * FROM prefix').fetchall()
+        self.db.execute('DROP TABLE unusable_number')
+        fetch.checkpoint(self.db, 'Villa Ejemplo', self.roster)
+        self.assertEqual(before, (self.db.execute('SELECT * FROM record').fetchall(), self.db.execute('SELECT * FROM prefix').fetchall()))
+        self.assertEqual(self.db.execute('SELECT count(*) FROM unusable_number').fetchone(), (0,))
+
     def test_different_municipio_and_multiple_address_versions(self):
         rows = [self.row(), self.row(address='BO PEÑA, SOLAR B, PR, 00700'), self.row('001-002-003-02', town='Otro Pueblo')]
         fetch.save_prefix(self.db, '001-002', rows, 3, self.roster)

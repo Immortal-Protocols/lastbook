@@ -125,6 +125,8 @@ def checkpoint(db, town, roster, legacy=None):
             db.execute('INSERT INTO meta VALUES (?,?)', ('source', VIEWER))
             if legacy:
                 db.executemany('INSERT OR IGNORE INTO scope VALUES (?)', ((base,) for base in legacy[1]))
+        db.execute('''CREATE TABLE IF NOT EXISTS unusable_number(prefix TEXT,catastro TEXT,address TEXT,municipio TEXT,
+                      PRIMARY KEY(prefix,catastro,address,municipio)) WITHOUT ROWID''')
         db.executemany('INSERT OR IGNORE INTO scope VALUES (?)', ((base,) for base in roster))
 
 
@@ -133,21 +135,36 @@ def completed_prefixes(db, batches):
             if prefix in batches and signature == roster_digest(batches[prefix])}
 
 
+def card_number(prefix, row):
+    if set(row) != {'Parcela', 'Dirección física', 'Municipio'} or not all(isinstance(v, str) for v in row.values()):
+        raise ValueError(f'{prefix}: the public result layout changed.')
+    raw = row['Parcela'].strip()
+    base = number(raw)
+    if base and len(base) == 11 and base.startswith(prefix.replace('-', '')):
+        return base, base[:3] + '-' + base[3:6]
+    # Some public cards contain incomplete numbers, e.g. 001-002-003-.
+    # Preserve them separately when their complete grid is known. Never infer a
+    # land number, or accept a card from a different search or an unknown layout.
+    if raw.startswith(prefix) and re.fullmatch(r'[0-9]{3}-[0-9]{3}(?:-[0-9]{0,3}){1,3}', raw):
+        return '', raw[:7]
+    raise ValueError(f'{prefix}: a displayed parcel does not match the requested prefix.')
+
+
 def save_prefix(db, prefix, rows, displayed, roster):
     if len(rows) != displayed:
         raise ValueError(f'{prefix}: expected {displayed} displayed cards, received {len(rows)}.')
-    records = []
+    records, unusable = [], []
     for row in rows:
-        if set(row) != {'Parcela', 'Dirección física', 'Municipio'}:
-            raise ValueError(f'{prefix}: the public result layout changed.')
-        base = number(row['Parcela'])
-        if not base or len(base) != 11 or not base.startswith(prefix.replace('-', '')):
-            raise ValueError(f'{prefix}: a displayed parcel does not match the requested prefix.')
-        if base in roster:
+        base, _ = card_number(prefix, row)
+        if not base:
+            unusable.append((prefix, row['Parcela'], row['Dirección física'], row['Municipio']))
+        elif base in roster:
             records.append((prefix, base, row['Dirección física'], row['Municipio']))
     with db:
         db.execute('DELETE FROM record WHERE prefix=?', (prefix,))
+        db.execute('DELETE FROM unusable_number WHERE prefix=?', (prefix,))
         db.executemany('INSERT OR IGNORE INTO record VALUES (?,?,?,?)', records)
+        db.executemany('INSERT OR IGNORE INTO unusable_number VALUES (?,?,?,?)', unusable)
         signature = roster_digest(base for base in roster if base.startswith(prefix.replace('-', '')))
         db.execute('INSERT OR REPLACE INTO prefix VALUES (?,?,?,?)',
                    (prefix, displayed, datetime.now(timezone.utc).isoformat(), signature))
@@ -187,6 +204,8 @@ def write_results(db, directory, town, roster, known, failed=()):
                    missing_parcels=len(checked - returned), unqueried_parcels=len(set(roster) - checked),
                    failed_prefixes=list(failed), csv=str(csv_path))
     summary['complete'] = summary['completed_prefixes'] == summary['total_prefixes']
+    summary['unusable_number_records'] = sum(n for p, n in db.execute(
+        'SELECT prefix,count(*) FROM unusable_number GROUP BY prefix') if p in selected)
     with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=directory, delete=False) as stream:
         json.dump(summary, stream, ensure_ascii=False, indent=2)
         stream.write('\n')
@@ -218,12 +237,7 @@ def split_results(prefix, grids, rows, displayed):
         raise ValueError(f'{prefix}: incomplete grouped result.')
     result = {grid: [] for grid in grids}
     for row in rows:
-        if set(row) != {'Parcela', 'Dirección física', 'Municipio'}:
-            raise ValueError(f'{prefix}: the public result layout changed.')
-        base = number(row['Parcela'])
-        if not base or len(base) != 11 or not base.startswith(prefix.replace('-', '')):
-            raise ValueError(f'{prefix}: a displayed parcel does not match the requested prefix.')
-        grid = base[:3] + '-' + base[3:6]
+        _, grid = card_number(prefix, row)
         if grid in result:
             result[grid].append(row)
     return result

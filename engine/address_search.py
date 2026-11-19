@@ -32,6 +32,8 @@ for number, word in enumerate(ORDINALS):
     suffix = 'th' if 10 <= number % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(number % 10, 'th')
     TO_DIGITS[word] = f'{number}{suffix}'
 TO_WORDS = {value: key for key, value in TO_DIGITS.items()}
+DIAGONALS = {'ne': 'northeast', 'nw': 'northwest', 'se': 'southeast', 'sw': 'southwest'}
+DIAGONALS.update({full: short for short, full in DIAGONALS.copy().items()})
 
 
 def normalize(text):
@@ -48,7 +50,14 @@ def street_forms(street):
     forms = [street, ' '.join(TO_DIGITS.get(word, word) for word in words),
              ' '.join(TO_WORDS.get(word, word) for word in words)]
     forms += [re.sub(r'\b(\d+)(st|nd|rd|th)\b', r'\1', form) for form in forms[:]]
-    if words[0] not in ('n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'):
+    # Existing indexes keep both spellings, so try each without changing their normalization.
+    for position in (0, -1):
+        for form in forms[:]:
+            parts = form.split()
+            if parts[position] in DIAGONALS:
+                parts[position] = DIAGONALS[parts[position]]
+                forms.append(' '.join(parts))
+    if words[0] not in ('n', 's', 'e', 'w') and words[0] not in DIAGONALS:
         forms += [f'{direction} {form}' for form in forms[:] for direction in ('n', 's', 'e', 'w')]
     return list(dict.fromkeys(forms))
 

@@ -262,10 +262,11 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
   Setup downloads it directly from Hugging Face. The model is never part of the app or of this repository. The runner,
   `lastbook-llm`, is our own small program (`packaging/llm/lastbook_llm.cpp`) on llama.cpp tag b12032: Metal on a Mac,
   Vulkan with CPU fallbacks on Windows and Linux.
-- **A model you already run** can answer Chat instead of the local AI: setup offers a field for an OpenAI-compatible
-  server on this computer (Ollama, LM Studio, llama.cpp's server). The address must be loopback, is checked with the
-  assistant's own loopback rule, and is remembered in the app's settings; without it Chat falls back to the local AI
-  and then to the built-in address (see `assistant.py`).
+- **A model you already run** can answer Chat instead of the local AI: setup takes the address and model name of an
+  OpenAI-compatible server on this computer (Ollama, LM Studio, llama.cpp's server). The address must be loopback
+  (`engine/loopback.py`, the rule the assistant itself uses) and is kept in the app's settings. A chosen model reads
+  text only, like the local AI. With none chosen, Chat uses the local AI, then the built-in address; in the library
+  server version an explicitly set `SURVIVAL_MODEL_BASE` wins over the choice (see `assistant.py`).
 - **Meaning-based search** uses BAAI's bge-small-en-v1.5 (ONNX) through onnxruntime, on Windows only; the Mac build uses
   keyword search.
 

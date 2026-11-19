@@ -21,6 +21,8 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
+from engine import loopback
+
 from . import download, hardware, install
 from .manifest import Manifest
 
@@ -530,20 +532,22 @@ class Setup:
         return {'pack': choice['id'], 'ai': ai, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why}
 
     def model_server(self, base, model):
-        """Remember or forget the person's chosen model server: a loopback OpenAI-compatible one, on this computer only."""
-        s = self._settings()
-        if base is None:       # forget it: the assistant falls back to the built-in address, then the local AI
-            s.pop('model_server', None)
-            self._save_settings(s)
-            return {'ok': True, 'model_server': {}}
-        try:
-            clean = valid_model_server({'base': str(base), 'model': model})
+        """Remember the person's chosen model server, an OpenAI-compatible one on this computer, or forget it (base None)."""
+        clean = {}
+        if base is not None:
+            if not (isinstance(model, str) and model.strip()):
+                return {'error': 'Enter the model name your server lists, such as gemma4.', 'code': 'invalid'}
+            clean = valid_model_server({'base': base, 'model': model})
             if not clean:
-                raise ValueError
-        except ValueError:
-            return {'error': 'The address must be http://127.0.0.1:PORT (a model server on this computer, such as Ollama or LM Studio).'}
-        s['model_server'] = clean
-        self._save_settings(s)
+                return {'error': 'The address must be http://127.0.0.1:PORT (a model server on this computer, such as Ollama or LM Studio).',
+                        'code': 'invalid'}
+        with self.lock:      # start() and repair write setup.json under the lock as well
+            s = self._settings()
+            if clean:
+                s['model_server'] = clean
+            else:
+                s.pop('model_server', None)
+            self._save_settings(s)
         return {'ok': True, 'model_server': clean}
 
     def state(self):
@@ -1668,24 +1672,21 @@ def configure(**kw):
     return SETUP
 
 
+def default_settings_dir():
+    """This computer's Lastbook settings folder: the first of app/main.py's app_folders()."""
+    if sys.platform == 'win32':
+        return Path(os.environ.get('APPDATA') or Path.home() / 'AppData' / 'Roaming') / 'Lastbook'
+    if sys.platform.startswith('linux'):
+        return Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'Lastbook'
+    return Path.home() / 'Library' / 'Application Support' / 'Lastbook'
+
+
 def _default():
     global SETUP
     if SETUP is None:
         from engine import paths
-        if sys.platform == 'win32':
-            settings = Path(os.environ.get('APPDATA') or Path.home() / 'AppData' / 'Roaming') / 'Lastbook'
-        elif sys.platform.startswith('linux'):
-            settings = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'Lastbook'
-        else:
-            settings = Path.home() / 'Library' / 'Application Support' / 'Lastbook'
-        SETUP = Setup('manage', settings, paths.DATA, current=paths.DATA)
+        SETUP = Setup('manage', default_settings_dir(), paths.DATA, current=paths.DATA)
     return SETUP
-
-
-def active():
-    """The configured Setup, or the default one for this computer. Reads setup.json, so only loopback-checked
-    model-server settings ever reach the assistant."""
-    return SETUP or _default()
 
 
 ROUTES = {
@@ -1701,34 +1702,37 @@ ROUTES = {
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),
-    ('POST', 'model-server'): lambda s, b: s.model_server(b.get('base'), b.get('model')),
+    ('POST', 'model-server'): lambda s, b: s.model_server(b.get('base', ''), b.get('model')),
 }
 
 
 def model_server_config(s):
-    """The person's chosen model server, if any: {base, model} with base already loopback-checked, or {}."""
-    c = (s._settings() or {}).get('model_server')
-    return valid_model_server(c) if isinstance(c, dict) else {}
+    """The chosen model server in s's settings, loopback-checked: {base, model}, or {}."""
+    return valid_model_server(s._settings().get('model_server'))
+
+
+def chosen_model_server():
+    """For the assistant: the chosen model server, loopback-checked, or {}. setup.json is read directly, so answering a
+    question never builds a Setup."""
+    folder = SETUP.settings_dir if SETUP else default_settings_dir()
+    try:
+        c = json.loads((Path(folder) / 'setup.json').read_text(encoding='utf-8')).get('model_server')
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return valid_model_server(c)
 
 
 def valid_model_server(c):
-    """{base, model} when c names a loopback OpenAI-compatible server, else {}. '127.0.0.1:11434' works too.
-    Kept here, not in assistant.py, so tests can call it without the retrieval index. Uses assistant's own
-    loopback check, so there is exactly one spelling of that rule."""
-    import assistant
-    if not isinstance(c, dict) or not isinstance(c.get('base'), str):
+    """{base, model} when c names a model and a loopback OpenAI-compatible server, else {}. '127.0.0.1:11434' works too."""
+    if not isinstance(c, dict) or not isinstance(c.get('base'), str) or not isinstance(c.get('model'), str) or not c['model'].strip():
         return {}
     base = c['base'].strip()
     if base and '://' not in base:
         base = 'http://' + base
     try:
-        return {'base': assistant.loopback_base(base), 'model': (c.get('model') or '').strip() or assistant.MODEL}
-    except (ValueError, AttributeError):
+        return {'base': loopback.loopback_base(base), 'model': c['model'].strip()}
+    except ValueError:
         return {}
-
-
-
-
 
 
 def _send_json(h, obj, status=200):

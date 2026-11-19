@@ -22,7 +22,9 @@ def load():
     finally:
         sys.path.remove(str(ROOT))
         for name in set(sys.modules) - set(before):
-            del sys.modules[name]
+            f = getattr(sys.modules[name], '__file__', None) or ''
+            if f.startswith(str(ROOT)) and 'site-packages' not in f:   # only the app's own modules: a compiled library (numpy, pdfium) loads once per process
+                del sys.modules[name]
         sys.modules.update(before)
         if 'onnxruntime' not in before:
             sys.modules.pop('onnxruntime', None)

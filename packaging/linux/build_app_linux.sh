@@ -31,10 +31,9 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$(dirname "$(dirname "$HERE")")"
-APP_VERSION="${LASTBOOK_VERSION:-1.1.11}"
-BUILD="${LASTBOOK_BUILD_ROOT:-$ROOT/derived/app-build/linux}"
-OUT="${LASTBOOK_BUILD_OUT:-$BUILD/$(date +%Y%m%d-%H%M%S)}"
-OUT="$(realpath -m "$OUT")"
+APP_VERSION="${LASTBOOK_VERSION:-1.1.12}"
+BUILD="$ROOT/derived/app-build/linux"
+OUT="$BUILD/$(date +%Y%m%d-%H%M%S)"
 STAGE="$OUT/root"
 OPT="$STAGE/opt/lastbook"
 LLM="${LASTBOOK_LLM:-$ROOT/derived/llm/bin-linux}"

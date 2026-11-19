@@ -18,6 +18,10 @@ class RuralLookup(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        import server
+        gazetteer = patch.object(server, 'PLACEDB', self.root / 'places.sqlite')
+        gazetteer.start()
+        self.addCleanup(gazetteer.stop)
         self.geo = self.root / 'derived/geo'
         folder = self.geo / 'addresses'
         folder.mkdir(parents=True)

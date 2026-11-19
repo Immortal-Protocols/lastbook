@@ -1130,14 +1130,19 @@ fileprivate final class MapEngine: @unchecked Sendable {
             let rows = AddressSearch.find(q, limit: min(limit, 8), near: near, parcelOffset: parcelOffset, parcelLimit: min(limit, 30))
             if !rows.isEmpty { return rows }
         }
+        let named = isAddress ? [] : ((try? namedPlaces(q, limit: limit, near: near)) ?? [])
         if limit > 0, q.firstMatch(#"[,;\s]"#) != nil,
            let index = Library.shared.db("addresses/PR.sqlite", geo: true) {
-            let wording = PuertoRicoPermits.matches(q, index)
+            let wording = PuertoRicoPermits.matches(q, index, namedPlaces: named)
             if !wording.isEmpty {
                 return PuertoRicoParcels.find(nil, index, limit: min(limit, 30), offset: max(0, parcelOffset), wording: wording)
             }
         }
         if isAddress { return [] }
+        return named
+    }
+
+    func namedPlaces(_ q: String, limit: Int, near: (Double, Double)?) throws -> [[String: Any]] {
         guard let db = placeDB else { return [] }
         let ws = words(q)
         if ws.isEmpty { return [] }

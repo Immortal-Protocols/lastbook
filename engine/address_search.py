@@ -75,7 +75,7 @@ def _parts(query):
     return number, normalize(' '.join(remainder)).split(), state, postcode
 
 
-def locality_wording(query, geo_directory, offset, limit):
+def locality_wording(query, geo_directory, offset, limit, named_places=()):
     if not re.search(r'[,;\s]', query.strip()):
         return None
     path = Path(geo_directory) / 'addresses' / 'PR.sqlite'
@@ -84,7 +84,7 @@ def locality_wording(query, geo_directory, offset, limit):
     db = None
     try:
         db = sqlite3.connect(ro_uri(path), uri=True)
-        matches = pr_permit.matches(db, query)
+        matches = pr_permit.matches(db, query, named_places)
         if not matches:
             return None
         return pr_parcels.candidates(db, None, max(0, offset), limit, matches)

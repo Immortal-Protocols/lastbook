@@ -15,6 +15,10 @@ class ParcelSearch(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.addCleanup(self.scratch.cleanup)
         self.root = Path(self.scratch.name)
+        import server
+        gazetteer = patch.object(server, 'PLACEDB', self.root / 'places.sqlite')
+        gazetteer.start()
+        self.addCleanup(gazetteer.stop)
         path = self.root / 'derived/geo/addresses/PR.sqlite'
         path.parent.mkdir(parents=True)
         db = sqlite3.connect(path)

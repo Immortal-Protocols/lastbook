@@ -35,6 +35,7 @@ def spoken_pattern():
                       + token + '(?: ' + token + '){0,14})')
 MEASURE = re.compile(r'\|(km|road) (\d+)(?:[.,](\d+))?(?!\d)')
 LABELS = {'km','road','barrio','sector','interior','solar','parcela','urbanizacion','comunidad','calle','camino','edificio'}
+BARRIO_LABEL = re.compile(r'^(?:bo|barr|barrio)\b\.?\s*')
 
 
 def numeral(phrase, grouped):
@@ -113,7 +114,26 @@ VERBATIM_INDEX = """CREATE INDEX IF NOT EXISTS pr_local_verbatim ON pr_permit_wo
                    WHERE source IN ('CRIM','JP consulta')"""
 
 
-def matches(db, query):
+def names_place(text, town, places):
+    names = set()
+    for place in places:
+        detail = plain(place.get('detail') or '')
+        if not re.search(r'(?<!\w)' + re.escape(town) + r'(?!\w)', detail):
+            continue
+        if ',' in detail and detail.rsplit(',', 1)[-1].strip() not in ('puerto rico', 'pr'):
+            continue
+        name = plain(place.get('name') or '')
+        names.update((name, BARRIO_LABEL.sub('', name)))
+    if not names:
+        return False
+    prefix, postal, *_ = grammar()
+    raw = postal.sub(',', prefix.sub('', text))
+    raw, found = town_field(town).subn(',', raw, count=1)
+    raw = BARRIO_LABEL.sub('', raw.strip(' ,;.'))
+    return bool(found and raw in names)
+
+
+def matches(db, query, named_places=()):
     if not db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'").fetchone():
         return {}
     text = plain(query)
@@ -122,6 +142,9 @@ def matches(db, query):
     for name, in db.execute('SELECT name FROM municipios ORDER BY name'):
         town = plain(name)
         if town not in text:
+            continue
+        # Match complete place names before interpreting words such as Camino as address labels.
+        if names_place(text, town, named_places):
             continue
         if verbatim:
             raw = query.strip()

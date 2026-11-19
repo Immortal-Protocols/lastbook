@@ -20,6 +20,10 @@ class MunicipalIndex(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
+        import server
+        gazetteer = patch.object(server, 'PLACEDB', self.root / 'places.sqlite')
+        gazetteer.start()
+        self.addCleanup(gazetteer.stop)
         self.original = self.root / 'input.sqlite'
         self.output = self.root / 'derived/geo/addresses/PR.sqlite'
         with closing(sqlite3.connect(self.original)) as db, db:
@@ -77,6 +81,83 @@ class MunicipalIndex(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Incomplete'):
                 municipal.prepare(self.original, self.output, 'Aguada', planning=True)
         self.assertFalse(self.output.exists())
+
+    def test_barrio_only_wording_does_not_override_gazetteer(self):
+        import server
+        with closing(sqlite3.connect(self.original)) as db, db:
+            db.execute("UPDATE municipios SET name='Villa Ejemplo' WHERE name='San Sebastián'")
+            db.execute("UPDATE pr_parcel SET barrio='Las Peñas',municipio='Villa Ejemplo' WHERE municipio='San Sebastián'")
+        path = self.root / 'barrio.csv'
+        wording = 'BO. LAS PEÑAS'
+        suffix = wording + ', PR, Puerto Rico, 00000'
+        names = ('Las Peñas', 'Camino Viejo', 'Calle Luna', 'El Frente', 'Barrio Verde')
+        with path.open('w', newline='', encoding='utf-8') as stream:
+            writer = csv.writer(stream)
+            writer.writerow(['catastro', 'address', 'municipio'])
+            for address in (suffix, 'LAS PEÑAS', *['BO. ' + name.removeprefix('Barrio ').upper() for name in names]):
+                writer.writerow(['00100200301', address, 'Villa Ejemplo'])
+            for number in ('00100200301', '00100200302'):
+                for detail in ('SOLAR 6', 'SECTOR EL CERRO', 'URB. EL SOL', 'COMUNIDAD EL RÍO'):
+                    writer.writerow([number, wording + ', ' + detail, 'Villa Ejemplo'])
+            writer.writerow(['00100200303', 'LAS PEÑAS', 'Aguada'])
+        municipal.prepare(self.original, self.output, whole_island=True, csv_paths=[path])
+        places = self.root / 'places.sqlite'
+        with closing(sqlite3.connect(places)) as db, db:
+            db.executescript('''
+                CREATE TABLE place(id INTEGER PRIMARY KEY,name,kind,detail,lat,lon,rank,source);
+                CREATE VIRTUAL TABLE place_fts USING fts5(name,detail);
+            ''')
+            for i, name in enumerate(names, 1):
+                db.execute('INSERT INTO place VALUES(?,?,?,?,?,?,?,?)',
+                           (i, name, 'Barrio', 'Villa Ejemplo', 1, 2, 1, 'invented fixture'))
+                db.execute('INSERT INTO place_fts(rowid,name,detail) VALUES(?,?,?)', (i, name, 'Villa Ejemplo'))
+        with patch.object(server, 'HERE', self.root), patch.object(server, 'PLACEDB', places), \
+                patch.object(server, 'national_mapdb', return_value=None), \
+                patch.object(server, 'home_area', return_value=None), \
+                patch.object(server, 'pack_info', return_value=None), \
+                patch.object(server, 'water_places', return_value=[]), \
+                patch.object(server.assistant, 'LOCAL', None):
+            for name in names:
+                value = name.removeprefix('Barrio ')
+                for query in dict.fromkeys(('Barrio ' + value, 'Bo. ' + value, 'BO. ' + value.upper(), value, name)):
+                    with self.subTest(query=query):
+                        rows = server.places(query + ', Villa Ejemplo')
+                        self.assertEqual([(r['name'], r['kind']) for r in rows], [(name, 'Barrio')])
+            # Qualifiers still identify parcels; the barrio alone must not consume their result pages.
+            for query in ('Lote 6, Barrio Las Penas', wording + ', SOLAR 6',
+                          'Sector El Cerro, Barrio Las Peñas', 'Urb. El Sol, Barrio Las Peñas',
+                          'Comunidad El Río, Barrio Las Peñas'):
+                with self.subTest(query=query):
+                    query += ', Villa Ejemplo'
+                    first, = server.places(query, limit=1)
+                    second, = server.places(query, limit=1, parcel_offset=1)
+                    self.assertEqual([first['parcelNumber'], second['parcelNumber']],
+                                     ['001-002-003-01', '001-002-003-02'])
+                    self.assertEqual((first['parcelCount'], second['parcelCount']), (2, 2))
+                    self.assertEqual(server.places(query, parcel_offset=2), [])
+            self.assertEqual(server.places('Barrio Las Peñas, Aguada'), [])
+            self.assertEqual(server.places('Lote 99, Barrio Las Peñas, Villa Ejemplo'), [])
+            # Dropping Aguada from the FTS query can find Villa Ejemplo's same-named barrio.
+            # That row must not hide the recorded Aguada parcel.
+            row, = server.places('Las Peñas, Aguada')
+            self.assertEqual(row['parcelNumber'], '001-002-003-03')
+            with closing(sqlite3.connect(places)) as db, db:
+                db.execute("INSERT INTO place VALUES(99,'Las Peñas','town','Aguada County, Texas',1,2,1,'invented fixture')")
+                db.execute("INSERT INTO place_fts(rowid,name,detail) VALUES(99,'Las Peñas','Aguada County, Texas')")
+            row, = server.places('Las Peñas, Aguada')
+            self.assertEqual(row['parcelNumber'], '001-002-003-03')
+            # An original suffix paste still finds its parcel when no gazetteer name resolves the full query.
+            row, = server.places(suffix + ', Villa Ejemplo')
+            self.assertEqual(row['parcelNumber'], '001-002-003-01')
+            # A reader without this gazetteer can still use the recorded wording.
+            with patch.object(server, 'PLACEDB', self.root / 'missing.sqlite'):
+                row, = server.places('Barrio Las Peñas, Villa Ejemplo')
+                self.assertEqual(row['parcelNumber'], '001-002-003-01')
+            broken = self.root / 'broken.sqlite'
+            broken.write_bytes(b'not a SQLite database')
+            with patch.object(server, 'PLACEDB', broken):
+                first, = server.places('Lote 6, Barrio Las Peñas, Villa Ejemplo', limit=1)
+                self.assertEqual((first['parcelNumber'], first['parcelCount']), ('001-002-003-01', 2))
 
     def test_public_record_fields_and_empty_town(self):
         record = dict(OBJECTID=3, NUMERO_CAT='00100200301', DIRECCION1='Bo. Peña', DIRECCION2='Solar 6', MUNICIPIO='Aguada')

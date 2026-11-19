@@ -112,6 +112,8 @@ the ordinary reader available. A map request stops waiting after 60 seconds.
 
 When a rural query names the municipio, the reader also checks the original address on individual SIP and ARPE permits. It can recognize reordered labelled details, abbreviations, and Spanish road and kilometer numbers spoken aloud. A matching permit appears first with its recorded wording. Permits that use relative directions or multiple roads require the literal wording for this match. Other matching parcels follow, and each land boundary appears once. Older packs use their existing structured search.
 
+When the barrio is in the saved gazetteer, `Barrio Las Peñas, Villa Ejemplo` finds that place even if a parcel records only `BO. LAS PEÑAS` as its address. Include a lot, sector, road or another specific address detail to search the parcel wording. Recorded wording remains available when the gazetteer has no matching place.
+
 When the directions match land records, the map outlines the possible parcels and numbers the pins.
 Open **Show matches** to compare them. Each row shows the recorded road and kilometer, when known.
 A solar, sector or interior detail helps distinguish parcels on the same road. The barrio and municipio

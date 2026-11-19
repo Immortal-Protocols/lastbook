@@ -37,6 +37,7 @@ enum PuertoRicoPermits {
         return forms.count == 1 ? forms.first : nil
     }
     static let trim = CharacterSet(charactersIn: " ,;.")
+    static let barrioLabel = #"^(?:bo|barr|barrio)\b\.?\s*"#
     static func plain(_ text: String) -> String {
         text.folding(options: .diacriticInsensitive, locale: Locale(identifier:"en_US_POSIX"))
             .lowercased().replacing(#"\s+"#, with:" ").trimmingCharacters(in:trim)
@@ -53,6 +54,10 @@ enum PuertoRicoPermits {
         }
         return out as String
     }
+    static func townField(_ town: String) -> String {
+        #"(?:^|[,;]\s*|\ben (?:el municipio de )?)(?:municipio de )?"#
+            + NSRegularExpression.escapedPattern(for:town) + #"(?=\s*(?:[,;.]|$))"#
+    }
     static func signature(_ text: String, _ town: String, locality: Bool = false) -> (String,String)? {
         guard let g = grammar else { return nil }
         var raw = plain(text).replacing(g.prefix,with:"")
@@ -60,9 +65,7 @@ enum PuertoRicoPermits {
         guard zips.count <= 1 else { return nil }
         let postal = zips.first?.replacing("[^0-9]",with:"") ?? ""
         raw = raw.replacing(g.postal,with:",")
-        let field = #"(?:^|[,;]\s*|\ben (?:el municipio de )?)(?:municipio de )?"#
-            + NSRegularExpression.escapedPattern(for:town) + #"(?=\s*(?:[,;.]|$))"#
-        guard let rx = try? NSRegularExpression(pattern:field),
+        guard let rx = try? NSRegularExpression(pattern:townField(town)),
               let m = rx.firstMatch(in:raw,range:NSRange(raw.startIndex...,in:raw)),
               let range = Range(m.range,in:raw) else { return nil }
         raw.replaceSubrange(range,with:",")
@@ -99,8 +102,27 @@ enum PuertoRicoPermits {
               Set(labels).isSubset(of:allowed) else { return literal }
         return ("parts " + parts.sorted().joined(separator:"|"),postal)
     }
+    static func namesPlace(_ text: String, _ town: String, _ places: [[String: Any]]) -> Bool {
+        var names = Set<String>()
+        for place in places {
+            let detail = plain(place["detail"] as? String ?? "")
+            guard detail.firstMatch(#"(?<!\w)"# + NSRegularExpression.escapedPattern(for:town) + #"(?!\w)"#) != nil else { continue }
+            let parts = detail.components(separatedBy:",")
+            if parts.count > 1, !["puerto rico","pr"].contains(parts.last!.trimmingCharacters(in:.whitespaces)) { continue }
+            let name = plain(place["name"] as? String ?? "")
+            names.formUnion([name,name.replacing(barrioLabel,with:"")])
+        }
+        guard !names.isEmpty, let g = grammar else { return false }
+        var raw = text.replacing(g.prefix,with:"").replacing(g.postal,with:",")
+        guard let rx = try? NSRegularExpression(pattern:townField(town)),
+              let m = rx.firstMatch(in:raw,range:NSRange(raw.startIndex...,in:raw)),
+              let range = Range(m.range,in:raw) else { return false }
+        raw.replaceSubrange(range,with:",")
+        raw = raw.trimmingCharacters(in:trim).replacing(barrioLabel,with:"")
+        return names.contains(raw)
+    }
     typealias Evidence = (source:String, wording:String)
-    static func matches(_ query: String, _ db: SQLiteDB) -> [String:Evidence] {
+    static func matches(_ query: String, _ db: SQLiteDB, namedPlaces: [[String: Any]] = []) -> [String:Evidence] {
         guard db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'") != nil else { return [:] }
         let text = plain(query)
         var result = [String:Evidence]()
@@ -109,6 +131,8 @@ enum PuertoRicoPermits {
             guard let name = row["name"]?.text else { continue }
             let town = plain(name)
             guard text.contains(town) else { continue }
+            // Compare complete place names before interpreting words such as Camino as address labels.
+            if namesPlace(text,town,namedPlaces) { continue }
             if verbatim {
                 let raw = query.trimmingCharacters(in:.whitespacesAndNewlines)
                 var withoutTown = raw

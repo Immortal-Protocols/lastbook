@@ -38,6 +38,20 @@ def verify(package, checksum):
         raise ValueError('package checksum mismatch; nothing installed')
 
 
+def verify_signature(package, signature, fingerprint):
+    # gpg exits non-zero for a bad or unverifiable signature, which run() raises.
+    status = run(['gpg', '--batch', '--status-fd', '1', '--verify', str(signature), str(package)])
+    lines = [line.split() for line in status.splitlines() if line.startswith('[GNUPG:] ')]
+    refused = {'BADSIG', 'ERRSIG', 'EXPSIG', 'EXPKEYSIG', 'REVKEYSIG', 'NODATA'}
+    if any(fields[1] in refused for fields in lines):
+        raise ValueError('package signature is bad, expired or revoked; nothing installed')
+    fingerprint = fingerprint.upper()
+    # VALIDSIG <signing-key fpr> ... <primary-key fpr>: accept the named key or its subkey.
+    if not any(fields[1] == 'VALIDSIG' and fingerprint in (fields[2].upper(), fields[-1].upper())
+               for fields in lines):
+        raise ValueError('package was not signed by the specified publisher key; nothing installed')
+
+
 def check_package(package):
     metadata = run(['bsdtar', '-xOf', str(package), '.PKGINFO'])
     fields = {}
@@ -61,14 +75,24 @@ def main(argv=None):
     parser.add_argument('--community-repo', metavar='OWNER/NAME',
                         help=f'install a community test build from this repository instead of {UPSTREAM}')
     parser.add_argument('--check-only', action='store_true', help='download and validate without installing')
-    parser.add_argument('--signing-key', help='trusted publisher full GPG fingerprint (required for signed releases)')
+    trust = parser.add_mutually_exclusive_group(required=True)
+    trust.add_argument('--signing-key', metavar='FINGERPRINT',
+                       help='full GPG fingerprint of the publisher key you trust independently; '
+                            'the release must carry a signature made with it')
+    trust.add_argument('--allow-unsigned', action='store_true',
+                       help='install a community test build that has only a checksum (needs --community-repo)')
     args = parser.parse_args(argv)
+    if args.signing_key and not re.fullmatch(r'[A-Fa-f0-9]{40}', args.signing_key):
+        raise ValueError('--signing-key must be the full 40-character fingerprint')
+    if args.allow_unsigned and not args.community_repo:
+        raise ValueError('upstream releases are installed only with --signing-key; '
+                         '--allow-unsigned is for community test builds')
     if os.geteuid() == 0:
         raise ValueError('run as your ordinary desktop user; only pacman needs elevation')
     release = platform.freedesktop_os_release()
     if platform.machine() != 'x86_64' or not (release.get('ID') == 'arch' or 'arch' in release.get('ID_LIKE', '').split()):
         raise ValueError('requires x86_64 Arch Linux or an Arch derivative such as Omarchy')
-    for command in ('gh', 'bsdtar', 'pacman', *([] if args.check_only else ['sudo'])):
+    for command in ('gh', 'bsdtar', 'pacman', *(['gpg'] if args.signing_key else []), *([] if args.check_only else ['sudo'])):
         if not shutil.which(command):
             raise ValueError(f'missing {command}; install prerequisites first (see the Arch README)')
     repo = UPSTREAM
@@ -93,29 +117,25 @@ def main(argv=None):
     if len(packages) != 1 or packages[0] + '.sha256' not in assets:
         raise ValueError('release must contain exactly one native package and its checksum')
     name = packages[0]
+    # The caller decides whether a signature is required, never the release's asset list.
+    if args.signing_key and name + '.sig' not in assets:
+        raise ValueError('release has no signature, but --signing-key requires one; nothing installed')
     print(f'Downloading {repo} {tag}: {name}', flush=True)
     with tempfile.TemporaryDirectory(prefix='lastbook-install-') as scratch:
+        patterns = [name, name + '.sha256', *([name + '.sig'] if args.signing_key else [])]
         run(['gh', 'release', 'download', tag, '--repo', repo, '--dir', scratch,
-             '--pattern', name, '--pattern', name + '.sha256'])
+             *(arg for p in patterns for arg in ('--pattern', p))])
         package = Path(scratch) / name
         verify(package, Path(scratch) / (name + '.sha256'))
-        check_package(package)
-        # Signed releases are checked too. Trust must be configured independently;
-        # never import a signing key supplied alongside the downloaded package.
-        if name + '.sig' in assets:
-            if not args.signing_key or not re.fullmatch(r'[A-Fa-f0-9]{40}', args.signing_key):
-                raise ValueError('signed release requires --signing-key with the independently trusted publisher fingerprint')
-            if not shutil.which('gpg'):
-                raise ValueError('signed release needs gpg and the trusted maintainer key')
-            run(['gh', 'release', 'download', tag, '--repo', repo, '--dir', scratch, '--pattern', name + '.sig'])
-            status = run(['gpg', '--batch', '--status-fd', '1', '--verify', str(package) + '.sig', str(package)])
-            valid = [line.split() for line in status.splitlines() if line.startswith('[GNUPG:] VALIDSIG ')]
-            fingerprint = args.signing_key.upper()
-            if not any(fingerprint in (fields[2].upper(), fields[-1].upper()) for fields in valid):
-                raise ValueError('package was not signed by the specified publisher key')
+        if args.signing_key:
+            # Trust comes from the fingerprint the caller supplied and the key already in their
+            # keyring; never import a key that arrives alongside the package. Verify before
+            # reading anything out of the archive.
+            verify_signature(package, Path(scratch) / (name + '.sig'), args.signing_key)
         else:
-            print('This test release has a matching checksum but no publisher signature.', flush=True)
-        print('Package checksum and Python compatibility verified.', flush=True)
+            print('UNSIGNED community test build: only the checksum from the same release was checked.', flush=True)
+        check_package(package)
+        print('Package verified.', flush=True)
         if args.check_only:
             return 0
         # Inherit the terminal so sudo and pacman can ask their normal questions.

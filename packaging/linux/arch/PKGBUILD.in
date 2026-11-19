@@ -8,11 +8,19 @@ url='https://lastbook.org'
 license=('MIT')
 depends=('python>=@PYTHON@' 'python<@PYTHON_NEXT@' 'python-gobject' 'gtk3'
          'webkit2gtk-4.1>=2.40' 'libsoup3' 'gstreamer' 'gst-plugins-base'
-         'gst-plugins-good' 'gst-libav' 'gcc-libs' 'glibc')
+         'gst-plugins-good' 'gst-libav' 'gst-plugins-bad-libs' 'gst-plugin-dav1d'
+         'gcc-libs' 'glibc')
+# Playback needs an AV1 decoder, and the library's videos are all AV1. Arch's
+# gst-plugins-bad ships only the SVT-AV1 encoder (unlike Debian's, which carries
+# dav1d), so the decoder comes from gst-plugin-dav1d (rank primary, what decodebin
+# picks) plus gst-plugins-bad-libs for the av1parse parser. Upstream made the same
+# fix for the .deb in ebcaeab.
+optdepends=('vulkan-icd-loader: local AI on a graphics card'
+            'gst-plugin-va: VA-API hardware AV1 decoding')
 makedepends=('python-pip' 'python-pillow' 'pkgconf')
 options=('!strip' '!debug' '!distcc' '!ccache')
-source=('lastbook-source.tar')
-sha256sums=('@SOURCE_SHA256@')
+source=('lastbook-source.tar' @LLM_SOURCE@)
+sha256sums=('@SOURCE_SHA256@' @LLM_SHA256@)
 
 build() {
   local actual
@@ -35,7 +43,7 @@ package() {
   local source_root="$srcdir/lastbook/source"
   /usr/bin/python3 -I -B "$source_root/packaging/linux/stage_linux.py" \
     --source "$source_root" --ship "$srcdir/lastbook/ship" --vendor "$srcdir/vendor" \
-    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" --channel arch || return 1
+    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" --channel arch @LLM_ARGS@ || return 1
   install -Dm644 "$source_root/LICENSE" "$pkgdir/usr/share/licenses/lastbook/LICENSE" || return 1
   install -Dm644 "$source_root/THIRD_PARTY_NOTICES.md" "$pkgdir/usr/share/doc/lastbook/THIRD_PARTY_NOTICES.md" || return 1
   # Required even with --nocheck: the same payload rules as the Debian build.

@@ -47,6 +47,7 @@ automatically from `catalog.json` — do not copy them into the topic file.
 ```
 
 Rules
+- Optional regional guides may declare `requires_docs`, an array of catalog ids. The entire guide is hidden unless every required source is present. Individual readings still follow the usual availability checks.
 - Every `doc` must be a real catalog id (not a `metadata-video-*` id). `page` is the PDF *file* page (1-based) as used by
   `libq.py page`; omit it for html/video/whole-document references. Verify each page by reading it.
 - Use a video's own id (`video-...`) for videos. Prefer videos with captions/transcripts and reputable publishers.

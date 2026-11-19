@@ -1,0 +1,291 @@
+{
+  "mode": "now",
+  "requires_docs": [
+    "au-reference",
+    "au-jurisdictions"
+  ],
+  "route": [],
+  "id": "au-household",
+  "title": "Prepare an Australian household",
+  "short": "Australian plans, hazards, food and water",
+  "intro": "Official Australian readings for household preparation, with regional contacts and source dates. This offline library does not receive warnings.",
+  "keywords": [
+    "australia",
+    "australian",
+    "household",
+    "000",
+    "triple zero",
+    "bushfire",
+    "wildfire",
+    "cyclone",
+    "heatwave",
+    "heat wave",
+    "flood",
+    "torch",
+    "emergency kit",
+    "warnings",
+    "fire danger",
+    "AusAlert"
+  ],
+  "choices": [
+    {
+      "id": "contacts",
+      "label": "Find Australian emergency information",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        },
+        {
+          "doc": "au-jurisdictions",
+          "label": "Australian state and territory emergency information",
+          "note": "Australian source directory."
+        }
+      ]
+    },
+    {
+      "id": "plan",
+      "label": "Make a household plan and kit",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-emergency-plan",
+          "label": "Prepare your emergency plan",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-emergency-kit",
+          "label": "Emergency kit: essential items, all times",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "fire-flood",
+      "label": "Prepare for bushfire or flood",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-bushfire",
+          "label": "Preparing for bushfires",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-flood",
+          "label": "Preparing for floods",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-evacuation",
+          "label": "If you have to evacuate",
+          "note": "NSW guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "cyclone-heat",
+      "label": "Prepare for cyclone or heatwave",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-cyclone",
+          "label": "Cyclones and severe storms",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-heatwave",
+          "label": "Preparing for heatwaves",
+          "note": "NSW guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "food-water",
+      "label": "Food or drinking water may be unsafe",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-food-safety",
+          "label": "Food safety after an emergency or natural disaster",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-water",
+          "label": "Food and drinking water",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "generator",
+      "label": "Read Victorian portable-generator safety",
+      "hint": "Read the complete source usage section and its cautions.",
+      "read": [
+        {
+          "doc": "vic-generator",
+          "label": "Using a portable generator: Victorian source guidance",
+          "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+        }
+      ]
+    },
+    {
+      "id": "warnings",
+      "label": "Understand warnings, fire-danger ratings and phone alerts",
+      "hint": "Dated explanations of different systems; get current warnings from the issuing authorities.",
+      "read": [
+        {
+          "doc": "nsw-warning-levels",
+          "label": "Warning levels: NSW explanation of the Australian Warning System",
+          "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+        },
+        {
+          "doc": "au-fire-danger-ratings",
+          "label": "Australian fire-danger ratings: NEMA explanation",
+          "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+        },
+        {
+          "doc": "au-ausalert",
+          "label": "AusAlert: NEMA national warning-system explanation",
+          "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+        },
+        {
+          "doc": "au-ausalert-operational",
+          "label": "AusAlert operational announcement: 10 November 2026",
+          "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
+        }
+      ]
+    },
+    {
+      "id": "poisons",
+      "label": "Someone may have been poisoned",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-poisons",
+          "label": "Poisons",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "ACMA says mobile emergency calls require coverage from an available mobile network.",
+      "doc": "au-emergency-calls"
+    },
+    {
+      "text": "Queensland warns that boiling does not make chemically contaminated water safe.",
+      "doc": "qld-water"
+    },
+    {
+      "text": "NSW warns against driving, walking or riding through fire or floodwaters.",
+      "doc": "nsw-evacuation"
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "qld-emergency-plan",
+      "label": "Prepare your emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-kit",
+      "label": "Emergency kit: essential items, all times",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-prepare-home",
+      "label": "Prepare your home",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-pets",
+      "label": "Pet emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+    },
+    {
+      "doc": "nsw-warning-levels",
+      "label": "Warning levels: NSW explanation of the Australian Warning System",
+      "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+    },
+    {
+      "doc": "au-fire-danger-ratings",
+      "label": "Australian fire-danger ratings: NEMA explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "au-reference",
+      "label": "Australia: household, rural and remote emergency reference",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-jurisdictions",
+      "label": "Australian state and territory emergency information",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-cyclone",
+      "label": "Cyclones and severe storms",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-heatwave",
+      "label": "Preparing for heatwaves",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-food-safety",
+      "label": "Food safety after an emergency or natural disaster",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-water",
+      "label": "Food and drinking water",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+    },
+    {
+      "doc": "nsw-warning-levels",
+      "label": "Warning levels: NSW explanation of the Australian Warning System",
+      "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+    },
+    {
+      "doc": "au-fire-danger-ratings",
+      "label": "Australian fire-danger ratings: NEMA explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "au-ausalert",
+      "label": "AusAlert: NEMA national warning-system explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "au-ausalert-operational",
+      "label": "AusAlert operational announcement: 10 November 2026",
+      "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
+    }
+  ],
+  "related": [
+    "au-rural",
+    "au-health",
+    "disaster"
+  ]
+}

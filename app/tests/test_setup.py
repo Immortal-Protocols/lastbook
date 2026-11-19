@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import errno, hashlib, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
+import errno, hashlib, http.client, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -1719,6 +1719,373 @@ class Sharing(Base):
         self.assertEqual(len(seeder.running()), 1)
         seeder.stop()
         self.assertEqual(seeder.running(), [])
+
+
+class _HeldRead:
+    """The first read of a piece's body by a download connection gets its bytes, then waits on `release` before handing them over
+    (`entered` says it is waiting): Pause comes between a read and the write of what it brought."""
+
+    def __init__(self):
+        self.entered, self.release, self.used, self.lock = threading.Event(), threading.Event(), False, threading.Lock()
+        self.real = http.client.HTTPResponse.read1
+
+    def patch(self):
+        held = self
+
+        def read1(resp, n=-1):
+            with held.lock:
+                hold = not held.used and threading.current_thread().name.startswith('download-')
+                held.used = held.used or hold
+            data = held.real(resp, n)
+            if hold:
+                held.entered.set()
+                held.release.wait(30)
+            return data
+        return mock.patch.object(http.client.HTTPResponse, 'read1', read1)
+
+
+class Swarming(Base):
+    """Downloading from other people too: a stand-in for rqbit writes the file's pieces from the front into the very file being
+    downloaded, while the connections take pieces from the back. Nothing it writes counts until it matches the torrent, and the
+    file is judged by a full read once it has stopped. The torrent's pieces are 64 KiB and the download's 256 KiB, so the test
+    server's pace (a pause after each 64 KiB it sends) slows each piece down."""
+    PIECE = 64 * 1024               # the torrent's
+    SEG = 4 * PIECE                 # the download's
+
+    def setUp(self):
+        super().setUp()
+        p = mock.patch.multiple(download, CONNECTIONS=2, PARALLEL_MIN=0, PIECE=self.SEG, AHEAD=4, HARVEST_EVERY=0.05)
+        p.start()
+        self.addCleanup(p.stop)
+        src = self.tmp / 'model-source.gguf'
+        src.write_bytes(self.model)
+        self.torrent, pin = torrent.make(src, 'model.gguf', self.PIECE)
+        self.pieces = torrent.piece_hashes(self.torrent, 'model.gguf', len(self.model), pin['pieces_root'], self.PIECE, pin['infohash_v2'])
+        self.record = self.tmp / 'rqbit-calls.txt'
+        fake = self.tmp / 'fake_rqbit.py'
+        fake.write_text(FAKE_RQBIT)
+        self.command = [sys.executable, '-I', '-B', str(fake), str(self.record)]
+        env = mock.patch.dict(os.environ, {'FAKE_SWARM_SOURCE': str(src), 'FAKE_SWARM_NAME': 'model.gguf', 'FAKE_SWARM_PIECE': str(self.PIECE),
+                                           'FAKE_SWARM_PACE': '0.02'})
+        env.start()
+        self.addCleanup(env.stop)
+        self.want, self.peers = True, []
+
+    def dl(self, control=None):
+        self.swarm = share.Swarm(self.torrent, wanted=lambda: self.want, command=self.command)
+        return download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model),
+                                 control or download.Control(), allowed=ALLOWED, context=self.ctx, connections=2, pieces=self.pieces,
+                                 swarm=self.swarm, part=self.tmp / 'dl' / 'swarm' / 'model.gguf', on_peers=self.peers.append)
+
+    def setup_dirs(self):
+        (self.tmp / 'dl' / 'swarm').mkdir(parents=True, exist_ok=True)
+
+    def test_people_and_servers_together(self):
+        self.setup_dirs()
+        self.files.pace = 0.05
+        d = self.dl()
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertTrue(self.peers and self.peers[-1] > 0, 'nothing came from other people')
+        asked = _requested(self.files.log, 'model.gguf')
+        self.assertEqual(sorted(a // self.SEG for a, _ in asked[:2]), [d.st.count - 2, d.st.count - 1])   # the servers from the back
+        self.assertLess(sum(b - a + 1 for a, b in asked), len(self.model))       # and not every piece from them
+        self.assertIsNone(self.swarm.proc)                                       # rqbit ended before the file was judged
+        added = json.loads(Path(str(self.record) + '.added').read_text().splitlines()[0])
+        self.assertEqual((added['overwrite'], Path(added['output_folder'])), ('true', self.tmp / 'dl' / 'swarm'))
+        self.assertFalse((self.tmp / 'dl' / 'swarm' / 'model.gguf').exists())   # moved to its place, the one copy
+
+    def test_a_bad_peers_piece_is_never_taken(self):
+        self.setup_dirs()
+        self.files.pace = 0.05
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_BAD': '3'}):
+            d = self.dl()
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertTrue(any(a <= 3 * self.PIECE + 7 <= b for a, b in _requested(self.files.log, 'model.gguf')))
+
+    def test_damage_after_a_piece_was_taken_is_caught_by_the_last_read(self):
+        """rqbit writes a bad peer's bytes before it checks them, even over a piece already taken: the full read once it has
+        stopped finds the piece, and only that piece is fetched again, from the servers."""
+        self.setup_dirs()
+        self.files.pace = 0.05
+        d = self.dl()
+        part, flipped = self.tmp / 'dl' / 'swarm' / 'model.gguf', []
+
+        def damage():
+            t0 = time.time()
+            while time.time() - t0 < 20:
+                st = getattr(d, 'st', None)
+                if st is not None and st.is_done(1) and part.exists():
+                    with open(part, 'r+b') as f:
+                        f.seek(self.SEG + 100)
+                        b = f.read(1)
+                        f.seek(self.SEG + 100)
+                        f.write(bytes([b[0] ^ 0xff]))
+                    flipped.append(1)
+                    return
+                time.sleep(0.01)
+        threading.Thread(target=damage, daemon=True).start()
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(flipped, [1])
+        self.assertTrue(any(a <= self.SEG + 100 <= b for a, b in _requested(self.files.log, 'model.gguf')))
+
+    def test_turning_bittorrent_off_midway(self):
+        self.setup_dirs()
+        self.files.pace = 0.03
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_PACE': '0.2'}):
+            d = self.dl()
+            threading.Timer(0.5, lambda: setattr(self, 'want', False)).start()
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertIsNone(self.swarm.proc)
+
+    def test_pause_ends_rqbit_and_a_new_run_goes_on(self):
+        self.setup_dirs()
+        self.files.pace = 0.3                                            # slow enough on both sides that Pause comes midway
+        c = download.Control()
+        added = Path(str(self.record) + '.added')
+
+        def pause_once_rqbit_has_it():
+            t0 = time.time()
+            while not added.exists() and time.time() - t0 < 20:
+                time.sleep(0.02)
+            time.sleep(0.3)
+            c.stop('paused')
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_PACE': '0.3'}):
+            d = self.dl(control=c)
+            threading.Thread(target=pause_once_rqbit_has_it, daemon=True).start()
+            with self.assertRaises(download.Stopped):
+                d.run()
+        self.assertIsNone(self.swarm.proc)
+        self.files.pace = 0
+        self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+
+    def test_pause_with_a_read_held_waits_for_it_and_for_rqbit(self):
+        """A server connection is stuck in a read when Pause comes, with rqbit writing into the same file: run() returns only once
+        that connection has stopped and rqbit's process has ended, and the file never changes after."""
+        self.setup_dirs()
+        held, c = _HeldRead(), download.Control()
+        self.files.pace = 0.02
+        d = self.dl(control=c)
+        with held.patch():
+            out = {}
+
+            def go():
+                try:
+                    d.run()
+                except BaseException as e:      # noqa: B036 -- handed back to the test thread to assert on
+                    out['error'] = e
+                out['threads'] = ParallelDownloads.download_threads()     # what was still running the moment it returned
+            t = threading.Thread(target=go, daemon=True)
+            t.start()
+            self.assertTrue(held.entered.wait(10), 'no read was held')
+            c.stop('paused')
+            t.join(6)                                                    # longer than any wait that gives up on a connection
+            returned_while_held = not t.is_alive()
+            self.assertIsNone(self.swarm.proc, 'rqbit was still running while a connection was held')   # rqbit ends first
+            held.release.set()
+            t.join(30)
+        self.assertFalse(t.is_alive(), 'run() never returned')
+        self.assertIsInstance(out.get('error'), download.Stopped)
+        self.assertFalse(returned_while_held, 'run() returned while a connection was still in a read')
+        self.assertEqual(out['threads'], [])
+        self.assertIsNone(self.swarm.proc)
+        part = self.tmp / 'dl' / 'swarm' / 'model.gguf'
+        before = part.read_bytes()
+        time.sleep(0.5)
+        self.assertEqual(part.read_bytes(), before, 'the file changed after Pause returned')
+        self.files.pace = 0
+        self.assertEqual(Path(self.dl().run()).read_bytes(), self.model)
+
+    def test_a_server_that_stops_sending_pieces_never_shortens_the_file(self):
+        """The server starts ignoring Range midway, after pieces from the back are written: in this mode the file is never cut
+        to the front (that would throw those pieces away). BitTorrent goes on, the server is asked again later."""
+        self.setup_dirs()
+        self.files.pace = 0.02
+        part, sizes, done = self.tmp / 'dl' / 'swarm' / 'model.gguf', [], []
+
+        def watch():
+            while not done:
+                try:
+                    sizes.append(part.stat().st_size)
+                except OSError:
+                    pass
+                time.sleep(0.005)
+        threading.Thread(target=watch, daemon=True).start()
+        threading.Timer(0.3, self.files.ignore_range.add, ['model.gguf']).start()
+        with fast_backoff(), mock.patch.dict(os.environ, {'FAKE_SWARM_PACE': '0.04'}):
+            d = self.dl()
+            out = d.run()
+        done.append(1)
+        self.assertEqual(Path(out).read_bytes(), self.model)
+        grown = [x for x in sizes if x]
+        self.assertTrue(all(b >= a for a, b in zip(grown, grown[1:])), 'the file got shorter')
+
+    def test_servers_down_people_still_finish_and_pause_is_quick(self):
+        """The file's own address cannot be reached: the connections give up and are tried again later, while rqbit goes on and
+        the download finishes from other people alone. A pause in that time is heard at once."""
+        self.setup_dirs()
+        down = f'https://127.0.0.1:{download.loopback_port()}/model.gguf'     # nothing listens there
+        swarm = share.Swarm(self.torrent, command=self.command)
+        d = download.Download(down, self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model), download.Control(), allowed=ALLOWED,
+                              context=self.ctx, connections=2, pieces=self.pieces, swarm=swarm, part=self.tmp / 'dl' / 'swarm' / 'model.gguf')
+        with fast_backoff():
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        (self.tmp / 'dl' / 'model.gguf').unlink()
+        self.setup_dirs()
+        c = download.Control()
+        swarm = share.Swarm(self.torrent, command=self.command)
+        d = download.Download(down, self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model), c, allowed=ALLOWED,
+                              context=self.ctx, connections=2, pieces=self.pieces, swarm=swarm, part=self.tmp / 'dl' / 'swarm' / 'model.gguf')
+        stopped = []
+        threading.Timer(0.8, lambda: (stopped.append(time.time()), c.stop('paused'))).start()
+        with fast_backoff(), mock.patch.dict(os.environ, {'FAKE_SWARM_PACE': '0.5'}), self.assertRaises(download.Stopped):
+            d.run()
+        self.assertLess(time.time() - stopped[0], 3)
+        self.assertIsNone(swarm.proc)
+
+    def test_a_disk_without_holes_is_filled_from_the_front(self):
+        """A disk that fills the gap when a file is written far ahead (some network shares): the servers take pieces from the
+        front too, and the file still comes out right with rqbit writing into it."""
+        self.setup_dirs()
+        self.assertTrue(download._holes(str(self.tmp)))             # this disk keeps holes: the probe says so
+        self.files.pace = 0.15
+        with mock.patch.object(download, '_holes', lambda folder: False):
+            d = self.dl()
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertFalse(d.from_back)
+        starts = [a // self.SEG for a, _ in _requested(self.files.log, 'model.gguf')]
+        window = download.AHEAD
+        self.assertEqual(sorted(starts[:2]), [window - 2, window - 1])          # the far end of the window, rqbit the front
+        self.assertTrue(self.peers and self.peers[-1] > 0, 'nothing came from other people')
+
+    def test_a_server_that_refuses_the_file_stops_it_with_bittorrent_on(self):
+        """Only a server that will not send pieces, cannot be reached or stays busy is asked again later while rqbit goes on. One
+        that refuses the file stops the download, as without rqbit, and rqbit with it."""
+        self.setup_dirs()
+        self.files.answers['model.gguf'] = [(403, None)] * 100
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_PACE': '0.5'}):
+            d = self.dl()
+            with self.assertRaises(download.Failed) as e:
+                d.run()
+        self.assertEqual(e.exception.code, 'network')
+        self.assertIn('HTTP 403', e.exception.message)
+        self.assertIsNone(self.swarm.proc)
+
+    def test_without_rqbit_the_usual_order(self):
+        """rqbit does not start: the download goes the usual way, from the front, as if BitTorrent were off."""
+        self.setup_dirs()
+        swarm = share.Swarm(self.torrent, command=[sys.executable, '-I', '-c', 'pass'])
+        d = download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model), download.Control(),
+                              allowed=ALLOWED, context=self.ctx, connections=2, pieces=self.pieces, swarm=swarm,
+                              part=self.tmp / 'dl' / 'swarm' / 'model.gguf')
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertEqual(sorted(a // self.SEG for a, _ in _requested(self.files.log, 'model.gguf')[:2]), [0, 1])
+
+    def test_a_left_file_goes_on_with_bittorrent_off(self):
+        """Paused with BitTorrent on, then resumed with it off: the pieces done stay (the file is never cut back to a run from
+        byte 0), and the rest comes from the servers."""
+        self.setup_dirs()
+        self.files.pace = 0.3
+        c = download.Control()
+        added = Path(str(self.record) + '.added')
+
+        def pause_once_rqbit_has_given_some():
+            t0 = time.time()
+            while (not added.exists() or not self.peers) and time.time() - t0 < 20:
+                time.sleep(0.02)
+            c.stop('paused')
+        threading.Thread(target=pause_once_rqbit_has_given_some, daemon=True).start()
+        with self.assertRaises(download.Stopped):
+            self.dl(control=c).run()
+        meta = json.loads((self.tmp / 'dl' / 'model.gguf.part.json').read_text())
+        self.assertEqual(meta['bytes_done'], 0)                           # nothing vouched for as a run from byte 0
+        have = [k for a, b in meta['swarm']['have'] for k in range(a, b)]
+        self.assertTrue(have, 'nothing was done before the pause')
+        self.files.log.clear()
+        self.files.pace = 0
+        d = download.Download(f'{self.base}/model.gguf', self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model), download.Control(),
+                              allowed=ALLOWED, context=self.ctx, pieces=self.pieces, part=self.tmp / 'dl' / 'swarm' / 'model.gguf')
+        self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        fetched = {a // self.SEG for a, _ in _requested(self.files.log, 'model.gguf')}
+        self.assertFalse(fetched & set(have), 'pieces done before were fetched again')
+        self.assertEqual(len(self.record.read_text(encoding='utf-8').splitlines()), 1, 'rqbit was started again')
+
+    def test_the_usual_way_left_a_part_and_bittorrent_takes_it(self):
+        """A .part from the usual way (one connection, its run from byte 0) found when BitTorrent is on: that run counts, and
+        is checked again with the rest at the end."""
+        self.setup_dirs()
+        part = self.tmp / 'dl' / 'swarm' / 'model.gguf'
+        part.write_bytes(self.model[:3 * self.SEG + 500])
+        meta = {'url': f'{self.base}/model.gguf', 'size': len(self.model), 'sha256': sha(self.model), 'etag': '"e1"', 'bytes_done': 3 * self.SEG + 500}
+        (self.tmp / 'dl' / 'model.gguf.part.json').write_text(json.dumps(meta))
+        self.files.pace = 0.05
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_SKIP': ','.join(str(k) for k in range(40))}):    # people have none of it
+            d = self.dl()
+            self.assertEqual(Path(d.run()).read_bytes(), self.model)
+        self.assertFalse({a // self.SEG for a, _ in _requested(self.files.log, 'model.gguf')} & {0, 1, 2})
+
+    def test_a_job_paused_with_bittorrent_goes_on_with_what_is_there(self):
+        """A job paused while its file comes from people too: the data is in downloads/swarm/, so the room it still needs is what
+        that file's .json says is left, not the whole file again. Resumed with BitTorrent off, the file goes back to <name>.part
+        and comes from the servers, its pieces kept."""
+        zpath = self.tmp / 'Lastbook-Small.zip'
+        installed = make_pack(zpath, {'library-data/catalog.json': b'{"records": []}', 'library-data/big.bin': os.urandom(2 * MiB)})
+        zdata = zpath.read_bytes()
+        self.files.data['Lastbook-Small.zip'] = zdata
+        data, pin = torrent.make(zpath, 'Lastbook-Small.zip', self.PIECE)
+        self.files.data['Lastbook-Small.zip.torrent'] = data
+        self.files.pace = 0.2
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': installed, 'available': True,
+                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(zdata),
+                                   'sha256': sha(zdata), 'kind': 'zip',
+                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': pin['pieces_root'],
+                                               'infohash_v2': pin['infohash_v2'], 'piece_length': self.PIECE}}]}], 'models': []}
+        mf = manifest.Manifest(bundled=manifest.validate(m, ALLOWED), remote=None, allowed=ALLOWED, context=self.ctx)
+        downloads = self.parent / 'LastbookData.setup' / 'downloads'
+        # the .json says soon what is done, and rqbit is slow enough that Pause comes midway
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_SOURCE': str(zpath), 'FAKE_SWARM_NAME': 'Lastbook-Small.zip', 'FAKE_SWARM_PACE': '0.2'}), \
+                mock.patch.object(download, 'SAVE_EVERY', 0.05):
+            s = self.setup(manifest=mf, share_command=self.command)
+            s.set_share(True)
+            s.start('small', False)
+            t0 = time.time()
+            while not (download.swarm_done(downloads / 'Lastbook-Small.zip') or 0) and time.time() - t0 < 20:
+                time.sleep(0.05)
+            self.assertEqual(s.pause()['state'], 'paused')
+        done = download.swarm_done(downloads / 'Lastbook-Small.zip')
+        self.assertTrue(0 < done < len(zdata), done)
+        self.assertTrue((downloads / 'swarm' / 'Lastbook-Small.zip').exists())
+        s.set_share(False)
+        room = len(zdata) - done + 512 * MiB + 1          # what is left, not the whole file again
+        self.files.pace = 0
+        with mock.patch.object(hardware, 'disk_of', lambda path: (room, None)):
+            s.resume()
+            j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertFalse((downloads / 'swarm' / 'Lastbook-Small.zip').exists())
+        self.assertEqual(len([n for n in self.record.read_text(encoding='utf-8').splitlines() if 'server' in n]), 1)   # one swarm rqbit
+
+    def test_a_job_downloads_from_people(self):
+        """The whole job with BitTorrent on: the pack comes partly from other people, and the item says how much."""
+        zpath = self.tmp / 'Lastbook-Small.zip'
+        data, pin = torrent.make(zpath, 'Lastbook-Small.zip', self.PIECE)
+        self.files.data['Lastbook-Small.zip.torrent'] = data
+        self.files.pace = 0.03
+        m = {'version': 1, 'published': '2026-11-17',
+             'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': self.installed, 'available': True,
+                        'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip),
+                                   'sha256': sha(self.zip), 'kind': 'zip',
+                                   'torrent': {'url': f'{self.base}/Lastbook-Small.zip.torrent', 'pieces_root': pin['pieces_root'],
+                                               'infohash_v2': pin['infohash_v2'], 'piece_length': self.PIECE}}]}], 'models': []}
+        mf = manifest.Manifest(bundled=manifest.validate(m, ALLOWED), remote=None, allowed=ALLOWED, context=self.ctx)
+        with mock.patch.dict(os.environ, {'FAKE_SWARM_SOURCE': str(zpath), 'FAKE_SWARM_NAME': 'Lastbook-Small.zip'}):
+            s = self.setup(manifest=mf, share_command=self.command)
+            s.set_share(True)
+            s.start('small', False)
+            j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertGreater(j['items'][0].get('from_peers', 0), 0)
+        s.seeder.stop()
 
 
 class Unpacking(Base):

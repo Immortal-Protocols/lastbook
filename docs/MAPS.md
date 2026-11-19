@@ -114,6 +114,8 @@ When a rural query names the municipio, the reader also checks the original addr
 
 When the barrio is in the saved gazetteer, `Barrio Las Peñas, Villa Ejemplo` finds that place even if a parcel records only `BO. LAS PEÑAS` as its address. Include a lot, sector, road or another specific address detail to search the parcel wording. Recorded wording remains available when the gazetteer has no matching place.
 
+Newly prepared indexes also match reordered labelled fields with or without a final period on the barrio, sector or lot. Internal kilometer decimals and the supplied lot, sector, municipio and ZIP still have to agree. The index keeps the original wording and signatures for older readers.
+
 When the directions match land records, the map outlines the possible parcels and numbers the pins.
 Open **Show matches** to compare them. Each row shows the recorded road and kilometer, when known.
 A solar, sector or interior detail helps distinguish parcels on the same road. The barrio and municipio

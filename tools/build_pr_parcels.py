@@ -194,6 +194,7 @@ def build(db, folder, rural, csv_files=()):
         (base,route,coalesce(meters,-1),lot,sector,interior,access,postal,landmark,source);""")
     db.execute(pr_permit.SCHEMA)
     db.execute(pr_permit.VERBATIM_INDEX)
+    db.execute(pr_permit.FIELDS_INDEX)
     for name in ('sip', 'arpe'):
         labels(db, pages(folder, manifest[name]), name.upper() + ' permit')
     csv_hashes = []

@@ -81,6 +81,7 @@ def prepare(original, output, municipio=(), planning=False, csv_paths=(), region
                     sources.extend((planning_records(town), 'JP consulta') for town in towns)
                 with dest:
                     dest.execute(pr_permit.VERBATIM_INDEX)
+                    dest.execute(pr_permit.FIELDS_INDEX)
                     for records, name in sources:
                         labels(dest, (r for r in records if fold(r['municipio'] or '') in keys and (r['address'] or '').strip()), name)
                 after = dest.execute(count, tuple(keys)).fetchone()

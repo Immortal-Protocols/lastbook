@@ -82,6 +82,59 @@ class MunicipalIndex(unittest.TestCase):
                 municipal.prepare(self.original, self.output, 'Aguada', planning=True)
         self.assertFalse(self.output.exists())
 
+    def test_reordered_fields_ignore_final_periods_and_keep_qualifiers(self):
+        import server
+        path = self.root / 'punctuation.csv'
+        locality = 'BO. PEÑA ., SECT. EL SOL ., SOLAR A-7 ., 00700'
+        road = 'CARR 19 KM 4.4, BO. PEÑA ., SECT. EL SOL ., SOLAR A-7 ., 00700'
+        relative = 'CARR 19 KM 4.4, FRENTE AL PUENTE, BO. PEÑA ., 00700'
+        with path.open('w', encoding='utf-8', newline='') as stream:
+            writer = csv.writer(stream)
+            writer.writerow(['catastro', 'address', 'municipio'])
+            for base in ('00100200301', '00100200302'):
+                for text in (locality, road, relative):
+                    writer.writerow([base, text, 'San Sebastián'])
+        municipal.prepare(self.original, self.output, 'San Sebastián', csv_paths=[path])
+        expected = {'00100200301', '00100200302'}
+        queries = [
+            'Lote A-7, Sector El Sol, Barrio Pena ., San Sebastián, 00700',
+            'Bo. Peña, Lote A-7, Sect. El Sol ., San Sebastián, 00700',
+            'Bo. Peña ., Lote A-7, Sect. El Sol, San Sebastián, 00700',
+            'PR-19 km 4.400, Lote A-7, Sect. El Sol, Barrio Pena ., San Sebastián, 00700',
+            'Sect. El Sol, Bo. Pena, Lote A-7, PR-19 km 4.4, San Sebastián, 00700',
+        ]
+        with closing(sqlite3.connect(self.output)) as db:
+            for query in queries:
+                with self.subTest(query=query):
+                    self.assertEqual(set(pr_permit.matches(db, query)), expected)
+            for original, changed in [('A-7', 'A-8'), ('El Sol', 'El Río'), ('00700', '00701'),
+                                      ('San Sebastián', 'Aguada'), ('Peña', 'Otro')]:
+                self.assertEqual(pr_permit.matches(db, queries[1].replace(original, changed)), {})
+            self.assertEqual(pr_permit.matches(db, queries[3].replace('4.400', '4.04')), {})
+            self.assertEqual(pr_permit.matches(db, relative.replace('FRENTE', 'DETRÁS') + ', San Sebastián'), {})
+            self.assertEqual(set(pr_permit.matches(db, relative + ', San Sebastián')), expected)
+            # The expression lookup uses an index, and keeps old readers' signatures intact.
+            plan = db.execute('EXPLAIN QUERY PLAN SELECT base FROM pr_permit_wording WHERE town=? AND '
+                + pr_permit.FIELDS_WHERE + ' AND ' + pr_permit.FIELDS_VALUE
+                + "=? AND (?='' OR substr(postal,1,length(?))=?) ORDER BY base,source,wording",
+                ('san sebastian', pr_permit.field_key(pr_permit.key(queries[3], 'san sebastian')[0]),
+                 '00700', '00700', '00700')).fetchall()
+            self.assertIn('pr_permit_fields', str(plan))
+            for signature, wording in db.execute('SELECT signature,wording FROM pr_permit_wording'):
+                self.assertEqual(signature, pr_permit.key(wording, 'san sebastian', source=True, locality=True)[0])
+        with patch.object(server, 'HERE', self.root):
+            first, = server.places(queries[0], limit=1)
+            second, = server.places(queries[0], limit=1, parcel_offset=1)
+            self.assertEqual([first['parcelNumber'], second['parcelNumber']],
+                             ['001-002-003-01', '001-002-003-02'])
+            self.assertEqual((first['parcelCount'], second['parcelCount']), (2, 2))
+            self.assertEqual(first['name'], locality)
+            self.assertTrue(first['rings'])
+        with closing(sqlite3.connect(self.output)) as db, db:
+            db.execute('DROP INDEX pr_permit_fields')
+            for text in (locality, road, relative):
+                self.assertEqual(set(pr_permit.matches(db, text + ', San Sebastián')), expected)
+
     def test_barrio_only_wording_does_not_override_gazetteer(self):
         import server
         with closing(sqlite3.connect(self.original)) as db, db:

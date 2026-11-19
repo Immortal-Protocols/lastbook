@@ -113,6 +113,17 @@ SCHEMA = """CREATE TABLE pr_permit_wording(town TEXT, signature TEXT, postal TEX
 VERBATIM_INDEX = """CREATE INDEX IF NOT EXISTS pr_local_verbatim ON pr_permit_wording(town,wording COLLATE NOCASE)
                    WHERE source IN ('CRIM','JP consulta')"""
 
+# Keep the original signatures readable by older apps. New packs can also ignore a
+# field-ending period without removing internal decimal points or direction words.
+FIELDS_VALUE = "replace(replace(rtrim(signature,' .'),' .|','|'),'.|','|')"
+FIELDS_WHERE = "(signature GLOB 'parts *' OR signature GLOB 'locality *')"
+FIELDS_INDEX = ("CREATE INDEX IF NOT EXISTS pr_permit_fields ON pr_permit_wording(town,"
+                + FIELDS_VALUE + ") WHERE " + FIELDS_WHERE)
+
+
+def field_key(signature):
+    return signature.rstrip(' .').replace(' .|', '|').replace('.|', '|')
+
 
 def names_place(text, town, places):
     names = set()
@@ -139,6 +150,7 @@ def matches(db, query, named_places=()):
     text = plain(query)
     result = {}
     verbatim = db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_local_verbatim'").fetchone()
+    fields = db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_fields'").fetchone()
     for name, in db.execute('SELECT name FROM municipios ORDER BY name'):
         town = plain(name)
         if town not in text:
@@ -171,4 +183,10 @@ def matches(db, query, named_places=()):
                 ORDER BY base,source,wording""", (town,value,postal,postal,postal))
             for base, source, wording in rows:
                 result.setdefault(base, (source, wording))
+            if fields and value.startswith(('parts ', 'locality ')):
+                rows = db.execute("SELECT base,source,wording FROM pr_permit_wording WHERE town=? AND "
+                    + FIELDS_WHERE + " AND " + FIELDS_VALUE + "=? AND (?='' OR substr(postal,1,length(?))=?)"
+                    + " ORDER BY base,source,wording", (town,field_key(value),postal,postal,postal))
+                for base, source, wording in rows:
+                    result.setdefault(base, (source, wording))
     return result

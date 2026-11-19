@@ -122,11 +122,16 @@ enum PuertoRicoPermits {
         return names.contains(raw)
     }
     typealias Evidence = (source:String, wording:String)
+    static func fieldKey(_ signature: String) -> String {
+        signature.trimmingCharacters(in:CharacterSet(charactersIn:" ."))
+            .replacingOccurrences(of:" .|",with:"|").replacingOccurrences(of:".|",with:"|")
+    }
     static func matches(_ query: String, _ db: SQLiteDB, namedPlaces: [[String: Any]] = []) -> [String:Evidence] {
         guard db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'") != nil else { return [:] }
         let text = plain(query)
         var result = [String:Evidence]()
         let verbatim = db.one("SELECT 1 FROM sqlite_master WHERE name='pr_local_verbatim'") != nil
+        let fields = db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_fields'") != nil
         for row in db.query("SELECT name FROM municipios ORDER BY name") {
             guard let name = row["name"]?.text else { continue }
             let town = plain(name)
@@ -166,6 +171,20 @@ enum PuertoRicoPermits {
                     if let base = r["base"]?.text, result[base] == nil,
                        let source = r["source"]?.text, let wording = r["wording"]?.text {
                         result[base] = (source,wording)
+                    }
+                }
+                if fields && (key.hasPrefix("parts ") || key.hasPrefix("locality ")) {
+                    let rows = db.query("""
+                        SELECT base,source,wording FROM pr_permit_wording WHERE town=?
+                        AND (signature GLOB 'parts *' OR signature GLOB 'locality *')
+                        AND replace(replace(rtrim(signature,' .'),' .|','|'),'.|','|')=?
+                        AND (?='' OR substr(postal,1,length(?))=?) ORDER BY base,source,wording
+                        """, [town,fieldKey(key),postal,postal,postal])
+                    for r in rows {
+                        if let base = r["base"]?.text, result[base] == nil,
+                           let source = r["source"]?.text, let wording = r["wording"]?.text {
+                            result[base] = (source,wording)
+                        }
                     }
                 }
             }

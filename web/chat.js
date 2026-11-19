@@ -217,7 +217,37 @@ const Chat = (() => {
   addEventListener('resize', () => { if ($('.chat-empty')) fitEmpty() });
   function updateBot(i) {
     const el = $('#m' + i); if (!el || !cur) return renderLog();
-    el.innerHTML = botHtml(cur.messages[i], i); wire(el);
+    const m = cur.messages[i];
+    const l = live[cur.id], running = l && l.running && i === cur.messages.length - 1;
+    // While the answer streams, keep the source cards in the page. Replacing the whole message
+    // reloads every page thumbnail and the cards flicker on each token.
+    if (running && patchStream(el, m)) { wire(el); return }
+    el.innerHTML = botHtml(m, i); wire(el);
+  }
+  function patchStream(el, m) {
+    const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
+    const workHtml = `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    const work = el.querySelector(':scope > .working');
+    if (work) work.outerHTML = workHtml;
+    else el.insertAdjacentHTML('afterbegin', workHtml);
+    if (m.content) {
+      let ans = el.querySelector(':scope > .answer');
+      if (!ans) {
+        el.querySelector(':scope > .working').insertAdjacentHTML('afterend', '<div class="answer"></div>');
+        ans = el.querySelector(':scope > .answer');
+      }
+      ans.innerHTML = md(m.content, m);
+    }
+    const found = m.sources || [];
+    const sig = found.map(s => [s.key, s.doc_id, s.page, s.t].join(':')).join('|');
+    if (el.dataset.srcs !== sig) {
+      el.dataset.srcs = sig;
+      const html = found.length ? `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>` : '';
+      const old = el.querySelector(':scope > .prefound');
+      if (old) old.outerHTML = html;
+      else if (html) el.insertAdjacentHTML('beforeend', html);
+    }
+    return true;
   }
   function botHtml(m, i) {
     const l = live[cur.id], running = l && l.running && i === cur.messages.length - 1;

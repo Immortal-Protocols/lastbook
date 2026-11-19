@@ -320,7 +320,8 @@ def main(argv=None, allowed=None, context=None, command=None, extra=(), recheck=
                     station.added.clear()
                     break
                 if station.running():
-                    print(f'Sharing {len(station.added)} files; {gb(station.shared())} uploaded to other people so far.', flush=True)
+                    n = len(station.added)
+                    print(f'Sharing {n} {"file" if n == 1 else "files"}; {gb(station.shared())} uploaded to other people so far.', flush=True)
             if not stop.is_set() and time.time() >= next_check:
                 fresh = load(a, allowed, context)
                 if fresh is not None:

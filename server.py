@@ -17,6 +17,7 @@ requests, and adds a few read-only endpoints:
   /api/map/tile/<z>/<x>/<y>   offline street map vector tile (SoCal OpenStreetMap)
   /api/map/near?lat=&lon=     nearest help points (hospital, pharmacy, water, fire station...)
   /api/places?q=              place finder (ZIP codes, towns, named places)
+  /api/battery                this computer's battery (Linux so far), read when asked; this computer only
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
@@ -685,18 +686,14 @@ def render_page(r, n, width):
 
 
 def vtt_cues(path):
-    cues, cur = [], None
-    for line in (LIB / path).read_text(encoding='utf-8', errors='replace').splitlines():
-        m = re.match(r'(\d+):(\d\d):(\d\d)[.,](\d+)\s+-->', line) or re.match(r'(\d\d):(\d\d)[.,](\d+)\s+-->', line)
-        if m:
-            g = m.groups()
-            t = int(g[0]) * 3600 + int(g[1]) * 60 + int(g[2]) if len(g) == 4 else int(g[0]) * 60 + int(g[1])
-            cur = {'t': t, 'text': ''}
-            cues.append(cur)
-        elif cur is not None and line.strip() and not line.strip().isdigit():
+    cues = []
+    for t, lines in saved_pages.caption_blocks((LIB / path).read_bytes()):
+        cur = {'t': t, 'text': ''}
+        for line in lines:
             txt = html.unescape(re.sub(r'<[^>]+>', '', line)).strip()
             if txt and not cur['text'].endswith(txt):
                 cur['text'] = (cur['text'] + ' ' + txt).strip()
+        cues.append(cur)
     # auto captions repeat lines across cues; drop repeats and merge into ~sentence chunks
     out, last = [], ''
     for c in cues:
@@ -2063,6 +2060,9 @@ class Handler(library.Handler):
             if path.startswith('/api/update/'):
                 from engine import update
                 return update.handle(self, 'GET', path)
+            if path == '/api/battery':   # this computer's battery, read when asked: engine/setup/hardware.py, this computer only
+                from engine.setup import hardware
+                return hardware.handle_battery(self)
             if path in ('/', '/index.html'):
                 return self.send_static(WEB / 'index.html')
             if path.startswith('/ui/'):

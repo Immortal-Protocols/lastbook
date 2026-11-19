@@ -397,7 +397,14 @@ ROUND_TOKENS = 1800
 
 def _http_round(msgs, tools, cancelled, wrote, set_state):
     """One model turn from the model server at BASE. (content, {index: call}), 'stopped', or a sentence saying what failed."""
-    body = {'model': MODEL, 'messages': msgs, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
+    # Some model templates allow a system message only at the start. Keep later app notes where they occur,
+    # marked as ours, without changing the shared history or the local AI's prompt.
+    wire = []
+    for i, m in enumerate(msgs):
+        if i > 0 and m['role'] == 'system':
+            m = {**m, 'role': 'user', 'content': '[Note from the Lastbook app, not from the person]\n' + m['content']}
+        wire.append(m)
+    body = {'model': MODEL, 'messages': wire, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
     if tools:
         body['tools'] = tools
     req = urllib.request.Request(MODEL_URL, json.dumps(body).encode(), {'Content-Type': 'application/json'})

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import engine.paths as lastbook_paths
 from engine.paths import ro_uri
+from engine.saved_pages import caption_blocks
 HERE = lastbook_paths.DATA  # holds derived/
 if not lastbook_paths.FROZEN and os.name != 'nt' and sys.version_info[:2] == (3, 12):  # Mac binaries that belong to the program, built for 3.12, so they would shadow another Python's numpy; never import code from a data folder
     sys.path.insert(0, str(lastbook_paths.APP / 'derived' / 'pylib'))
@@ -123,8 +124,11 @@ def norm_ws(s):
 
 
 def readable(text):
-    """Skip table/spreadsheet debris and non-English runs that match every query by accident."""
-    words = re.findall(r"[A-Za-z][a-z']+", text)
+    """Skip table/spreadsheet debris and non-English runs that match every query by accident.
+
+    Words in capitals count too: manuals print their warnings that way ("DO NOT DRINK FLOOD WATER"). A curly
+    apostrophe (don’t) keeps a word whole, the same as a straight one."""
+    words = re.findall(r"[A-Za-z][A-Za-z'’]+", text)
     if len(words) < 12:
         return False
     letters = sum(len(w) for w in words)
@@ -154,17 +158,14 @@ def chunks_of(text):
 
 def vtt_windows(path, span=45):
     """Timed transcript windows (~45 s) so answers can cite a moment in a video."""
-    cues, cur = [], None
-    for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
-        m = re.match(r'(?:(\d+):)?(\d\d):(\d\d)[.,]\d+\s+-->', line)
-        if m:
-            h = int(m.group(1) or 0)
-            cur = [h * 3600 + int(m.group(2)) * 60 + int(m.group(3)), '']
-            cues.append(cur)
-        elif cur is not None and line.strip() and not line.strip().isdigit():
+    cues = []
+    for start, lines in caption_blocks(path.read_bytes()):
+        cur = [start, '']
+        for line in lines:
             t = html.unescape(re.sub(r'<[^>]+>', '', line)).strip()
             if t and not cur[1].endswith(t):
                 cur[1] = (cur[1] + ' ' + t).strip()
+        cues.append(cur)
     out, start, buf, last = [], None, [], ''
     for t, txt in cues:
         if txt.startswith(last) and last:

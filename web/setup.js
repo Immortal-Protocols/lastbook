@@ -391,6 +391,7 @@
     if ($('#shareOn')) $('#shareOn').onclick = () => shareAct('share', { on: true }, 'Sharing is on. Lastbook shares the kept files while it is open.');
     if ($('#shareOff')) $('#shareOff').onclick = () => shareAct('share', { on: false }, 'Sharing is off. The kept files stay until you delete them.');
     if ($('#shareDel')) $('#shareDel').onclick = () => shareAct('share-delete', {}, 'The kept download files were deleted. The library is untouched.');
+    if ($('#shareGet')) $('#shareGet').onclick = shareGet;
     wireMirrors(manageView);
     if ($('#repair')) $('#repair').onclick = async () => {
       const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
@@ -421,7 +422,10 @@
     const n = sh.seeding || 0;
     const share = sh.available ? `<div class="s-row">${ico('up', 's-ri')}<span><b>Download and share with BitTorrent</b><small>${sh.on ? (n ? `Sharing ${n} ${n === 1 ? 'file' : 'files'} while Lastbook is open; downloads also come from other people` : 'On. Downloads also come from other people, and are kept and shared') : 'Off. When it is on, downloads also come from other people, and they download from this computer and see its address.'}${sh.kept_bytes ? ' · ' + size(sh.kept_bytes) + ' kept' : ''}${sh.shared_bytes ? ` · <b class="s-shared">${size(sh.shared_bytes)} shared with other people so far</b>` : ''}</small></span>
       ${sh.on ? '<button class="btn plain" id="shareOff">Stop sharing</button>' : `<button class="btn plain" id="shareOn">Share</button>${sh.kept_bytes ? `<button class="btn plain" id="shareDel">${ico('trash')}Delete kept files</button>` : ''}`}</div>` : '';
-    return `<div class="s-have">${share}${mirrorRow()}</div>`;
+    /* a library installed with sharing off: its download was deleted once unpacked, so there is nothing of it to share yet */
+    const get = sh.available && sh.missing_bytes ? `<div class="s-row">${ico('down', 's-ri')}<span><b>Share what this library came from</b><small>Its download was not kept when it was installed. Download it again to share it: ${size(sh.missing_bytes)}. It comes from other people and the servers, and Lastbook shares each piece as soon as it has it. The library itself does not change.</small></span>
+      <button class="btn plain" id="shareGet">Download to share</button></div>` : '';
+    return `<div class="s-have">${share}${get}${mirrorRow()}</div>`;
   }
   function wireMirrors(rerender) {
     if ($('#mirrorAdd')) $('#mirrorAdd').onclick = () => { addingMirror = true; rerender(); $('#mirrorUrl').focus() };
@@ -438,6 +442,12 @@
     if ($('#mirrorSave')) $('#mirrorSave').onclick = () => save({ add: $('#mirrorUrl').value });
     if ($('#mirrorUrl')) $('#mirrorUrl').onkeydown = e => { if (e.key === 'Enter') save({ add: $('#mirrorUrl').value }) };
     main.querySelectorAll('[data-unmirror]').forEach(b => b.onclick = () => save({ remove: ((S.sharing && S.sharing.mirrors) || [])[+b.dataset.unmirror] }));
+  }
+  async function shareGet() {
+    const b = $('#shareGet'); b.disabled = true;
+    const r = await call('share-get', {}).catch(e => ({ error: e.message }));
+    if (!r || r.error) { note = (r && r.error) || 'It could not start.'; noteOk = false; manageView(); const n = $('#haveNote'); if (n) { n.tabIndex = -1; n.focus() } return }
+    S.job = r; go('job'); poll();
   }
   async function shareAct(path, body, done) {
     const r = await call(path, body).catch(e => ({ error: e.message }));
@@ -462,6 +472,7 @@
                   model: [['downloading', 'Download'], ['verifying', 'Check'], ['activating', 'Finish']] };
   STEPS.map = [['downloading', 'Download'], ['unpacking', 'Unpack']];   // the engine's map item: waiting, downloading, unpacking, done
   STEPS.addresses = STEPS.map;
+  STEPS.share = [['downloading', 'Download'], ['verifying', 'Check']];   // downloaded again to share: kept, not unpacked
   const WORD = { waiting: 'Waiting', downloading: 'Downloading', paused: 'Paused', verifying: 'Checking', unpacking: 'Unpacking', activating: 'Finishing', done: 'Done', failed: 'Stopped' };
   const ACTIVE = new Set(['waiting', 'downloading', 'verifying', 'unpacking', 'activating']);
   let shapeKey = '', lastAct = null;   // lastAct: the button just pressed, so focus lands on what replaced it
@@ -494,13 +505,13 @@
     const at = it.state === 'done' ? steps.length : (it.state === 'waiting' || it.state === 'paused') && !it.bytes_done && !noDownload(it) ? -1 : Math.max(0, steps.findIndex(s => s[0] === st));
     const busy = ['verifying', 'activating'].includes(it.state) || (it.state === 'unpacking' && !it.bytes_total);
     return `<div class="s-item${it.state === 'failed' ? ' bad' : ''}${it.state === 'done' ? ' ok' : ''}" data-item="${esc(it.id)}" data-kind="${esc(it.kind)}">
-      <div class="s-item-h">${ico(it.kind === 'model' ? 'ai' : it.kind === 'map' ? 'map' : 'book', 's-ri')}<b>${esc(itemTitle(it))}</b><span class="s-state" data-f="word">${it.state === 'done' ? ico('ok') : ''}${Object.hasOwn(WORD, it.state) ? WORD[it.state] : ''}</span></div>
+      <div class="s-item-h">${ico(it.kind === 'model' ? 'ai' : it.kind === 'map' ? 'map' : it.kind === 'share' ? 'up' : 'book', 's-ri')}<b>${esc(itemTitle(it))}</b><span class="s-state" data-f="word">${it.state === 'done' ? ico('ok') : ''}${Object.hasOwn(WORD, it.state) ? WORD[it.state] : ''}</span></div>
       <div class="s-bar new${busy && j.state !== 'paused' ? ' busy' : ''}" role="progressbar" aria-label="${esc(it.title)}" aria-valuemin="0" aria-valuemax="100" data-f="bar"><i></i></div>
       <p class="s-line" data-f="line"></p>
       <ol class="s-steps" aria-label="Steps">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
+  const itemTitle = it => it.kind === 'share' ? it.title + ', to share' : it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);
@@ -523,11 +534,12 @@
     else if (it.state === 'activating') t = it.kind === 'map' ? 'Switching to the new map' : 'Switching to the new library';
     line.textContent = t;
   }
+  const sharingJob = j => !!(j && j.items.length && j.items.every(i => i.kind === 'share'));
   function jobView(j) {
     if (!j) { go(cur() ? 'manage' : 'choose'); return }
     if (j.state === 'done') { go('done'); return }
     const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
-    const head = { paused: 'Paused', failed: errCode(j.error) === 'cancelled' ? 'Cancelled' : 'Stopped' }[j.state] || (repair && !repair.fixed ? 'Checking the library' : repair ? 'Repairing' : 'Installing');
+    const head = { paused: 'Paused', failed: errCode(j.error) === 'cancelled' ? 'Cancelled' : 'Stopped' }[j.state] || (repair && !repair.fixed ? 'Checking the library' : repair ? 'Repairing' : sharingJob(j) ? 'Downloading to share' : 'Installing');
     if (key !== shapeKey) {
       const had = lastAct || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null);
       lastAct = null;
@@ -536,7 +548,8 @@
       const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
       const lead = quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
         : j.state === 'paused' ? 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.'
-        : j.state === 'failed' ? '' : 'You can keep using this computer. Closing Lastbook pauses it.';
+        : j.state === 'failed' ? '' : sharingJob(j) ? 'It comes from other people and the servers, and Lastbook shares each piece as soon as it has it. Closing Lastbook pauses it.'
+        : 'You can keep using this computer. Closing Lastbook pauses it.';
       main.innerHTML = `<h1>${head}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}
         ${j.state === 'failed' ? errorBox(j) : ''}
         <div class="s-items">${j.items.map(it => itemHTML(it, j)).join('')}</div>
@@ -582,6 +595,19 @@
   /* ---- done */
   function doneView() {
     const j = S.job || { items: [] }, fixed = repair && repair.fixed, checked = repair && !fixed;
+    if (sharingJob(j)) {
+      const kept = j.items.map(i => esc(i.title)).join(', ').replace(/, ([^,]*)$/, ' and $1');
+      main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>Sharing</h1>
+        <p class="lead">Kept to share: ${kept}. Lastbook shares it while it is open, and counts what other people download from it.</p>
+        <button class="btn big" id="open">Back to Library and local AI</button><p class="s-note" id="openNote" hidden></p></div>`;
+      live.textContent = 'Kept to share. Lastbook shares it while it is open.';
+      $('#open').onclick = async () => {
+        const r = await call('finish', {}).catch(e => ({ error: e.message }));   // a share job: nothing to open, the app goes on
+        if (!r || r.error) { const n = $('#openNote'); n.hidden = false; n.textContent = (r && r.error) || 'Try again.'; return }
+        S = await call('state').catch(() => S); S.job = null; go('manage');
+      };
+      return;
+    }
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${checked ? 'All good' : fixed ? 'Repaired' : 'Ready'}</h1>
       <p class="lead">${checked ? 'The library was checked and is complete.' : fixed ? 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.' : got ? `Installed: ${got}.` : 'The library is installed.'}</p>

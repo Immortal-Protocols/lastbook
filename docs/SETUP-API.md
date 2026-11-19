@@ -144,8 +144,16 @@ Added 2026-11-17 (mirrors and sharing, docs/DOWNLOAD-SHARING.md):
   rqbit. With it on, each downloaded file with a pinned torrent is kept in `<library>.share` with its `.torrent` instead of being
   deleted after unpacking, and is seeded with rqbit while Lastbook is open. `POST /api/setup/share-delete` deletes the kept files
   (`{…state.sharing, ok, freed_bytes}`).
-- `state.sharing` = `{mirrors, available, on, seeding, kept: [{name, size}], kept_bytes, shared_bytes}`. `shared_bytes`: all the
-  bytes rqbit has uploaded to other people, added up across runs in `<settings>/setup/shared.json`.
+- `state.sharing` = `{mirrors, available, on, seeding, kept: [{name, size}], kept_bytes, shared_bytes, missing: [{name, size}],
+  missing_bytes}`. `shared_bytes`: all the bytes rqbit has uploaded to other people, added up across runs in
+  `<settings>/setup/shared.json`. `missing`: the downloads the open library came from that have a pinned torrent but are not
+  kept (it was installed with sharing off, so they were deleted once unpacked).
+- `POST /api/setup/share-get` (manage mode): downloads those `missing` files again to share them, and turns sharing on. It is a
+  job like any other (pause, resume, cancel), whose items have `kind: "share"` and go only through `downloading` and `verifying`;
+  with BitTorrent on, what comes from other people is shared as soon as rqbit has it. Each file is kept in `<library>.share`
+  with its torrent and seeded; the library does not change. Answers the job, or `{error, code}`: `unavailable` (no rqbit),
+  `busy`, `nothing`, or `no_space` (with `need_bytes`, `free_bytes`). A file whose torrent cannot be had fails the job with
+  `unavailable` before it is downloaded. `finish` on such a job answers `{ok, shared: true}` and opens nothing.
 - With sharing on, a file with a pinned torrent of `PARALLEL_MIN` or more also comes from other people while it downloads (an rqbit
   writing into the same file, in `downloads/swarm/`). The file is judged by a full read once that rqbit has ended. The job item
   carries `from_peers`: the bytes taken from other people, each piece checked against its torrent hash.

@@ -241,6 +241,13 @@ class PublicSearch:
         self.widget = page.locator('.jimu-widget-query')
         self.widget.locator('.tasks-table tr').filter(has_text=re.compile(r'^Parcela$')).click()
 
+    def restart(self):
+        # A capped or timed-out query may still update its page. Keep those late
+        # responses out of the narrower search by discarding the old context.
+        browser = self.page.context.browser
+        self.page.close()
+        self.__init__(browser.new_page(viewport={'width': 1280, 'height': 900}, locale='en-US'))
+
     def wait_for_result(self, condition, arg=None):
         self.page.wait_for_function(r"""state => {
             const failed = Array.from(document.querySelectorAll('.jimu-message')).some(e =>
@@ -367,6 +374,7 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
                                     if len(grids) > 1:
                                         print(f'{prefix}: narrowing grouped search to smaller grids', flush=True)
                                         searches.extendleft(reversed(search_groups(grids, len(prefix) + 1)))
+                                        search.restart()
                                         time.sleep(1)
                                         continue
                                     if not isinstance(error, PublicQueryFailed):
@@ -382,6 +390,7 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
                                 if count == 0 and len(grids) > 1:
                                     # Confirm empty groups through their smaller searches.
                                     searches.extendleft(reversed(search_groups(grids, len(prefix) + 1)))
+                                    search.restart()
                                     time.sleep(1)
                                     continue
                                 partitioned = split_results(prefix, grids, rows, count)

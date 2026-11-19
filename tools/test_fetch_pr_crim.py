@@ -240,6 +240,7 @@ class PublicPrefixResults(unittest.TestCase):
                                          'Villa Ejemplo', group_grids=True)
                     self.assertEqual(search.lookup.call_args_list,
                                      [call('001-0'), call('001-00'), call('001-002'), call('001-004')])
+                    self.assertEqual(search.restart.call_count, 2)
                     self.assertTrue(result['complete'])
                     self.assertEqual((result['missing_parcels'], result['unqueried_parcels']), (2, 0))
 
@@ -354,6 +355,20 @@ class PublicPrefixResults(unittest.TestCase):
                     with self.assertRaises(fetch.PublicQueryTimeout):
                         search.lookup('001-006')
                     self.assertEqual(page.evaluate('attempts'), 1)
+                    old_page = search.page
+                    def local_init(instance, page):
+                        page.set_default_timeout(3000)
+                        page.set_content(html)
+                        instance.page, instance.widget = page, page.locator('.jimu-widget-query')
+                        instance.sequence = 0
+                    with patch.object(fetch.PublicSearch, '__init__', local_init):
+                        search.restart()
+                    self.assertTrue(old_page.is_closed())
+                    self.assertIsNot(search.page, old_page)
+                    # The stalled page cannot overwrite the replacement page's response.
+                    page = search.page
+                    rows, count = search.lookup('001-002')
+                    self.assertEqual((len(rows), count), (1, 1))
             finally:
                 browser.close()
 

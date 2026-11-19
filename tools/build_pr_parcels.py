@@ -34,6 +34,20 @@ CRIM_MUNICIPIOS = {
     '79': 'San Juan', '80': 'Canóvanas', '81': 'Florida',
 }
 PREFIXED_ACCOUNT = re.compile(r'([0-9]{2})-([0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{2}(?:-[0-9]{3})?)')
+KM_TEXT = re.compile(pr_rural.KM.pattern.replace('kilometros', 'kil[oó]metros')
+                     .replace('kms?', r'kms?(?:\.?\s*hm)?'), re.I)
+
+
+def comma_fields(text):
+    # Keep a decimal comma inside an explicit kilometer measure. Other commas
+    # remain field separators, including an unlabelled pair of road numbers.
+    parts, start = [], 0
+    for match in KM_TEXT.finditer(text):
+        parts.append(re.sub(r'\s*,\s*', ', ', text[start:match.start()]))
+        parts.append(match[0])
+        start = match.end()
+    parts.append(re.sub(r'\s*,\s*', ', ', text[start:]))
+    return ''.join(parts)
 
 
 def pages(folder, entry):
@@ -163,7 +177,7 @@ def labels(db, records, source):
             if source == 'CRIM':
                 searchable = re.sub(r'(?:(?:^|,)\s*(?:PR|Puerto Rico))+(?:,\s*(00000|00[679]\d{2}(?:-\d{4})?))?\s*$',
                                     lambda m: ', ' + m[1] if m[1] and m[1] != '00000' else '', wording, flags=re.I)
-                searchable = re.sub(r'\s*,\s*', ', ', searchable)
+                searchable = comma_fields(searchable)
                 searchable = re.sub(r'(?:^|(?<=,))\s*\.\s*,', '', searchable).strip(' ,.')
             if fold(searchable) in ('', 'n a', 'sin direccion', 'no disponible', town):
                 continue
@@ -215,6 +229,7 @@ def build(db, folder, rural, csv_files=()):
         labels(db, csv_records(path), 'CRIM')
         with path.open('rb') as stream:
             csv_hashes.append(hashlib.file_digest(stream, 'sha256').hexdigest())
+    pr_permit.build_aliases(db)
     db.execute('CREATE INDEX pr_parcel_route ON pr_parcel_address(route,meters,base)')
     n = db.execute('SELECT count(DISTINCT base) FROM pr_parcel').fetchone()[0]
     if not n:

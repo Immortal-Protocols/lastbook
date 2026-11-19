@@ -126,12 +126,28 @@ enum PuertoRicoPermits {
         signature.trimmingCharacters(in:CharacterSet(charactersIn:" ."))
             .replacingOccurrences(of:" .|",with:"|").replacingOccurrences(of:".|",with:"|")
     }
+    static func aliasKey(_ signature: String) -> String {
+        if signature.hasPrefix("parts ") || signature.hasPrefix("locality ") {
+            let trim = CharacterSet(charactersIn:" .")
+            return signature.components(separatedBy:"|").map { part in
+                var value = part
+                while let last = value.unicodeScalars.last, trim.contains(last) { value.removeLast() }
+                return value
+            }.joined(separator:"|")
+        }
+        if signature.hasPrefix("literal ") {
+            return signature.replacing(#"(?<=\d),(?=\d)"#,with:", ")
+                .replacing(#"(?:,\s*){2,}(?=[a-z])"#,with:", ")
+        }
+        return signature
+    }
     static func matches(_ query: String, _ db: SQLiteDB, namedPlaces: [[String: Any]] = []) -> [String:Evidence] {
         guard db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_wording'") != nil else { return [:] }
         let text = plain(query)
         var result = [String:Evidence]()
         let verbatim = db.one("SELECT 1 FROM sqlite_master WHERE name='pr_local_verbatim'") != nil
         let fields = db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_fields'") != nil
+        let aliases = db.one("SELECT 1 FROM sqlite_master WHERE name='pr_permit_alias' AND type='table'") != nil
         for row in db.query("SELECT name FROM municipios ORDER BY name") {
             guard let name = row["name"]?.text else { continue }
             let town = plain(name)
@@ -162,6 +178,10 @@ enum PuertoRicoPermits {
                 keys.append(other)
             }
             for key in keys {
+                let normalized = aliasKey(key)
+                if !keys.contains(normalized) { keys.append(normalized) }
+            }
+            for key in keys {
                 let rows = db.query("""
                     SELECT base,source,wording FROM pr_permit_wording
                     WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
@@ -180,6 +200,20 @@ enum PuertoRicoPermits {
                         AND replace(replace(rtrim(signature,' .'),' .|','|'),'.|','|')=?
                         AND (?='' OR substr(postal,1,length(?))=?) ORDER BY base,source,wording
                         """, [town,fieldKey(key),postal,postal,postal])
+                    for r in rows {
+                        if let base = r["base"]?.text, result[base] == nil,
+                           let source = r["source"]?.text, let wording = r["wording"]?.text {
+                            result[base] = (source,wording)
+                        }
+                    }
+                }
+            }
+            if aliases {
+                for key in keys {
+                    let rows = db.query("""
+                        SELECT base,source,wording FROM pr_permit_alias WHERE town=? AND signature=?
+                        AND (?='' OR substr(postal,1,length(?))=?) ORDER BY base,source,wording
+                        """, [town,aliasKey(key),postal,postal,postal])
                     for r in rows {
                         if let base = r["base"]?.text, result[base] == nil,
                            let source = r["source"]?.text, let wording = r["wording"]?.text {

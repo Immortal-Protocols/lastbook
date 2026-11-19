@@ -116,6 +116,10 @@ When the barrio is in the saved gazetteer, `Barrio Las Peñas, Villa Ejemplo` fi
 
 Newly prepared indexes also match reordered labelled fields with or without a final period on the barrio, sector or lot. Internal kilometer decimals and the supplied lot, sector, municipio and ZIP still have to agree. The index keeps the original wording and signatures for older readers.
 
+Newly prepared indexes also store sparse lookup aliases for repeated field-ending periods, empty comma fields before words, and comma spacing in literal text. Alias creation preserves the stored signatures and display wording. The CSV formatter preserves decimal commas inside explicit kilometer measures. It does not turn a comma-separated pair of road numbers into a decimal road. Aliases do not combine numeric comma sequences or reorder relative directions. Rebuild a prepared index to add them; older indexes remain readable.
+
+A tight comma after a kilometer value is read as a decimal (`km 4,123`); a source that intended a separate house number needs a clearer separator.
+
 Non-placeholder CRIM and consultation wording that cannot be parsed is retained for an exact paste with its municipio. A municipio or ZIP alone does not become a parcel address. Unparsed wording does not supply inferred road, lot or sector fields.
 
 When the directions match land records, the map outlines the possible parcels and numbers the pins.

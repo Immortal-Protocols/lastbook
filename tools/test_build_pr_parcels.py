@@ -12,6 +12,7 @@ from tools import build_pr_parcels as build
 
 class ParcelBuild(unittest.TestCase):
     def test_arpe_municipio_prefix(self):
+        self.assertEqual(build.comma_fields('KILÓMETRO 4,4,BO PEÑA'), 'KILÓMETRO 4,4, BO PEÑA')
         with sqlite3.connect(':memory:') as db:
             db.executescript("""
                 CREATE TABLE pr_parcel(base,municipio);
@@ -75,6 +76,7 @@ class ParcelBuild(unittest.TestCase):
             csv.write_text('Número de catastro,Dirección física,municipio,owner\n001-002-003-04,"Carr 19, Bo Sol",Villa Ejemplo,omit-me\n')
             stats = build.build(db,folder,folder,[csv])
             self.assertIsNotNone(db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_fields'").fetchone())
+            self.assertIsNotNone(db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_alias'").fetchone())
             self.assertEqual(stats['parcels'],1)
             self.assertEqual(stats['address_sources'],{'CRIM':1,'SIP permit':1})
             self.assertEqual(stats['address_coverage_by_municipio'], {

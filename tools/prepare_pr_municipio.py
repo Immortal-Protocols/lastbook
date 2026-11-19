@@ -84,6 +84,7 @@ def prepare(original, output, municipio=(), planning=False, csv_paths=(), region
                     dest.execute(pr_permit.FIELDS_INDEX)
                     for records, name in sources:
                         labels(dest, (r for r in records if fold(r['municipio'] or '') in keys and (r['address'] or '').strip()), name)
+                    pr_permit.build_aliases(dest)
                 after = dest.execute(count, tuple(keys)).fetchone()
                 if dest.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
                     raise ValueError('The new index failed its integrity check.')

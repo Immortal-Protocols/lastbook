@@ -125,6 +125,28 @@ def field_key(signature):
     return signature.rstrip(' .').replace(' .|', '|').replace('.|', '|')
 
 
+def alias_key(signature):
+    if signature.startswith(('parts ', 'locality ')):
+        return '|'.join(part.rstrip(' .') for part in signature.split('|'))
+    if signature.startswith('literal '):
+        # Empty fields before words carry no location detail. Never collapse a
+        # malformed numeric comma sequence such as 4,,4 into a valid decimal.
+        signature = re.sub(r'(?<=\d),(?=\d)', ', ', signature)
+        return re.sub(r'(?:,\s*){2,}(?=[a-z])', ', ', signature)
+    return signature
+
+
+def build_aliases(db):
+    # This sparse, derived table leaves older readers' signatures untouched.
+    db.execute('DROP TABLE IF EXISTS pr_permit_alias')
+    db.execute(SCHEMA.replace('pr_permit_wording', 'pr_permit_alias'))
+    for town, signature, postal, base, source, wording in db.execute('SELECT * FROM pr_permit_wording'):
+        alias = alias_key(signature)
+        if alias != signature:
+            db.execute('INSERT OR IGNORE INTO pr_permit_alias VALUES (?,?,?,?,?,?)',
+                       (town, alias, postal, base, source, wording))
+
+
 def names_place(text, town, places):
     names = set()
     for place in places:
@@ -151,6 +173,7 @@ def matches(db, query, named_places=()):
     result = {}
     verbatim = db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_local_verbatim'").fetchone()
     fields = db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_fields'").fetchone()
+    aliases = db.execute("SELECT 1 FROM sqlite_master WHERE name='pr_permit_alias' AND type='table'").fetchone()
     for name, in db.execute('SELECT name FROM municipios ORDER BY name'):
         town = plain(name)
         if town not in text:
@@ -177,6 +200,10 @@ def matches(db, query, named_places=()):
             alternative = key(text, town, locality=True)
             if alternative != signature:
                 signatures.append(alternative)
+        for value, postal in list(signatures):
+            normalized = (alias_key(value), postal)
+            if normalized not in signatures:
+                signatures.append(normalized)
         for value, postal in signatures:
             rows = db.execute("""SELECT base,source,wording FROM pr_permit_wording
                 WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
@@ -187,6 +214,13 @@ def matches(db, query, named_places=()):
                 rows = db.execute("SELECT base,source,wording FROM pr_permit_wording WHERE town=? AND "
                     + FIELDS_WHERE + " AND " + FIELDS_VALUE + "=? AND (?='' OR substr(postal,1,length(?))=?)"
                     + " ORDER BY base,source,wording", (town,field_key(value),postal,postal,postal))
+                for base, source, wording in rows:
+                    result.setdefault(base, (source, wording))
+        if aliases:
+            for value, postal in signatures:
+                rows = db.execute("""SELECT base,source,wording FROM pr_permit_alias
+                    WHERE town=? AND signature=? AND (?='' OR substr(postal,1,length(?))=?)
+                    ORDER BY base,source,wording""", (town,alias_key(value),postal,postal,postal))
                 for base, source, wording in rows:
                     result.setdefault(base, (source, wording))
     return result

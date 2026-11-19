@@ -159,6 +159,88 @@ class MunicipalIndex(unittest.TestCase):
             self.assertEqual(server.places(wording.replace('A-7','A-8') + ', San Sebastián'), [])
             self.assertEqual(server.places(wording + ', Aguada'), [])
 
+    def test_sparse_aliases_handle_repeated_periods_and_empty_fields_without_changing_evidence(self):
+        import server
+        path = self.root / 'aliases.csv'
+        road = 'BO. PEÑA ........, CARR 19 KM.HM 4.2, SOLAR A-7.., 00700'
+        street = '42 CLL INVENTADA, , BO PEÑA, 00700'
+        relative = 'CARR 19 KM 4.2,, FRENTE AL PUENTE, BO PEÑA, 00700'
+        numeric = 'CARR 19 KM 4,,4, FRENTE AL PUENTE, BO PEÑA, 00700'
+        decimal = 'CARR 19 KM 4,4, BO PEÑA, SOLAR B-8, 00700'
+        with closing(sqlite3.connect(self.original)) as db, db:
+            db.execute("UPDATE pr_parcel SET barrio='Otro' WHERE base='00100200302'")
+            signature, postal = pr_permit.key(street, 'aguada', source=True, locality=True)
+            db.execute('INSERT INTO pr_permit_wording VALUES(?,?,?,?,?,?)',
+                       ('aguada', signature, postal, '00100200303', 'CRIM', street))
+        with path.open('w', encoding='utf-8', newline='') as stream:
+            writer = csv.writer(stream); writer.writerow(['catastro', 'address', 'municipio'])
+            for text in (road, street, relative, numeric, decimal):
+                for base in ('00100200301', '00100200302'):
+                    writer.writerow([base, text, 'San Sebastián'])
+        originals = []
+        build_aliases = pr_permit.build_aliases
+        def preserve(db):
+            originals.extend(db.execute('SELECT * FROM pr_permit_wording'))
+            build_aliases(db)
+        with patch.object(pr_permit, 'build_aliases', side_effect=preserve):
+            municipal.prepare(self.original, self.output, 'San Sebastián', csv_paths=[path])
+        expected = {'00100200301', '00100200302'}
+        queries = ['PR-19 km 4.2, Lote A-7, Barrio Pena, San Sebastián, 00700',
+                   '42 CLL INVENTADA, BO PEÑA, San Sebastián, 00700',
+                   relative.replace(',,', ',') + ', San Sebastián']
+        with closing(sqlite3.connect(self.output)) as db:
+            for query in queries:
+                self.assertEqual(set(pr_permit.matches(db, query)), expected)
+            self.assertEqual(set(db.execute('SELECT * FROM pr_permit_wording')), set(originals))
+            decimal_query = 'Lote B-8, Barrio Pena, PR-19 km 4.4, San Sebastián, 00700'
+            self.assertEqual(set(pr_permit.matches(db, decimal_query)), expected)
+            self.assertEqual(db.execute('SELECT count(*) FROM pr_permit_alias').fetchone(), (7,))
+            self.assertEqual(set(pr_permit.matches(db, queries[1].replace('San Sebastián', 'Aguada'))), {'00100200303'})
+            self.assertEqual(pr_permit.matches(db, numeric.replace('4,,4', '4,4') + ', San Sebastián'), {})
+            self.assertEqual(pr_permit.matches(db, queries[2].replace('FRENTE', 'DETRÁS')), {})
+            self.assertEqual(pr_permit.matches(db, 'BO PEÑA, FRENTE AL PUENTE, CARR 19 KM 4.2, San Sebastián, 00700'), {})
+            for before, after in [('A-7', 'A-8'), ('4.2', '4.02'), ('00700', '00701'), ('San Sebastián', 'Aguada')]:
+                self.assertEqual(pr_permit.matches(db, queries[0].replace(before, after)), {})
+            plan = db.execute("EXPLAIN QUERY PLAN SELECT base FROM pr_permit_alias WHERE town=? AND signature=?",
+                              ('san sebastian', pr_permit.alias_key(pr_permit.key(queries[0], 'san sebastian')[0]))).fetchall()
+            self.assertIn('PRIMARY KEY', str(plan))
+        with patch.object(server, 'HERE', self.root):
+            for query in queries:
+                first, = server.places(query, limit=1)
+                second, = server.places(query, limit=1, parcel_offset=1)
+                self.assertEqual([first['parcelNumber'], second['parcelNumber']], ['001-002-003-01', '001-002-003-02'])
+                self.assertTrue(first['rings'] and second['rings'])
+                self.assertEqual((first['parcelCount'], second['parcelCount']), (2, 2))
+                self.assertEqual(server.places(query, parcel_offset=2), [])
+        # A canonical older signature also accepts repeated dots in a new query.
+        with closing(sqlite3.connect(self.output)) as db, db:
+            db.execute('DELETE FROM pr_permit_alias')
+            db.execute("UPDATE pr_permit_wording SET signature=? WHERE wording=?",
+                       (pr_permit.key(queries[0], 'san sebastian')[0], road))
+            self.assertEqual(set(pr_permit.matches(db, queries[0].replace('Barrio Pena', 'Barrio Pena ....'))), expected)
+            db.execute('DROP TABLE pr_permit_alias')
+            self.assertEqual(set(pr_permit.matches(db, street + ', San Sebastián')), expected)
+
+    def test_literal_numeric_comma_spacing_keeps_existing_queries(self):
+        rows = [('42 CLL SOL APT 4,5 FRENTE AL PUENTE',
+                 '42 Cll Sol Apt 4, 5 frente al puente'),
+                ('BO PEÑA SOLAR 4,5 FRENTE A LA ESCUELA',
+                 'Bo Pena Solar 4, 5 frente a la escuela'),
+                ('CARR 19 KM 4,4 FRENTE AL PUENTE',
+                 'Carr 19 km 4, 4 frente al puente')]
+        path = self.root / 'literal-commas.csv'
+        with path.open('w', encoding='utf-8', newline='') as stream:
+            writer = csv.writer(stream); writer.writerow(['catastro', 'address', 'municipio'])
+            for source, _ in rows:
+                writer.writerow(['00100200301', source, 'San Sebastián'])
+            writer.writerow(['00100200301', 'CARR 3,2 KM 1.0, BO PEÑA', 'San Sebastián'])
+        municipal.prepare(self.original, self.output, 'San Sebastián', csv_paths=[path])
+        with closing(sqlite3.connect(self.output)) as db:
+            for source, query in rows:
+                for text in (source, query):
+                    self.assertEqual(set(pr_permit.matches(db, text + ', San Sebastián')), {'00100200301'})
+            self.assertEqual(pr_permit.matches(db, 'PR-3.2 km 1, Barrio Pena, San Sebastián'), {})
+
     def test_barrio_only_wording_does_not_override_gazetteer(self):
         import server
         with closing(sqlite3.connect(self.original)) as db, db:

@@ -1,0 +1,51 @@
+# Generated for a local checkout by build_arch.py; not a published AUR package.
+pkgname=lastbook
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='Offline survival library'
+arch=('x86_64')
+url='https://lastbook.org'
+license=('MIT')
+depends=('python>=@PYTHON@' 'python<@PYTHON_NEXT@' 'python-gobject' 'gtk3'
+         'webkit2gtk-4.1>=2.40' 'libsoup3' 'gstreamer' 'gst-plugins-base'
+         'gst-plugins-good' 'gst-libav' 'gst-plugins-bad-libs' 'gst-plugin-dav1d'
+         'gcc-libs' 'glibc')
+# Playback needs an AV1 decoder, and the library's videos are all AV1. Arch's
+# gst-plugins-bad ships only the SVT-AV1 encoder (unlike Debian's, which carries
+# dav1d), so the decoder comes from gst-plugin-dav1d (rank primary, what decodebin
+# picks) plus gst-plugins-bad-libs for the av1parse parser. Upstream made the same
+# fix for the .deb in ebcaeab.
+optdepends=('vulkan-icd-loader: local AI on a graphics card'
+            'gst-plugin-va: VA-API hardware AV1 decoding')
+makedepends=('python-pip' 'python-pillow' 'pkgconf')
+options=('!strip' '!debug' '!distcc' '!ccache')
+source=('lastbook-source.tar' @LLM_SOURCE@)
+sha256sums=('@SOURCE_SHA256@' @LLM_SHA256@)
+
+build() {
+  local actual
+  actual="$(/usr/bin/python3 -I -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+  [[ "$actual" == '@PYTHON@' ]] || { echo 'Python changed: rerun build_arch.py to resolve matching wheels.' >&2; return 1; }
+  [[ ! -e "$srcdir/vendor" ]] || { echo 'Use makepkg --cleanbuild for a fresh wheel target.' >&2; return 1; }
+  /usr/bin/python3 -I -B -m pip --isolated --disable-pip-version-check install \
+    --no-cache-dir --no-compile --only-binary=:all: --no-index --require-hashes \
+    --find-links "$srcdir/lastbook/wheels" --target "$srcdir/vendor" \
+    -r "$srcdir/lastbook/wheels.lock" || return 1
+  # Existing lastbook:// media source, linked against this system's GStreamer.
+  gcc $CPPFLAGS $CFLAGS -shared -fPIC -O2 -Wall -Werror -s \
+    -ffile-prefix-map="$srcdir"=lastbook \
+    "$srcdir/lastbook/source/packaging/linux/gst/lastbooksrc.c" \
+    -o "$srcdir/libgstlastbooksrc.so" $LDFLAGS \
+    $(pkg-config --cflags --libs gstreamer-1.0 gstreamer-base-1.0)
+}
+
+package() {
+  local source_root="$srcdir/lastbook/source"
+  /usr/bin/python3 -I -B "$source_root/packaging/linux/stage_linux.py" \
+    --source "$source_root" --ship "$srcdir/lastbook/ship" --vendor "$srcdir/vendor" \
+    --plugin "$srcdir/libgstlastbooksrc.so" --stage "$pkgdir" --version "$pkgver" --channel arch @LLM_ARGS@ || return 1
+  install -Dm644 "$source_root/LICENSE" "$pkgdir/usr/share/licenses/lastbook/LICENSE" || return 1
+  install -Dm644 "$source_root/THIRD_PARTY_NOTICES.md" "$pkgdir/usr/share/doc/lastbook/THIRD_PARTY_NOTICES.md" || return 1
+  # Required even with --nocheck: the same payload rules as the Debian build.
+  /usr/bin/python3 -I -B "$source_root/packaging/linux/scan_package_linux.py" "$pkgdir"
+}

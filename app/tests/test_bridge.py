@@ -842,6 +842,579 @@ class NothingGoesOut(unittest.TestCase):
                 self.assertNotIn(word, src, name)
 
 
+# A stand-in for lastbook-llm --embed: the same lines on its pipes, and a way to misbehave. Run with this Python.
+FAKE_EMBED = r'''
+import json, math, os, sys, time
+mode, mark = sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else ''
+DIM = 384
+print(f'stand-in runner {os.getpid()} starting', file=sys.stderr, flush=True)
+if mode == 'nostart' or (mode == 'failstart' and not os.path.exists(mark)):
+    if mark:
+        open(mark, 'w').close()
+    print(json.dumps({'ev': 'error', 'code': 'usage', 'msg': 'cannot read /Users/someone/private/model.gguf'}), flush=True)
+    sys.exit(2)
+if mode == 'slowstart':
+    time.sleep(30)
+print(json.dumps({'ev': 'fit', 'status': 'fits'}), flush=True)
+pooling, dim = ('mean', DIM) if mode == 'meanpool' else ('cls', 2 * DIM) if mode == 'widemodel' else ('cls', DIM)
+ready = {'ev': 'ready', 'n_ctx': 2048, 'pooling': pooling, 'dim': dim}
+if mode == 'oldready':        # a build from before the runner said how it pools
+    ready = {'ev': 'ready', 'n_ctx': 512}
+print(json.dumps(ready), flush=True)
+if mode == 'noread':          # alive, but never reads what it is sent
+    time.sleep(60)
+seen = 0
+for line in sys.stdin:
+    req = json.loads(line)
+    if req.get('op') == 'quit':
+        break
+    seen += 1
+    rid, texts = req.get('id'), req.get('texts', [])
+    if any(0xD800 <= ord(c) <= 0xDFFF for t in texts for c in t):   # the real program cannot read these either
+        print(json.dumps({'ev': 'error', 'code': 'bad_request', 'msg': 'not a JSON object'}), flush=True)
+        continue
+    if mode == 'hang' or (mode == 'hangafter' and seen > 1):
+        time.sleep(60)
+    if mode == 'slow':
+        time.sleep(0.6)
+    if mode == 'crashbad' and any('BAD' in t for t in texts):
+        os._exit(1)
+    if mode == 'dieonce' and seen == 2 and not os.path.exists(mark):
+        open(mark, 'w').close()
+        sys.exit(1)
+    if mode == 'cancel':
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'cancel', 'msg': 'stopped'}), flush=True)
+        continue
+    bad = any('BAD' in t for t in texts)
+    if mode == 'reject' or (mode == 'rejectbad' and bad) or (mode == 'rejectonce' and bad and not os.path.exists(mark)):
+        if mark:
+            open(mark, 'w').close()
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'decode', 'msg': 'the model could not read a text'}), flush=True)
+        continue
+    if mode == 'refusebad' and bad:   # a refusal of these texts, with the request's id: the program stays
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'bad_request', 'msg': 'texts are strings'}), flush=True)
+        continue
+    if mode == 'refusenoid':          # the same code without an id is about the program, not this request
+        print(json.dumps({'ev': 'error', 'code': 'bad_request', 'msg': 'not a JSON object'}), flush=True)
+        continue
+    if mode == 'oldencode':      # what a build from before batching said instead
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'encode', 'msg': 'the model could not read a text'}), flush=True)
+        continue
+    if mode == 'badreq':
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'bad_request', 'msg': 'texts are strings'}), flush=True)
+        continue
+    n = 2 * DIM if mode == 'wide' or (mode == 'wideafter' and seen > 1) else DIM
+    vecs = [[1 / math.sqrt(n)] * n for _ in texts]
+    if mode == 'short':
+        vecs = vecs[:-1]
+    if mode == 'nan':
+        vecs[0][0] = None
+    if mode == 'wrongid':
+        rid = (rid or 0) + 1000
+    print(json.dumps({'ev': 'embedding', 'id': rid, 'dim': n, 'vectors': vecs, 'n_tokens': [3] * len(texts)}), flush=True)
+'''
+
+
+def fake_runner(mode, *extra):
+    script = TMP / 'fake_embed.py'
+    if not script.exists() or script.read_text(encoding='utf-8') != FAKE_EMBED:   # always this version, never one left from an older run
+        TMP.mkdir(parents=True, exist_ok=True)
+        part = TMP / f'fake_embed.{os.getpid()}.tmp'
+        part.write_text(FAKE_EMBED, encoding='utf-8')
+        os.replace(part, script)
+    emb = retrieval.RunnerEmbedder([sys.executable, '-I', str(script), mode, *map(str, extra)])
+    emb.START_S, emb.BASE_S, emb.PER_TEXT_S, emb.SEARCH_S = 10, 10, 0, 10   # generous: a busy machine must not fail them
+    return emb
+
+
+def a_mark(test):
+    # a file the stand-in leaves behind to remember something across its restarts
+    mark = TMP / f'mark-{os.getpid()}-{time.time_ns()}'
+    test.addCleanup(lambda: mark.unlink(missing_ok=True))
+    return mark
+
+
+def quiet():
+    # the code prints a line on each failure; the tests cause them on purpose
+    import io
+    return mock.patch('sys.stderr', new=io.StringIO())
+
+
+class RunnerEmbed(unittest.TestCase):
+    # retrieval.RunnerEmbedder: the Mac's meaning search through lastbook-llm --embed, against a stand-in program.
+
+    def make(self, mode, *extra):
+        emb = fake_runner(mode, *extra)
+        self.addCleanup(emb.close)
+        return emb
+
+    def test_vectors_come_back_one_per_text_and_the_program_stays(self):
+        emb = self.make('ok')
+        v = emb.embed(['a', 'b', 'c'])
+        self.assertEqual(v.shape, (3, retrieval.DIM))
+        pid = emb.proc.pid
+        self.assertEqual(emb.embed(['d\ud800e']).shape, (1, retrieval.DIM))   # a lone surrogate is replaced, not sent
+        self.assertEqual(emb.proc.pid, pid)
+        self.assertEqual(emb.starts, 1)
+        self.assertEqual(emb.embed([]).shape, (0, retrieval.DIM))   # nothing to ask: the program is not even asked
+
+    def test_the_deadline_ends_with_the_answer(self):
+        emb = self.make('ok')
+        emb.BASE_S = 0.5
+        emb.embed(['a'])
+        time.sleep(1)                     # a timer still running would have killed it by now
+        self.assertIsNone(emb.proc.poll())
+        emb.embed(['b'])
+        self.assertEqual(emb.starts, 1)
+
+    def test_the_wait_grows_with_the_number_of_texts(self):
+        emb = self.make('slow')           # answers after 0.6 s
+        emb.BASE_S, emb.PER_TEXT_S = 0.2, 0.5
+        self.assertEqual(emb.embed(['a', 'b']).shape, (2, retrieval.DIM))   # 0.2 + 2 x 0.5 s is long enough
+
+    def test_what_the_program_says_goes_to_a_log(self):
+        log = DATA / 'derived' / 'logs' / 'embed.log'
+        emb = self.make('ok')
+        emb.embed(['a'])
+        self.assertIn(f'stand-in runner {emb.proc.pid} starting'.encode(), log.read_bytes())
+
+    def test_a_program_that_cannot_start_is_left_alone_for_a_while(self):
+        emb = self.make('nostart')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertIsNone(emb.proc)
+        self.assertTrue(4 < emb.retry_at - time.monotonic() <= 5)   # the first wait is 5 s
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'])
+        self.assertTrue(cm.exception.resting)
+        self.assertLess(time.monotonic() - t0, 1)
+        self.assertEqual(emb.starts, 1)   # the second search did not start it again
+        emb.retry_at = 0                  # once the wait is over, it is tried again
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertEqual(emb.starts, 2)
+        self.assertGreater(emb.retry_at - time.monotonic(), 7)   # and the next wait is longer: 10 s, not 5
+        emb.retry_at, emb.failures = 0, 7
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertLessEqual(emb.retry_at - time.monotonic(), 300)   # never more than 5 minutes
+        self.assertGreater(emb.retry_at - time.monotonic(), 290)
+
+    def test_success_clears_the_count_of_failures(self):
+        emb = self.make('ok')
+        emb.failures = 3
+        emb.embed(['a'])
+        self.assertEqual(emb.failures, 0)
+
+    def test_a_forced_check_counts_no_failure(self):
+        emb = self.make('nostart')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'], force=True)
+        self.assertEqual(emb.failures, 0)
+
+    def test_a_program_that_hangs_is_stopped(self):
+        emb = self.make('hang')
+        emb.BASE_S = 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'])
+        self.assertLess(time.monotonic() - t0, 5)
+        self.assertIn('in time', str(cm.exception))
+        self.assertIsNone(emb.proc)
+
+    def test_a_hang_is_not_waited_out_twice(self):
+        emb = self.make('hangafter')
+        emb.embed(['a'])
+        proc = emb.proc
+        emb.BASE_S = 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'])
+        self.assertLess(time.monotonic() - t0, 5)     # one deadline: no restart and second wait (starts below)
+        self.assertEqual(emb.starts, 1)
+        self.assertEqual(emb.failures, 1)
+        self.assertIsNotNone(proc.poll())             # the hung program was ended, not left behind
+
+    def test_a_search_waits_only_the_search_limit(self):
+        emb = self.make('hangafter')
+        emb.embed(['a'])
+        emb.BASE_S, emb.SEARCH_S = 30, 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'], search=True)
+        self.assertLess(time.monotonic() - t0, 3)
+
+    def test_a_program_that_stops_reading_cannot_block(self):
+        emb = self.make('noread')
+        emb.BASE_S = 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['x' * 2000] * 100)   # far more than a pipe holds: the write itself would block
+        self.assertLess(time.monotonic() - t0, 5)
+        self.assertIn('in time', str(cm.exception))
+        self.assertEqual(emb.starts, 1)     # a deadline is not a death: no second start
+        self.assertIsNone(emb.proc)
+
+    def test_a_slow_start_is_given_up(self):
+        emb = self.make('slowstart')
+        emb.START_S = 0.5
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertIsNone(emb.proc)
+
+    def test_a_program_that_died_between_searches_is_started_again(self):
+        emb = self.make('ok')
+        emb.embed(['a'])
+        emb.proc.kill()
+        emb.proc.wait()
+        self.assertEqual(emb.embed(['b']).shape, (1, retrieval.DIM))
+        self.assertEqual(emb.starts, 2)
+
+    def test_a_program_that_dies_during_a_request_is_started_once_more(self):
+        emb = self.make('dieonce', a_mark(self))
+        emb.embed(['a'])                                         # the first program answers this one, then dies on the next
+        self.assertEqual(emb.embed(['b']).shape, (1, retrieval.DIM))
+        self.assertEqual(emb.starts, 2)
+        self.assertEqual(emb.failures, 0)
+
+    def test_wrong_vectors_never_come_back(self):
+        for mode in ('wide', 'short', 'nan'):
+            emb = self.make(mode)
+            with self.assertRaises(retrieval.RunnerFailed, msg=mode):
+                emb.embed(['a', 'b'])
+            self.assertIsNone(emb.proc, mode)
+
+    def test_a_wrong_answer_is_not_asked_again(self):
+        emb = self.make('wideafter')
+        emb.embed(['a'])
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'])
+        self.assertEqual(emb.starts, 1)   # only a program that died is started again within the request
+
+    def test_an_answer_to_another_request_is_not_taken(self):
+        emb = self.make('wrongid')
+        emb.BASE_S = 1
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+
+    def test_refused_texts_leave_the_program_running(self):
+        emb = self.make('badreq')
+        emb.failures = 3                      # it answered, so it works: earlier failures no longer count
+        with self.assertRaises(retrieval.TextRejected):
+            emb.embed(['a'])
+        self.assertIsNotNone(emb.proc)
+        self.assertIsNone(emb.proc.poll())
+        self.assertEqual(emb.failures, 0)
+
+    def test_an_error_for_no_request_is_not_a_refusal(self):
+        emb = self.make('refusenoid')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertIsNone(emb.proc)
+
+    def test_a_failed_pass_restarts_the_program(self):
+        for mode in ('reject', 'oldencode'):  # decode, or encode from an older build: the program or the machine, not the text
+            emb = self.make(mode)
+            with self.assertRaises(retrieval.RunnerFailed, msg=mode):
+                emb.embed(['a'])
+            self.assertIsNone(emb.proc, mode)
+            self.assertEqual(emb.failures, 1, mode)
+
+    def test_a_model_that_pools_otherwise_is_refused(self):
+        for mode in ('meanpool', 'widemodel'):
+            emb = self.make(mode)
+            with self.assertRaises(retrieval.RunnerFailed, msg=mode) as cm:
+                emb.embed(['a'])
+            self.assertIn('this index needs cls', str(cm.exception))
+            self.assertIsNone(emb.proc, mode)
+
+    def test_an_older_build_that_does_not_say_is_still_used(self):
+        self.assertEqual(self.make('oldready').embed(['a']).shape, (1, retrieval.DIM))
+
+    def test_a_stopped_request_is_not_a_refused_text(self):
+        emb = self.make('cancel')   # what the real program answers when it is told to quit during a request
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+
+    def test_closing_during_a_request_ends_it_and_starts_nothing(self):
+        emb = self.make('hang')
+        got = []
+        t = threading.Thread(target=lambda: got.append(self._catch(emb.embed, ['a'])), daemon=True)
+        t.start()
+        self.assertTrue(wait_until(lambda: emb.proc is not None and emb.starts == 1))
+        proc = emb.proc
+        time.sleep(0.3)
+        emb.close()
+        t.join(5)
+        self.assertFalse(t.is_alive())
+        self.assertIsInstance(got[0], retrieval.RunnerFailed)
+        self.assertTrue(got[0].resting)
+        self.assertIsNone(emb.proc)
+        self.assertIsNotNone(proc.poll())
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'])
+        self.assertEqual(emb.starts, 1)
+
+    def test_closing_an_idle_program_ends_it(self):
+        emb = self.make('ok')
+        emb.embed(['a'])
+        proc = emb.proc
+        emb.close()
+        self.assertIsNotNone(proc.poll())
+        self.assertIsNone(emb.proc)
+
+    def test_the_start_deadline_ends_with_the_start(self):
+        emb = self.make('ok')
+        emb.START_S = 1
+        emb.embed(['a'])
+        time.sleep(1.5)                   # a start timer still running would have killed it by now
+        self.assertIsNone(emb.proc.poll())
+        self.assertEqual(emb.starts, 1)
+
+    def test_each_request_has_its_own_deadline(self):
+        mark = a_mark(self)
+        emb = self.make('hang')
+        emb.BASE_S = 0.5
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])                  # this one runs out of time
+        emb.argv[3:] = ['dieonce', str(mark)]
+        emb.retry_at, emb.BASE_S = 0, 10
+        emb.embed(['b'])
+        self.assertEqual(emb.embed(['c']).shape, (1, retrieval.DIM))   # a death, not a timeout: started once more
+        self.assertEqual(emb.starts, 3)
+
+    def test_a_program_this_request_started_is_not_started_twice(self):
+        emb = self.make('crashbad')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['BAD'])
+        self.assertEqual(emb.starts, 1)
+
+    def test_a_search_is_not_retried_after_a_death(self):
+        emb = self.make('dieonce', a_mark(self))
+        emb.embed(['a'])
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'], search=True)     # a person is waiting: keyword results now, not a restart
+        self.assertEqual(emb.starts, 1)
+
+    def test_busy_only_stops_searches(self):
+        emb = self.make('ok')
+        emb.busy_until = time.monotonic() + 60
+        self.assertEqual(emb.embed(['a']).shape, (1, retrieval.DIM))   # building the index ignores it
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'], search=True)
+        self.assertTrue(cm.exception.resting)
+
+    def test_an_endless_line_is_not_read_forever(self):
+        emb = self.make('ok')
+        emb.LINE_MAX = 200                    # an answer is far longer: it stands in for an endless one
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'])
+        self.assertIn('too long', str(cm.exception))
+        self.assertIsNone(emb.proc)
+
+    @staticmethod
+    def _catch(fn, *a):
+        try:
+            return fn(*a)
+        except Exception as e:
+            return e
+
+
+class MeaningSearchFails(unittest.TestCase):
+    # When the program for meaning search fails, keyword search and Chat keep working.
+
+    def setUp(self):
+        idx = server.INDEX
+        saved = (idx.emb, idx.mat, idx.active)
+        self.addCleanup(lambda: (setattr(idx, 'emb', saved[0]), setattr(idx, 'mat', saved[1]), setattr(idx, 'active', saved[2]),
+                                 idx.status.pop('search_error', None)))
+        self.keyword_only = assistant.hybrid('boil water', 5)
+        self.assertTrue(self.keyword_only, 'the made-up library should have a keyword hit')
+        idx.mat = retrieval.np.zeros((1, retrieval.DIM), dtype=retrieval.np.float16)   # one passage, so meaning search runs
+        idx.active = retrieval.np.ones(1, dtype=bool)
+        self.idx = idx
+        self.use('nostart')
+
+    def use(self, mode):
+        self.idx.emb = fake_runner(mode)
+        self.addCleanup(self.idx.emb.close)
+        return self.idx.emb
+
+    def test_search_falls_back_to_keyword_results(self):
+        with quiet() as err:
+            self.assertEqual(self.idx.semantic('boil water'), [])
+            self.assertEqual(set(self.idx.status['search_error']), {'at', 'kind'})   # no message, so no folder, reaches a page
+            self.assertEqual(assistant.hybrid('boil water', 5), self.keyword_only)
+        printed = err.getvalue()
+        self.assertEqual(printed.count('semantic search failed'), 1)   # once for a run of failures, not once a search
+        self.assertNotIn('Traceback', printed)                         # the program failing is expected, not a bug
+
+    def test_an_unexpected_error_is_printed_in_full(self):
+        self.idx.emb.embed = mock.Mock(side_effect=ZeroDivisionError('a bug'))
+        with quiet() as err:
+            self.assertEqual(self.idx.semantic('boil water'), [])
+        self.assertIn('Traceback', err.getvalue())
+
+    def test_the_search_page_still_answers_and_says_so(self):
+        b = B.Bridge(MOD, 'stream', OR['stream'], tmpdir=str(TMP))
+        with quiet():
+            r = call(b, 'GET', '/api/retrieve?q=boil+water&k=5', {'X-Lastbook-Key': b.key})
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body)
+        self.assertTrue(d['results'])
+        self.assertIn('search_error', d['semantic'])   # the page then says "Matched by your words"
+        self.assertNotIn(b'/Users/someone', r.body)   # the program's own message names a folder; it never reaches the page
+
+    def test_a_search_does_not_wait_long_for_a_busy_program(self):
+        emb = self.use('ok')
+        emb.SEARCH_S = 0.5
+        with emb.lock:   # as if a long piece of indexing held it
+            t0 = time.monotonic()
+            with quiet():
+                for _ in range(4):   # one question makes several searches: only the first one waits
+                    self.assertEqual(self.idx.semantic('boil water'), [])
+            self.assertLess(time.monotonic() - t0, 1.5)
+        self.assertEqual(emb.starts, 0)
+
+    def test_the_error_is_cleared_when_search_works_again(self):
+        with quiet():
+            self.idx.semantic('boil water')
+        self.assertIn('search_error', self.idx.status)
+        self.use('ok')
+        self.idx.semantic('boil water')
+        self.assertNotIn('search_error', self.idx.status)
+
+
+class IndexThroughRunner(unittest.TestCase):
+    # Building the index through the program. A document that fails (its pass fails, or its texts are refused) is tried
+    # once more after the program has embedded a
+    # check text; if it fails again it is passed over for this pass, with nothing written, so the next pass tries it again.
+    # Three passed over in a row end the pass. A program that fails everything, cannot start or is resting writes nothing.
+
+    def setUp(self):
+        self.dir = TMP / f'index-{os.getpid()}-{time.time_ns()}'
+        self.dir.mkdir(parents=True)
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        for name, value in (('IDX', self.dir), ('AVAILABLE', True), ('ENGINE', 'llama')):
+            p = mock.patch.object(retrieval, name, value)
+            p.start()
+            self.addCleanup(p.stop)
+        self.idx = retrieval.Index(lambda: {'by_id': {}}, lambda r: (0, 0), None)
+        self.docs, self.bad = ['d1', 'd2', 'd3'], {'d2'}
+        self.idx.sources = lambda: [(d, 's-' + d, 0, ('fake', None)) for d in self.docs]
+        self.idx.excluded = lambda: set()
+        # d2 has 5 passages, so with batches of 2 its trouble comes after a first batch went through
+        def texts(d, how):   # the last passage of a bad document is the one that fails
+            n = 5 if d == 'd2' else 3
+            return [(1, None, f'{"BAD " if d in self.bad and i == n - 1 else ""}text of {d} {i}') for i in range(n)]
+        self.idx._texts = texts
+        q = quiet()
+        q.start()
+        self.addCleanup(q.stop)
+
+    def use(self, mode, *extra):
+        self.idx.emb.close()
+        self.idx.emb = fake_runner(mode, *extra)
+        self.addCleanup(self.idx.emb.close)
+        return self.idx.emb
+
+    def rows(self, sql):
+        import sqlite3
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        try:
+            return con.execute(sql).fetchall()
+        finally:
+            con.close()
+
+    def nothing_written(self):
+        self.assertEqual(self.rows('SELECT count(*) FROM docstate'), [(0,)])
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])
+        self.assertEqual(self.rows('SELECT count(*) FROM chunk'), [(0,)])
+        self.assertFalse((self.dir / 'vectors.f16').exists())
+
+    def indexed_without_d2(self):
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])   # nothing says d2 is bad: it is only passed over
+        self.assertEqual(self.rows('SELECT doc_id, nchunks FROM docstate ORDER BY doc_id'), [('d1', 3), ('d3', 3)])
+        self.assertEqual(self.rows('SELECT count(*) FROM chunk WHERE active=1'), [(6,)])
+        self.assertEqual((self.dir / 'vectors.f16').stat().st_size, 6 * retrieval.DIM * 2)
+
+    def indexed_all(self):
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])
+        self.assertEqual(self.rows('SELECT doc_id, nchunks FROM docstate ORDER BY doc_id'), [('d1', 3), ('d2', 5), ('d3', 3)])
+        self.assertEqual((self.dir / 'vectors.f16').stat().st_size, 11 * retrieval.DIM * 2)
+
+    def test_a_failing_document_is_passed_over_and_tried_again_next_time(self):
+        self.use('rejectbad')
+        self.assertEqual(self.idx.update(batch=2), 2)
+        self.indexed_without_d2()
+        self.use('ok')                                  # whatever the trouble was, it has gone by the next pass
+        self.assertEqual(self.idx.update(batch=2), 1)   # only d2 is done again
+        self.indexed_all()
+
+    def test_a_document_the_program_dies_on_is_passed_over_in_the_same_pass(self):
+        self.use('crashbad')
+        self.assertEqual(self.idx.update(batch=2), 2)
+        self.indexed_without_d2()
+
+    def test_a_passing_failure_goes_through_at_once(self):
+        self.use('rejectonce', a_mark(self))
+        self.assertEqual(self.idx.update(batch=2), 3)
+        self.indexed_all()
+
+    def test_a_program_that_failed_to_start_once_passes_over_nothing(self):
+        self.use('failstart', a_mark(self))   # its first start fails, its second works
+        self.assertEqual(self.idx.update(batch=2), 3)
+        self.indexed_all()
+
+    def test_three_passed_over_in_a_row_end_the_pass(self):
+        self.docs, self.bad = ['d1', 'd2', 'd3', 'd4', 'd5'], {'d2', 'd3', 'd4'}
+        emb = self.use('rejectbad')
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            self.idx.update(batch=2)
+        self.assertIn('3 documents in a row', str(cm.exception))
+        self.assertEqual(self.rows('SELECT doc_id FROM docstate'), [('d1',)])   # d5 was not reached
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])
+        self.bad = {'d3'}                               # the next pass: one bad document no longer ends it
+        self.assertEqual(self.idx.update(batch=2), 3)
+        self.assertEqual(self.rows('SELECT doc_id FROM docstate ORDER BY doc_id'), [('d1',), ('d2',), ('d4',), ('d5',)])
+
+    def test_a_refused_document_is_passed_over_and_the_program_kept(self):
+        emb = self.use('refusebad')
+        self.assertEqual(self.idx.update(batch=2), 2)
+        self.indexed_without_d2()
+        self.assertEqual(emb.starts, 1)                 # a refusal is about the texts: the program was never restarted
+
+    def test_a_program_that_fails_everything_marks_nothing(self):
+        self.use('reject')
+        with self.assertRaises(retrieval.RunnerFailed):
+            self.idx.update(batch=2)
+        self.nothing_written()
+
+    def test_a_program_that_cannot_start_writes_nothing(self):
+        self.use('nostart')
+        for _ in range(3):   # nor on later passes: it is the program, not the documents
+            self.idx.emb.retry_at = 0
+            with self.assertRaises(retrieval.RunnerFailed):
+                self.idx.update(batch=2)
+        self.nothing_written()
+
+    def test_a_resting_program_is_not_even_checked(self):
+        emb = self.use('ok')
+        emb.retry_at = time.monotonic() + 60   # as just after a failure
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            self.idx.update(batch=2)
+        self.assertTrue(cm.exception.resting)
+        self.assertEqual(emb.starts, 0)
+        self.nothing_written()
+
+    def test_wrong_vectors_never_reach_the_index(self):
+        self.use('wide')
+        with self.assertRaises(retrieval.RunnerFailed):
+            self.idx.update(batch=2)
+        self.nothing_written()
+
+
 class StreamTests(Both, unittest.TestCase):
     mode = 'stream'
 

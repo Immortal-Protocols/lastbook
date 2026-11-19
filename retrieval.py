@@ -8,7 +8,7 @@ The semantic index lives in derived/index/ (SSD): semantic.sqlite (chunks, per-d
 (append-only float16 rows). It grows incrementally: documents whose catalog signature changed or that are new get
 (re)embedded; nothing in library-data is written.
 """
-import hashlib, html, json, math, os, re, sqlite3, subprocess, sys, threading, time
+import atexit, hashlib, html, json, math, os, re, sqlite3, subprocess, sys, threading, time, traceback, weakref
 from pathlib import Path
 
 import engine.paths as lastbook_paths
@@ -30,10 +30,18 @@ TELEMETRY = 'onnxruntime not loaded'
 os.environ['ORT_DISABLE_TELEMETRY'] = '1'
 GGUF = MODEL / 'bge-small-en-v1.5-f32.gguf'   # the same model in the form llama.cpp reads
 ENGINE = None   # what makes the vectors: 'llama' (lastbook-llm --embed), 'onnx' (onnxruntime) or None (keyword search only)
+RUNNER = None   # lastbook-llm, when ENGINE is 'llama'
+# Only a Mac looks for the program for this. LASTBOOK_EMBED_RUNNER=0 turns it off for checks that must run with no model;
+# they also block onnxruntime, which the code below would otherwise load when model.onnx is in the library.
+if sys.platform == 'darwin' and GGUF.exists() and os.environ.get('LASTBOOK_EMBED_RUNNER') != '0':
+    try:
+        from llm_local import runner_path
+        RUNNER = runner_path()
+    except Exception:
+        RUNNER = None
 try:
     import numpy as np
-    from llm_local import runner_path
-    if sys.platform == 'darwin' and GGUF.exists() and runner_path():
+    if RUNNER:
         ENGINE = 'llama'  # a Mac ships without onnxruntime: the program that runs the local AI makes the vectors, and onnxruntime is never loaded
     AVAILABLE = ENGINE == 'llama' or (MODEL / 'model.onnx').exists()
     if AVAILABLE and not ENGINE:  # with no model there is no reason to load it at all
@@ -70,7 +78,7 @@ class Embedder:
         self.inputs = {i.name for i in self.sess.get_inputs()}
         self.lock = threading.Lock()
 
-    def embed(self, texts):
+    def embed(self, texts, search=False, force=False):
         enc = self.tok.encode_batch(texts)
         ids = np.array([e.ids for e in enc], dtype=np.int64)
         mask = np.array([e.attention_mask for e in enc], dtype=np.int64)
@@ -84,39 +92,207 @@ class Embedder:
         return v.astype(np.float32)
 
 
+class RunnerFailed(RuntimeError):
+    """lastbook-llm --embed could not be started, stopped, hung, or answered with vectors that cannot be used.
+    died: it stopped on its own. resting: it was not even asked (it failed a moment ago, is busy, or Lastbook is closing)."""
+
+    def __init__(self, msg, died=False, resting=False):
+        super().__init__(msg)
+        self.died, self.resting = died, resting
+
+
+class TextRejected(RuntimeError):
+    """lastbook-llm --embed is running but refused the texts of one request. It stays running for the next ones."""
+
+
+REFUSED = ('bad_request',)   # the one error code about a request's texts. decode (encode in older builds) is the program
+                             # or the machine failing (memory, the GPU): like cancel and the rest, it gets the program restarted
+
+
 class RunnerEmbedder:
     """The same vectors from lastbook-llm --embed (llama.cpp), for a Mac. The program starts at the first text and stays;
-    it speaks only through its pipes and leaves when Lastbook closes them."""
+    it speaks only through its pipes and leaves when Lastbook closes them.
 
-    def __init__(self):
-        self.proc = None
+    Every request has a deadline that covers sending it and reading the answer; past it the program is killed. A program
+    that fails to start, hangs or answers badly is not started again for a while (5 s, doubling up to 5 min), so a broken
+    one costs each search almost nothing. Every answer is checked: one vector per text, DIM finite numbers each.
+    A search that has to start the program first can take up to START_S on top of SEARCH_S."""
+    START_S = 20       # longest wait for the program to load the model and say it is ready
+    BASE_S = 10        # building the index: longest wait for an answer, this plus PER_TEXT_S for each text
+    PER_TEXT_S = 0.5
+    SEARCH_S = 5       # a search: longest wait for the answer, and for the program while it works on the index
+    RETRY_S = (5, 300)
+    LINE_MAX = 64 * 2**20   # longest answer line read; a 48-text answer is about 0.4 MB
+
+    def __init__(self, argv=None):
+        self.argv = argv   # None: lastbook-llm with the GGUF. Tests pass a stand-in.
+        self.proc, self.next_id, self.starts = None, 0, 0
+        self.failures, self.retry_at, self.busy_until, self.closed = 0, 0.0, 0.0, False
         self.lock = threading.Lock()
+        me = weakref.ref(self)
+        atexit.register(lambda: me() and me().close())
 
-    def _wait(self, ev):
-        for raw in self.proc.stdout:
-            j = json.loads(raw)
-            if j.get('ev') == 'error':
-                raise RuntimeError(f"lastbook-llm: {j.get('msg')}")
-            if j.get('ev') == ev:
-                return j
-        raise RuntimeError('lastbook-llm stopped')
+    def _deadline(self, seconds):
+        """Kill the program if what follows takes longer than this. Returns the timer, and an Event set when it ran out."""
+        proc, fired = self.proc, threading.Event()
 
-    def embed(self, texts):
-        with self.lock:
+        def expire():
+            fired.set()
             try:
-                if self.proc is None or self.proc.poll() is not None:
-                    self.proc = subprocess.Popen([str(runner_path()), '--embed', '--model', str(GGUF)], stdin=subprocess.PIPE,
-                                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-                    self._wait('ready')
-                self.proc.stdin.write((json.dumps({'op': 'embed', 'texts': list(texts), 'max_tokens': 320}) + '\n').encode())
+                proc.kill()
+            except OSError:
+                pass
+        timer = threading.Timer(seconds, expire)
+        timer.daemon = True
+        timer.start()
+        return timer, fired
+
+    def _start(self):
+        logs = HERE / 'derived' / 'logs'
+        logs.mkdir(parents=True, exist_ok=True)
+        with open(logs / 'embed.log', 'ab') as err:   # what llama.cpp says while it loads and works, for when something goes wrong
+            err.write(f'\n--- {time.strftime("%Y-%m-%d %H:%M:%S")} start\n'.encode())
+            err.flush()
+            argv = self.argv or [str(RUNNER), '--embed', '--model', str(GGUF)]
+            self.proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err)
+        self.starts += 1
+        if self.closed:   # Lastbook began closing while it started
+            raise RunnerFailed('Lastbook is closing', resting=True)
+        timer, fired = self._deadline(self.START_S)
+        try:
+            ready = self._read('ready', None, fired)
+        finally:
+            timer.cancel()
+        # The program pools the way the model file says. The index was built with bge's first-token (CLS) vectors of DIM
+        # numbers: a file that says otherwise would give vectors of the right size but the wrong meaning. Older builds
+        # do not say, and always pooled CLS.
+        if ready.get('pooling', 'cls') != 'cls' or ready.get('dim', DIM) != DIM:
+            raise RunnerFailed(f"lastbook-llm loaded a model with {ready.get('pooling')} pooling and {ready.get('dim')} "
+                               f'numbers per vector; this index needs cls and {DIM}')
+
+    def _stop(self):
+        proc, self.proc = self.proc, None
+        if not proc:
+            return
+        try:
+            proc.kill()
+            proc.wait(5)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        for f in (proc.stdin, proc.stdout):
+            try:
+                f.close()
+            except OSError:
+                pass
+
+    def _read(self, ev, rid, fired):
+        while True:
+            raw = self.proc.stdout.readline(self.LINE_MAX)
+            if not raw:
+                break
+            if len(raw) >= self.LINE_MAX and not raw.endswith(b'\n'):
+                raise RunnerFailed('lastbook-llm answered with a line too long to be an answer')
+            try:
+                j = json.loads(raw)
+            except ValueError:
+                continue
+            if not isinstance(j, dict):
+                continue
+            if j.get('ev') == 'error':
+                if rid is not None and j.get('id') == rid and j.get('code') in REFUSED:
+                    raise TextRejected(f"lastbook-llm refused the texts: {j.get('code')}: {j.get('msg')}")
+                raise RunnerFailed(f"lastbook-llm: {j.get('code')}: {j.get('msg')}")
+            if j.get('ev') == ev and (rid is None or j.get('id') == rid):
+                return j
+        if fired.is_set():
+            raise RunnerFailed('lastbook-llm did not answer in time')
+        raise RunnerFailed('lastbook-llm stopped', died=True)
+
+    def _ask(self, line, rid, n, seconds):
+        timer, fired = self._deadline(seconds)   # started before writing: a program that stops reading cannot block us
+        try:
+            try:
+                self.proc.stdin.write(line)
                 self.proc.stdin.flush()
-                vectors = self._wait('embedding')['vectors']
-            except Exception:
-                if self.proc:   # start it again at the next text
-                    self.proc.kill()
-                    self.proc = None
-                raise
-        return np.array(vectors, dtype=np.float32).reshape(-1, DIM)
+            except (OSError, ValueError):
+                if fired.is_set():
+                    raise RunnerFailed('lastbook-llm did not answer in time') from None
+                raise RunnerFailed('lastbook-llm stopped', died=True) from None
+            vectors = self._read('embedding', rid, fired).get('vectors')
+        finally:
+            timer.cancel()
+        try:
+            v = np.array(vectors, dtype=np.float32)
+        except (ValueError, TypeError):
+            raise RunnerFailed('lastbook-llm answered with vectors of different sizes') from None
+        if v.shape != (n, DIM) or not np.isfinite(v).all():   # another model, or a broken answer: never into the index
+            raise RunnerFailed(f'lastbook-llm answered with vectors of shape {v.shape}, not {n} of {DIM} numbers')
+        return v
+
+    def embed(self, texts, search=False, force=False):
+        """search: a person is waiting, so short limits, and no wait at all just after the program was found busy.
+        force: ask even if it failed a moment ago, and do not count a failure (building the index checks with it)."""
+        texts = [str(t).encode('utf-8', 'replace').decode('utf-8') for t in texts]   # a lone surrogate would break the request line
+        if not texts:
+            return np.zeros((0, DIM), dtype=np.float32)
+        if search and time.monotonic() < self.busy_until:
+            raise RunnerFailed('lastbook-llm is busy with the index', resting=True)
+        if not self.lock.acquire(timeout=self.SEARCH_S if search else -1):
+            self.busy_until = time.monotonic() + self.SEARCH_S   # the other searches of this question do not wait again
+            raise RunnerFailed('lastbook-llm is busy with the index', resting=True)
+        try:
+            if self.closed:
+                raise RunnerFailed('Lastbook is closing', resting=True)
+            if not force and self.proc is None and time.monotonic() < self.retry_at:
+                raise RunnerFailed('lastbook-llm failed a moment ago; it is tried again later', resting=True)
+            self.next_id += 1
+            rid = self.next_id
+            line = (json.dumps({'op': 'embed', 'id': rid, 'texts': texts, 'max_tokens': 320}) + '\n').encode()
+            seconds = self.SEARCH_S if search else self.BASE_S + self.PER_TEXT_S * len(texts)
+            for attempt in range(2):
+                started = self.proc is None or self.proc.poll() is not None
+                try:
+                    if started:
+                        self._stop()
+                        self._start()
+                    v = self._ask(line, rid, len(texts), seconds)
+                    self.failures, self.retry_at = 0, 0.0
+                    return v
+                except TextRejected:
+                    self.failures, self.retry_at = 0, 0.0   # it answered: it works
+                    raise
+                except Exception as e:
+                    self._stop()
+                    if self.closed:
+                        raise RunnerFailed('Lastbook is closing', resting=True) from e
+                    if attempt == 0 and not started and not search and getattr(e, 'died', False):   # it died under this request
+                        continue
+                    if not force:
+                        self.failures += 1
+                        self.retry_at = time.monotonic() + min(self.RETRY_S[1], self.RETRY_S[0] * 2 ** (self.failures - 1))
+                    if isinstance(e, RunnerFailed):
+                        raise
+                    raise RunnerFailed(f'lastbook-llm: {type(e).__name__}: {e}') from e
+        finally:
+            if self.closed:   # Lastbook closed during this request: nothing may stay running
+                self._stop()
+            self.lock.release()
+
+    def close(self):
+        """Lastbook is closing: no new requests, and the program goes. If Lastbook dies instead, the closed pipe ends it."""
+        self.closed = True
+        if self.lock.acquire(timeout=0):
+            try:
+                self._stop()
+            finally:
+                self.lock.release()
+            return
+        proc = self.proc   # a request is under way: killing the program ends it, and the request tidies up
+        if proc:
+            try:
+                proc.kill()
+            except OSError:
+                pass
 
 
 def norm_ws(s):
@@ -402,7 +578,7 @@ class Index:
             pruned += self._hide(db, [d for d in stale if d not in excl])
             pruned += self._hide(db, rejected, forget_text=True)
         self.status.update(state='indexing' if todo else 'up to date', pending=len(todo), pruned_last=pruned)
-        t0, done, nchunks = time.time(), 0, 0
+        t0, done, nchunks, passed_over = time.time(), 0, 0, 0
         for doc_id, sig, _, how in todo:
             if budget_s and time.time() - t0 > budget_s:
                 break
@@ -413,7 +589,19 @@ class Index:
                 parts, gap = [], f'unreadable: {e}'[:200]
             if not parts and not gap:
                 gap = 'no extractable text'
-            vecs = [self.emb.embed([p[2] for p in parts[i:i + batch]]) for i in range(0, len(parts), batch)]
+            def embed_all(force=False):
+                return [self.emb.embed([p[2] for p in parts[i:i + batch]], force=force) for i in range(0, len(parts), batch)]
+            try:
+                vecs = embed_all()
+            except (TextRejected, RunnerFailed) as e:
+                vecs = self._embed_again(doc_id, e, embed_all)   # raises when the program is the trouble: the pass ends
+                if vecs is None:   # passed over for this pass only: nothing is written, so the next pass tries it again
+                    passed_over += 1
+                    if passed_over >= self.PASS_OVER_LIMIT:
+                        raise RunnerFailed(f'{passed_over} documents in a row could not be embedded; the program is likely '
+                                           'the trouble, so this pass ends here')
+                    continue
+            passed_over = 0
             v = np.concatenate(vecs).astype(np.float16) if parts else None
             with self.lock:
                 old = [i for (i,) in db.execute('SELECT id FROM chunk WHERE doc_id=? AND active=1', (doc_id,)).fetchall()]
@@ -453,6 +641,24 @@ class Index:
                            docs=one(db, 'SELECT count(*) FROM docstate WHERE nchunks>0')[0])
         return done
 
+    PASS_OVER_LIMIT = 3   # documents passed over in a row before a pass ends: by then the program, not the texts, is the trouble
+
+    def _embed_again(self, doc_id, e, embed_all):
+        """Embedding this document failed. If the program still embeds a check text, the document is tried once more, so a
+        passing failure goes through. Returns its vectors, or None if it fails again: it is passed over for this pass. Nothing
+        is written for it, so the next pass tries it again: a failure that was the program's (memory, sleep, a slow machine)
+        never marks a document. Raises when the program cannot even embed the check text, so the pass ends."""
+        if getattr(e, 'resting', False):
+            raise e
+        self.emb.embed(['a short text to check the program still works'], force=True)
+        try:
+            return embed_all(force=True)
+        except (TextRejected, RunnerFailed) as again:
+            if getattr(again, 'resting', False):
+                raise
+            print(f'semantic index: passing over {doc_id} for now: {again}', file=sys.stderr, flush=True)
+            return None
+
     def run_forever(self, every=300):
         while True:
             try:
@@ -470,7 +676,16 @@ class Index:
     def semantic(self, q, k=60, allowed=None, floor=0.55):
         if not self.emb or self.mat is None or not len(self.mat):
             return []
-        qv = self.emb.embed([QUERY_PREFIX + q])[0].astype(np.float16)
+        try:
+            qv = self.emb.embed([QUERY_PREFIX + q], search=True)[0].astype(np.float16)
+        except Exception as e:   # meaning search is an extra: when it fails, keyword search and Chat carry on without it
+            if 'search_error' not in self.status:   # the first of a run of failures; in full if it is not the program's
+                print(f'semantic search failed; keyword search carries on: {e}', file=sys.stderr, flush=True)
+                if not isinstance(e, (RunnerFailed, TextRejected)):
+                    traceback.print_exc()
+            self.status['search_error'] = {'at': time.strftime('%Y-%m-%dT%H:%M:%S'), 'kind': type(e).__name__}   # shown to clients: no paths
+            return []
+        self.status.pop('search_error', None)
         with self.lock:
             m, act = self.mat, self.active
             s = (m @ qv).astype(np.float32)

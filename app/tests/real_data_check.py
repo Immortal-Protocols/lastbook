@@ -13,6 +13,7 @@ DATA = Path(os.environ['LASTBOOK_TEST_DATA'])
 os.environ['LASTBOOK_DATA'] = str(DATA)
 os.environ['SURVIVAL_MODEL_BASE'] = 'http://127.0.0.1:9'
 os.environ['SURVIVAL_DISABLE_INDEX_WATCH'] = '1'
+os.environ['LASTBOOK_EMBED_RUNNER'] = '0'   # this check runs with no model: not the Mac's embedding program either
 sys.modules['onnxruntime'] = None
 import server, retrieval  # noqa: E402
 import bridge as B  # noqa: E402

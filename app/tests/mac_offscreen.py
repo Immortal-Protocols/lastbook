@@ -28,6 +28,7 @@ CTL.mkdir(parents=True, exist_ok=True)
 os.environ['LASTBOOK_DATA'] = a.data
 os.environ['SURVIVAL_MODEL_BASE'] = 'http://127.0.0.1:9'    # dead: port 19443 is never contacted
 os.environ['SURVIVAL_DISABLE_INDEX_WATCH'] = '1'
+os.environ['LASTBOOK_EMBED_RUNNER'] = '0'   # this check runs with no model: not the Mac's embedding program either
 sys.dont_write_bytecode = True
 sys.modules['onnxruntime'] = None                          # importing it now raises ImportError
 sys.path[:0] = [str(ROOT), str(APP)]

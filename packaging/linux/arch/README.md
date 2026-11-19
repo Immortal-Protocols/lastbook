@@ -88,7 +88,8 @@ ABI bounds intentionally remain in place.
 Use an up-to-date Arch x86_64 environment, as an ordinary user, with `base-devel`,
 `git`, `python`, `python-pip`, `python-pillow`, `pkgconf`, `python-gobject`, `gtk3`,
 `webkit2gtk-4.1`, `libsoup3`, `gstreamer`, `gst-plugins-base`, `gst-plugins-good`,
-`gst-libav`, `gcc-libs`, and `zstd` already installed. The wrapper checks
+`gst-libav`, `gst-plugins-bad-libs`, `gst-plugin-dav1d`, `gcc-libs`, and `zstd`
+already installed. The wrapper checks
 prerequisites; it never installs dependencies or changes system configuration.
 The icon input is `packaging/icon/tile-1024.png`.
 

@@ -31,7 +31,7 @@ jobs:
         run: >-
           pacman -Syu --noconfirm --needed git python python-pip python-pillow pkgconf
           python-gobject gtk3 webkit2gtk-4.1 libsoup3 gstreamer gst-plugins-base
-          gst-plugins-good gst-libav gcc-libs zstd curl
+          gst-plugins-good gst-libav gst-plugins-bad-libs gst-plugin-dav1d gcc-libs zstd curl
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false

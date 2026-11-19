@@ -121,7 +121,8 @@ def prerequisites():
     subprocess.run(['pkg-config', '--exists', 'gstreamer-1.0', 'gstreamer-base-1.0'], check=True)
     missing = subprocess.run(['pacman', '-T', 'python-pip', 'python-pillow', 'python-gobject', 'gtk3',
                               'webkit2gtk-4.1>=2.40', 'libsoup3', 'gstreamer', 'gst-plugins-base',
-                              'gst-plugins-good', 'gst-libav', 'gcc-libs'], capture_output=True, text=True)
+                              'gst-plugins-good', 'gst-libav', 'gst-plugins-bad-libs', 'gst-plugin-dav1d',
+                              'gcc-libs'], capture_output=True, text=True)
     if missing.returncode:
         raise ValueError('missing Arch dependencies: ' + (missing.stdout or missing.stderr).strip())
     # After the pacman check, so a stock Arch install (python ships without pip) gets the sentence above

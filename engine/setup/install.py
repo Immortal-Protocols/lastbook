@@ -342,15 +342,17 @@ def carry_over(old, new, moved=None):
     return moved
 
 
-def switch(new_lib, target):
-    """The renames. Returns the old library's new name, or None when there was none. Raises Refused, leaving things as they were."""
+def switch(new_lib, target, old=None):
+    """The renames. `old`: the name to move the old library to, when the caller has already recorded it.
+    Returns the old library's new name, or None when there was none. Raises Refused, leaving things as they were."""
     new_lib, target = Path(new_lib), Path(target)
     if not is_library(new_lib):
         raise Refused('activate', 'The new library is not complete.')
-    old = None
     carried = []
-    if target.exists():
-        old = old_name(target)
+    if not target.exists():
+        old = None
+    else:
+        old = Path(old) if old else old_name(target)
         if is_library(target):
             try:
                 carry_over(target, new_lib, carried)
@@ -586,8 +588,21 @@ def apply_pending(pend, work):
     if d.get('switched'):
         lib_ok = is_library(target)
     else:
+        old = d.get('old')
+        if not target.exists() and old and Path(old).exists():     # stopped after the old library moved aside: put it back, then start over
+            try:
+                if Path(d['new']).is_dir() and is_library(old):     # switch() carries only from a library, so only one gets files back
+                    carry_over(d['new'], old)
+                os.replace(old, target)
+            except OSError as e:     # left for the next start to try again
+                note['error'] = f'Lastbook could not put the old library back ({type(e).__name__}). It is at {old}; rename it to {target.name} to use it again.'
+                return None, note
+        old = old_name(target) if target.exists() else None
+        if old:
+            d['old'] = str(old)
+            _write_json(pend, d)       # recorded before anything moves, so a stop part-way is found next start
         try:
-            old = switch(d['new'], target)
+            old = switch(d['new'], target, old)
         except Refused as e:
             print('setup: switch failed:', e.message, flush=True)
             pend.unlink()

@@ -1149,6 +1149,9 @@ def _fresh_unpack(staged, stamp):
     except (OSError, ValueError):
         same = False
     if not same and Path(staged).exists():
+        if _set_aside(staged, _kept_name(Path(staged).parent)):     # a model a failed switch left here: kept, never emptied away
+            raise install.Refused('unpack', 'Lastbook could not set your files aside from the previous download. '
+                                            'Close anything that may be using them, then try again.')
         try:
             note.unlink(missing_ok=True)
             shutil.rmtree(staged)
@@ -1229,6 +1232,83 @@ def startup(settings_dir, only=None):
         return None, None
 
 
+def _keep_unpacked(work, note):
+    """A failed switch leaves the staged library, which may hold the person's model. Set it aside as kept-<time>, so the next
+    job unpacks fresh and _fresh_unpack never empties a folder with the model in it."""
+    if work.is_symlink():
+        return
+    staged = work / 'unpack'
+    kept = _kept_name(work)
+    try:
+        os.replace(staged, kept)
+    except OSError:     # something in it is still open: set aside only the person's files, and drop the rest so none is reused
+        stuck = _set_aside(staged, kept)     # what could not move is the last copy: it stays where it is, and the message says so
+        blocked = _drop_except(staged, stuck)       # #86's note goes too: a file still open stops the next job instead of being reused
+        if stuck:
+            note['error'] = str(note['error']) + ' Your files could not be moved and are still in ' + ', '.join(map(str, stuck)) + '.'
+        if blocked:
+            note['error'] = str(note['error']) + ' These files are still open and were left in place: ' + ', '.join(map(str, blocked)) + '.'
+        if not any(p.exists() for p in (kept / DATA_NAME / part for part in _PERSONS_FILES)):
+            shutil.rmtree(kept, ignore_errors=True)
+            return
+    else:
+        note['error'] = str(note['error']).replace(str(staged), str(kept))
+    note['error'] = str(note['error']) + f' What was unpacked is kept in {kept}.'
+
+
+_PERSONS_FILES = (Path('models'), Path('derived', 'geo', 'addresses'))     # what install.carry_over moves into a new library
+
+
+def _kept_name(work):
+    return Path(work) / time.strftime('kept-%Y%m%d-%H%M%S')
+
+
+def _set_aside(staged, kept):
+    """Moves the person's files from the library in `staged` into `kept`. Returns the folders that could not move."""
+    stuck = []
+    for part in _PERSONS_FILES:
+        src = Path(staged) / DATA_NAME / part
+        if src.is_dir():
+            try:
+                (kept / DATA_NAME / part).parent.mkdir(parents=True, exist_ok=True)
+                os.replace(src, kept / DATA_NAME / part)
+            except OSError:
+                stuck.append(src)
+    return stuck
+
+
+def _drop_except(p, keep, blocked=None):
+    """Deletes `p`, except the folders in `keep` (and the folders that hold them). A file that cannot be removed (still open on
+    Windows) is left where it is; returns those paths, so the message can name them."""
+    blocked = [] if blocked is None else blocked
+    if p in keep:
+        return blocked
+    if p.is_dir() and not p.is_symlink() and any(p in k.parents for k in keep):
+        for c in p.iterdir():
+            _drop_except(c, keep, blocked)
+    elif p.is_dir() and not p.is_symlink():
+        shutil.rmtree(p, onerror=lambda f, path, e: blocked.append(Path(path)))
+    else:
+        try:
+            p.unlink(missing_ok=True)
+        except OSError:
+            blocked.append(p)
+    return blocked
+
+
+def _clear_work(work, s):
+    """A setup that worked: what jobs made goes. A folder a failed switch set aside stays: it may hold the person's model."""
+    if work.is_symlink():     # never follow it: it may point at a library (rmtree refused it before, too)
+        s.pop('work', None)
+        return
+    for p in (work.iterdir() if work.is_dir() else ()):
+        if not p.name.startswith('kept-'):
+            shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
+    if not any(work.glob('kept-*')):
+        shutil.rmtree(work, ignore_errors=True)
+        s.pop('work', None)
+
+
 def opened(settings_dir, data, note):
     """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder."""
     settings_dir = Path(settings_dir)
@@ -1252,8 +1332,10 @@ def opened(settings_dir, data, note):
         except (OSError, ValueError):
             job = None
         if note or (isinstance(job, dict) and job.get('state') == 'done'):
-            shutil.rmtree(work, ignore_errors=True)
-            s.pop('work', None)
+            if note and note.get('error'):
+                _keep_unpacked(work, note)
+            else:
+                _clear_work(work, s)
             try:
                 _job_file(settings_dir).unlink()
             except OSError:

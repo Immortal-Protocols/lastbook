@@ -229,7 +229,7 @@ def fetch(f, folder, state, data, pieces, a, control, allowed, context, command,
         path = urllib.parse.urlsplit(f['url']).path
         mirrors += [m.rstrip('/') + path for m in a.mirror]
     swarm = None
-    if pieces is not None and not a.no_peers and f['size'] > download.SEGMENTED_MIN and (command or share.binary()):
+    if pieces is not None and not a.no_peers and f['size'] >= download.PARALLEL_MIN and (command or share.binary()):
         in_swarm.parent.mkdir(parents=True, exist_ok=True)
         if part.exists() and not in_swarm.exists():
             os.replace(part, in_swarm)

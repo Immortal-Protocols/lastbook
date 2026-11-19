@@ -3473,10 +3473,9 @@ class ServerSeeding(WithRqbit):
         swarm's) ends, and the same command then goes on from what is there instead of starting over."""
         src = self.tmp / 'swarm-source.zip'
         src.write_bytes(self.zip)
-        for name, value in (('SEGMENT', self.PIECE), ('SEGMENTED_MIN', 0), ('WINDOW', 4), ('HARVEST_EVERY', 0.05)):
-            p = mock.patch.object(download, name, value)
-            p.start()
-            self.addCleanup(p.stop)
+        p = mock.patch.multiple(download, PIECE=self.PIECE, PARALLEL_MIN=0, AHEAD=4, HARVEST_EVERY=0.05)
+        p.start()
+        self.addCleanup(p.stop)
         env = mock.patch.dict(os.environ, {'FAKE_SWARM_SOURCE': str(src), 'FAKE_SWARM_NAME': 'Lastbook-Small.zip',
                                            'FAKE_SWARM_PIECE': str(self.PIECE), 'FAKE_SWARM_PACE': '0.3'})
         env.start()

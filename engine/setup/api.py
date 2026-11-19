@@ -529,11 +529,29 @@ class Setup:
             why += ' ' + hw['ai']['why']
         return {'pack': choice['id'], 'ai': ai, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why}
 
+    def model_server(self, base, model):
+        """Remember or forget the person's chosen model server: a loopback OpenAI-compatible one, on this computer only."""
+        s = self._settings()
+        if base is None:       # forget it: the assistant falls back to the built-in address, then the local AI
+            s.pop('model_server', None)
+            self._save_settings(s)
+            return {'ok': True, 'model_server': {}}
+        try:
+            clean = valid_model_server({'base': str(base), 'model': model})
+            if not clean:
+                raise ValueError
+        except ValueError:
+            return {'error': 'The address must be http://127.0.0.1:PORT (a model server on this computer, such as Ollama or LM Studio).'}
+        s['model_server'] = clean
+        self._save_settings(s)
+        return {'ok': True, 'model_server': clean}
+
     def state(self):
         self.manifest.fetch_once()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
-                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
+                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(),
+                'model_server': model_server_config(self)}
 
     def public_job(self):
         with self.lock:
@@ -1664,6 +1682,12 @@ def _default():
     return SETUP
 
 
+def active():
+    """The configured Setup, or the default one for this computer. Reads setup.json, so only loopback-checked
+    model-server settings ever reach the assistant."""
+    return SETUP or _default()
+
+
 ROUTES = {
     ('GET', 'state'): lambda s, b: s.state(),
     ('GET', 'job'): lambda s, b: s.public_job(),
@@ -1677,7 +1701,34 @@ ROUTES = {
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),
+    ('POST', 'model-server'): lambda s, b: s.model_server(b.get('base'), b.get('model')),
 }
+
+
+def model_server_config(s):
+    """The person's chosen model server, if any: {base, model} with base already loopback-checked, or {}."""
+    c = (s._settings() or {}).get('model_server')
+    return valid_model_server(c) if isinstance(c, dict) else {}
+
+
+def valid_model_server(c):
+    """{base, model} when c names a loopback OpenAI-compatible server, else {}. '127.0.0.1:11434' works too.
+    Kept here, not in assistant.py, so tests can call it without the retrieval index. Uses assistant's own
+    loopback check, so there is exactly one spelling of that rule."""
+    import assistant
+    if not isinstance(c, dict) or not isinstance(c.get('base'), str):
+        return {}
+    base = c['base'].strip()
+    if base and '://' not in base:
+        base = 'http://' + base
+    try:
+        return {'base': assistant.loopback_base(base), 'model': (c.get('model') or '').strip() or assistant.MODEL}
+    except (ValueError, AttributeError):
+        return {}
+
+
+
+
 
 
 def _send_json(h, obj, status=200):

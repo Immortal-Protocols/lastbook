@@ -48,6 +48,20 @@ def init(server_module, index):
         LOCAL.start_background()
 
 
+def chosen_server():
+    """The model server the person chose in setup, if any, as (base, model). Loopback-checked once more here: setup.json is
+    a file on this computer, so its contents are not trusted to be a loopback address. Read on each turn, so a change
+    made in setup applies without a restart. None when nothing was chosen."""
+    try:
+        from engine.setup import api as setup_api
+        cfg = setup_api.model_server_config(setup_api.active())
+        if cfg:
+            return cfg['base'], cfg['model']
+    except Exception:
+        pass
+    return None
+
+
 def local_on():
     return LOCAL is not None and LOCAL.available()
 
@@ -77,16 +91,17 @@ def model_status():
     if local_on():
         return {'model': local['name'], 'online': True, 'error': None, 'local': local, 'vision': False,
                 'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+    base, model = (chosen_server() or (BASE, MODEL))
     if time.time() - _status['at'] > 15:
         try:
-            with model_open(MODELS_URL, timeout=2.5) as r:
+            with model_open(base + '/v1/models', timeout=2.5) as r:
                 ids = [m['id'] for m in json.load(r).get('data', [])]
-            _status.update(online=MODEL in ids, error=None if MODEL in ids else f'{MODEL} not listed')
+            _status.update(online=model in ids, error=None if model in ids else f'{model} not listed')
         except Exception as e:
             _status.update(online=False, error=type(e).__name__)
         _status['at'] = time.time()
-    return {'model': MODEL, 'online': _status['online'], 'error': _status['error'], 'local': local, 'vision': True,
-            'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+    return {'model': model, 'online': _status['online'], 'error': _status['error'], 'local': local, 'vision': True,
+            'server': base, 'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
 
 
 # --------------------------------------------------------------- retrieval --
@@ -530,10 +545,11 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
         if i > 0 and m['role'] == 'system':
             m = {**m, 'role': 'user', 'content': '[Note from the Lastbook app, not from the person]\n' + m['content']}
         wire.append(m)
-    body = {'model': MODEL, 'messages': wire, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
+    base, model = (chosen_server() or (BASE, MODEL))
+    body = {'model': model, 'messages': wire, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
     if tools:
         body['tools'] = tools
-    req = urllib.request.Request(MODEL_URL, json.dumps(body).encode(), {'Content-Type': 'application/json'})
+    req = urllib.request.Request(base + '/v1/chat/completions', json.dumps(body).encode(), {'Content-Type': 'application/json'})
     try:
         resp = model_open(req, timeout=180)
     except Exception as e:

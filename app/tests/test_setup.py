@@ -1868,6 +1868,58 @@ class Switching(Base):
         self.assertEqual(s.start('small', True)['code'], 'nothing')
 
 
+class ModelServer(Base):
+    """The person's chosen model server (setup's Chat model option): loopback only, kept in setup.json, forgotten on demand."""
+
+    def test_save_and_read_back(self):
+        s = self.setup()
+        r = s.model_server('http://localhost:1234', 'gemma4')
+        self.assertTrue(r['ok'])
+        self.assertEqual(r['model_server'], {'base': 'http://127.0.0.1:1234', 'model': 'gemma4'})
+        self.assertEqual(s.state()['model_server'], {'base': 'http://127.0.0.1:1234', 'model': 'gemma4'})
+
+    def test_scheme_less_address_and_default_model(self):
+        s = self.setup()
+        r = s.model_server('127.0.0.1:11434', '')
+        self.assertTrue(r['ok'])
+        self.assertEqual(r['model_server']['base'], 'http://127.0.0.1:11434')
+        self.assertEqual(r['model_server']['model'], 'deepseek-v4.1-flash')
+
+    def test_off_computer_address_is_refused(self):
+        s = self.setup()
+        for bad in ('http://192.168.1.5:11434', 'http://example.com:11434', 'https://127.0.0.1:11434', '', 'not an address'):
+            self.assertIn('error', s.model_server(bad, 'm'), bad)
+        self.assertEqual(s.state()['model_server'], {})
+
+    def test_forget(self):
+        s = self.setup()
+        self.assertTrue(s.model_server('http://127.0.0.1:1234', 'm')['ok'])
+        self.assertTrue(s.model_server(None, None)['ok'])
+        self.assertEqual(s.state()['model_server'], {})
+        self.assertNotIn('model_server', s._settings())
+
+    def test_corrupt_settings_file_is_no_choice(self):
+        self.settings.mkdir(parents=True)
+        (self.settings / 'setup.json').write_text('{"model_server": {"base": "http://10.0.0.5:1"}}', encoding='utf-8')
+        s = self.setup()
+        self.assertEqual(s.state()['model_server'], {})
+
+    def test_the_assistant_uses_the_choice(self):
+        s = self.setup()
+        self.assertTrue(s.model_server('http://127.0.0.1:1234', 'gemma4')['ok'])
+        import assistant
+        with mock.patch.object(api, 'SETUP', s):
+            self.assertEqual(assistant.chosen_server(), ('http://127.0.0.1:1234', 'gemma4'))
+        s.model_server(None, None)                                   # forgotten: the assistant's own default applies
+        with mock.patch.object(api, 'SETUP', s):
+            self.assertIsNone(assistant.chosen_server())
+
+    def test_a_server_choice_survives_a_new_setup_object(self):
+        s = self.setup()
+        self.assertTrue(s.model_server('http://127.0.0.1:1234', 'gemma4')['ok'])
+        self.assertEqual(self.setup().state()['model_server'], {'base': 'http://127.0.0.1:1234', 'model': 'gemma4'})
+
+
 class PackCompare(unittest.TestCase):
     """Comparing an installed pack-manifest.tsv with a new one (issue #144): read-only, from the two lists alone."""
     HEADER = 'path\tbytes\tsha256\thow\tchanges\n'

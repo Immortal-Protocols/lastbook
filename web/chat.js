@@ -135,7 +135,7 @@ const Chat = (() => {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
+      el.innerHTML = s.online ? `<span class="dotok"></span>Assistant ready · ${esc(s.model || '')}${s.server ? ` <span class="muted">at ${esc(s.server)}</span>` : ''}${still}`
         : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
     }
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';

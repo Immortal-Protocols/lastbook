@@ -99,6 +99,27 @@ class RegionCache(unittest.TestCase):
         with zipfile.ZipFile(self.zipped) as z:
             self.assertIsNone(z.testzip())
 
+    def test_damaged_deflate_download_leaves_no_tmp(self):
+        with zipfile.ZipFile(self.source, 'w', compression=zipfile.ZIP_DEFLATED) as z:
+            z.writestr('region.gpkg', self.good)
+        with zipfile.ZipFile(self.source) as z:
+            self.assertIsNone(z.testzip())
+            info = z.getinfo('region.gpkg')
+        data = bytearray(self.source.read_bytes())
+        header = info.header_offset
+        name_len = int.from_bytes(data[header + 26:header + 28], 'little')
+        extra_len = int.from_bytes(data[header + 28:header + 30], 'little')
+        offset = header + 30 + name_len + extra_len
+        data[offset] |= 0x06   # reserved DEFLATE block type, leaving the ZIP headers intact
+        self.source.write_bytes(data)
+        with zipfile.ZipFile(self.source) as z:
+            with self.assertRaises(zlib.error):
+                z.testzip()
+        with self.assertRaises(SystemExit):
+            self.fetch()
+        self.download.assert_called_once()
+        self.assertFalse(list(self.folder.glob(f'{self.zipped.name}.tmp*')))
+
     def invalid_archive_retry(self, payload, name='region.gpkg'):
         self.archive(self.zipped, payload, name)
         with self.assertRaises(SystemExit):

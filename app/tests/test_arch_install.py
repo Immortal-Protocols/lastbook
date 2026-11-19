@@ -137,6 +137,10 @@ class ArchInstall(unittest.TestCase):
         self.assertIn('COMMUNITY TEST BUILD', log[0])
         self.assert_refused('OWNER/NAME', argv=['--community-repo', 'https://example.com/x', '--allow-unsigned'])
 
+    def test_arch_build_defaults_to_the_ubuntu_release_number(self):
+        script = (ROOT / 'packaging/linux/build_app_linux.sh').read_text(encoding='utf-8')
+        self.assertIn('APP_VERSION="${LASTBOOK_VERSION:-' + builder.release_version() + '}"', script)
+
     def test_arch_derivatives_are_recognized_without_accepting_substrings(self):
         for release in ({'ID': 'arch'}, {'ID': 'omarchy', 'ID_LIKE': 'arch'}, {'ID': 'example', 'ID_LIKE': 'other arch'}):
             self.assertTrue(builder.is_arch(release))

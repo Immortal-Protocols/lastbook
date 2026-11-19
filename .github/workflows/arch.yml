@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Package version
-        required: true
-        default: '1.1.9'
+        description: Package version (empty uses the release in build_app_linux.sh)
+        required: false
+        default: ''
       draft_release:
         description: Sign and create a draft prerelease (requires arch-release secrets)
         type: boolean
@@ -25,7 +25,7 @@ jobs:
     container: archlinux:base-devel
     timeout-minutes: 45
     env:
-      PACKAGE_VERSION: ${{ inputs.version || '1.1.9' }}
+      PACKAGE_VERSION: ${{ inputs.version }}
     steps:
       - name: Install clean Arch build dependencies
         run: >-
@@ -63,7 +63,7 @@ jobs:
         run: |
           runuser -u builder -- env TMPDIR=/tmp /usr/bin/python3 -I -B \
             packaging/linux/arch/build_arch.py \
-            --manifest release-assets/manifest-v1.json --version "$PACKAGE_VERSION"
+            --manifest release-assets/manifest-v1.json ${PACKAGE_VERSION:+--version "$PACKAGE_VERSION"}
           find /tmp -path '/tmp/lastbook-arch-*/packages/lastbook-*.pkg.tar.zst*' \
             -type f -exec cp -- {} release-assets/ \;
           find /tmp -path '/tmp/lastbook-arch-*/prepared/wheels.lock' \
@@ -83,7 +83,7 @@ jobs:
           import libzim, numpy, pypdfium2
           from engine import update
           assert update.platform_key() == 'arch'
-          u = update.Updater(version='1.1.9')
+          u = update.Updater(version=open('/opt/lastbook/VERSION').read().strip())
           assert u.check()['state'] == 'package_manager'
           assert u.thread is None
           PY
@@ -128,10 +128,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # The installer reads this same repository by default (packaging/linux/arch/install.py UPSTREAM).
           RELEASE_REPO: ${{ github.repository }}
-          PACKAGE_VERSION: ${{ inputs.version }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
           [[ "$SIGNING_FINGERPRINT" =~ ^[A-Fa-f0-9]{40}$ ]] || exit 1
+          # The version the build actually used, from lastbook-<version>-<rel>-x86_64.pkg.tar.zst.
+          PACKAGE_VERSION="$(basename release-assets/lastbook-*.pkg.tar.zst | sed -E 's/^lastbook-(.+)-[0-9]+-x86_64\.pkg\.tar\.zst$/\1/')"
+          [[ "$PACKAGE_VERSION" =~ ^[0-9][0-9A-Za-z.]*$ ]] || exit 1
           for package in release-assets/*.pkg.tar.zst; do
             printf '%s' "$SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
               --passphrase-fd 0 --local-user "$SIGNING_FINGERPRINT" --detach-sign "$package"

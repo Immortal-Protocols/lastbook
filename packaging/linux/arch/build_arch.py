@@ -99,6 +99,15 @@ def is_arch(os_release):
     return os_release.get('ID') == 'arch' or 'arch' in os_release.get('ID_LIKE', '').split()
 
 
+def release_version():
+    """The Ubuntu build's release number, so both Linux packages of one checkout agree."""
+    text = (HERE.parent / 'build_app_linux.sh').read_text(encoding='utf-8')
+    match = re.search(r'^APP_VERSION="\$\{LASTBOOK_VERSION:-([0-9][0-9A-Za-z.]*)\}"$', text, re.M)
+    if not match:
+        raise ValueError('cannot read the release version from build_app_linux.sh; pass --version')
+    return match[1]
+
+
 def prerequisites():
     if platform.machine() != 'x86_64' or not is_arch(platform.freedesktop_os_release()):
         raise ValueError('build on native Arch Linux / Omarchy, x86_64')
@@ -127,11 +136,12 @@ def prerequisites():
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--manifest', type=Path, required=True, help='explicit verified public setup manifest-v1.json')
-    ap.add_argument('--version', default='1.1.9')
+    ap.add_argument('--version', default=None, help='package version; default: the release in build_app_linux.sh')
     ap.add_argument('--llm', type=Path,
                     help='directory holding a built lastbook-llm runner (output of '
                          'packaging/llm/build_llm_linux.sh); bundled as /opt/lastbook/llm')
     args = ap.parse_args()
+    args.version = args.version or release_version()
     llm = None
     if args.llm:
         llm = checked(args.llm, directory=True)

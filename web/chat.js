@@ -124,6 +124,8 @@ const Chat = (() => {
   let polling = null, busyUntil = 0;   // busyUntil: the status line says the local AI is busy until then, after an unload it refused
   async function statusLine() {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
+    // The line is a live region a screen reader reads out when it changes: write it only when it really does
+    const put = html => { if (el._html !== html) { el.innerHTML = html; el._html = html } };
     const ix = s.index || {}, l = s.local;
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
@@ -131,9 +133,9 @@ const Chat = (() => {
       // Loaded and idle: offer to unload it now and give its memory back. It starts again on the next question.
       const eject = l.state === 'ready' && !Object.values(live).some(x => x.running)
         ? `<button class="ai-eject" id="aiEject" title="Unload the local AI to free its memory. It starts again when you ask." aria-label="Unload the local AI">${ico('eject')}</button>` : '';
-      const text = Date.now() < busyUntil ? 'The local AI is busy. Try again when it has finished.'
+      const text = l.state === 'ready' && Date.now() < busyUntil ? 'The local AI is busy. Try again when it has finished.'
         : esc(line) + (ok ? still : '<span class="long"> — search and reading still work</span>');
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${text}</span>${eject}`;
+      put(`<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${text}</span>${eject}`);
       const ej = $('#aiEject');
       if (ej) ej.onclick = async () => {
         ej.disabled = true;
@@ -141,11 +143,13 @@ const Chat = (() => {
         let refused = false;
         try { refused = !!(await (await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unload' }) })).json()).busy } catch { }
         if (refused) { busyUntil = Date.now() + 6000; setTimeout(statusLine, 6100) }
+        else busyUntil = 0;   // unloaded (or no answer at all): an earlier "busy" no longer holds
+        ej.disabled = false;  // the line may stay as it is, button included
         statusLine();
       };
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
-        : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
+      put(s.online ? `<span class="dotok"></span>Local assistant ready${still}`
+        : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`);
     }
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
     setupCard(s);

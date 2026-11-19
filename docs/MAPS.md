@@ -169,7 +169,11 @@ To use the result, quit Lastbook, keep a backup of your index, and copy the prep
 
 #### Collect CRIM physical addresses for selected areas
 
-The connected preparation tool can operate the **Parcela** prefix search in the [public CRIM viewer](https://catastro.crimpr.net/cdprpc/). It opens a fresh browser, submits the mapped grid prefixes for the selected area, and reads the displayed **Parcela**, **Dirección física** and **Municipio** fields. It preserves the address wording and punctuation. Install the build tool and its browser before running it:
+The connected preparation tool can operate the **Parcela** prefix search in the [public CRIM viewer](https://catastro.crimpr.net/cdprpc/). It opens a fresh browser, submits the mapped grid prefixes for the selected area, and reads the displayed **Parcela**, **Dirección física** and **Municipio** fields. It preserves the address wording and punctuation.
+
+Each query is tried up to three times when the viewer explicitly responds **Query failed !**, with short pauses between attempts. After three failures, collection continues with other prefixes and leaves the failed prefix unqueried. Three consecutive failed prefixes stop the run so it can be retried later. The command reports an incomplete run and lists explicit failures from that run in `summary.json` as `failed_prefixes`; `complete` and `unqueried_parcels` describe the selected area's remaining work. Run the same command again to retry it; completed prefixes stay saved. Other errors stop the run with its completed searches retained.
+
+Install the build tool and its browser before running it:
 
 ```sh
 python -m pip install playwright==1.65.2
@@ -177,6 +181,8 @@ python -m playwright install chromium
 python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-utuado --municipio Utuado
 python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --municipio Utuado --crim-addresses derived/pr-crim-utuado/addresses.csv
 ```
+
+After installing Playwright and Chromium, run `LASTBOOK_TEST_CRIM_UI=1 python -B -m unittest tools.test_fetch_pr_crim` to exercise retry and pagination handling against an invented local form. The test makes no CRIM requests.
 
 Choose the whole island with `--all`, combine presets with repeated `--region`, or choose individual municipios. `--plan` shows the resolved municipio list and mapped parcel and prefix counts. For example:
 

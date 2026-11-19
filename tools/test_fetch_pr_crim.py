@@ -1,11 +1,15 @@
 """Check that public lookup checkpoints preserve wording and survive interrupted runs."""
 import csv
+from contextlib import contextmanager
 import hashlib
 import json
+import os
 from pathlib import Path
 import sqlite3
 import tempfile
+import types
 import unittest
+from unittest.mock import Mock, call, patch
 
 from tools import fetch_pr_crim as fetch
 from tools.pr_areas import REGIONS
@@ -98,6 +102,159 @@ class PublicPrefixResults(unittest.TestCase):
             self.assertEqual(old.execute('SELECT count(*) FROM scope').fetchone(), (4,))
             batches = fetch.grid_rosters(base for base, in old.execute('SELECT base FROM scope'))
             self.assertNotIn('001-002', fetch.completed_prefixes(old, batches))
+
+    def test_search_retries_only_explicit_query_failures(self):
+        search = object.__new__(fetch.PublicSearch)
+        search.query = Mock(side_effect=[fetch.PublicQueryFailed('public error'), ([self.row()], 1)])
+        with patch.object(fetch.time, 'sleep') as pause:
+            self.assertEqual(search.lookup('001-002'), ([self.row()], 1))
+            pause.assert_called_once_with(2)
+        search.query = Mock(side_effect=ValueError('changed result layout'))
+        with self.assertRaisesRegex(ValueError, 'layout'):
+            search.lookup('001-002')
+        self.assertEqual(search.query.call_count, 1)
+        search.query = Mock(side_effect=fetch.PublicQueryFailed('public error'))
+        with patch.object(fetch.time, 'sleep') as pause, self.assertRaises(fetch.PublicQueryFailed):
+            search.lookup('001-002')
+        self.assertEqual(search.query.call_count, 3)
+        self.assertEqual(pause.call_args_list, [call(2), call(4)])
+
+    def test_failed_grid_does_not_starve_later_grids_and_resume_retries_only_failures(self):
+        driver = Mock()
+        @contextmanager
+        def playwright():
+            yield driver
+        sync = types.ModuleType('playwright.sync_api')
+        sync.sync_playwright = playwright
+        page_module = types.ModuleType('playwright')
+        page_module.__path__ = []
+        roster = {base: {'villa ejemplo'} for base in self.roster}
+        directory = self.directory / 'collection'
+        def lookup(prefix):
+            if prefix == '001-002':
+                raise fetch.PublicQueryFailed('public error')
+            return [self.row('001-004-003-03')], 1
+        with patch.dict('sys.modules', {'playwright': page_module, 'playwright.sync_api': sync}), \
+                patch.object(fetch, 'area_roster', return_value=(['Villa Ejemplo'], roster, set())), \
+                patch.object(fetch, 'PublicSearch') as search, patch.object(fetch.time, 'sleep'):
+            search.return_value.lookup.side_effect = lookup
+            with self.assertRaisesRegex(ValueError, 'remain unqueried'):
+                fetch.fetch(self.directory / 'unused.sqlite', directory, 'Villa Ejemplo')
+            summary = json.loads((directory / 'summary.json').read_text())
+            self.assertEqual((summary['failed_prefixes'], summary['unqueried_parcels'], summary['complete']),
+                             (['001-002'], 2, False))
+            with sqlite3.connect(directory / 'prefixes.sqlite') as db:
+                self.assertEqual(db.execute('SELECT value FROM prefix').fetchall(), [('001-004',)])
+            search.return_value.lookup.reset_mock()
+            search.return_value.lookup.side_effect = None
+            search.return_value.lookup.return_value = ([self.row(), self.row('001-002-003-02')], 2)
+            result = fetch.fetch(self.directory / 'unused.sqlite', directory, 'Villa Ejemplo')
+            self.assertTrue(result['complete'])
+            self.assertEqual(result['failed_prefixes'], [])
+            self.assertEqual(result['returned_parcels'], 3)
+            search.return_value.lookup.assert_called_once_with('001-002')
+
+    def test_three_consecutive_failed_grids_stop_before_remaining_queries(self):
+        driver = Mock()
+        @contextmanager
+        def playwright():
+            yield driver
+        sync = types.ModuleType('playwright.sync_api')
+        sync.sync_playwright = playwright
+        parent = types.ModuleType('playwright')
+        parent.__path__ = []
+        roster = {f'00100{i}00301': {'villa ejemplo'} for i in range(1, 7)}
+        directory = self.directory / 'outage'
+        with patch.dict('sys.modules', {'playwright': parent, 'playwright.sync_api': sync}), \
+                patch.object(fetch, 'area_roster', return_value=(['Villa Ejemplo'], roster, set())), \
+                patch.object(fetch, 'PublicSearch') as search, patch.object(fetch.time, 'sleep'):
+            search.return_value.lookup.side_effect = fetch.PublicQueryFailed('public error')
+            with self.assertRaisesRegex(ValueError, 'three consecutive'):
+                fetch.fetch(self.directory / 'unused.sqlite', directory, 'Villa Ejemplo')
+            self.assertEqual(search.return_value.lookup.call_count, 3)
+            summary = json.loads((directory / 'summary.json').read_text())
+            self.assertEqual(summary['failed_prefixes'], ['001-001', '001-002', '001-003'])
+            self.assertFalse(summary['complete'])
+            self.assertEqual(summary['unqueried_parcels'], 6)
+            with sqlite3.connect(directory / 'prefixes.sqlite') as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM prefix').fetchone()[0], 0)
+            search.return_value.lookup.reset_mock()
+            def intermittent(prefix):
+                if int(prefix.split('-')[1]) % 2:
+                    raise fetch.PublicQueryFailed('public error')
+                return [self.row(prefix + '-003-01')], 1
+            search.return_value.lookup.side_effect = intermittent
+            with self.assertRaisesRegex(ValueError, 'remain unqueried'):
+                fetch.fetch(self.directory / 'unused.sqlite', self.directory / 'intermittent', 'Villa Ejemplo')
+            self.assertEqual(search.return_value.lookup.call_count, 6)
+
+    @unittest.skipUnless(os.environ.get('LASTBOOK_TEST_CRIM_UI') == '1', 'opt-in local browser fixture')
+    def test_public_form_error_and_pagination_retry_in_local_browser(self):
+        from playwright.sync_api import sync_playwright
+        html = '''<div class="jimu-widget-query">
+          <button class="query-tab-item" title="Tasks" onclick="document.getElementById('form').style.display='block'">Tasks</button>
+          <div id="form"><input id="dijit_form_ValidationTextBox_0"><input id="dijit_form_TextBox_0">
+          <button onclick="apply()">Apply</button></div><div id="resultname"></div>
+          <div class="features-result" id="results" style="display:none">
+          <span data-dojo-attach-point="numSpan" id="counter"></span><div id="cards"></div>
+          <button class="load-more-button" onclick="more()">Load more</button></div></div>
+          <div class="jimu-message" id="message" style="display:none"><div class="content">Query failed !</div>
+          <button onclick="document.getElementById('message').style.display='none'">OK</button></div>
+          <script>
+          let attempts=0, moreAttempts=0, mode='apply';
+          function card(n) { return `<table class="attrTable"><tr><td>Parcela</td><td>${dijit_form_ValidationTextBox_0.value}-003-0${n}</td></tr>
+            <tr><td>Dirección física</td><td>Bo. Peña, Solar ${n}</td></tr><tr><td>Municipio</td><td>Villa Ejemplo</td></tr></table>`; }
+          function apply() {
+            attempts++;
+            if (mode==='always' || (mode==='apply' && attempts===1)) {message.style.display='block';return;}
+            form.style.display='none';
+            if (mode==='name' && attempts===1) {setTimeout(()=>message.style.display='block',20);return;}
+            const label=document.createElement('span');label.textContent=dijit_form_TextBox_0.value;resultname.append(label);
+            results.style.display='block';cards.innerHTML=card(1);counter.textContent=mode==='more'?'1 / 2':'1 / 1';
+            if (mode==='counter' && attempts===1) {counter.textContent='';setTimeout(()=>message.style.display='block',20);}
+            if (mode==='cards' && attempts===1) {cards.innerHTML='';setTimeout(()=>message.style.display='block',20);}
+            if (mode==='zero') {cards.innerHTML='';counter.textContent='0 / 0';setTimeout(()=>{cards.innerHTML=card(1);counter.textContent='1 / 1';},200);}
+            if (mode==='empty') {cards.innerHTML='';counter.textContent='0 / 0';}
+          }
+          function more() {
+            moreAttempts++;
+            if (moreAttempts===1) {message.style.display='block';return;}
+            cards.innerHTML+=card(2);counter.textContent='2 / 2';
+          }
+          </script>'''
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch()
+            try:
+                page = browser.new_page()
+                page.set_default_timeout(3000)
+                page.set_content(html)
+                search = object.__new__(fetch.PublicSearch)
+                search.sequence = 0
+                search.page, search.widget = page, page.locator('.jimu-widget-query')
+                with patch.object(fetch.time, 'sleep'):
+                    rows, count = search.lookup('001-002')
+                    self.assertEqual((count, rows[0]['Parcela'], page.evaluate('attempts')), (1, '001-002-003-01', 2))
+                    page.evaluate("mode='more';attempts=0;moreAttempts=0")
+                    rows, count = search.lookup('001-004')
+                    self.assertEqual((count, len(rows), page.evaluate('attempts')), (2, 2, 2))
+                    self.assertTrue(all(row['Parcela'].startswith('001-004') for row in rows))
+                    for mode in ('name', 'counter', 'cards'):
+                        page.evaluate('(value)=>{mode=value;attempts=0}', mode)
+                        rows, count = search.lookup('001-005')
+                        self.assertEqual((count, page.evaluate('attempts')), (1, 2))
+                    names = page.locator('#resultname span').all_text_contents()
+                    self.assertEqual(len(names), len(set(names)))
+                    page.evaluate("mode='zero';attempts=0")
+                    rows, count = search.lookup('001-007')
+                    self.assertEqual((count, len(rows)), (1, 1))
+                    page.evaluate("mode='empty';attempts=0")
+                    self.assertEqual(search.lookup('001-008'), ([], 0))
+                    page.evaluate("mode='always';attempts=0")
+                    with self.assertRaises(fetch.PublicQueryFailed):
+                        search.lookup('001-006')
+                    self.assertEqual(page.evaluate('attempts'), 3)
+            finally:
+                browser.close()
 
 
 class AreaSelection(unittest.TestCase):

@@ -152,7 +152,7 @@ def save_prefix(db, prefix, rows, displayed, roster):
                    (prefix, displayed, datetime.now(timezone.utc).isoformat(), signature))
 
 
-def write_results(db, directory, town, roster, known):
+def write_results(db, directory, town, roster, known, failed=()):
     towns = [town] if isinstance(town, str) else town
     mapped = roster if isinstance(roster, dict) else {base: {fold(town)} for base in roster}
     csv_path = directory / 'addresses.csv'
@@ -183,7 +183,8 @@ def write_results(db, directory, town, roster, known):
                    nonblank_address_parcels=len(populated), csv_parcels=len(populated), csv_wordings=wordings,
                    municipio_matched_parcels=len(eligible), newly_collected_parcels=len(populated - known),
                    empty_address_parcels=len(returned - populated),
-                   missing_parcels=len(checked - returned), unqueried_parcels=len(set(roster) - checked), csv=str(csv_path))
+                   missing_parcels=len(checked - returned), unqueried_parcels=len(set(roster) - checked),
+                   failed_prefixes=list(failed), csv=str(csv_path))
     summary['complete'] = summary['completed_prefixes'] == summary['total_prefixes']
     with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=directory, delete=False) as stream:
         json.dump(summary, stream, ensure_ascii=False, indent=2)
@@ -192,9 +193,14 @@ def write_results(db, directory, town, roster, known):
     return summary
 
 
+class PublicQueryFailed(ValueError):
+    """The public viewer explicitly rejected a query, without returning records."""
+
+
 class PublicSearch:
     def __init__(self, page):
         self.page = page
+        self.sequence = 0
         page.set_default_timeout(90000)
         page.goto(VIEWER, wait_until='domcontentloaded')
         page.get_by_role('button', name='OK', exact=True).click()
@@ -202,45 +208,81 @@ class PublicSearch:
         self.widget = page.locator('.jimu-widget-query')
         self.widget.locator('.tasks-table tr').filter(has_text=re.compile(r'^Parcela$')).click()
 
+    def wait_for_result(self, condition, arg=None):
+        self.page.wait_for_function(r"""state => {
+            const failed = Array.from(document.querySelectorAll('.jimu-message')).some(e =>
+                e.getClientRects().length && /^Query failed\s*!$/.test(e.querySelector('.content')?.textContent.trim() || ''));
+            return failed || (""" + condition + '); }', arg=arg)
+        message = self.page.locator('.jimu-message:visible').filter(has_text=re.compile(r'Query failed\s*!')).first
+        if message.count():
+            element = message.element_handle()
+            message.get_by_text('OK', exact=True).click()
+            self.page.wait_for_function('element => !element.isConnected || !element.getClientRects().length', arg=element)
+            raise PublicQueryFailed('The public viewer reports Query failed !')
+
     def lookup(self, prefix):
+        for attempt in range(3):
+            try:
+                return self.query(prefix)
+            except PublicQueryFailed:
+                if attempt == 2:
+                    raise
+                print(f'{prefix}: public query failed; retrying ({attempt + 2}/3)', flush=True)
+                time.sleep(2 ** (attempt + 1))
+
+    def query(self, prefix):
+        self.wait_for_result('true')  # Dismiss a leftover failure before operating the form again.
         widget = self.widget
         if not widget.locator('input[id^="dijit_form_ValidationTextBox"]:visible').count():
             widget.locator('.query-tab-item[title="Tasks"]').click()
         field = widget.locator('input[id^="dijit_form_ValidationTextBox"]:visible')
         field.fill(prefix)
         # Distinguish this response from the previous prefix while the request runs.
-        name = 'Lastbook ' + prefix
+        self.sequence += 1
+        name = f'Lastbook {prefix} {self.sequence}'
         widget.locator('input[id^="dijit_form_TextBox"]:visible').fill(name)
         widget.get_by_text('Apply', exact=True).click()
-        field.wait_for(state='hidden')
-        widget.get_by_text(name, exact=True).wait_for(state='visible')
+        self.wait_for_result("""!Array.from(document.querySelectorAll(
+            '.jimu-widget-query input[id^="dijit_form_ValidationTextBox"]')).some(e => e.getClientRects().length)""")
+        self.wait_for_result(r"""Array.from(document.querySelectorAll('.jimu-widget-query *')).some(e =>
+            e.getClientRects().length && e.textContent.replace(/\s+/g,' ').trim() === state)""", arg=name)
         results = widget.locator('.features-result:visible')
         counter = results.locator('[data-dojo-attach-point="numSpan"]')
-        counter.wait_for(state='visible')
         while True:
+            self.wait_for_result(r"""(() => {
+                const active = Array.from(document.querySelectorAll('.features-result')).find(e=>e.getClientRects().length);
+                const counter = active?.querySelector('[data-dojo-attach-point="numSpan"]');
+                return !!counter?.getClientRects().length && /^\s*[\d,]+\s*\/\s*[\d,]+\s*$/.test(counter.textContent);
+            })()""")
             previous = counter.inner_text()
             value = previous.replace(',', '')
             match = re.fullmatch(r'\s*(\d+)\s*/\s*(\d+)\s*', value)
             if not match:
                 raise ValueError(f'{prefix}: unrecognized public result count.')
             displayed, total = map(int, match.groups())
-            self.page.wait_for_function("""expected => {
+            self.wait_for_result("""(() => {
                 const active = Array.from(document.querySelectorAll('.features-result')).find(e=>e.getClientRects().length);
                 if (!active) return false;
                 const cards = Array.from(active.querySelectorAll('.attrTable'));
-                return cards.length === expected.count && cards.every(card => {
+                return cards.length === state.count && cards.every(card => {
                     const row = Array.from(card.rows).find(r => r.cells[0]?.textContent.trim() === 'Parcela');
-                    return row?.cells[1]?.textContent.trim().startsWith(expected.prefix);
+                    return row?.cells[1]?.textContent.trim().startsWith(state.prefix);
                 });
-            }""", arg={'count': displayed, 'prefix': prefix})
+            })()""", arg={'count': displayed, 'prefix': prefix})
             if displayed == total:
+                if total == 0:
+                    # An empty counter can precede the cards or an explicit error while the viewer renders.
+                    self.page.wait_for_timeout(1000)
+                    self.wait_for_result('true')
+                    if counter.inner_text() != previous:
+                        continue
                 return results.evaluate(READ_RESULTS), total
             more = results.locator('.load-more-button:visible')
             more.click()
-            self.page.wait_for_function("""old => {
+            self.wait_for_result("""(() => {
                 const active = Array.from(document.querySelectorAll('.features-result')).find(e=>e.getClientRects().length);
-                return active?.querySelector('[data-dojo-attach-point="numSpan"]')?.textContent.trim() !== old.trim();
-            }""", arg=previous)
+                return active?.querySelector('[data-dojo-attach-point="numSpan"]')?.textContent.trim() !== state.trim();
+            })()""", arg=previous)
 
 
 def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regions=(), whole_island=False, plan=False):
@@ -263,6 +305,8 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
             batches = grid_rosters(base for base, in db.execute('SELECT base FROM scope'))
             done = completed_prefixes(db, batches)
             pending = [p for p in prefixes or all_prefixes if p not in done]
+            failed = []
+            consecutive_failures = 0
             try:
                 if pending:
                     from playwright.sync_api import sync_playwright
@@ -271,7 +315,18 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
                         try:
                             search = PublicSearch(browser.new_page(viewport={'width': 1280, 'height': 900}, locale='en-US'))
                             for prefix in pending:
-                                rows, count = search.lookup(prefix)
+                                try:
+                                    rows, count = search.lookup(prefix)
+                                except PublicQueryFailed:
+                                    failed.append(prefix)
+                                    consecutive_failures += 1
+                                    print(f'{prefix}: query failed three times; left unqueried for the next run', flush=True)
+                                    if consecutive_failures >= 3:
+                                        raise ValueError('Stopped after three consecutive prefixes failed. '
+                                                         'Completed searches were saved. Retry later.')
+                                    time.sleep(1)
+                                    continue
+                                consecutive_failures = 0
                                 save_prefix(db, prefix, rows, count, batches[prefix])
                                 done.add(prefix)
                                 print(f'{prefix}: saved {count} displayed records; {len(done & set(all_prefixes))}/{len(all_prefixes)} prefixes', flush=True)
@@ -279,7 +334,10 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
                         finally:
                             browser.close()
             finally:
-                summary = write_results(db, directory, towns, roster, known)
+                summary = write_results(db, directory, towns, roster, known, failed)
+            if failed:
+                raise ValueError(f'{len(failed)} prefixes remain unqueried after public query failures. '
+                                 'Completed searches were saved. Run the same command to retry them.')
     return summary
 
 

@@ -1292,6 +1292,76 @@ class Jobs(Base):
         self.assertNotIn('model.gguf', [name for name, _, _ in self.files.log])
         self.assertEqual((self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
 
+    def model_download_stopped(self, managed=False):
+        if managed:
+            lib = self.parent / 'LastbookData'
+            (lib / 'library-data').mkdir(parents=True)
+            (lib / 'library-data' / 'catalog.json').write_text('{}')
+            (lib / 'pack.json').write_text('{"name": "small"}')
+            s = self.setup('manage', current=lib)
+        else:
+            s = self.setup()
+        run = download.Download.run
+
+        def blocked(d):
+            if d.url.endswith('/model.gguf'):
+                raise download.Failed('network', 'The connection kept breaking.')
+            return run(d)
+
+        with mock.patch.object(download.Download, 'run', blocked):
+            s.start('small', True)
+            j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'network')
+        self.assertEqual([it['state'] for it in j['items']], ['failed'] if managed else ['done', 'failed'])
+        return s, j
+
+    def test_choose_model_after_network_failure_keeps_finished_pack(self):
+        s, stopped = self.model_download_stopped()
+        model = self.home / 'Downloads' / 'model.gguf'
+        model.write_bytes(self.model)
+        pack = Path(s.job['plan']['work']) / 'unpack' / 'LastbookData' / 'library-data' / 'catalog.json'
+        before = pack.stat().st_mtime_ns
+        s.use(str(model))
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done')
+        self.assertEqual(j['id'], stopped['id'])
+        self.assertEqual(pack.stat().st_mtime_ns, before)
+        self.assertEqual([name for name, _, _ in self.files.log], ['Lastbook-Small.zip'])
+        installed = pack.parents[1] / 'models' / 'model.gguf'
+        self.assertEqual(installed.read_bytes(), self.model)
+        self.assertEqual(json.loads(api._pending_file(self.settings).read_text())['model_sha256'], sha(self.model))
+
+    def test_choose_model_after_network_failure_in_the_open_library(self):
+        s, stopped = self.model_download_stopped(managed=True)
+        model = self.home / 'Downloads' / 'model.gguf'
+        model.write_bytes(self.model)
+        s.use(str(model))
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['id']), ('done', stopped['id']))
+        installed = self.parent / 'LastbookData' / 'models' / 'model.gguf'
+        self.assertEqual(installed.read_bytes(), self.model)
+        self.assertEqual(self.marked, [(str(installed), sha(self.model))])
+        self.assertEqual(self.files.log, [])
+
+    def test_choose_model_after_network_failure_checks_the_hash(self):
+        s, stopped = self.model_download_stopped()
+        model = self.home / 'Downloads' / 'model.gguf'
+        bad = bytes([self.model[0] ^ 1]) + self.model[1:]
+        model.write_bytes(bad)
+        s.use(str(model))
+        j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'found_mismatch')
+        self.assertEqual(j['id'], stopped['id'])
+        self.assertEqual(model.read_bytes(), bad)
+        self.assertEqual([name for name, _, _ in self.files.log], ['Lastbook-Small.zip'])
+
+    def test_choose_incomplete_model_leaves_network_failure_alone(self):
+        s, stopped = self.model_download_stopped()
+        model = self.home / 'Downloads' / 'model.gguf'
+        model.write_bytes(self.model[:100])
+        self.assertEqual(s.use(str(model))['code'], 'size')
+        self.assertEqual(s.public_job(), stopped)
+
     def test_found_zip_is_used_without_network(self):
         self.parent.mkdir()
         (self.parent / 'Lastbook-Small.zip').write_bytes(self.zip)
@@ -2370,6 +2440,55 @@ class Through(Base):
             self.assertTrue(b.top_url_ok(B.ORIGIN_WINDOWS + '/ui/setup.html'))
             r = ask('GET', '/documents/x.pdf')
             self.assertEqual(r.status, 404)
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class ModelRecoveryScreen(unittest.TestCase):
+    """The real setup error renderer and picker dispatch, without a server or browser dependency."""
+    def screen(self, kind='model', done=0, code='network', action=False, cancel=False):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8'), cfg = JSON.parse(process.argv[2]);
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const calls = [], note = {hidden: true}, button = {}, UNIT = 1000;
+const $ = s => s === '#haveNote' ? note : button;
+const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk';
+const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+let folder = '', S = {}, shortfall = null, confirmCancel = false, lastAct = null;
+const call = async (path, body) => { calls.push([path, body]); return cfg.cancel ? {cancelled: true} : {path: '/path/to/model.gguf'} };
+const useFile = async (path, btn) => { calls.push(['useFile', path, btn === button]) };
+const go = () => {}, jobView = () => {}, poll = () => {};
+eval(section('  async function haveLibrary(', '  async function useFile('));
+eval(section('  function errorBox(', '  function itemHTML('));
+eval(section('  async function jobAct(', '  function poll('));
+const j = {error: {code: cfg.code}, items: [{kind: cfg.kind, state: 'failed', bytes_done: cfg.done, error: {code: cfg.code}}]};
+(async () => { const html = errorBox(j); if (cfg.action) await jobAct('model-file', button); console.log(JSON.stringify({html, calls, note})); })();
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js'), json.dumps(
+            dict(kind=kind, done=done, code=code, action=action, cancel=cancel))],
+            check=True, capture_output=True, text=True, encoding='utf-8')
+        return json.loads(r.stdout)
+
+    def test_zero_byte_model_failure_offers_the_file_picker(self):
+        html = self.screen()['html']
+        self.assertIn('could not reach the local AI download server', html)
+        self.assertIn('data-act="model-file"', html)
+        self.assertIn('data-act="retry"', html)
+        self.assertIn('data-act="back"', html)
+        self.assertIn('id="haveNote"', html)
+
+    def test_other_failures_keep_their_existing_wording(self):
+        for args in [dict(kind='pack'), dict(done=123), dict(code='checksum')]:
+            with self.subTest(args=args):
+                html = self.screen(**args)['html']
+                self.assertNotIn('data-act="model-file"', html)
+        self.assertIn('The internet connection dropped.', self.screen(kind='pack')['html'])
+
+    def test_model_action_reuses_the_file_picker_and_use_path(self):
+        self.assertEqual(self.screen(action=True)['calls'], [
+            ['pick', {'files': True}], ['useFile', '/path/to/model.gguf', True]])
+
+    def test_cancelling_the_picker_does_not_retry_or_import(self):
+        self.assertEqual(self.screen(action=True, cancel=True)['calls'], [['pick', {'files': True}]])
 
 
 @unittest.skipUnless(os.environ.get('LASTBOOK_FULL_DISK') == '1' and sys.platform == 'darwin', 'LASTBOOK_FULL_DISK=1 on a Mac')

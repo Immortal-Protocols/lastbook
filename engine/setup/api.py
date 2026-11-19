@@ -753,6 +753,16 @@ class Setup:
             if p.stat().st_size != m['size']:
                 return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'code': 'size'}
             self.sources[name] = str(p)
+            with self.lock:
+                job = self.job
+                if (job and job['state'] == 'failed' and (job['error'] or {}).get('code') == 'network'
+                        and (job['plan'].get('model') or {}).get('file') == name
+                        and any(it['kind'] == 'model' and it['state'] == 'failed' and not it['bytes_done'] for it in job['items'])):
+                    job['plan']['sources'][name] = str(p)
+                    job['plan']['verified'] = [n for n in job['plan'].get('verified', []) if n != name]
+                    job['plan']['explicit'] = True
+                    _tag_sources(job)
+                    return self.retry()  # keep the finished pack; check the chosen model before using it
             if self.mode == 'manage':
                 return self.start(None, True, None, {name: str(p)}, explicit=True)
             return self.public_job() or {'job': None, 'noted': True}

@@ -316,11 +316,11 @@
       summary();
     } catch { b.disabled = false; b.textContent = 'Can’t change here' }
   }
-  async function haveLibrary(files) {
+  async function haveLibrary(files, btn) {
     const n = $('#haveNote');
     try {
       const r = await call('pick', { files });
-      if (r && r.path) return useFile(r.path, $(files ? '#haveFile' : '#haveLib'));
+      if (r && r.path) return useFile(r.path, btn || $(files ? '#haveFile' : '#haveLib'));
       if (r && (r.cancelled || r.path === null)) return;
       throw 0;
     } catch {
@@ -407,6 +407,7 @@
 
   function errorBox(j) {
     const e = j.error, code = errCode(e) || j.code, c = cur();
+    const blockedModel = code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done);
     const safe = c ? 'Your library is untouched and still works.' : 'Nothing else on this computer was changed.';
     const d = diskFor(j.folder || folder);
     const T = {
@@ -415,7 +416,9 @@
         return [`The ${esc(name)}${at ? ' in ' + esc(at) : ''} doesn’t match the published file, so it was not used.`, 'It was left as it is. Download it instead?', 'download'];
       })(),
       no_space: [`Not enough room on ${esc(diskName(d))}${e && e.need_bytes ? `: this needs ${size(e.need_bytes)}, and ${size(e.free_bytes)} is free` : ''}.`, 'Free some space, then retry, or go back and choose less.', 'retry'],
-      network: ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
+      network: blockedModel
+        ? ['This network could not reach the local AI download server.', 'What is downloaded is kept. Retry, or choose the published AI model file downloaded another way.', 'retry']
+        : ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
       server: ['The download server stayed busy.', 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.', 'retry'],
       checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
       unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
@@ -423,7 +426,7 @@
       cancelled: ['The download was cancelled.', 'Start again when you are ready.', 'back'],
     }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
     return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p></div></div>`;
+      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   function itemHTML(it, j) {
     const FAILED_AT = { checksum: 'verifying', found_mismatch: 'verifying', unpack: 'unpacking', activate: 'activating' };
@@ -495,6 +498,7 @@
     if (fresh.length) { void main.offsetWidth; fresh.forEach(b => b.classList.remove('new')) }   // a new screen shows the bar where it is, without growing from nothing
   }
   async function jobAct(a, b) {
+    if (a === 'model-file') { await haveLibrary(true, b); return }
     if (a === 'back') { S = await call('state').catch(() => S); S.job = null; shortfall = null; go('choose'); return }   // fresh: found[] may now mark a file as not matching
     if (a === 'cancel') { confirmCancel = true; jobView(S.job); main.querySelector('[data-act="cancel-no"]').focus(); return }
     if (a === 'cancel-no') { confirmCancel = false; jobView(S.job); return }

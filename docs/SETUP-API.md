@@ -96,6 +96,9 @@ fails as `checksum`, and a 200 to a Range goes on over one connection from the h
   Downloads, Documents and Desktop are not searched. A file is used only after its size and SHA-256 match the manifest.
 - Chat's local AI looks for the model only in the open library's `models/` and the library folder itself, and in
   `LASTBOOK_MODEL_DIR` when that is set (`llm_local.py` `places`). *Look again* searches those again.
+- If the local AI download stops with a network error before gaining any bytes, the Stopped card also offers **Choose AI
+  model file**. Choosing the published model file resumes that same job, keeping any finished library or map steps. Its
+  size and SHA-256 are checked as usual; a file that does not match is left alone and is not used.
 
 ## Engine interface: `/api/setup/*`
 

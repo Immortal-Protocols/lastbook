@@ -1122,8 +1122,9 @@ class Setup:
             elif plan.get('map_new'):
                 install.stage_switch(_pending_file(self.settings_dir), plan['map_new'], plan['target'], kind='map')
             if plan.get('repair') and 'damaged' in plan:   # a full check ran (Check now, or Repair's first step): keep when, and what it found
-                bad = len(plan['damaged']) + (plan.get('model_ok') is False)   # a model that does not match counts as damaged
-                result = {'at': _now(), 'damaged': bad, 'model_ok': plan.get('model_ok'),
+                map_ok = False if plan.get('map_damaged') else None              # a state map's files are checked against map-set.json (#88)
+                bad = len(plan['damaged']) + (plan.get('model_ok') is False) + (map_ok is False)   # the model and the map count as damaged too
+                result = {'at': _now(), 'damaged': bad, 'model_ok': plan.get('model_ok'), 'map_ok': map_ok,
                           'repaired': bool(bad) and not plan.get('check_only')}
                 self.job['result'] = result
                 s = self._settings()

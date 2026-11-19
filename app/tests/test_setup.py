@@ -1915,6 +1915,23 @@ class Maps(Base):
         self.assertEqual(install.map_name(new), 'CA')
         self.assertEqual((new / 'derived/geo/terrain.sqlite').read_bytes(), map_files['derived/geo/terrain.sqlite'])
 
+    def test_check_now_reports_a_damaged_state_map_and_downloads_nothing(self):
+        """Check now never downloads, even where Repair would fetch the state map again (#88): it reports the map as damaged."""
+        lib, mf, map_files = self.library_with_state_map()
+        (lib / 'derived/geo/terrain.sqlite').unlink()
+        mf.current['maps'][0]['available'] = False          # not on offer either: a check must still run, not refuse
+        s = self.setup('manage', current=lib, manifest=mf)
+        self.files.log.clear()
+        j = s.start(check=True)
+        self.assertEqual([i['kind'] for i in j['items']], ['pack'])       # no map item: nothing to fetch
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['map_ok'], j['result']['damaged'], j['result']['repaired']), (False, 1, False))
+        self.assertEqual(self.files.log, [])
+        self.assertFalse((lib / 'derived/geo/terrain.sqlite').exists())   # left as it was: Repair is the person's choice
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), map_files['derived/geo/map.sqlite'])
+        self.assertEqual(s.current_info()['checked']['map_ok'], False)
+
     def test_repair_says_when_a_damaged_state_map_cannot_be_fetched(self):
         lib, mf, _ = self.library_with_state_map()
         (lib / 'derived/geo/terrain.sqlite').unlink()

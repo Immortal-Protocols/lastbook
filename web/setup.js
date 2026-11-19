@@ -396,9 +396,9 @@
   function checkLine(ck) {
     if (!ck || !ck.at) return 'Not checked on this computer yet. Checking reads every file and downloads nothing.';
     const when = new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-    const ai = ck.model_ok === false, files = (ck.damaged || 0) - (ai ? 1 : 0);   // 'damaged' counts the AI file too
+    const ai = ck.model_ok === false, map = ck.map_ok === false, files = (ck.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // 'damaged' counts the AI file and the map too
     const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired`
-      : [files ? `${files} damaged or missing` : '', ai ? 'the local AI file did not match' : ''].filter(Boolean).join(' · ') || 'every file as published';
+      : [files ? `${files} damaged or missing` : '', ai ? 'the local AI file did not match' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(' · ') || 'every file as published';
     return `Last checked ${esc(when)} · ${what}`;
   }
   async function act(path, done, body) {
@@ -552,15 +552,15 @@
 
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   function checkedView() {
-    const r = (S.job && S.job.result) || {}, ai = r.model_ok === false, bad = (r.damaged || 0) - (ai ? 1 : 0);   // library files; the AI file apart
-    const what = [bad ? `${bad} ${bad === 1 ? 'file is' : 'files are'} damaged or missing` : '', ai ? 'the local AI file does not match its published copy' : ''].filter(Boolean).join(', and ');
-    main.innerHTML = bad || ai
+    const r = (S.job && S.job.result) || {}, ai = r.model_ok === false, map = r.map_ok === false, bad = (r.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // library files; the AI file and the map apart
+    const what = [bad ? `${bad} ${bad === 1 ? 'file is' : 'files are'} damaged or missing` : '', ai ? 'the local AI file does not match its published copy' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(', and ');
+    main.innerHTML = bad || ai || map
       ? `<div class="s-done">${ico('warn', 's-big')}<h1>Something needs repair</h1>
         <p class="lead">${esc(what[0].toUpperCase() + what.slice(1))}. Nothing was changed or downloaded. Repair downloads only what is wrong, and keeps the damaged copy aside.</p>
         <p class="s-two"><button class="btn big" id="doRepair">${ico('repair')}Repair</button> <button class="btn big plain" id="back">Not now</button></p></div>`
       : `<div class="s-done">${ico('ok', 's-big')}<h1>All good</h1><p class="lead">Every file matches the published library. Nothing was downloaded.</p>
         <button class="btn big" id="back">Back to Library and local AI</button></div>`;
-    live.textContent = bad || ai ? 'The check found damage.' : 'The library was checked. All good.';
+    live.textContent = bad || ai || map ? 'The check found damage.' : 'The library was checked. All good.';
     repair = null;
     S.job = null;
     call('state').then(x => { S = x }).catch(() => { });   // the new "Last checked" date

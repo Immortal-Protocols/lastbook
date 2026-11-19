@@ -24,6 +24,8 @@ def _from(url, hosts, allowed):
     import urllib.parse
     return (urllib.parse.urlsplit(url).hostname or '').lower() in hosts
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$')
+# An address index id names a region: a US state ('CA') or a country-prefixed region ('GB-SE', 'GB-SCT'; docs/REGIONS-UK.md).
+REGION_ID = r'[A-Z]{2}(?:-[A-Z]{2,3})?'
 
 
 def bundled_paths():
@@ -69,7 +71,7 @@ def validate(m, allowed=None):
         for x in m.get(key) or []:
             if not isinstance(x, dict) or not isinstance(x.get('id'), str) or not NAME.match(x['id']):
                 return None
-            if key == 'address_indexes' and not re.fullmatch(r'[A-Z]{2}', x['id']):
+            if key == 'address_indexes' and not re.fullmatch(REGION_ID, x['id']):
                 return None
             files = []
             for f in x.get('files') or []:

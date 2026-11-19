@@ -1142,7 +1142,7 @@ async function about() {
   <h2>How sources are labelled</h2><ul>
    <li><b>International health &amp; humanitarian guidance</b> — WHO, Red Cross / Red Crescent, MSF, UNICEF, Sphere, St John Ambulance.</li>
    <li><b>Hesperian community health guide</b> — “Where There Is No Doctor” and related books.</li>
-   <li><b>Government guidance</b> — FEMA, CDC, EPA, USDA, NOAA, National Park Service and similar.</li>
+   <li><b>Government guidance</b> — FEMA, CDC, EPA, USDA, NOAA, National Park Service, the UK’s NHS, UKHSA, Met Office and Environment Agency, and similar.</li>
    <li><b>University / extension service</b> — e.g. National Center for Home Food Preservation, UC extension.</li>
    <li><b>Manufacturer manual</b> — only for the exact model named.</li>
    <li><b>Community-written encyclopedia</b> and <b>hobbyist video</b> — background; check anything risky against a manual.</li></ul>

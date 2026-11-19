@@ -4,6 +4,9 @@ table bldg_osm, for the 3D view. Microsoft's satellite height estimates are poor
 
   derived/buildenv/bin/python tools/build_osm_heights.py [library-data/geography/openstreetmap/us-latest.osm.pbf]
 
+For a region cut from a larger extract, set LASTBOOK_BBOX=W,S,E,N (buildings whose middle is outside are skipped) and
+LASTBOOK_BUILDINGS_SOURCE to the credit stored in meta; BUILDINGS_OUT names the file. With none of them set it is unchanged.
+
 Reads closed ways tagged building=* or building:part=* with height / building:levels (read only).
 Multipolygon-relation buildings are skipped. Same z14 bucketing as tools/build_buildings.py; records are
 [npts, height_dm, min_height_dm, is_part, X0, Y0, dX1, dY1, ...] in 2^-30 world units.
@@ -18,6 +21,7 @@ HERE = Path(__file__).resolve().parent.parent
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / 'library-data/geography/openstreetmap/us-latest.osm.pbf'
 OUT = Path(os.environ.get('BUILDINGS_OUT', HERE / 'derived/geo/buildings.sqlite'))
 WORLD = 2 ** 30
+BOX = tuple(float(v) for v in os.environ['LASTBOOK_BBOX'].split(',')) if os.environ.get('LASTBOOK_BBOX') else None
 STOREY = 3.2
 NUM = re.compile(r'-?\d+(?:\.\d+)?')
 
@@ -78,6 +82,11 @@ def main():
         except osmium.InvalidLocationError:
             continue
         cx = sum(p[0] for p in pts) // len(pts); cy = sum(p[1] for p in pts) // len(pts)
+        if BOX:
+            clon = cx / WORLD * 360 - 180
+            clat = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * cy / WORLD))))
+            if not (BOX[0] <= clon <= BOX[2] and BOX[1] <= clat <= BOX[3]):
+                continue
         buf = tiles.get((cx >> 16, cy >> 16))
         if buf is None:
             buf = tiles[(cx >> 16, cy >> 16)] = array('i')
@@ -89,9 +98,13 @@ def main():
         if n % 200000 == 0:
             print(f'{n:,} buildings with heights, {time.time() - t0:.0f}s', flush=True)
     db = sqlite3.connect(OUT)
-    db.executescript('DROP TABLE IF EXISTS bldg_osm; CREATE TABLE bldg_osm(x INT, y INT, n INT, data BLOB, PRIMARY KEY(x,y)) WITHOUT ROWID;')
+    db.executescript('CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);'
+                     'DROP TABLE IF EXISTS bldg_osm; CREATE TABLE bldg_osm(x INT, y INT, n INT, data BLOB, PRIMARY KEY(x,y)) WITHOUT ROWID;')
     db.executemany('INSERT INTO bldg_osm VALUES (?,?,?,?)', ((x, y, 0, zlib.compress(b.tobytes(), 6)) for (x, y), b in tiles.items()))
     db.execute("INSERT OR REPLACE INTO meta VALUES ('osm_heights', ?)", (str(n),))
+    if os.environ.get('LASTBOOK_BUILDINGS_SOURCE'):
+        db.execute("INSERT OR REPLACE INTO meta VALUES ('source', ?)", (os.environ['LASTBOOK_BUILDINGS_SOURCE'],))
+    db.execute("INSERT OR REPLACE INTO meta VALUES ('built', ?)", (time.strftime('%Y-%m-%dT%H:%M:%S'),))
     db.commit()
     print(f'done: {n:,} OSM buildings with heights in {time.time() - t0:.0f}s', flush=True)
 

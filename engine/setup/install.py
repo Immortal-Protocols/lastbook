@@ -18,6 +18,8 @@ import time
 import zipfile
 from pathlib import Path, PurePosixPath
 
+from .manifest import REGION_ID
+
 DATA_NAME = 'LastbookData'
 CATALOG = Path('library-data') / 'catalog.json'
 SLACK = 1.02            # installed_bytes is measured; a zip's members may add a little in directory entries
@@ -332,7 +334,7 @@ def carry_over(old, new, moved=None):
         dest_dir.mkdir(parents=True, exist_ok=True)
         for source in addresses.iterdir():
             dest = dest_dir / source.name
-            if source.is_file() and re.fullmatch(r'[A-Z]{2}\.(sqlite|json)', source.name) and not dest.exists():
+            if source.is_file() and re.fullmatch(REGION_ID + r'\.(sqlite|json)', source.name) and not dest.exists():
                 os.replace(source, dest)
                 moved.append(dest)
     state = old / 'derived' / 'llm' / 'state.json'

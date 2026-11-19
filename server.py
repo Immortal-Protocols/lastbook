@@ -108,7 +108,8 @@ def catalog():
 TRUST = [  # (pattern on publisher+collection, label shown to people, ranking weight)
     (r'World Health|WHO\b|ICRC|IFRC|Red Cross|Médecins|MSF|UNICEF|Sphere|St John Ambulance|CAWST', 'International health & humanitarian guidance', 1.5),
     (r'Hesperian|Where There Is No|Where Women|Book for Midwives|Community Guide to Environmental|Health Actions|Workers\' Guide', 'Hesperian community health guide', 1.45),
-    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of', 'Government guidance', 1.4),
+    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of'
+     r'|\bNHS\b|UKHSA|UK Health Security|Met Office|\bSEPA\b|gov\.uk|GOV\.UK|Cabinet Office|Home Office|Natural Resources Wales|Ordnance Survey|Forestry England|Forestry Commission|Scottish Government|Welsh Government|UK Government|Be Ready|Ready Scotland', 'Government guidance', 1.4),
     (r'National Center for Home Food Preservation|Extension|University|UC |College|Agricultural|Food Hero|UWyo', 'University / extension service', 1.35),
     (r'MIT|OpenStax|OpenCourseWare|NIST', 'Course or textbook', 1.1),
     (r'Kiwix|Wikipedia|Wikibooks|Appropedia|MDWiki', 'Community-written encyclopedia', 1.0),
@@ -1127,8 +1128,8 @@ CLUSTER_PX = 46
 
 
 def _resource_summary(cls, detail):
-    keys = {'mineral': ('commod1', 'commod2', 'dev_stat'), 'oil_gas_well': ('WellTypeLabel', 'FieldName', 'API'),
-            'fish_stocking': ('FishType', 'Counties'), 'boat_launch': ('Water_Body', 'Facility_Type'),
+    keys = {'mineral': ('feature', 'commodity', 'status', 'commod1', 'commod2', 'dev_stat'), 'oil_gas_well': ('WellTypeLabel', 'FieldName', 'API'),
+            'fish_stocking': ('FishType', 'Counties'), 'boat_launch': ('feature', 'Water_Body', 'Facility_Type'),
             'dam': ('purpose', 'river', 'county'), 'reservoir': ('reservoir_type', 'water_type', 'state'),
             'orchard': ('crop',), 'vineyard': ('crop',), 'berries': ('crop',), 'perennial_veg': ('crop',), 'lake': ('water_type', 'state'), 'pond': ('water_type', 'state')}.get(cls, ())
     out = [str(detail.get(k)) for k in keys if detail.get(k)]
@@ -1136,6 +1137,10 @@ def _resource_summary(cls, detail):
         out.insert(0, 'NOT drinking water')
     if detail.get('area_acres'):
         out.insert(0, f"{detail['area_acres']:,} acres")
+    if detail.get('area_ha'):
+        out.insert(0, f"{detail['area_ha']:,} ha")
+    if detail.get('crop_ha'):
+        out.append(f"{detail['crop_ha']:,} ha mapped")
     if detail.get('crop_acres'):
         out.append(f"about {round(detail['crop_acres']):,} acres in this block")
     if detail.get('normal_storage_af'):
@@ -1372,19 +1377,20 @@ def water_places(q, limit=10, near=None):
     finally:
         db.close()
     out = []
+    meta = map_set_meta()
     for kind, name, lat, lon, raw in rows:
         d = json.loads(raw or '{}')
         text = (name + ' ' + (d.get('other_names') or '')).lower()
         score = (sum(w in text for w in words) * 2 + (core[0] in text) + (kind != 'dam') + (name.lower() == q.lower().strip()) * 3
-                 + math.log10(float(d.get('area_acres') or d.get('surface_acres') or 1) + 1) / 3 + near_bonus(near, lat, lon))
+                 + math.log10(float(d.get('area_acres') or d.get('surface_acres') or (d.get('area_ha') or 0) * 2.471 or 1) + 1) / 3 + near_bonus(near, lat, lon))
         where = ', '.join(x for x in (d.get('county') and d['county'] + ' County', d.get('state')) if x)
         extra = f" · also called {d['other_names']}" if d.get('other_names') else ''
         away = ''
         if near:
             km = haversine(near[0], near[1], lat, lon)[0]
-            away = f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby'
+            away = (f" · {km:,.0f} km away" if km >= 1 else ' · nearby') if meta.get('units') == 'metric' else (f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby')
         out.append((score, {'name': name, 'kind': {'dam': 'Dam', 'reservoir': 'Reservoir', 'lake': 'Lake'}[kind],
-                            'detail': (where or 'United States') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
+                            'detail': (where or ('United Kingdom' if meta.get('country') == 'GB' else 'United States')) + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
     out.sort(key=lambda t: -t[0])
     return [o for _, o in out[:limit]]
 
@@ -1398,6 +1404,10 @@ def places(q, limit=20, near=None):
     words = re.findall(r'\w+', q)
     if not words:
         return []
+    postcode = address_search.uk_postcode([w.lower() for w in words])
+    if postcode and postcode[1] == len(words):  # 'ex48aj' and 'EX4 8AJ' are the same postcode; the finder holds it as 'EX4 8AJ'
+        q = postcode[0]
+        words = q.split()
     rows = []
     full = False
     for ws in word_sets(words):
@@ -1510,6 +1520,44 @@ def _distinct(path, sql):
         db.close()
 
 
+_MAP_SET_CACHE = {}
+
+
+def map_set_meta():
+    """What the installed map set says about itself in map-set.json, beyond its file list: optional 'units' ('metric' for heights,
+    contours and the scale bar; anything else means feet), 'country' (ISO code) and 'credit' (the data credit line for the map's
+    corner), 'as_of' (a short date for the 'mapped by' line). A US map set has none of them and keeps today's behaviour.
+    Read once and kept until the file's size or modification time changes (a search asks for it once per result)."""
+    path = HERE / 'map-set.json'
+    try:
+        st = path.stat()
+        key = (str(path), st.st_mtime_ns, st.st_size)
+    except OSError:
+        key = (str(path), None, None)
+    hit = _MAP_SET_CACHE.get('last')
+    if hit and hit[0] == key:
+        return dict(hit[1])
+    meta = _read_map_set_meta(path)
+    _MAP_SET_CACHE['last'] = (key, meta)
+    return dict(meta)
+
+
+def _read_map_set_meta(path):
+    try:
+        d = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(d, dict):
+        return {}
+    credit = d.get('credit')
+    country = d.get('country')
+    as_of = d.get('as_of')
+    return {'units': 'metric' if d.get('units') == 'metric' else 'imperial',
+            'country': country if isinstance(country, str) and re.fullmatch(r'[A-Z]{2}', country) else None,
+            'credit': credit.strip()[:400] if isinstance(credit, str) and credit.strip() else None,
+            'as_of': as_of.strip()[:40] if isinstance(as_of, str) and as_of.strip() else None}
+
+
 @functools.lru_cache(maxsize=1)
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
@@ -1534,7 +1582,7 @@ def map_contents():
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
         if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
             bounds = None
-    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours, **map_set_meta()}
 
 
 def map_info():
@@ -1569,8 +1617,11 @@ def map_info():
     if CROPDB.exists():
         try:
             c = json.loads(dict(sqlite3.connect(ro_uri(CROPDB), uri=True).execute('SELECT key,value FROM meta').fetchall()).get('built', '{}'))
-            geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
-                        'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
+            if map_set_meta().get('country'):
+                geo.append({'label': 'Orchards and vineyards (OpenStreetMap)', 'status': f"{c.get('cells', 0):,} mapped areas"})
+            else:
+                geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
+                            'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
         except (sqlite3.Error, ValueError):
             pass
     if BLDGDB.exists():
@@ -1622,7 +1673,7 @@ def map_info():
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
     area = 'the area this map details' if have['bounds'] else 'the whole US'
-    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
+    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)' if not map_set_meta().get('country') else 'Main roads, towns and water (OpenStreetMap)', 'status': 'Shown at every zoom level'}]
     if have['detail']:
         out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
     else:
@@ -1630,11 +1681,24 @@ def pack_datasets(have):
     if PLACEDB.exists():
         out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
     if TERRAINDB.exists():
-        out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
+        source = 'USGS 3DEP'
+        if map_set_meta().get('country'):  # a map set from elsewhere names its own elevation source in the terrain file's meta
+            try:
+                db = sqlite3.connect(ro_uri(TERRAINDB), uri=True)
+                try:
+                    source = db.execute("SELECT value FROM meta WHERE key='source'").fetchone()[0]
+                finally:
+                    db.close()
+            except (sqlite3.Error, TypeError):
+                source = 'elevation data'
+        out.append({'label': f'Elevation ({source})', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
     if BLDGDB.exists():
-        out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
+        if map_set_meta().get('country'):  # no Microsoft footprints: the outlines are the street map's, and the file holds heights for the 3D view
+            out.append({'label': 'Building outlines and heights for 3D (OpenStreetMap)', 'status': f'For {area}, outlines from street level zoom; heights only where a volunteer mapped them'})
+        else:
+            out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
     if CROPDB.exists():
-        out.append({'label': 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
+        out.append({'label': 'Orchards and vineyards (OpenStreetMap)' if map_set_meta().get('country') else 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
     return out
 
 

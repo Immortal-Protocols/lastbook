@@ -3,6 +3,11 @@
 map database the app can draw offline.
 
   python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite
+  python3 tools/build_map.py england.gpkg national.sqlite --bbox=-6.57,49.71,-1.33,52.27 \
+      --source "OpenStreetMap contributors, via Geofabrik england-latest-free.gpkg.zip (ODbL 1.0)" --as-of 2026-11-17
+
+--bbox=W,S,E,N (with an equals sign: a negative west value is not a flag) keeps only features whose box meets it (a region cut from a larger extract; docs/REGIONS-UK.md). --source and
+--as-of replace the meta lines that otherwise describe the Southern California extract.
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
 the original archive is only read. Output tables:
@@ -14,7 +19,16 @@ the original archive is only read. Output tables:
 import math, sqlite3, struct, sys, time
 from array import array
 
-SRC, DST = sys.argv[1], sys.argv[2]
+import argparse
+_ap = argparse.ArgumentParser()
+_ap.add_argument('src')
+_ap.add_argument('dst')
+_ap.add_argument('--bbox', help='W,S,E,N')
+_ap.add_argument('--source')
+_ap.add_argument('--as-of')
+_args = _ap.parse_args()
+SRC, DST = _args.src, _args.dst
+BOX = tuple(float(v) for v in _args.bbox.split(',')) if _args.bbox else None
 Q = 1e6
 
 ROAD_Z = {'motorway': 5, 'trunk': 6, 'motorway_link': 10, 'trunk_link': 10, 'primary': 8, 'primary_link': 12,
@@ -141,12 +155,22 @@ def main():
 
     def each(table, cols='fclass,name'):
         for row in src.execute(f'SELECT geom,{cols} FROM {table}'):
-            if row[0] is None:
+            g = row[0]
+            if g is None:
                 continue
+            if BOX and (g[3] >> 1) & 7 == 1:    # the GeoPackage header's own box: skips the rest of a country-sized extract unparsed
+                minx, maxx, miny, maxy = struct.unpack_from('<4d' if g[3] & 1 else '>4d', g, 8)
+                if maxx < BOX[0] or minx > BOX[2] or maxy < BOX[1] or miny > BOX[3]:
+                    continue
             try:
-                yield gpkg_parts(row[0]), row[1:]
+                parts = gpkg_parts(g)
             except Exception:
                 continue
+            if BOX:
+                minx, maxx, miny, maxy = bbox(parts)
+                if maxx < BOX[0] or minx > BOX[2] or maxy < BOX[1] or miny > BOX[3]:
+                    continue
+            yield parts, row[1:]
 
     # Water bodies
     for parts, (cls, name) in each('gis_osm_water_a_free'):
@@ -196,9 +220,9 @@ def main():
             dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)', (pid, cls, name, (minx + maxx) / 2, (miny + maxy) / 2))
     dst.execute('CREATE INDEX poi_cls ON poi(cls, lon, lat)')
     dst.executemany('INSERT INTO meta VALUES (?,?)', [
-        ('source', 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
-        ('data_as_of', '2026-10-25T21:21:21Z'),
-        ('bounds', '-121.36,32.50,-114.10,35.89'),
+        ('source', _args.source or 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
+        ('data_as_of', _args.as_of or '2026-10-25T21:21:21Z'),
+        ('bounds', _args.bbox or '-121.36,32.50,-114.10,35.89'),
         ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
     ])
     dst.commit()

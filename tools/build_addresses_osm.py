@@ -80,8 +80,7 @@ def merge_repeats(db):
         block.append(row)
     fold_block(block)
     db.executemany('UPDATE addr SET city = ?, zip = ? WHERE rowid = ?', fill)
-    for i in range(0, len(drop), 50_000):
-        db.execute(f'DELETE FROM addr WHERE rowid IN ({",".join("?" * len(drop[i:i + 50_000]))})', drop[i:i + 50_000])
+    db.executemany('DELETE FROM addr WHERE rowid = ?', ((r,) for r in drop))      # one parameter per delete: SQLite caps a statement's variables (32,766 on some builds)
     return len(drop)
 
 

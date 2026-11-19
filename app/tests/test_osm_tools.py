@@ -150,6 +150,28 @@ class AddressTests(Temp):
         meta = dict(self.db(out).execute('SELECT key, value FROM meta'))
         self.assertEqual((meta['count'], meta['with_postcode']), ('2', '2'))
 
+    def merge(self, pairs, limit=None):
+        """merge_repeats() on `pairs` houses that each appear twice (an entrance node and its building), numbered apart so none merge with another."""
+        with patch.object(sys, 'argv', ['build_addresses_osm.py']):
+            import build_addresses_osm
+        db = self.db(self.dir / 'many.sqlite')
+        db.execute('CREATE TABLE addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL)')
+        db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?)',
+                       [(str(i), 'High Street', 'high st', '', '', '', 51.5, -0.1 + extra) for i in range(pairs) for extra in (0, 0.0001)])
+        db.execute('CREATE INDEX addr_norm ON addr(norm, num)')
+        if limit and hasattr(db, 'setlimit'):
+            db.setlimit(sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, limit)
+        dropped = build_addresses_osm.merge_repeats(db)
+        return dropped, db.execute('SELECT count(*) FROM addr').fetchone()[0]
+
+    def test_more_repeats_than_sqlite_allows_in_one_statement_are_still_merged(self):
+        self.assertEqual(self.merge(33_000), (33_000, 33_000))              # over the 32,766 variable limit some SQLite builds have
+
+    def test_merging_does_not_depend_on_the_variable_limit(self):
+        if not hasattr(sqlite3.Connection, 'setlimit'):
+            self.skipTest('this Python cannot lower the SQLite variable limit')
+        self.assertEqual(self.merge(3_000, limit=999), (3_000, 3_000))
+
     def test_two_postcodes_close_together_are_two_houses(self):
         pbf = self.dir / 'two.osm.pbf'
         write_pbf(pbf, [(1, -0.15785, 51.52015, {'addr:housenumber': '12', 'addr:street': 'Baker Street', 'addr:postcode': 'NW1 6XE'}),

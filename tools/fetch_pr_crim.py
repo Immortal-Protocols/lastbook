@@ -4,6 +4,7 @@ Run on a connected build machine. This tool operates the public search form in a
 fresh browser and reads its displayed parcel, physical-address and municipio fields.
 """
 import argparse
+from collections import deque
 from contextlib import closing
 import csv
 from datetime import datetime, timezone
@@ -197,7 +198,39 @@ class PublicQueryFailed(ValueError):
     """The public viewer explicitly rejected a query, without returning records."""
 
 
+class PublicResultTooLarge(ValueError):
+    """Narrow a grouped search before loading an unnecessarily large result."""
+
+
+class PublicQueryTimeout(ValueError):
+    """The browser could not finish a public query within its normal timeout."""
+
+
+def search_groups(prefixes, width):
+    groups = {}
+    for prefix in prefixes:
+        groups.setdefault(prefix[:width], []).append(prefix)
+    return [(grids[0] if len(grids) == 1 else prefix, grids) for prefix, grids in groups.items()]
+
+
+def split_results(prefix, grids, rows, displayed):
+    if len(rows) != displayed:
+        raise ValueError(f'{prefix}: incomplete grouped result.')
+    result = {grid: [] for grid in grids}
+    for row in rows:
+        if set(row) != {'Parcela', 'Dirección física', 'Municipio'}:
+            raise ValueError(f'{prefix}: the public result layout changed.')
+        base = number(row['Parcela'])
+        if not base or len(base) != 11 or not base.startswith(prefix.replace('-', '')):
+            raise ValueError(f'{prefix}: a displayed parcel does not match the requested prefix.')
+        grid = base[:3] + '-' + base[3:6]
+        if grid in result:
+            result[grid].append(row)
+    return result
+
+
 class PublicSearch:
+    max_records = None
     def __init__(self, page):
         self.page = page
         self.sequence = 0
@@ -231,6 +264,13 @@ class PublicSearch:
                 time.sleep(2 ** (attempt + 1))
 
     def query(self, prefix):
+        from playwright.sync_api import TimeoutError as BrowserTimeout
+        try:
+            return self.query_pages(prefix)
+        except BrowserTimeout as error:
+            raise PublicQueryTimeout(f'{prefix}: the public search timed out; completed grids are saved.') from error
+
+    def query_pages(self, prefix):
         self.wait_for_result('true')  # Dismiss a leftover failure before operating the form again.
         widget = self.widget
         if not widget.locator('input[id^="dijit_form_ValidationTextBox"]:visible').count():
@@ -260,6 +300,8 @@ class PublicSearch:
             if not match:
                 raise ValueError(f'{prefix}: unrecognized public result count.')
             displayed, total = map(int, match.groups())
+            if self.max_records is not None and total > self.max_records:
+                raise PublicResultTooLarge(f'{prefix}: narrow the {total}-card public result.')
             self.wait_for_result("""(() => {
                 const active = Array.from(document.querySelectorAll('.features-result')).find(e=>e.getClientRects().length);
                 if (!active) return false;
@@ -285,7 +327,8 @@ class PublicSearch:
             })()""", arg=previous)
 
 
-def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regions=(), whole_island=False, plan=False):
+def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regions=(), whole_island=False, plan=False,
+          group_grids=False):
     towns, roster, known = area_roster(index, municipio, regions, whole_island)
     all_prefixes = sorted(grid_rosters(roster))
     if plan:
@@ -314,10 +357,20 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
                         browser = playwright.chromium.launch(headless=not show_browser)
                         try:
                             search = PublicSearch(browser.new_page(viewport={'width': 1280, 'height': 900}, locale='en-US'))
-                            for prefix in pending:
+                            searches = deque(search_groups(pending, 5 if group_grids else 7))
+                            while searches:
+                                prefix, grids = searches.popleft()
+                                search.max_records = 5000 if len(grids) > 1 else None
                                 try:
                                     rows, count = search.lookup(prefix)
-                                except PublicQueryFailed:
+                                except (PublicQueryFailed, PublicResultTooLarge, PublicQueryTimeout) as error:
+                                    if len(grids) > 1:
+                                        print(f'{prefix}: narrowing grouped search to smaller grids', flush=True)
+                                        searches.extendleft(reversed(search_groups(grids, len(prefix) + 1)))
+                                        time.sleep(1)
+                                        continue
+                                    if not isinstance(error, PublicQueryFailed):
+                                        raise
                                     failed.append(prefix)
                                     consecutive_failures += 1
                                     print(f'{prefix}: query failed three times; left unqueried for the next run', flush=True)
@@ -326,10 +379,17 @@ def fetch(index, directory, municipio=(), prefixes=(), show_browser=False, regio
                                                          'Completed searches were saved. Retry later.')
                                     time.sleep(1)
                                     continue
+                                if count == 0 and len(grids) > 1:
+                                    # Confirm empty groups through their smaller searches.
+                                    searches.extendleft(reversed(search_groups(grids, len(prefix) + 1)))
+                                    time.sleep(1)
+                                    continue
+                                partitioned = split_results(prefix, grids, rows, count)
                                 consecutive_failures = 0
-                                save_prefix(db, prefix, rows, count, batches[prefix])
-                                done.add(prefix)
-                                print(f'{prefix}: saved {count} displayed records; {len(done & set(all_prefixes))}/{len(all_prefixes)} prefixes', flush=True)
+                                for grid, records in partitioned.items():
+                                    save_prefix(db, grid, records, len(records), batches[grid])
+                                    done.add(grid)
+                                    print(f'{grid}: saved {len(records)} displayed records; {len(done & set(all_prefixes))}/{len(all_prefixes)} prefixes', flush=True)
                                 time.sleep(1)
                         finally:
                             browser.close()
@@ -349,10 +409,11 @@ if __name__ == '__main__':
     parser.add_argument('--plan', action='store_true', help='Preview selected municipios and mapped parcel/prefix counts')
     parser.add_argument('--prefix', action='append', default=[], help='Collect a specific mapped 000-000 grid (repeatable)')
     parser.add_argument('--show-browser', action='store_true')
+    parser.add_argument('--group-grids', action='store_true', help='Combine neighboring grids in fewer public searches')
     args = parser.parse_args()
     try:
         print(json.dumps(fetch(args.index, args.directory, args.municipio, args.prefix, args.show_browser,
-                               args.region, args.whole_island, args.plan), ensure_ascii=False, indent=2))
+                               args.region, args.whole_island, args.plan, args.group_grids), ensure_ascii=False, indent=2))
     except KeyboardInterrupt:
         parser.exit(130, 'Stopped. Run the same command to resume.\n')
     except (ValueError, OSError, sqlite3.Error) as exc:

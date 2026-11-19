@@ -188,6 +188,95 @@ class PublicPrefixResults(unittest.TestCase):
                 fetch.fetch(self.directory / 'unused.sqlite', self.directory / 'intermittent', 'Villa Ejemplo')
             self.assertEqual(search.return_value.lookup.call_count, 6)
 
+    @contextmanager
+    def collection(self, lookup):
+        driver = Mock()
+        @contextmanager
+        def playwright():
+            yield driver
+        sync = types.ModuleType('playwright.sync_api')
+        sync.sync_playwright = playwright
+        parent = types.ModuleType('playwright')
+        parent.__path__ = []
+        roster = {base: {'villa ejemplo'} for base in self.roster}
+        with patch.dict('sys.modules', {'playwright': parent, 'playwright.sync_api': sync}), \
+                patch.object(fetch, 'area_roster', return_value=(['Villa Ejemplo'], roster, set())), \
+                patch.object(fetch, 'PublicSearch') as search, patch.object(fetch.time, 'sleep'):
+            search.return_value.lookup.side_effect = lookup
+            yield search.return_value
+
+    def test_grouped_search_preserves_wording_counts_and_existing_checkpoints(self):
+        rows = [self.row(), self.row(address='Another original wording'), self.row('001-002-003-02', ''),
+                self.row('001-003-003-99'), self.row('001-004-003-03', town='Otro Pueblo')]
+        directory = self.directory / 'grouped'
+        with self.collection(lambda prefix: (rows, len(rows))) as search:
+            result = fetch.fetch(self.directory / 'unused', directory, 'Villa Ejemplo', group_grids=True)
+            self.assertTrue(result['complete'])
+            search.lookup.assert_called_once_with('001-0')
+            with sqlite3.connect(directory / 'prefixes.sqlite') as db:
+                self.assertEqual(db.execute('SELECT value,displayed FROM prefix ORDER BY value').fetchall(),
+                                 [('001-002', 3), ('001-004', 1)])
+                self.assertEqual(db.execute('SELECT count(*) FROM record').fetchone(), (4,))
+                self.assertEqual(db.execute("SELECT address FROM record WHERE municipio='Otro Pueblo'").fetchone(),
+                                 (rows[-1]['Dirección física'],))
+            self.assertEqual((result['csv_wordings'], result['empty_address_parcels'], result['missing_parcels']), (3, 1, 0))
+            search.lookup.reset_mock()
+            fetch.fetch(self.directory / 'unused', directory, 'Villa Ejemplo', group_grids=True)
+            search.lookup.assert_not_called()
+
+    def test_large_failed_and_empty_groups_narrow_without_marking_false_completion(self):
+        for response in ('large', 'failed', 'empty', 'timeout'):
+            with self.subTest(response=response):
+                def lookup(prefix):
+                    if len(prefix) < 7:
+                        if response == 'large': raise fetch.PublicResultTooLarge('too many cards')
+                        if response == 'failed': raise fetch.PublicQueryFailed('public error')
+                        if response == 'timeout': raise fetch.PublicQueryTimeout('timed out')
+                        return [], 0
+                    if prefix == '001-002': return [], 0
+                    return [self.row('001-004-003-03')], 1
+                with self.collection(lookup) as search:
+                    result = fetch.fetch(self.directory / 'unused', self.directory / response,
+                                         'Villa Ejemplo', group_grids=True)
+                    self.assertEqual(search.lookup.call_args_list,
+                                     [call('001-0'), call('001-00'), call('001-002'), call('001-004')])
+                    self.assertTrue(result['complete'])
+                    self.assertEqual((result['missing_parcels'], result['unqueried_parcels']), (2, 0))
+
+    def test_incomplete_or_mismatched_group_never_completes_any_grid(self):
+        for i, (rows, count) in enumerate([([self.row()], 2), ([self.row(), self.row('002-002-003-01')], 2),
+                                           ([self.row(), {'Parcela': '001-004-003-03'}], 2)]):
+            directory = self.directory / ('malformed-' + str(i))
+            with self.subTest(rows=rows), self.collection(lambda prefix: (rows, count)):
+                with self.assertRaises(ValueError):
+                    fetch.fetch(self.directory / 'unused', directory, 'Villa Ejemplo', group_grids=True)
+                with sqlite3.connect(directory / 'prefixes.sqlite') as db:
+                    self.assertEqual(db.execute('SELECT count(*) FROM prefix').fetchone(), (0,))
+
+    def test_interrupted_group_resumes_only_its_unfinished_grids(self):
+        directory = self.directory / 'interrupted-group'
+        rows = [self.row(), self.row('001-004-003-03')]
+        original = fetch.save_prefix
+        def save(db, prefix, rows, count, roster):
+            if prefix == '001-004': raise KeyboardInterrupt()
+            original(db, prefix, rows, count, roster)
+        with self.collection(lambda prefix: (rows, 2)), patch.object(fetch, 'save_prefix', side_effect=save):
+            with self.assertRaises(KeyboardInterrupt):
+                fetch.fetch(self.directory / 'unused', directory, 'Villa Ejemplo', group_grids=True)
+        with self.collection(lambda prefix: ([self.row('001-004-003-03')], 1)) as search:
+            result = fetch.fetch(self.directory / 'unused', directory, 'Villa Ejemplo', group_grids=True)
+            self.assertTrue(result['complete'])
+            search.lookup.assert_called_once_with('001-004')
+
+    def test_grouped_fallback_keeps_the_individual_grid_outage_limit(self):
+        self.roster = {f'00100{i}00301' for i in range(1, 7)}
+        with self.collection(Mock(side_effect=fetch.PublicQueryFailed('public error'))) as search:
+            with self.assertRaisesRegex(ValueError, 'three consecutive'):
+                fetch.fetch(self.directory / 'unused', self.directory / 'group-outage',
+                            'Villa Ejemplo', group_grids=True)
+            self.assertEqual(search.lookup.call_args_list,
+                             [call('001-0'), call('001-00'), call('001-001'), call('001-002'), call('001-003')])
+
     @unittest.skipUnless(os.environ.get('LASTBOOK_TEST_CRIM_UI') == '1', 'opt-in local browser fixture')
     def test_public_form_error_and_pagination_retry_in_local_browser(self):
         from playwright.sync_api import sync_playwright
@@ -239,6 +328,12 @@ class PublicPrefixResults(unittest.TestCase):
                     rows, count = search.lookup('001-004')
                     self.assertEqual((count, len(rows), page.evaluate('attempts')), (2, 2, 2))
                     self.assertTrue(all(row['Parcela'].startswith('001-004') for row in rows))
+                    search.max_records = 1
+                    page.evaluate("mode='more';attempts=0;moreAttempts=0")
+                    with self.assertRaises(fetch.PublicResultTooLarge):
+                        search.lookup('001-004')
+                    self.assertEqual((page.evaluate('attempts'), page.evaluate('moreAttempts')), (1, 0))
+                    search.max_records = None
                     for mode in ('name', 'counter', 'cards'):
                         page.evaluate('(value)=>{mode=value;attempts=0}', mode)
                         rows, count = search.lookup('001-005')
@@ -254,6 +349,11 @@ class PublicPrefixResults(unittest.TestCase):
                     with self.assertRaises(fetch.PublicQueryFailed):
                         search.lookup('001-006')
                     self.assertEqual(page.evaluate('attempts'), 3)
+                    page.set_default_timeout(100)
+                    page.evaluate("apply=()=>{attempts++};attempts=0")
+                    with self.assertRaises(fetch.PublicQueryTimeout):
+                        search.lookup('001-006')
+                    self.assertEqual(page.evaluate('attempts'), 1)
             finally:
                 browser.close()
 

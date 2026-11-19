@@ -17,10 +17,12 @@
 // Answers: {"ev":"tok","id":1,"t":"..."} for each piece, then {"ev":"done","id":1,"reason":"eog|stop|length|cancel",...}
 // or {"ev":"error","id":1,"code":"...","msg":"..."}. Everything else, llama.cpp's own log included, goes to standard error.
 //
-// --embed runs an embedding model (the search index's bge-small) instead of a writing one. It then takes one request:
+// --embed runs an embedding model (bge-small, EmbeddingGemma) instead of a writing one; "ready" then also gives "pooling" and
+// "dim". It refuses a model file whose pooling makes no single vector per text (none, rank). It takes one request:
 //   {"op":"embed","id":1,"texts":["...","..."],"max_tokens":320}
-// and answers {"ev":"embedding","id":1,"vectors":[[...],[...]],"n_tokens":[..],"ms":..}: for each text the vector of its first
-// token ([CLS]), scaled to length 1. A text longer than max_tokens is cut there, keeping the end mark.
+// and answers {"ev":"embedding","id":1,"dim":D,"vectors":[[...],[...]],"n_tokens":[..],"ms":..}: for each text the vector
+// pooled the way the model file says, scaled to length 1. max_tokens counts the model's own marks and is capped at what the
+// model was trained to read; a longer text is cut, and its marks kept. One text that cannot be read fails the whole request.
 
 #include "llama.h"
 #include "ggml-backend.h"
@@ -29,6 +31,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -164,6 +167,7 @@ struct Engine {
     const llama_vocab * vocab = nullptr;
     std::vector<llama_token> cached;   // the tokens the context holds, in order
     Inbox * in = nullptr;
+    std::vector<llama_token> head, tail;   // --embed: the marks the model's tokenizer puts before and after a text
 };
 
 static std::vector<llama_token> tokenize(const llama_vocab * vocab, const std::string & text, bool special, bool marks = false) {
@@ -345,60 +349,98 @@ static void generate(Engine & e, const json & req) {
 }
 
 // -------------------------------------------------------------------------------------------------------------- embedding --
-// One text at a time through the model: its tokens between the model's start and end marks, cut to max_tokens the way the
-// search index cuts them, and the pooled vector ([CLS] for bge) scaled to length 1.
+// The marks llama_tokenize adds around a text ([CLS] and [SEP] for bge, BOS and EOS for Gemma), found by tokenizing a short
+// text with and without them, so a text can be cut first and the marks put back after. False if the text's own tokens change.
+static bool find_marks(Engine & e) {
+    const auto with = tokenize(e.vocab, "a", false, true), body = tokenize(e.vocab, "a", false);
+    for (size_t at = 0; at + body.size() <= with.size(); at++) {
+        if (std::equal(body.begin(), body.end(), with.begin() + at)) {
+            e.head.assign(with.begin(), with.begin() + at);
+            e.tail.assign(with.begin() + at + body.size(), with.end());
+            return true;
+        }
+    }
+    return false;
+}
+
+// Many texts per pass, each its own sequence: its tokens cut to max_tokens (the marks included), between the model's own
+// marks, and the vector pooled the way the model file says, scaled to length 1. One text that cannot be read fails the request.
 static void embed(Engine & e, const json & req) {
     const auto t0 = std::chrono::steady_clock::now();
     const json id = req.value("id", json());
     auto fail = [&](const char * code, const std::string & msg) {
         send({{"ev", "error"}, {"id", id}, {"code", code}, {"msg", msg}});
     };
+    const json texts = req.value("texts", json::array());
+    if (!texts.is_array()) {
+        return fail("bad_request", "texts are strings");
+    }
     const int n_embd = llama_model_n_embd_out(e.model);
-    const int limit = std::max(2, std::min(req.value("max_tokens", 512), (int) llama_n_ubatch(e.ctx)));
+    const int n_batch = (int) llama_n_batch(e.ctx), n_seq = (int) llama_n_seq_max(e.ctx);
+    const int marks = (int) (e.head.size() + e.tail.size());
+    const int limit = std::max(marks + 1, std::min({req.value("max_tokens", 512), n_batch, (int) llama_model_n_ctx_train(e.model)}));
     json vectors = json::array(), counts = json::array();
-    llama_batch batch = llama_batch_init(limit, 0, 1);
+    llama_batch b = llama_batch_init(n_batch, 0, 1);
+    llama_memory_t mem = llama_get_memory(e.ctx);
     e.in->cancel = false;
-    for (const auto & text : req.value("texts", json::array())) {
-        if (!text.is_string()) {
-            llama_batch_free(batch);
-            return fail("bad_request", "texts are strings");
+    size_t i = 0;
+    while (i < texts.size()) {
+        b.n_tokens = 0;
+        int s = 0;
+        while (i < texts.size() && s < n_seq) {
+            if (!texts[i].is_string()) {
+                llama_batch_free(b);
+                return fail("bad_request", "texts are strings");
+            }
+            std::vector<llama_token> t = e.head;
+            auto body = tokenize(e.vocab, texts[i].get<std::string>(), false);   // a text never reads as markup
+            body.resize(std::min<size_t>(body.size(), limit - marks));
+            t.insert(t.end(), body.begin(), body.end());
+            t.insert(t.end(), e.tail.begin(), e.tail.end());
+            if (b.n_tokens + (int) t.size() > n_batch) {
+                break;                             // full: this text starts the next pass
+            }
+            for (size_t k = 0; k < t.size(); k++) {
+                const int n = b.n_tokens++;
+                b.token[n] = t[k];
+                b.pos[n] = (llama_pos) k;
+                b.n_seq_id[n] = 1;
+                b.seq_id[n][0] = s;
+                b.logits[n] = true;
+            }
+            counts.push_back((int) t.size());
+            s++;
+            i++;
         }
         if (e.in->cancel) {
-            llama_batch_free(batch);
+            llama_batch_free(b);
             return fail("cancel", "stopped");
         }
-        std::vector<llama_token> toks = tokenize(e.vocab, text.get<std::string>(), false, true);
-        if ((int) toks.size() > limit) {
-            toks.resize(limit);
-            toks.back() = llama_vocab_sep(e.vocab);
+        llama_memory_clear(mem, true);             // no memory for BERT; for Gemma each pass starts empty
+        if (llama_decode(e.ctx, b) != 0) {         // llama_decode hands a model without memory (BERT) to its encoder itself
+            llama_batch_free(b);
+            return fail("decode", "the model could not read a text (llama_decode failed)");
         }
-        batch.n_tokens = (int32_t) toks.size();
-        for (int i = 0; i < batch.n_tokens; i++) {
-            batch.token[i] = toks[i];
-            batch.pos[i] = i;
-            batch.n_seq_id[i] = 1;
-            batch.seq_id[i][0] = 0;
-            batch.logits[i] = 1;
+        for (int k = 0; k < s; k++) {
+            const float * v = llama_get_embeddings_seq(e.ctx, k);
+            if (!v) {
+                llama_batch_free(b);
+                return fail("decode", "the model gave no pooled vector");
+            }
+            double sum = 0;
+            for (int j = 0; j < n_embd; j++) {
+                sum += (double) v[j] * v[j];
+            }
+            const double norm = std::max(std::sqrt(sum), 1e-9);
+            json one = json::array();
+            for (int j = 0; j < n_embd; j++) {
+                one.push_back((float) (v[j] / norm));
+            }
+            vectors.push_back(std::move(one));
         }
-        const float * v = batch.n_tokens > 0 && llama_encode(e.ctx, batch) == 0 ? llama_get_embeddings_seq(e.ctx, 0) : nullptr;
-        if (!v) {
-            llama_batch_free(batch);
-            return fail("encode", "the model could not read a text (llama_encode failed)");
-        }
-        double sum = 0;
-        for (int i = 0; i < n_embd; i++) {
-            sum += (double) v[i] * v[i];
-        }
-        const double norm = std::max(std::sqrt(sum), 1e-9);
-        json one = json::array();
-        for (int i = 0; i < n_embd; i++) {
-            one.push_back((float) (v[i] / norm));
-        }
-        vectors.push_back(std::move(one));
-        counts.push_back(batch.n_tokens);
     }
-    llama_batch_free(batch);
-    send({{"ev", "embedding"}, {"id", id}, {"vectors", vectors}, {"n_tokens", counts},
+    llama_batch_free(b);
+    send({{"ev", "embedding"}, {"id", id}, {"dim", n_embd}, {"vectors", vectors}, {"n_tokens", counts},
           {"ms", (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count()}});
 }
 
@@ -480,7 +522,7 @@ int main(int argc, char ** argv) {
         return 2;
     }
     if (n_ctx <= 0) {
-        n_ctx = embedding ? 512 : 16384;   // bge-small reads at most 512 tokens
+        n_ctx = embedding ? 2048 : 16384;  // --embed: a pass of up to 64 texts, 2,048 tokens in all
     }
     llama_log_set(log_to_stderr, nullptr);
     common_log_set_verbosity_thold(LOG_LEVEL_WARN);
@@ -503,8 +545,10 @@ int main(int argc, char ** argv) {
     cp.swa_full = false;   // as llama-server runs it: the sliding-window layers keep only their window, not the whole context
     if (embedding) {
         cp.embeddings = true;
-        cp.pooling_type = LLAMA_POOLING_TYPE_CLS;
-        cp.n_batch = cp.n_ubatch = n_ctx;   // an embedding model reads a whole text in one pass
+        cp.pooling_type = LLAMA_POOLING_TYPE_UNSPECIFIED;   // the pooling the model file names: CLS for bge, mean for Gemma
+        cp.n_batch = cp.n_ubatch = n_ctx;   // an embedding model reads each pass whole
+        cp.n_seq_max = 64;
+        cp.kv_unified = true;
     }
     static ggml_backend_dev_t no_devices[1] = { nullptr };
     if (cpu_only) {
@@ -571,9 +615,24 @@ int main(int argc, char ** argv) {
     e.vocab = llama_model_get_vocab(e.model);
     char desc[256] = {0};
     llama_model_desc(e.model, desc, sizeof(desc));
-    send({{"ev", "ready"}, {"n_ctx", llama_n_ctx(e.ctx)}, {"desc", desc}, {"threads", llama_n_threads(e.ctx)},
-          {"load_ms", (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t_load).count()},
-          {"ram_free", ram_free()}});
+    json ready = {{"ev", "ready"}, {"n_ctx", llama_n_ctx(e.ctx)}, {"desc", desc}, {"threads", llama_n_threads(e.ctx)},
+                  {"load_ms", (long long) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t_load).count()},
+                  {"ram_free", ram_free()}};
+    if (embedding) {
+        const auto pooling = llama_pooling_type(e.ctx);
+        const char * name = pooling == LLAMA_POOLING_TYPE_MEAN ? "mean" : pooling == LLAMA_POOLING_TYPE_CLS ? "cls" : pooling == LLAMA_POOLING_TYPE_LAST ? "last" : nullptr;
+        const char * why = !name ? "the model file names no pooling that makes one vector per text"
+                         : !find_marks(e) ? "the model's tokenizer changes a text's own tokens when it adds its marks" : nullptr;
+        if (why) {
+            send({{"ev", "error"}, {"code", "model_file"}, {"msg", why}});
+            llama_free(e.ctx);
+            llama_model_free(e.model);
+            return 6;
+        }
+        ready["pooling"] = name;
+        ready["dim"] = llama_model_n_embd_out(e.model);
+    }
+    send(ready);
 
     while (true) {
         json req;

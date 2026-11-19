@@ -5647,7 +5647,7 @@ class ServerSeeding(WithRqbit):
 
     def test_downloads_checks_and_shares_on_its_port(self):
         code, text = self.run_seed('--manifest', self.manifest_file(), '--port', '4321', '--upload-limit', '20M',
-                                   wait_for=lambda: self.added.exists() and 'files; ' in sys.stdout.getvalue())
+                                   wait_for=lambda: self.added.exists() and 'uploaded to other people so far' in sys.stdout.getvalue())
         self.assertEqual(code, 0, text)
         self.assertEqual((self.out / 'Lastbook-Small.zip').read_bytes(), self.zip)
         self.assertFalse((self.out / 'Map-XX.zip').exists())                         # no torrent yet: not taken by default

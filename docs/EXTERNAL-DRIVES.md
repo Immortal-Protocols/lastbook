@@ -23,10 +23,12 @@ If setup shows one of these messages, this page is for you:
 
 ## Quick answer
 
-On a Mac, a drive that Time Machine backs up to cannot hold anything else. macOS keeps that volume for backups only, so
-no app can save files on it, however much free space it shows.
+On a Mac, the volume that Time Machine backs up to cannot hold anything else. macOS keeps that volume for backups only, so
+no app can save files on it, however much free space it shows. The physical drive is not reserved, only that one volume
+on it, so the same drive can hold a second volume for the library.
 
-You do not need to erase the drive or stop your backups. Add a second volume to the same drive in Disk Utility
+You do not need to erase the drive or stop your backups. First confirm in Time Machine settings that the drive really is
+a backup disk ([Step 1](#step-1-find-out-why-the-drive-refuses)). Then add a second volume to the same drive in Disk Utility
 ([Step 2](#step-2-time-machine-disk-add-a-second-volume)), then press **Change…** in setup and choose the new volume
 ([Step 3](#step-3-point-setup-at-the-new-volume)). It takes about two minutes.
 
@@ -35,27 +37,41 @@ You do not need to erase the drive or stop your backups. Add a second volume to 
 Free space is not the problem when you see the messages above. Setup shows a different message, with the numbers, when a
 disk is too full. These messages mean the Mac will not let Lastbook write to the place you chose.
 
+### Check in Time Machine settings first
+
+This is the check that settles whether the drive is a backup disk.
+
+1. Open **System Settings > General > Time Machine**.
+2. Read the list of backup disks. If the name of your drive's volume is in that list, it is a Time Machine backup
+   destination: go to [Step 2](#step-2-time-machine-disk-add-a-second-volume).
+3. If it is not in the list, Time Machine is not using it now, whatever its icon or format. Carry on with the Finder
+   check below. (A drive that was a backup disk in the past can keep its backup volume reserved after it is removed
+   from this list. The Terminal check further down shows whether a volume refuses files.)
+
+Do not decide from the format or the icon alone. A backup volume is formatted `APFS (Case-sensitive)` or
+`APFS (Case-sensitive, Encrypted)` and usually shows a clock with a circular arrow, but any drive can be given that
+format, and a case-sensitive drive that is not a backup disk accepts files as usual.
+
 ### Check in Finder
 
 1. Select the drive in Finder's sidebar, or on the desktop.
 2. Press **Command-I** (File > Get Info).
-3. Read the **Format** line under General, and look at the drive's icon.
+3. Read the **Format** line under General.
 
 | What you see | What it means | What to do |
 |---|---|---|
-| Icon with a clock and a circular arrow, and Format `APFS (Case-sensitive)` or `APFS (Case-sensitive, Encrypted)` | A Time Machine backup volume. Backups only. | [Step 2](#step-2-time-machine-disk-add-a-second-volume) |
+| The volume is listed in Time Machine settings (its Format is `APFS (Case-sensitive)`, with or without `Encrypted`) | A Time Machine backup volume. Backups only. | [Step 2](#step-2-time-machine-disk-add-a-second-volume) |
 | Format `Windows NT File System (NTFS)` | A Windows format. A Mac can read it and cannot write to it. | [NTFS](#the-drive-is-formatted-for-windows-ntfs) |
 | Format `MS-DOS (FAT32)` | Works for small files only. No file can be larger than 4 GB, and the library has larger ones. | [FAT32](#the-drive-is-formatted-fat32) |
-| Format `APFS`, `Mac OS Extended (Journaled)` or `ExFAT`, with an ordinary drive icon | The format is fine. Something else is in the way. | [Other causes on a Mac](#other-causes-on-a-mac) |
-
-You can also open **System Settings > General > Time Machine**. If the drive is listed there, it is a backup disk.
+| Any APFS format, `Mac OS Extended (Journaled)` or `ExFAT`, and the volume is not listed in Time Machine settings | The format is fine. Something else is in the way. | [Other causes on a Mac](#other-causes-on-a-mac) |
 
 ### Check in Terminal (optional)
 
 Open Terminal (in Applications > Utilities). Replace `NAME` with the drive's name. Keep the quotation marks if the name has
 a space in it.
 
-This lists the disks Time Machine backs up to. If your drive's name is in the list, it is a backup disk:
+This lists the disks Time Machine backs up to, the same list as in Time Machine settings. If your drive's name is in
+the list, it is a backup disk:
 
 ```bash
 tmutil destinationinfo
@@ -79,12 +95,25 @@ touch "/Volumes/NAME/lastbook-test.txt"
 A drive formatted APFS can hold several volumes. They show up in Finder as separate drives, and they share the same free
 space. So the drive can hold your backups on one volume and the library on another.
 
-**This does not erase anything.** Your backups stay where they are and Time Machine keeps working.
+**Adding a volume does not erase anything.** Your backups stay where they are and Time Machine keeps working.
+
+Disk Utility shows a drive on three levels, and it matters which one you select:
+
+| Level in the sidebar | What it is |
+|---|---|
+| Top line, usually the maker's name and model | The physical drive. |
+| `Container disk…`, indented under it | The APFS container: the shared space that volumes live in. |
+| The line or lines indented under the container | The volumes. One of them is the backup volume, the name listed in Time Machine settings. macOS reserves this one for Time Machine. |
+
+The only thing to use here is **Add APFS Volume**. Leave **Erase** and **Partition** alone: Erase deletes the backups,
+and Partition cuts the drive into fixed-size pieces, which is not needed and is easy to get wrong.
 
 1. Open **Disk Utility** (in Applications > Utilities).
 2. In the menu bar, choose **View > Show All Devices**.
-3. In the sidebar, select your backup volume (the one with the drive's name).
-4. Press the **+** button above the word Volume in the toolbar, or choose **Edit > Add APFS Volume…**
+3. In the sidebar, select the backup volume, the one named in Time Machine settings. Do not select the top line, the
+   physical drive.
+4. Press the **+** button above the word Volume in the toolbar, or choose **Edit > Add APFS Volume…** The window that
+   opens is titled "Add APFS volume to container?". If it says anything about erasing or partitioning, press Cancel.
 5. **Name:** type a name that is different from the backup volume's, for example `Lastbook`.
 6. **Format:** choose **APFS**, the first in the list.
    - Do not keep `APFS (Case-sensitive)`, which Disk Utility may offer first because the backup volume uses it. Time
@@ -92,12 +121,14 @@ space. So the drive can hold your backups on one volume and the library on anoth
      volume.
    - Choose `APFS (Encrypted)` only if you want to type a password each time the drive is plugged in. The library is
      public reference material, so most people do not need this.
-7. Press **Size Options…**
-   - **Reserve Size:** type the **Space needed** figure from Lastbook's setup screen, rounded up. For the All library
-     with local AI, `800` GB. This keeps that much room for the library, so Time Machine cannot fill it as your backups
-     grow.
-   - **Quota Size:** leave empty. A quota is an upper limit, and a limit could stop a later library update.
-8. Press **OK**, then **Add**.
+7. Optional: press **Size Options…** to reserve room for the library. You can skip this and go to the next step.
+   - A reserve sets space aside for the new volume, so Time Machine cannot fill it as your backups grow. The cost is
+     that the backup volume has that much less room, so Time Machine keeps less history and removes its oldest backups
+     sooner. On a drive with far more free space than the library needs, a reserve is not needed.
+   - If you want one, set **Reserve Size** to the **Space needed** figure that Lastbook's setup screen shows for your
+     choice, rounded up. Do not reserve more than that.
+   - Leave **Quota Size** empty. A quota is an upper limit, and a limit could stop a later library update.
+8. Press **Add**.
 
 The new volume appears in Finder's sidebar under Locations within a few seconds.
 
@@ -114,11 +145,14 @@ identifier, such as `disk5`:
 diskutil list external
 ```
 
-Add the volume, replacing `disk5` with your identifier and `800g` with the room you want to reserve:
+Add the volume, replacing `disk5` with your identifier:
 
 ```bash
-diskutil apfs addVolume disk5 APFS Lastbook -reserve 800g
+diskutil apfs addVolume disk5 APFS Lastbook
 ```
+
+To reserve room as well, add `-reserve` and the **Space needed** figure from setup to the end of that line, for example
+`-reserve 160g`.
 
 ## Step 3. Point setup at the new volume
 
@@ -175,11 +209,18 @@ Some drives and SD card adapters also have a small lock switch on the case. Chec
 
 If the drive or folder was made by another user account or another Mac, your account may only be allowed to read it.
 
-1. Select the drive in Finder and press **Command-I**.
-2. Open **Sharing & Permissions** at the bottom. Next to your name it should say **Read & Write**.
-3. If it does not, press the lock, and either change it to **Read & Write** or tick **Ignore ownership on this volume**.
+The simplest fix is to save in a folder that is yours:
 
-Or choose a new, empty folder of your own on the same drive with **Change…**
+1. In Finder, make a new folder on the drive, in a place where Finder lets you make one.
+2. In setup, press **Change…** and choose that folder.
+
+If you cannot make a folder anywhere on the drive, give your own account access to one folder, not to everyone:
+
+1. Select the folder you want to use in Finder and press **Command-I**.
+2. Open **Sharing & Permissions** at the bottom and press the lock.
+3. If your account name is in the list, set it to **Read & Write**. If it is not, press **+**, add your account, and
+   set it to **Read & Write**.
+4. In setup, press **Change…** and choose that folder.
 
 ## Windows and Linux
 
@@ -219,8 +260,9 @@ and the unpacked library are both on the disk until the install finishes. **Free
 Allow the **Space needed** figure. Once the install is done, the library takes about the "on disk" size shown next to
 each choice, and the rest is free again.
 
-On a shared Time Machine drive, the **Reserve Size** from [Step 2](#step-2-time-machine-disk-add-a-second-volume) is what
-keeps that room for the library.
+On a shared Time Machine drive, the library and the backups draw on the same free space. The optional **Reserve Size**
+from [Step 2](#step-2-time-machine-disk-add-a-second-volume) keeps the library's share for it, at the cost of room for
+backups.
 
 ## Still stuck?
 

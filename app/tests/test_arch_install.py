@@ -18,10 +18,21 @@ spec.loader.exec_module(builder)
 
 
 class ArchInstall(unittest.TestCase):
-    def exercise_installer(self, tamper=False, signed=False, fingerprint='A' * 40, valid_key='A' * 40):
+    def exercise_installer(self, tamper=False, signed=False, fingerprint='A' * 40, valid_key='A' * 40,
+                           extra=(), release='test', repos=None):
         name = 'lastbook-1.1.9-1-x86_64.pkg.tar.zst'
+        repos = [] if repos is None else repos
 
         def external(args):
+            if '--repo' in args:
+                repos.append(args[args.index('--repo') + 1])
+            if args[:2] == ['gh', 'api']:
+                repos.append(args[2].split('/releases')[0].removeprefix('repos/'))
+                return json.dumps([
+                    {'tag_name': 'v9-mac', 'draft': False, 'assets': [{'name': 'Lastbook-9-mac.dmg'}]},
+                    {'tag_name': 'arch-draft', 'draft': True, 'assets': [{'name': name}]},
+                    {'tag_name': 'arch-1.1.9-1', 'draft': False, 'assets': [{'name': name}]},
+                ])
             if args[:3] == ['gh', 'release', 'view']:
                 assets = [name, name + '.sha256'] + ([name + '.sig'] if signed else [])
                 return json.dumps({'isDraft': False, 'assets': [{'name': n} for n in assets]})
@@ -36,7 +47,7 @@ class ArchInstall(unittest.TestCase):
                 return '[GNUPG:] VALIDSIG ' + valid_key + ' 2026-01-01 0 0 4 0 1 10 00 ' + valid_key
             self.fail(f'unexpected command: {args}')
 
-        argv = ['--release', 'test', '--check-only']
+        argv = (['--release', release] if release else []) + ['--check-only', *extra]
         if signed:
             argv += ['--signing-key', fingerprint]
         with patch.object(installer.os, 'geteuid', return_value=1000), \
@@ -52,6 +63,26 @@ class ArchInstall(unittest.TestCase):
 
     def test_check_only_validates_without_elevation(self):
         self.assertEqual(self.exercise_installer(), 0)
+
+    def test_upstream_is_the_default_release_source(self):
+        repos = []
+        self.assertEqual(self.exercise_installer(release=None, repos=repos), 0)
+        self.assertEqual(set(repos), {installer.UPSTREAM})
+
+    def test_newest_release_skips_drafts_and_releases_without_an_arch_package(self):
+        repos = []
+        with patch('builtins.print') as shown:
+            self.exercise_installer(release=None, repos=repos)
+        self.assertIn('arch-1.1.9-1', ' '.join(str(c.args[0]) for c in shown.call_args_list))
+
+    def test_community_build_needs_explicit_repository_and_is_labelled(self):
+        repos = []
+        with patch('builtins.print') as shown:
+            self.exercise_installer(extra=['--community-repo', 'tester/lastbook-arch'], repos=repos)
+        self.assertEqual(set(repos), {'tester/lastbook-arch'})
+        self.assertIn('COMMUNITY TEST BUILD', str(shown.call_args_list[0]))
+        with self.assertRaisesRegex(ValueError, 'OWNER/NAME'):
+            self.exercise_installer(extra=['--community-repo', 'https://example.com/x'])
 
     def test_tampered_download_stops_installer(self):
         with self.assertRaisesRegex(ValueError, 'mismatch'):

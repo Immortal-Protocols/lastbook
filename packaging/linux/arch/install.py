@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Download, verify and install the native test package; never run this as root."""
+"""Download, verify and install the native Arch package; never run this as root.
+
+Packages come from the upstream repository's GitHub releases. A community test
+build in another repository is installed only when --community-repo names it,
+and it is labelled as such before anything is downloaded.
+"""
 import argparse
 import hashlib
 import json
@@ -12,7 +17,8 @@ import subprocess
 import sys
 import tempfile
 
-REPO = 'jonnyace/lastbook-omarchy'
+UPSTREAM = 'Immortal-Protocols/lastbook'
+REPO_NAME = re.compile(r'[A-Za-z0-9-]+/[A-Za-z0-9._-]+')
 PACKAGE = re.compile(r'lastbook-[0-9][A-Za-z0-9.+_-]*-x86_64\.pkg\.tar\.zst')
 
 
@@ -51,7 +57,9 @@ def check_package(package):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--release', help='specific release tag; default: newest non-draft, including prereleases')
+    parser.add_argument('--release', help='specific release tag; default: newest non-draft release holding an Arch package')
+    parser.add_argument('--community-repo', metavar='OWNER/NAME',
+                        help=f'install a community test build from this repository instead of {UPSTREAM}')
     parser.add_argument('--check-only', action='store_true', help='download and validate without installing')
     parser.add_argument('--signing-key', help='trusted publisher full GPG fingerprint (required for signed releases)')
     args = parser.parse_args(argv)
@@ -63,13 +71,21 @@ def main(argv=None):
     for command in ('gh', 'bsdtar', 'pacman', *([] if args.check_only else ['sudo'])):
         if not shutil.which(command):
             raise ValueError(f'missing {command}; install prerequisites first (see the Arch README)')
+    repo = UPSTREAM
+    if args.community_repo:
+        if not REPO_NAME.fullmatch(args.community_repo):
+            raise ValueError('--community-repo must be OWNER/NAME')
+        repo = args.community_repo
+        print(f'COMMUNITY TEST BUILD from {repo}. This is not an upstream Lastbook release.', flush=True)
     tag = args.release
     if tag is None:
-        releases = json.loads(run(['gh', 'api', f'repos/{REPO}/releases?per_page=100']))
-        tag = next((r['tag_name'] for r in releases if not r['draft']), None)
+        # The upstream repository publishes other releases too; take the newest with an Arch package.
+        releases = json.loads(run(['gh', 'api', f'repos/{repo}/releases?per_page=100']))
+        tag = next((r['tag_name'] for r in releases if not r['draft']
+                    and any(PACKAGE.fullmatch(a['name']) for a in r.get('assets', []))), None)
         if not tag:
-            raise ValueError('no published test release found')
-    info = json.loads(run(['gh', 'release', 'view', tag, '--repo', REPO, '--json', 'assets,isDraft']))
+            raise ValueError(f'no published Arch release found in {repo}')
+    info = json.loads(run(['gh', 'release', 'view', tag, '--repo', repo, '--json', 'assets,isDraft']))
     if info['isDraft']:
         raise ValueError('draft releases must be reviewed and published before installation')
     assets = {asset['name'] for asset in info['assets']}
@@ -77,9 +93,9 @@ def main(argv=None):
     if len(packages) != 1 or packages[0] + '.sha256' not in assets:
         raise ValueError('release must contain exactly one native package and its checksum')
     name = packages[0]
-    print(f'Downloading {tag}: {name}', flush=True)
+    print(f'Downloading {repo} {tag}: {name}', flush=True)
     with tempfile.TemporaryDirectory(prefix='lastbook-install-') as scratch:
-        run(['gh', 'release', 'download', tag, '--repo', REPO, '--dir', scratch,
+        run(['gh', 'release', 'download', tag, '--repo', repo, '--dir', scratch,
              '--pattern', name, '--pattern', name + '.sha256'])
         package = Path(scratch) / name
         verify(package, Path(scratch) / (name + '.sha256'))
@@ -91,7 +107,7 @@ def main(argv=None):
                 raise ValueError('signed release requires --signing-key with the independently trusted publisher fingerprint')
             if not shutil.which('gpg'):
                 raise ValueError('signed release needs gpg and the trusted maintainer key')
-            run(['gh', 'release', 'download', tag, '--repo', REPO, '--dir', scratch, '--pattern', name + '.sig'])
+            run(['gh', 'release', 'download', tag, '--repo', repo, '--dir', scratch, '--pattern', name + '.sig'])
             status = run(['gpg', '--batch', '--status-fd', '1', '--verify', str(package) + '.sig', str(package)])
             valid = [line.split() for line in status.splitlines() if line.startswith('[GNUPG:] VALIDSIG ')]
             fingerprint = args.signing_key.upper()

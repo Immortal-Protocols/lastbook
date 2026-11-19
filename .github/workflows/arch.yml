@@ -126,6 +126,7 @@ jobs:
           SIGNING_FINGERPRINT: ${{ vars.ARCH_SIGNING_FINGERPRINT }}
           SIGNING_PASSPHRASE: ${{ secrets.ARCH_SIGNING_PASSPHRASE }}
           GH_TOKEN: ${{ github.token }}
+          # The installer reads this same repository by default (packaging/linux/arch/install.py UPSTREAM).
           RELEASE_REPO: ${{ github.repository }}
           PACKAGE_VERSION: ${{ inputs.version }}
           SOURCE_COMMIT: ${{ github.sha }}
@@ -135,9 +136,9 @@ jobs:
             printf '%s' "$SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
               --passphrase-fd 0 --local-user "$SIGNING_FINGERPRINT" --detach-sign "$package"
           done
-          gh release create "omarchy-${PACKAGE_VERSION}-${GITHUB_RUN_NUMBER}" \
+          gh release create "arch-${PACKAGE_VERSION}-${GITHUB_RUN_NUMBER}" \
             --repo "$RELEASE_REPO" --target "$SOURCE_COMMIT" --draft --prerelease \
-            --title "Omarchy native ${PACKAGE_VERSION} test build ${GITHUB_RUN_NUMBER}" \
+            --title "Arch native ${PACKAGE_VERSION} test build ${GITHUB_RUN_NUMBER}" \
             --notes 'Experimental native Arch package. Local AI is not included. Review the manifest, Python ABI, package signature and desktop tests before publishing.' \
             release-assets/*
       - name: Remove temporary signing keyring

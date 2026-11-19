@@ -5,32 +5,47 @@ local checkout. It is not an AUR submission or a conversion of the Ubuntu
 package. Installation and desktop testing on Arch / Omarchy are still required
 before distributing a build.
 
-## Install or update a test release
+## Install or update a release
 
-From this checkout, as your ordinary desktop user:
+From this checkout, as your ordinary desktop user, with the publisher's signing
+key already imported into your keyring from a channel you trust:
 
 ```bash
-/usr/bin/python3 -I -B packaging/linux/arch/install.py
+/usr/bin/python3 -I -B packaging/linux/arch/install.py --signing-key FULL_FINGERPRINT
 ```
 
-This selects the newest non-draft release, including prereleases, using `gh` so
-private-repository access works. It requires `github-cli`, `libarchive`, `pacman`,
-and `sudo`; on Omarchy install missing prerequisites with
-`omarchy pkg add github-cli libarchive`. If needed, run `gh auth login` first.
-It downloads into a temporary directory, checks the exact package checksum,
-package identity and Python ABI, then invokes `sudo pacman -U` with the normal
-confirmation prompt. Pacman resolves the declared media/desktop dependencies.
-It never runs downloaded shell scripts or changes desktop configuration.
+By default this reads releases from `Immortal-Protocols/lastbook`, the same
+repository the workflow below publishes to, and selects the newest non-draft
+release that carries an Arch package. It uses `gh`, so run `gh auth login` first
+if needed, and requires `github-cli`, `libarchive`, `gnupg`, `pacman` and `sudo`
+(on Omarchy: `omarchy pkg add github-cli libarchive`).
 
-Use `--release omarchy-test-3` to select a known build, or `--check-only` to
-exercise download and verification without elevation or installation. Existing
-unsigned test releases are accepted with a notice: their checksum detects
-corruption but is not independent proof of publisher identity. Signed releases
-require `gpg`, an independently obtained maintainer public key already imported
-into your user keyring, and `--signing-key FULL_FINGERPRINT`. The installer
-checks the valid signature against that fingerprint; it never imports a key
-from the release. Configure pacman's own trusted keyring separately when
-requiring signature verification inside pacman.
+It downloads into a temporary directory and checks, in this order, before any
+elevation: the package checksum; the detached signature, which must exist and
+be a valid, unexpired signature by the fingerprint you gave (or one of its
+subkeys); the package name and architecture; and the Python ABI bounds against
+your system Python. Only then does it run `sudo pacman -U` with the normal
+confirmation prompt, and pacman resolves the declared desktop and media
+dependencies. It never imports a key shipped with a release, runs downloaded
+scripts or changes desktop configuration. Use `--release TAG` for a known build
+and `--check-only` to verify without installing. Configure pacman's own keyring
+separately if you also want pacman to check package signatures.
+
+### Community test builds
+
+Builds published anywhere else are never picked up implicitly. Name the
+repository, and the installer labels the result as a community test build
+before downloading:
+
+```bash
+/usr/bin/python3 -I -B packaging/linux/arch/install.py \
+  --community-repo OWNER/NAME --signing-key FULL_FINGERPRINT
+```
+
+If that community build has no signature, `--allow-unsigned` replaces
+`--signing-key`. Then only the checksum published in the same release is
+checked, which detects corruption but says nothing about who built the package.
+`--allow-unsigned` is refused for upstream releases.
 
 ## Automated builds and draft releases
 
@@ -99,8 +114,14 @@ From the checkout root:
 
 ```bash
 TMPDIR=/tmp /usr/bin/python3 -I -B packaging/linux/arch/build_arch.py \
-  --manifest derived/arch-inputs/manifest-v1.json --version 1.1.9
+  --manifest derived/arch-inputs/manifest-v1.json
 ```
+
+The version defaults to the release in `packaging/linux/build_app_linux.sh`, so the
+Arch package and the `.deb` from one checkout match; `--version` overrides it.
+`TMPDIR` matters: some editors, agents and IDE terminals point it inside your home
+directory, which the build refuses (see below). To include the local AI runner,
+build it first with `packaging/llm/build_llm_linux.sh` and add `--llm DIR`.
 
 The command prints its unique scratch directory and, on success, the package
 path and SHA-256. It keeps the selected sources, manifest, `wheels.lock`, generated
@@ -125,8 +146,8 @@ private target directory, and GCC builds `lastbooksrc` from the existing C sourc
 The shared Linux stager installs the frozen launcher, program files, wheels,
 desktop entry and icons. The shared scanner checks both the staged tree and the
 payload extracted from the final native archive. Neither phase installs anything
-into system Python. Debian keeps its Ubuntu 24.04 / Python 3.12 guards and optional
-local runner behavior.
+into system Python. Debian keeps its Ubuntu 24.04 / 26.04 release and Python guards and
+optional local runner behavior.
 
 The package depends on the Python minor ABI used to resolve its wheels (for
 example, `python>=3.14` and `python<3.15`). Rebuild from the checkout after an Arch
@@ -140,10 +161,11 @@ After reviewing the archive, install it with `pacman -U` and launch `lastbook`
 from the menu or terminal in a desktop session. It uses the existing GTK3 /
 WebKitGTK 4.1 shell and `lastbook://` bridge, including the packaged environment
 scrub and data-folder code isolation. No HTTP server or new GUI framework is
-added. This first Arch workflow omits the local AI runner; Chat search and reading
-remain available, but local AI answers do not. No remote AI is enabled. The
-existing update UI may still mention Ubuntu and offer its `.deb`; Arch updates
-must be rebuilt with this workflow.
+added. Packages built by the workflow omit the local AI runner (local builds
+include it with `--llm`); without it Chat search and reading remain available,
+setup never offers the model download, and no remote AI is enabled. **Check for
+updates** on an Arch package says to update it the way it was installed and
+makes no network request.
 
 For local packaging regression checks (Pillow, GCC and binutils required;
 `dpkg-deb` additionally exercises the same fixtures as Debian archives):

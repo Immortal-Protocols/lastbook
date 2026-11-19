@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 """Add an ocean polygon to the offline map. The Geofabrik "free" GeoPackage has no coastline, so this reads
-natural=coastline ways from the SoCal .osm.pbf (read only) with pyosmium, joins them into chains, and closes
+natural=coastline ways from a raw .osm.pbf (read only) with pyosmium, joins them into chains, and closes
 the open mainland chain out to sea. Islands are stored as land rings drawn on top of the ocean.
 
-  derived/buildenv/bin/python tools/build_coast.py library-data/geography/openstreetmap/socal-latest.osm.pbf derived/geo/map.sqlite
+  derived/buildenv/bin/python tools/build_coast.py library-data/geography/openstreetmap/socal-latest.osm.pbf derived/geo/map.sqlite [close_lon]
+
+close_lon is a longitude well out to sea from the open ends of the mainland coast: -125 (the Pacific,
+the default) for a west-facing coast like SoCal's; a longitude in the sea for an east-facing coast like
+Brazil's, e.g. 10. It must be a plain ocean point, away from any land in the extract's extent.
 """
 import sqlite3, sys
 import osmium
 
+if len(sys.argv) < 3:
+    sys.exit('usage: build_coast.py <coastline.osm.pbf> <map.sqlite> [close_lon]')
 PBF, DST = sys.argv[1], sys.argv[2]
+W = float(sys.argv[3]) if len(sys.argv) > 3 else -125.0  # a point well out to sea; -125 is the Pacific west of SoCal
 
 
 class Coast(osmium.SimpleHandler):
@@ -82,11 +89,10 @@ print('coast ways', len(h.ways), 'closed rings', len(closed), 'open chains', [le
 db = sqlite3.connect(DST)
 db.execute("DELETE FROM feat_idx WHERE id IN (SELECT id FROM feat WHERE layer IN ('ocean','island'))")
 db.execute("DELETE FROM feat WHERE layer IN ('ocean','island')")
-nid = db.execute('SELECT max(id) FROM feat').fetchone()[0] + 1
-W = -125.0  # well out to sea
+nid = (db.execute('SELECT max(id) FROM feat').fetchone()[0] or 0) + 1
 rings = []
 for p in opened:
-    # land is on the left of coastline direction; close each open chain through the sea to the west.
+    # land is on the left of coastline direction; close each open chain through the sea toward W.
     rings.append(p + [(W, p[-1][1]), (W, p[0][1]), p[0]])
 for ring in rings:
     xs = [x for x, _ in ring]; ys = [y for _, y in ring]

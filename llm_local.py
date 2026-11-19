@@ -2,8 +2,9 @@
 
 Nothing here opens a socket or reaches past this computer. The model is a file the person downloads from the website, outside the
 app. Lastbook finds it inside the selected library or an explicitly configured model folder, checks the published file, asks llama.cpp
-whether it fits this computer's memory, and starts it when someone asks a question. It stops after IDLE_STOP seconds unused,
-when turned off, and when the app quits (the program leaves when its standard input closes).
+whether it fits this computer's memory, and starts it when someone asks a question. It stops after the idle time unused
+(the Assistant settings, else LASTBOOK_AI_IDLE_S, else 15 minutes), when turned off, and when the app quits (the program
+leaves when its standard input closes).
 
 assistant.py calls round() for each model turn, with OpenAI-shaped messages. This file turns them into Gemma 4's own prompt
 format, sends that as segments (template markup, where special tokens count, or plain text, where they never do: a document
@@ -32,6 +33,46 @@ IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds wit
 START_WAIT = 600          # longest a question waits for the model to load
 
 STATE_FILE = paths.DATA / 'derived' / 'llm' / 'state.json'   # where the file was found, its check, the on/off setting
+CONFIG_FILE = paths.DATA / 'derived' / 'llm' / 'config.json'   # shared with assistant.py; the app's Assistant section writes it
+
+
+def _config():
+    """The settings file, read fresh. Missing or unreadable is {}: it must never break the AI."""
+    try:
+        d = json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def _model_dir():
+    """The folder the model file is looked for in first: the Assistant settings, then LASTBOOK_MODEL_DIR, then none."""
+    c = _config().get('model_dir')
+    if isinstance(c, str) and c.strip():
+        return c.strip()
+    e = os.environ.get('LASTBOOK_MODEL_DIR')
+    return e.strip() if isinstance(e, str) and e.strip() else None
+
+
+def _idle_s():
+    """Seconds without a question before the model stops: the Assistant settings, then LASTBOOK_AI_IDLE_S, then 15 minutes."""
+    c = _config().get('idle_s')
+    if isinstance(c, int) and not isinstance(c, bool) and c > 0:
+        return c
+    e = os.environ.get('LASTBOOK_AI_IDLE_S')
+    if isinstance(e, str) and e.strip():
+        try:
+            v = int(e)
+        except ValueError:
+            v = None
+        if v and v > 0:
+            return v
+    return IDLE_STOP
+
+
+def effective_config():
+    """The two AI settings as they stand right now: file value > env var > built-in default."""
+    return {'model_dir': _model_dir(), 'idle_s': _idle_s()}
 
 
 def runner_path():
@@ -45,8 +86,9 @@ def runner_path():
 def places():
     """The selected library and an explicitly configured model folder only."""
     out = [paths.DATA / 'models', paths.DATA]
-    if os.environ.get('LASTBOOK_MODEL_DIR'):
-        out.insert(0, Path(os.environ['LASTBOOK_MODEL_DIR']))
+    d = _model_dir()
+    if d:
+        out.insert(0, Path(d).expanduser())
     seen, res = set(), []
     for p in out:
         k = str(p)
@@ -351,13 +393,26 @@ class Local:
             with self.lock:
                 self.state, self.message = 'off', ''
 
+    def config_values(self):
+        """The two AI settings as they stand right now, for the shared Assistant section."""
+        return effective_config()
+
+    def reload_config(self):
+        """The settings file changed: the new idle time applies from the next watch tick, and if the model is not present
+        the (possibly new) folder is looked for again."""
+        with self.lock:
+            absent = self.state in ('absent', 'wrong')
+        if absent and self.enabled():
+            threading.Thread(target=self.discover, daemon=True, name='local-ai-find').start()
+
     def _idle_watch(self):
         while True:
-            time.sleep(min(30, IDLE_STOP / 4))
+            idle = _idle_s()
+            time.sleep(min(30, idle / 4))
             with self.lock:
-                idle = self.state == 'ready' and not self.gen_lock.locked() and time.time() - self.last_used > IDLE_STOP
-            if idle:
-                self.stop(f'not used for {IDLE_STOP} s')
+                due = self.state == 'ready' and not self.gen_lock.locked() and time.time() - self.last_used > idle
+            if due:
+                self.stop(f'not used for {idle} s')
 
     # -- one model turn ---------------------------------------------------------------------------------------------------
     def generate(self, segments, max_tokens, cancelled, on_text):

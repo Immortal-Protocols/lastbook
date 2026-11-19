@@ -1,31 +1,21 @@
 """Source-grounded assistant: hybrid retrieval + local DeepSeek with bounded, read-only library tools.
 
-Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model is only ever called server-side at
-MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
-gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
+Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model is only ever called server-side, at a model
+server on this computer (engine/loopback.py); clients never see its address. Tools can read the public survival library
+(catalog ids, pages, transcripts, map gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
 import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
+from engine.loopback import LOOPBACK, loopback_base
 from engine.paths import ro_uri
 
 import os
-LOOPBACK = re.compile(r'http://(127\.0\.0\.1|\[::1\]):\d+(/[^\s]*)?')
-
-
-def loopback_base(value):
-    """The model server's address, or ValueError for anything off this computer. 'localhost' becomes 127.0.0.1: a hosts file could point the name anywhere."""
-    base = re.sub(r'^http://localhost:', 'http://127.0.0.1:', value.rstrip('/'))
-    if not re.fullmatch(r'http://(127\.0\.0\.1|\[::1\]):\d+', base):
-        raise ValueError('not a loopback http address')
-    return base
 
 
 try:
     BASE = loopback_base(os.environ.get('SURVIVAL_MODEL_BASE', 'http://127.0.0.1:19443'))
 except ValueError:
     raise SystemExit('SURVIVAL_MODEL_BASE must be a loopback http address') from None
-MODEL_URL = BASE + '/v1/chat/completions'
-MODELS_URL = BASE + '/v1/models'
 MODEL = os.environ.get('SURVIVAL_MODEL', 'deepseek-v4.1-flash')
 # Some servers' thinking models (Ollama's gemma4) spend a whole round's tokens thinking at 'low'; 'none' answers straight away.
 REASONING_EFFORT = os.environ.get('SURVIVAL_REASONING_EFFORT', 'low')
@@ -33,7 +23,8 @@ MAX_ROUNDS = 2  # tool rounds; then the model must answer with what it has
 S = None        # server module, set by init()
 INDEX = None    # retrieval.Index
 # The optional local AI (llm_local.py): on in the desktop app, off in the server version unless LASTBOOK_LOCAL_AI=1.
-# When it is installed and fits, it answers; otherwise a model server on this computer at BASE, if one runs.
+# Who answers: a model server the person chose in setup; else the local AI when it is installed and fits; else a model
+# server on this computer at BASE, if one runs. An explicitly set SURVIVAL_MODEL_BASE replaces the setup choice.
 LOCAL = None
 
 
@@ -46,8 +37,20 @@ def init(server_module, index):
         LOCAL.start_background()
 
 
+def chosen_server():
+    """The model server the person chose in setup, as (base, model), or None. An explicitly set SURVIVAL_MODEL_BASE (the
+    library-server version) wins over it. setup.json is read and loopback-checked again on every call: a change made in
+    setup applies to the next question without a restart, and the file is not trusted to hold a loopback address."""
+    if os.environ.get('SURVIVAL_MODEL_BASE'):
+        return None
+    from engine.setup import api as setup_api
+    c = setup_api.chosen_model_server()
+    return (c['base'], c['model']) if c else None
+
+
 def local_on():
-    return LOCAL is not None and LOCAL.available()
+    """The local AI answers: it is ready to run and no model server was chosen in setup."""
+    return LOCAL is not None and LOCAL.available() and not chosen_server()
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -67,7 +70,12 @@ def model_open(req, timeout):
 
 
 # ------------------------------------------------------------------ status --
-_status = {'at': 0, 'online': False, 'error': None}
+_status = {'at': 0, 'key': None, 'online': False, 'error': None}
+
+
+def _listed(model, ids):
+    """The server offers model. Ollama lists an untagged name with its default tag: gemma4 as gemma4:latest."""
+    return model in ids or (':' not in model and model + ':latest' in ids)
 
 
 def model_status():
@@ -75,16 +83,20 @@ def model_status():
     if local_on():
         return {'model': local['name'], 'online': True, 'error': None, 'local': local, 'vision': False,
                 'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
-    if time.time() - _status['at'] > 15:
+    chosen = chosen_server()
+    base, model = chosen or (BASE, MODEL)
+    if time.time() - _status['at'] > 15 or _status['key'] != (base, model):   # a new choice in setup is checked at once
         try:
-            with model_open(MODELS_URL, timeout=2.5) as r:
+            with model_open(base + '/v1/models', timeout=2.5) as r:
                 ids = [m['id'] for m in json.load(r).get('data', [])]
-            _status.update(online=MODEL in ids, error=None if MODEL in ids else f'{MODEL} not listed')
+            ok = _listed(model, ids)
+            _status.update(online=ok, error=None if ok else f'{model} not listed')
         except Exception as e:
             _status.update(online=False, error=type(e).__name__)
-        _status['at'] = time.time()
-    return {'model': MODEL, 'online': _status['online'], 'error': _status['error'], 'local': local, 'vision': True,
-            'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
+        _status.update(at=time.time(), key=(base, model))
+    # A chosen model reads text only, like the local AI: not every model a person runs can see pictures.
+    return {'model': model, 'online': _status['online'], 'error': _status['error'], 'local': local, 'vision': not chosen,
+            'chosen': bool(chosen), 'index': dict(INDEX.status) if INDEX else {'state': 'off'}}
 
 
 # --------------------------------------------------------------- retrieval --
@@ -404,10 +416,11 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
         if i > 0 and m['role'] == 'system':
             m = {**m, 'role': 'user', 'content': '[Note from the Lastbook app, not from the person]\n' + m['content']}
         wire.append(m)
-    body = {'model': MODEL, 'messages': wire, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
+    base, model = (chosen_server() or (BASE, MODEL))
+    body = {'model': model, 'messages': wire, 'stream': True, 'temperature': 0.2, 'max_tokens': ROUND_TOKENS, 'reasoning_effort': REASONING_EFFORT}
     if tools:
         body['tools'] = tools
-    req = urllib.request.Request(MODEL_URL, json.dumps(body).encode(), {'Content-Type': 'application/json'})
+    req = urllib.request.Request(base + '/v1/chat/completions', json.dumps(body).encode(), {'Content-Type': 'application/json'})
     try:
         resp = model_open(req, timeout=180)
     except Exception as e:
@@ -530,9 +543,11 @@ def chat(messages, about, emit, cancelled):
             state[0] = s
             emit({'type': 'state', 'state': s})
     local = local_on()
-    tools = [t for t in TOOLS if t['function']['name'] != 'view_page'] if local else TOOLS   # the local model reads text only
-    if local:
+    text_only = local or bool(chosen_server())   # the local AI, and any model chosen in setup, read text only
+    tools = [t for t in TOOLS if t['function']['name'] != 'view_page'] if text_only else TOOLS
+    if text_only:
         msgs[0] = {'role': 'system', 'content': SYSTEM_TEXT_ONLY}
+    if local:
         set_state('starting')
         shown = [None]
 

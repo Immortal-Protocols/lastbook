@@ -103,6 +103,7 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/pick` | `{path}` from the system's folder picker, or `{path: null}`: a place to install (`start {folder}`) or something to `use` (a LastbookData, a folder holding one, or a folder holding a pack zip) |
 | `POST /api/setup/delete-old` `{path}` | deletes a `LastbookData.old-*` setup moved aside itself (listed in `current.old`): `{ok, deleting}` |
 | `POST /api/setup/remove-ai` | manage mode: deletes `LastbookData/models/<file>` (the library stays): `{ok, freed_bytes}` |
+| `POST /api/setup/model-server` `{base: "http://127.0.0.1:11434", model: "gemma4"}` | remembers the person's chosen OpenAI-compatible model server on this computer (loopback only; `model` as the server lists it, required): `{ok, model_server}`, or `{error, code: "invalid"}`. `{base: null}` forgets it. `GET state` also carries `model_server: {base, model}` |
 | `POST /api/setup/start` `{repair: true, ai}` | manage mode: re-checks every file against the library's `pack-manifest.tsv` and the model's SHA-256 (items `verifying`); fetches again only what is wrong (the pack: downloaded and switched to like an upgrade; the model: replaced in place). All well: `done`, nothing downloaded |
 
 Added by setup-backend on 2026-11-12: `pick` (answers `{path, free_bytes, disk}` or `{path: null, cancelled: true}`), `delete-old`, `remove-ai` and repair above; `hardware.disks[].name` (Macintosh HD, "Data (D:)"); `current.old` (old libraries kept after an upgrade);

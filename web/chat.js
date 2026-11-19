@@ -126,9 +126,12 @@ const Chat = (() => {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
-    if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
+    if (l && !s.chosen && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
+    } else if (s.chosen) {   // a model server chosen in setup answers instead of the local AI
+      el.innerHTML = s.online ? `<span class="dotok"></span>Your model server is ready · ${esc(s.model)}${still}`
+        : `<span class="dotoff"></span><span>${/not listed$/.test(s.error || '') ? `Your model server does not list ${esc(s.model)}` : 'Your model server is not answering'}<span class="long"> — search and browsing still work</span></span>`;
     } else {
       el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
         : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
@@ -141,7 +144,7 @@ const Chat = (() => {
   // How to add the local AI, on a new chat when it is missing, wrong or off. The file comes from the website, outside the app.
   function setupCard(s) {
     const box = $('#aiSetup'), l = s.local; if (!box) return;
-    const show = !!l && !s.online && /absent|wrong|off|error/.test(l.state) && !(cur && cur.messages.length);
+    const show = !s.chosen && !!l && !s.online && /absent|wrong|off|error/.test(l.state) && !(cur && cur.messages.length);
     box.hidden = !show;
     if (!show) return;
     box.innerHTML = l.state === 'off'

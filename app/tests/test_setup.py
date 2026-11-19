@@ -1574,6 +1574,103 @@ class Switching(Base):
         self.assertEqual(s.start('small', True)['code'], 'nothing')
 
 
+class ModelServer(Base):
+    """The person's chosen model server (setup's Chat model option): loopback only, kept in setup.json, and it answers
+    instead of the local AI."""
+
+    def setUp(self):
+        super().setUp()
+        env = mock.patch.dict(os.environ)     # test_bridge and test_what_ships set SURVIVAL_MODEL_BASE, which wins over a choice
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop('SURVIVAL_MODEL_BASE', None)
+
+    def chosen(self, s):
+        """What the assistant would use, with s as the app's setup."""
+        import assistant
+        with mock.patch.object(api, 'SETUP', s):
+            return assistant.chosen_server()
+
+    def test_save_and_read_back(self):
+        r = self.setup().model_server('http://localhost:1234', 'gemma4')
+        self.assertEqual(r, {'ok': True, 'model_server': {'base': 'http://127.0.0.1:1234', 'model': 'gemma4'}})
+        self.assertEqual(self.setup().state()['model_server'], {'base': 'http://127.0.0.1:1234', 'model': 'gemma4'})   # after a restart
+
+    def test_scheme_less_address(self):
+        r = self.setup().model_server(' 127.0.0.1:11434 ', ' gemma4 ')
+        self.assertEqual(r['model_server'], {'base': 'http://127.0.0.1:11434', 'model': 'gemma4'})
+
+    def test_a_model_name_is_needed(self):
+        s = self.setup()
+        for model in ('', '  ', None):
+            self.assertEqual(s.model_server('127.0.0.1:11434', model)['code'], 'invalid', model)
+        self.assertEqual(s.state()['model_server'], {})
+
+    def test_off_computer_address_is_refused(self):
+        s = self.setup()
+        for bad in ('http://192.168.1.5:11434', 'http://example.com:11434', 'https://127.0.0.1:11434', '', 'not an address', 11434):
+            self.assertEqual(s.model_server(bad, 'm')['code'], 'invalid', bad)
+        self.assertEqual(s.state()['model_server'], {})
+
+    def test_forget(self):
+        s = self.setup()
+        self.assertTrue(s.model_server('http://127.0.0.1:1234', 'm')['ok'])
+        self.assertEqual(s.model_server(None, None), {'ok': True, 'model_server': {}})
+        self.assertNotIn('model_server', s._settings())
+        self.assertIsNone(self.chosen(s))
+
+    def test_a_tampered_settings_file_is_no_choice(self):
+        self.settings.mkdir(parents=True)
+        (self.settings / 'setup.json').write_text('{"model_server": {"base": "http://10.0.0.5:1", "model": "m"}}', encoding='utf-8')
+        s = self.setup()
+        self.assertEqual(s.state()['model_server'], {})
+        self.assertIsNone(self.chosen(s))
+
+    def test_the_choice_answers_instead_of_the_local_ai(self):
+        import assistant
+        s = self.setup()
+        local = mock.Mock()
+        local.available.return_value = True
+        with mock.patch.object(assistant, 'LOCAL', local), mock.patch.object(api, 'SETUP', s):
+            self.assertTrue(assistant.local_on())
+            s.model_server('127.0.0.1:1234', 'gemma4')
+            self.assertEqual(assistant.chosen_server(), ('http://127.0.0.1:1234', 'gemma4'))
+            self.assertFalse(assistant.local_on())
+            os.environ['SURVIVAL_MODEL_BASE'] = 'http://127.0.0.1:9'    # the library-server version's own setting wins
+            self.assertIsNone(assistant.chosen_server())
+            self.assertTrue(assistant.local_on())
+
+    def test_status_checks_the_chosen_model_at_once(self):
+        import assistant, http.server
+
+        class Models(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({'data': [{'id': 'gemma4:latest'}, {'id': 'qwen3:8b'}]}).encode()   # as Ollama lists them
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+        srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Models)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        base = f'http://127.0.0.1:{srv.server_port}'
+        status = getattr(sys.modules.get('app.tests.test_bridge'), 'REAL_STATUS', None) or assistant.model_status   # test_bridge stubs it process-wide
+        s = self.setup()
+        with mock.patch.object(api, 'SETUP', s), mock.patch.object(assistant, 'LOCAL', None), mock.patch.dict(assistant._status, {'at': 0, 'key': None}):
+            s.model_server(base, 'gemma4')
+            st = status()
+            self.assertEqual((st['online'], st['chosen'], st['vision'], st['model']), (True, True, False, 'gemma4'))
+            self.assertNotIn(base, json.dumps(st))       # clients never see the model server's address
+            s.model_server(base, 'qwen3')                 # checked at once, not after the 15 s the status is kept
+            st = status()
+            self.assertEqual((st['online'], st['error']), (False, 'qwen3 not listed'))
+
+
 class PackCompare(unittest.TestCase):
     """Comparing an installed pack-manifest.tsv with a new one (issue #144): read-only, from the two lists alone."""
     HEADER = 'path\tbytes\tsha256\thow\tchanges\n'

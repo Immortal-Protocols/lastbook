@@ -750,12 +750,13 @@ class Both:
 
 class AssistantStaysHere(unittest.TestCase):
     def test_only_loopback_addresses(self):
+        from engine.loopback import loopback_base
         for good, out in (('http://127.0.0.1:19443', 'http://127.0.0.1:19443'), ('http://127.0.0.1:1/', 'http://127.0.0.1:1'), ('http://[::1]:80', 'http://[::1]:80'), ('http://localhost:9', 'http://127.0.0.1:9')):
-            self.assertEqual(assistant.loopback_base(good), out)
+            self.assertEqual(loopback_base(good), out)
         for bad in ('https://127.0.0.1:1', 'http://127.0.0.1', 'http://127.0.0.1:1/v1', 'http://10.0.0.5:1', 'http://example.org:80', 'http://127.0.0.1.example.org:1', 'http://127.0.0.1:1@example.org:1',
                     'http://localhost.example.org:1', 'http://0.0.0.0:1', 'http://127.0.0.1:1\n', 'ftp://127.0.0.1:1', ''):
             with self.assertRaises(ValueError, msg=bad):
-                assistant.loopback_base(bad)
+                loopback_base(bad)
 
     def test_no_request_leaves_this_computer(self):
         import urllib.error, urllib.request
@@ -769,7 +770,7 @@ class AssistantStaysHere(unittest.TestCase):
         self.assertIn('_NoRedirect', kinds)
         self.assertNotIn('HTTPRedirectHandler', kinds)
         self.assertIsNone(assistant._NoRedirect().redirect_request(None, None, 302, 'Found', {}, 'https://example.org/'))
-        self.assertEqual(assistant.MODEL_URL, 'http://127.0.0.1:9/v1/chat/completions')
+        self.assertEqual(assistant.BASE, 'http://127.0.0.1:9')
 
 
 class AssistantHTTPMessages(unittest.TestCase):

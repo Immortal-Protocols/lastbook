@@ -20,6 +20,8 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
+from engine import loopback
+
 from . import download, hardware, install
 from .manifest import Manifest
 
@@ -418,11 +420,31 @@ class Setup:
             why += ' ' + hw['ai']['why']
         return {'pack': choice['id'], 'ai': ai, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why}
 
+    def model_server(self, base, model):
+        """Remember the person's chosen model server, an OpenAI-compatible one on this computer, or forget it (base None)."""
+        clean = {}
+        if base is not None:
+            if not (isinstance(model, str) and model.strip()):
+                return {'error': 'Enter the model name your server lists, such as gemma4.', 'code': 'invalid'}
+            clean = valid_model_server({'base': base, 'model': model})
+            if not clean:
+                return {'error': 'The address must be http://127.0.0.1:PORT (a model server on this computer, such as Ollama or LM Studio).',
+                        'code': 'invalid'}
+        with self.lock:      # start() and repair write setup.json under the lock as well
+            s = self._settings()
+            if clean:
+                s['model_server'] = clean
+            else:
+                s.pop('model_server', None)
+            self._save_settings(s)
+        return {'ok': True, 'model_server': clean}
+
     def state(self):
         self.manifest.fetch_once()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
-                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
+                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(),
+                'model_server': model_server_config(self)}
 
     def public_job(self):
         with self.lock:
@@ -1275,17 +1297,20 @@ def configure(**kw):
     return SETUP
 
 
+def default_settings_dir():
+    """This computer's Lastbook settings folder: the first of app/main.py's app_folders()."""
+    if sys.platform == 'win32':
+        return Path(os.environ.get('APPDATA') or Path.home() / 'AppData' / 'Roaming') / 'Lastbook'
+    if sys.platform.startswith('linux'):
+        return Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'Lastbook'
+    return Path.home() / 'Library' / 'Application Support' / 'Lastbook'
+
+
 def _default():
     global SETUP
     if SETUP is None:
         from engine import paths
-        if sys.platform == 'win32':
-            settings = Path(os.environ.get('APPDATA') or Path.home() / 'AppData' / 'Roaming') / 'Lastbook'
-        elif sys.platform.startswith('linux'):
-            settings = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'Lastbook'
-        else:
-            settings = Path.home() / 'Library' / 'Application Support' / 'Lastbook'
-        SETUP = Setup('manage', settings, paths.DATA, current=paths.DATA)
+        SETUP = Setup('manage', default_settings_dir(), paths.DATA, current=paths.DATA)
     return SETUP
 
 
@@ -1302,7 +1327,37 @@ ROUTES = {
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),
+    ('POST', 'model-server'): lambda s, b: s.model_server(b.get('base', ''), b.get('model')),
 }
+
+
+def model_server_config(s):
+    """The chosen model server in s's settings, loopback-checked: {base, model}, or {}."""
+    return valid_model_server(s._settings().get('model_server'))
+
+
+def chosen_model_server():
+    """For the assistant: the chosen model server, loopback-checked, or {}. setup.json is read directly, so answering a
+    question never builds a Setup."""
+    folder = SETUP.settings_dir if SETUP else default_settings_dir()
+    try:
+        c = json.loads((Path(folder) / 'setup.json').read_text(encoding='utf-8')).get('model_server')
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return valid_model_server(c)
+
+
+def valid_model_server(c):
+    """{base, model} when c names a model and a loopback OpenAI-compatible server, else {}. '127.0.0.1:11434' works too."""
+    if not isinstance(c, dict) or not isinstance(c.get('base'), str) or not isinstance(c.get('model'), str) or not c['model'].strip():
+        return {}
+    base = c['base'].strip()
+    if base and '://' not in base:
+        base = 'http://' + base
+    try:
+        return {'base': loopback.loopback_base(base), 'model': c['model'].strip()}
+    except ValueError:
+        return {}
 
 
 def _send_json(h, obj, status=200):

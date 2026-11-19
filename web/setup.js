@@ -9,7 +9,7 @@
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
-  const MANAGE_ASKED = /manage/.test(location.hash);   // #manage: the bridge allows no ?query on the top page
+  const PLACEHOLDER = { msBase: 'http' + '://127.0.0.1:11434' };   // built in parts: no full web address in our own pages
 
   const ICO = {
     disk: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 15h.01M11 15h6"/>',
@@ -222,6 +222,19 @@
         : `<div class="s-opt s-ai off" role="group" aria-label="Local AI"><span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b><span class="s-badge later">Not for this computer</span></span>
             <small>${esc((S.hardware.ai && S.hardware.ai.why) || 'This computer does not have enough memory for it.')}</small></span></div>`;
     }
+    const chosen = S.model_server || {};
+    const server = `<div class="s-opt s-server" role="group" aria-labelledby="msH"><span class="s-opt-in">
+      <span class="s-opt-h"><b>Use a model you already run</b>${chosen.base ? '<span class="s-badge here">Chosen</span>' : '<span class="s-badge">Optional</span>'}</span>
+      <small>Ollama, LM Studio or any OpenAI-compatible server on this computer. No download. A server chosen here answers instead of the local AI, and nothing is sent off this computer.</small>
+      <div class="s-ms">
+        <label for="msBase">Address</label>
+        <input id="msBase" class="s-input" placeholder="${esc(PLACEHOLDER.msBase)}" value="${esc(chosen.base || '')}" spellcheck="false" autocomplete="off">
+        <label for="msModel">Model</label>
+        <input id="msModel" class="s-input" placeholder="gemma4" value="${esc(chosen.model || '')}" spellcheck="false" autocomplete="off">
+        <div class="s-ms-go"><button class="btn" id="msSave">Use this server</button>${chosen.base ? '<button class="btn plain" id="msClear">Forget it</button>' : ''}</div>
+      </div>
+      <p class="s-hint" id="msHint" role="status"></p>
+    </span></div>`;
     const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · doesn’t match the published file, so it is not used</small></span></div>`
       : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? 'A Lastbook library' : f.kind === 'model' ? 'The local AI file' : (packById(f.id) ? packById(f.id).title + ' library' : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
         <button class="btn plain" data-use="${i}">Use the file you already have</button></div>`).join('');
@@ -236,6 +249,7 @@
       <h2 id="packH">Library</h2>
       <div class="s-opts" role="radiogroup" aria-labelledby="packH">${packCards}</div>
       ${ai ? `<h2>Local AI</h2>${ai}` : ''}
+      <h2 id="msH">Chat model</h2>${server}
       <section class="s-sum" id="sum" aria-live="polite"></section>
       <div class="s-go">
         <button class="btn big" id="start"></button>
@@ -249,10 +263,33 @@
     $('#start').onclick = start;
     if ($('#toManage')) $('#toManage').onclick = () => go('manage');
     if ($('#haveLib')) $('#haveLib').onclick = () => haveLibrary(false);
-    $('#haveFile').onclick = () => haveLibrary(true);
+    msWire();
     mapSection();
     summary();
   }
+
+  /* The chosen model server: checked and saved by the engine; this only sends what the person typed. */
+  async function msAction(kind) {
+    const hint = $('#msHint'), b = $('#msSave');
+    if (hint) hint.textContent = '';
+    if (b) b.disabled = true;
+    const body = kind === 'clear' ? { base: null } : { base: ($('#msBase') || {}).value || '', model: ($('#msModel') || {}).value || '' };
+    const r = await call('model-server', body).catch(e => ({ error: e.message }));
+    if (b) b.disabled = false;
+    if (!r || r.error) { if (hint) hint.textContent = (r && r.error) || 'Lastbook did not answer.'; return }
+    S.model_server = r.model_server || {};
+    chooseView();   // the badge and Forget it follow the saved choice
+    const h = $('#msHint'), f = $('#msSave');
+    if (h) h.textContent = kind === 'clear' ? 'Forgotten.' : 'Saved. Chat uses it for the next question.';
+    if (f) f.focus({ preventScroll: true });
+    setTimeout(() => { const n = $('#msHint'); if (n) n.textContent = '' }, 4000);
+  }
+  function msWire() {
+    const b = $('#msSave'); if (!b) return;
+    b.onclick = () => msAction('save');
+    const cl = $('#msClear'); if (cl) cl.onclick = () => msAction('clear');
+  }
+
   /* Map geometry and address indexes are separate downloads, chosen by state. */
   function mapSection() {
     const box = $('#mapBox'), now = mapNow();
@@ -362,6 +399,7 @@
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
+        <div class="s-row">${ico('ai', 's-ri')}<span><b>Chat model server</b><small>${(S.model_server || {}).base ? esc(S.model_server.base) + ' · ' + esc(S.model_server.model) : 'None chosen · Chat uses the local AI when it is set up'}</small></span><button class="btn plain" id="msEdit">Choose</button></div>
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
           return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
           <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
@@ -373,7 +411,7 @@
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
     if ($('#mapCh')) $('#mapCh').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; choice.map = null; go('choose'); const m = $('#mapSel'); if (m) m.focus() };
-    if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; go('choose') };
+    if ($('#msEdit')) $('#msEdit').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
     if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', 'The local AI was removed.');   // the engine stops the AI first

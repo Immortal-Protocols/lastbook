@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import errno, hashlib, http.client, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
+import contextlib, errno, hashlib, http.client, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -2300,6 +2300,103 @@ class Swarming(Base):
         self.assertEqual(j['state'], 'done', j)
         self.assertGreater(j['items'][0].get('from_peers', 0), 0)
         s.seeder.stop()
+
+
+class MakeTorrents(unittest.TestCase):
+    """packaging/make_torrent.py: every torrent of a release folder made and pinned in the packs file with one command, each file
+    checked against its pinned SHA-256 first, in the one read that makes its torrent."""
+
+    def setUp(self):
+        self.tmp = shorttemp.mkdtemp('lastbook-mktorrent-')
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        spec = importlib.util.spec_from_file_location('make_torrent', ROOT / 'packaging' / 'make_torrent.py')
+        self.mt = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.mt)
+        self.release, self.maps = self.tmp / 'release', self.tmp / 'maps'
+        self.release.mkdir()
+        self.maps.mkdir()
+        self.data = {'Lastbook-Small.zip': os.urandom(2 * MiB + 77), 'Lastbook-Medium.zip': os.urandom(70 * 1024),
+                     'Lastbook-Map-XX.zip': os.urandom(300 * 1024), 'Lastbook-All.zip': os.urandom(1000)}
+        for name, b in self.data.items():
+            if name != 'Lastbook-All.zip':                      # not in either folder
+                ((self.maps if 'Map' in name else self.release) / name).write_bytes(b)
+        entry = lambda name: {'name': name, 'url': f'https://downloads.lastbook.org/{name}', 'size': len(self.data[name]),
+                              'sha256': sha(self.data[name]), 'kind': 'zip'}
+        self.packs = self.tmp / 'manifest-v1.json'
+        self.packs.write_text(json.dumps({'version': 1, 'published': '2026-11-19',
+            'packs': [{'id': 'small', 'title': 'Small', 'installed_bytes': 1, 'available': True, 'files': [entry('Lastbook-Small.zip')]},
+                      {'id': 'medium', 'title': 'Medium', 'installed_bytes': 1, 'available': True, 'files': [entry('Lastbook-Medium.zip')]},
+                      {'id': 'all', 'title': 'All', 'installed_bytes': 1, 'available': True, 'files': [entry('Lastbook-All.zip')]}],
+            'maps': [{'id': 'XX', 'title': 'XX', 'installed_bytes': 1, 'available': True, 'files': [entry('Lastbook-Map-XX.zip')]}]}))
+
+    def run_mt(self, *args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = self.mt.main(list(args))
+        return code, out.getvalue()
+
+    def files(self):
+        m = json.loads(self.packs.read_text(encoding='utf-8'))
+        return {f['name']: f for k in ('packs', 'maps') for x in m[k] for f in x['files']}, m
+
+    def test_a_release_folder_gets_every_torrent_and_pin(self):
+        code, text = self.run_mt('--release', str(self.release), '--release', str(self.maps), '--manifest', str(self.packs), '--piece-mib', '1')
+        self.assertEqual(code, 0)
+        self.assertIn('3 torrents made, 0 already pinned, 1 files of the manifest not in', text)
+        files, m = self.files()
+        self.assertNotIn('torrent', files['Lastbook-All.zip'])                         # not here: left for a later run
+        for name in ('Lastbook-Small.zip', 'Lastbook-Medium.zip', 'Lastbook-Map-XX.zip'):
+            path = (self.maps if 'Map' in name else self.release) / name
+            t, pin = path.with_name(name + '.torrent'), files[name]['torrent']
+            url = f'https://downloads.lastbook.org/{name}'
+            self.assertEqual(pin['url'], url + '.torrent')
+            self.assertIn(f'{t}  ->  {url}.torrent', text)                            # what to upload, and where
+            self.assertEqual(t.read_bytes(), torrent.make(path, name, MiB, web_seeds=[url])[0])   # the same as anyone would make
+            pieces = torrent.piece_hashes(t.read_bytes(), name, len(self.data[name]), pin['pieces_root'], pin['piece_length'], pin['infohash_v2'])
+            self.assertEqual(pieces.size, len(self.data[name]))
+        self.assertIsNotNone(manifest.validate({**m, 'models': []}, None))             # the pins pass the app's own rules
+        before = {n: (self.release / n).with_name(n + '.torrent').stat().st_mtime_ns for n in ('Lastbook-Small.zip', 'Lastbook-Medium.zip')}
+        code, text = self.run_mt('--release', str(self.release), '--release', str(self.maps), '--manifest', str(self.packs), '--piece-mib', '1')
+        self.assertIn('0 torrents made, 3 already pinned', text)                        # a second run touches nothing
+        self.assertEqual({n: (self.release / n).with_name(n + '.torrent').stat().st_mtime_ns for n in before}, before)
+        code, text = self.run_mt('--release', str(self.release), '--release', str(self.maps), '--manifest', str(self.packs),
+                                 '--piece-mib', '1', '--force')
+        self.assertIn('3 torrents made, 0 already pinned', text)
+
+    def test_a_file_that_is_not_the_published_one_is_never_pinned(self):
+        b = bytearray(self.data['Lastbook-Medium.zip'])
+        b[100] ^= 1                                                                    # the same size, another byte
+        (self.release / 'Lastbook-Medium.zip').write_bytes(bytes(b))
+        with self.assertRaises(SystemExit) as e:
+            self.run_mt('--release', str(self.release), '--manifest', str(self.packs), '--piece-mib', '1')
+        self.assertIn('not the published file', str(e.exception))
+        self.assertFalse((self.release / 'Lastbook-Medium.zip.torrent').exists())
+        files, _ = self.files()
+        self.assertNotIn('torrent', files['Lastbook-Medium.zip'])
+        (self.release / 'Lastbook-Medium.zip').write_bytes(bytes(b) + b'x')            # another size: refused before reading it
+        with self.assertRaises(SystemExit) as e:
+            self.run_mt('--release', str(self.release), '--manifest', str(self.packs), '--piece-mib', '1')
+        self.assertIn('is not the published file', str(e.exception))
+
+    def test_one_file_checks_its_sha256_too(self):
+        path = self.release / 'Lastbook-Small.zip'
+        url = 'https://downloads.lastbook.org/Lastbook-Small.zip'
+        code, text = self.run_mt(str(path), '--url', url, '--manifest', str(self.packs), '--piece-mib', '1')
+        self.assertEqual(code, 0)
+        self.assertEqual(self.files()[0]['Lastbook-Small.zip']['torrent']['url'], url + '.torrent')
+        path.write_bytes(os.urandom(len(self.data['Lastbook-Small.zip'])))
+        path.with_name(path.name + '.torrent').unlink()
+        with self.assertRaises(SystemExit):
+            self.run_mt(str(path), '--url', url, '--manifest', str(self.packs), '--piece-mib', '1')
+        self.assertFalse(path.with_name(path.name + '.torrent').exists())
+
+    def test_what_it_is_asked_must_make_sense(self):
+        for args in (['--release', str(self.release)],                                         # no packs file
+                     ['--release', str(self.release), '--manifest', str(self.packs), '--url', 'https://downloads.lastbook.org/x'],
+                     [str(self.release / 'Lastbook-Small.zip')],                               # one file without its address
+                     ['--release', str(self.release), '--manifest', str(self.packs), '--piece-mib', '3']):   # not a power of two
+            with self.subTest(args=args), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                self.mt.main(args)
 
 
 class Unpacking(Base):

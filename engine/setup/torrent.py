@@ -153,30 +153,43 @@ class Pieces:
 
 def file_hashes(path, length, progress=None):
     """(pieces root, [piece hashes]) of a file on disk, for a piece length."""
+    root, hashes, _ = _read(path, length, progress)
+    return root, hashes
+
+
+def _read(path, length, progress=None, whole=None):
+    """One read of a file: (pieces root, [v2 piece hashes], the v1 SHA-1 piece hashes joined). v1 and v2 use the same piece
+    length, so each piece's bytes feed both. whole: a hash fed every byte as well (make_torrent's check of the file's SHA-256),
+    so a 388 GB file is read once, not two or three times."""
     check_piece_length(length)
     size = _size(path)
-    hashes = []
+    hashes, sha1 = [], bytearray()
     single = size <= length
     with open(path, 'rb') as f:
         done = 0
         while True:
-            h = PieceHasher(None if single else length // BLOCK)
+            h, s1 = PieceHasher(None if single else length // BLOCK), hashlib.sha1()
             n = 0
             while n < length:
                 b = f.read(min(4 * 1024 * 1024, length - n))
                 if not b:
                     break
                 h.update(b)
+                s1.update(b)
+                if whole is not None:
+                    whole.update(b)
                 n += len(b)
             if not n:
                 break
             hashes.append(h.digest())
+            sha1 += s1.digest()
             done += n
             if progress:
                 progress(done, size)
     if not hashes:
         raise Bad('an empty file has no pieces root')
-    return (hashes[0] if single else _root(hashes, _pow2(len(hashes)), _zero_root(length // BLOCK))), hashes
+    root = hashes[0] if single else _root(hashes, _pow2(len(hashes)), _zero_root(length // BLOCK))
+    return root, hashes, bytes(sha1)
 
 
 def _size(path):
@@ -185,21 +198,15 @@ def _size(path):
 
 
 # --------------------------------------------------------------------------------------------------------------- torrents --
-def make(path, name, length, web_seeds=(), trackers=(), progress=None):
+def make(path, name, length, web_seeds=(), trackers=(), progress=None, whole=None):
     """A hybrid (v1 and v2) torrent of one file, as bytes, and what the manifest pins: {pieces_root (hex), piece_length, size,
-    infohash_v1, infohash_v2}. No creation date or creator, so the same file always gives the same torrent."""
+    infohash_v1, infohash_v2}. No creation date or creator, so the same file always gives the same torrent. The file is read
+    once; whole: a hash fed every byte too (the file's SHA-256, to check it is the published one)."""
     check_piece_length(length)
     size = _size(path)
-    root, hashes = file_hashes(path, length, progress)
-    sha1 = bytearray()
-    with open(path, 'rb') as f:
-        while True:
-            b = f.read(length)
-            if not b:
-                break
-            sha1 += hashlib.sha1(b).digest()
+    root, hashes, sha1 = _read(path, length, progress, whole)
     info = {'file tree': {name: {'': {'length': size, 'pieces root': root}}}, 'length': size, 'meta version': 2,
-            'name': name, 'piece length': length, 'pieces': bytes(sha1)}
+            'name': name, 'piece length': length, 'pieces': sha1}
     t = {'info': info}
     if len(hashes) > 1:
         t['piece layers'] = {root: b''.join(hashes)}

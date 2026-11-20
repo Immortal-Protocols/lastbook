@@ -1292,6 +1292,45 @@ class Jobs(Base):
         self.assertNotIn('model.gguf', [name for name, _, _ in self.files.log])
         self.assertEqual((self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
 
+    def ollama_store(self, *blobs):
+        """A model store as Ollama keeps one: <home>/.ollama/models/blobs/sha256-<hex> beside manifests/."""
+        store = self.home / '.ollama' / 'models'
+        (store / 'manifests' / 'registry.ollama.ai').mkdir(parents=True)
+        (store / 'blobs').mkdir()
+        for data in blobs:
+            (store / 'blobs' / f'sha256-{sha(data)}').write_bytes(data)
+        return store
+
+    def test_ollama_store_holding_the_model_is_used_and_left_in_place(self):
+        store = self.ollama_store(b'another model', self.model)
+        blob = store / 'blobs' / f'sha256-{sha(self.model)}'
+        for chosen in (self.home / '.ollama', store, store / 'blobs', blob):     # any of the folders the person may pick, or the file
+            with self.subTest(chosen=chosen.name):
+                s = self.setup()
+                self.assertTrue(s.use(str(chosen))['noted'])
+                self.assertEqual([(f['kind'], f['name'], f['path'], f['size_ok']) for f in s.found()], [('model', 'model.gguf', str(blob), True)])
+        s.start('small', True)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertNotIn('model.gguf', [name for name, _, _ in self.files.log])
+        installed = self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'models' / 'model.gguf'
+        self.assertEqual(installed.read_bytes(), self.model)
+        self.assertEqual(blob.read_bytes(), self.model)             # still Ollama's: linked or copied, never moved
+        self.assertEqual(sorted(x.name for x in (store / 'blobs').iterdir()), sorted(f'sha256-{sha(d)}' for d in (b'another model', self.model)))
+
+    def test_ollama_store_without_the_model_says_why(self):
+        store = self.ollama_store(b'some other model')
+        other = store / 'blobs' / f'sha256-{sha(b"some other model")}'
+        for chosen in (store, other):
+            with self.subTest(chosen=chosen.name):
+                r = self.setup().use(str(chosen))
+                self.assertEqual(r['code'], 'ollama')
+                self.assertIn('This is Ollama’s model folder', r['error'])
+                self.assertIn('Gemma, the file model.gguf', r['error'])
+        self.assertEqual(other.read_bytes(), b'some other model')
+        plain = self.home / 'Documents' / 'models'                  # a folder that only looks like a store is not taken for one
+        (plain / 'blobs').mkdir(parents=True)
+        self.assertEqual(self.setup().use(str(plain))['code'], 'not_library')
+
     def test_found_zip_is_used_without_network(self):
         self.parent.mkdir()
         (self.parent / 'Lastbook-Small.zip').write_bytes(self.zip)

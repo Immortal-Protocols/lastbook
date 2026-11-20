@@ -108,7 +108,7 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/start` `{pack, ai: true or false, folder?}` | the new `job`, or `{error, need_bytes, free_bytes}` |
 | `GET /api/setup/job` | `job` |
 | `POST /api/setup/pause`, `/resume`, `/cancel`, `/retry` | `job` |
-| `POST /api/setup/use` `{path}` | uses a library or file already on this computer: `job` (verify, then unpack or activate) |
+| `POST /api/setup/use` `{path}` | uses a library or file already on this computer: `job` (verify, then unpack or activate). Ollama's model store (its `.ollama` or `models` folder, `blobs`, or a `sha256-<hex>` file there) is used when it holds the model's published SHA-256, which is then linked or copied into the library and never moved out of Ollama; otherwise `{code: "ollama"}` |
 | `POST /api/setup/finish` | `{ok: true}`; the app then opens the library (see below) |
 | `POST /api/setup/pick` | `{path}` from the system's folder picker, or `{path: null}`: a place to install (`start {folder}`) or something to `use` (a LastbookData, a folder holding one, or a folder holding a pack zip) |
 | `POST /api/setup/delete-old` `{path}` | deletes a `LastbookData.old-*` setup moved aside itself (listed in `current.old`): `{ok, deleting}` |

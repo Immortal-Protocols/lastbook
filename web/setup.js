@@ -77,6 +77,10 @@
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
   let note = '', noteOk = false;
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something
+  let CFG = null;        // the assistant settings, from GET /api/assistant/config, for the Assistant section
+  async function loadConfig() {
+    try { const r = await fetch('/api/assistant/config'); if (r.ok) CFG = await r.json() } catch { CFG = null }
+  }
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
   const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
@@ -151,6 +155,7 @@
   async function load() {
     try { S = await call('state') }
     catch (e) { main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b>Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again">Try again</button></p></div></div>`; $('#again').onclick = load; return }
+    await loadConfig();   // the Assistant section: the engine's current settings
     const rf = (S.recommend || {}).folder;
     folder = folder || (cur() && cur().folder) || S.default_folder || (rf ? asData(rf) : '');
     if (!choice.pack) {
@@ -367,6 +372,7 @@
           <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
       </div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
+      ${assistantSection()}
       ${computer()}
       ${CAN.repair ? `<div class="s-go left"><button class="btn plain" id="repair">${ico('repair')}Check and repair</button></div>` : ''}
       <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
@@ -380,6 +386,7 @@
     if ($('#rmOld')) $('#rmOld').onclick = () => { confirmOld = true; manageView(); $('#oldNo').focus() };
     if ($('#oldNo')) $('#oldNo').onclick = () => { confirmOld = false; manageView(); $('#rmOld').focus() };
     if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', 'The old library is being deleted.', { path: old.path });
+    if ($('#cfgSave')) $('#cfgSave').onclick = saveConfig;
     if ($('#repair')) $('#repair').onclick = async () => {
       const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
       if (!r || r.error) { note = (r && r.error) || 'Repair could not start.'; manageView(); return }
@@ -392,6 +399,43 @@
     noteOk = !(r && r.error);
     if (r && r.error) note = r.error;
     else { note = done; S = await call('state').catch(() => S) }
+    manageView();
+    const n = $('#haveNote'); if (n) { n.tabIndex = -1; n.focus() }
+  }
+
+  /* ---- assistant ---- */
+  const EFFORTS = ['none', 'low', 'medium', 'high'];
+  function assistantSection() {
+    const c = CFG || {};
+    const effort = c.reasoning_effort || 'low';
+    const opts = (EFFORTS.includes(effort) ? EFFORTS : [effort, ...EFFORTS]).map(v => `<option value="${esc(v)}"${v === effort ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    const row = (id, lab, val, ph, cls) => `<div class="s-row"><label class="s-lab" for="${id}">${lab}</label><input class="s-in${cls ? ' ' + cls : ''}" id="${id}" value="${esc(val)}" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off"></div>`;
+    return `<h2>Assistant</h2>
+      <section class="s-have s-aset" aria-label="Assistant">
+        ${row('cfgBase', 'Model server', c.model_base || '', '127.0.0.1:19443')}
+        ${row('cfgModel', 'Model', c.model || '', 'deepseek-v4.1-flash')}
+        <div class="s-row"><label class="s-lab" for="cfgEffort">Thinking</label><select class="s-in" id="cfgEffort">${opts}</select></div>
+        ${row('cfgDir', 'AI model folder', c.model_dir || '', 'the library folder')}
+        <div class="s-row"><label class="s-lab" for="cfgIdle">AI idle stop</label><input class="s-in s-num" id="cfgIdle" type="number" min="10" step="1" value="${c.idle_s != null ? esc(c.idle_s) : ''}" placeholder="900" spellcheck="false" autocomplete="off"><small>seconds without a question</small></div>
+        <div class="s-row"><button class="btn" id="cfgSave">Save</button><small>Saved on this computer; it applies right away.</small></div>
+      </section>`;
+  }
+  async function saveConfig() {
+    const b = $('#cfgSave'); if (b) b.disabled = true;
+    const v = id => (($('#' + id) || {}).value || '').trim();
+    const body = { model_dir: v('cfgDir') || null };
+    if (v('cfgBase')) body.model_base = v('cfgBase');
+    if (v('cfgModel')) body.model = v('cfgModel');
+    if (v('cfgEffort')) body.reasoning_effort = v('cfgEffort');
+    const idle = parseInt(v('cfgIdle'), 10);
+    if (Number.isFinite(idle) && idle > 0) body.idle_s = idle;
+    let r;
+    try {
+      const resp = await fetch('/api/assistant/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      try { r = await resp.json() } catch { r = { error: 'Lastbook sent an unreadable reply.' } }
+    } catch { r = { error: 'Lastbook did not answer. Close it and open it again.' } }
+    if (r && r.error) { note = r.error; noteOk = false }
+    else { CFG = r; note = 'Assistant settings saved.'; noteOk = true }
     manageView();
     const n = $('#haveNote'); if (n) { n.tabIndex = -1; n.focus() }
   }

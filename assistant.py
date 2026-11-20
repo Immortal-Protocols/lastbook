@@ -6,6 +6,7 @@ gazetteer) and nothing else: no file paths, URLs or shell input are accepted fro
 """
 import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
+from engine import paths
 from engine.paths import ro_uri
 from engine import page_tables
 
@@ -38,8 +39,111 @@ INDEX = None    # retrieval.Index
 LOCAL = None
 
 
+# -------------------------------------------------------------------- settings --
+# The app's Assistant section (web/setup.js) and the local AI (llm_local.py) share one settings file.
+# Precedence for every key: the file's value > the env var > the built-in default.
+CONFIG_FILE = paths.DATA / 'derived' / 'llm' / 'config.json'
+_config_lock = threading.Lock()   # two saves at once must not write the same temp file
+
+
+def config():
+    """The settings file, read fresh. Missing or unreadable is {} — a settings file must never break the assistant."""
+    try:
+        d = json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def validate_config(d):
+    """One update: any subset of the five keys, each checked and normalized. Unknown keys are ignored, so an older app
+    and a newer file can share the file. ValueError with a plain sentence when a key is not usable."""
+    if not isinstance(d, dict):
+        raise ValueError('config must be a JSON object')
+    out = {}
+    for k, v in d.items():
+        if k == 'model_base':
+            if not isinstance(v, str) or not v.strip():
+                raise ValueError('model_base must be a loopback address on this computer, like 127.0.0.1:19443')
+            v = v.strip()
+            if not v.lower().startswith('http'):
+                v = 'http://' + v   # the box takes an address without the scheme
+            try:
+                out[k] = loopback_base(v)
+            except ValueError:
+                raise ValueError(f'model_base must be a loopback address on this computer, got {v!r}') from None
+        elif k in ('model', 'reasoning_effort'):
+            if not isinstance(v, str) or not v.strip():
+                raise ValueError(f'{k} must be a non-empty string')
+            out[k] = v.strip()
+        elif k == 'model_dir':
+            if v is None:
+                out[k] = None
+            elif isinstance(v, str):
+                out[k] = v.strip() or None   # an empty box clears the folder
+            else:
+                raise ValueError('model_dir must be a folder path, or null to clear')
+        elif k == 'idle_s':
+            if isinstance(v, bool) or not isinstance(v, int) or v <= 0:
+                raise ValueError('idle_s must be a positive number of seconds')
+            out[k] = v
+    return out
+
+
+def save_config(d):
+    """Merge a validated update into the settings file and write it atomically, so a crash never leaves a half file.
+    The lock and a temp file per thread keep two saves at once from stealing each other's file."""
+    with _config_lock:
+        cur = config()
+        cur.update(d)
+        CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CONFIG_FILE.with_name(f'{CONFIG_FILE.name}.{threading.get_ident()}.tmp')
+        tmp.write_text(json.dumps(cur, indent=1) + '\n', encoding='utf-8')
+        os.replace(tmp, CONFIG_FILE)
+
+
+def apply_config():
+    """file value > env var > built-in default, for the model server. Re-reads the settings file, updates the module
+    globals, and resets the status cache so the next poll asks the new address. A base in the file that is not a
+    loopback address is skipped — the current value stays in effect — so a damaged file never stops the server;
+    the API validation is what keeps the file clean. The new values are computed first and stored as one tuple, so a
+    request in flight sees at most one stale value for a moment; the next question uses the new set."""
+    global BASE, MODEL, REASONING_EFFORT, MODEL_URL, MODELS_URL
+    c = config()
+
+    def pick(key, env, default):
+        v = c.get(key)
+        return v.strip() if isinstance(v, str) and v.strip() else os.environ.get(env, default)
+
+    base = pick('model_base', 'SURVIVAL_MODEL_BASE', 'http://127.0.0.1:19443')
+    if not base.lower().startswith('http'):
+        base = 'http://' + base   # an address without the scheme, as the settings box takes it
+    try:
+        new_base = loopback_base(base)
+    except ValueError:
+        print(f'assistant: the settings model_base {base!r} is not a loopback http address; keeping {BASE!r}', flush=True)
+        new_base = BASE
+    model = pick('model', 'SURVIVAL_MODEL', 'deepseek-v4.1-flash')
+    effort = pick('reasoning_effort', 'SURVIVAL_REASONING_EFFORT', 'low')
+    BASE, MODEL, REASONING_EFFORT, MODEL_URL, MODELS_URL = new_base, model, effort, new_base + '/v1/chat/completions', new_base + '/v1/models'
+    _status.update(at=0, online=False, error=None)
+    return {'model_base': BASE, 'model': MODEL, 'reasoning_effort': REASONING_EFFORT}
+
+
+def effective_config():
+    """The five settings as they stand right now: file value > env var > built-in default."""
+    out = {'model_base': BASE, 'model': MODEL, 'reasoning_effort': REASONING_EFFORT}
+    if LOCAL is not None:
+        out.update(LOCAL.config_values())
+    else:
+        import llm_local
+        out.update(llm_local.effective_config())
+    return out
+
+
 def init(server_module, index):
     global S, INDEX, LOCAL
+    apply_config()   # the settings file may have changed since import
     S, INDEX = server_module, index
     if os.environ.get('LASTBOOK_LOCAL_AI') == '1':
         import llm_local

@@ -20,6 +20,15 @@ The previous interface on port 8879 is untouched and keeps running separately.
 
 - Model: `deepseek-v4.1-flash` at `http://127.0.0.1:19443` (called only by the server; override with
   `SURVIVAL_MODEL_BASE`, which must be a loopback address). The 19442 gateway is not used.
+- Settings: the model server, model name and thinking effort change at runtime from the app's Assistant
+  section (the Library and local AI page), no restart. They are saved to `LastbookData/derived/llm/config.json`;
+  a value in that file wins over the environment variables, which win over the built-in defaults. The server
+  applies a saved change to the next question at once, and the local AI re-reads the file without a restart.
+  `GET /api/assistant/config` returns what is in effect; `POST /api/assistant/config` saves any of
+  `model_base`, `model`, `reasoning_effort`, `model_dir`, `idle_s` and answers with the new effective values.
+  Both are open on this computer only (a shared phone gets 403). `model_base` must be a loopback address,
+  `model` and `reasoning_effort` non-empty strings, `model_dir` a folder or empty, `idle_s` a positive
+  number of seconds.
 - Every question is first searched with the shared retriever; the model then gets five read-only tools:
   `search_library`, `read_pages`, `view_page` (sends the page image — verified the model reads it),
   `get_timed_transcript`, `lookup_place`. Tools accept catalog ids only: no paths, URLs or shell input.
@@ -43,13 +52,15 @@ version above keeps using the model server at `SURVIVAL_MODEL_BASE` unless start
   default `--fit`) and its log. Build it with `bash packaging/llm/build_llm_macos.sh`, which refuses a binary with
   network calls or a folder of this Mac in it. Prompts go in as segments: Gemma's template markup with special tokens
   read, library and user text with them never read, so a document cannot start a turn of its own.
-- **Finding the model:** the file in `LastbookData/models/`, `LastbookData/`, Downloads, Documents or Desktop. It is
+- **Finding the model:** the file in the folder the Assistant section names (or the `LASTBOOK_MODEL_DIR`
+  folder), then `LastbookData/models/`, `LastbookData/`, Downloads, Documents or Desktop. It is
   checked once (size, then SHA-256, about 10 s on this Mac), then `lastbook-llm --measure` asks llama.cpp where it fits.
   It is offered when the computer's memory holds the measured need plus 2.5 GiB. On a Mac GPU and CPU share that memory;
   on Windows only the part not placed on the graphics card counts. There is no fixed 32 GB rule.
 - **Measured here** (Apple M3 Ultra, 16k context): 16.9 GiB on the GPU plus 0.8 GiB host. Loading takes 1.5 s, and an
   answer with sources takes about 5–12 s. The process holds about 17.4 GB resident.
-- **Lifecycle:** it starts when someone asks and stops after 15 minutes unused, when turned off (About page), and when the
+- **Lifecycle:** it starts when someone asks and stops after 15 minutes unused (the Assistant section can
+  change that idle stop; the watcher re-reads the settings file), when turned off (About page), and when the
   app quits or dies (the closed pipe ends it, plus a kill-on-close job object on Windows). A crash while answering
   shows a plain error, and the next question starts it again.
 - **Limits:** text only (no `view_page`: the local model is not given page images). Its answers were graded in the
@@ -95,7 +106,7 @@ onnxruntime, tokenizers, numpy. The model server at 19443 is needed only for Ask
 |---|---|
 | `server.py` | Small server. Imports `library-data/tools/library.py` and subclasses its `Handler`, so every original file URL, `/api/search`, `/api/collection-search`, `/zim/...`, and video range requests behave exactly as on 8879. Adds read-only endpoints (topics, plain-language search, page images/text, transcripts, browse, map tiles, nearby help, place finder). |
 | `web/` | The app: `index.html`, `app.css`, `app.js`, `chat.js`, `map.js`, `sw.js`. No build step, no external fonts/scripts. |
-| `retrieval.py`, `assistant.py` | Shared retrieval service and the assistant (tools, streaming, citation checks). |
+| `retrieval.py`, `assistant.py` | Shared retrieval service and the assistant (tools, streaming, citation checks, the `config.json` settings). |
 | `content/topics/*.json` | 14 curated guides (8 urgent needs, 6 learning tracks), ~720 references, each checked against the page it cites. Format: `content/SCHEMA.md`. |
 | `content/gaps.json` | What curators looked for and did not find, plus places where sources disagree. Shown on each guide. |
 | `tools/libq.py` | Read-only helper for curators (search, read a page, find titles, encyclopedia lookup). |

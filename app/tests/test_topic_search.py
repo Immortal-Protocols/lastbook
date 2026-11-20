@@ -114,9 +114,8 @@ TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *
 OWN = {'id': 'own', 'title': 'Agua potable', 'short': 'Hervir el agua', 'keywords': ['水'], 'choices': []}
 RANK_OWN = [['agua', [OWN]], ['水', [OWN]], ['hervir', [OWN]]]
 
-# Words used in Italy. 118 is Italy's ambulance number and finds what 911 finds; 112, which is replacing it region by
-# region, is in SAME_AS above. hailstorm sits in the thunderstorm choice's hint and opens the guide hail opens.
-IT_SAME_AS = {'118': '911'}
+# Words used in Italy. hailstorm sits in the thunderstorm choice's hint and opens the guide hail opens. 118 was left
+# out: it is an ambulance number in Italy but a fire number in Switzerland, and search has no country to tell apart.
 IT_SAME_GUIDE = {'hailstorm': 'hail', 'hailstorms': 'hail', 'Hailstorm': 'hail'}
 # Searches those words must not disturb: [guide, choice] that comes first. "water cut" was left out for the third:
 # as a keyword of the water guide it put that guide ahead of first aid for any search with "water" and "cut" in it.
@@ -126,7 +125,7 @@ IT_UNDISTURBED = {'hail': ['disaster', 'thunderstorm'], 'thunderstorm': ['disast
 # Left out, so these still find nothing: "civil protection" as two keywords would let each word open the disaster
 # guide alone, and "combi" (the boiler that heats most Italian homes) would answer "comb".
 IT_NOTHING = ['civil', 'protection', 'comb']
-TOPS = sorted({*TOPS, *IT_SAME_AS, *IT_SAME_AS.values(), *IT_SAME_GUIDE, *IT_SAME_GUIDE.values(),
+TOPS = sorted({*TOPS, *IT_SAME_GUIDE, *IT_SAME_GUIDE.values(),
                *IT_UNDISTURBED, *IT_NOTHING})
 
 CASES = {
@@ -238,10 +237,6 @@ class TopicSearch(unittest.TestCase):
     def test_words_used_in_italy(self):
         for r in self.modes:
             top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
-            for q, us in IT_SAME_AS.items():
-                with self.subTest(q=q, us=us, segmenter=r['segmenter']):
-                    self.assertTrue(top[us])
-                    self.assertEqual(top[q], top[us])
             for q, us in IT_SAME_GUIDE.items():
                 with self.subTest(q=q, us=us, segmenter=r['segmenter']):
                     self.assertTrue(top[q])

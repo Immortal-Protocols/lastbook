@@ -407,7 +407,8 @@
 
   function errorBox(j) {
     const e = j.error, code = errCode(e) || j.code, c = cur();
-    const blockedModel = code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done);
+    const failedModel = (j.items || []).some(it => it.kind === 'model' && it.state === 'failed');
+    const blockedModel = failedModel && (code === 'unreachable' || (code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done)));
     const safe = c ? 'Your library is untouched and still works.' : 'Nothing else on this computer was changed.';
     const d = diskFor(j.folder || folder);
     const T = {
@@ -419,6 +420,9 @@
       network: blockedModel
         ? ['This network could not reach the local AI download server.', 'What is downloaded is kept. Retry, or choose the published AI model file downloaded another way.', 'retry']
         : ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
+      unreachable: [`Lastbook can’t reach ${esc((e && e.host) || 'the download server')}.`,   // the host never answered this download (#254)
+        'If websites open on this computer, this network may be blocking that server, and retrying here will not help. You can download the file below on another network or computer, '
+        + (blockedModel ? 'then choose it here.' : 'then choose it with Choose again and “Choose a library zip or AI model file”.'), 'retry'],
       server: ['The download server stayed busy.', 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.', 'retry'],
       checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
       unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
@@ -426,7 +430,13 @@
       cancelled: ['The download was cancelled.', 'Start again when you are ready.', 'back'],
     }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
     return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
+      ${code === 'unreachable' && e && e.name ? facts(e) : ''}
       <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+  }
+  /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
+  function facts(e) {
+    const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+    return `<dl class="s-facts">${row('File', `<code>${esc(e.name)}</code>`)}${e.size ? row('Size', `${size(e.size)} (${esc(Number(e.size).toLocaleString('en-US'))} bytes)`) : ''}${e.url ? row('Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
   }
   function itemHTML(it, j) {
     const FAILED_AT = { checksum: 'verifying', found_mismatch: 'verifying', unpack: 'unpacking', activate: 'activating' };

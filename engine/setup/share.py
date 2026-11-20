@@ -27,6 +27,7 @@ from pathlib import Path
 
 SUFFIX = '.share'
 TALLY_EVERY = 15                    # seconds between readings of what rqbit has uploaded
+ADD_TIMEOUT = 600                   # seconds a server's rqbit may take to answer a new torrent (Station.add)
 
 
 def binary():
@@ -405,6 +406,7 @@ class Station:
         self.folder, self.listen_port, self.upload_bps = Path(folder), listen_port, upload_bps
         self.command, self.extra, self.tally = command, list(extra), tally
         self.proc, self.port, self.secret, self.added = None, None, None, {}
+        self._asking = None                     # the thread of an add still waiting for rqbit's answer
 
     def available(self):
         return bool(self.command or binary())
@@ -437,14 +439,28 @@ class Station:
         _unwatch(p)
         return False
 
-    def add(self, name, torrent_data):
+    def add(self, name, torrent_data, stop=None):
         """Shares the file `name` in the folder by its torrent (already checked against its pin). True once rqbit took it; rqbit
-        may take a while to check a large file before it offers any of it. A torrent added before is not added again."""
+        may take a while to check a large file before it offers any of it. A torrent added before is not added again.
+        stop: an Event. The request waits for rqbit's answer on a thread of its own, so once `stop` is set (or rqbit ends) this
+        returns False at once with the file not added; stop() then ends rqbit, and the request with it."""
         if name in self.added:
             return True
         if not self.running():
             return False
-        n = _add(self.port, self.secret, torrent_data, self.folder, timeout=600)
+        box, done = [], threading.Event()
+
+        def ask():
+            try:
+                box.append(_add(self.port, self.secret, torrent_data, self.folder, timeout=ADD_TIMEOUT))
+            finally:
+                done.set()
+        self._asking = threading.Thread(target=ask, daemon=True, name='setup-share-add')
+        self._asking.start()
+        while not done.wait(0.1):
+            if (stop is not None and stop.is_set()) or not self.running():
+                return False
+        n = box[0] if box else None
         if n is None:
             return False
         self.added[name] = n
@@ -474,6 +490,9 @@ class Station:
         except subprocess.TimeoutExpired:
             p.kill()
             p.wait(15)
+        t, self._asking = self._asking, None
+        if t is not None:
+            t.join(5)                          # an add left waiting ends with rqbit's connection
 
 
 def _tie(p):

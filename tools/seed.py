@@ -305,10 +305,12 @@ def main(argv=None, allowed=None, context=None, command=None, extra=(), recheck=
                     if not station.running() and not station.start():
                         print('rqbit did not start, so nothing is shared yet. It is tried again within the hour.', flush=True)
                         break
-                    if station.add(f['name'], data):
+                    if station.add(f['name'], data, stop):            # a stop ends the wait for rqbit's answer
                         print(f'Sharing {f["name"]} (rqbit checks it against its torrent first).', flush=True)
                         if len(station.added) == 1:
                             print(f'Peers connect to this server on TCP port {a.port}; let it through the firewall.', flush=True)
+                    elif stop.is_set():
+                        break
                     else:
                         print(f'rqbit did not take {f["name"]}; it is tried again within the hour.', flush=True)
             next_check = time.time() + recheck

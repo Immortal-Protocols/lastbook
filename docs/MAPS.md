@@ -94,6 +94,8 @@ A rural search accepts the numbered road, kilometer and barrio in any order. Try
 Both refer to kilometer 4.4. A decimal before a road, as in `0.6 Carr 119`, also identifies a kilometer.
 A whole number in that position can be a house number.
 
+If the Puerto Rico index is unavailable or has no applicable rural result, the desktop reader continues with ordinary installed address or place lookup. Words such as “Exit” or “Salida” in another region’s street name do not stop that lookup. House-number and parcel-number misses do not guess a nearby place. Parcel continuation requests do not restart ordinary lookup.
+
 - **Road kilometer** places the marker along a measured road segment from the Federal Highway Administration.
   The builder converts each vertex's mile measure to meters and splits the segment at barrio and ZIP-area boundaries.
   Search interpolates between two measured vertices on the same path. A missing segment leaves a gap.

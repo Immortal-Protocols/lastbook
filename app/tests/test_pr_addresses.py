@@ -51,11 +51,12 @@ class PuertoRicoAddresses(unittest.TestCase):
 
     def test_urbanization_disambiguation_and_strict_misses(self):
         for query in ('Urb. Luz, A-12 Avenida del Nandu, PR 00901-1234',
+                      'Urb. Luz, A-12 Avenida del Nandu, PR 00901 1234',
                       'A-12 Ave del Nandu, Urbanización Luz, Villa Ambar, PR',
                       unicodedata.normalize('NFD', 'Urbanización Luz, A-12 Ave del Ñandú, PR')):
             self.assertEqual([r['lat'] for r in find_addresses(query, self.geo)], [1])
         for query in ('Urb. Mar, A-12 Ave del Nandu PR', 'A-13 Ave del Nandu PR', 'A-12 Ave del Nandu Otro PR',
-                      'A-12 Ave del Nandu PR 00902', '9B Cll del Camino PR 00901', 'A-12 Ave del Nandu FL'):
+                      'A-12 Ave del Nandu PR 00902', 'A-12 Ave del Nandu PR 00902 1234', '9B Cll del Camino PR 00901', 'A-12 Ave del Nandu FL'):
             with self.subTest(query=query):
                 self.assertEqual(find_addresses(query, self.geo), [])
 
@@ -69,6 +70,33 @@ class PuertoRicoAddresses(unittest.TestCase):
             self.assertEqual(find_addresses(query, self.geo)[0]['name'], name)
         for query in ('00901', 'PR-3 Humacao', 'I-95 Rest Area', 'B52 Museum', 'Urb. Luz, Ejemplo'):
             self.assertFalse(is_address_query(query))
+
+    def test_pr_profile_does_not_weaken_uninstalled_state_readings(self):
+        with closing(sqlite3.connect(self.indexes / 'PR.sqlite')) as db, db:
+            db.execute('INSERT INTO addr VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                       ('100','Main St','main st','Inglewood','PR','00901',8,1,'main st','inglewood','ejemplo','',''))
+        self.assertEqual(len(find_addresses('100 Main St PR', self.geo)), 1)
+        for query in ('100 Main St IN', '100 Main St Indiana', '100 Main St NE'):
+            self.assertEqual(find_addresses(query, self.geo), [])
+
+    def test_rural_miss_falls_through_to_installed_pr_street_profile(self):
+        import server
+        # This street also resembles a rural road reference; this pack has no rural tables.
+        with patch.object(server, 'HERE', self.root), patch.object(server.assistant, 'LOCAL', None):
+            for with_roads in (False, True):
+                if with_roads:
+                    with closing(sqlite3.connect(self.indexes / 'PR.sqlite')) as db, db:
+                        db.executescript("""
+                            CREATE TABLE pr_area(id,barrio,municipio,zip);
+                            CREATE TABLE pr_road(route,bucket,low,high,lat0,lon0,lat1,lon1,area);
+                            CREATE TABLE pr_school(route,meters,name,street,lat,lon,area,postal,reported_city);
+                        """)
+                with self.subTest(empty_rural_tables=with_roads):
+                    rows = server.places('7 Carr. 19, Bo. Las Penas')
+                    self.assertEqual([r['name'] for r in rows], ['7 Carretera 19'])
+                    self.assertEqual(rows[0]['source'], pr.SOURCE)
+                    self.assertEqual(server.places('8 Carr. 19, Bo. Las Penas'), [])
+                    self.assertEqual(server.places('7 Carr. 19, Otro, PR'), [])
 
     def test_legacy_state_and_pr_indexes(self):
         with closing(sqlite3.connect(self.indexes / 'MI.sqlite')) as db:

@@ -1401,6 +1401,9 @@ def places(q, limit=20, near=None, parcel_offset=0):
                                                   model=assistant.LOCAL, parcel_offset=parcel_offset, parcel_limit=min(limit, 30))
         if addresses:
             return addresses
+        # A rural-looking name can still be an ordinary gazetteer place. Keep
+        # house-number and parcel-number misses strict rather than guessing a place.
+        is_address = address_search.is_address_query(q, include_rural=False)
     try:
         named = [] if is_address else named_places(q, limit, near)
     except sqlite3.Error:
@@ -1410,7 +1413,7 @@ def places(q, limit=20, near=None, parcel_offset=0):
                                                   named)
         if wording is not None:
             return wording
-    if is_address:
+    if is_address or parcel_offset:
         return []
     return named
 

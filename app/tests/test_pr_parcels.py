@@ -2,6 +2,7 @@
 import json
 import os
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -45,6 +46,22 @@ class ParcelSearch(unittest.TestCase):
         import server
         with patch.object(server,'HERE',self.root), patch.object(server.assistant,'LOCAL',model):
             return server.places(query, parcel_offset=offset)
+
+    def test_exhausted_parcel_page_does_not_restart_as_an_ordinary_address(self):
+        path = self.root / 'derived/geo/addresses/TX.sqlite'
+        with closing(sqlite3.connect(path)) as db, db:
+            db.execute('CREATE TABLE addr(num,street,norm,city,state,zip,lat,lon)')
+            db.execute("INSERT INTO addr VALUES('19','KM4HM4 Boulevard','km4hm4 blvd','Las Penas','TX','75000',5,6)")
+        query = '19 KM4HM4 BLVD, Las Penas'
+        first = self.search(query)
+        self.assertTrue(first)
+        self.assertTrue(all(row['kind'] == 'Possible parcel' for row in first))
+        self.assertEqual(self.search(query, first[0]['parcelCount']), [])
+        self.assertEqual(self.search(query, first[0]['parcelCount'] + 1), [])
+        # With no PR match, the same ordinary address is available on the first page.
+        with closing(sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite')) as db, db:
+            db.execute('DELETE FROM pr_parcel_address')
+        self.assertEqual([r['name'] for r in self.search(query)], ['19 KM4HM4 Boulevard'])
 
     def test_exact_identifiers_and_leading_zeros(self):
         for q in ['00100200303','001-002-003-03','Número de catastro: 001-002-003-03-00','00100200303000']:

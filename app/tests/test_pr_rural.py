@@ -54,6 +54,15 @@ class RuralLookup(unittest.TestCase):
                   '19 KM4HM4 BLVD, Las Penas', 'Bo Las Penas, PR-19, Km 4.4', 'Carr. 19KM4.4, Villa Ejemplo'):
             self.assertEqual(self.lookup(q)[0]['name'], 'PR-19 km 4.4')
 
+    def test_road_pin_has_no_continuation_page(self):
+        import server
+        with closing(sqlite3.connect(self.geo / 'addresses/TX.sqlite')) as db, db:
+            db.execute('CREATE TABLE addr(num,street,norm,city,state,zip,lat,lon)')
+            db.execute("INSERT INTO addr VALUES('19','KM4HM4 Boulevard','km4hm4 blvd','Las Penas','TX','75000',5,6)")
+        with patch.object(server, 'HERE', self.root), patch.object(server.assistant, 'LOCAL', None):
+            self.assertTrue(server.places('19 KM4HM4 BLVD, Las Penas'))
+            self.assertEqual(server.places('19 KM4HM4 BLVD, Las Penas', parcel_offset=1), [])
+
     def test_interior_sector_and_landmark_are_only_road_hints(self):
         q = 'Sector Sol, Bo las Peñas, frente a la cancha, KM 4.4 Interior, Carr. 19, Villa Ejemplo'
         row, = self.lookup(q)

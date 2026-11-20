@@ -58,7 +58,7 @@ def components(query):
 def lookup(db, parts, near, limit):
     number, text, urb = parts
     postcode = ''
-    postal = re.search(r'(?:^|\s)(\d{5})(?:-\d{4})?\s*$', text)
+    postal = re.search(r'(?:^|\s)(\d{5})(?:[-\s]\d{4})?\s*$', text)
     if postal:
         postcode = postal[1]
         text = text[:postal.start()]

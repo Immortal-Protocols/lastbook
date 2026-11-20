@@ -33,16 +33,17 @@ for number, word in enumerate(ORDINALS):
     suffix = 'th' if 10 <= number % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(number % 10, 'th')
     TO_DIGITS[word] = f'{number}{suffix}'
 TO_WORDS = {value: key for key, value in TO_DIGITS.items()}
+STREET_ENDINGS = set(WORDS.values()) | {'ne', 'nw', 'se', 'sw'}
 
 
 def normalize(text):
     return ' '.join(WORDS.get(word, word) for word in re.sub(r'[^a-z0-9 ]+', ' ', text.lower()).split())
 
 
-def is_address_query(query):
+def is_address_query(query, include_rural=True):
     """A standalone ZIP remains a place query. A number followed by words is an address."""
     return bool(re.match(r'^\s*\d[\w-]*\s+\S', query) or pr_addresses.components(query) or
-                pr_parcels.number(query) or pr_rural.looks_rural(query) or pr_rural.parcel_direction(query))
+                pr_parcels.number(query) or (include_rural and (pr_rural.looks_rural(query) or pr_rural.parcel_direction(query))))
 
 
 def street_forms(street):
@@ -55,16 +56,20 @@ def street_forms(street):
     return list(dict.fromkeys(forms))
 
 
-def _parts(query):
+def _parts(query, states=True):
     number, remainder = query.strip().split(None, 1)
     number = number.upper()
     remainder = re.sub(r'[^a-z0-9 ]+', ' ', remainder.lower()).split()
+    # A ZIP+4 ("62704-1234", or "62704 1234" once the hyphen is gone) is the same place as its five-digit ZIP, which the
+    # index keeps: drop the four extra digits so the ZIP and the state before it are still read.
+    if len(remainder) > 1 and re.fullmatch(r'\d{4}', remainder[-1]) and re.fullmatch(r'\d{5}', remainder[-2]):
+        remainder.pop()
     postcode = ''
     if remainder and re.fullmatch(r'\d{5}', remainder[-1]):
         postcode = remainder.pop()
     state = ''
     for count in (3, 2, 1):
-        if len(remainder) <= count:
+        if not states or len(remainder) <= count:
             continue
         name = ' '.join(remainder[-count:])
         code = STATES.get(name) or (name.upper() if count == 1 and name.upper() in STATE_CODES else '')
@@ -73,6 +78,21 @@ def _parts(query):
             remainder = remainder[:-count]
             break
     return number, normalize(' '.join(remainder)).split(), state, postcode
+
+
+def _readings(query):
+    """The ways to read a query, likeliest first, as (number, words, state, postcode, town).
+    Words at the end that name a state can also be the street's own ending ('12 Oak Ct', '500 4th St NE') or a town
+    ('Washington'), so the query is read both ways. The second reading stays narrow, so that a state that is not installed
+    still finds nothing: a two-letter code is tried only as part of the street (town ''), and a state's name only as a town
+    of exactly that name (town 'whole'). '100 Main St IN' does not find Inglewood, nor 'Maple Ave Kansas' Kansas City."""
+    number, words, state, postcode = _parts(query)
+    if not state:
+        return [(number, words, state, postcode, 'starts')]
+    typed = _parts(query, states=False)
+    code = len(typed[1]) == len(words) + 1 and typed[1][-1].upper() in STATE_CODES
+    by_state, as_typed = (number, words, state, postcode, 'starts'), (*typed, '' if code else 'whole')
+    return [as_typed, by_state] if code and typed[1][-1] in STREET_ENDINGS else [by_state, as_typed]
 
 
 def locality_wording(query, geo_directory, offset, limit, named_places=()):
@@ -97,9 +117,11 @@ def locality_wording(query, geo_directory, offset, limit, named_places=()):
 
 def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_offset=0, parcel_limit=None):
     """Find indexed street addresses or explicitly labeled rural road references."""
+    if limit <= 0:
+        return []
     key = pr_parcels.number(query)
     rural = pr_rural.parse(query, parcel=True)
-    if limit > 0 and (key or rural or pr_rural.looks_rural(query) or pr_rural.parcel_direction(query)):
+    if key or rural or pr_rural.looks_rural(query) or pr_rural.parcel_direction(query):
         path = Path(geo_directory) / 'addresses' / 'PR.sqlite'
         if path.is_file():
             db = None
@@ -107,38 +129,49 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
                 db = sqlite3.connect(ro_uri(path), uri=True)
                 parcels = pr_parcels.installed(db)
                 if key:
-                    return pr_parcels.by_number(db, key) if parcels and not parcel_offset else []
+                    rows = pr_parcels.by_number(db, key) if parcels and not parcel_offset else []
+                    if rows:
+                        return rows
                 roads = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'").fetchone()
-                if not (parcels or roads):
-                    return []
+                if not key and (parcels or roads):
+                    wording = pr_permit.matches(db, query) if parcels else {}
 
-                wording = pr_permit.matches(db, query) if parcels else {}
+                    def lookup(address):
+                        rows = pr_parcels.candidates(db, address, max(0, parcel_offset), parcel_limit or limit, wording) if parcels else []
+                        if address and roads and not parcel_offset:
+                            rows.extend(pr_rural.lookup(db, address, limit))
+                        return rows
 
-                def lookup(address):
-                    rows = pr_parcels.candidates(db, address, max(0, parcel_offset), parcel_limit or limit, wording) if parcels else []
-                    if address and roads and not parcel_offset:
-                        rows.extend(pr_rural.lookup(db, address, limit))
-                    return rows
-
-                rows = lookup(rural)
-                if rows:
-                    return rows
-                interpreted = pr_rural_model.interpret(model, query, rural)
-                rows = lookup(interpreted)
-                for row in rows:
-                    row['interpreted'] = pr_rural_model.description(interpreted)
-                return rows
+                    rows = lookup(rural)
+                    if rows:
+                        return rows
+                    interpreted = pr_rural_model.interpret(model, query, rural)
+                    rows = lookup(interpreted)
+                    if rows:
+                        for row in rows:
+                            row['interpreted'] = pr_rural_model.description(interpreted)
+                        return rows
             except sqlite3.Error:
                 pass
             finally:
                 if db is not None:
                     db.close()
+    # Ordinary addresses and places have no parcel continuation pages.
+    if parcel_offset:
         return []
     legacy_number = re.match(r'^\s*\d[\w-]*\s+\S', query)
     pr_parts = pr_addresses.components(query)
-    if limit <= 0 or not (legacy_number or pr_parts):
+    if not (legacy_number or pr_parts):
         return []
-    number, words, state, postcode = _parts(query) if legacy_number else ('', [], '', '')
+    readings = _readings(query) if legacy_number else [('', [], '', '', 'starts')]
+    for reading in readings:
+        found = _lookup(*reading, geo_directory, limit, near, pr_parts)
+        if found:
+            return found
+    return []
+
+
+def _lookup(number, words, state, postcode, town, geo_directory, limit, near, pr_parts=None):
     geo_directory = Path(geo_directory)
     paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
     if state:
@@ -169,7 +202,7 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
             connections.append(db)
         if not connections or not words or (pr_parts and pr_parts[2]):
             return pr_results
-        for count in range(len(words), 0, -1):
+        for count in range(len(words), 0 if town else len(words) - 1, -1):
             street = ' '.join(words[:count])
             if all(word in set(WORDS.values()) for word in words[:count]):
                 continue
@@ -185,8 +218,8 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
                     conditions.append('zip = ?')
                     parameters.append(postcode)
                 if city:
-                    conditions.append('lower(city) LIKE ?')
-                    parameters.append(city + '%')
+                    conditions.append('lower(city) = ?' if town == 'whole' else 'lower(city) LIKE ?')
+                    parameters.append(city if town == 'whole' else city + '%')
                 sql = ('SELECT num,street,city,state,zip,lat,lon,norm FROM addr WHERE '
                        + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT ?')
                 for connection in connections:

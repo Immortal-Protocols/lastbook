@@ -165,6 +165,21 @@ TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *
 OWN = {'id': 'own', 'title': 'Agua potable', 'short': 'Hervir el agua', 'keywords': ['水'], 'choices': []}
 RANK_OWN = [['agua', [OWN]], ['水', [OWN]], ['hervir', [OWN]]]
 
+# Someone who passed out or won't wake up: "out" starts "outage", so these opened the power-outage guide or nothing.
+# The Not breathing choice cites the unresponsive pages (recovery position, CPR): [guide, choice] that comes first.
+UNCONSCIOUS = {
+    'passed out': ['hurt', 'breathing'], 'my dad passed out': ['hurt', 'breathing'], 'pass out': ['hurt', 'breathing'],
+    'passing out': ['hurt', 'breathing'], 'unresponsive': ['hurt', 'breathing'], "won't wake up": ['hurt', 'breathing'],
+    "baby won't wake up": ['hurt', 'breathing'],
+}
+# Searches with "out", "black" or "pass" about something else keep their first result.
+STILL_OUT = {
+    'power is out': ['food', 'outage'], 'the power went out': ['power', 'first-hours'],
+    'lights out': ['power', 'first-hours'], 'out of food': ['food', 'outage'],
+    'black widow bite': ['hurt', 'animal-bite'], 'passing blood': ['health', 'chronic'],
+}
+TOPS = sorted({*TOPS, *UNCONSCIOUS, *STILL_OUT})
+
 # Emergencies where the first choice decides what someone reads first. A cardiac arrest needs CPR, not the
 # long-term care guide that "heart" also matches: [guide, choice] that comes first.
 EMERGENCY_FIRST = {
@@ -297,6 +312,13 @@ class TopicSearch(unittest.TestCase):
             for q, choice in LISTED.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertIn(choice, top[q])
+
+    def test_passing_out_finds_first_aid(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in [*UNCONSCIOUS.items(), *STILL_OUT.items()]:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
 
     def test_english_ranks_as_before(self):
         for r in self.modes:

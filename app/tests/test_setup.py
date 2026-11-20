@@ -1702,6 +1702,83 @@ class Manage(Base):
         self.assertEqual(s._check_library({'state': '', 'bytes_done': 0}, new, Control()), [])
         self.assertTrue(Path(note['old']).exists())        # the damaged copy is kept aside until deleted
 
+    def test_check_now_downloads_nothing_and_keeps_the_result(self):
+        lib = self.installed_library()
+        work = self.parent / 'LastbookData.setup'
+        shutil.rmtree(work, ignore_errors=True)
+        s = self.setup('manage', current=lib)
+        self.assertIsNone(s.current_info()['checked'])                  # never checked on this computer
+        self.files.log.clear()
+        j = s.start(check=True)
+        self.assertTrue(j['check'])
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (0, True, False))
+        self.assertEqual(self.files.log, [])                             # nothing asked of the server
+        self.assertFalse(work.exists())                                  # nothing written beside the library
+        self.assertEqual(s.current_info()['checked'], j['result'])
+        self.assertEqual(self.setup('manage', current=lib).current_info()['checked'], j['result'])   # kept in the settings folder
+        self.assertIsNone(api.startup(self.settings)[1])                 # no switch staged
+
+    def test_check_now_reports_damage_and_changes_nothing(self):
+        lib = self.installed_library()
+        damaged = []
+        for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):
+            data = bytearray(path.read_bytes())
+            data[0] ^= 1
+            path.write_bytes(data)
+            damaged.append((path, sha(data)))
+        s = self.setup('manage', current=lib)
+        self.files.log.clear()
+        s.start(check=True)
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (2, False, False))
+        self.assertEqual(self.files.log, [])                             # a check never downloads, even with damage found
+        for path, digest in damaged:
+            self.assertEqual(sha(path.read_bytes()), digest)             # and changes nothing: Repair is the person's choice
+        s.job = None
+        s.start(repair=True)                                             # then Repair fixes it, and the check it ran is kept
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (2, False, True))
+        self.assertEqual(sorted(n for n, _, _ in self.files.log), ['Lastbook-Small.zip', 'model.gguf'])
+        self.assertEqual(s.current_info()['checked']['repaired'], True)
+
+    def test_check_now_finds_a_model_of_the_wrong_size(self):
+        lib = self.installed_library()
+        model = lib / 'models' / 'model.gguf'
+        model.write_bytes(self.model[:-1])                               # one byte short: current_info() no longer names a model
+        s = self.setup('manage', current=lib)
+        self.assertIsNone(s.current_info()['model'])
+        self.files.log.clear()
+        j = s.start(check=True)
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'model'])
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertIs(j['result']['model_ok'], False)
+        self.assertGreaterEqual(j['result']['damaged'], 1)
+        self.assertEqual(self.files.log, [])
+        self.assertEqual(model.read_bytes(), self.model[:-1])           # the file is unchanged
+        s.job = None
+        s.start(repair=True)                                             # and Repair, as the check offers, replaces it
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (1, False, True))
+        self.assertEqual(sorted(n for n, _, _ in self.files.log), ['model.gguf'])
+        self.assertEqual(model.read_bytes(), self.model)
+
+    def test_check_now_without_the_model_or_a_library(self):
+        lib = self.installed_library()
+        (lib / 'models' / 'model.gguf').unlink()
+        s = self.setup('manage', current=lib)
+        j = s.start(check=True, ai=True)                                 # the AI is not installed: it is not checked, or fetched
+        self.assertEqual([i['kind'] for i in j['items']], ['pack'])
+        j = self.wait(s)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok']), (0, None))
+        self.assertEqual(self.setup().start(check=True)['code'], 'nothing')
+        self.assertIn('check', self.setup().start(check=True)['error'])
+
     def test_repair_needs_a_known_pack(self):
         lib = self.parent / 'LastbookData'
         (lib / 'library-data').mkdir(parents=True)
@@ -1733,6 +1810,151 @@ class Manage(Base):
             self.assertTrue(r['disk'])
         self.assertEqual(self.setup(pick_folder=lambda: None).pick(), {'path': None, 'cancelled': True})
         self.assertTrue(all('name' in d for d in hardware.detect([self.parent])['disks']))
+
+    def damaged_library(self):
+        """A library whose big.bin and model are each one bit off: (library, [(path, its damaged sha256)])."""
+        lib = self.installed_library()
+        damaged = []
+        for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):
+            data = bytearray(path.read_bytes())
+            data[0] ^= 1
+            path.write_bytes(data)
+            damaged.append((path, sha(data)))
+        return lib, damaged
+
+    def resumed_check(self, lib, manifest=None):
+        """Lastbook reopened on a saved Check now: the job comes back paused, and Resume runs it to its end."""
+        kw = {'manifest': manifest} if manifest else {}
+        s = self.setup('manage', current=lib, **kw)
+        j = s.public_job()
+        self.assertEqual((j['state'], j.get('check')), ('paused', True), j)
+        self.assertTrue(all(i['state'] == 'paused' and i['bytes_done'] == 0 for i in j['items']), j)   # starts again from the files
+        self.files.log.clear()
+        s.resume()
+        return s, self.wait(s)
+
+    def assert_read_only(self, lib, damaged, j):
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual(self.files.log, [])                             # no request to any server
+        for path, digest in damaged:
+            self.assertEqual(sha(path.read_bytes()), digest)             # the damaged bytes left as they are
+        self.assertFalse(api._work_for(lib).exists())                    # no work or downloads folder
+        self.assertIsNone(api.startup(self.settings)[1])                 # nothing staged to switch to
+
+    def test_check_now_saved_before_it_starts_stays_read_only_after_a_restart(self):
+        """Saved before its worker started, then Lastbook reopened and Resume pressed: still a check. It used to forget it was one,
+        download model.gguf, replace the damaged file and report repaired=true."""
+        lib, damaged = self.damaged_library()
+        with mock.patch.object(api.Setup, '_run', lambda self_: None):    # the job is saved; the process ends before the worker runs
+            self.assertTrue(self.setup('manage', current=lib).start(check=True)['check'])
+        s, j = self.resumed_check(lib)
+        self.assert_read_only(lib, damaged, j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (2, False, False))
+        self.assertEqual(s.current_info()['checked']['damaged'], 2)
+
+    def test_check_now_saved_with_its_items_done_checks_again_after_a_restart(self):
+        """Saved after both items finished but before the result was written: the reopened check does not trust the saved
+        "done" (it used to report damaged=0 and model_ok=null with the damage still there). It reads the files again."""
+        lib, damaged = self.damaged_library()
+        with mock.patch.object(api.Setup, '_finish_job', lambda self_, plan, work: None):   # the process ends before the result
+            s = self.setup('manage', current=lib)
+            s.start(check=True)
+            t0 = time.time()
+            while not all(i['state'] == 'done' for i in s.public_job()['items']):
+                self.assertLess(time.time() - t0, 20)
+                time.sleep(0.02)
+            s.thread.join(10)
+        saved = json.loads(api._job_file(self.settings).read_text(encoding='utf-8'))
+        self.assertEqual([i['state'] for i in saved['items']], ['done', 'done'])
+        s, j = self.resumed_check(lib)
+        self.assert_read_only(lib, damaged, j)
+        self.assertEqual((j['result']['damaged'], j['result']['model_ok'], j['result']['repaired']), (2, False, False))
+
+    def test_check_now_keeps_an_earlier_jobs_downloads(self):
+        """A finished check is not an install: the next start does not clear the work folder, where a download that stopped
+        earlier can still be resumed from."""
+        lib = self.installed_library()
+        work = api._work_for(lib)
+        (work / 'downloads').mkdir(parents=True)
+        (work / 'downloads' / 'Lastbook-Small.zip.part').write_bytes(b'x' * 1000)
+        self.settings.mkdir(parents=True, exist_ok=True)
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        s = self.setup('manage', current=lib)
+        s.start(check=True)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        api.opened(self.settings, lib, None)                             # what main.py does on the next start
+        self.assertTrue((work / 'downloads' / 'Lastbook-Small.zip.part').is_file())
+        self.assertEqual(json.loads((self.settings / 'setup.json').read_text())['work'], str(work))
+
+    def test_repair_result_says_what_was_replaced(self):
+        """Repair's result tells a whole library downloaded again (the old one kept aside) from the AI file replaced in place."""
+        lib = self.installed_library()
+        model = lib / 'models' / 'model.gguf'
+        model.write_bytes(self.model[:-1])
+        s = self.setup('manage', current=lib)
+        s.start(repair=True)
+        r = self.wait(s)['result']
+        self.assertEqual((r['repaired'], r['model_ok'], r['pack_replaced']), (True, False, False))
+        big = lib / 'library-data' / 'big.bin'                          # then a library file: the whole pack again
+        data = bytearray(big.read_bytes())
+        data[0] ^= 1
+        big.write_bytes(data)
+        s = self.setup('manage', current=lib)
+        s.job = None
+        s.start(repair=True)
+        r = self.wait(s)['result']
+        self.assertEqual((r['repaired'], r['pack_replaced']), (True, True))
+
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_check_and_repair_words(self):
+        """setup.js's own words: a check, also one resumed after a restart (j.check, with no memory of having started it), never
+        speaks of downloads; Repair's offer and its result tell a whole-library download from an AI file put in place."""
+        script = r"""
+const src = require('fs').readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const errCode = e => e && e.code, noDownload = () => false;
+let repair = null;
+eval(section('  function jobWords(', '  function jobView('));
+eval(section('  function repairedWords(', '  /* ---- Check now'));
+eval(section('  function repairOffer(', '  function checkedView('));
+const esc = String, ico = () => '', itemTitle = it => it.title, WORD = {paused: 'Paused'};
+eval(section('  const STEPS = ', '  const WORD = ') + section('  function itemHTML(', '  const itemTitle = '));   // one eval: STEPS in itemHTML's scope
+const steps = (j, it) => [...itemHTML(it, j).matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map(m => m[1]);
+const job = (state, extra) => Object.assign({state, items: [{state: state === 'paused' ? 'paused' : 'verifying'}], error: null}, extra);
+console.log(JSON.stringify({
+  checking: jobWords(job('verifying', {check: true, repair: true})),
+  paused: jobWords(job('paused', {check: true, repair: true})),
+  repairing: jobWords(job('verifying', {repair: true})),
+  install: jobWords(job('downloading', {})),
+  offer_ai: repairOffer(0, true, false), offer_lib: repairOffer(2, false, false), offer_all: repairOffer(1, true, true),
+  did_ai: repairedWords({repaired: true, model_ok: false, damaged: 1, pack_replaced: false}),
+  did_lib: repairedWords({repaired: true, model_ok: true, damaged: 1, pack_replaced: true}),
+  check_steps: steps({check: true, state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
+  install_steps: steps({state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
+}));
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js')],
+                           check=True, capture_output=True, text=True, encoding='utf-8')
+        w = json.loads(r.stdout)
+        self.assertEqual(w['checking']['head'], 'Checking the library')
+        self.assertIn('downloads nothing', w['checking']['lead'])
+        self.assertEqual(w['paused']['head'], 'Paused')
+        self.assertIn('Nothing was downloaded or changed', w['paused']['lead'])
+        self.assertNotIn('What is downloaded is kept', w['paused']['lead'])
+        self.assertEqual(w['repairing']['head'], 'Checking the library')
+        self.assertEqual(w['install']['head'], 'Installing')
+        self.assertEqual(w['offer_ai'], 'Repair downloads the local AI file again and puts it in place of this one.')
+        self.assertNotIn('aside', w['offer_ai'])                          # no damaged model is kept: it is replaced
+        self.assertIn('whole library again and keeps the damaged copy aside', w['offer_lib'])
+        self.assertEqual(w['offer_all'], 'Repair downloads the whole library again and keeps the damaged copy aside, downloads the local AI '
+                                          'file again and puts it in place of this one, and downloads the detailed map again.')
+        self.assertIn('put in its place', w['did_ai'])
+        self.assertNotIn('kept aside', w['did_ai'])
+        self.assertIn('downloaded again', w['did_lib'])
+        self.assertIn('kept aside', w['did_lib'])
+        self.assertEqual(w['check_steps'], ['Check'])                    # a check's items are only read: no Download or Unpack
+        self.assertEqual(w['install_steps'], ['Download', 'Check', 'Unpack', 'Finish'])
+        self.assertIn("? `${size(it.bytes_total)} to check`", Path(ROOT / 'web' / 'setup.js').read_text(encoding='utf-8'))
 
 
 def make_map(path, state='CA', extra=None):
@@ -1837,6 +2059,39 @@ class Maps(Base):
         self.assertIsNone(note.get('error'))
         self.assertEqual(install.map_name(new), 'CA')
         self.assertEqual((new / 'derived/geo/terrain.sqlite').read_bytes(), map_files['derived/geo/terrain.sqlite'])
+
+    def test_check_now_reports_a_damaged_state_map_and_downloads_nothing(self):
+        """Check now never downloads, even where Repair would fetch the state map again (#88): it reports the map as damaged."""
+        lib, mf, map_files = self.library_with_state_map()
+        (lib / 'derived/geo/terrain.sqlite').unlink()
+        mf.current['maps'][0]['available'] = False          # not on offer either: a check must still run, not refuse
+        s = self.setup('manage', current=lib, manifest=mf)
+        self.files.log.clear()
+        j = s.start(check=True)
+        self.assertEqual([i['kind'] for i in j['items']], ['pack'])       # no map item: nothing to fetch
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['map_ok'], j['result']['damaged'], j['result']['repaired']), (False, 1, False))
+        self.assertEqual(self.files.log, [])
+        self.assertFalse((lib / 'derived/geo/terrain.sqlite').exists())   # left as it was: Repair is the person's choice
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), map_files['derived/geo/map.sqlite'])
+        self.assertEqual(s.current_info()['checked']['map_ok'], False)
+
+    def test_check_now_resumed_after_a_restart_checks_the_state_map_again(self):
+        """The state map's result is worked out again by the resumed check, from the map's files as they are then."""
+        lib, mf, map_files = self.library_with_state_map()
+        with mock.patch.object(api.Setup, '_run', lambda self_: None):
+            self.setup('manage', current=lib, manifest=mf).start(check=True)
+        (lib / 'derived/geo/terrain.sqlite').unlink()                    # damaged while Lastbook was closed
+        s = self.setup('manage', current=lib, manifest=mf)
+        self.assertEqual((s.public_job()['state'], s.public_job().get('check')), ('paused', True))
+        self.files.log.clear()
+        s.resume()
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual((j['result']['map_ok'], j['result']['damaged'], j['result']['repaired']), (False, 1, False))
+        self.assertEqual(self.files.log, [])
+        self.assertFalse(api._work_for(lib).exists())
 
     def test_repair_says_when_a_damaged_state_map_cannot_be_fetched(self):
         lib, mf, _ = self.library_with_state_map()

@@ -345,9 +345,9 @@ def query_groups(q):
 # unrelated how-to actions. These terms are only a retrieval fallback, not
 # medical advice or a replacement for topic-guide urgency classification.
 EMERGENCY_ANCHORS = (
-    (r"\\bdrown(?:ing|ed)?\\b", ['drowning', 'resuscitation', 'airway']),
-    (r"\\bhypothermia\\b", ['hypothermia', 'cold exposure']),
-    (r"\\bcarbon monoxide\\b", ['carbon monoxide', 'poisoning']),
+    (r"\bdrown(?:ing|ed)?\b", ['drowning', 'resuscitation', 'airway']),
+    (r"\bhypothermia\b", ['hypothermia', 'cold exposure']),
+    (r"\bcarbon monoxide\b", ['carbon monoxide', 'poisoning']),
 )
 
 

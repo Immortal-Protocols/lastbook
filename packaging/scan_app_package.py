@@ -42,6 +42,8 @@ TLDS = r'(?:com|org|net|co|dev|io|app|ai|cloud|info|me|xyz|edu|gov|us|uk|de|eu|c
 HOST_NAME = re.compile(r'^(?:[a-z0-9-]+\.)+' + TLDS + r'$')
 HOST_SUFFIX = re.compile(r'^\.(?:[a-z0-9-]+\.)*' + TLDS + r'$')
 LLM_DIR = ('_internal\\llm\\', '_internal/llm/')
+SHARE_DIR = ('_internal\\share\\', '_internal/share/')     # rqbit, which seeds downloads the person chose to share: the pinned release only
+RQBIT = json.loads((Path(__file__).resolve().parent / 'share' / 'rqbit.json').read_text(encoding='utf-8'))['files']['win-x64']
 NETWORK_DLLS = re.compile(r'(?i)^(ws2_32|wsock32|mswsock|winhttp|wininet|urlmon|dnsapi|iphlpapi|netapi32|rpcrt4|webio|httpapi|winsock|wsnmp32)\.dll$')
 SHIP = json.loads((Path(__file__).resolve().with_name('ship_edits.json')).read_text(encoding='utf-8'))
 HOUSEHOLD = re.compile('|'.join(SHIP['forbidden']).encode(), re.I)
@@ -211,6 +213,11 @@ def main():
         ours = rel.startswith(('_internal\\web\\', '_internal\\content\\', '_internal/web/', '_internal/content/'))
         data = path.read_bytes()
         scan.text(rel, data, ours)
+        if rel.startswith(SHARE_DIR):         # a BitTorrent program, so it does use the network: it must be exactly the pinned one
+            import hashlib
+            if path.name != RQBIT['name'] or len(data) != RQBIT['size'] or hashlib.sha256(data).hexdigest() != RQBIT['sha256']:
+                scan.fails.append(f'not the pinned rqbit (packaging/share/rqbit.json): {rel}')
+            scan.notes.append(f'share {path.name}: rqbit, pinned, network by design (engine/setup/share.py)')
         if rel.startswith(LLM_DIR):           # the local AI's runner may not reach a network at all
             if 'rpc' in path.name.lower():
                 scan.fails.append(f'RPC backend in the runner folder: {rel}')
@@ -261,18 +268,24 @@ def main():
     if mf.is_file():
         def urls(v):
             if isinstance(v, dict):
-                for x in v.values():
+                for k, x in v.items():
+                    if k == 'mirrors' and isinstance(v.get('torrent'), dict) and isinstance(x, list):
+                        yield from ((u, True) for u in x)      # mirrors of a file with a pinned pieces root: any https host
+                        continue
                     yield from urls(x)
             elif isinstance(v, list):
                 for x in v:
                     yield from urls(x)
             elif isinstance(v, str) and '://' in v:
-                yield v
+                yield v, False
         import urllib.parse
-        for u in urls(json.loads(mf.read_text(encoding='utf-8'))):
+        for u, mirror in urls(json.loads(mf.read_text(encoding='utf-8'))):
             setup_urls.append(u)
             parts = urllib.parse.urlsplit(u)
-            if parts.scheme != 'https' or not host_allowed(parts.hostname):
+            if mirror:
+                if parts.scheme != 'https' or not parts.hostname or parts.username or parts.password or parts.port not in (None, 443):
+                    scan.fails.append(f'setup manifest mirror that is not a plain https address: {u}')
+            elif parts.scheme != 'https' or not host_allowed(parts.hostname):
                 scan.fails.append(f'setup manifest address not on the allowed hosts: {u}')
     size = sum((root / f).stat().st_size for f in scan.files)
     result = {'folder': str(root), 'files': len(scan.files), 'bytes': size, 'modules': len(scan.modules), 'items_scanned': scan.items, 'terms': len(terms),

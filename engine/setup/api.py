@@ -16,11 +16,13 @@ import sys
 import threading
 import time
 import traceback
+import urllib.parse
 import uuid
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
-from . import download, hardware, install
+from . import download, hardware, install, share, torrent
+from . import manifest as mf
 from .manifest import Manifest
 
 DATA_NAME = install.DATA_NAME
@@ -98,7 +100,8 @@ class _Item:
 
 class Setup:
     def __init__(self, mode, settings_dir, default_parent, current=None, manifest=None, allowed=None, context=None,
-                 on_finish=None, pick_folder=None, look_for_libraries=None, home=None, llm_local=None, default_why=None):
+                 on_finish=None, pick_folder=None, look_for_libraries=None, home=None, llm_local=None, default_why=None, share_command=None,
+                 swarm_extra=(), swarm_peers=()):
         """mode: 'first-run' or 'manage'. current: the open library (manage). on_finish(folder): the app opens that library
         (it relaunches). pick_folder(): a folder the person chose, or None. look_for_libraries(): LastbookData folders found."""
         self.mode, self.current = mode, Path(current) if current else None
@@ -114,7 +117,11 @@ class Setup:
         self.ai_measure, self.measuring = None, False
         self.deleting = set()
         self.rejected = {}         # path -> (size, mtime) of a file already here that failed its SHA-256: not offered or used again
+        self.seeder = share.Seeder(share_command, share.Tally(self.settings_dir / 'setup' / 'shared.json'))
+        self.share_command, self.swarm_extra, self.swarm_peers = share_command, list(swarm_extra), list(swarm_peers)   # tests: rqbit's stand-in
         self.job = self._load_job()
+        if self.mode == 'manage' and self.current and self._settings().get('share'):
+            threading.Thread(target=self.seed_now, daemon=True, name='setup-share').start()
 
     # ------------------------------------------------------------------------------------------------- saved state --
     def _settings(self):
@@ -226,10 +233,16 @@ class Setup:
             plan_files = plan['map']['files']
         elif it['kind'] == 'addresses' and plan.get('addresses'):
             plan_files = plan['addresses']['files']
+        elif it['kind'] == 'share' and plan.get('share'):
+            plan_files = [f for f in plan['share'] if f['name'] == it['id']]
         else:
             plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
         n = 0
         for f in plan_files:
+            swarmed = download.swarm_done(Path(plan['work']) / 'downloads' / f['name'])
+            if swarmed is not None:             # coming from other people too: its data is in BitTorrent's folder, its .json says how far
+                n += swarmed
+                continue
             for p in (Path(plan['work']) / 'downloads' / f['name'], Path(plan['work']) / 'downloads' / (f['name'] + '.part')):
                 try:
                     n += p.stat().st_size
@@ -422,7 +435,170 @@ class Setup:
         self.manifest.fetch_once()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
-                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job()}
+                'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(), 'sharing': self.sharing()}
+
+    def sharing(self):
+        """The person's mirrors, and sharing: whether this build can share (it has rqbit), whether it is on, and the kept files."""
+        kept, missing = self._kept(), self._not_kept()
+        return {'mirrors': self._mirror_bases(), 'available': self.seeder.available(), 'on': bool(self._settings().get('share')),
+                'seeding': sum(len(t) for _, t in self.seeder.running()), 'kept': [{'name': f['name'], 'size': f['size']} for f, _, _, _ in kept],
+                'kept_bytes': sum(f['size'] for f, _, _, own in kept if own), 'shared_bytes': self.seeder.shared(),
+                'missing': [{'name': f['name'], 'size': f['size']} for f, _ in missing], 'missing_bytes': sum(f['size'] for f, _ in missing)}
+
+    def _not_kept(self):
+        """The downloads the open library came from that the manifest pins a torrent for but are not kept to share: [(file entry,
+        title of what it is)]. A library installed before sharing was on (or with it off) has its pack's zip deleted once it was
+        unpacked; these can be downloaded again to share (share_get). The model is shared from the library itself, so it is never
+        among them."""
+        if self.mode != 'manage' or not self.current:
+            return []
+        cur = self.current_info() or {}
+        owned = []
+        pack = self.manifest.pack(cur['pack']) if cur.get('pack') else None
+        if pack:
+            owned += [(f, pack['title'] + ' library') for f in pack['files']]
+        mp = self.manifest.map(cur['map']) if cur.get('map') else None
+        if mp:
+            owned += [(f, mp['title'] + ' map') for f in mp['files']]
+        for aid in cur.get('address_indexes') or []:
+            a = self.manifest.address_index(aid)
+            if a:
+                owned += [(f, a['title'] + ' address search') for f in a['files']]
+        kept = {f['name'] for f, _, _, _ in self._kept()}
+        return [(f, title) for f, title in owned if f.get('torrent') and f['name'] not in kept]
+
+    def share_get(self):
+        """Manage mode: downloads again, to share them, the files the open library came from that are not kept (_not_kept), and
+        turns sharing on. It is a job like any other (pause, resume, cancel), with BitTorrent on, so what rqbit takes from other
+        people is shared as soon as it has it. Nothing in the library changes: each file is checked and kept in <library>.share
+        with its torrent, and seeded from there."""
+        if not self.seeder.available():
+            return {'error': 'This copy of Lastbook cannot share downloads.', 'code': 'unavailable'}
+        with self.lock:
+            if self.job and self.job['state'] in ACTIVE + ('paused',):
+                return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
+            missing = self._not_kept()
+            if not missing:
+                return {'error': 'Everything this library came from is kept to share already.', 'code': 'nothing'}
+            target = self.current
+            parent, work = target.parent, _work_for(target)
+            need = 0
+            for f, _ in missing:      # what an earlier run of this already downloaded is on the disk already
+                swarmed = download.swarm_done(work / 'downloads' / f['name'])
+                if swarmed is None:
+                    try:
+                        swarmed = os.path.getsize(work / 'downloads' / (f['name'] + '.part'))
+                    except OSError:
+                        swarmed = 0
+                need += max(0, f['size'] - swarmed)
+            free, _ = hardware.disk_of(parent)
+            if free < need + 512 * 2 ** 20:
+                return {'error': f'Keeping it to share needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space first.',
+                        'code': 'no_space', 'need_bytes': need, 'free_bytes': free}
+            items = [{'id': f['name'], 'kind': 'share', 'title': title, 'state': 'waiting', 'bytes_done': 0, 'bytes_total': f['size'],
+                      'rate_bps': 0, 'eta_s': None, 'error': None} for f, title in missing]
+            self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'items': items, 'error': None, 'started': _now(), 'folder': str(target),
+                        'plan': {'share': [f for f, _ in missing], 'parent': str(parent), 'target': str(target), 'work': str(work),
+                                 'sources': {}, 'explicit': False, 'retried': {}, 'switch': False}}
+            s = self._settings()
+            s['share'], s['work'] = True, str(work)
+            self._save_settings(s)
+            _tag_sources(self.job)
+            self._save_job()
+            self._run()
+        self.seed_now()               # what is kept already is shared meanwhile
+        return self.public_job()
+
+    def set_share(self, on):
+        """Turns sharing on or off. On: what is kept is seeded now, and what is downloaded from now on is kept. Off: seeding stops;
+        the kept files stay until delete_kept."""
+        if on and not self.seeder.available():
+            return {'error': 'This copy of Lastbook cannot share downloads.', 'code': 'unavailable'}
+        s = self._settings()
+        s['share'] = bool(on)
+        self._save_settings(s)
+        if on:
+            self.seed_now()
+        else:
+            self.seeder.stop()
+        return self.sharing()
+
+    def delete_kept(self):
+        """Deletes the downloads kept for sharing (the zips and their torrents in <library>.share). The library is not touched."""
+        self.seeder.stop()
+        freed = 0
+        for f, data, t, own in self._kept():
+            for path in ((data, t) if own else (t,)):
+                try:
+                    n = path.stat().st_size
+                    path.unlink()
+                    freed += n if path == data else 0
+                except OSError:
+                    pass
+        return {**self.sharing(), 'ok': True, 'freed_bytes': freed}
+
+    def _shareable(self):
+        """Every file the manifest pins a torrent for: (file entry, where its data is kept, whether that copy is setup's own)."""
+        if not self.current:
+            return []
+        out, folder = [], share.folder_for(self.current)
+        for key in ('packs', 'maps', 'address_indexes'):
+            for x in self.manifest.current.get(key, []):
+                out += [(f, folder / f['name'], True) for f in x['files'] if f.get('torrent')]
+        for m in self.manifest.current.get('models', []):
+            if m.get('torrent'):
+                out.append(({'name': m['file'], 'size': m['size'], 'torrent': m['torrent']}, self.current / 'models' / m['file'], False))
+        return out
+
+    def _kept(self):
+        """The shareable files that are here, at their size, with a torrent beside them: [(file, data, torrent, own)]."""
+        folder = share.folder_for(self.current) if self.current else None
+        out = []
+        for f, data, own in self._shareable():
+            t = folder / (f['name'] + '.torrent')
+            try:
+                if data.stat().st_size == f['size'] and t.is_file():
+                    out.append((f, data, t, own))
+            except OSError:
+                pass
+        return out
+
+    def seed_now(self):
+        """With sharing on, seeds every kept file whose torrent still adds up to its pinned pieces root."""
+        if not self._settings().get('share') or not self.current:
+            return 0
+        groups = {}
+        for f, data, t, _ in self._kept():
+            pin = f['torrent']
+            try:
+                torrent.piece_hashes(t.read_bytes(), f['name'], f['size'], pin['pieces_root'], pin['piece_length'], pin['infohash_v2'])
+            except (OSError, torrent.Bad) as e:
+                print(f'setup: not sharing {f["name"]}: {e}', flush=True)
+                continue
+            groups.setdefault(str(data.parent), []).append(str(t))
+        return self.seeder.start(groups)
+
+    def _mirror_bases(self):
+        return [m for m in self._settings().get('mirrors', []) if isinstance(m, str) and mf.mirror_ok(m, self.allowed)]
+
+    def mirrors(self, add=None, remove=None):
+        """The person's own mirrors: https addresses that hold the same tree as Lastbook's download site (a file's path there is
+        added to the address). They are asked only for files whose pieces root is pinned, and every piece is checked."""
+        s = self._settings()
+        have = self._mirror_bases()
+        if add is not None:
+            add = str(add).strip()
+            if not mf.mirror_ok(add, self.allowed) or urllib.parse.urlsplit(add).query:
+                return {'error': 'That is not an https address Lastbook can use as a mirror.', 'code': 'mirror'}
+            if add not in have:
+                if len(have) >= mf.MAX_MIRRORS:
+                    return {'error': f'Lastbook takes at most {mf.MAX_MIRRORS} mirrors.', 'code': 'mirror'}
+                have.append(add)
+        if remove is not None:
+            have = [m for m in have if m != remove]
+        s['mirrors'] = have
+        self._save_settings(s)
+        return {'mirrors': have}
 
     def public_job(self):
         with self.lock:
@@ -517,6 +693,10 @@ class Setup:
                 need += cur['map_bytes']
             for name in names:     # what an earlier run already downloaded is on the disk already
                 if name in have:
+                    continue
+                swarmed = download.swarm_done(work / 'downloads' / name)
+                if swarmed is not None:     # coming from other people too: its data is in BitTorrent's folder, its .json says how far
+                    need -= swarmed
                     continue
                 for done in (work / 'downloads' / (name + '.part'), work / 'downloads' / name):
                     try:
@@ -765,6 +945,17 @@ class Setup:
                 return {'error': 'Setup has not finished yet.', 'code': 'not_done'}
             plan = job['plan']
             folder = plan.get('use_library') or plan['target']
+            if plan.get('share'):     # nothing to open: the library is as it was, and the kept files are being shared
+                self.job = None
+                try:
+                    _job_file(self.settings_dir).unlink()
+                except OSError:
+                    pass
+                shutil.rmtree(plan['work'], ignore_errors=True)
+                s = self._settings()
+                s.pop('work', None)
+                self._save_settings(s)
+                return {'ok': True, 'shared': True}
         if not self.on_finish:
             return {'ok': True, 'restart': True, 'folder': folder}
         threading.Timer(0.4, self.on_finish, [folder]).start()     # after this answer has reached the window
@@ -872,6 +1063,8 @@ class Setup:
                     self._do_map(it, plan, work, control)
                 elif it['kind'] == 'addresses':
                     self._do_addresses(it, plan, work, control)
+                elif it['kind'] == 'share':
+                    self._do_share(it, plan, work, control)
                 else:
                     self._do_model(it, plan, work, control)
                 with self.lock:
@@ -879,6 +1072,8 @@ class Setup:
                     self._save_job()
             it = None
             self._finish_job(plan, work)
+            if self.mode == 'manage' and self._settings().get('share'):
+                self.seed_now()
         except download.Stopped as s:
             with self.lock:
                 if s.why == 'paused':
@@ -925,8 +1120,9 @@ class Setup:
             print(f'setup: {src} does not match; downloading instead', flush=True)
         dest = work / 'downloads' / name
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
+            swarmed = download.swarm_done(dest)
             try:
-                still = f['size'] - os.path.getsize(str(dest) + '.part')
+                still = f['size'] - (swarmed if swarmed is not None else os.path.getsize(str(dest) + '.part'))
             except OSError:
                 still = f['size']
             free, _ = hardware.disk_of(work)
@@ -935,9 +1131,17 @@ class Setup:
                                       need_bytes=still, free_bytes=free)
         while True:
             self._set(it, 'downloading')
+            pieces = self._pieces_for(f, work)
+            swarm, part = self._swarm_for(f, work, pieces)
+            peers_before = it.get('from_peers', 0)
+
+            def peers(n, before=peers_before):
+                it['from_peers'] = before + n
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
                                   lambda done, total, phase: tracker.progress(offset + done, it['bytes_total'], phase),
-                                  allowed=self.allowed, context=self.context, waiting=tracker.waiting)
+                                  allowed=self.allowed, context=self.context, waiting=tracker.waiting,
+                                  pieces=pieces, mirrors=self._mirrors_for(f) if pieces else (),
+                                  swarm=swarm, part=part, on_peers=peers)
             try:
                 return d.run(), True
             except download.BadChecksum:
@@ -946,6 +1150,62 @@ class Setup:
                     raise download.Failed('checksum', f'{name} did not match its published checksum twice. The file on the server may be damaged; try again later.')
                 plan['retried'][name] = tries + 1
                 print(f'setup: {name} failed its checksum; downloading it once more', flush=True)
+
+    def _pieces_for(self, f, work):
+        """The file's BitTorrent v2 piece hashes when the manifest pins its pieces root and its torrent adds up to that root, else
+        None: the file then comes from its own address only, checked by its SHA-256 as before. The torrent is kept beside the
+        download (it is what the file is shared with), and fetched from Lastbook's site only."""
+        t = f.get('torrent')
+        if not t:
+            return None
+        keep = work / 'downloads' / (f['name'] + '.torrent')
+        for fetched in (False, True):
+            if fetched:
+                data = download.fetch_small(t['url'], limit=torrent.MAX_TORRENT, allowed=self.allowed, context=self.context, timeout=30)
+            else:
+                try:
+                    data = keep.read_bytes()
+                except OSError:
+                    data = None
+            if not data:
+                continue
+            try:
+                pieces = torrent.piece_hashes(data, f['name'], f['size'], t['pieces_root'], t['piece_length'], t['infohash_v2'])
+            except torrent.Bad as e:
+                print(f'setup: the torrent of {f["name"]} was not used: {e}', flush=True)
+                continue
+            if fetched:
+                try:
+                    keep.write_bytes(data)
+                except OSError:
+                    pass
+            return pieces
+        return None
+
+    def _swarm_for(self, f, work, pieces):
+        """With BitTorrent on, a file with a pinned torrent big enough to come in pieces also comes from other people: (share.Swarm,
+        where the file is downloaded to, in a folder of its own that rqbit writes into too). Otherwise (None, None), and a file left
+        in that folder by an earlier run goes back to <name>.part, so the download goes on from what is there."""
+        downloads = work / 'downloads'
+        in_swarm, part = downloads / 'swarm' / f['name'], downloads / (f['name'] + '.part')
+        t = downloads / (f['name'] + '.torrent')
+        if pieces and self._settings().get('share') and self.seeder.available() and f['size'] >= download.PARALLEL_MIN and t.is_file():
+            in_swarm.parent.mkdir(parents=True, exist_ok=True)
+            if part.exists() and not in_swarm.exists():
+                os.replace(part, in_swarm)
+            return share.Swarm(t.read_bytes(), wanted=lambda: bool(self._settings().get('share')), tally=self.seeder.tally,
+                               command=self.share_command, extra=self.swarm_extra, peers=self.swarm_peers), in_swarm
+        if in_swarm.exists() and not part.exists():
+            os.replace(in_swarm, part)
+        return None, None
+
+    def _mirrors_for(self, f):
+        """The manifest's mirrors of a file, then the person's own (a mirror of Lastbook's site: the file's path is added to it)."""
+        out = list(f.get('mirrors') or [])
+        if mf._from(f['url'], mf.LIBRARY_HOSTS, self.allowed):
+            path = urllib.parse.urlsplit(f['url']).path
+            out += [base.rstrip('/') + path for base in self._mirror_bases()]
+        return out
 
     def _do_pack(self, it, plan, work, control):
         pack = plan['pack']
@@ -987,9 +1247,7 @@ class Setup:
                 and _separate_map(self.current)):          # kept only when Repair found it whole, or it would have its own item
             install.copy_map(self.current, lib)
         install._write_json(lib / 'setup-pack.json', {'pack': pack['id'], 'installed': _now(), 'files': [f['name'] for f in pack['files']]})
-        for path, ours in got:
-            if ours:
-                os.unlink(path)
+        self._done_with(plan, work, got, pack['files'])
 
     def _do_map(self, it, plan, work, control):
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
@@ -1014,9 +1272,7 @@ class Setup:
             shutil.rmtree(staged, ignore_errors=True)
         else:
             plan['map_new'] = str(lib)
-        for path, ours in got:
-            if ours:
-                os.unlink(path)
+        self._done_with(plan, work, got, mp['files'])
 
     def _do_addresses(self, it, plan, work, control):
         entry = plan['addresses']
@@ -1050,13 +1306,45 @@ class Setup:
         self._set(it, 'activating')
         os.replace(lib / relative, destination)
         install._write_json(destination.with_suffix('.json'), {'files': {file['name']: file['sha256'] for file in entry['files']}})
+        self._done_with(plan, work, got, entry['files'])
+
+    def _keeping(self):
+        return bool(self._settings().get('share')) and self.seeder.available()
+
+    def _done_with(self, plan, work, got, entries, keep=None):
+        """The downloaded files of an item once it is in place (entries: their manifest entries): deleted, or with sharing on,
+        kept with their torrent in <library>.share to be seeded (a file of the person's own, `use`d, is theirs and stays where it
+        is)."""
+        files = {f['name']: f for f in entries}
+        keep = self._keeping() if keep is None else keep
         for path, ours in got:
-            if ours:
+            if not ours:
+                continue
+            name = Path(path).name
+            t = work / 'downloads' / (name + '.torrent')
+            if keep and files.get(name, {}).get('torrent') and t.is_file():
+                folder = share.folder_for(plan['target'])
+                folder.mkdir(parents=True, exist_ok=True)
+                os.replace(path, folder / name)
+                os.replace(t, folder / t.name)
+                print(f'setup: kept {name} to share it', flush=True)
+            else:
                 os.unlink(path)
+
+    def _do_share(self, it, plan, work, control):
+        """A file the open library came from, downloaded again to share it (share_get): checked, and kept in <library>.share with its
+        torrent; nothing is unpacked. Without a torrent that adds up to its pin there is nothing to share, so it is not downloaded."""
+        f = next(x for x in plan['share'] if x['name'] == it['id'])
+        if self._pieces_for(f, work) is None:
+            raise download.Failed('unavailable', f'The torrent for {f["name"]} could not be fetched, or is not the published one, so it '
+                                                 'cannot be shared. Try again later.')
+        got = self._get_file(it, f, plan, work, control, 0)
+        self._done_with(plan, work, [got], [f], keep=True)
 
     def _do_model(self, it, plan, work, control):
         m = plan['model']
-        path, ours = self._get_file(it, {'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256']}, plan, work, control, 0)
+        path, ours = self._get_file(it, {'name': m['file'], 'url': m['url'], 'size': m['size'], 'sha256': m['sha256'],
+                                         **{k: m[k] for k in ('torrent', 'mirrors') if k in m}}, plan, work, control, 0)
         lib = (work / 'unpack' / DATA_NAME) if plan['switch'] else Path(self.current or plan['target'])
         dest = lib / 'models' / m['file']
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -1069,6 +1357,11 @@ class Setup:
             os.replace(tmp, dest)
         plan['model_file'] = str(Path(plan['target']) / 'models' / m['file']) if plan['switch'] else str(dest)
         plan['model_sha256'] = m['sha256']           # what _get_file just matched: the streamed or re-read hash equalled this
+        t = work / 'downloads' / (m['file'] + '.torrent')
+        if self._keeping() and m.get('torrent') and t.is_file():     # the model is shared from the library itself
+            folder = share.folder_for(plan['target'])
+            folder.mkdir(parents=True, exist_ok=True)
+            os.replace(t, folder / t.name)
         if not plan['switch'] and self.current:      # the library open now: the AI can use it at once
             self._mark_checked(dest, m['sha256'])
 
@@ -1120,6 +1413,8 @@ def _tag_sources(job):
             names = [f['name'] for f in plan['addresses']['files']]
         elif it['kind'] == 'model' and plan.get('model'):
             names = [plan['model']['file']]
+        elif it['kind'] == 'share' and plan.get('share'):
+            names = [it['id']]
         else:
             names = []
         it['source'] = 'found' if names and all(n in plan['sources'] for n in names) else 'download'
@@ -1302,6 +1597,10 @@ ROUTES = {
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),
+    ('POST', 'mirrors'): lambda s, b: s.mirrors(b.get('add'), b.get('remove')),
+    ('POST', 'share'): lambda s, b: s.set_share(b.get('on') is True),
+    ('POST', 'share-delete'): lambda s, b: s.delete_kept(),
+    ('POST', 'share-get'): lambda s, b: s.share_get(),
 }
 
 

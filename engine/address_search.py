@@ -33,6 +33,7 @@ for number, word in enumerate(ORDINALS):
     suffix = 'th' if 10 <= number % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(number % 10, 'th')
     TO_DIGITS[word] = f'{number}{suffix}'
 TO_WORDS = {value: key for key, value in TO_DIGITS.items()}
+# How a street can end. Three of these are also state codes: Ct (Court, Connecticut), Mt (Mount, Montana), NE (northeast, Nebraska).
 STREET_ENDINGS = set(WORDS.values()) | {'ne', 'nw', 'se', 'sw'}
 
 

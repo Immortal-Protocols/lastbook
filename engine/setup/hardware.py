@@ -185,12 +185,29 @@ def linux_ai_runtime():
 
 # ------------------------------------------------------------------------------------------------------------- disks --
 def disk_of(path):
-    """(free, total) on the disk that holds path, or the nearest folder above it that exists."""
+    """(free, total) on the disk that holds path, or the nearest folder above it that exists.
+    On a Mac, free is what Finder calls available, as on the iPad (ZipInstall.freeSpace): it counts the room macOS makes on its own
+    when a file the person asked for needs it (purgeable caches, local snapshots). The plain free count leaves that out, and on a
+    Mac that has been used a while it can be tens of GB short, so setup said there was no room when Finder said there was (#112)."""
     p = Path(path)
     while not p.exists() and p.parent != p:
         p = p.parent
     u = shutil.disk_usage(p)
-    return u.free, u.total
+    free = u.free
+    if sys.platform == 'darwin':
+        free = max(free, _mac_available(p) or 0)
+    return free, u.total
+
+
+def _mac_available(p):
+    """macOS's room for a file the person asked for (NSURLVolumeAvailableCapacityForImportantUsageKey), or None if it cannot say."""
+    try:
+        import Foundation
+        ok, n, _ = Foundation.NSURL.fileURLWithPath_(str(p)).getResourceValue_forKey_error_(
+            None, Foundation.NSURLVolumeAvailableCapacityForImportantUsageKey, None)
+        return int(n) if ok and n is not None and int(n) > 0 else None
+    except Exception:
+        return None
 
 
 def disk_name(path):
@@ -279,6 +296,89 @@ def measure_ai(llm_local, model_path, timeout=180):
     j = llm_local.judge(fit)
     return {'fits': bool(j['fits']), 'needs_bytes': int(j['needs']), 'estimate': False,
             'why': j.get('why') or f'Measured on this computer: the local AI needs about {_gb(j["needs"])} of memory, and it fits.'}
+
+
+# ----------------------------------------------------------------------------------------------------------- battery --
+# Read only when asked, from files; nothing is kept. Linux first (#119): Mac and Windows readers can follow once they can be tried.
+POWER_SUPPLY = '/sys/class/power_supply'
+EXTERNAL = ('Mains', 'USB', 'USB_C', 'USB_PD', 'USB_PD_DRP', 'BrickID', 'Wireless')   # power_supply types that power the computer
+LONGEST = 7 * 24 * 3600     # a time left beyond a week is a counter that has not settled: not shown
+
+
+def _value(d, name):
+    try:
+        return (d / name).read_text(encoding='ascii', errors='replace').strip()
+    except OSError:
+        return None
+
+
+def _int(d, name):
+    try:
+        return int(_value(d, name))
+    except (TypeError, ValueError):
+        return None
+
+
+def linux_battery(root=POWER_SUPPLY):
+    """This computer's own battery, from Linux's power_supply class, or None when it has none (a desktop; a mouse's or a UPS's
+    battery is not the computer's). {on_battery, charging, percent, seconds_left, batteries}: percent and seconds_left are
+    None when the counters do not say. Several batteries (as in some laptops) count as one."""
+    try:
+        supplies = sorted(Path(root).iterdir())
+    except OSError:
+        return None
+    batteries, external = [], []
+    for d in supplies:
+        kind = _value(d, 'type')
+        if kind == 'Battery' and _value(d, 'scope') != 'Device' and _value(d, 'present') != '0':
+            batteries.append(d)
+        elif kind in EXTERNAL:
+            external.append(d)
+    if not batteries:
+        return None
+    statuses, capacities, now, full, draw, units = [], [], 0, 0, 0, set()
+    for d in batteries:
+        statuses.append(_value(d, 'status') or 'Unknown')
+        cap = _int(d, 'capacity')
+        if cap is not None:
+            capacities.append(cap)
+        for unit, have, most, rate in (('energy', 'energy_now', 'energy_full', 'power_now'), ('charge', 'charge_now', 'charge_full', 'current_now')):
+            n, f = _int(d, have), _int(d, most)
+            if n is not None and f:
+                units.add(unit)
+                now, full, draw = now + n, full + f, draw + abs(_int(d, rate) or 0)
+                break
+        else:
+            units.add(None)          # this battery gives no counters: only its capacity says anything
+    counted = len(units) == 1 and None not in units and full > 0
+    percent = round(100 * now / full) if counted else round(sum(capacities) / len(capacities)) if capacities else None
+    plugged = any(_value(d, 'online') == '1' for d in external)
+    discharging = 'Discharging' in statuses
+    on_battery = discharging or (bool(external) and not plugged)
+    seconds = round(now / draw * 3600) if on_battery and counted and draw > 0 else None   # µWh / µW (or µAh / µA) = hours
+    return {'on_battery': on_battery, 'charging': 'Charging' in statuses and not discharging,
+            'percent': None if percent is None else max(0, min(100, percent)),
+            'seconds_left': seconds if seconds is not None and 0 < seconds <= LONGEST else None, 'batteries': len(batteries)}
+
+
+def battery():
+    """{supported, battery}: battery as linux_battery gives it, or None. Only Linux is read so far."""
+    if os_name() != 'linux':
+        return {'supported': False, 'battery': None}
+    try:
+        return {'supported': True, 'battery': linux_battery()}
+    except Exception as e:      # a strange driver must not break the page that asked
+        print('battery:', type(e).__name__, e, flush=True)
+        return {'supported': True, 'battery': None}
+
+
+def handle_battery(h):
+    """GET /api/battery on a BaseHTTPRequestHandler h. This computer only, like /api/setup/: a phone the library is shared with
+    gets 403, because a laptop's battery is nobody else's business."""
+    from engine.setup.api import _send_json
+    if h.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+        return _send_json(h, {'error': 'The battery is only shown on this computer.'}, 403)
+    return _send_json(h, battery())
 
 
 def detect(extra_disks=()):

@@ -7,6 +7,7 @@
  "keywords": [
   "power outage",
   "power cut",
+  "loadshedding",
   "blackout",
   "electricity",
   "generator",
@@ -36,7 +37,7 @@
   {
    "id": "first-hours",
    "label": "The power just went out",
-   "hint": "Lights out, fridge off, no idea how long it will last",
+   "hint": "Lights out, hydro is out, fridge off, no idea how long it will last",
    "read": [
     {
      "doc": "18bf4604bf28c4",

@@ -63,23 +63,39 @@ on an allowed host.
 Packs may be split into several files later; setup downloads all `files` of a pack, in order.
 
 `ALLOWED_HOSTS`: `downloads.lastbook.org`, the bucket's current `*.r2.dev` host (until the domain is live), `huggingface.co`,
-and the hosts Hugging Face redirects model downloads to (`cas-bridge.xethub.hf.co`, `*.hf.co`; on 2026-11-12 the model resolved to `us.aws.cdn.hf.co`). R2 ignores If-Range, so the downloader compares the ETag itself. The exact list is a constant in
+and the hosts Hugging Face redirects model downloads to (`cas-bridge.xethub.hf.co`, `*.hf.co`; on 2026-11-12 the model resolved to `us.aws.cdn.hf.co`). R2 ignores If-Range, so the downloader compares the ETag itself.
+A file of `PARALLEL_MIN` (512 MiB) or more is fetched over `CONNECTIONS` (8) connections at once, each with a closed Range
+for one `PIECE` (16 MiB). One connection to `downloads.lastbook.org` gave about 2 MB/s and 8 about 13 MB/s (2026-11-17).
+Pieces are handed out in order, at most `AHEAD` (16) past the first unfinished one. The run of finished pieces from byte 0 is
+hashed as it completes, read back from the disk, so the SHA-256 is ready when the last piece lands. Every 206 must carry the
+first one's ETag and total size: another ETag starts the file over (twice: it goes on over one connection), another size
+fails as `checksum`, and a 200 to a Range goes on over one connection from the hashed run. The exact list is a constant in
 `engine/setup/download.py`, and the package scan checks that it is the only module that opens connections.
 
 ## Where things go
 
-- The library folder stays **LastbookData** (layout unchanged: `library-data/`, `derived/`). Default place: the person's
-  Documents folder on Windows, and `~/Library/Application Support/Lastbook/LastbookData` on a Mac, or a folder they choose,
-  on a disk with room. `settings.json` remembers it as before (`app/main.py`).
+- The library folder stays **LastbookData** (layout unchanged: `library-data/`, `derived/`). Default place
+  (`app/main.py` `default_choice`): `%LOCALAPPDATA%\Lastbook\LastbookData` on Windows, or
+  `<system drive>:\Lastbook\LastbookData` when the user folder's path is too long for the library's longest file names;
+  `~/Library/Application Support/Lastbook/LastbookData` on a Mac; `$XDG_DATA_HOME/Lastbook/LastbookData` on Linux
+  (`~/.local/share/Lastbook/LastbookData` when that is not set). Or a folder the person chooses, on a disk with room.
+  `settings.json` remembers it as before (`app/main.py`).
 - Work in progress: `<parent>/LastbookData.setup/`, holding `downloads/` (partial files with a `.part` suffix and a
-  `.json` beside each: url, size, sha256, bytes done, ETag) and `unpack/` (the new LastbookData being built).
+  `.json` beside each: url, size, sha256, bytes done, ETag, and `"parallel": true` while pieces may lie past bytes done; a resume then keeps only the hashed run, so at most `AHEAD` pieces are fetched again) and `unpack/` (the new LastbookData being built).
 - The model goes to `LastbookData/models/<file>`. After its SHA-256 matches, setup calls `llm_local.mark_checked(path)`, so
   the AI does not read 17 GB a second time.
 - Space needed = download size + unpacked size + 2 GB, on the disk that holds the target. A zip is deleted once it is
   unpacked and checked. Setup refuses to start, with the numbers, when there is not enough room.
-- Manual downloads are recognized: a `Lastbook-*.zip` or the model file in Downloads, Documents or Desktop, or an existing
-  LastbookData anywhere `app/main.py` already looks, offered as *Use the file you already have*. A file is used only after its
-  size and SHA-256 match the manifest.
+- Manual downloads are recognized (`found()` in `engine/setup/api.py`) in these places only, and offered under *Found on
+  this computer* as *Use the file you already have*:
+  - a `Lastbook-*.zip`, or a file named like one in the manifest (pack, model, state map, address index), in the folder
+    that holds LastbookData (the default place above, without `LastbookData`), or in the open library or its `models/`;
+  - a file the person picks with *Choose a library zip or AI model file*;
+  - an existing LastbookData at the remembered place or the default one (`app/main.py` `places`).
+
+  Downloads, Documents and Desktop are not searched. A file is used only after its size and SHA-256 match the manifest.
+- Chat's local AI looks for the model only in the open library's `models/` and the library folder itself, and in
+  `LASTBOOK_MODEL_DIR` when that is set (`llm_local.py` `places`). *Look again* searches those again.
 
 ## Engine interface: `/api/setup/*`
 
@@ -116,9 +132,13 @@ error}], error, started, folder}`. Each item also has `source`: `"found"` when i
 (it is checked, not downloaded), else `"download"` (it changes to `"download"` when a found file is rejected). After a restart, an
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,
-`activating`, `done`, or `failed` (with `error`: a plain sentence and a `code`: `no_space`, `network`, `checksum`, `unpack`,
+`activating`, `done`, or `failed` (with `error`: a plain sentence and a `code`: `no_space`, `network`, `server` (the download
+server kept answering 5xx or 429 for 40 minutes, so the internet itself was up), `checksum`, `unpack`,
 `activate`, `cancelled`, and `found_mismatch`: a file already on this computer (`use`) did not match its published SHA-256; the error carries `file`, the file is left untouched and no longer offered, and `retry` downloads it instead). The job lives in the app's own settings folder (`<settings>/setup/job.json`, with a staged switch in `<settings>/setup/pending.json`; never in `LastbookData.setup`, whose contents are not obeyed: audit E3), so a restart picks it up as `paused` and resumes
-with HTTP Range from the bytes already on disk. A corrupt download (wrong SHA-256) is deleted and downloaded once more
+with HTTP Range from the bytes already on disk. While downloading, a broken connection is retried six times over about 90 seconds.
+A server that answers 5xx or 429 is waited on longer (5 s rising to 5 minutes, or its `Retry-After` up to 10 minutes, and
+40 minutes in all without progress). While such a wait is ahead, the item has `retry_in_s`, the seconds until the next try.
+A corrupt download (wrong SHA-256) is deleted and downloaded once more
 automatically, then fails with `checksum`.
 
 ## Switching to the library
@@ -179,4 +199,7 @@ Built by setup-backend (2026-11-12):
   `state.manifest.maps` lists the entries (without URLs).
 - `found[]` also lists a `Lastbook-Map-*.zip` already on this computer (`kind: "map"`); `use` on it starts the map job
   in manage mode, or is used by the next `start` in first-run setup.
-- Repair skips the map files when a `map-set.json` is present; those are checked against it instead.
+- Repair checks the pack's own map set (All's `us`) with the pack's other files and fetches it with the pack. A state
+  map installed apart (its name is not `pack.json`'s `map`, or `pack-manifest.tsv` lists no `map-set.json`) is checked against its
+  `map-set.json` instead: one that checks out is kept when the pack is fetched again for other files; one that does
+  not is repaired with its own `map` item, or Repair answers `{code: "unavailable"}` when that map is not offered.

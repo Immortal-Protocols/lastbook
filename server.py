@@ -359,6 +359,19 @@ def emergency_fts_expr(q):
     return None
 
 
+def unique_search_rows(*batches):
+    """Preserve search priority while counting each document page only once."""
+    seen = set()
+    result = []
+    for batch in batches:
+        for row in batch:
+            key = (row[0], row[1])
+            if key not in seen:
+                seen.add(key)
+                result.append(row)
+    return result
+
+
 @functools.lru_cache(maxsize=256)
 def find(q, kind='all', limit=30):
     content, groups = query_groups(q)
@@ -369,17 +382,18 @@ def find(q, kind='all', limit=30):
            "FROM pages WHERE pages MATCH ? ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT 600")
     rows, mode = [], 'all words'
     try:
-        rows = con.execute(sql, (fts_expr(groups),)).fetchall()
-        emergency = emergency_fts_expr(q)
-        if emergency:
-            # Include relevant first-aid pages even when the strict query
-            # returns many unrelated how-to pages.
-            rows = con.execute(sql, (emergency,)).fetchall() + rows
-            mode = 'emergency and keywords'
-        if len(rows) < 8 and len(groups) > 1:
-            # relax: any of the ideas, rank documents that have more of them higher
+        strict_rows = con.execute(sql, (fts_expr(groups),)).fetchall()
+        # Decide whether to relax based on the original strict matches, not
+        # additional emergency matches (which must not suppress the fallback).
+        relaxed_rows = []
+        if len(strict_rows) < 8 and len(groups) > 1:
             mode = 'some words'
-            rows += con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),)).fetchall()
+            relaxed_rows = con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),)).fetchall()
+        emergency = emergency_fts_expr(q)
+        emergency_rows = con.execute(sql, (emergency,)).fetchall() if emergency else []
+        rows = unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
+        if emergency_rows:
+            mode = 'emergency and keywords'
     except sqlite3.OperationalError:
         rows = []
     con.close()

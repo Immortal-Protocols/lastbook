@@ -81,6 +81,20 @@ class DocumentSearchEmergencyBaseline(unittest.TestCase):
                 self.assertTrue(groups)
                 self.assertTrue(server.fts_expr(groups))
 
+    def test_emergency_fallback_finds_first_aid_sources(self):
+        for i, (query, _, _) in enumerate(CASES):
+            with self.subTest(query=query):
+                expression = server.emergency_fts_expr(query)
+                self.assertIsNotNone(expression)
+                titles = [r[0] for r in self.db.execute(
+                    'SELECT title FROM pages WHERE pages MATCH ?', (expression,))]
+                self.assertIn('urgent' + str(i), titles)
+
+    def test_non_emergency_has_no_fallback(self):
+        for query, _ in CONTROLS:
+            with self.subTest(query=query):
+                self.assertIsNone(server.emergency_fts_expr(query))
+
     def test_ordinary_how_to_queries_still_find_their_sources(self):
         for i, (query, _) in enumerate(CONTROLS):
             with self.subTest(query=query):

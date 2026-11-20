@@ -3436,15 +3436,21 @@ class ServerSeeding(WithRqbit):
         self.added = Path(str(self.record) + '.added')
         self.files.data['Map-XX.zip'] = self.map = os.urandom(300 * 1024)
 
-    def manifest_file(self, pinned=True, torrent_name='Lastbook-Small.zip.torrent'):
+    def manifest_file(self, pinned=True, torrent_name='Lastbook-Small.zip.torrent', map_pinned=False):
         small = {'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip), 'sha256': sha(self.zip), 'kind': 'zip'}
         if pinned:
             small['torrent'] = {'url': f'{self.base}/{torrent_name}', 'pieces_root': self.pin['pieces_root'],
                                 'infohash_v2': self.pin['infohash_v2'], 'piece_length': self.PIECE}
+        mapped = {'name': 'Map-XX.zip', 'url': f'{self.base}/Map-XX.zip', 'size': len(self.map), 'sha256': sha(self.map)}
+        if map_pinned:
+            path = self.tmp / 'Map-XX.zip'
+            path.write_bytes(self.map)
+            self.files.data['Map-XX.zip.torrent'], pin = torrent.make(path, 'Map-XX.zip', self.PIECE)
+            mapped['torrent'] = {'url': f'{self.base}/Map-XX.zip.torrent', 'pieces_root': pin['pieces_root'],
+                                 'infohash_v2': pin['infohash_v2'], 'piece_length': self.PIECE}
         m = {'version': 1, 'published': '2026-11-17',
              'packs': [{'id': 'small', 'title': 'Small', 'installed_bytes': self.installed, 'available': True, 'files': [small]}],
-             'maps': [{'id': 'XX', 'title': 'XX', 'installed_bytes': 1, 'available': True,
-                       'files': [{'name': 'Map-XX.zip', 'url': f'{self.base}/Map-XX.zip', 'size': len(self.map), 'sha256': sha(self.map)}]}],
+             'maps': [{'id': 'XX', 'title': 'XX', 'installed_bytes': 1, 'available': True, 'files': [mapped]}],
              'models': []}
         path = self.tmp / 'manifest-v1.json'
         path.write_text(json.dumps(m), encoding='utf-8')
@@ -3573,6 +3579,40 @@ class ServerSeeding(WithRqbit):
         self.assertIn('is not the one Lastbook pins', text)
         self.assertEqual((self.out / 'Lastbook-Small.zip').read_bytes(), self.zip)     # still checked by its SHA-256
         self.assertFalse(self.added.exists())
+
+    def test_a_file_that_no_longer_fits_is_left_out_and_the_rest_still_shared(self):
+        """At a look at the manifest, a file newly given a torrent that does not fit on the disk is left out and said once, while
+        the file already here goes on being shared by the same rqbit. Started again in that state, it shares what is here too."""
+        disk = {'free': 100 * 2 ** 30, 'looks': 0}
+
+        def usage(path):
+            disk['looks'] += 1
+            return mock.Mock(free=disk['free'])
+        mf, seen = self.manifest_file(), {}
+
+        def later():
+            if 'at' not in seen:
+                if self.added.exists():                       # the pack shared: now the map gets its torrent and the disk fills
+                    self.manifest_file(map_pinned=True)
+                    disk['free'], seen['at'] = 0, disk['looks']
+                return False
+            text = sys.stdout.getvalue()
+            i = text.find('Left out for now: Map-XX.zip')
+            return i >= 0 and 'Sharing 1 file;' in text[i:] and disk['looks'] >= seen['at'] + 3     # and two more looks since
+        with mock.patch.object(self.seed.shutil, 'disk_usage', usage):
+            code, text = self.run_seed('--manifest', mf, recheck=0.5, wait_for=later)
+            self.assertEqual(code, 0, text)
+            self.assertEqual(text.count('Left out for now: Map-XX.zip'), 1, text)
+            self.assertIn('The files here go on being shared', text)
+            self.assertEqual(len(self.added.read_text().splitlines()), 1)       # the map never handed to rqbit
+            self.assertEqual(len(self.calls()), 1)                               # one rqbit all along
+            self.assertEqual(_requested(self.files.log, 'Map-XX.zip'), [])
+            code, text = self.run_seed('--manifest', mf, wait_for=lambda: len(self.added.read_text().splitlines()) >= 2
+                                       and 'Left out' in sys.stdout.getvalue())
+        self.assertEqual(code, 0, text)
+        self.assertIn('Sharing Lastbook-Small.zip', text)
+        self.assertNotIn('Free some space', text)
+        self.assertFalse((self.out / 'Map-XX.zip').exists())
 
     def test_too_little_space_stops_before_downloading(self):
         with mock.patch.object(self.seed.shutil, 'disk_usage', return_value=mock.Mock(free=10 * MiB)):

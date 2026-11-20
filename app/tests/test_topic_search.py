@@ -197,12 +197,32 @@ GUIDE_ORDINARY = {
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
 
+# Prototype for docs/COUNTRY-SEARCH.md: the same number means different services in different countries.
+# [query, country the person chose or None] -> rows [guide, choice, country shown, service]. Without a country,
+# a number with more than one meaning gets one row per country, by country name, and no single guide.
+NUMBERS_TABLE = json.loads((ROOT / 'docs' / 'emergency-numbers-proposed.json').read_text(encoding='utf-8'))
+AMBIG_118 = [['hurt', None, 'IT', 'ambulance'], [None, None, 'LK', 'police'], ['disaster', 'home-fire', 'CH', 'fire']]
+NUMBERS = [
+    ['118', 'IT', [['hurt', None, 'IT', 'ambulance']]],                 # Italy: ambulance
+    ['118', 'CH', [['disaster', 'home-fire', 'CH', 'fire']]],           # Switzerland: fire, not first aid
+    ['118', 'LK', [[None, None, 'LK', 'police']]],                      # Sri Lanka: police, no guide
+    ['118', None, AMBIG_118],
+    ['118', 'GB', AMBIG_118],                                           # a country that does not use it: still ambiguous
+    ['111', 'LK', [['disaster', 'home-fire', 'LK', 'fire']]],           # Sri Lanka: fire and rescue
+    ['111', 'NZ', [['hurt', None, 'NZ', 'all']]],
+    ['111', None, [['hurt', None, 'NZ', 'all'], ['disaster', 'home-fire', 'LK', 'fire'], ['hurt', None, 'GB', 'medical']]],
+    ['118 bleeding', 'IT', [['hurt', 'bleeding', 'IT', 'ambulance'], ['health', 'teeth', None, None]]],
+    ['1990', None, [['hurt', None, None, 'ambulance']]],                # one meaning: one row, no country needed
+    ['911', None, [['hurt', None, None, None]]],                        # not in the table: the keywords, as before
+]
+
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
     'rankOwn': RANK_OWN,
     'words': list(WORDS_BOTH) + ['怎么净化水', '水をきれいにする方法',
                                  '물 끓이기', 'น้ำ'],
     'tops': TOPS,
+    'table': NUMBERS_TABLE, 'numbers': [n[:2] for n in NUMBERS],
 }
 
 
@@ -347,6 +367,12 @@ class TopicSearch(unittest.TestCase):
             for q, first in GUIDE_ORDINARY.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])
+
+    def test_numbers_need_a_country(self):
+        for r in self.modes:
+            for (q, country, rows), got in zip(NUMBERS, r['numbers']):
+                with self.subTest(q=q, country=country, segmenter=r['segmenter']):
+                    self.assertEqual(ok(got), rows)
 
 
 if __name__ == '__main__':

@@ -52,6 +52,8 @@ allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is 
 | Component | Version | Licence | Source | Checked |
 |---|---|---|---|---|
 | Gemma 4 26B A4B instruct, GGUF quantization by Unsloth (`gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`) | revision pinned in `llm_local.py` | Apache-2.0, per the model card | https://huggingface.co/unsloth (Google's Gemma 4 release) | Upstream: check the model card and its licence file before release |
+| Gemma 4 12B instruct, GGUF quantization by Unsloth (`gemma-4-12b-it-UD-Q4_K_XL.gguf`, flagship phone tier) | revision `fc034cfff751157913579611efad8462ac1be606` | Apache-2.0, per the model card | https://huggingface.co/unsloth/gemma-4-12b-it-GGUF | Upstream |
+| Gemma 4 E2B instruct, GGUF quantization by Unsloth (`gemma-4-E2B-it-UD-Q4_K_XL.gguf`, low/mid phone tier) | revision `0314792d7f1f7e229411f620751375812bb9faf2` | Apache-2.0, per the model card | https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF | Upstream |
 | BAAI bge-small-en-v1.5 (ONNX), meaning-based search | as pinned | MIT, per the model card | https://huggingface.co/BAAI/bge-small-en-v1.5 | Upstream: the local copy has no licence file beside it |
 
 ## iPad development preview (`mobile/ipad/`)
@@ -66,7 +68,20 @@ There is no published iPad build. These parts go into an iPad app that a contrib
 | Lastbook web UI (`web/`) and guides (`content/`), copied into the app at build time | this repository | MIT (Lastbook) | this repository | n/a |
 | Apple frameworks (SwiftUI, WebKit, AVFoundation, VideoToolbox, PDFKit, Metal, Accelerate, SQLite) | system | Apple SDK terms; part of iPadOS, not bundled | Apple | n/a |
 | Gemma 4 26B A4B (local AI model) | as desktop | see "Downloaded by setup" above | Hugging Face, downloaded only when the person chooses it | as above |
+| CoreKiwix.xcframework (`libkiwix` / `libzim`, Xapian, ICU, zstd, liblzma; linked only into the `LastbookPhone` iPhone target) | 14.2.1-2 | **GPL-3.0-or-later** (`libkiwix`), GPL-2.0 (`libzim`), GPL-2.0-or-later (`Xapian`), Unicode (`ICU`) | https://download.kiwix.org/release/libkiwix/ | Upstream |
 | ffmpeg (Mac development tools only: `tools/videocompat --ffmpeg`, `tools/validate_videocompat.py`) | supplied by the developer | LGPL-2.1+ or GPL, depending on the build | https://ffmpeg.org | Not bundled, downloaded or required by the app |
+
+## Android development preview (`mobile/android/`)
+
+There is no published Android build. These parts go into the Android app that a contributor builds from `mobile/android/`:
+
+| Component | Version | Licence | Source | Checked |
+|---|---|---|---|---|
+| llama.cpp and ggml, compiled via Android NDK/CMake into `liblastbook_llm.so` | dde879bc (as the desktop runner) | MIT (Copyright the ggml authors) | https://github.com/ggml-org/llama.cpp | Checked: `LICENSE` |
+| `org.kiwix:libkiwix` (`libkiwix` / `libzim` Android AAR for ZIM encyclopedias) | 2.6.0 | **GPL-3.0-or-later** | https://github.com/kiwix/java-libkiwix | Upstream |
+| Jetpack / AndroidX (Core, Activity, Lifecycle, Navigation, Compose Material 3, Media3 ExoPlayer, WorkManager) | pinned in `mobile/android/app/build.gradle.kts` | Apache-2.0 | https://developer.android.com/jetpack | Upstream |
+| OkHttp (`com.squareup.okhttp3:okhttp`), Coil (`io.coil-kt.coil3`), kotlinx-coroutines, kotlinx-serialization | pinned in `build.gradle.kts` | Apache-2.0 | Square, Coil Contributors, JetBrains | Upstream |
+| jsoup (`org.jsoup:jsoup`) and ReLinker (`com.getkeepsafe.relinker:relinker`) | 1.22.1 / 1.4.5 | MIT / Apache-2.0 | https://jsoup.org, https://github.com/KeepSafe/ReLinker | Upstream |
 
 ## Website
 

@@ -1763,6 +1763,28 @@ enum InstallCatalogData {
    "size": 16947541728,
    "title": "Gemma 4 26B A4B",
    "url": "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/c099eb48e663fd284577b04978a94ffccb261841/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf?download=true"
+  },
+  {
+   "id": "gemma-4-e2b",
+   "title": "Gemma 4 E2B",
+   "file": "gemma-4-E2B-it-UD-Q4_K_XL.gguf",
+   "url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/0314792d7f1f7e229411f620751375812bb9faf2/gemma-4-E2B-it-UD-Q4_K_XL.gguf?download=true",
+   "size": 3184496736,
+   "sha256": "b52f438017efaec5debf1c0d8be690571e212a07c312f1102bbce927258cfc32",
+   "memory_bytes": 5368709120,
+   "available": true,
+   "tier": "low-mid"
+  },
+  {
+   "id": "gemma-4-12b",
+   "title": "Gemma 4 12B",
+   "file": "gemma-4-12b-it-UD-Q4_K_XL.gguf",
+   "url": "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/fc034cfff751157913579611efad8462ac1be606/gemma-4-12b-it-UD-Q4_K_XL.gguf?download=true",
+   "size": 7366423360,
+   "sha256": "90fd944d227e9d9b68e7e2c7d5b57b79d4c66ed521b0919fbbd932cf834f6f8e",
+   "memory_bytes": 10100000000,
+   "available": true,
+   "tier": "flagship"
   }
  ],
  "packs": [

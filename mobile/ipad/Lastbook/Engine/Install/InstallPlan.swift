@@ -1,7 +1,7 @@
 import Foundation
 
 /// What one Install does, in order: the Small library (when missing or outdated), the chosen state's map (required), that
-/// state's street addresses (required when published), the H.264 video copies (only where this iPad needs them, and only when
+/// state's street addresses (required when published), the H.264 video copies (only where this \(DeviceName.thisOne) needs them, and only when
 /// published), and the local AI model (when supported and wanted). Already-installed, current items are skipped. Nothing
 /// downloads until the person starts the run (InstallRunner).
 struct PlanItem: Identifiable, Equatable {
@@ -10,7 +10,7 @@ struct PlanItem: Identifiable, Equatable {
         case installed                  // there and current (checked where a check exists)
         case toDownload                 // will be downloaded and installed by this run
         case unavailable(String)        // needed, but not on the download site: why, and what to do instead
-        case unsupported(String)        // this iPad can't use it
+        case unsupported(String)        // this \(DeviceName.thisOne) can't use it
         case optedOut                   // the person turned it off (AI)
         case included(String)           // comes with another item of this plan (a pack's own map): nothing to fetch for it
     }
@@ -22,7 +22,7 @@ struct PlanItem: Identifiable, Equatable {
     var partialBytes: Int64             // already downloaded (a part file to resume)
     var status: Status
     let required: Bool                  // the install is not complete without it
-    var note: String?                   // a plain sentence for the person (for example "Not tested on this iPad")
+    var note: String?                   // a plain sentence for the person (for example "Not tested on this \(DeviceName.thisOne)")
     let entry: CatalogEntry?
 
     var remainingDownload: Int64 { status == .toDownload ? max(0, downloadBytes - partialBytes) : 0 }
@@ -36,7 +36,7 @@ struct Plan: Equatable {
     var margin: Int64
     /// The iPad's whole storage, used or not (volumeTotalCapacity), when known.
     var capacity: Int64? = nil
-    /// The run can never fit this iPad, even emptied: its peak is more than the iPad holds in all.
+    /// The run can never fit this \(DeviceName.thisOne), even emptied: its peak is more than the iPad holds in all.
     var tooBigForDevice: Bool { capacity.map { spaceNeeded > $0 } ?? false }
     /// Still to download across the items this run installs.
     var downloadBytes: Int64 { items.reduce(0) { $0 + $1.remainingDownload } }
@@ -57,8 +57,8 @@ struct Plan: Equatable {
         var out: [String] = []
         if state == nil { out.append("Choose your state first.") }
         if tooBigForDevice, let c = capacity {
-            out.append("This iPad holds \(ByteCountFormatter.string(fromByteCount: c, countStyle: .file)) in all, and this install needs "
-                       + "\(ByteCountFormatter.string(fromByteCount: spaceNeeded, countStyle: .file)) free at its fullest, so it can’t fit on this iPad even if it were empty. Choose a smaller pack.")
+            out.append("This \(DeviceName.thisOne) holds \(ByteCountFormatter.string(fromByteCount: c, countStyle: .file)) in all, and this install needs "
+                       + "\(ByteCountFormatter.string(fromByteCount: spaceNeeded, countStyle: .file)) free at its fullest, so it can’t fit on this \(DeviceName.thisOne) even if it were empty. Choose a smaller pack.")
         }
         for i in items where i.required {
             if case .unavailable(let why) = i.status { out.append(why) }
@@ -74,7 +74,7 @@ enum InstallPlan {
     static let packID = "small"                         // iPad default: Small first
     static let testedRAM: UInt64 = 15 << 30             // the 16 GB M1 iPad Pro (it reports 16 GiB) ran this exact model
 
-    /// What the plan reads from this iPad and its library; replaceable in tests.
+    /// What the plan reads from this \(DeviceName.thisOne) and its library; replaceable in tests.
     struct Env {
         var root: URL?                  // the open library
         var packTarget: URL             // where a downloaded pack goes (Documents/LastbookData)
@@ -96,12 +96,12 @@ enum InstallPlan {
         }
     }
 
-    /// Is the local AI supported here, and has it been tested on an iPad like this one? (default on only when tested)
+    /// Is the local AI supported here, and has it been tested on an \(DeviceName.thisOne) like this one? (default on only when tested)
     static func aiSupport(_ env: Env) -> (supported: Bool, tested: Bool, note: String?) {
         guard env.aiRuntime else { return (false, false, "This copy of Lastbook has no local AI runtime.") }
         if env.ram >= testedRAM { return (true, true, nil) }
         let gb = String(format: "%.0f GB", (Double(env.ram) / 1073741824).rounded())
-        return (true, false, "Not tested on an iPad with \(gb) of memory; the local AI may not fit. Lastbook checks the fit after the download and says so.")
+        return (true, false, "Not tested on an \(DeviceName.thisOne) with \(gb) of memory; the local AI may not fit. Lastbook checks the fit after the download and says so.")
     }
 
     static func defaultWantAI(_ env: Env = .current()) -> Bool { aiSupport(env).tested }
@@ -188,26 +188,26 @@ enum InstallPlan {
             }
         }
 
-        // 4. H.264 copies: only where this iPad can't decode AV1 (or VP9, when the library has VP9): VideoCompat.needsH264, and
+        // 4. H.264 copies: only where this \(DeviceName.thisOne) can't decode AV1 (or VP9, when the library has VP9): VideoCompat.needsH264, and
         //    coverage() counts the videos of either kind without a copy. Not published yet: say so, never skip it silently.
         if env.needsH264 {
             let ve = InstallCatalog.entry(.videoCopies, finalPack)
             let known = packStatus == .installed && env.root != nil
-            let need = known ? "this iPad needs them for \(env.av1Missing) video\(env.av1Missing == 1 ? "" : "s")"
-                             : "this iPad needs them for \(packTitle(finalPack))’s AV1 and VP9 videos"
+            let need = known ? "this \(DeviceName.thisOne) needs them for \(env.av1Missing) video\(env.av1Missing == 1 ? "" : "s")"
+                             : "this \(DeviceName.thisOne) needs them for \(packTitle(finalPack))’s AV1 and VP9 videos"
             let vs: PlanItem.Status = known && env.av1Missing == 0 ? .installed
                 : ve?.available == true ? .toDownload : .unavailable("Not available to download yet — \(need); import the zip from Files.")
-            items.append(PlanItem(id: "videoCopies:\(finalPack)", kind: .videoCopies, title: "Video copies for this iPad (H.264)",
+            items.append(PlanItem(id: "videoCopies:\(finalPack)", kind: .videoCopies, title: "Video copies for this \(DeviceName.thisOne) (H.264)",
                                   downloadBytes: ve?.downloadBytes ?? 0, installedBytes: ve?.installedBytes ?? 0,
                                   partialBytes: vs == .toDownload ? partial(ve, libTarget) : 0, status: vs, required: false, note: nil, entry: ve))
         }
 
-        // 5. The local AI model.
-        if let mo = InstallCatalog.model {
+        // 5. The local AI model: the phone tier the person chose (or Auto for this device's memory), 26B by default.
+        if let mo = selectedModel(env) {
             let sup = aiSupport(env)
-            let placed = modelPlaced(root: env.root)
+            let placed = modelPlaced(root: env.root, entry: mo)
             let st: PlanItem.Status = placed ? .installed
-                : !sup.supported ? .unsupported(sup.note ?? "This iPad can’t run the local AI.")
+                : !sup.supported ? .unsupported(sup.note ?? "This \(DeviceName.thisOne) can’t run the local AI.")
                 : !wantAI ? .optedOut : mo.available ? .toDownload : .unavailable("The local AI isn’t on the download site right now.")
             items.append(PlanItem(id: "model:\(mo.id)", kind: .model, title: "Local AI (\(mo.title))", downloadBytes: mo.downloadBytes,
                                   installedBytes: mo.installedBytes ?? 0, partialBytes: st == .toDownload ? partial(mo, libTarget) : 0,
@@ -230,12 +230,31 @@ enum InstallPlan {
         }
     }
 
+    /// The AI model entry this install should fetch: the phone tier chosen in Setup, or Auto by RAM.
+    static func selectedModel(_ env: Env = .current()) -> CatalogEntry? {
+        guard let chosen = UserDefaults.standard.string(forKey: "LBPhoneModelTier") else { return InstallCatalog.model }
+        switch chosen {
+        case "none", "custom": return nil
+        case "auto":
+            let tier = Gemma4.bestTier(forRAM: env.ram)
+            return InstallCatalog.model(id: tier.id) ?? InstallCatalog.model
+        default:
+            return InstallCatalog.model(id: chosen) ?? InstallCatalog.model
+        }
+    }
+
     /// The model file, whole, where LocalAI looks for it (the library's models/ folder, the library, Documents).
-    static func modelPlaced(root: URL?) -> Bool {
+    static func modelPlaced(root: URL?, entry: CatalogEntry? = nil) -> Bool {
         var places: [URL] = []
         if let root { places += [root.appendingPathComponent("models"), root] }
         places.append(Library.documents)
-        return places.contains { ZipInstall.size($0.appendingPathComponent(Gemma4.file)) == Gemma4.size }
+        if let f = entry?.files.first {
+            return places.contains { ZipInstall.size($0.appendingPathComponent(f.name)) == f.size }
+        }
+        return places.contains { place in
+            let files = (try? FileManager.default.contentsOfDirectory(at: place, includingPropertiesForKeys: nil)) ?? []
+            return files.contains { $0.pathExtension.lowercased() == "gguf" }
+        }
     }
 
     /// Complete: the library and the chosen state's map are installed and check out, and its addresses when they are published.

@@ -1,9 +1,16 @@
-# Lastbook for iPad (development preview)
+# Lastbook for iPad and iPhone (development preview)
 
-A native iPad app for the Lastbook offline survival library: **Videos, Map and Chat**, working offline from a library stored
-on the iPad. This is **source for contributors**, not a release.
-- It is not in the App Store or TestFlight, and no iPad build is published.
-- To try it, you build and sign it yourself with Xcode and install it on your own iPad.
+Native iPad and iPhone apps for the Lastbook offline survival library, working offline from a library stored
+on the device. This is **source for contributors**, not a release.
+- It is not in the App Store or TestFlight, and no iOS/iPadOS build is published.
+- To try it, you build and sign it yourself with Xcode and install it on your own iPad or iPhone (or Simulator).
+
+The **iPad target** (`Lastbook.xcodeproj`, scheme `Lastbook`, device family 2) keeps its original three-tab layout (**Videos, Map, Chat**) and Library sheet unchanged.
+The **iPhone target** (`LastbookPhone.xcodeproj`, scheme `LastbookPhone`, device family 1, source in `Phone/`) shares the Swift engine, router, and detail screens, and adds:
+- Four phone destinations: **Videos, Map, Chat, Library**.
+- A **native "Nearby" bottom sheet** on the Map tab listing items near the map center.
+- A full **Library tab** with readiness, searchable local catalog, storage path, and an **offline ZIM Encyclopedia Reader** (`PhoneZimAPI.swift`, `phone_zim.mm` over `CoreKiwix.xcframework`) with back/forward/home toolbar, title suggestions, and full-text search.
+- **Phone AI model tier selection** (Auto / Gemma 4 26B / Gemma 4 12B / Gemma 4 E2B / Custom `.gguf` import with `GGUF` magic check / No AI).
 
 Licence: MIT, like the rest of this repository (see [`/LICENSE`](../../LICENSE)). Third-party parts are listed in
 [`/THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md), in the section "iPad development preview".
@@ -118,3 +125,19 @@ This plans and checks Small, Medium and All installs against tiny fixtures; the 
 **The local AI.** `bash tools/run_ai_regression.sh MODEL_FOLDER` runs the local-AI scenarios on a Mac against the model file, which is read only.
 
 Never commit build output, libraries, model files, signing files or `Local.xcconfig`. The `.gitignore` here excludes them.
+
+
+## Building the iPhone target
+
+```bash
+cd mobile/ipad
+bash scripts/prepare_dependencies.sh      # pinned llama.cpp for the local AI
+bash scripts/prepare_corekiwix.sh        # prebuilt libkiwix/libzim for the encyclopedia reader (GPL-3.0)
+xcodebuild -project LastbookPhone.xcodeproj -scheme LastbookPhone -destination "generic/platform=iOS Simulator" build
+xcodebuild test -project LastbookPhone.xcodeproj -scheme LastbookPhone \
+  -destination "platform=iOS Simulator,name=iPhone 17 Pro"
+```
+
+The `LastbookPhoneUITests` target is a small XCUITest smoke suite: the four destinations, the phone Library screen, the phone setup sheet and AI tier picker, and the ZIM reader opening an article. The heavier flows (downloads, AI generation, video, PDF) are verified with seeded data and screenshots; the engine logic is covered by the Android engine unit tests because the two apps share the same data contracts.
+
+The CoreKiwix XCFramework is downloaded, not committed, because it is 200 MB of compiled GPL-3.0 libraries.

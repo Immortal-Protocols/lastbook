@@ -10,3 +10,7 @@ Local.xcconfig
 *.p8
 *.xcarchive
 *.ipa
+
+# Downloaded by scripts/prepare_corekiwix.sh (prebuilt libzim/libkiwix)
+CoreKiwix.xcframework/
+.corekiwix-version

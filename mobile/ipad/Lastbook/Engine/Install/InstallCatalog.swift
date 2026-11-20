@@ -98,6 +98,11 @@ enum InstallCatalog {
         entries.first { $0.kind == .model && $0.files.first?.name == Gemma4.file && $0.files.first?.sha256 == Gemma4.sha256 }
     }
 
+    /// A specific phone model tier (E2B, 12B or 26B) by its tier id.
+    static func model(id: String) -> CatalogEntry? {
+        entries.first { $0.kind == .model && $0.id == id }
+    }
+
     static func entry(_ kind: CatalogEntry.Kind, _ id: String) -> CatalogEntry? { entries.first { $0.kind == kind && $0.id == id } }
 
     /// The entry and file a chosen zip is, by its name and size (a renamed download is found by size alone when that is unique).

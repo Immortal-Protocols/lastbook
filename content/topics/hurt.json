@@ -143,6 +143,8 @@
      "kind": "clock",
      "id": "tourniquet",
      "title": "Keep the time a tourniquet went on",
+     "now": "The tourniquet went on now",
+     "at": "or the tourniquet went on at",
      "sources": [
       {
        "doc": "med-68adb7585ea5d7e0",

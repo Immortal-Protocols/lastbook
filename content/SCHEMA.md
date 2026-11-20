@@ -106,6 +106,7 @@ is hidden there, like a reading.
       "rates": [{"amount": 2, "per": "L"}, {"amount": 8, "per": "gal", "when": "Clear water"}],
       "note": "What else the page says, describing (not prescribing), <= 30 words."}]},
   {"kind": "clock", "id": "tourniquet", "title": "Keep the time a tourniquet went on",
+   "now": "The tourniquet went on now", "at": "or the tourniquet went on at",
    "sources": [{"doc": "<catalog id>", "page": 170, "note": "Says to record the exact time ..."}]}
 ]
 ```
@@ -114,5 +115,7 @@ is hidden there, like a reading.
   rate for the unit chosen is used when it gives one; otherwise the rate is converted and the result says so. One result line
   per `when` (a condition the page names, such as clear or cloudy water). Results are rounded up to a whole drop, and say so.
 - `clock`: the time the person says something happened, and how long ago that was, kept on this device until cleared.
+  `now` and `at` name its button and its time field in words that stand alone (a screen reader or voice control may meet
+  them without the heading); without them they read "It went on now" and "or it went on at".
 - Every source needs `page`, and every figure must be on that page exactly as written: `tools/validate_topics.py` checks the
   ids, pages and the shape of each tool, and `app/tests/test_tools.py` checks the arithmetic on the real figures.

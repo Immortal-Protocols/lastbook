@@ -63,5 +63,67 @@ class Dose(unittest.TestCase):
         self.assertNotIn('<img', json.loads(r.stdout)[0])
 
 
+
+WORDS = r"""
+const fs = require('fs');
+const tools = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
+const esc = app.split('\n').find(l => /^const esc\s*=/.test(l));
+const ico = () => '';
+const Tools = new Function('store', 'navigator', 'ico', 'hrefFor', 'srcText', esc + '\n' + tools + '\nreturn Tools;')(
+  { get: (k, d) => d, set() {} }, { language: 'en-US' }, ico, () => '#', () => 'p. 1');
+const clock = JSON.parse(process.argv[3]), dose = JSON.parse(process.argv[4]);
+process.stdout.write(JSON.stringify({
+  ago: [Tools._ago(5 * 60000), Tools._ago(60 * 60000), Tools._ago(95 * 60000), Tools._ago(125 * 60000)],
+  problems: [Tools._amountProblem(NaN), Tools._amountProblem(0), Tools._amountProblem(12), Tools._amountProblem(100001)],
+  clock: Tools._html.clock(clock), plain_clock: Tools._html.clock({ id: 'x', title: 'X', sources: [] }), dose: Tools._html.dose(dose)
+}));
+"""
+HURT = json.loads((ROOT / 'content/topics/hurt.json').read_text(encoding='utf-8'))
+TOURNIQUET = next(t for c in HURT['choices'] for t in c.get('tools', []) if t['id'] == 'tourniquet')
+
+
+@unittest.skipUnless(NODE, 'needs Node')
+class Words(unittest.TestCase):
+    """The accessibility review of #113: what a screen reader is given by the tools' own markup and words."""
+
+    def setUp(self):
+        r = subprocess.run([NODE, '-e', WORDS, str(ROOT / 'web/tools.js'), str(ROOT / 'web/app.js'), json.dumps(TOURNIQUET), json.dumps(BLEACH)],
+                           capture_output=True, text=True, check=True)
+        self.w = json.loads(r.stdout)
+
+    def test_time_in_words(self):
+        self.assertEqual(self.w['ago'], ['5 min', '1 hour 0 min', '1 hour 35 min', '2 hours 5 min'])
+
+    def test_one_message_that_says_what_is_wrong(self):
+        self.assertEqual(self.w['problems'], ['Type how much water you have.', 'Type how much water you have.', '',
+                                              'Type an amount up to 100,000.'])
+        self.assertEqual(self.w['dose'].count('data-msg'), 1)              # once for the tool, not once per source
+        self.assertNotIn('Type how much water', self.w['dose'])         # written by the script only when it applies
+
+    def test_the_clock_does_not_speak_every_minute(self):
+        c = self.w['clock']
+        self.assertNotIn('aria-live', re.search(r'<p class="tclock"[^>]*>', c).group(0))
+        self.assertIn('role="status" data-said', c)                     # set and cleared are said there, once
+
+    def test_names_that_stand_alone(self):
+        c = self.w['clock']
+        self.assertIn('>The tourniquet went on now</button>', c)
+        self.assertIn('or the tourniquet went on at <input type="time"', c)
+        self.assertIn('>It went on now</button>', self.w['plain_clock'])
+        self.assertIn('or it went on at <input', self.w['plain_clock'])
+        self.assertIn('<h2 id="tool-tourniquet">', c)                   # no level skipped after the page's h1
+
+    def test_focus_and_replacing_the_time(self):
+        """Clear hands focus to the now button before hiding itself; the now button hides (and hands focus to Clear) while a time
+        is kept, so a second tap cannot replace it; a typed time is kept on pause, blur or Enter, not at every arrow step."""
+        js = (ROOT / 'web/tools.js').read_text(encoding='utf-8')
+        clear = js[js.index("clear.addEventListener('click'"):]
+        self.assertLess(clear.index('now.focus()'), clear.index('paint()'))
+        self.assertIn('now.hidden = !!v', js)
+        self.assertIn("if (from === now) clear.hidden = false, clear.focus()", js)
+        self.assertIn("typed = setTimeout(commit, 1200)", js)
+        self.assertIn("at.addEventListener('blur', commit)", js)
+
+
 if __name__ == '__main__':
     unittest.main()

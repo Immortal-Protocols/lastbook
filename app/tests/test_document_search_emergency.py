@@ -65,14 +65,14 @@ class DocumentSearchEmergencyBaseline(unittest.TestCase):
                     "SELECT title FROM pages WHERE pages MATCH ?", (medical_term,))]
                 self.assertIn("urgent" + str(i), titles)
 
-    def test_records_current_strict_and_query_for_review(self):
-        for query, _, _ in CASES:
+    def test_strict_match_excludes_relevant_emergency_passages(self):
+        for i, (query, _, _) in enumerate(CASES):
             with self.subTest(query=query):
                 _, groups = server.query_groups(query)
                 self.assertGreater(len(groups), 1)
                 self.assertIn(" AND ", server.fts_expr(groups))
-                # A strict conjunction can exclude a medically relevant page;
-                # this test documents the mechanism, not an acceptable outcome.
+                # Reproduce the bug: indexed first-aid material is excluded.
+                self.assertNotIn("urgent" + str(i), matches(self.db, query))
 
     def test_controls_keep_meaningful_query_terms(self):
         for query, _ in CONTROLS:
@@ -80,6 +80,12 @@ class DocumentSearchEmergencyBaseline(unittest.TestCase):
                 _, groups = server.query_groups(query)
                 self.assertTrue(groups)
                 self.assertTrue(server.fts_expr(groups))
+
+    def test_ordinary_how_to_queries_still_find_their_sources(self):
+        for i, (query, _) in enumerate(CONTROLS):
+            with self.subTest(query=query):
+                # A future fix must not erase the ordinary how-to match.
+                self.assertIn("control" + str(i), matches(self.db, query))
 
 
 if __name__ == "__main__":

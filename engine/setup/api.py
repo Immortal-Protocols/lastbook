@@ -1506,6 +1506,7 @@ class Setup:
         tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=mp['installed_bytes'])
         staged = work / 'unpack-map'
+        _fresh_unpack(staged, {'map': mp['id'], 'files': [f['sha256'] for f in mp['files']]}, keep=False)
         for path, _ in got:
             install.check_zip(path, mp['installed_bytes'], install.map_member)
         for path, _ in got:
@@ -1542,6 +1543,7 @@ class Setup:
             offset += file['size']
         for path, _ in got:
             install.check_zip(path, entry['installed_bytes'], allowed)
+        _fresh_unpack(work / 'unpack-addresses', {'addresses': entry['id'], 'files': [f['sha256'] for f in entry['files']]}, keep=False)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=entry['installed_bytes'])
         tracker = _Item(it)
         for path, _ in got:
@@ -1704,11 +1706,13 @@ def _margin(total):
     return max(RECOMMEND_MARGIN, min(int((total or 0) * 0.05), RECOMMEND_MARGIN_MAX))
 
 
-def _fresh_unpack(staged, stamp):
+def _fresh_unpack(staged, stamp, keep=True):
     """The unpack folder keeps whole files from an earlier run, so a resumed job does not unpack them again. That is only right
     for the same pack: files left by another pack (or another revision) would be taken as whole when their size matches. So the
     folder carries a note of what it was unpacked from, and is emptied when that is not what comes next. The new note is written
-    only once the folder is empty: a file that cannot be removed (still open on Windows) stops setup instead of being reused."""
+    only once the folder is empty: a file that cannot be removed (still open on Windows) stops setup instead of being reused.
+    keep: a library's unpack, where a failed switch may have left the person's model; a map or address unpack holds only
+    downloads (an address index is under derived/geo/addresses, as the person's own would be), so nothing there is set aside."""
     note = Path(staged) / 'unpacked-from.json'
     try:
         # Allow whitespace and Windows newlines while bounding a receipt read from the install drive.
@@ -1719,7 +1723,7 @@ def _fresh_unpack(staged, stamp):
     except (OSError, ValueError):
         same = False
     if not same and Path(staged).exists():
-        if _set_aside(staged, _kept_name(Path(staged).parent)):     # a model a failed switch left here: kept, never emptied away
+        if keep and _set_aside(staged, _kept_name(Path(staged).parent)):     # a model a failed switch left here: kept, never emptied away
             raise install.Refused('unpack', 'Lastbook could not set your files aside from the previous download. '
                                             'Close anything that may be using them, then try again.')
         try:

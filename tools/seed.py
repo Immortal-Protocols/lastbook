@@ -159,6 +159,21 @@ def needed(files, folder, state):
                for f in files if not here(f, folder))
 
 
+def fitting(files, folder, state, free):
+    """(the files to go on with, [(a file left out, the bytes it still needs)]), files smallest first: each file here, and each
+    other one while what it still needs fits in what is free beyond MARGIN. One that does not fit is left out on its own, so
+    it never stops the others, nor the sharing of what is here."""
+    go, out, room = [], [], free - MARGIN
+    for f in files:
+        n = needed([f], folder, state)
+        if n and n > room:
+            out.append((f, n))
+        else:
+            go.append(f)
+            room -= n
+    return go, out
+
+
 def show(files, folder):
     width = max([len(f['name']) for f in files] + [4])
     print(f'{"NAME":{width}}  {"SIZE":>9}  TORRENT  HERE')
@@ -277,19 +292,28 @@ def main(argv=None, allowed=None, context=None, command=None, extra=(), recheck=
     control, stop = download.Control(), stop or threading.Event()
     threading.Thread(target=lambda: (stop.wait(), control.stop('paused')), daemon=True, name='seed-stop').start()  # a download stops where it is
     _on_signals(stop)
-    said_nothing = False
+    said_nothing, first, said_full = False, True, set()
     try:
         while not stop.is_set():
             chosen = sorted(pick(files, a), key=lambda f: f['size'])
             if not any(f.get('torrent') for f in chosen) and not said_nothing:
                 print(NOTHING_YET if a.all or a.only else NOTHING_PINNED, flush=True)
                 said_nothing = True
-            need, free = needed(chosen, folder, state), shutil.disk_usage(folder).free
-            if need and need + MARGIN > free:          # nothing left to download needs no space
-                print(f'These files need {gb(need)} more on the disk under {folder}, and it has {gb(free)} free. '
-                      'Free some space, or choose fewer files with --only (--list shows them).', flush=True)
+            free = shutil.disk_usage(folder).free
+            go, out = fitting(chosen, folder, state, free)
+            if out and not go and first:               # at the start, with nothing here and nothing that fits: say so and stop
+                print(f'These files need {gb(needed(chosen, folder, state))} more on the disk under {folder}, and it has '
+                      f'{gb(free)} free. Free some space, or choose fewer files with --only (--list shows them).', flush=True)
                 return 1
-            for f in chosen:
+            first = False
+            sharing = any(g.get('torrent') and here(g, folder) for g in go)
+            for f, n in out:                           # the rest goes on: what is here is still shared
+                if f['name'] not in said_full:
+                    said_full.add(f['name'])
+                    print(f'Left out for now: {f["name"]} needs {gb(n)} more on the disk under {folder}, which has {gb(free)} '
+                          f'free ({gb(MARGIN)} is kept spare). ' + ('The files here go on being shared, and it' if sharing else 'It')
+                          + ' is tried again at each look at the manifest.', flush=True)
+            for f in go:
                 if stop.is_set():
                     break
                 data, pieces = torrent_for(f, state, allowed, context)

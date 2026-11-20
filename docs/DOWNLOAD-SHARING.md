@@ -118,6 +118,9 @@ git clone --depth 1 https://github.com/Immortal-Protocols/lastbook && cd lastboo
   for peers on TCP port 4240 (`--port`). The other files are not checked again when one is added. Every hour it looks at
   the manifest for torrents published since. Ctrl-C or SIGTERM stops it at once, even mid-download or while rqbit is still
   taking a file, and the same command goes on from there.
+- Each file it downloads must fit on the disk with 1 GiB to spare. A file that does not is left out on its own, said once,
+  and tried again at each look at the manifest, while the files here go on being shared. Only at the start, with nothing
+  here and nothing that fits, does it say how much space is needed and stop.
 - Let the port through the firewall (`sudo ufw allow 4240/tcp`, or the router's port forward for a home server). It
   changes no router itself.
 - **Today no file has a torrent**, because the maintainers have not published any yet, so it says there is nothing to share

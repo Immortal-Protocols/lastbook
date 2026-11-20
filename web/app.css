@@ -419,6 +419,28 @@ p{margin:.45em 0}
 .sit .body{display:none;padding:8px 10px 12px}
 .sit.open .body{display:block}
 .rcards{display:flex;flex-direction:column;gap:10px}
+/* tools in a situation (web/tools.js): arithmetic and a clock on figures from cited pages */
+.tool{margin:12px 0 0;padding:14px;border-radius:var(--r2);background:var(--bg);border:1px solid color-mix(in srgb,var(--tc,var(--accent)) 45%,var(--line2))}
+.tool h2{margin:0 0 6px;font-size:17px;display:flex;gap:8px;align-items:center}
+.tool h2 svg{width:20px;height:20px;flex:none;color:var(--tc,var(--accent))}
+.tool .tnote{margin:0 0 10px;color:var(--ink2);font-size:15px}
+.tool .tin{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 10px}
+.tool .tin label{display:flex;gap:8px;align-items:center;font-weight:600}
+.tool input[type=number]{width:7em}
+.tool input{font:inherit;min-height:40px;padding:4px 10px;border-radius:var(--r2);border:1px solid var(--ink3);background:var(--paper);color:var(--ink)}   /* an edge of 3:1 or more */
+.tool .seg{display:inline-flex;gap:6px}
+.tool .tout{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.tool .tout>li{padding:10px 12px;border-radius:var(--r2);background:var(--paper);border:1px solid var(--line2)}
+.tool .strength{margin:0 0 4px;font-weight:650}
+.tool .lines{margin:0 0 4px;padding:0;list-style:none}
+.tool .lines li{margin:2px 0}
+.tool .amt{font-size:19px}
+.tool .lines small{display:block;color:var(--ink3);font-size:13.5px}
+.tool .src{display:block;font-size:13.5px;color:var(--ink3)}
+.tool .src a{color:inherit}
+.tool .tout .small{margin:4px 0}
+.tool .tclock{margin:4px 0;font-size:17px}
+.tool .tmsg{margin:0 0 8px;font-weight:600}
 .rcard{display:grid;grid-template-columns:92px 1fr;gap:14px;padding:10px;border-radius:var(--r2);background:var(--bg);border:1px solid var(--line2);text-decoration:none;color:var(--ink);align-items:start}
 .rcard:hover{border-color:var(--accent)}
 @media (min-width:700px){.rcard{grid-template-columns:118px 1fr}}

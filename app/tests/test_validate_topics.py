@@ -98,6 +98,31 @@ class Validate(unittest.TestCase):
                      'ERRORS 4'):
             self.assertIn(line, out)
 
+    def test_tools_are_checked(self):
+        good = {'kind': 'dose', 'id': 'bleach', 'title': 'Bleach', 'sources': [
+            {'doc': 'doc-water', 'page': 3, 'rates': [{'amount': 8, 'per': 'gal', 'when': 'Clear'}, {'amount': 2, 'per': 'L'}]}]}
+        clock = {'kind': 'clock', 'id': 'tq', 'title': 'Time', 'sources': [{'doc': 'doc-water', 'page': 4, 'note': 'Says to note the time.'}]}
+        f = self.topic('tools.json', choices=[{'id': 'bleach', 'read': [], 'tools': [good, clock]}])
+        code, out = self.run_tool('--data', str(self.data), f)
+        self.assertEqual(code, 0, out)
+        self.assertIn('tools.json: 2 references checked', out)                 # a tool's sources are references like any other
+        bad = [{'kind': 'dose', 'id': 'b1', 'title': 'x', 'sources': [{'doc': 'doc-water', 'page': 11, 'rates': [{'amount': 8, 'per': 'gal'}]}]},
+               {'kind': 'dose', 'id': 'b2', 'title': 'x', 'sources': [{'doc': 'doc-water', 'rates': [{'amount': '8', 'per': 'cup'}]}]},
+               {'kind': 'dose', 'id': 'b3', 'title': 'x', 'sources': [{'doc': 'doc-missing', 'page': 2, 'rates': []}]},
+               {'kind': 'timer', 'id': 'b4', 'title': 'x', 'sources': []}]
+        f = self.topic('badtools.json', choices=[{'id': 'bleach', 'read': [], 'tools': bad}])
+        code, out = self.run_tool('--data', str(self.data), f)
+        self.assertEqual(code, 1, out)
+        for line in ('badtools.json tool:b1: page 11 out of range for doc-water (10)',
+                     'badtools.json tool:b2: doc-water needs the page the figures are on',
+                     "badtools.json tool:b2: doc-water rate {'amount': '8', 'per': 'cup'} needs a positive amount and per in ['L', 'gal']",
+                     'badtools.json tool:b3: unknown doc doc-missing',
+                     'badtools.json tool:b3: doc-missing has no rates',
+                     "badtools.json tool:b4: kind must be one of ['clock', 'dose']",
+                     'badtools.json tool:b4: needs at least one source',
+                     'ERRORS 7'):
+            self.assertIn(line, out)
+
     def test_no_library_says_so(self):
         empty = Path(self.dir.name) / 'empty'
         empty.mkdir(exist_ok=True)

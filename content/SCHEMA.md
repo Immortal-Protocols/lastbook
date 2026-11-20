@@ -63,3 +63,33 @@ Rules
   rows in all. A search that names no `urgent` phrase is ranked exactly as without the field. Each phrase is matched as
   whole words in order, so "not breathing" does not catch "trouble breathing".
 - Favour fewer, better items: 1–4 readings per choice, 3–8 in prepare, 4–10 in learn.
+
+## Tools in a choice (`tools`)
+
+A choice may carry small tools, shown after its readings (`web/tools.js`). A tool does arithmetic on figures its cited pages
+give, or keeps a time; it shows the figure and the page behind every result, and adds no advice of its own. Sources that
+disagree are all shown, side by side, each with its own figures; none is picked. A tool whose sources are not in a library
+is hidden there, like a reading.
+
+```json
+"tools": [
+  {"kind": "dose", "id": "bleach", "title": "Work out the bleach for your amount of water",
+   "note": "Optional line shown above the results, e.g. that sources disagree.",
+   "sources": [
+     {"doc": "<catalog id>", "page": 23, "strength": "For 5% bleach",
+      "rates": [{"amount": 2, "per": "L"}, {"amount": 8, "per": "gal", "when": "Clear water"}],
+      "note": "What else the page says, describing (not prescribing), <= 30 words."}]},
+  {"kind": "clock", "id": "tourniquet", "title": "Keep the time a tourniquet went on",
+   "now": "The tourniquet went on now", "at": "or the tourniquet went on at",
+   "sources": [{"doc": "<catalog id>", "page": 170, "note": "Says to record the exact time ..."}]}
+]
+```
+
+- `dose`: drops = the page's `amount` per `per` (`"L"` or `"gal"`, US gallon) × the amount the person types. The page's own
+  rate for the unit chosen is used when it gives one; otherwise the rate is converted and the result says so. One result line
+  per `when` (a condition the page names, such as clear or cloudy water). Results are rounded up to a whole drop, and say so.
+- `clock`: the time the person says something happened, and how long ago that was, kept on this device until cleared.
+  `now` and `at` name its button and its time field in words that stand alone (a screen reader or voice control may meet
+  them without the heading); without them they read "It went on now" and "or it went on at".
+- Every source needs `page`, and every figure must be on that page exactly as written: `tools/validate_topics.py` checks the
+  ids, pages and the shape of each tool, and `app/tests/test_tools.py` checks the arithmetic on the real figures.

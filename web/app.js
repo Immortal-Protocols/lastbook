@@ -1158,5 +1158,16 @@ async function about() {
   if (IN_WINDOW && window.LBUpdate) LBUpdate.mount(main);   // Check for updates (web/update.js): only when the person asks
 }
 
+// Save power (engine/power.py). The engine answers only this computer, so a phone the library is shared with never sees the row.
+(async () => {
+  const b = $('#savePower'), state = $('#savePowerState'), note = $('#savePowerNote');
+  if (!b) return;
+  const show = s => { b.setAttribute('aria-pressed', !!s.save); state.textContent = s.save ? 'On' : 'Off'; note.hidden = !s.save; html.classList.toggle('save-power', !!s.save) };
+  try { show(await api('/api/power')) } catch { return }
+  b.hidden = false;
+  b.addEventListener('click', async () => {
+    try { show(await api('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ save: b.getAttribute('aria-pressed') !== 'true' }) })) } catch { }
+  });
+})();
 route();
 if ('serviceWorker' in navigator && /^(127\.0\.0\.1|localhost)$/.test(location.hostname)) navigator.serviceWorker.register('/sw.js').catch(() => { });

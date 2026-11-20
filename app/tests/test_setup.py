@@ -1514,6 +1514,7 @@ class H(BaseHTTPRequestHandler):
             from urllib.parse import parse_qs, urlsplit
             q = parse_qs(urlsplit(self.path).query)
             open(record + '.added', 'a', encoding='utf-8').write(json.dumps({k: v[0] for k, v in q.items()}) + '\n')
+            time.sleep(float(os.environ.get('FAKE_ADD_HOLD', '0')))     # rqbit checking a large file before it answers
             threading.Thread(target=swarm, args=(q['output_folder'][0],), daemon=True).start()
             return self.answer(200, {'id': 0, 'details': {}})
         return self.answer(404, {})
@@ -5581,24 +5582,43 @@ class ServerSeeding(WithRqbit):
         path.write_text(json.dumps(m), encoding='utf-8')
         return str(path)
 
-    def run_seed(self, *args, wait_for=None, timeout=20):
+    def run_seed(self, *args, wait_for=None, timeout=20, recheck=3600):
         """The command in a thread until wait_for() is true (or at once without it), then stopped as Ctrl-C stops it: (exit
-        code, what it printed)."""
+        code, what it printed). self.stop_took: the seconds from the stop to its end."""
         ev, out, buf = threading.Event(), {}, io.StringIO()
 
         def go():
             out['code'] = self.seed.main([str(self.out), *args], allowed=ALLOWED, context=self.ctx, command=self.command,
-                                         recheck=3600, status=0.2, stop=ev)
+                                         recheck=recheck, status=0.2, stop=ev)
         with mock.patch('sys.stdout', buf):
             t = threading.Thread(target=go, daemon=True)
             t.start()
             t0 = time.time()
             while (not wait_for or not wait_for()) and t.is_alive() and time.time() - t0 < timeout:   # without wait_for: until it ends
                 time.sleep(0.05)
+            t1 = time.time()
             ev.set()
             t.join(30)
+            self.stop_took = time.time() - t1
         self.assertFalse(t.is_alive(), 'seed.py did not stop')
         return out.get('code'), buf.getvalue()
+
+    def test_stopped_while_rqbit_takes_a_file(self):
+        """Ctrl-C while rqbit has not yet answered the request that adds a torrent (the real one may check a large file first,
+        and is given 600 s): it stops at once instead of waiting for that answer, rqbit ends, and the same command then shares
+        the file."""
+        with mock.patch.dict(os.environ, {'FAKE_ADD_HOLD': '120'}):
+            code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: self.added.exists())
+        self.assertLess(self.stop_took, 10)
+        self.assertEqual(code, 0, text)
+        self.assertIn('Stopped.', text)
+        self.assertNotIn('Sharing Lastbook-Small.zip', text)
+        self.assertNotIn('did not take', text)
+        pids = [int(x) for x in Path(str(self.record) + '.pids').read_text().split()]
+        self.assertFalse([p for p in pids if alive(p)], 'rqbit was left running')
+        code, text = self.run_seed('--manifest', self.manifest_file(), wait_for=lambda: len(self.added.read_text().splitlines()) >= 2)
+        self.assertIn('Sharing Lastbook-Small.zip', text)
+        self.assertNotIn('Downloading', text)                                         # here already from the first run
 
     def test_stopped_mid_download_keeps_it_and_goes_on(self):
         """Ctrl-C while a file comes from the servers and from other people at once: the download stops where it is, rqbit (the

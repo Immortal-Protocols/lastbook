@@ -2345,6 +2345,14 @@ class Recommend(Base):
 class Hardware(unittest.TestCase):
     """Real host detection needs no setup download server or test pack."""
 
+    def setUp(self):
+        # main's #112 tests here read self.parent and self.tmp, which their class used to provide.
+        self.tmp = shorttemp.mkdtemp('lastbook-hardware-')
+        self.parent = self.tmp / 'place'
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
     def test_hardware_here(self):
         scratch = ROOT / 'derived/app-build'
         scratch.mkdir(parents=True, exist_ok=True)

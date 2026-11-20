@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socket, socketserver, ssl, subprocess, sys, threading, time, unittest, zipfile
+import hashlib, http.server, importlib.util, io, json, os, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -187,6 +187,33 @@ def start_server(folder, files):
     return srv, cctx, f'https://127.0.0.1:{srv.server_address[1]}'
 
 
+class ResetServer:
+    """A host this network cannot reach: every connection is accepted and at once reset, before any answer, as a network that
+    blocks a host does (#254). .url(name) is an address on it the tests allow."""
+
+    def __init__(self):
+        self.sock = socket.create_server(('127.0.0.1', 0))
+        self.count = 0
+        threading.Thread(target=self.serve, daemon=True).start()
+
+    def url(self, name):
+        return f'https://127.0.0.1:{self.sock.getsockname()[1]}/{name}'
+
+    def serve(self):
+        linger = struct.pack('HH' if sys.platform == 'win32' else 'ii', 1, 0)    # close with a reset, not a goodbye
+        while True:
+            try:
+                c, _ = self.sock.accept()
+            except OSError:
+                return
+            self.count += 1
+            c.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, linger)
+            c.close()
+
+    def close(self):
+        self.sock.close()
+
+
 class Control:
     def __init__(self):
         self.ev = threading.Event()
@@ -234,13 +261,13 @@ class Base(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def manifest(self, zip_sha=None, model_sha=None, more_packs=()):
+    def manifest(self, zip_sha=None, model_sha=None, more_packs=(), model_url=None):
         m = {'version': 1, 'published': '2026-11-12',
              'packs': [{'id': 'small', 'title': 'Small', 'summary': 's', 'records': 3, 'installed_bytes': self.installed, 'available': True,
                         'files': [{'name': 'Lastbook-Small.zip', 'url': f'{self.base}/Lastbook-Small.zip', 'size': len(self.zip),
                                    'sha256': zip_sha or sha(self.zip), 'kind': 'zip'}]},
                        {'id': 'all', 'title': 'All', 'available': False, 'files': []}],
-             'models': [{'id': 'gemma', 'title': 'Gemma', 'file': 'model.gguf', 'url': f'{self.base}/model.gguf', 'size': len(self.model),
+             'models': [{'id': 'gemma', 'title': 'Gemma', 'file': 'model.gguf', 'url': model_url or f'{self.base}/model.gguf', 'size': len(self.model),
                          'sha256': model_sha or sha(self.model), 'memory_bytes': 19_027_384_256, 'available': True}]}
         m['packs'][1:1] = more_packs
         v = manifest.validate(m, ALLOWED)
@@ -513,6 +540,27 @@ class Downloads(Base):
         self.assertIn('could not confirm it is talking to the download server', e.exception.message)
         self.assertLess(time.time() - t0, 5)          # no retries
 
+    def test_host_that_never_answers_is_unreachable(self):
+        """A host reset before it answers, every time (huggingface.co on some networks, #254): retrying on this network will not
+        help, so the download gives up as 'unreachable', naming the host, after the same tries as a broken connection."""
+        blocked = ResetServer()
+        self.addCleanup(blocked.close)
+        d = download.Download(blocked.url('model.gguf'), self.tmp / 'dl' / 'model.gguf', len(self.model), sha(self.model),
+                              download.Control(), allowed=ALLOWED, context=self.ctx)
+        with fast_backoff(), self.assertRaises(download.Failed) as e:
+            d.run()
+        self.assertEqual((e.exception.code, e.exception.extra), ('unreachable', {'host': '127.0.0.1'}))
+        self.assertIn('could not reach 127.0.0.1', e.exception.message)
+        self.assertEqual(blocked.count, download.NETWORK_TRIES)
+
+    def test_host_that_answered_then_broke_is_network(self):
+        """A server that answers, then cuts every answer before a byte of the file, is reachable: that stays 'network'."""
+        self.files.cut_after['model.gguf'] = [0] * (download.NETWORK_TRIES + 2)
+        with fast_backoff(), self.assertRaises(download.Failed) as e:
+            self.dl('model.gguf').run()
+        self.assertEqual(e.exception.code, 'network')
+        self.assertIn('kept breaking', e.exception.message)
+
     def test_roots_only(self):
         ctx = download.tls_context()
         self.assertEqual(ctx.cert_store_stats()['x509_ca'], 11)      # roots.pem and nothing from the system
@@ -761,6 +809,16 @@ class ParallelDownloads(Base):
         d = self.dl(size=len(self.big) + 10)
         with pieces(), self.assertRaises(download.BadChecksum):
             d.run()
+
+    def test_unreachable_over_several_connections(self):
+        """A large file from a host that never answers gives up as 'unreachable' over pieces too."""
+        blocked = ResetServer()
+        self.addCleanup(blocked.close)
+        d = download.Download(blocked.url('big.bin'), self.tmp / 'dl' / 'big.bin', len(self.big), sha(self.big), download.Control(),
+                              allowed=ALLOWED, context=self.ctx)
+        with pieces(), fast_backoff(), self.assertRaises(download.Failed) as e:
+            d.run()
+        self.assertEqual((e.exception.code, e.exception.extra), ('unreachable', {'host': '127.0.0.1'}))
 
     def test_redirect_to_unknown_host_refused(self):
         self.files.redirect['big.bin'] = 'https://evil.example/big.bin'
@@ -1178,6 +1236,100 @@ class Jobs(Base):
         s.retry()
         self.assertEqual(self.wait(s)['state'], 'done')
 
+    def unreachable_model(self):
+        """A first run whose library downloads and whose local AI is on a host this network cannot reach (#254)."""
+        blocked = ResetServer()
+        self.addCleanup(blocked.close)
+        s = self.setup(manifest=self.manifest(model_url=blocked.url('model.gguf')))
+        with fast_backoff():
+            s.start('small', True)
+            j = self.wait(s)
+        return s, j, blocked
+
+    def test_unreachable_model_says_so_with_the_file(self):
+        """The stop names the host and carries what is needed to fetch the file another way: its name, size, address and
+        SHA-256. The library is installed; only the AI waits."""
+        s, j, blocked = self.unreachable_model()
+        self.assertEqual((j['state'], [i['state'] for i in j['items']]), ('failed', ['done', 'failed']))
+        self.assertEqual(j['error'], {'code': 'unreachable', 'message': 'Lastbook could not reach 127.0.0.1 from this network.',
+                                      'host': '127.0.0.1', 'name': 'model.gguf', 'size': len(self.model),
+                                      'url': blocked.url('model.gguf'), 'sha256': sha(self.model)})
+        self.assertEqual(j['items'][1]['error'], j['error'])
+        self.assertTrue((self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'library-data' / 'catalog.json').exists())   # unpacked, kept
+
+    def test_unreachable_model_then_the_file_chosen(self):
+        """Fetched elsewhere and chosen (use), the file goes to the stopped job: it is checked, the AI is installed, and nothing
+        more is asked of the blocked host."""
+        s, j, blocked = self.unreachable_model()
+        tries = blocked.count
+        got = self.home / 'Downloads' / 'model.gguf'
+        got.write_bytes(self.model)
+        r = s.use(str(got))
+        self.assertIn(r['state'], ('waiting', 'verifying', 'activating', 'done'))
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual(blocked.count, tries)
+        self.assertEqual(s.finish()['folder'], str(self.parent / 'LastbookData'))
+        time.sleep(0.6)
+        lib, note = api.startup(self.settings)
+        self.assertEqual((lib / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertEqual(note['model_file'], str(lib / 'models' / 'model.gguf'))
+
+    def test_unreachable_model_with_part_already_downloaded_then_the_file_chosen(self):
+        """#294 review: a retry that stops as 'unreachable' after an earlier try had downloaded part of the model. The card offers
+        Choose AI model file there too, so the API must take the chosen file for that job as well (it used to only when no byte had
+        come). The partial download is not used: the chosen file is checked and installed."""
+        s, j, blocked = self.unreachable_model()
+        part = Path(s.job['plan']['work']) / 'downloads' / 'model.gguf.part'
+        part.parent.mkdir(parents=True, exist_ok=True)
+        part.write_bytes(self.model[:1000])                              # what an earlier try had got
+        with s.lock:
+            s.job['items'][1]['bytes_done'] = 1000                       # the saved progress the card is drawn from
+        tries = blocked.count
+        got = self.home / 'Downloads' / 'model.gguf'
+        got.write_bytes(self.model)
+        r = s.use(str(got))
+        self.assertIsNone(r.get('error'), r)
+        self.assertNotEqual(r['state'], 'failed', r)                     # the job carries on with the chosen file
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual(blocked.count, tries)
+        self.assertEqual(s.finish()['folder'], str(self.parent / 'LastbookData'))
+        time.sleep(0.6)
+        lib, _ = api.startup(self.settings)
+        self.assertEqual((lib / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_network_stop_with_part_downloaded_is_left_to_retry(self):
+        """Unchanged from #260: a 'network' stop after some of the model came is a dropped connection. The card offers Retry, not
+        the picker, and choosing the file there does not resume that job."""
+        self.files.cut_after['model.gguf'] = [700_000] + [0] * (download.NETWORK_TRIES + 2)
+        s = self.setup()
+        with fast_backoff():
+            s.start('small', True)
+            j = self.wait(s)
+        self.assertEqual((j['state'], j['error']['code']), ('failed', 'network'), j)
+        self.assertGreater(j['items'][1]['bytes_done'], 0)
+        got = self.home / 'Downloads' / 'model.gguf'
+        got.write_bytes(self.model)
+        s.use(str(got))
+        self.assertEqual(s.public_job()['state'], 'failed')
+
+    def test_unreachable_model_wrong_file_chosen(self):
+        """A file of another size is refused at once; one of the right size but other bytes stops as found_mismatch and is left
+        where it is."""
+        s, j, blocked = self.unreachable_model()
+        short = self.home / 'Downloads' / 'model.gguf'
+        short.write_bytes(self.model[:-1])
+        r = s.use(str(short))
+        self.assertEqual(r['code'], 'size')
+        self.assertIn(f'{len(self.model) - 1:,} bytes, not the {len(self.model):,}', r['error'])
+        self.assertEqual(s.public_job()['error']['code'], 'unreachable')      # the stop is unchanged
+        short.write_bytes(b'x' * len(self.model))
+        s.use(str(short))
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['error']['code']), ('failed', 'found_mismatch'))
+        self.assertEqual(short.read_bytes(), b'x' * len(self.model))
+
     def test_pause_resume_cancel(self):
         self.files.pace = 0.01
         s = self.setup()
@@ -1291,6 +1443,76 @@ class Jobs(Base):
         self.assertEqual(self.wait(s)['state'], 'done')
         self.assertNotIn('model.gguf', [name for name, _, _ in self.files.log])
         self.assertEqual((self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def model_download_stopped(self, managed=False):
+        if managed:
+            lib = self.parent / 'LastbookData'
+            (lib / 'library-data').mkdir(parents=True)
+            (lib / 'library-data' / 'catalog.json').write_text('{}')
+            (lib / 'pack.json').write_text('{"name": "small"}')
+            s = self.setup('manage', current=lib)
+        else:
+            s = self.setup()
+        run = download.Download.run
+
+        def blocked(d):
+            if d.url.endswith('/model.gguf'):
+                raise download.Failed('network', 'The connection kept breaking.')
+            return run(d)
+
+        with mock.patch.object(download.Download, 'run', blocked):
+            s.start('small', True)
+            j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'network')
+        self.assertEqual([it['state'] for it in j['items']], ['failed'] if managed else ['done', 'failed'])
+        return s, j
+
+    def test_choose_model_after_network_failure_keeps_finished_pack(self):
+        s, stopped = self.model_download_stopped()
+        model = self.home / 'Downloads' / 'model.gguf'
+        model.write_bytes(self.model)
+        pack = Path(s.job['plan']['work']) / 'unpack' / 'LastbookData' / 'library-data' / 'catalog.json'
+        before = pack.stat().st_mtime_ns
+        s.use(str(model))
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done')
+        self.assertEqual(j['id'], stopped['id'])
+        self.assertEqual(pack.stat().st_mtime_ns, before)
+        self.assertEqual([name for name, _, _ in self.files.log], ['Lastbook-Small.zip'])
+        installed = pack.parents[1] / 'models' / 'model.gguf'
+        self.assertEqual(installed.read_bytes(), self.model)
+        self.assertEqual(json.loads(api._pending_file(self.settings).read_text())['model_sha256'], sha(self.model))
+
+    def test_choose_model_after_network_failure_in_the_open_library(self):
+        s, stopped = self.model_download_stopped(managed=True)
+        model = self.home / 'Downloads' / 'model.gguf'
+        model.write_bytes(self.model)
+        s.use(str(model))
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['id']), ('done', stopped['id']))
+        installed = self.parent / 'LastbookData' / 'models' / 'model.gguf'
+        self.assertEqual(installed.read_bytes(), self.model)
+        self.assertEqual(self.marked, [(str(installed), sha(self.model))])
+        self.assertEqual(self.files.log, [])
+
+    def test_choose_model_after_network_failure_checks_the_hash(self):
+        s, stopped = self.model_download_stopped()
+        model = self.home / 'Downloads' / 'model.gguf'
+        bad = bytes([self.model[0] ^ 1]) + self.model[1:]
+        model.write_bytes(bad)
+        s.use(str(model))
+        j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'found_mismatch')
+        self.assertEqual(j['id'], stopped['id'])
+        self.assertEqual(model.read_bytes(), bad)
+        self.assertEqual([name for name, _, _ in self.files.log], ['Lastbook-Small.zip'])
+
+    def test_choose_incomplete_model_leaves_network_failure_alone(self):
+        s, stopped = self.model_download_stopped()
+        model = self.home / 'Downloads' / 'model.gguf'
+        model.write_bytes(self.model[:100])
+        self.assertEqual(s.use(str(model))['code'], 'size')
+        self.assertEqual(s.public_job(), stopped)
 
     def test_found_zip_is_used_without_network(self):
         self.parent.mkdir()
@@ -2370,6 +2592,95 @@ class Through(Base):
             self.assertTrue(b.top_url_ok(B.ORIGIN_WINDOWS + '/ui/setup.html'))
             r = ask('GET', '/documents/x.pdf')
             self.assertEqual(r.status, 404)
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class ModelRecoveryScreen(unittest.TestCase):
+    """The real setup error renderer and picker dispatch, without a server or browser dependency."""
+    def screen(self, kind='model', done=0, code='network', action=False, cancel=False):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8'), cfg = JSON.parse(process.argv[2]);
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const calls = [], note = {hidden: true}, button = {}, UNIT = 1000;
+const $ = s => s === '#haveNote' ? note : button;
+const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk';
+const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+let folder = '', S = {}, shortfall = null, confirmCancel = false, lastAct = null;
+const call = async (path, body) => { calls.push([path, body]); return cfg.cancel ? {cancelled: true} : {path: '/path/to/model.gguf'} };
+const useFile = async (path, btn) => { calls.push(['useFile', path, btn === button]) };
+const go = () => {}, jobView = () => {}, poll = () => {};
+eval(section('  async function haveLibrary(', '  async function useFile('));
+eval(section('  function errorBox(', '  function itemHTML('));
+eval(section('  async function jobAct(', '  function poll('));
+const j = {error: {code: cfg.code}, items: [{kind: cfg.kind, state: 'failed', bytes_done: cfg.done, error: {code: cfg.code}}]};
+(async () => { const html = errorBox(j); if (cfg.action) await jobAct('model-file', button); console.log(JSON.stringify({html, calls, note})); })();
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js'), json.dumps(
+            dict(kind=kind, done=done, code=code, action=action, cancel=cancel))],
+            check=True, capture_output=True, text=True, encoding='utf-8')
+        return json.loads(r.stdout)
+
+    def test_zero_byte_model_failure_offers_the_file_picker(self):
+        html = self.screen()['html']
+        self.assertIn('could not reach the local AI download server', html)
+        self.assertIn('data-act="model-file"', html)
+        self.assertIn('data-act="retry"', html)
+        self.assertIn('data-act="back"', html)
+        self.assertIn('id="haveNote"', html)
+
+    def test_other_failures_keep_their_existing_wording(self):
+        for args in [dict(kind='pack'), dict(done=123), dict(code='checksum')]:
+            with self.subTest(args=args):
+                html = self.screen(**args)['html']
+                self.assertNotIn('data-act="model-file"', html)
+        self.assertIn('The internet connection dropped.', self.screen(kind='pack')['html'])
+
+    def test_model_action_reuses_the_file_picker_and_use_path(self):
+        self.assertEqual(self.screen(action=True)['calls'], [
+            ['pick', {'files': True}], ['useFile', '/path/to/model.gguf', True]])
+
+    def test_cancelling_the_picker_does_not_retry_or_import(self):
+        self.assertEqual(self.screen(action=True, cancel=True)['calls'], [['pick', {'files': True}]])
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class UnreachableScreen(unittest.TestCase):
+    """setup.js's own errorBox for an 'unreachable' stop (#254): the host, the file's facts to fetch it elsewhere, and the way to
+    choose it: #260's Choose AI model file for the model, Choose again for a library file."""
+    def box(self, kind):
+        script = r"""
+const src = require('fs').readFileSync(process.argv[1], 'utf8'), kind = process.argv[2];
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
+const diskName = () => 'this disk', errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+let folder = '';
+eval(section('  function errorBox(', '  function itemHTML('));
+const error = {code: 'unreachable', message: 'Lastbook could not reach huggingface.co from this network.', host: 'huggingface.co',
+               name: 'model.gguf', size: 16947541728, url: 'https://huggingface.co/x/model.gguf?download=true&a=<b>', sha256: 'ab'.repeat(32)};
+console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, error}]}));
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js'), kind], check=True, capture_output=True, text=True, encoding='utf-8')
+        return r.stdout
+
+    def test_the_model_offers_its_facts_and_the_picker(self):
+        html = self.box('model')
+        self.assertIn('Lastbook can’t reach huggingface.co.', html)
+        self.assertIn('It may be down for a while', html)                # it may come back: Retry stays, and is not called useless
+        self.assertIn('Retry later', html)
+        self.assertNotIn('internet connection dropped', html)
+        for k in ('File', 'Size', 'Address', 'SHA-256'):
+            self.assertIn(f'<dt>{k}</dt>', html)
+        self.assertIn('16,947,541,728 bytes', html)                       # exact, to check a copy fetched elsewhere
+        self.assertIn('ab' * 32, html)
+        self.assertIn('&amp;a=&lt;b>', html)                              # the address is escaped
+        self.assertIn('data-act="model-file"', html)
+        self.assertIn('data-act="retry"', html)
+
+    def test_a_library_file_points_to_choose_again(self):
+        html = self.box('pack')
+        self.assertIn('<dt>SHA-256</dt>', html)
+        self.assertNotIn('data-act="model-file"', html)
+        self.assertIn('Choose a library zip or AI model file', html)
 
 
 @unittest.skipUnless(os.environ.get('LASTBOOK_FULL_DISK') == '1' and sys.platform == 'darwin', 'LASTBOOK_FULL_DISK=1 on a Mac')

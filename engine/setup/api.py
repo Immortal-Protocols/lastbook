@@ -751,8 +751,22 @@ class Setup:
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:
-                return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'code': 'size'}
+                return {'error': f'That file is {p.stat().st_size:,} bytes, not the {m["size"]:,} of the model. The download may not have finished.', 'code': 'size'}   # exact: a nearly finished 17 GB download rounds to the same GB
             self.sources[name] = str(p)
+            with self.lock:
+                job = self.job
+                code = (job['error'] or {}).get('code') if job else None
+                # The same cases setup.js offers Choose AI model file for: a stop as 'unreachable' (also with part of the model
+                # already downloaded, from an earlier try), or a 'network' stop before any byte of it came.
+                if (job and job['state'] == 'failed' and code in ('network', 'unreachable')
+                        and (job['plan'].get('model') or {}).get('file') == name
+                        and any(it['kind'] == 'model' and it['state'] == 'failed' and (code == 'unreachable' or not it['bytes_done'])
+                                for it in job['items'])):
+                    job['plan']['sources'][name] = str(p)
+                    job['plan']['verified'] = [n for n in job['plan'].get('verified', []) if n != name]
+                    job['plan']['explicit'] = True
+                    _tag_sources(job)
+                    return self.retry()  # keep the finished pack; check the chosen model before using it
             if self.mode == 'manage':
                 return self.start(None, True, None, {name: str(p)}, explicit=True)
             return self.public_job() or {'job': None, 'noted': True}
@@ -946,6 +960,10 @@ class Setup:
                     raise download.Failed('checksum', f'{name} did not match its published checksum twice. The file on the server may be damaged; try again later.')
                 plan['retried'][name] = tries + 1
                 print(f'setup: {name} failed its checksum; downloading it once more', flush=True)
+            except download.Failed as e:
+                if e.code == 'unreachable':       # what the person needs to get the file another way, then choose it (use)
+                    e.extra.update(name=name, size=f['size'], url=f['url'], sha256=f['sha256'])
+                raise
 
     def _do_pack(self, it, plan, work, control):
         pack = plan['pack']

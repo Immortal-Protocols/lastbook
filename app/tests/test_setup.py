@@ -1275,6 +1275,45 @@ class Jobs(Base):
         self.assertEqual((lib / 'models' / 'model.gguf').read_bytes(), self.model)
         self.assertEqual(note['model_file'], str(lib / 'models' / 'model.gguf'))
 
+    def test_unreachable_model_with_part_already_downloaded_then_the_file_chosen(self):
+        """#294 review: a retry that stops as 'unreachable' after an earlier try had downloaded part of the model. The card offers
+        Choose AI model file there too, so the API must take the chosen file for that job as well (it used to only when no byte had
+        come). The partial download is not used: the chosen file is checked and installed."""
+        s, j, blocked = self.unreachable_model()
+        part = Path(s.job['plan']['work']) / 'downloads' / 'model.gguf.part'
+        part.parent.mkdir(parents=True, exist_ok=True)
+        part.write_bytes(self.model[:1000])                              # what an earlier try had got
+        with s.lock:
+            s.job['items'][1]['bytes_done'] = 1000                       # the saved progress the card is drawn from
+        tries = blocked.count
+        got = self.home / 'Downloads' / 'model.gguf'
+        got.write_bytes(self.model)
+        r = s.use(str(got))
+        self.assertIsNone(r.get('error'), r)
+        self.assertNotEqual(r['state'], 'failed', r)                     # the job carries on with the chosen file
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual(blocked.count, tries)
+        self.assertEqual(s.finish()['folder'], str(self.parent / 'LastbookData'))
+        time.sleep(0.6)
+        lib, _ = api.startup(self.settings)
+        self.assertEqual((lib / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_network_stop_with_part_downloaded_is_left_to_retry(self):
+        """Unchanged from #260: a 'network' stop after some of the model came is a dropped connection. The card offers Retry, not
+        the picker, and choosing the file there does not resume that job."""
+        self.files.cut_after['model.gguf'] = [700_000] + [0] * (download.NETWORK_TRIES + 2)
+        s = self.setup()
+        with fast_backoff():
+            s.start('small', True)
+            j = self.wait(s)
+        self.assertEqual((j['state'], j['error']['code']), ('failed', 'network'), j)
+        self.assertGreater(j['items'][1]['bytes_done'], 0)
+        got = self.home / 'Downloads' / 'model.gguf'
+        got.write_bytes(self.model)
+        s.use(str(got))
+        self.assertEqual(s.public_job()['state'], 'failed')
+
     def test_unreachable_model_wrong_file_chosen(self):
         """A file of another size is refused at once; one of the right size but other bytes stops as found_mismatch and is left
         where it is."""
@@ -2626,7 +2665,8 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
     def test_the_model_offers_its_facts_and_the_picker(self):
         html = self.box('model')
         self.assertIn('Lastbook can’t reach huggingface.co.', html)
-        self.assertIn('retrying here will not help', html)
+        self.assertIn('It may be down for a while', html)                # it may come back: Retry stays, and is not called useless
+        self.assertIn('Retry later', html)
         self.assertNotIn('internet connection dropped', html)
         for k in ('File', 'Size', 'Address', 'SHA-256'):
             self.assertIn(f'<dt>{k}</dt>', html)

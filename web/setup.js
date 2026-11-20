@@ -421,7 +421,7 @@
         ? ['This network could not reach the local AI download server.', 'What is downloaded is kept. Retry, or choose the published AI model file downloaded another way.', 'retry']
         : ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
       unreachable: [`Lastbook can’t reach ${esc((e && e.host) || 'the download server')}.`,   // the host never answered this download (#254)
-        'If websites open on this computer, this network may be blocking that server, and retrying here will not help. You can download the file below on another network or computer, '
+        'It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, '
         + (blockedModel ? 'then choose it here.' : 'then choose it with Choose again and “Choose a library zip or AI model file”.'), 'retry'],
       server: ['The download server stayed busy.', 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.', 'retry'],
       checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],

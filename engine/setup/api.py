@@ -755,9 +755,13 @@ class Setup:
             self.sources[name] = str(p)
             with self.lock:
                 job = self.job
-                if (job and job['state'] == 'failed' and (job['error'] or {}).get('code') in ('network', 'unreachable')
+                code = (job['error'] or {}).get('code') if job else None
+                # The same cases setup.js offers Choose AI model file for: a stop as 'unreachable' (also with part of the model
+                # already downloaded, from an earlier try), or a 'network' stop before any byte of it came.
+                if (job and job['state'] == 'failed' and code in ('network', 'unreachable')
                         and (job['plan'].get('model') or {}).get('file') == name
-                        and any(it['kind'] == 'model' and it['state'] == 'failed' and not it['bytes_done'] for it in job['items'])):
+                        and any(it['kind'] == 'model' and it['state'] == 'failed' and (code == 'unreachable' or not it['bytes_done'])
+                                for it in job['items'])):
                     job['plan']['sources'][name] = str(p)
                     job['plan']['verified'] = [n for n in job['plan'].get('verified', []) if n != name]
                     job['plan']['explicit'] = True

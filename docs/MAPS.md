@@ -76,6 +76,7 @@ so ask before adding many.
 | `places.sqlite` | `tools/build_places.py` | USGS GNIS, Census gazetteers, named OpenStreetMap places |
 | address indexes | `tools/build_addresses.py`, then `packaging/address_indexes.py` | Overture Maps addresses |
 | a state map | `packaging/build_packs.py map <ST>`, published by `packaging/state_maps.py` | The base map, then every row inside the state's box |
+| a region map outside the US | `tools/build_region_map.py`, checked by `tools/check_region_map.py` | One OpenStreetMap extract, cut to the region's box; [MAP-TH-10.md](MAP-TH-10.md) is the worked example for Bangkok |
 
 Each tool's header says what it reads, what it writes and the licence of its source. Read it before you run one: some
 expect source files that are hundreds of gigabytes.

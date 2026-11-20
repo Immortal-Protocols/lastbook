@@ -1992,7 +1992,7 @@ class Maps(Base):
         m = self.manifest().current
         raw = {**m, 'packs': [{**m['packs'][0], 'map': 'CA'}, {**m['packs'][0], 'id': 'x', 'map': 'base'}]}
         v = manifest.validate(raw, ALLOWED)
-        self.assertEqual([p['map'] for p in v['packs']], ['CA', None])
+        self.assertEqual([p['map'] for p in v['packs']], ['CA', 'base'])
 
     def test_merge_keeps_bundled_maps(self):
         mf, _ = self.map_manifest()
@@ -2370,6 +2370,36 @@ class Through(Base):
             self.assertTrue(b.top_url_ok(B.ORIGIN_WINDOWS + '/ui/setup.html'))
             r = ask('GET', '/documents/x.pdf')
             self.assertEqual(r.status, 404)
+
+
+@unittest.skipUnless(shutil.which('node'), 'Node is not installed')
+class RegionPicker(unittest.TestCase):
+    def test_country_groups_and_us_map_inclusion(self):
+        source = (ROOT / 'web/setup.js').read_text(encoding='utf-8')
+        start = source.index('  const packs =')
+        end = source.index('  const packDl =', start)
+        helpers = """const S = {manifest: {packs: [
+          {id:'all', summary:'Everything', map:null}, {id:'medium', summary:'a detailed map of California', map:null}],
+          maps: [{id:'CA', title:'California', kind:'state'}, {id:'eu-de', title:'Germany', kind:'country'},
+            {id:'eu-pl', title:'Poland', kind:'country'}, {id:'DE-BE', title:'Berlin', kind:'state'},
+            {id:'CA-ON', title:'Ontario', kind:'province'}]}, current: null};
+        const choice = {map: 'eu-pl'};
+        """ + source[start:end]
+        expression = """(() => {
+          const maps = S.manifest.maps;
+          return {groups: regionGroups(maps).map(([name, entries]) => [name, entries.map(x => x.id)]),
+            stateInUS: regionIncluded('CA', 'us', maps), countryInUS: regionIncluded('eu-pl', 'us', maps),
+            foreignStateInUS: regionIncluded('DE-BE', 'us', maps), currentCountry: regionIncluded('eu-pl', 'eu-pl', maps),
+            allFallback: packMap('all'), mediumFallback: packMap('medium'), allSummary: packSummary(packById('all')),
+            explicitBase: (() => { packById('all').map = 'base'; return packMap('all') })()};
+        })()"""
+        run = subprocess.run(['node', '-e', helpers + '\nconsole.log(JSON.stringify(' + expression + '))'],
+                             text=True, capture_output=True, check=True)
+        self.assertEqual(json.loads(run.stdout), {
+            'groups': [['Countries', ['eu-de', 'eu-pl']], ['United States', ['CA']], ['Other regions', ['DE-BE', 'CA-ON']]],
+            'stateInUS': True, 'countryInUS': False, 'foreignStateInUS': False, 'currentCountry': True,
+            'allFallback': 'us', 'mediumFallback': 'CA',
+            'allSummary': 'Everything Choosing Poland replaces the bundled US map.', 'explicitBase': None})
 
 
 @unittest.skipUnless(os.environ.get('LASTBOOK_FULL_DISK') == '1' and sys.platform == 'darwin', 'LASTBOOK_FULL_DISK=1 on a Mac')

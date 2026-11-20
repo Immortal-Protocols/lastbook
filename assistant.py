@@ -619,7 +619,15 @@ def _fit_prompt(msgs, tools, llm_local):
 
 
 def chat(messages, about, emit, cancelled):
-    """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early."""
+    """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early. With the local AI the
+    whole turn holds LOCAL.question(), so Save power cannot stop the model between starting it and the answer (#120 review)."""
+    if not local_on():
+        return _chat(messages, about, emit, cancelled)
+    with LOCAL.question():
+        return _chat(messages, about, emit, cancelled)
+
+
+def _chat(messages, about, emit, cancelled):
     t0 = time.time()
     sess = Session()
     msgs = [{'role': 'system', 'content': SYSTEM}]

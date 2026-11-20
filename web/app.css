@@ -269,6 +269,8 @@ p{margin:.45em 0}
 .btn svg{width:19px;height:19px}
 .btn[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 [data-save][aria-pressed=true] svg{fill:currentColor}
+[data-speak] .i-stop,[data-speak].reading .i-speak{display:none}
+[data-speak].reading .i-stop{display:inline;fill:currentColor}   /* reading: a stop square in place of the speaker, also where only the icon shows */
 .btn[disabled]{opacity:.4;cursor:default}
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:6px 15px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink2);text-decoration:none;font-size:15px;font-weight:500;white-space:nowrap}
 .plat-win .chip{border-radius:var(--r-ctl);background:var(--paper)}

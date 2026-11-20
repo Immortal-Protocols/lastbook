@@ -4,7 +4,7 @@
 
 Refused: test code, the old window, model libraries, the Mac and Windows shells, the remote_storage module, machine names (FILE: private
 words, one per line, kept out of this public script), /Users/... and /home/<name> paths, the household's area and working names in our
-own files (ship_edits.json), native code that is not x86-64 or that links a library from outside the package and the system, a socket in
+own files (ship_edits.json), native code that is not this machine's arch or that links a library from outside the package and the system, a socket in
 the local AI's runner, and in our own Python any network module outside the two ways out (setup's downloader and Check for updates) and
 the engine's request handler, which the app runs with no port. roots.pem must be there: without it setup downloads nothing.
 """
@@ -12,10 +12,13 @@ import argparse
 import ast
 import json
 import re
+import platform
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+ELF_ARCH = {'x86_64': 'X86-64', 'aarch64': 'AArch64'}[platform.machine()]
 
 BAD_SEGMENTS = {'test', 'tests', 'testing', 'pytest', 'unittest', 'doctest', 'remote_storage', 'webview', 'bottle', 'proxy_tools', 'onnxruntime',
                 'tokenizers', 'shell_windows', 'shell_macos', 'clr', 'clr_loader', 'pythonnet', 'lastbook_launcher', 'tkinter', 'PyInstaller',
@@ -36,7 +39,7 @@ NET_ALLOWED = {
     'opt/lastbook/assistant.py',               # the server version's chat model; the app's chat is llm_local over pipes
 }
 SOCKET_CALLS = re.compile(r'^(socket|connect|bind|listen|accept4?|getaddrinfo|gethostbyname\w*|sendto|recvfrom|curl_\w+|SSL_\w+)$')
-SYSTEM_LIBS = re.compile(r'^(libc|libm|libdl|libpthread|librt|libstdc\+\+|libgcc_s|libgomp|libvulkan|ld-linux-x86-64|libz|libgstreamer-1\.0|libgstbase-1\.0|libglib-2\.0|libgobject-2\.0)\.so')
+SYSTEM_LIBS = re.compile(r'^(libc|libm|libdl|libpthread|librt|libstdc\+\+|libgcc_s|libgomp|libvulkan|ld-linux-(?:x86-64|aarch64)|libz|libgstreamer-1\.0|libgstbase-1\.0|libglib-2\.0|libgobject-2\.0)\.so')
 
 
 def bad_name(name):
@@ -111,8 +114,8 @@ def main():
             if data[:4] == b'\x7fELF':
                 n_elf += 1
                 head = subprocess.run(['readelf', '-h', str(p)], capture_output=True, text=True).stdout
-                if 'X86-64' not in head:
-                    problems.append(f'not x86-64: {rel}')
+                if ELF_ARCH not in head:
+                    problems.append(f'not {ELF_ARCH}: {rel}')
                 dyn = subprocess.run(['readelf', '-d', str(p)], capture_output=True, text=True).stdout
                 beside = {q.name for q in p.parent.iterdir()}
                 for lib in re.findall(r'\(NEEDED\)\s+Shared library: \[([^\]]+)\]', dyn):

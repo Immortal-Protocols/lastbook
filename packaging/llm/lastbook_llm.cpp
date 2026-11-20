@@ -1,7 +1,7 @@
 // lastbook-llm: runs one local language model for the Lastbook app. It talks only through its standard input and output,
 // one JSON object per line, and never opens a socket, a port or a web address. It reads one file, the model it is given.
 //
-//   lastbook-llm --model FILE [--ctx N] [--threads N] [--cpu-only] [--measure]
+//   lastbook-llm --model FILE [--ctx N] [--threads N] [--ngl N] [--cpu-only] [--measure]
 //
 // On start it fits the model to this computer's memory with llama.cpp's own fitting (common/fit.cpp, the same as llama-server's
 // default --fit), prints {"ev":"fit",...} with what it measured, then loads the model and prints {"ev":"ready",...}.
@@ -390,7 +390,7 @@ int main(int argc, char ** argv) {
     g_out = fdopen(proto, "w");
 #endif
     std::string path;
-    int n_ctx = 16384, threads = 0;
+    int n_ctx = 16384, threads = 0, n_gl = -1;   // n_gl -1: leave llama.cpp's fit in charge of the placement
     bool cpu_only = false, measure = false;
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -402,6 +402,8 @@ int main(int argc, char ** argv) {
             threads = std::atoi(argv[++i]);
         } else if (a == "--cpu-only") {
             cpu_only = true;
+        } else if (a == "--ngl" && i + 1 < argc) {
+            n_gl = std::atoi(argv[++i]);
         } else if (a == "--measure") {
             measure = true;
         } else {
@@ -436,6 +438,8 @@ int main(int argc, char ** argv) {
     if (cpu_only) {
         mp.devices = no_devices;
         mp.n_gpu_layers = 0;
+    } else if (n_gl >= 0) {
+        mp.n_gpu_layers = n_gl;   // a split the fit must respect: the evidence runs place some layers on the device, some on the CPU
     }
 
     // Fit: only settings left at llama.cpp's defaults are changed, and the context stays the size asked for.

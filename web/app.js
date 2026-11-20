@@ -1007,7 +1007,7 @@ async function passages(q, seq) {
   try {
     const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=6&kind=manual');
     if (seq !== searchSeq || !d.results.length || !$('#spass')) return false;
-    $('#spass').innerHTML = secHead('Most relevant pages', d.semantic && !d.semantic.chunks ? 'Matched by your words' : 'Matched by meaning as well as by words') + `<div class="rcards">${d.results.map(r => rcard({ src: { id: r.doc_id, kind: r.kind, title: r.title, publisher: r.publisher, year: r.year, pages: r.pages, trust: r.trust }, page: r.page, label: r.title, note: (r.excerpt || '').slice(0, 220) + '…' })).join('')}</div>`;
+    $('#spass').innerHTML = secHead('Most relevant pages', d.semantic && (!d.semantic.chunks || d.semantic.search_error) ? 'Matched by your words' : 'Matched by meaning as well as by words') + `<div class="rcards">${d.results.map(r => rcard({ src: { id: r.doc_id, kind: r.kind, title: r.title, publisher: r.publisher, year: r.year, pages: r.pages, trust: r.trust }, page: r.page, label: r.title, note: (r.excerpt || '').slice(0, 220) + '…' })).join('')}</div>`;
     return true;
   } catch { return false }
 }

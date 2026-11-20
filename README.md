@@ -236,7 +236,9 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
   (a newer copy is fetched from `downloads.lastbook.org` when setup opens and used only if it validates).
 - **State maps** are one US state's detailed map set, built by `packaging/build_packs.py map <ST>` and published by
   `packaging/state_maps.py`, with per-state address indexes from `packaging/address_indexes.py`. A state map replaces the
-  library's map set; it never merges with it. Medium already holds California and All the whole US.
+  library's map set; it never merges with it. Medium already holds California and All the whole US. A European
+  country's map set is built and published the same way (`map eu-<iso>`, entry kind `country`; the country's box is
+  its Geofabrik extract's bounding box, from `packaging/europe-countries.json`); address indexes stay US-only.
 - **The local AI** is optional: Gemma 4 26B A4B (Unsloth's `gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`, about 17 GB). The file
   name, size, SHA-256 and Hugging Face revision are pinned in `llm_local.py`. Setup offers it only where the measured fit
   says it fits (about 18 GB of memory for model and context, plus a reserve) and says why in plain words when it does not.

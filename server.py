@@ -341,6 +341,24 @@ def query_groups(q):
     return content, groups
 
 
+# Keep a small, explicit medical anchor when a question also mentions
+# unrelated how-to actions. These terms are only a retrieval fallback, not
+# medical advice or a replacement for topic-guide urgency classification.
+EMERGENCY_ANCHORS = (
+    (r"\\bdrown(?:ing|ed)?\\b", ['drowning', 'resuscitation', 'airway']),
+    (r"\\bhypothermia\\b", ['hypothermia', 'cold exposure']),
+    (r"\\bcarbon monoxide\\b", ['carbon monoxide', 'poisoning']),
+)
+
+
+def emergency_fts_expr(q):
+    """Optional, narrow FTS5 query for explicit emergency terminology."""
+    for rx, terms in EMERGENCY_ANCHORS:
+        if re.search(rx, q, re.I):
+            return fts_expr([terms])
+    return None
+
+
 @functools.lru_cache(maxsize=256)
 def find(q, kind='all', limit=30):
     content, groups = query_groups(q)
@@ -352,6 +370,12 @@ def find(q, kind='all', limit=30):
     rows, mode = [], 'all words'
     try:
         rows = con.execute(sql, (fts_expr(groups),)).fetchall()
+        emergency = emergency_fts_expr(q)
+        if emergency:
+            # Include relevant first-aid pages even when the strict query
+            # returns many unrelated how-to pages.
+            rows = con.execute(sql, (emergency,)).fetchall() + rows
+            mode = 'emergency and keywords'
         if len(rows) < 8 and len(groups) > 1:
             # relax: any of the ideas, rank documents that have more of them higher
             mode = 'some words'

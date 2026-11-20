@@ -9,7 +9,12 @@ aid from unrelated water/fire how-to content. Keep the cases when changing
 server.find or assistant._fts and remeasure on the Medium pack.
 """
 import sqlite3
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import assistant
 
 import server
 
@@ -100,6 +105,55 @@ class DocumentSearchEmergencyBaseline(unittest.TestCase):
             with self.subTest(query=query):
                 # A future fix must not erase the ordinary how-to match.
                 self.assertIn("control" + str(i), matches(self.db, query))
+
+
+class SearchPathIntegration(unittest.TestCase):
+    """Exercise assistant._fts against the real FTS5 SQL query and fallback."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.db_path = str(Path(self.temp.name) / 'pages.db')
+        self.db = sqlite3.connect(self.db_path)
+        self.db.execute('CREATE VIRTUAL TABLE pages USING fts5('
+                        'doc_id UNINDEXED, page UNINDEXED, title, author, tags, collection, body)')
+        self.addCleanup(self.db.close)
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('urgent', 1, 'Hypothermia first aid', '', '', '',
+                         'hypothermia cold exposure warming first aid'))
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('ordinary', 1, 'Fire making', '', '', '',
+                         'light a fire with tinder kindling'))
+        self.db.commit()
+        db_patch = patch.object(assistant.S.library, 'DB', self.db_path)
+        db_patch.start()
+        self.addCleanup(db_patch.stop)
+
+    def test_emergency_passage_is_present_once_when_queries_overlap(self):
+        # The emergency passage also matches the any-word fallback.
+        rows = assistant._fts('light a fire with hypothermia')
+        keys = [(r[0], r[1]) for r in rows]
+        self.assertIn(('urgent', 1), keys)
+        self.assertIn(('ordinary', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_emergency_rows_do_not_suppress_any_word_fallback(self):
+        # More than ten emergency hits must not hide a useful fire passage.
+        for i in range(12):
+            self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (f'urgent-extra-{i}', 1, '', '', '', '',
+                             'hypothermia cold exposure warming'))
+        self.db.commit()
+        rows = assistant._fts('light a fire with hypothermia', limit=80)
+        keys = [(r[0], r[1]) for r in rows]
+        self.assertIn(('ordinary', 1), keys)
+        self.assertIn(('urgent', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_ordinary_query_keeps_search_results(self):
+        keys = [(r[0], r[1]) for r in assistant._fts('light a fire')]
+        self.assertIn(('ordinary', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
 
 
 if __name__ == "__main__":

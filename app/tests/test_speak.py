@@ -90,5 +90,64 @@ class Speakable(unittest.TestCase):
         self.assertEqual(got['pieces'], ['Agua segura: hiérvala un minuto. Después, déjela enfriar.'])
 
 
+
+BUTTON = r"""
+// Speak.attach on a stand-in button, with one local voice: click, what the button says and shows, then Escape.
+const fs = require('fs');
+const src = fs.readFileSync(process.argv[1], 'utf8');
+const keys = [], spoken = [];
+let cancels = 0;
+const document = { addEventListener: (t, f) => t === 'keydown' && keys.push(f), removeEventListener: (t, f) => { const i = keys.indexOf(f); if (i >= 0) keys.splice(i, 1) } };
+const voice = { localService: true, default: true, lang: 'en-US' };
+const speechSynthesis = { getVoices: () => [voice], speak: u => spoken.push(u.text), cancel: () => cancels++, addEventListener() {} };
+class SpeechSynthesisUtterance { constructor(t) { this.text = t } }
+const attrs = {}, classes = new Set(), label = { textContent: 'Read aloud' };
+let onclick = null;
+const btn = { hidden: true, title: '', setAttribute: (k, v) => attrs[k] = String(v), removeAttribute: k => delete attrs[k],
+              classList: { toggle: (c, on) => on ? classes.add(c) : classes.delete(c) }, addEventListener: (t, f) => onclick = f };
+const Speak = new Function('$', 'navigator', 'document', 'speechSynthesis', 'SpeechSynthesisUtterance', src + '\nreturn Speak;')(
+  () => label, { language: 'en-US' }, document, speechSynthesis, SpeechSynthesisUtterance);
+const look = () => ({ name: attrs['aria-label'], title: btn.title, label: label.textContent, pressed: 'aria-pressed' in attrs, reading: classes.has('reading') });
+(async () => {
+  const leave = Speak.attach(btn, async () => 'Boil water for one minute.');
+  await new Promise(r => setTimeout(r, 10));
+  const out = { shown: !btn.hidden };
+  await onclick(); out.on = look(); out.spoken = spoken.slice();
+  keys.forEach(f => f({ key: 'Enter' })); out.after_enter = look();
+  keys.forEach(f => f({ key: 'Escape' })); out.after_escape = look(); out.cancels = cancels;
+  leave(); out.listeners_left = keys.length;
+  process.stdout.write(JSON.stringify(out));
+})();
+"""
+
+
+@unittest.skipUnless(NODE, 'needs Node')
+class Button(unittest.TestCase):
+    """The #117 accessibility review: the button's name says what it does, with no aria-pressed ("Stop reading, pressed"); its look
+    changes by class (a stop square, also in the icon-only toolbar); Escape stops reading; leaving the page removes the key listener."""
+
+    def test_name_look_and_escape(self):
+        r = subprocess.run([NODE, '-e', BUTTON, str(ROOT / 'web' / 'speak.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        out = json.loads(r.stdout)
+        self.assertTrue(out['shown'])
+        self.assertEqual(out['on'], {'name': 'Stop reading', 'title': 'Stop reading', 'label': 'Stop reading', 'pressed': False, 'reading': True})
+        self.assertEqual(out['spoken'], ['Boil water for one minute.'])
+        self.assertTrue(out['after_enter']['reading'])                  # other keys leave it reading
+        self.assertEqual(out['after_escape'], {'name': 'Read aloud', 'title': 'Read aloud', 'label': 'Read aloud', 'pressed': False, 'reading': False})
+        self.assertGreaterEqual(out['cancels'], 2)                      # once before speaking, once on Escape
+        self.assertEqual(out['listeners_left'], 0)
+
+    def test_the_page_shows_what_it_only_said(self):
+        """A page with no text, or one that could not be fetched, is shown in a toast (role=status), not only spoken; and after
+        reading goes on to the next page by itself, focus returns to the button."""
+        app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
+        self.assertIn("toast('This page has no text that can be read aloud.')", app)
+        self.assertIn("toast('This page could not be read aloud. Try again.')", app)
+        self.assertIn('focusAfterRoute = sb;', app)
+        self.assertNotIn('data-speak hidden aria-pressed', app)
+        css = (ROOT / 'web' / 'app.css').read_text(encoding='utf-8')
+        self.assertIn('[data-speak].reading .i-stop{display:inline', css)
+
+
 if __name__ == '__main__':
     unittest.main()

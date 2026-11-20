@@ -149,7 +149,7 @@ vram_bytes}], disks: [{path, free_bytes, total_bytes}], ai: {fits, needs_bytes, 
 `memory_bytes` and RAM, marked `"estimate": true`. On Windows, RAM plus dedicated VRAM, from DXGI.
 
 `job` = `{id, state, items: [{id, kind: "pack" or "model", title, state, bytes_done, bytes_total, rate_bps, eta_s,
-error}], error, started, folder}`, plus `repair: true` on a job started with `{repair: true}`. Each item also has `source`: `"found"` when its file is already on this computer
+error}], error, started, folder}`, plus `repair: true` on a job started with `{repair: true}`, and `stopping: true` from `cancel` until the cancelled job's worker has stopped (`start`, `resume` and `retry` answer `busy` until then; `resume` or `retry` of a job that is already running return that job). Each item also has `source`: `"found"` when its file is already on this computer
 (it is checked, not downloaded), else `"download"` (it changes to `"download"` when a found file is rejected). After a restart, an
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,

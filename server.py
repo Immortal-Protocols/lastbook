@@ -714,22 +714,45 @@ def national_status():
 
 
 SOCAL_CELL = 0.05
+SOCAL_BBOX = (-121.4, 32.5, -114.1, 35.9)     # (west, south, east, north): what the detailed SoCal map covers
 _socal = {'cells': None}
 
 
+@functools.lru_cache(maxsize=1)
+def detail_cells():
+    """A region map's own box and 0.05° cells (detail-cells.json), or None for a US map."""
+    try:
+        d = json.loads((HERE / 'derived/geo/detail-cells.json').read_text(encoding='utf-8'))
+        if isinstance(d, dict) and isinstance(d.get('bbox'), list) and len(d['bbox']) == 4 and isinstance(d.get('cells'), list):
+            return d
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def detail_bbox():
+    """(west, south, east, north) the detailed map covers: a region's box, else Southern California."""
+    d = detail_cells()
+    return tuple(d['bbox']) if d is not None else SOCAL_BBOX
+
+
 def socal_cells():
-    """0.05° cells holding detailed SoCal features; national rows inside them are duplicates and are skipped."""
+    """0.05° cells holding detailed map features; national rows inside them are duplicates and are skipped."""
     if _socal['cells'] is None:
-        cache = HERE / 'derived/geo/socal-cells.json'
-        try:
-            _socal['cells'] = set(json.loads(cache.read_text(encoding='utf-8')))
-        except (OSError, ValueError):
-            db = mapdb()
-            cells = set() if db is None else {r[0] for r in db.execute(
-                'SELECT DISTINCT CAST((minx+180)/? AS INT)*100000+CAST((miny+90)/? AS INT) FROM feat_idx WHERE maxx-minx<?',
-                (SOCAL_CELL, SOCAL_CELL, SOCAL_CELL))}
-            cache.write_text(json.dumps(sorted(cells)))
-            _socal['cells'] = cells
+        d = detail_cells()
+        if d is not None:
+            _socal['cells'] = {int(c) for c in d['cells']}
+        else:
+            cache = HERE / 'derived/geo/socal-cells.json'
+            try:
+                _socal['cells'] = set(json.loads(cache.read_text(encoding='utf-8')))
+            except (OSError, ValueError):
+                db = mapdb()
+                cells = set() if db is None else {r[0] for r in db.execute(
+                    'SELECT DISTINCT CAST((minx+180)/? AS INT)*100000+CAST((miny+90)/? AS INT) FROM feat_idx WHERE maxx-minx<?',
+                    (SOCAL_CELL, SOCAL_CELL, SOCAL_CELL))}
+                cache.write_text(json.dumps(sorted(cells)))
+                _socal['cells'] = cells
     return _socal['cells']
 
 
@@ -1143,19 +1166,20 @@ def _resource_summary(cls, detail):
 
 @functools.lru_cache(maxsize=1)
 def socal_classes():
-    """Service classes the detailed SoCal map has; for anything else (e.g. fuel) the national points are the only ones."""
+    """Service classes the detailed map has; for anything else (e.g. fuel) the national points are the only ones."""
     db = mapdb()
     return frozenset(r[0] for r in db.execute('SELECT DISTINCT cls FROM poi')) if db else frozenset()
 
 
 def _poi_sources(west, south, east, north):
-    """(connection, skip-SoCal-duplicates) pairs for service points."""
+    """(connection, skip-detail-duplicates) pairs for service points: the detailed map and, where built, the national one."""
     out = []
-    if mapdb() is not None and east >= -121.4 and west <= -114.1 and north >= 32.5 and south <= 35.9:
+    w, s, e, n = detail_bbox()
+    if mapdb() is not None and east >= w and west <= e and north >= s and south <= n:
         out.append((mapdb(), False))
     nat = national_mapdb()
     if nat is not None:
-        dedupe = east >= -121.4 and west <= -114.1 and north >= 32.5 and south <= 35.9 and mapdb() is not None
+        dedupe = east >= w and west <= e and north >= s and south <= n and mapdb() is not None
         if dedupe and not getattr(_tls, 'socal_fn', False):
             nat.create_function('socal', 3, lambda cls, lo, la: 1 if cls in socal_classes() and in_socal(lo, la) else 0, deterministic=True)
             _tls.socal_fn = True

@@ -16,6 +16,7 @@ import html
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sqlite3
 import struct
@@ -883,6 +884,24 @@ def make_base(work):
     return code == 0
 
 
+def region_controls():
+    """The non-US region map contract (docs/MAPS.md, "Region maps"): its detail-cells.json is allowed, and the generated spec table is sound."""
+    result("scan_pack allows a region map's detail-cells.json", 'detail-cells.json' in scan_pack.GEO_FILES)
+    regions = build_packs.REGION_SPECS.REGIONS
+    result('the region spec table covers the sovereign-state capitals', len(regions) >= 190, f'{len(regions)} entries')
+    bad_code = [k for k in regions if not re.fullmatch(r'[a-z]{2}-[a-z0-9]{1,3}', k)]
+    result('every region id is a two-letter country plus a short city slug', not bad_code, str(bad_code[:5]))
+    bad = []
+    for k, v in regions.items():
+        if set(v) != {'country', 'title', 'bbox', 'extract', 'source'} or not all(v[x] for x in ('country', 'title', 'extract', 'source')):
+            bad.append((k, 'fields'))
+        elif not (isinstance(v['bbox'], list) and len(v['bbox']) == 4 and all(isinstance(n, (int, float)) for n in v['bbox']) and v['bbox'][0] < v['bbox'][2] and v['bbox'][1] < v['bbox'][3]):
+            bad.append((k, 'bbox'))
+        elif not v['extract'].endswith('-latest-free.gpkg.zip'):
+            bad.append((k, 'extract'))
+    result('every region entry has its fields, a valid box and a Geofabrik extract', not bad, str(bad[:5]))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('sample')
@@ -895,6 +914,7 @@ def main():
         return 1
     strip_controls()
     builder_controls(work)
+    region_controls()
     plant_files(work)
     plant_each(work)
     no_false_pass(work)

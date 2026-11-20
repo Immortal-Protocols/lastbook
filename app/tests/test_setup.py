@@ -1748,6 +1748,19 @@ def make_map(path, state='CA', extra=None):
     return files
 
 
+def make_region_map(path, region='ve-car', extra=None):
+    """A region map zip: only map.sqlite, detail-cells.json, national-status.json and map-set.json, under LastbookData/."""
+    files = {'derived/geo/map.sqlite': os.urandom(300_000),
+             'derived/geo/detail-cells.json': json.dumps({'name': region, 'bbox': [-67.22, 10.2, -66.62, 10.8], 'cells': []}).encode(),
+             'derived/geo/national-status.json': b'{"state":"complete"}'}
+    files['map-set.json'] = json.dumps({'name': region, 'files': {k: len(v) for k, v in files.items()}}).encode()
+    files.update(extra or {})
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_STORED) as z:
+        for k, v in files.items():
+            z.writestr('LastbookData/' + k, v)
+    return files
+
+
 class Maps(Base):
     def map_manifest(self, extra=None):
         files = make_map(self.tmp / 'Lastbook-Map-CA.zip', extra=extra)
@@ -2109,6 +2122,114 @@ class AddressIndexes(Maps):
         fetched['address_indexes'][0]['files'][0]['sha256'] = '0' * 64
         merged = manifest.merge(validated, fetched)
         self.assertEqual(merged['address_indexes'][0]['files'], validated['address_indexes'][0]['files'])
+
+
+class RegionMaps(Maps):
+    def region_manifest(self, extra=None):
+        files = make_region_map(self.tmp / 'Lastbook-Map-ve-car.zip', extra=extra)
+        data = (self.tmp / 'Lastbook-Map-ve-car.zip').read_bytes()
+        self.files.data['Lastbook-Map-ve-car.zip'] = data
+        m = self.manifest().current
+        m['maps'] = [{'id': 've-car', 'title': 'Caracas', 'kind': 'region', 'country': 'Venezuela',
+                      'includes': 'Local streets, buildings, water and places to get help',
+                      'installed_bytes': sum(map(len, files.values())),
+                      'download_bytes': len(data), 'available': True,
+                      'files': [{'name': 'Lastbook-Map-ve-car.zip', 'url': f'{self.base}/Lastbook-Map-ve-car.zip', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]}]
+        return manifest.Manifest(bundled=m, remote=None, allowed=ALLOWED, context=self.ctx), files
+
+    def test_region_map_installs_without_address_index(self):
+        mf, files = self.region_manifest()
+        s = self.setup(manifest=mf)
+        j = s.start('small', False, map_id='ve-car')
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'map'])      # Venezuela has no address index
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, _ = api.startup(self.settings)
+        self.assertEqual(install.map_name(lib), 've-car')
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), files['derived/geo/map.sqlite'])
+        self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
+        self.assertTrue((lib / 'library-data/catalog.json').is_file())
+        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-car')
+
+    def test_region_manifest_validates_and_merges(self):
+        mf, _ = self.region_manifest()
+        validated = manifest.validate(mf.current, ALLOWED)
+        self.assertIsNotNone(validated)
+        self.assertEqual(validated['maps'][0]['kind'], 'region')
+        self.assertEqual(validated['maps'][0]['country'], 'Venezuela')
+        bad = json.loads(json.dumps(mf.current))
+        bad['maps'][0]['id'] = '../ve-car'
+        self.assertIsNone(manifest.validate(bad, ALLOWED))
+        merged = manifest.merge(mf.current, {**mf.current, 'maps': []})
+        self.assertEqual([x['id'] for x in merged['maps']], ['ve-car'])
+
+    def test_region_map_zip_with_other_files_refused(self):
+        mf, _ = self.region_manifest(extra={'library-data/catalog.json': b'{}'})
+        cur = self.parent / 'LastbookData'
+        (cur / 'library-data').mkdir(parents=True)
+        (cur / 'library-data/catalog.json').write_text('{"mine": 1}')
+        s = self.setup('manage', current=cur, manifest=mf)
+        s.start(None, False, map_id='ve-car')
+        j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'unpack')
+        self.assertEqual((cur / 'library-data/catalog.json').read_text(), '{"mine": 1}')
+
+    def all_and_region_manifest(self):
+        """An available All pack (map 'us') plus the foreign region, for the All + foreign-region flow."""
+        all_files = {'library-data/catalog.json': b'{"records": []}', 'pack.json': b'{"name": "all", "map": "us"}',
+                     'library-data/big.bin': os.urandom(MiB), 'derived/geo/map.sqlite': os.urandom(MiB)}
+        zpath = self.tmp / 'Lastbook-All.zip'
+        installed = make_pack(zpath, all_files)
+        all_data = zpath.read_bytes()
+        self.files.data['Lastbook-All.zip'] = all_data
+        region_files = make_region_map(self.tmp / 'Lastbook-Map-ve-car.zip')
+        region_data = (self.tmp / 'Lastbook-Map-ve-car.zip').read_bytes()
+        self.files.data['Lastbook-Map-ve-car.zip'] = region_data
+        m = self.manifest().current
+        m['packs'] = [{'id': 'all', 'title': 'All', 'available': True, 'installed_bytes': installed,
+                       'files': [{'name': 'Lastbook-All.zip', 'url': f'{self.base}/Lastbook-All.zip', 'size': len(all_data), 'sha256': sha(all_data)}]}]
+        m['maps'] = [{'id': 've-car', 'title': 'Caracas', 'kind': 'region', 'country': 'Venezuela',
+                      'includes': 'Local streets, buildings, water and places to get help', 'available': True,
+                      'installed_bytes': sum(map(len, region_files.values())),
+                      'files': [{'name': 'Lastbook-Map-ve-car.zip', 'url': f'{self.base}/Lastbook-Map-ve-car.zip', 'size': len(region_data), 'sha256': sha(region_data)}]}]
+        validated = manifest.validate(m, ALLOWED)
+        self.assertIsNotNone(validated)
+        return manifest.Manifest(bundled=validated, remote=None, allowed=ALLOWED, context=self.ctx), region_files
+
+    def test_all_pack_plus_foreign_region_installs_it(self):
+        mf, region = self.all_and_region_manifest()
+        s = self.setup(manifest=mf)
+        j = s.start('all', False, map_id='ve-car')
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'map'])
+        self.assertEqual(j['items'][1]['id'], 've-car')
+        self.assertEqual(j['items'][1]['bytes_total'], mf.map('ve-car')['download_bytes'])   # the region's download, counted
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, _ = api.startup(self.settings)
+        self.assertEqual(install.map_name(lib), 've-car')                                   # replaces the All pack's US map
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), region['derived/geo/map.sqlite'])
+        self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
+        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-car')
+
+    def test_country_pack_is_not_a_us_state(self):
+        """A country pack (kind 'country', no country field) must stay distinct from a US state, so the picker can group
+        it by country instead of under the United States (web/setup.js countryOf). Covers the eu-se / se-sto pair."""
+        m = self.manifest().current
+        m['maps'] = [
+            {'id': 'eu-se', 'title': 'Sweden', 'kind': 'country'},
+            {'id': 'se-sto', 'title': 'Stockholm', 'kind': 'region', 'country': 'Sweden'},
+            {'id': 'us-wdc', 'title': 'Washington, D.C.', 'kind': 'region', 'country': 'United States of America'},
+            {'id': 'CA', 'title': 'California', 'kind': 'state'},
+        ]
+        v = manifest.validate(m, ALLOWED)
+        self.assertIsNotNone(v)
+        by_id = {x['id']: x for x in v['maps']}
+        self.assertEqual(by_id['eu-se']['kind'], 'country')
+        self.assertEqual(by_id['eu-se']['country'], '')
+        self.assertEqual(by_id['se-sto']['kind'], 'region')
+        self.assertEqual(by_id['se-sto']['country'], 'Sweden')
+        self.assertEqual(by_id['us-wdc']['kind'], 'region')
+        self.assertEqual(by_id['us-wdc']['country'], 'United States of America')
+        self.assertEqual(by_id['CA']['kind'], 'state')
+        self.assertEqual(by_id['CA']['country'], '')
 
 
 class ContentRevisions(Base):

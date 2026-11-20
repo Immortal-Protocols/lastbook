@@ -99,13 +99,13 @@ def _fts(q, limit=80, kinds=None):
            "ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT ?")
     rows = []
     try:
-        rows = con.execute(sql, (S.fts_expr(groups), limit)).fetchall()
+        strict_rows = con.execute(sql, (S.fts_expr(groups), limit)).fetchall()
+        relaxed_rows = []
+        if len(strict_rows) < 10 and len(groups) > 1:
+            relaxed_rows = con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups), limit)).fetchall()
         emergency = S.emergency_fts_expr(q)
-        if emergency:
-            # Do not lose first-aid passages to a competing how-to phrase.
-            rows = con.execute(sql, (emergency, limit)).fetchall() + rows
-        if len(rows) < 10 and len(groups) > 1:
-            rows += con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups), limit)).fetchall()
+        emergency_rows = con.execute(sql, (emergency, limit)).fetchall() if emergency else []
+        rows = S.unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
     except sqlite3.OperationalError:
         pass
     con.close()

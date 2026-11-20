@@ -100,6 +100,10 @@ def _fts(q, limit=80, kinds=None):
     rows = []
     try:
         rows = con.execute(sql, (S.fts_expr(groups), limit)).fetchall()
+        emergency = S.emergency_fts_expr(q)
+        if emergency:
+            # Do not lose first-aid passages to a competing how-to phrase.
+            rows = con.execute(sql, (emergency, limit)).fetchall() + rows
         if len(rows) < 10 and len(groups) > 1:
             rows += con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups), limit)).fetchall()
     except sqlite3.OperationalError:

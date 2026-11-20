@@ -416,6 +416,7 @@
                   model: [['downloading', 'Download'], ['verifying', 'Check'], ['activating', 'Finish']] };
   STEPS.map = [['downloading', 'Download'], ['unpacking', 'Unpack']];   // the engine's map item: waiting, downloading, unpacking, done
   STEPS.addresses = STEPS.map;
+  STEPS.check = [['verifying', 'Check']];   // Check now: every item is only read
   const WORD = { waiting: 'Waiting', downloading: 'Downloading', paused: 'Paused', verifying: 'Checking', unpacking: 'Unpacking', activating: 'Finishing', done: 'Done', failed: 'Stopped' };
   const ACTIVE = new Set(['waiting', 'downloading', 'verifying', 'unpacking', 'activating']);
   let shapeKey = '', lastAct = null;   // lastAct: the button just pressed, so focus lands on what replaced it
@@ -442,7 +443,7 @@
   }
   function itemHTML(it, j) {
     const FAILED_AT = { checksum: 'verifying', found_mismatch: 'verifying', unpack: 'unpacking', activate: 'activating' };
-    const steps = STEPS[it.kind] || STEPS.pack;
+    const steps = j.check ? STEPS.check : STEPS[it.kind] || STEPS.pack;
     const st = it.state === 'paused' && noDownload(it) ? (it.paused_from && it.paused_from !== 'downloading' ? it.paused_from : 'verifying')
       : it.state === 'paused' || it.state === 'waiting' ? 'downloading' : it.state === 'failed' ? FAILED_AT[errCode(it.error) || errCode(j.error)] || 'downloading' : it.state;
     const at = it.state === 'done' ? steps.length : (it.state === 'waiting' || it.state === 'paused') && !it.bytes_done && !noDownload(it) ? -1 : Math.max(0, steps.findIndex(s => s[0] === st));
@@ -470,6 +471,7 @@
     if (it.state === 'done') t = it.bytes_total ? size(it.bytes_total) : '';
     else if (it.state === 'downloading') t = [`${size(it.bytes_done)} of ${size(it.bytes_total)}`, it.retry_in_s ? retryIn(it.retry_in_s) : rate(it.rate_bps), eta(it.eta_s)].filter(Boolean).join(' · ');
     else if (it.state === 'paused' && noDownload(it)) t = `${STOPPED[it.paused_from] || 'Stopped'}${it.paused_from === 'unpacking' && it.bytes_done && it.bytes_total ? ` at ${size(it.bytes_done)} of ${size(it.bytes_total)}` : ''}. Nothing to download.`;
+    else if (S.job && S.job.check && (it.state === 'waiting' || it.state === 'paused')) t = it.bytes_total ? `${size(it.bytes_total)} to check` : '';
     else if ((it.state === 'waiting' || it.state === 'paused') && !it.bytes_done) t = it.bytes_total ? `${size(it.bytes_total)} to download${behind(it) ? ', after the one above' : ''}` : '';
  else if (it.state === 'paused' || it.state === 'waiting' || it.state === 'failed') t = it.bytes_total && it.bytes_done ? `${size(it.bytes_done)} of ${size(it.bytes_total)}` : '';
     else if (it.state === 'verifying') t = 'Making sure every byte is right';
@@ -477,20 +479,31 @@
     else if (it.state === 'activating') t = it.kind === 'map' ? 'Switching to the new map' : 'Switching to the new library';
     line.textContent = t;
   }
+  /* the job screen's heading and line. A Check now (j.check, kept by the engine across a restart) reads and downloads nothing,
+     so it never speaks of downloads; a Repair says Repairing once it fetches something */
+  function jobWords(j) {
+    const check = !!(j.check || (repair && repair.check)), fixing = !!(repair && repair.fixed);
+    const head = { paused: 'Paused', failed: errCode(j.error) === 'cancelled' ? 'Cancelled' : 'Stopped' }[j.state]
+      || (check ? 'Checking the library' : (j.repair || repair) ? (fixing ? 'Repairing' : 'Checking the library') : 'Installing');
+    const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
+    const lead = j.state === 'failed' ? ''
+      : check ? (j.state === 'paused' ? 'Nothing was downloaded or changed. Resume to check again from the start, even after closing Lastbook.'
+                                      : 'You can keep using this computer. Checking reads every file and downloads nothing.')
+      : quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
+      : j.state === 'paused' ? 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.'
+      : 'You can keep using this computer. Closing Lastbook pauses it.';
+    return { head, lead };
+  }
   function jobView(j) {
     if (!j) { go(cur() ? 'manage' : 'choose'); return }
     if (j.state === 'done') { go('done'); return }
     const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
-    const head = { paused: 'Paused', failed: errCode(j.error) === 'cancelled' ? 'Cancelled' : 'Stopped' }[j.state] || (repair && !repair.fixed ? 'Checking the library' : repair ? 'Repairing' : 'Installing');
+    const { head, lead } = jobWords(j);
     if (key !== shapeKey) {
       const had = lastAct || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null);
       lastAct = null;
       const first = !shapeKey;
       shapeKey = key;
-      const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
-      const lead = quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
-        : j.state === 'paused' ? 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.'
-        : j.state === 'failed' ? '' : 'You can keep using this computer. Closing Lastbook pauses it.';
       main.innerHTML = `<h1>${head}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}
         ${j.state === 'failed' ? errorBox(j) : ''}
         <div class="s-items">${j.items.map(it => itemHTML(it, j)).join('')}</div>
@@ -525,7 +538,7 @@
     if (!S.job || !ACTIVE.has(S.job.state)) return;
     pollT = setTimeout(async () => {
       try { const j = await call('job'); if (j) S.job = j } catch { pollT = setTimeout(poll, 3000); return }
-      if (repair && S.job && S.job.items.some(i => i.state === 'downloading' || i.state === 'unpacking')) repair.fixed = true;
+      if (S.job && S.job.repair && !S.job.check && S.job.items.some(i => i.state === 'downloading' || i.state === 'unpacking')) (repair = repair || { fixed: false }).fixed = true;
       if (view !== 'job') return;
       if (S.job && S.job.state === 'done') { go('done'); return }
       jobView(S.job);
@@ -535,11 +548,12 @@
 
   /* ---- done */
   function doneView() {
-    if (repair && repair.check) return checkedView();
-    const j = S.job || { items: [] }, fixed = repair && repair.fixed, checked = repair && !fixed;
+    const j = S.job || { items: [] }, r = j.result || {};
+    if ((repair && repair.check) || j.check) return checkedView();
+    const isRepair = !!(j.repair || repair), fixed = isRepair && (r.repaired != null ? !!r.repaired : !!(repair && repair.fixed)), checked = isRepair && !fixed;
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${checked ? 'All good' : fixed ? 'Repaired' : 'Ready'}</h1>
-      <p class="lead">${checked ? 'The library was checked and is complete.' : fixed ? 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.' : got ? `Installed: ${got}.` : 'The library is installed.'}</p>
+      <p class="lead">${checked ? 'The library was checked and is complete.' : fixed ? repairedWords(r) : got ? `Installed: ${got}.` : 'The library is installed.'}</p>
       <button class="btn big" id="open">Open the library</button><p class="s-note" id="openNote" hidden></p></div>`;
     live.textContent = checked ? 'The library was checked.' : 'Installed. Ready to open.';
     $('#open').onclick = async () => {
@@ -550,13 +564,27 @@
     };
   }
 
+  /* what Repair did: the whole library downloaded again (the damaged copy kept aside), the AI file replaced, the map fetched again */
+  function repairedWords(r) {
+    const ai = r.model_ok === false, map = r.map_ok === false, lib = r.pack_replaced != null ? !!r.pack_replaced : (r.damaged || 0) - ai - map > 0;
+    const said = [lib ? 'The library was downloaded again, because some of its files were damaged. The damaged copy is kept aside; you can delete it in Library and local AI.' : '',
+                  ai ? (lib ? 'The local AI file was downloaded again too.' : 'The local AI file was damaged, so it was downloaded again and put in its place.') : '',
+                  map ? 'The detailed map was downloaded again.' : ''].filter(Boolean).join(' ');
+    return said || 'A damaged part was downloaded again.';
+  }
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
+  /* what Repair would do for what the check found: a damaged library file means the whole library again; the AI file is replaced in place */
+  function repairOffer(bad, ai, map) {
+    const does = [bad ? 'downloads the whole library again and keeps the damaged copy aside' : '', ai ? 'downloads the local AI file again and puts it in place of this one' : '',
+                  map ? 'downloads the detailed map again' : ''].filter(Boolean);
+    return does.length ? `Repair ${does.join(', and ').replace(/, and ([^,]*), and /, ', $1, and ')}.` : '';
+  }
   function checkedView() {
     const r = (S.job && S.job.result) || {}, ai = r.model_ok === false, map = r.map_ok === false, bad = (r.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // library files; the AI file and the map apart
     const what = [bad ? `${bad} ${bad === 1 ? 'file is' : 'files are'} damaged or missing` : '', ai ? 'the local AI file does not match its published copy' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(', and ');
     main.innerHTML = bad || ai || map
       ? `<div class="s-done">${ico('warn', 's-big')}<h1>Something needs repair</h1>
-        <p class="lead">${esc(what[0].toUpperCase() + what.slice(1))}. Nothing was changed or downloaded. Repair downloads only what is wrong, and keeps the damaged copy aside.</p>
+        <p class="lead">${esc(what[0].toUpperCase() + what.slice(1))}. Nothing was changed or downloaded. ${repairOffer(bad, ai, map)}</p>
         <p class="s-two"><button class="btn big" id="doRepair">${ico('repair')}Repair</button> <button class="btn big plain" id="back">Not now</button></p></div>`
       : `<div class="s-done">${ico('ok', 's-big')}<h1>All good</h1><p class="lead">Every file matches the published library. Nothing was downloaded.</p>
         <button class="btn big" id="back">Back to Library and local AI</button></div>`;

@@ -4,7 +4,7 @@ Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model i
 MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
-import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import base64, contextlib, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
 from engine import encyclopedias
 from engine.paths import ro_uri
@@ -50,6 +50,13 @@ def init(server_module, index):
 
 def local_on():
     return LOCAL is not None and LOCAL.available()
+
+
+@contextlib.contextmanager
+def answering():
+    """Around one whole Chat answer. The local AI counts it, so an unload asked for by hand meanwhile leaves it running."""
+    with LOCAL.answering() if LOCAL is not None else contextlib.nullcontext():
+        yield
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

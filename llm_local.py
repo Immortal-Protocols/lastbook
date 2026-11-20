@@ -9,6 +9,7 @@ assistant.py calls round() for each model turn, with OpenAI-shaped messages. Thi
 format, sends that as segments (template markup, where special tokens count, or plain text, where they never do: a document
 cannot start a turn of its own), and turns Gemma's tool calls back into the shape assistant.py already handles.
 """
+import contextlib
 import hashlib
 import json
 import os
@@ -112,6 +113,7 @@ class Local:
         self.path, self.fit, self.ready_info = None, None, None
         self.proc, self.events, self.last_used = None, None, 0
         self.next_id = 0
+        self.answers = 0          # Chat answers being written now, for anyone using this Lastbook: see answering()
         self.failed_loads = 0     # loads in a row that ended before the model was ready
         self.saved = _load()
         self.runner = runner_path()
@@ -324,8 +326,22 @@ class Local:
                         self.state = 'error'
                         self.message = self.message or 'The local AI could not start. Look again after closing other programs.'
 
-    def stop(self, why=''):
+    @contextlib.contextmanager
+    def answering(self):
+        """Around one whole Chat answer, its searches included. Meanwhile stop(only_idle=True) leaves the model running."""
         with self.lock:
+            self.answers += 1
+        try:
+            yield
+        finally:
+            with self.lock:
+                self.answers -= 1
+
+    def stop(self, why='', only_idle=False):
+        """Stops the model. only_idle: not while an answer is being written for anyone; then it stays and this returns False."""
+        with self.lock:
+            if only_idle and (self.answers or self.gen_lock.locked()):
+                return False
             proc, self.proc = self.proc, None
             if self.state in ('ready', 'loading', 'error') and self.path and (self.fit or {}).get('fits'):
                 self.state, self.pct = 'stopped', None
@@ -338,6 +354,7 @@ class Local:
                 proc.wait(10)
             except (OSError, subprocess.TimeoutExpired, ValueError):
                 proc.kill()
+        return True
 
     def set_enabled(self, on):
         self.saved['enabled'] = bool(on)

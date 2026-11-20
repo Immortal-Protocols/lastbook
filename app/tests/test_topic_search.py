@@ -197,6 +197,29 @@ GUIDE_ORDINARY = {
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
 
+# A fire in the kitchen, or a search for an extinguisher, needs Fire in the home, not the earthquake checks that also
+# say "fires" and are listed first: [guide, choice] that comes first.
+HOME_FIRE_FIRST = {q: ['disaster', 'home-fire'] for q in [
+    'kitchen fire', 'kitchen fires', 'kitchen on fire', 'my kitchen is on fire', 'fire in the kitchen',
+    'fire in my kitchen', 'fire in kitchen', 'small kitchen fire', 'Kitchen Fire', 'grease fire', 'grease fires',
+    'grease-fire', 'grease caught fire', 'put out a grease fire', 'pan fire', 'my pan is on fire',
+    'the pan caught fire', 'pan on fire', 'the kitchen caught fire', 'stove on fire', 'the stove is on fire',
+    'the stove caught fire', 'electrical fire', 'electrical fires', 'fire extinguisher', 'fire extinguishers',
+    'where is the fire extinguisher']}
+# Searches those phrases must not disturb, each naming a fire or the Disaster guide: [guide, choice] that comes first.
+# A stove fire is also one lit on purpose, so cooking and heating searches keep the cooking choice.
+HOME_FIRE_UNDISTURBED = {
+    'kit': ['repair', 'first-tools'], 'first aid kit': ['repair', 'first-tools'],
+    'stove fire': ['food', 'cook'], 'how to start a stove fire': ['food', 'cook'], 'camp stove fire': ['food', 'cook'],
+    'start a fire on the stove': ['food', 'cook'], 'keep the wood stove fire going': ['food', 'cook'],
+    'cooking fire': ['food', 'cook'], 'apartment fire': ['disaster', 'highrise-fire'],
+    'forest fire': ['disaster', 'wildfire'], 'fires after an earthquake': ['disaster', 'earthquake-after'],
+}
+# Two urgent choices named at once: both are shown.
+HOME_FIRE_BOTH = {'grease fire not breathing': [['disaster', 'home-fire'], ['hurt', 'breathing']],
+                  'electrical fire not breathing': [['disaster', 'home-fire'], ['hurt', 'breathing']]}
+TOPS = sorted({*TOPS, *HOME_FIRE_FIRST, *HOME_FIRE_UNDISTURBED, *HOME_FIRE_BOTH})
+
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
     'rankOwn': RANK_OWN,
@@ -347,6 +370,17 @@ class TopicSearch(unittest.TestCase):
             for q, first in GUIDE_ORDINARY.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])
+
+    def test_fires_in_the_home(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in [*HOME_FIRE_FIRST.items(), *HOME_FIRE_UNDISTURBED.items()]:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])
+            for q, rows in HOME_FIRE_BOTH.items():
+                for row in rows:
+                    with self.subTest(q=q, row=row, segmenter=r['segmenter']):
+                        self.assertIn(row, top[q])
 
 
 if __name__ == '__main__':

@@ -183,6 +183,30 @@
    "id": "home-fire",
    "label": "Fire in the home",
    "hint": "Smoke alarm going off, house fire, fire or smoke inside",
+   "urgent": [
+    "kitchen fire",
+    "kitchen fires",
+    "kitchen on fire",
+    "kitchen is on fire",
+    "fire in the kitchen",
+    "fire in my kitchen",
+    "fire in kitchen",
+    "kitchen caught fire",
+    "grease fire",
+    "grease fires",
+    "grease caught fire",
+    "pan fire",
+    "pan on fire",
+    "pan is on fire",
+    "pan caught fire",
+    "stove on fire",
+    "stove is on fire",
+    "stove caught fire",
+    "electrical fire",
+    "electrical fires",
+    "fire extinguisher",
+    "fire extinguishers"
+   ],
    "read": [
     {
      "doc": "255b448d041a65",
@@ -200,6 +224,11 @@
      "doc": "27757fb5d39987",
      "label": "U.S. Fire Administration: home fire escape plans",
      "note": "You may have less than 2 minutes to escape; two ways out of every room, a meeting place, and high-rise advice."
+    },
+    {
+     "doc": "fc85c36f9ccfab",
+     "label": "U.S. Fire Administration: when to use a fire extinguisher, and how",
+     "note": "A checklist of when it's safe to use one, including a small fire contained to a pan or wastebasket; when to leave and call 911; and the PASS steps."
     }
    ]
   },

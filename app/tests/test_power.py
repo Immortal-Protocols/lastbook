@@ -89,9 +89,60 @@ class LocalAI(unittest.TestCase):
     def make(self, state='ready'):
         ai = llm_local.Local.__new__(llm_local.Local)   # no file lookup, no runner, no threads
         ai.lock, ai.gen_lock = threading.RLock(), threading.Lock()
-        ai.state, ai.last_used, ai.idle_stop = state, 0, llm_local.IDLE_STOP
+        ai.state, ai.last_used, ai.idle_stop, ai.asking = state, 0, llm_local.IDLE_STOP, 0
         ai.stop = mock.Mock()
         return ai
+
+    def test_a_question_starting_is_not_cut_off(self):
+        """The boundary from the #120 review: ensure_running has just marked the model ready and generate has not yet taken
+        gen_lock. Save power then must not stop it. Nor between rounds, while a tool runs. Once the question ends, the shorter
+        idle stop counts from then."""
+        ai = self.make()
+        with mock.patch.object(llm_local.time, 'time', return_value=1000):
+            with ai.question():
+                ai.last_used = 1000                       # what ensure_running sets
+                self.assertFalse(ai.gen_lock.locked())    # not yet answering
+                ai.save_power(60)
+                ai.stop.assert_not_called()
+                self.assertFalse(ai.stop_if_idle(0))
+            self.assertEqual((ai.asking, ai.last_used), (0, 1000))
+        ai.stop.assert_not_called()
+        with mock.patch.object(llm_local.time, 'time', return_value=1059):
+            self.assertFalse(ai.stop_if_idle(60))
+        with mock.patch.object(llm_local.time, 'time', return_value=1060):
+            self.assertTrue(ai.stop_if_idle(60))
+        ai.stop.assert_called_once()
+
+    def test_chat_holds_the_model_from_start_to_answer(self):
+        """assistant.chat holds LOCAL.question() for the whole turn when the local AI answers: Save power switched on right after
+        the model is ready, and again between rounds, finds a question under way and stops nothing. Without the local AI, nothing
+        is held."""
+        import importlib.util                             # a fresh assistant.py: test_bridge swaps assistant.chat for a stub
+        spec = importlib.util.spec_from_file_location('assistant_for_power', ROOT / 'assistant.py')
+        assistant = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(assistant)
+        ai = self.make()
+        ai.available = lambda: True
+        seen = []
+
+        def turn(messages, about, emit, cancelled):       # a turn's steps, as _chat takes them with the local AI
+            seen.append(ai.asking)
+            ai.last_used = llm_local.time.time()          # ensure_running: ready
+            ai.save_power(60)                             # the moment the review found: ready, gen_lock not yet taken
+            with ai.gen_lock:
+                pass                                      # round 1
+            ai.save_power(60)                             # a tool runs between rounds
+            with ai.gen_lock:
+                pass                                      # round 2
+            return 'answered'
+        with mock.patch.object(assistant, 'LOCAL', ai), mock.patch.object(assistant, '_chat', side_effect=turn):
+            self.assertEqual(assistant.chat([], None, lambda e: None, lambda: False), 'answered')
+        ai.stop.assert_not_called()
+        self.assertEqual((seen, ai.asking), ([1], 0))
+        with mock.patch.object(assistant, 'LOCAL', ai), mock.patch.object(assistant, '_chat', side_effect=turn):
+            ai.available = lambda: False                  # another model answers: the local one is not held
+            assistant.chat([], None, lambda e: None, lambda: False)
+        self.assertEqual(seen[-1], 0)
 
     def test_idle_model_stops_now_and_then_after_a_minute(self):
         ai = self.make()

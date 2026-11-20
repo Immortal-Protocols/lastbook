@@ -9,6 +9,7 @@ assistant.py calls round() for each model turn, with OpenAI-shaped messages. Thi
 format, sends that as segments (template markup, where special tokens count, or plain text, where they never do: a document
 cannot start a turn of its own), and turns Gemma's tool calls back into the shape assistant.py already handles.
 """
+import contextlib
 import hashlib
 import json
 import os
@@ -117,6 +118,7 @@ class Local:
         self.runner = runner_path()
         self._started = False
         self.idle_stop = IDLE_STOP   # engine/power.py shortens it while saving power
+        self.asking = 0              # questions under way (question()): from starting the model to their last round
 
     # -- what the app shows -----------------------------------------------------------------------------------------------
     def status(self):
@@ -358,10 +360,25 @@ class Local:
             time.sleep(min(30, self.idle_stop / 4))
             self.stop_if_idle(self.idle_stop)
 
-    def stop_if_idle(self, after_s):
-        """Stops the model when it is loaded, not writing an answer, and has not been used for after_s seconds. True if it stopped."""
+    @contextlib.contextmanager
+    def question(self):
+        """Held by assistant.chat for one question, from ensure_running to its last round. While any is held the model is in use,
+        also between ensure_running and generate, and between rounds while tools run: Save power and the idle stop wait."""
         with self.lock:
-            idle = self.state == 'ready' and not self.gen_lock.locked() and time.time() - self.last_used >= after_s
+            self.asking += 1
+        try:
+            yield self
+        finally:
+            with self.lock:
+                self.asking -= 1
+                self.last_used = time.time()     # the idle wait counts from the end of the question
+
+    def stop_if_idle(self, after_s):
+        """Stops the model when it is loaded, no question is under way or being answered, and it has not been used for after_s
+        seconds. True if it stopped."""
+        with self.lock:
+            idle = (self.state == 'ready' and not self.asking and not self.gen_lock.locked()
+                    and time.time() - self.last_used >= after_s)
         if idle:
             self.stop(f'not used for {after_s} s')
         return idle

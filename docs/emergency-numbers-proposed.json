@@ -1,0 +1,22 @@
+{
+  "about": "Prototype for docs/COUNTRY-SEARCH.md. Emergency numbers that mean different services in different countries, as each source lists them. Checked 20 November 2026. Read only by app/tests/test_topic_search.py, through numberRows in web/words.js. app.js does not use it, and it does not ship.",
+  "services": {
+    "all": ["hurt", null],
+    "ambulance": ["hurt", null],
+    "medical": ["hurt", null],
+    "fire": ["disaster", "home-fire"],
+    "police": [null, null]
+  },
+  "countries": {
+    "CH": {"name": "Switzerland", "source": "https://www.gov.uk/foreign-travel-advice/switzerland/getting-help",
+           "numbers": {"112": "all", "144": "ambulance", "118": "fire", "117": "police"}},
+    "GB": {"name": "United Kingdom", "source": "https://www.nhs.uk/nhs-services/urgent-and-emergency-care-services/when-to-use-111/",
+           "numbers": {"999": "all", "111": "medical"}},
+    "IT": {"name": "Italy", "source": "https://www.gov.uk/foreign-travel-advice/italy/getting-help",
+           "numbers": {"118": "ambulance", "115": "fire", "112": "police"}},
+    "LK": {"name": "Sri Lanka", "source": "https://www.gov.uk/foreign-travel-advice/sri-lanka/getting-help",
+           "numbers": {"1990": "ambulance", "111": "fire", "118": "police", "119": "police"}},
+    "NZ": {"name": "New Zealand", "source": "https://www.gov.uk/foreign-travel-advice/new-zealand/getting-help",
+           "numbers": {"111": "all"}}
+  }
+}

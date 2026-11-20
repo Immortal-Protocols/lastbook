@@ -47,4 +47,6 @@ process.stdout.write(JSON.stringify({
   match: (cases.match || []).map(([text, w]) => safe(() => W.matcher(text)(w))),
   rank: (cases.rank || []).map(q => ({ q, now: safe(() => brief(W.rankTopics(q, cases.topics, stop))), before: brief(before(q, cases.topics)) })),
   rankOwn: (cases.rankOwn || []).map(([q, topics]) => safe(() => brief(W.rankTopics(q, topics, stop)))),
+  numbers: (cases.numbers || []).map(([q, country]) => safe(() => W.numberRows(q, cases.topics, stop, cases.table, country)
+    .map(o => [o.t ? o.t.id : null, o.c ? o.c.id : null, o.country || null, o.service || null]))),
 }));

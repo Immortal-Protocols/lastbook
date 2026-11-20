@@ -105,5 +105,38 @@
     return [...urgent, ...shown.filter(o => !o.u)].slice(0, 3).map(({ t, c, s }) => ({ t, c, s }));
   }
 
-  root.SearchWords = Object.freeze({ fold, splitWords, queryWords, matcher, rankTopics, hasSegmenter: () => !!segmenter() });
+  // A prototype for docs/COUNTRY-SEARCH.md, not yet used by app.js. A number the table lists is answered by the
+  // table, never by a guide's keywords. With a country the person chose, its meaning there comes first. Without one,
+  // a number that means different services in different places gets one row per country, by country name, and no
+  // guide is picked for it. The rest of the search is ranked as before, without the number.
+  // table: { services: { service: [guide id, choice id] }, countries: { code: { name, numbers: { number: service } } } }
+  function numberRows(q, topics, stop, table, country) {
+    const all = splitWords(q), found = all.filter(w => /^\p{Nd}+$/u.test(w) && meanings(table, w).length);
+    if (!found.length) return rankTopics(q, topics, stop);
+    const rows = [];
+    for (const n of found) {
+      const here = country && table.countries[country], own = here && here.numbers[n];
+      const list = own ? [{ code: country, service: own }] : meanings(table, n);
+      const one = new Set(list.map(m => m.service)).size === 1;
+      for (const m of list) {
+        const [g, c] = table.services[m.service] || [];
+        const t = g ? (topics || []).find(x => x.id === g) : null;
+        rows.push({ t, c: t && c ? t.choices.find(x => x.id === c) || null : null, s: 0, number: n, service: m.service,
+                    country: own || !one ? m.code : null });
+        if (one) break;   // every country listed agrees: one row, as a global keyword would give
+      }
+    }
+    // A guide the other words also found keeps the choice they picked ("118 bleeding" in Italy: bleeding).
+    const rest = rankTopics(all.filter(w => !found.includes(w)).join(' '), topics, stop);
+    for (const r of rows) { const o = r.t && !r.c && rest.find(x => x.t === r.t); if (o) r.c = o.c }
+    return [...rows, ...rest.filter(r => !rows.some(x => x.t && x.t === r.t))];
+  }
+  function meanings(table, n) {
+    if (!table) return [];
+    return Object.entries(table.countries).filter(([, c]) => c.numbers[n])
+      .sort((a, b) => a[1].name.localeCompare(b[1].name, 'en'))
+      .map(([code, c]) => ({ code, service: c.numbers[n] }));
+  }
+
+  root.SearchWords = Object.freeze({ fold, splitWords, queryWords, matcher, rankTopics, numberRows, hasSegmenter: () => !!segmenter() });
 })(globalThis);

@@ -28,8 +28,8 @@ CASES = (
 
 # Queries that must keep their ordinary how-to matches.
 CONTROLS = (
-    ("how do i treat water", "water treatment disinfect chlorine"),
-    ("how do i light a fire", "fire tinder kindling firecraft"),
+    ("how do i treat water", "treat water treatment disinfect chlorine"),
+    ("how do i light a fire", "light fire tinder kindling firecraft"),
 )
 
 

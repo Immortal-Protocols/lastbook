@@ -21,7 +21,7 @@ requests, and adds a few read-only endpoints:
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
-import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
+import argparse, errno, functools, html, io, ipaddress, json, math, os, re, select, socket, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
 from array import array
 from pathlib import Path
 
@@ -1637,6 +1637,33 @@ def pack_datasets(have):
 
 
 # --------------------------------------------------------------- handler ----
+def _client_disconnected(connection):
+    """Non-consuming EOF probe after the complete HTTP request body is read.
+
+    Native bridge handlers expose their exchange's cancellation without I/O.
+    Pending socket bytes can be another HTTP request; preserve them and only
+    treat a non-consuming empty peek as EOF.
+    """
+    if not isinstance(connection, socket.socket):
+        hook = getattr(connection, 'lastbook_cancelled', None)
+        return bool(hook()) if callable(hook) else False
+    if connection.fileno() < 0:
+        return True
+    try:
+        readable, _, _ = select.select([connection], [], [], 0)
+        if not readable:
+            return False
+        return connection.recv(1, socket.MSG_PEEK | getattr(socket, 'MSG_DONTWAIT', 0)) == b''
+    except (BlockingIOError, InterruptedError):
+        return False
+    except ConnectionError:
+        return True
+    except OSError as error:
+        return error.errno in (errno.EBADF, errno.ENOTCONN, errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE)
+    except (ValueError, TypeError, NotImplementedError):
+        return False  # an unsupported transport must retain write-failure detection
+
+
 class Handler(library.Handler):
     def send_json(self, obj, status=200, cache=None):
         data = obj if isinstance(obj, bytes) else json.dumps(obj, separators=(',', ':')).encode()
@@ -1939,8 +1966,12 @@ class Handler(library.Handler):
         self.end_headers()
         gone = [False]
 
+        def cancelled():
+            gone[0] = gone[0] or _client_disconnected(getattr(self, 'connection', None))
+            return gone[0]
+
         def emit(ev):
-            if gone[0]:
+            if cancelled():
                 return
             try:
                 self.wfile.write(b'data: ' + json.dumps(ev).encode() + b'\n\n')
@@ -1952,7 +1983,7 @@ class Handler(library.Handler):
             emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
             return
         try:
-            assistant.chat(msgs, about, emit, lambda: gone[0])
+            assistant.chat(msgs, about, emit, cancelled)
         except Exception as e:
             traceback.print_exc()
             emit({'type': 'error', 'error': 'internal', 'text': f'The assistant stopped on an internal error ({type(e).__name__}).'})

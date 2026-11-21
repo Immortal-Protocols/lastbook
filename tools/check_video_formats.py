@@ -80,9 +80,31 @@ def formats(path):
         return []
 
 
+def copies_folder(data):
+    """The copies folder's real path, or None unless it really is where its path says, inside the data folder (no link)."""
+    d = data / 'derived' / 'video-compat' / 'h264-v1'
+    real, expected = os.path.realpath(d), os.path.join(os.path.realpath(data), 'derived', 'video-compat', 'h264-v1')
+    return real if os.path.normcase(real) == os.path.normcase(expected) and os.path.isdir(real) else None
+
+
+def copy_ok(f, size, folder):
+    """A plain .mp4 name, really in the copies folder, not a link or a hard link, at size: as video_copy_ok() in server.py."""
+    try:
+        if f.name.startswith('.') or not f.name.lower().endswith('.mp4') or f.is_symlink() or not f.is_file():
+            return False
+        st = os.stat(f)
+        return (os.path.normcase(os.path.realpath(f)) == os.path.normcase(os.path.join(folder, f.name))
+                and st.st_nlink == 1 and st.st_size == size)
+    except OSError:
+        return False
+
+
 def usable_copies(data):
     """{library path of an original: copy file}, by the same rules as video_copies() in server.py."""
     d = data / 'derived' / 'video-compat' / 'h264-v1'
+    folder = copies_folder(data)
+    if folder is None:
+        return {}
     try:
         man = json.loads((d / 'manifest.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -98,9 +120,9 @@ def usable_copies(data):
             continue
         if it.get('video') != 'avc1' or it.get('source_video') not in NEEDS_COPY:
             continue
-        f = d / name
-        if f.is_file() and not f.is_symlink() and f.stat().st_size == it.get('bytes'):
-            out[src] = f
+        size = it.get('bytes')
+        if isinstance(src, str) and isinstance(size, int) and copy_ok(d / name, size, folder):
+            out[src] = d / name
     return out
 
 

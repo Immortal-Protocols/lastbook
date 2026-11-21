@@ -34,7 +34,7 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
 
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
-from engine import saved_pages, address_search, encyclopedias  # noqa: E402
+from engine import saved_pages, address_search, encyclopedias, safe_paths  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -52,15 +52,50 @@ remote_records = library.remote_records  # videos moved to remote drives by the 
 # H.264 copies of AV1 and VP9 videos, for computers that can't decode those (Macs before the M3, for AV1). The same sidecar the
 # iPad app reads, built by mobile/ipad/tools/videocompat: derived/video-compat/h264-v1/manifest.json maps each original's
 # library path to its copy. The player asks for the original's own address with ?copy=h264, so the video keeps its id,
-# transcript and progress. Only plain file names inside that folder, at the size the manifest gives, are ever served.
+# transcript and progress. Only a plain file name, really inside that folder, which itself really is where it says inside the
+# data folder, not a link or a hard link, at the size the manifest gives, is ever served (engine/safe_paths.py's rules, and
+# library.file_ok's refusal of hard links).
 VIDEO_COPIES = HERE / 'derived' / 'video-compat' / 'h264-v1'
 VIDEO_COPY_CODECS = ('av01', 'vp09')
 _copies = {'mtime': None, 'items': {}}
 
 
+def _copies_folder():
+    """The copies folder's real path, or None unless it is a folder really where its path says, inside the data folder:
+    a link anywhere along the way to it, from the data folder down, could make it lead somewhere else."""
+    try:
+        here = safe_paths.real_path(HERE)
+        below = safe_paths.parts_below(os.path.abspath(VIDEO_COPIES), os.path.abspath(HERE))
+        real = safe_paths.real_path(VIDEO_COPIES)
+        if not below or safe_paths.parts_below(real, here) != below or not os.path.isdir(real):
+            return None
+        return real
+    except (OSError, ValueError):
+        return None
+
+
+def video_copy_ok(f, size=None, folder=None):
+    """May this copy file be read: a plain .mp4 name, really in the copies folder, not a link or a hard link, at size."""
+    try:
+        name = f.name
+        folder = folder or _copies_folder()
+        if folder is None or not name.lower().endswith('.mp4') or safe_paths.name_refused((name,)) or not safe_paths.segments_ok(name):
+            return False
+        if f.is_symlink() or not f.is_file() or safe_paths.parts_below(safe_paths.real_path(f), folder) != (name,):
+            return False
+        st = os.stat(f)
+        return st.st_nlink == 1 and (size is None or st.st_size == size)   # a hard link may also be a file outside the library
+    except (OSError, ValueError):
+        return False
+
+
 def video_copies():
     """{library path of an original: (copy file, its size, the original's codec)}, for copies that are really there."""
+    folder = _copies_folder()
     p = VIDEO_COPIES / 'manifest.json'
+    if folder is None:
+        _copies.update(mtime=None, items={})
+        return _copies['items']
     try:
         m = p.stat().st_mtime
     except OSError:
@@ -71,21 +106,16 @@ def video_copies():
     items = {}
     try:
         man = json.loads(p.read_text(encoding='utf-8'))
-        if man.get('version') == 'h264-v1':
-            for src, it in (man.get('items') or {}).items():
-                name, codec = str(it.get('file') or ''), it.get('source_video')
-                if not name or '/' in name or '\\' in name or name.startswith('.') or not name.lower().endswith('.mp4'):
-                    continue
-                if it.get('video') != 'avc1' or codec not in VIDEO_COPY_CODECS or not isinstance(src, str):
-                    continue
-                f = VIDEO_COPIES / name
-                try:
-                    size = f.stat().st_size
-                except OSError:
-                    continue
-                if f.is_file() and not f.is_symlink() and size == it.get('bytes'):   # a missing or partial copy is never served
-                    items[src] = (f, size, codec)
-    except (ValueError, OSError, AttributeError):
+        entries = man.get('items') if isinstance(man, dict) and man.get('version') == 'h264-v1' else None
+        for src, it in (entries.items() if isinstance(entries, dict) else ()):
+            if not isinstance(it, dict) or not isinstance(src, str):
+                continue                      # one bad entry is skipped, as tools/check_video_formats.py skips it
+            name, codec, size = str(it.get('file') or ''), it.get('source_video'), it.get('bytes')
+            if not name or '/' in name or '\\' in name or it.get('video') != 'avc1' or codec not in VIDEO_COPY_CODECS:
+                continue
+            if isinstance(size, int) and video_copy_ok(VIDEO_COPIES / name, size, folder):   # never a missing or partial copy
+                items[src] = (VIDEO_COPIES / name, size, codec)
+    except (ValueError, OSError):
         items = {}
     _copies.update(mtime=m, items=items)
     return items
@@ -1786,7 +1816,7 @@ class Handler(library.Handler):
         """The H.264 copy of the original at library path rel (already checked by path_ok), as the original is sent: one
         Range at a time, or the whole file when no Range is asked. 404 when this original has no copy."""
         cp = video_copies().get(rel)
-        if not cp:
+        if not cp or not video_copy_ok(cp[0], cp[1]):      # checked again here: the file may have changed since the manifest was read
             return self.send_error(404)
         f, size = cp[0], cp[1]
         rng = self.headers.get('Range')

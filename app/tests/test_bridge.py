@@ -303,6 +303,15 @@ class Both:
         self.assertNotEqual(self.get('/documents/s.pdf?copy=h264', 'bytes=0-9').status, 206)  # not a video address
         self.assertEqual(self.get('/videos/none.mp4?copy=h264', 'bytes=0-9').status, 404)
 
+    def test_video_copy_with_a_second_name_is_not_served(self):
+        second = TMP / 'vida-second-name.mp4'
+        os.link(server.VIDEO_COPIES / 'vida.mp4', second)                         # a hard link: the copy also lives elsewhere
+        try:
+            self.assertEqual(self.get(A + '?copy=h264', 'bytes=0-99').status, 404)
+        finally:
+            second.unlink()
+        self.check_copy(self.get(A + '?copy=h264', 'bytes=0-99'), 0, 99)
+
     def test_video_head_is_not_capped(self):
         r = call(self.b, 'HEAD', A)
         self.assertEqual(r.status, 200)
@@ -904,6 +913,79 @@ class VideoCopyTests(unittest.TestCase):
             shutil.rmtree(TMP / 'copies-check', ignore_errors=True)
             server.VIDEO_COPIES = real
             server._copies.update(mtime=None, items={})
+
+
+class VideoCopyFiles(unittest.TestCase):
+    """Which copy files may be read at all (review of #123): as library.file_ok judges files, no link, no hard link, and a
+    copies folder that really is where its path says. Each case is checked with a folder of its own, then put back."""
+    def setUp(self):
+        self.real = server.VIDEO_COPIES
+        self.dirs = []
+        self.addCleanup(self.restore)
+
+    def restore(self):
+        server.VIDEO_COPIES = self.real
+        server._copies.update(mtime=None, items={})
+        for d in self.dirs:
+            if d.is_symlink():
+                d.unlink()                        # rmtree refuses a link to a folder
+            else:
+                shutil.rmtree(d, ignore_errors=True)
+
+    def folder(self, name, items):
+        d = TMP / name
+        shutil.rmtree(d, ignore_errors=True)
+        d.mkdir()
+        self.dirs.append(d)
+        (d / 'good.mp4').write_bytes(b'g' * 64)
+        (d / 'manifest.json').write_text(json.dumps({'version': 'h264-v1', 'items': items}))
+        return d
+
+    def use(self, d):
+        server.VIDEO_COPIES = d
+        server._copies.update(mtime=None, items={})
+        return server.video_copies()
+
+    def item(self, file, n=64):
+        return {'file': file, 'bytes': n, 'source_video': 'av01', 'video': 'avc1'}
+
+    def test_hard_links_and_links_out_are_refused(self):
+        d = self.folder('copies-links', {'videos/good.mp4': self.item('good.mp4'), 'videos/hard.mp4': self.item('hard.mp4', len(fixture.CANARY)),
+                                         'videos/soft.mp4': self.item('soft.mp4', len(fixture.CANARY)), 'videos/bad.mp4': 'not an item',
+                                         'videos/odd.mp4': ['also', 'not'], 'videos/size.mp4': self.item('good.mp4', '64')})
+        os.link(DATA / 'outside-canary.txt', d / 'hard.mp4')                       # a hard link to a file outside the library
+        try:
+            os.symlink(DATA / 'outside-canary.txt', d / 'soft.mp4')
+        except OSError:
+            pass                                                                  # Windows without the right to make links
+        self.assertEqual(sorted(self.use(d)), ['videos/good.mp4'])             # bad entries are skipped, not fatal to the rest
+        self.assertFalse(server.video_copy_ok(d / 'hard.mp4'))
+
+    def test_a_copies_folder_that_leads_elsewhere_offers_nothing(self):
+        out = self.folder('copies-elsewhere', {'videos/good.mp4': self.item('good.mp4')})
+        link = TMP / 'copies-link'
+        if link.is_symlink():
+            link.unlink()
+        self.dirs.append(link)
+        try:
+            os.symlink(out, link, target_is_directory=True)
+        except OSError:
+            self.skipTest('no right to make links here')
+        self.assertEqual(sorted(self.use(out)), ['videos/good.mp4'])           # the same folder, used where it really is
+        self.assertEqual(self.use(link), {})
+        self.assertFalse(server.video_copy_ok(link / 'good.mp4'))
+
+    def test_checked_again_before_serving(self):
+        d = self.folder('copies-later', {'videos/good.mp4': self.item('good.mp4')})
+        self.assertEqual(sorted(self.use(d)), ['videos/good.mp4'])
+        self.assertTrue(server.video_copy_ok(d / 'good.mp4', 64))
+        os.link(d / 'good.mp4', TMP / 'second-name.mp4')                           # after the manifest was read
+        self.dirs.append(TMP / 'second-name.mp4')
+        try:
+            self.assertIn('videos/good.mp4', server.video_copies())               # the manifest has not changed, so it is still listed
+            self.assertFalse(server.video_copy_ok(d / 'good.mp4', 64))            # but send_video_copy refuses it now
+        finally:
+            (TMP / 'second-name.mp4').unlink()
 
 
 class StreamTests(Both, unittest.TestCase):

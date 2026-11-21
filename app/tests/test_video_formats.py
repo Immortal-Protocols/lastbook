@@ -4,7 +4,7 @@
   python3 -B -m unittest app.tests.test_video_formats [-v]
 
 Builds tiny files whose index is real and whose pictures are not, so no video library is needed. Never packaged."""
-import contextlib, importlib.util, io, json, struct, tempfile, unittest
+import contextlib, importlib.util, io, json, os, struct, tempfile, unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -120,6 +120,22 @@ class Check(unittest.TestCase):
         (lib / 'videos-external/b/vp9-wrong-size.mp4').unlink()
         code, out = self.run_tool()
         self.assertEqual(code, 0, out)
+
+    def test_links_hard_links_and_bad_entries(self):
+        d = self.data / 'derived' / 'video-compat' / 'h264-v1'
+        os.link(self.data / 'outside.mp4', d / 'hard.mp4')                       # also a file outside the library
+        self.items['videos/a/av1-no-copy.mp4'] = {'file': 'hard.mp4', 'bytes': 100, 'source_video': 'av01', 'video': 'avc1'}
+        self.items['videos/a/junk.mp4'] = 'not an item'                          # skipped, as the server skips it
+        self.write_manifest()
+        self.assertEqual(sorted(C.usable_copies(self.data)), ['videos/a/av1-sound-first.mp4', 'videos/a/av1.mp4', 'videos/a/vp9.webm'])
+        real = self.data / 'derived' / 'video-compat'
+        moved = self.data / 'elsewhere'
+        real.rename(moved)
+        try:
+            os.symlink(moved, real, target_is_directory=True)                    # the copies folder now leads elsewhere
+        except OSError:
+            self.skipTest('no right to make links here')
+        self.assertEqual(C.usable_copies(self.data), {})
 
     def test_a_bad_manifest_counts_no_copies(self):
         for man in ([], {'version': 'h264-v2', 'items': self.items}, {'version': 'h264-v1', 'items': 5}, {'version': 'h264-v1', 'items': {'x': 5}}):

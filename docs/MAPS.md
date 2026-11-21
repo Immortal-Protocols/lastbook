@@ -148,6 +148,7 @@ as one map.
 [REGIONS-AT.md](REGIONS-AT.md) does the same for Austria's nine states.
 
 [REGIONS-MX.md](REGIONS-MX.md) does the same for Mexico's 32 states (entidades federativas).
+[MAP-DE-BE.md](MAP-DE-BE.md) builds one of the German states, Berlin, as a working offline map with addresses (`tools/build_region_de_be.py`).
 
 ## Checking a map change
 

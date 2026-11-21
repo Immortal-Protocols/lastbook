@@ -24,6 +24,8 @@ SLACK = 1.02            # installed_bytes is measured; a zip's members may add a
 SPACE_MARGIN = 2 * 10 ** 9
 PENDING = 'pending.json'
 COPY = 4 * 1024 * 1024
+RENAME_WAITS = (0.25, 0.5, 1, 2)     # seconds between tries of a rename Windows refuses for a file in use
+SWITCH_ATTEMPTS = 3     # starts that try a refused switch before it is dropped
 
 
 class Refused(Exception):
@@ -390,7 +392,7 @@ def carry_over(old, new, moved=None):
                 os.replace(source, dest)
                 moved.append(dest)
     state = old / 'derived' / 'llm' / 'state.json'
-    if state.is_file() and not (new / 'derived' / 'llm' / 'state.json').exists():
+    if state.is_file():      # copied, not moved: copied again over one a refused switch left, as the person may have changed it since
         (new / 'derived' / 'llm').mkdir(parents=True, exist_ok=True)
         shutil.copy2(state, new / 'derived' / 'llm' / 'state.json')
     return moved
@@ -411,15 +413,15 @@ def switch(new_lib, target):
             except OSError as e:
                 _refuse_carried_back(carried, new_lib, target, f'Lastbook could not move your files into the new library ({type(e).__name__}). Close anything using them, then try again.')
         try:
-            os.replace(target, old)
+            _rename(target, old)
         except OSError as e:
             _refuse_carried_back(carried, new_lib, target, f'Lastbook could not move the old library aside ({type(e).__name__}). Close anything using it, then try again.')
     try:
-        os.replace(new_lib, target)
+        _rename(new_lib, target)
     except OSError as e:
         if old:
             try:
-                os.replace(old, target)
+                _rename(old, target)
             except OSError:
                 still = [str(moved) for moved in carried if moved.is_file()]
                 raise Refused('activate', f'Lastbook could not put the new library in place ({type(e).__name__}), nor the old one back. '
@@ -443,6 +445,17 @@ def _refuse_carried_back(carried, new_lib, target, message):
     if stuck:
         message += ' These files could not be moved back and are still here: ' + ', '.join(stuck)
     raise Refused('activate', message)
+
+
+def _rename(src, dst):
+    """os.replace, tried again for a few seconds while Windows refuses it for a file in use: the app that just closed may
+    not have let go of its files yet."""
+    for wait in RENAME_WAITS:
+        try:
+            return os.replace(src, dst)
+        except PermissionError:
+            time.sleep(wait)
+    return os.replace(src, dst)
 
 
 # ----------------------------------------------------------------------------------------------------------- state maps --
@@ -644,7 +657,12 @@ def apply_pending(pend, work):
             old = switch(d['new'], target)
         except Refused as e:
             print('setup: switch failed:', e.message, flush=True)
-            pend.unlink()
+            d['attempts'] = d.get('attempts', 0) + 1
+            if d['attempts'] < SWITCH_ATTEMPTS and is_library(target):      # a file in use may be free at the next start: tried again then (only if nothing was left half done)
+                _write_json(pend, d)
+                note['again'] = True
+            else:
+                pend.unlink()
             note['error'] = e.message
             return (target if is_library(target) else None), note
         d['switched'], d['old'] = True, old and str(old)

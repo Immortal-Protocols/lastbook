@@ -882,9 +882,24 @@ class Setup:
         return bad
 
     def _run(self):
+        if self.job['plan'].get('pack') or self.job['plan'].get('map'):
+            self._drop_deferred_switch()
         self.control = download.Control()
         self.thread = threading.Thread(target=self._work, args=(self.control,), daemon=True, name='setup-job')
         self.thread.start()
+
+    def _drop_deferred_switch(self, keep_for=None):
+        """A switch refused at a restart and kept for the next (its pending file counts `attempts`) is dropped when a job would
+        replace what it uses (a library or map download rewrites the unpack and the pending file), or when the person chooses
+        another library (keep_for: the one chosen). A job adding only the AI or addresses keeps it, and so does a switch
+        staged as usual."""
+        pend = _pending_file(self.settings_dir)
+        try:
+            d = json.loads(pend.read_text(encoding='utf-8'))
+            if 'attempts' in d and not (keep_for and install._real(d['target']) == install._real(keep_for)):
+                pend.unlink()
+        except (OSError, ValueError, TypeError):
+            pass
 
     def pause(self):
         with self.lock:
@@ -991,6 +1006,7 @@ class Setup:
             with self.lock:
                 if self.job and self.job['state'] in ACTIVE:
                     return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
+                self._drop_deferred_switch(keep_for=lib)
                 self.job = {'id': uuid.uuid4().hex[:12], 'state': 'done', 'error': None, 'started': _now(), 'folder': str(lib),
                             'items': [{'id': 'library', 'kind': 'pack', 'title': lib.name, 'state': 'done', 'bytes_done': 0, 'bytes_total': 0,
                                        'rate_bps': 0, 'eta_s': None, 'error': None}],
@@ -1507,7 +1523,7 @@ def _pending_file(settings_dir):
 
 def startup(settings_dir, only=None):
     """app/main.py calls this first: a staged switch is made now, before the engine opens anything. Returns the library to open
-    (or None to look as usual) and a note: {target, old, model_file, error}."""
+    (or None to look as usual) and a note: {target, old, model_file, error, again: a refused switch kept for the next start}."""
     settings_dir = Path(settings_dir)
     try:
         s = json.loads((settings_dir / 'setup.json').read_text(encoding='utf-8'))
@@ -1546,7 +1562,12 @@ def opened(settings_dir, data, note):
             print('setup: mark_checked:', type(e).__name__, e, flush=True)
     if note and note.get('old') and note['old'] not in s.get('old', []):
         s.setdefault('old', []).append(note['old'])
-    if work:
+    if work and note and note.get('again'):      # a switch kept for the next start keeps its pending file and its unpack;
+        try:                                     # its finished job goes, so setup manages the library in use meanwhile
+            _job_file(settings_dir).unlink()
+        except OSError:
+            pass
+    elif work:
         install.confirm(_pending_file(settings_dir))
         try:
             job = json.loads(_job_file(settings_dir).read_text(encoding='utf-8'))

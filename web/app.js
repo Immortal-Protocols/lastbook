@@ -1214,10 +1214,36 @@ async function about() {
    <li>Reading and watching are not the same as practising. Your ticks stay on this device.</li>
    ${s.pack ? '' : '<li>Shopping lists and carts in older reports are plans, not proof of supplies you own.</li>'}</ul>
   ${s.sources ? `<h2>Sources and credits</h2><p><a href="#/read/${encodeURIComponent(s.sources)}?${fromQ()}">Sources and permissions</a>: every publisher in this library, where it came from, and how to ask for something to be removed.</p>` : ''}
-  ${IN_WINDOW ? '' : '<h2>Using it on a phone</h2><p>Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with <code>server.py --lan</code>. Phones need the access link shown in the terminal the first time.</p>'}
+  ${IN_WINDOW ? '<h2>Using it on a phone</h2><p>Open Library and local AI and choose <b>Share this library with my devices</b>. Other devices on this Wi-Fi can then read the library with the access link shown there. That share is library browsing only: documents, search, maps, encyclopedias and videos. Chat with this computer\'s local AI is a separate option, off unless you turn it on. Other devices cannot change settings or start downloads. Do not put that link on the public internet; a private VPN such as Tailscale is the way to use it away from home (use this computer\'s address as a bare IP).</p>' : '<h2>Using it on a phone</h2><p>Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with <code>server.py --lan</code>. Phones need the access link shown in the terminal the first time. That share is library browsing only unless Chat with the host\'s local AI was also turned on.</p>'}
   ${oldServer ? '<h2>Other ways in</h2><p><a href="/reports/gap-closure-status.html" target="_blank">Gap closure report</a> · <a href="/reports/learning-pathways.html" target="_blank">Learning pathways report</a> · <a href="/reports/survival-tools-cart.html" target="_blank">Supplies planning</a></p>' : ''}`;
   if (IN_WINDOW && window.LBUpdate) LBUpdate.mount(main);   // Check for updates (web/update.js): only when the person asks
 }
 
 route();
 if ('serviceWorker' in navigator && /^(127\.0\.0\.1|localhost)$/.test(location.hostname)) navigator.serviceWorker.register('/sw.js').catch(() => { });
+
+
+/* Sharing indicator in the desktop app: visible whenever the library is on the network, including after a relaunch. */
+if (IN_WINDOW) {
+  const bar = $('#shareBar'), stop = $('#shareBarStop'), text = $('#shareBarText');
+  const shareState = async () => {
+    try { const r = await fetch('/api/share'); return r.ok ? await r.json() : null } catch { return null }
+  };
+  const paintShare = s => {
+    if (!bar) return;
+    const on = !!(s && s.on);
+    bar.hidden = !on;
+    if (on && text) text.textContent = s.ai
+      ? 'Sharing this library on the local network, including Chat'
+      : 'Sharing this library on the local network';
+  };
+  const refreshShare = () => shareState().then(paintShare);
+  if (stop) stop.onclick = async () => {
+    stop.disabled = true;
+    try { await fetch('/api/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: false }) }) } catch { }
+    stop.disabled = false;
+    refreshShare();
+  };
+  refreshShare();
+  setInterval(refreshShare, 4000);
+}

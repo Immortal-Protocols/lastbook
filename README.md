@@ -61,15 +61,27 @@ other Linux distributions have not been validated for this release.
 
 ## Privacy and network use
 
-- **No listening port.** The desktop app opens no network port. The window and the engine talk through an in-memory bridge
-  (`app/bridge.py`): WKURLSchemeHandler on macOS (`app/shell_macos.py`), WebView2 `WebResourceRequested` on Windows
-  (`app/shell_windows.py`), and WebKitGTK `URISchemeRequest` on Linux (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and output and opens no socket either.
-- **Two uses of the network, both started by the person.** (1) Setup's downloader (`engine/setup/`), when the person
+- **No listening port, unless you turn on sharing.** The desktop app opens no network port unless the person turns on
+  **Share this library with my devices** in Library and local AI. Then a dedicated share listener (not the desktop
+  handler) listens on the local network only while sharing is on, the same listener as `server.py --lan`. Every socket
+  request needs the access key (in the link, a cookie, or a header). Only an explicit read-only allowlist is served
+  (library browsing: pages, search, maps, encyclopedias, videos). Settings, setup, updates, notes and other private
+  state stay on the in-memory bridge, on this computer. Chat with this computer's local AI is a separate option, off
+  unless the person turns it on. The port, and any in-progress stream, is closed when sharing is stopped or the app
+  quits. If sharing was left on, it starts again when the app opens, and a bar in the window says so, with Stop. The
+  window and the engine talk through an in-memory bridge (`app/bridge.py`): WKURLSchemeHandler on macOS
+  (`app/shell_macos.py`), WebView2 `WebResourceRequested` on Windows (`app/shell_windows.py`), and WebKitGTK
+  `URISchemeRequest` on Linux (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and
+  output and opens no socket either.
+- **Three uses of the network, all started by the person.** (1) Setup's downloader (`engine/setup/`), when the person
   starts or resumes a download. (2) The update check (`engine/update.py`, `web/update.js`), when the person presses
   the button. Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,
   to allow-listed hosts only (`downloads.lastbook.org` for packs, maps, the manifest and update information; Hugging Face's
   download hosts for the AI model; the update check accepts `downloads.lastbook.org` alone), no proxy from the system, and a
-  redirect is followed only to another allowed host.
+  redirect is followed only to another allowed host. (3) Sharing the library on the local network, only while the share
+  switch is on. That is a listening port, not an outbound connection, and it is not meant to be opened to the public
+  internet. A private VPN such as Tailscale is the way to use it away from home (connect to this computer's VPN address,
+  a bare IP; named addresses are refused).
 - **Pinned trust.** The downloader trusts only the root certificates in `engine/setup/roots.pem` (11 roots from Mozilla's
   bundle), never the system's trust store. The builds refuse to finish if those roots no longer cover the allowed hosts
   (`packaging/check_tls_roots.py`).

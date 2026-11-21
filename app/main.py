@@ -392,20 +392,27 @@ def main():
     if not given or note:
         setup_api.opened(app_folders()[0], data, note)
     setup_api.configure(mode='manage', current=data, **setup_options())
+    from engine import share
+    share.configure(app_folders()[0])
+    share.install_shutdown_hooks()
+    share.restore()   # only if the person left sharing on; a failure is shown in Library and local AI, and in the sharing bar
     import bridge as B
-    if sys.platform == 'darwin':
-        import shell_macos
-        shell_macos.run(B.Bridge(server, 'stream', B.ORIGIN_MAC))
-    elif sys.platform == 'win32':
-        import shell_windows
-        return shell_windows.run(server, data)
-    elif sys.platform.startswith('linux'):
-        import shell_linux
-        shell_linux.run(B.Bridge(server, 'stream', B.ORIGIN_MAC), linux_dirs())
-    else:
-        show_error('The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py')
-        return 2
-    return 0
+    try:
+        if sys.platform == 'darwin':
+            import shell_macos
+            shell_macos.run(B.Bridge(server, 'stream', B.ORIGIN_MAC))
+        elif sys.platform == 'win32':
+            import shell_windows
+            return shell_windows.run(server, data)
+        elif sys.platform.startswith('linux'):
+            import shell_linux
+            shell_linux.run(B.Bridge(server, 'stream', B.ORIGIN_MAC), linux_dirs())
+        else:
+            show_error('The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py')
+            return 2
+        return 0
+    finally:
+        share.stop(forget=False)
 
 
 if __name__ == '__main__':

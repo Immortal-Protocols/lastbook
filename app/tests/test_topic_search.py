@@ -6,7 +6,8 @@
 Accented words stay whole and fold (niño finds nino), short words in Chinese, Hindi, Hebrew and Arabic count,
 typed symbols never reach a RegExp, Turkish İ folds to i, and every English query in the list ranks exactly as it
 did before. Words used outside the US (torch, rubbish, 999, 108, 1122, power cut, loadshedding, hydro, forest fire)
-find the guide their US word finds. Needs Node on PATH; skipped without it. Never packaged."""
+find the guide their US word finds. Short words that start a longer, unrelated word (pain, fall, rat) are listed with
+the guide they must not open (expected failure for now, #333), beside the prefix matches that must keep working. Needs Node on PATH; skipped without it. Never packaged."""
 import json, re, shutil, subprocess, tempfile, unicodedata, unittest
 from pathlib import Path
 
@@ -234,6 +235,33 @@ GUIDE_ORDINARY = {
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
 
+# A search word matches the start of any guide word, so a short everyday word can open a guide about a longer, unrelated
+# word (issue #333): query -> [guide, choice] that must NOT come first. Each pair was measured on main: "pain" starts
+# "paint", "fall" starts "fallout", "die" starts "diets", and so on. The test below is an expectedFailure, because they
+# still open that guide today. It keeps failing as expected while any one of them does, so guide changes that fix some
+# do not break it. Once none does, it reports an unexpected success: remove the marker and keep the list.
+SHORT_WORD_FALSE_MATCHES = {
+    'stomach pain': ['grow', 'soil-unknown'], 'left arm pain': ['grow', 'soil-unknown'],
+    'fall from ladder': ['disaster', 'nuclear-explosion'], 'elderly fall': ['disaster', 'nuclear-explosion'],
+    'want to die': ['food', 'special'], 'the loo wont flush': ['hurt', 'bone'],
+    'rat bite': ['hurt', 'snakebite'], 'rat poison': ['hurt', 'snakebite'],
+    'ear infection': ['disaster', 'earthquake-now'], 'ear pain': ['disaster', 'earthquake-now'],
+    'head lice': ['comms', 'ham'], 'bat in house': ['power', 'batteries-solar'],
+    'war': ['shelter', 'cold'], 'what to pack': ['disaster', 'explosion'],
+    'out of formula': ['food', 'outage'], 'ran out of insulin': ['food', 'outage'], 'out of diapers': ['food', 'outage'],
+    'high fever': ['disaster', 'highrise-fire'],
+}
+# The other side: a short word that starts a longer word the guide really uses must keep finding that guide ("cook" and
+# cooking, "warm" and warming, "dry" and drying, "con" and conditioning). Any rule that stops short words matching the
+# start of a longer word has to leave these as they are: query -> [guide, choice] that comes first.
+SHORT_WORD_PREFIXES = {
+    'cook': ['food', 'cook'], 'cook without power': ['food', 'cook'], 'cook on a camp stove': ['food', 'cook'],
+    'warm': ['shelter', 'cold'], 'stay warm': ['shelter', 'cold'], 'how to stay warm': ['shelter', 'cold'],
+    'dry': ['preserve', 'nopower'], 'how to dry meat': ['preserve', 'method'], 'dry food': ['preserve', 'method'],
+    'air con': ['shelter', 'heat'], 'car battery': ['power', 'batteries-solar'],
+}
+TOPS = sorted({*TOPS, *SHORT_WORD_FALSE_MATCHES, *SHORT_WORD_PREFIXES})
+
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
     'rankOwn': RANK_OWN,
@@ -417,6 +445,21 @@ class TopicSearch(unittest.TestCase):
             for q, first in STILL_SHELTER.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])
+
+    def test_short_words_keep_finding_longer_words(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in SHORT_WORD_PREFIXES.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
+
+    @unittest.expectedFailure   # issue #333: remove once no search in SHORT_WORD_FALSE_MATCHES opens its unrelated guide
+    def test_short_word_does_not_open_unrelated_guide(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, unrelated in SHORT_WORD_FALSE_MATCHES.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotEqual(top[q][:1], [unrelated])   # finding nothing is fine
 
 if __name__ == '__main__':
     unittest.main()

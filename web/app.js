@@ -4,7 +4,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fileUrl = p => '/' + String(p || '').split('/').map(encodeURIComponent).join('/');
-const main = $('#main');
+const main = $('#main'), pageTop = $('#pageTop');
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
 
@@ -274,7 +274,7 @@ async function route() {
   html.classList.remove('side-open', 'h1-gone'); h1seen.disconnect();
   $('#tbActs').replaceChildren(); $('#tbTitle').textContent = $('#tbSub').textContent = ''; $('#tbTitle').title = $('#tbSub').title = ''; searchLive = null; main.classList.remove('own-title');
   if (leaving) { try { leaving() } catch { } leaving = null }
-  window.onresize = null; main.onkeydown = null;
+  window.onresize = null; main.onkeydown = pageTop.onkeydown = null;
   try {
     if (v !== 'map') MapView.stop();
     await topics().catch(() => { });
@@ -335,9 +335,9 @@ addEventListener('resize', alignTitle);
 // is not a control; it carries the page's name, which a screen reader reads when focus lands on it.
 function startHere(fromSide) {
   if (fromSide && !(MAC && !wide.matches) && document.activeElement && document.activeElement.closest('.side,.tabbar')) return;
-  const t = $('#pageTop'), h1 = $('h1', main);
-  t.textContent = (h1 && h1.textContent.trim()) || document.title;
-  t.focus({ preventScroll: true });
+  const h1 = $('h1', main);
+  pageTop.textContent = (h1 && h1.textContent.trim()) || document.title;
+  pageTop.focus({ preventScroll: true });
 }
 window.addEventListener('hashchange', route);
 let searchLive = null;   // on the search page, where the pane's field is the page's own (Windows), typing there updates the results
@@ -741,7 +741,18 @@ async function reader(id, page, from, view) {
       body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, 'Couldn’t load the text.') }
   }
-  main.onkeydown = e => { if (!isPdf || /INPUT/.test(e.target.tagName) || e.altKey || e.metaKey || e.ctrlKey) return; if (e.key === 'ArrowRight' && page < total) location.hash = go(page + 1); if (e.key === 'ArrowLeft' && page > 1) location.hash = go(page - 1) };
+  if (!isPdf) return;
+  main.onkeydown = e => {
+    if (e.target.tagName === 'INPUT' || e.altKey || e.metaKey || e.ctrlKey) return;
+    let next = page;
+    if (e.key === 'ArrowRight') next++;
+    if (e.key === 'ArrowLeft') next--;
+    if (next === page || next < 1 || next > total) return;
+    e.preventDefault();
+    location.hash = go(next);
+  };
+  // The router puts focus on this marker before the first Tab.
+  if (view !== 'pdf') pageTop.onkeydown = main.onkeydown;
 }
 
 /* --------------------------------------------------------------- wiki -- */

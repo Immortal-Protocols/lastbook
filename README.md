@@ -279,6 +279,17 @@ copyright and license notice. Third-party software, models, media and library co
 listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and each library pack. Distributed app bundles include
 GPL-covered components such as python-libzim and libzim and must also meet those components’ license obligations.
 
+## Related resources (online)
+
+These external projects offer knowledge sharing and coordination alongside Lastbook. They require internet access;
+some features also require an account.
+
+- [Humanity Infrastructure](https://humanityinfrastructure.com/) — a directory of tools and knowledge for human flourishing, including Lastbook.
+- [WikiHub](https://wikihub.md/) — publish and share Markdown wikis that people and AI agents can work with.
+- [World Issue Tracker](https://worldissuetracker.com/) — make shared problems visible and organize work toward solving them.
+- [Unlinked](https://www.unlinked.ai/) — bring your professional profile and connections into a searchable network to find people and expertise.
+- [NVC Translator](https://nvctranslator.com/) — a tool for rephrasing text using Nonviolent Communication.
+
 ## Website maintenance
 
 `website-next/` is the deployed site. Run `python3 -I tools/build.py` from that folder to rebuild the main pages.

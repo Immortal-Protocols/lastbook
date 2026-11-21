@@ -62,7 +62,7 @@
   {
    "id": "throwout",
    "label": "Deciding what to throw out",
-   "hint": "Warm meat, swollen cans, odd smell",
+   "hint": "Warm meat, defrosted, whether to refreeze, swollen or dented cans, odd smell",
    "read": [
     {
      "doc": "e4bfed4b6afd6d",

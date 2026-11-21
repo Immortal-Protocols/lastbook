@@ -686,18 +686,32 @@ async function watch(id, t, from) {
     };
   }
   let lastSave = 0;
-  let below90 = !((t || resumeAt) && d.duration && (t || resumeAt) >= d.duration * 0.9);
+  let below90 = !((t || resumeAt) && (d.duration || vid.duration) && (t || resumeAt) >= (d.duration || vid.duration) * 0.9);
   const saveProg = () => {
     if (vid.currentTime > 3) {
       setVprog(id, { t: vid.currentTime, d: d.duration || vid.duration, title: d.title, thumb: d.thumb });
     }
   };
+  const onSeek = () => {
+    const dur = d.duration || vid.duration;
+    if (dur) below90 = vid.currentTime < dur * 0.9;
+  };
+  vid.addEventListener('seeking', onSeek);
+  vid.addEventListener('seeked', onSeek);
+  vid.addEventListener('loadedmetadata', () => {
+    if (!d.duration && vid.duration) d.duration = vid.duration;
+    const dur = d.duration || vid.duration;
+    if (dur) {
+      const pos = vid.currentTime || t || (resumeAt && $('#resume') ? resumeAt : 0);
+      below90 = pos < dur * 0.9;
+    }
+  });
   vid.addEventListener('timeupdate', () => {
     const dur = d.duration || vid.duration;
     if (dur) {
       if (vid.currentTime < dur * 0.9) {
         below90 = true;
-      } else if (below90) {
+      } else if (below90 && !vid.paused && !vid.seeking) {
         below90 = false;
         setWatched(id, true);
         updateWatchedBtn();

@@ -1936,6 +1936,21 @@ class Manage(Base):
         self.assertFalse(api._pending_file(self.settings).exists())
         self.assertTrue((lib / 'models' / 'model.gguf').is_file())
 
+    def test_repair_restores_a_header_only_pack_manifest(self):
+        lib = self.installed_library()
+        listing = lib / 'pack-manifest.tsv'
+        original = listing.read_bytes()
+        listing.write_bytes(original.splitlines(keepends=True)[0])
+
+        s = self.setup('manage', current=lib)
+        s.start(repair=True)
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual([n for n, _, _ in self.files.log], ['Lastbook-Small.zip'])
+        new, note = api.startup(self.settings)
+        self.assertIsNone(note.get('error'), note)
+        self.assertEqual((new / listing.name).read_bytes(), original)
+
     def test_repair_damaged_file_and_model(self):
         lib = self.installed_library()
         for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):

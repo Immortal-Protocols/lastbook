@@ -224,6 +224,13 @@ GUIDE_URGENT = {
     'unconscious after drinking flood water': (['hurt', 'breathing'], ['water', 'unsafe']),
     'not breathing after falling in the well water': (['hurt', 'breathing'], ['land', 'water-source']),
     'unconscious after the generator ran indoors': (['hurt', 'breathing'], ['shelter', 'co']),
+    # Someone in crisis: these found no guide, or opened special diets ("die" starts "diets") or the garden.
+    'kill myself': (['health', 'mind'], None), 'i want to kill myself': (['health', 'mind'], None),
+    'thinking about killing myself': (['health', 'mind'], None), 'she wants to kill herself': (['health', 'mind'], None),
+    'want to die': (['health', 'mind'], None), 'i just want to die': (['health', 'mind'], None),
+    'my son says he wants to die': (['health', 'mind'], None), 'end my life': (['health', 'mind'], None),
+    "i don't want to live anymore": (['health', 'mind'], None), 'dont want to live': (['health', 'mind'], None),
+    'not breathing want to die': (['hurt', 'breathing'], ['health', 'mind']),
     'child unconscious after pet food': (['hurt', 'breathing'], None), 'pet food unconscious': (['hurt', 'breathing'], None),
 }
 # Searches without an urgent phrase keep their guide order: [guide, choice] that comes first.
@@ -231,6 +238,11 @@ GUIDE_ORDINARY = {
     'how do i light a campfire': ['power', 'first-hours'], 'treat water': ['water', 'keepclean'],
     "make the water safe for a baby's formula": ['food', 'outage'], 'not responding to antibiotics': ['health', 'medicine'],
     'radio not responding': ['comms', 'alerts-radio'], 'dental abscess': ['health', 'teeth'], 'propane burns': ['hurt', 'shock'],
+    'suicidal': ['health', 'mind'], 'i want to build a bench': ['repair', 'build'], 'kill bugs': ['sanitation', 'spread'],
+    'battery dying': ['power', 'batteries-solar'], 'live power line': ['water', 'apartment'],
+    # Fear words open the Health guide, and never ahead of a breathing emergency.
+    'scared': ['health', None], 'kids are scared': ['health', None], 'afraid': ['health', None],
+    'scared and cant breathe': ['hurt', 'breathing'], 'scared not breathing': ['hurt', 'breathing'],
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
 

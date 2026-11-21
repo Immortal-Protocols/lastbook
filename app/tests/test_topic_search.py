@@ -233,6 +233,21 @@ GUIDE_ORDINARY = {
     'radio not responding': ['comms', 'alerts-radio'], 'dental abscess': ['health', 'teeth'], 'propane burns': ['hurt', 'shock'],
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
+# Cardiac arrest is urgent too: "heart stopped" in a search with other words still opens CPR first, and the guide
+# those words point to is still offered: query -> (first row, a row that must still be shown).
+HEART_URGENT = {
+    'heart stopped in the flood water': (['hurt', 'breathing'], ['water', 'unsafe']),
+    'heart stopped after drinking flood water': (['hurt', 'breathing'], ['water', 'unsafe']),
+    'heart stopped after the generator ran indoors': (['hurt', 'breathing'], ['shelter', 'co']),
+    'her heart has stopped': (['hurt', 'breathing'], None), 'cardiac arrest in the flood water': (['hurt', 'breathing'], None),
+}
+# Searches with "heart" or "stopped" but no cardiac arrest keep their first row.
+HEART_ORDINARY = {
+    'heart attack': ['hurt', 'sudden'], 'heart attack after shoveling snow': ['hurt', 'sudden'],
+    'heart disease': ['health', 'chronic'], 'the generator stopped': ['power', 'generator'],
+    'water heater stopped': ['water', 'inhome'],
+}
+TOPS = sorted({*TOPS, *HEART_URGENT, *HEART_ORDINARY})
 
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
@@ -403,6 +418,18 @@ class TopicSearch(unittest.TestCase):
                         self.assertIn(offered, top[q])
                     self.assertLessEqual(len(top[q]), 3)
             for q, first in GUIDE_ORDINARY.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])
+
+    def test_heart_stopped_is_urgent(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, (first, offered) in HEART_URGENT.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])
+                    if offered:
+                        self.assertIn(offered, top[q])
+            for q, first in HEART_ORDINARY.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])
 

@@ -2163,16 +2163,17 @@ def lan_key(kf):
     return key
 
 
+class HTTPServer(library.HTTPServer):   # queues 128 connections: opening the map asks for 20 or more tiles at once
+    if os.name == 'nt':  # SO_REUSEADDR on Windows lets a second copy silently share the port
+        allow_reuse_address = False
+
+
 def serve(port, lan=False):
     """The HTTP server version: binds the port and answers until stopped."""
     global LAN_KEY, SERVER
     if lan:
         LAN_KEY = lan_key(HERE / 'derived' / 'lan-key')
-    server_class = library.http.server.ThreadingHTTPServer
-    if os.name == 'nt':  # SO_REUSEADDR on Windows lets a second copy silently share the port
-        class server_class(server_class):
-            allow_reuse_address = False
-    srv = SERVER = server_class(('0.0.0.0' if lan else '127.0.0.1', port), Handler)
+    srv = SERVER = HTTPServer(('0.0.0.0' if lan else '127.0.0.1', port), Handler)
     print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
     if lan:
         import socket

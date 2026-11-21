@@ -66,6 +66,18 @@ nothing shared may name a real person's home, street, coordinates, machines or a
 **Sources first.** A guide card points at a real page of a real source in the library, with its page number. If the
 library does not cover something, record that in `content/gaps.json` instead of writing advice from memory.
 
+**Text the project keeps as UTF-8 is read and written as UTF-8.** On Windows, Python uses the system's locale encoding
+for text unless told otherwise (often cp1252), so code that works on a Mac or Linux can stop there with
+`UnicodeDecodeError: 'charmap' codec ...` (#170, #290).
+
+- For the project's own text files (Python, `web/`, `content/`, JSON and Markdown), pass `encoding='utf-8'` to `open()`,
+  `Path.read_text()` and `Path.write_text()`. Binary reads (`'rb'`, `read_bytes()`) take no encoding.
+- For a subprocess known to print UTF-8, such as Node in the tests, pass `encoding='utf-8'` with `text=True`. Other
+  programs may use another encoding: check what yours prints before choosing one.
+- Don't rely on `PYTHONUTF8=1` or `python -X utf8` being set: other people's computers don't have it.
+- AI coding agents often leave the encoding out. If you use one, give it this rule (in its instructions file, for
+  example `AGENTS.md` or `CLAUDE.md`) and check its changes for it.
+
 **Plain words.** Interface text is short, concrete and calm. Many readers will be stressed, tired, or reading in a second
 language.
 

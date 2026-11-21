@@ -102,7 +102,7 @@ def catalog():
    winner.setdefault('also_in',[]).append(r['collection'])
    winner.setdefault('alternate_paths',[]).append(r['path'])
  records=sorted(unique.values(),key=lambda r:(r['category'],r['collection'],r['title']))
- (ROOT/'catalog.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
+ atomic_write(ROOT/'catalog.json',json.dumps(records,indent=2))   # the app knows a library by this file: never half of it
  return records,bad
 
 def extract(r):
@@ -179,9 +179,9 @@ def build():
    totalpages+=len(pages)
    if i%100==0:print(f'Indexed {i+1}/{len(records)} resources',flush=True)
  con.commit();con.close();building.replace(DB)
- (ROOT/'catalog.json').write_text(json.dumps(built,indent=2),encoding='utf-8')
+ atomic_write(ROOT/'catalog.json',json.dumps(built,indent=2))
  summary={'resources':len(built),'pdfs':sum(r['kind']=='pdf' for r in built),'pdf_pages':sum(r.get('pages') or 0 for r in built),'web_pages':sum(r['kind'] in ['html','htm'] for r in built),'videos':sum(r['kind'] in ['video','mp4','webm','mkv'] for r in built),'collections':sum(r['kind']=='zim' for r in built),'document_bytes':sum(r['bytes'] for r in built),'indexed_units':totalpages,'categories':dict(collections.Counter(r['category'] for r in built)),'extraction_errors':errors,'missing_files':bad,'image_only_pdfs':[r['path'] for r in built if (r.get('searchability') or '').startswith('image-only')]}
- (ROOT/'summary.json').write_text(json.dumps(summary,indent=2),encoding='utf-8');(ROOT/'reader.css').write_text(STYLE,encoding='utf-8')
+ atomic_write(ROOT/'summary.json',json.dumps(summary,indent=2));(ROOT/'reader.css').write_text(STYLE,encoding='utf-8')
  write_index(built,summary)
  print(json.dumps({k:v for k,v in summary.items() if k not in ['extraction_errors','missing_files','image_only_pdfs']},indent=2))
 

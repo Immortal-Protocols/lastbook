@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, threading, time, types, unittest
+import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
 from pathlib import Path
 from unittest import mock
 
@@ -830,6 +830,31 @@ class AssistantHTTPMessages(unittest.TestCase):
         body = self.round(messages)
         self.assertEqual(body['messages'], messages)
         self.assertNotIn('tools', body)
+
+
+class CatalogWrite(unittest.TestCase):
+    """engine/library.py writes catalog.json when it builds; the app recognises a library by that file (app/main.py check)."""
+
+    def test_cut_short_keeps_the_old_catalog(self):
+        library = server.library
+        root = Path(tempfile.mkdtemp(prefix='lastbook-catalog-'))
+        self.addCleanup(shutil.rmtree, root)
+        (root / 'manifests').mkdir()
+        (root / 'docs').mkdir()
+        (root / 'docs' / 'a.pdf').write_bytes(b'%PDF-1.4')
+        (root / 'manifests' / 'docs.json').write_text(json.dumps([{'path': 'docs/a.pdf', 'title': 'A'}]), encoding='utf-8')
+        old = '[{"path": "docs/a.pdf", "title": "A"}]'
+        (root / 'catalog.json').write_text(old, encoding='utf-8')
+        real_write = Path.write_text
+
+        def half_then_fail(path, text, *args, **kwargs):   # a full disk, or the build stopped mid-write
+            real_write(path, text[:len(text) // 2], *args, **kwargs)
+            raise OSError('No space left on device')
+
+        with mock.patch.object(library, 'ROOT', root), mock.patch.object(Path, 'write_text', half_then_fail):
+            with self.assertRaises(OSError):
+                library.catalog()
+        self.assertEqual((root / 'catalog.json').read_text(encoding='utf-8'), old)
 
 
 class NothingGoesOut(unittest.TestCase):

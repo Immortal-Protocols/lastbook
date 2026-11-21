@@ -740,6 +740,12 @@
    "title": "First aid",
    "label": "Encyclopedia: First aid (MDWiki)",
    "note": "Medical encyclopedia overview of first aid; from there, linked articles cover bleeding, burns, CPR, shock and more. Reference reading, not step-by-step instructions."
+  },
+  {
+   "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Simple_triage_and_rapid_treatment",
+   "title": "Simple triage and rapid treatment",
+   "label": "Encyclopedia: START triage when many are hurt (MDWiki)",
+   "note": "How responders sort many injured people into four color groups by walking, breathing, pulse and following commands; a linked article covers children (JumpSTART). Reference, not training."
   }
  ],
  "related": [

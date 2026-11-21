@@ -1561,6 +1561,12 @@ class Jobs(Base):
 
 
 class Switching(Base):
+    def setUp(self):
+        super().setUp()
+        p = mock.patch.object(install, 'RENAME_WAITS', (0,))       # a rename refused for good is not waited on here
+        p.start()
+        self.addCleanup(p.stop)
+
     def lib(self, where, marker):
         (where / 'library-data').mkdir(parents=True)
         (where / 'library-data' / 'catalog.json').write_text(marker)
@@ -1714,6 +1720,144 @@ class Switching(Base):
         self.assertEqual(self.wait(s)['state'], 'done')
         self.assertEqual(self.marked, [(str(cur / 'models' / 'model.gguf'), sha(self.model))])
         self.assertEqual(s.start('small', True)['code'], 'nothing')
+
+    def in_use(self, src, times):
+        """os.replace refusing to move `src` the first `times` tries, as Windows does while the old app still has files open."""
+        real, left = os.replace, [times]
+
+        def replace(a, b):
+            if Path(a) == src and left[0]:
+                left[0] -= 1
+                raise PermissionError(13, 'The process cannot access the file because it is being used by another process')
+            return real(a, b)
+        return mock.patch.object(install.os, 'replace', replace)
+
+    def test_rename_refused_for_a_moment_is_retried(self):
+        """#311: the old app may still be closing; a rename it holds up goes through a moment later."""
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        new = self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')
+        with mock.patch.object(install, 'RENAME_WAITS', (0, 0, 0)), self.in_use(cur, 2):
+            old = install.switch(new, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertEqual((old / 'library-data' / 'catalog.json').read_text(), 'old')
+
+    def staged(self):
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        work = self.parent / 'LastbookData.setup'
+        new = self.lib(work / 'unpack' / 'LastbookData', 'new')
+        install.stage_switch(api._pending_file(self.settings), new, cur)
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        api._job_file(self.settings).write_text(json.dumps({'state': 'done'}))
+        return cur, new
+
+    def test_refused_switch_is_kept_for_the_next_start(self):
+        """#311: a switch refused at the restart is tried again at the next start, and its unpack is kept for it."""
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertIn('error', note)
+        self.assertEqual(json.loads(api._pending_file(self.settings).read_text())['attempts'], 1)
+        api.opened(self.settings, lib, note)
+        self.assertTrue(install.is_library(new))
+        self.assertTrue(api._pending_file(self.settings).is_file())
+        lib, note = api.startup(self.settings)         # the next start: nothing holds the library now
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertNotIn('error', note)
+        api.opened(self.settings, lib, note)
+        self.assertFalse(api._pending_file(self.settings).exists())
+        self.assertFalse(new.exists())
+
+    def test_refused_switch_leaves_setup_to_manage_the_old_library(self):
+        """A switch kept for the next start does not leave the finished job behind: setup opens on the library in use, not on
+        'Installed', while the unpack and the pending switch stay for the retry."""
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        self.assertFalse(api._job_file(self.settings).exists())
+        self.assertTrue(install.is_library(new))
+        self.assertTrue(api._pending_file(self.settings).is_file())
+
+    def job_after(self, deferred, installed='small', ai=True):
+        cur, new = self.staged()
+        (cur / 'pack.json').write_text(json.dumps({'name': installed}))
+        if deferred:
+            with self.in_use(cur, 99):
+                lib, note = api.startup(self.settings)
+            api.opened(self.settings, lib, note)
+        s = self.setup('manage', current=cur)
+        s.start('small', ai)            # with 'small' installed: only the AI; otherwise the Small library is downloaded
+        self.assertEqual(self.wait(s)['state'], 'done')
+        return cur, new, s
+
+    def test_an_ai_job_keeps_a_deferred_switch_through_the_next_start(self):
+        """Adding the AI while a refused switch waits leaves the switch and its unpack: the next start makes it, AI and all."""
+        cur, new, s = self.job_after(deferred=True)
+        self.assertTrue(api._pending_file(self.settings).is_file())
+        self.assertTrue(install.is_library(new))
+        lib, note = api.startup(self.settings)
+        self.assertNotIn('error', note)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue((lib / 'models' / 'model.gguf').is_file())
+        api.opened(self.settings, lib, note)
+        self.assertFalse(api._pending_file(self.settings).exists())
+
+    def test_a_library_download_drops_a_deferred_switch(self):
+        """A library download rewrites the unpack the refused switch would use: that switch goes, and the new one is staged."""
+        cur, new, s = self.job_after(deferred=True, installed='old', ai=False)
+        self.assertNotIn('attempts', json.loads(api._pending_file(self.settings).read_text()))
+
+    def test_a_new_job_leaves_a_switch_staged_as_usual(self):
+        """A switch staged as usual (not yet tried) is left to the restart."""
+        self.job_after(deferred=False)
+        self.assertTrue(api._pending_file(self.settings).exists())
+
+    def test_choosing_another_library_drops_a_deferred_switch(self):
+        """Codex on #313: choosing another installed library is not undone at the restart by the refused switch."""
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        other = self.lib(self.parent / 'Other' / 'LastbookData', 'other')
+        s = self.setup('manage', current=cur)
+        self.assertEqual(s.use(str(other))['state'], 'done')
+        self.assertFalse(api._pending_file(self.settings).exists())
+        self.assertEqual(api.startup(self.settings), (None, None))
+
+    def test_choosing_the_same_library_keeps_a_deferred_switch(self):
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        s = self.setup('manage', current=cur)
+        s.use(str(cur))
+        self.assertTrue(api._pending_file(self.settings).is_file())
+
+    def test_retried_switch_carries_the_latest_ai_setting(self):
+        """The AI's on/off setting copied at a refused switch is copied again at the retry: what the person set since wins."""
+        cur, new = self.staged()
+        state = cur / 'derived' / 'llm' / 'state.json'
+        state.parent.mkdir(parents=True)
+        state.write_text('{"enabled": true}')
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        state.write_text('{"enabled": false}')         # changed in the old library, still the one in use
+        lib, note = api.startup(self.settings)
+        self.assertNotIn('error', note)
+        self.assertEqual((lib / 'derived' / 'llm' / 'state.json').read_text(), '{"enabled": false}')
+
+    def test_refused_switch_is_dropped_after_three_starts(self):
+        cur, new = self.staged()
+        for attempt in (1, 2, 3):
+            with self.in_use(cur, 99):
+                lib, note = api.startup(self.settings)
+            self.assertIn('error', note)
+            self.assertEqual(api._pending_file(self.settings).exists(), attempt < 3)
+            api.opened(self.settings, lib, note)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertFalse(new.exists())          # given up: cleared as before
 
 
 class PackCompare(unittest.TestCase):

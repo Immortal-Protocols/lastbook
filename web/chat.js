@@ -431,7 +431,11 @@ const Chat = (() => {
     renderSide(); renderCtx(); renderLog(); setBusy(true); scrollEnd(true);
     const idx = c.messages.length - 1, ctl = new AbortController();
     live[c.id] = { running: true, abort: () => ctl.abort() };
-    const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
+    // the view follows the answer until the reader scrolls; then only if its end is still in view (see follow)
+    let stick = true;
+    const moved = () => setTimeout(() => { if (cur === c) stick = following(idx) }, 60), seen = ['wheel', 'touchmove', 'keydown'];
+    seen.forEach(t => addEventListener(t, moved, { passive: true }));
+    const redraw = throttle(() => { if (cur === c) { updateBot(idx); if (stick) follow(idx) } }, 80);
     try {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local && localLine(st.local)[1] });
@@ -458,11 +462,12 @@ const Chat = (() => {
       else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text) }
       else m.error = e.message || 'Something went wrong.';
     }
+    seen.forEach(t => removeEventListener(t, moved, { passive: true }));
     m.running = false; delete m.state;
     if (m.stopped && m.content) m.content += '\n\n(Stopped.)';
     live[c.id].running = false;
     c.updated = Date.now(); persist();
-    if (cur === c) { updateBot(idx); setBusy(false); scrollEnd(); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }
+    if (cur === c) { updateBot(idx); setBusy(false); if (stick) follow(idx); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }
   }
   function onEvent(m, ev) {
     if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct }
@@ -489,6 +494,13 @@ const Chat = (() => {
     b.setAttribute('aria-label', on ? 'Stop the answer' : 'Send');
     b.classList.toggle('stop', on);
   }
+  // While an answer is written, the view follows the end of the answer, not the end of the page: the sources come after
+  // the answer, and following the page's end scrolled the answer out of view once they were drawn.
+  function viewBottom() { const c = $('.composer'), t = c ? c.getBoundingClientRect().top : innerHeight; return t > 0 && t < innerHeight ? t : innerHeight }
+  function answerEnd(i) { const el = $('#m' + i); if (!el) return null; return ($('.answer', el) || $('.working', el) || el).getBoundingClientRect().bottom }
+  // the reader is following when the answer's end is in view or just below it, not when they scrolled up or down from it
+  function following(i) { const b = answerEnd(i); return b != null && b > 0 && b < viewBottom() + 260 }
+  function follow(i) { const b = answerEnd(i), v = viewBottom(); if (b != null && b > v) scrollTo(0, scrollY + b - v + 8) }
   function scrollEnd(force) {
     const near = innerHeight + scrollY > document.body.scrollHeight - 260;
     if (force || near) requestAnimationFrame(() => scrollTo(0, document.body.scrollHeight));

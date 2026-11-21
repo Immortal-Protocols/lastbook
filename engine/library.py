@@ -255,6 +255,13 @@ def atomic_write(path,text):
  tmp=path.with_name('.'+path.name+'.tmp');tmp.write_text(text,encoding='utf-8');os.replace(tmp,path)
 
 ZIMS={};ZIM_LOCK=threading.Lock()
+# Connections that may wait to be accepted. A page or the map asks for 20 or more files at once; with Python's default of 5,
+# macOS reset the rest. server.py serves with a subclass of this.
+LISTEN_QUEUE=128
+
+class HTTPServer(http.server.ThreadingHTTPServer):
+ request_queue_size=LISTEN_QUEUE
+
 class Handler(http.server.SimpleHTTPRequestHandler):
  timeout=30  # a client that sends half a request gives its thread back; do_GET allows longer for sending
  SEND_TIMEOUT=600  # a paused video stops reading for minutes at a time; the player asks again with a Range when it resumes
@@ -400,6 +407,6 @@ if __name__=='__main__':
    build()
  elif args.command=='search':print(json.dumps(search(args.query,args.limit),indent=2,ensure_ascii=False))
  else:
-  server=http.server.ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
+  server=HTTPServer(('127.0.0.1',args.port),Handler)
   if os.environ.get('SURVIVAL_DISABLE_INDEX_WATCH')!='1':threading.Thread(target=watch_index,daemon=True).start()
   print(f'Offline library: http://127.0.0.1:{server.server_port}',flush=True);server.serve_forever()

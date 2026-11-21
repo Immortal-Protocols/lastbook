@@ -74,18 +74,31 @@ fails as `checksum`, and a 200 to a Range goes on over one connection from the h
 
 ## Where things go
 
-- The library folder stays **LastbookData** (layout unchanged: `library-data/`, `derived/`). Default place: the person's
-  Documents folder on Windows, and `~/Library/Application Support/Lastbook/LastbookData` on a Mac, or a folder they choose,
-  on a disk with room. `settings.json` remembers it as before (`app/main.py`).
+- The library folder stays **LastbookData** (layout unchanged: `library-data/`, `derived/`). Default place
+  (`app/main.py` `default_choice`): `%LOCALAPPDATA%\Lastbook\LastbookData` on Windows, or
+  `<system drive>:\Lastbook\LastbookData` when the user folder's path is too long for the library's longest file names;
+  `~/Library/Application Support/Lastbook/LastbookData` on a Mac; `$XDG_DATA_HOME/Lastbook/LastbookData` on Linux
+  (`~/.local/share/Lastbook/LastbookData` when that is not set). Or a folder the person chooses, on a disk with room.
+  `settings.json` remembers it as before (`app/main.py`).
 - Work in progress: `<parent>/LastbookData.setup/`, holding `downloads/` (partial files with a `.part` suffix and a
   `.json` beside each: url, size, sha256, bytes done, ETag, and `"parallel": true` while pieces may lie past bytes done; a resume then keeps only the hashed run, so at most `AHEAD` pieces are fetched again) and `unpack/` (the new LastbookData being built).
 - The model goes to `LastbookData/models/<file>`. After its SHA-256 matches, setup calls `llm_local.mark_checked(path)`, so
   the AI does not read 17 GB a second time.
 - Space needed = download size + unpacked size + 2 GB, on the disk that holds the target. A zip is deleted once it is
   unpacked and checked. Setup refuses to start, with the numbers, when there is not enough room.
-- Manual downloads are recognized: a `Lastbook-*.zip` or the model file in Downloads, Documents or Desktop, or an existing
-  LastbookData anywhere `app/main.py` already looks, offered as *Use the file you already have*. A file is used only after its
-  size and SHA-256 match the manifest.
+- Manual downloads are recognized (`found()` in `engine/setup/api.py`) in these places only, and offered under *Found on
+  this computer* as *Use the file you already have*:
+  - a `Lastbook-*.zip`, or a file named like one in the manifest (pack, model, state map, address index), in the folder
+    that holds LastbookData (the default place above, without `LastbookData`), or in the open library or its `models/`;
+  - a file the person picks with *Choose a library zip or AI model file*;
+  - an existing LastbookData at the remembered place or the default one (`app/main.py` `places`).
+
+  Downloads, Documents and Desktop are not searched. A file is used only after its size and SHA-256 match the manifest.
+- Chat's local AI looks for the model only in the open library's `models/` and the library folder itself, and in
+  `LASTBOOK_MODEL_DIR` when that is set (`llm_local.py` `places`). *Look again* searches those again.
+- If the local AI download stops with a network error before gaining any bytes, the Stopped card also offers **Choose AI
+  model file**. Choosing the published model file resumes that same job, keeping any finished library or map steps. Its
+  size and SHA-256 are checked as usual; a file that does not match is left alone and is not used.
 
 ## Engine interface: `/api/setup/*`
 
@@ -98,9 +111,10 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/start` `{pack, ai: true or false, folder?}` | the new `job`, or `{error, need_bytes, free_bytes}` |
 | `GET /api/setup/job` | `job` |
 | `POST /api/setup/pause`, `/resume`, `/cancel`, `/retry` | `job` |
-| `POST /api/setup/use` `{path}` | uses a library or file already on this computer: `job` (verify, then unpack or activate) |
+| `POST /api/setup/use` `{path, library?}` | uses a library or file already on this computer: `job` (verify, then unpack or activate). With `library: true` (*Open another library folder* in manage mode) only an existing LastbookData, or the folder holding one, is accepted: a file or a folder of pack zips is refused (`code: not_library`) and nothing starts. The library that is open now is refused (`code: current`) |
 | `POST /api/setup/finish` | `{ok: true}`; the app then opens the library (see below) |
 | `POST /api/setup/pick` | `{path}` from the system's folder picker, or `{path: null}`: a place to install (`start {folder}`) or something to `use` (a LastbookData, a folder holding one, or a folder holding a pack zip) |
+| `POST /api/setup/start` `{copy_to}` | manage mode: copies the open library to `<copy_to>/LastbookData` for someone with no internet (#114): the files in `pack-manifest.tsv` (or a state map's `map-set.json`) and the manifest, each written as `.partial`, read back from the drive, and renamed only when what the drive gives back has the right SHA-256; then `START-HERE.txt` beside it (`START-HERE (Lastbook).txt` if the drive already has someone else's). Refused with `code: "fat"` on a FAT drive when a file is 4 GB or more; room is counted in the drive's clusters; a file whose real path leads outside the library refuses the copy. Nothing is downloaded and nothing of the person's own is copied. Item `kind: "copy"`, state `copying`; `result: {files, bytes, folder, start_here}`; cancel keeps what is copied, and copying to the same place again carries on |
 | `POST /api/setup/delete-old` `{path}` | deletes a `LastbookData.old-*` setup moved aside itself (listed in `current.old`): `{ok, deleting}` |
 | `POST /api/setup/remove-ai` | manage mode: deletes `LastbookData/models/<file>` (the library stays): `{ok, freed_bytes}` |
 | `POST /api/setup/start` `{repair: true, ai}` | manage mode: re-checks every file against the library's `pack-manifest.tsv` and the model's SHA-256 (items `verifying`); fetches again only what is wrong (the pack: downloaded and switched to like an upgrade; the model: replaced in place). All well: `done`, nothing downloaded |
@@ -118,7 +132,7 @@ vram_bytes}], disks: [{path, free_bytes, total_bytes}], ai: {fits, needs_bytes, 
 `memory_bytes` and RAM, marked `"estimate": true`. On Windows, RAM plus dedicated VRAM, from DXGI.
 
 `job` = `{id, state, items: [{id, kind: "pack" or "model", title, state, bytes_done, bytes_total, rate_bps, eta_s,
-error}], error, started, folder}`. Each item also has `source`: `"found"` when its file is already on this computer
+error}], error, started, folder}`, plus `repair: true` on a job started with `{repair: true}`. Each item also has `source`: `"found"` when its file is already on this computer
 (it is checked, not downloaded), else `"download"` (it changes to `"download"` when a found file is rejected). After a restart, an
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,

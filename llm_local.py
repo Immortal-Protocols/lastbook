@@ -12,6 +12,7 @@ cannot start a turn of its own), and turns Gemma's tool calls back into the shap
 import hashlib
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -130,7 +131,7 @@ class Local:
 
     def available(self):
         """True when a question can be answered: running, or ready to start."""
-        return self.state in ('ready', 'stopped', 'loading')
+        return self.enabled() and self.state in ('ready', 'stopped', 'loading')
 
     # -- finding and checking the file ------------------------------------------------------------------------------------
     def start_background(self):
@@ -169,6 +170,8 @@ class Local:
             wrong = wrong or (p, size)
         if not found:
             with self.lock:
+                if not self.enabled():
+                    return
                 if wrong:
                     p, size = wrong
                     done = size < SIZE
@@ -185,11 +188,15 @@ class Local:
             self.saved['checked'] = stamp
             _save(self.saved)
         with self.lock:
+            if not self.enabled():
+                return
             self.path = found
         self._measure()
 
     def _check(self, p):
         with self.lock:
+            if not self.enabled():     # turned off since discover began: leave it off
+                return False
             self.state, self.pct, self.message = 'checking', 0, ''
         h = hashlib.sha256()
         done = 0
@@ -201,18 +208,22 @@ class Local:
                     self.pct = int(done * 100 / SIZE)
         except OSError as e:
             with self.lock:
-                self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
+                if self.enabled():
+                    self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
             return False
         if h.hexdigest() != SHA256:
             with self.lock:
-                self.state, self.pct = 'wrong', None
-                self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
+                if self.enabled():
+                    self.state, self.pct = 'wrong', None
+                    self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
             return False
-        return True
+        return self.enabled()
 
     def _measure(self):
         """llama.cpp's fitting decides where each part of the model goes; this then checks the whole fits this computer."""
         with self.lock:
+            if not self.enabled():
+                return
             self.state, self.pct, self.message = 'measuring', None, ''
         try:
             out = subprocess.run(self._argv(['--measure']), stdin=subprocess.DEVNULL, capture_output=True, timeout=180, **_quiet())
@@ -221,6 +232,8 @@ class Local:
             fit, out = None, None
             print('local AI: measuring failed:', type(e).__name__, e, flush=True)
         with self.lock:
+            if not self.enabled():
+                return
             if not fit:
                 self.state, self.message = 'error', 'The local AI program could not read the model file.'
                 if out is not None:
@@ -241,6 +254,8 @@ class Local:
     def ensure_running(self, on_wait=None, cancelled=lambda: False):
         """Starts the model if it is stopped and waits until it is ready. Returns None when ready, else a sentence why not."""
         with self.lock:
+            if not self.enabled():
+                return 'The local AI is turned off.'
             if self.state == 'ready' and self.proc and self.proc.poll() is None:
                 self.last_used = time.time()
                 return None
@@ -408,6 +423,23 @@ class Local:
 LOCAL = Local()
 
 
+def _apple_silicon_linux(tree='/proc/device-tree'):
+    """True on Apple silicon running Linux, where the graphics share the computer's one memory as they do on a Mac: an ARM
+    processor, and the kernel's device tree names the maker ("apple,t8103"). No device tree means some other computer. The
+    check itself lives in engine/setup/hardware.py (setup reads the model name from the same tree), read here so the AI
+    runner's fit and setup's hardware picture answer this one question identically."""
+    if platform.machine() not in ('aarch64', 'arm64'):
+        return False
+    try:
+        from engine.setup import hardware
+        return hardware._apple_silicon_linux(tree) is not None
+    except Exception:
+        try:
+            return any(c.startswith(b'apple,') for c in (Path(tree) / 'compatible').read_bytes().split(b'\0'))
+        except OSError:
+            return False
+
+
 def judge(fit):
     """Does the whole of it fit this computer? llama.cpp's fit places the model on the graphics memory it finds and counts
     the rest as the computer's own memory, which it takes to be unlimited. So the computer's own memory is checked here:
@@ -415,7 +447,7 @@ def judge(fit):
     total = fit.get('ram_total') or 0
     dev, host = fit.get('device_bytes') or 0, fit.get('host_bytes') or 0
     devices = [m for m in fit.get('memory') or [] if m.get('kind') == 'device']
-    unified = sys.platform == 'darwin'
+    unified = sys.platform == 'darwin' or _apple_silicon_linux()
     # Windows: weights left in the mapped file (not on a graphics card, not repacked) are outside llama.cpp's count, yet in use
     # while answering. Measured with no GPU: the fit said 9.6 GB, the program held 16.5 to 26 GB.
     mapped = 0 if unified else max(0, SIZE - sum(m.get('model') or 0 for m in fit.get('memory') or []))
@@ -430,8 +462,9 @@ def judge(fit):
         out['why'] = 'The model does not fit this computer’s graphics memory together with its own memory.'
     elif total and needs > total:
         out['fits'] = False
-        out['why'] = (f'The model needs about {_gb(in_ram)} of this computer’s memory, plus room for everything else, '
-                      f'and this computer has {_gb(total)}.')
+        # Say the whole need, so it can be held against what the computer has: "needs 14.9 GB ... has 17.2 GB" read as a fit (#112).
+        out['why'] = (f'The local AI needs about {_gb(needs)} of memory: {_gb(in_ram)} for the model and {_gb(RESERVE)} for everything else. '
+                      f'This computer has {_gb(total)}.')
     else:
         out['fits'] = True
     return out

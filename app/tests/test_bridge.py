@@ -840,6 +840,13 @@ class DrugstoreLabel(unittest.TestCase):
         self.assertEqual(server.HELP['pharmacy'], 'Pharmacy')
         self.assertNotIn('Pharmacy', server.HELP['chemist'])
 
+    def test_nearby_duplicate_keeps_pharmacy_in_both_orders(self):
+        chemist = {'cls': 'chemist', 'name': 'Oak Shop', 'lat': 52.5, 'lon': 13.4}
+        pharmacy = {'cls': 'pharmacy', 'name': 'OAK SHOP', 'lat': 52.5001, 'lon': 13.4001}
+        for rows in ([chemist, pharmacy], [pharmacy, chemist]):
+            with self.subTest(first=rows[0]['cls']):
+                self.assertEqual(server.dedupe_named(rows), [pharmacy])
+
     def test_map_layer_and_caution(self):
         src = (ROOT / 'web' / 'map.js').read_text(encoding='utf-8')
         layer = "['pharmacy', 'Pharmacies & drugstores', 'Rx', '#2e7d32', 'pharmacy,chemist', 'help']"

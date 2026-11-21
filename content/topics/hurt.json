@@ -220,8 +220,8 @@
   {
    "id": "breathing",
    "label": "Not breathing, unconscious or choking",
-   "hint": "Collapsed, fainted, passed out or passing out, won't wake up, not responding or unresponsive, heart stopped (cardiac arrest), AED or defibrillator, can't breathe, gasping, food stuck in throat, drowning",
-   "urgent": ["not breathing", "stopped breathing", "isn't breathing", "isnt breathing", "unconscious"],
+   "hint": "Collapsed or fainted, not responding or unresponsive, heart stopped (cardiac arrest), AED or defibrillator, can't breathe, gasping, food stuck in throat, drowning",
+   "urgent": ["not breathing", "stopped breathing", "isn't breathing", "isnt breathing", "unconscious", "passed out", "pass out", "passing out", "won't wake up", "wont wake up"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",

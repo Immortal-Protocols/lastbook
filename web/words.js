@@ -95,7 +95,7 @@
       for (const { c, has } of m.choices) { const n = words.filter(has).length; if (n > bs) { bs = n; best = c } }
       const u = m.urgent.find(x => x.phrases.some(p => names(all, p)));
       if (u) best = u.c;
-      if (s || bs) out.push({ t, c: best, s: s + bs * 1.5, u: !!u });
+      if (s || bs || u) out.push({ t, c: best, s: s + bs * 1.5, u: !!u });   // a named phrase counts even if no single word does
     }
     out.sort((a, b) => b.s - a.s);
     const shown = out.filter(o => o.s >= out[0]?.s * 0.6);

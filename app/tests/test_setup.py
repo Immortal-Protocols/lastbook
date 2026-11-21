@@ -3153,6 +3153,80 @@ def child(cfg):
     time.sleep(600)
 
 
+class ManifestRace(Base):
+    """Running from source there is no bundled manifest: the first state() must not answer with an empty list while the fetch runs."""
+
+    EMPTY = {'version': 1, 'published': '', 'packs': [], 'models': [], 'maps': []}
+
+    def empty_setup(self, fetch):
+        mf = manifest.Manifest(bundled=dict(self.EMPTY), remote='https://127.0.0.1/manifest-v1.json', allowed=ALLOWED, context=self.ctx)
+        with mock.patch.object(download, 'fetch_small', fetch):
+            return self.setup(manifest=mf)
+
+    def test_first_state_waits_for_the_fetch(self):
+        data = json.dumps(self.manifest().current).encode()
+
+        def slow(*a, **k):
+            time.sleep(0.4)
+            return data
+        s = self.empty_setup(slow)
+        with mock.patch.object(download, 'fetch_small', slow):
+            st = s.state()
+        self.assertEqual([p['id'] for p in st['manifest']['packs']], ['small', 'all'])
+
+    def test_failed_fetch_is_tried_again_by_a_later_state(self):
+        data = json.dumps(self.manifest().current).encode()
+        calls = []
+
+        def flaky(*a, **k):
+            calls.append(1)
+            return None if len(calls) == 1 else data
+        s = self.empty_setup(flaky)
+        with mock.patch.object(download, 'fetch_small', flaky), mock.patch.object(manifest, 'RETRY_S', 0):
+            self.assertEqual(s.state()['manifest']['packs'], [])
+            self.assertEqual([p['id'] for p in s.state()['manifest']['packs']], ['small', 'all'])
+
+    def test_a_bundled_manifest_never_waits(self):
+        mf = self.manifest()
+        mf.remote = 'https://127.0.0.1/manifest-v1.json'
+
+        def slow(*a, **k):
+            time.sleep(2)
+        s = self.setup(manifest=mf)
+        with mock.patch.object(download, 'fetch_small', slow):
+            t0 = time.time()
+            s.state()
+        self.assertLess(time.time() - t0, 1.0)
+
+    def test_concurrent_calls_start_one_fetch(self):
+        calls = []
+        real = threading.Thread
+
+        def slow_thread(*a, **k):
+            time.sleep(0.2)          # the window between "no fetch yet" and the fetch being recorded
+            return real(*a, **k)
+
+        def fetch(*a, **k):
+            calls.append(1)
+            time.sleep(0.5)
+        mf = manifest.Manifest(bundled=dict(self.EMPTY), remote='https://127.0.0.1/manifest-v1.json', allowed=ALLOWED, context=self.ctx)
+        with mock.patch.object(download, 'fetch_small', fetch), mock.patch.object(manifest.threading, 'Thread', slow_thread), \
+                mock.patch.object(manifest, 'WAIT_S', 3):
+            ts = [real(target=mf.fetch_once) for _ in range(3)]
+            [t.start() for t in ts]
+            [t.join(10) for t in ts]
+        self.assertEqual(len(calls), 1)
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs node on PATH')
+class SetupScreen(unittest.TestCase):
+    """web/setup.js run in Node with a fake page (app/tests/setup_js_test.mjs)."""
+
+    def test_screen_asks_again_while_the_list_is_empty(self):
+        r = subprocess.run([shutil.which('node'), str(HERE / 'setup_js_test.mjs')], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 2 and sys.argv[1] == '--child':
         child(sys.argv[2])

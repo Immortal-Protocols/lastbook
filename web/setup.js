@@ -76,6 +76,7 @@
   let pollT = 0;
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
   let note = '', noteOk = false;
+  let emptyTries = 0;     // times state was asked again because the manifest came back with no libraries
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something; {sure}: this page saw it from the start
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
@@ -148,9 +149,12 @@
     return { dl, need };
   }
 
-  async function load() {
-    try { S = await call('state') }
-    catch (e) { main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b>Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again">Try again</button></p></div></div>`; $('#again').onclick = load; return }
+  async function load(bg) {
+    let s;
+    try { s = await call('state') }
+    catch (e) { if (bg) return; main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b>Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again">Try again</button></p></div></div>`; $('#again').onclick = () => load(); return }
+    if (bg && view === 'job') return;   // a job started while this was asked: the answer is older than it
+    S = s;
     const rf = (S.recommend || {}).folder;
     folder = folder || (cur() && cur().folder) || S.default_folder || (rf ? asData(rf) : '');
     if (!choice.pack) {
@@ -165,7 +169,9 @@
     else if (j && j.state === 'done') view = j.copy && cur() ? 'manage' : 'done';   // a finished copy: back to Library and local AI
     else if (cur() || S.mode === 'manage' || MANAGE_ASKED) view = cur() ? 'manage' : 'choose';
     $('#sBack').hidden = !cur();
-    render(true);
+    render(!bg);   // a background answer updates the screen without taking focus or scrolling
+    // From source there is no bundled manifest: the engine may still be fetching it. Ask again while the list is empty.
+    if (!packs().length && view !== 'job' && emptyTries++ < 8) setTimeout(() => { if (!packs().length && view !== 'job') load(true).then(() => { if (view === 'job') poll() }) }, 2500);
   }
 
   /* ------------------------------------------------------------ views */

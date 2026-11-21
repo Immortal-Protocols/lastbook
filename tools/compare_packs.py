@@ -7,7 +7,7 @@
 With two lists, only they are compared (path, size and SHA-256 of each file). With --data, the installed list is that
 library's own pack-manifest.tsv, and the plan also lists what an update would keep as it is: a map installed on its own,
 the local AI, address indexes and any other file neither list names (install.plan_update). Then the names and sizes of
-the library's files are read, but no file is opened. Nothing is downloaded, written or deleted, and no port is used.
+the library's files are read along with its map metadata. The pack comparison is based on the two lists.
 This is a step toward upgrades that fetch only what changed (issue #144); setup does not use it yet.
 """
 import argparse, sys
@@ -47,7 +47,7 @@ def main(args):
     except ValueError as e:
         sys.exit(f'Cannot use this list: {e}.')
     for k, what in (('added', 'new in this release'), ('changed', 'differ in size or SHA-256'),
-                    ('unchanged', 'already here, the same in the release'), ('removed', 'no longer in the release')):
+                    ('unchanged', 'same size and SHA-256 in both lists'), ('removed', 'no longer in the release')):
         print(f'{k:<10} {files(len(d[k])):>12}  {size(d["bytes"][k]):>12}  {what}')
     if d['unsafe']:
         print(f'{"unsafe":<10} {files(len(d["unsafe"])):>12}  {"":>12}  paths outside the library, never used')
@@ -58,7 +58,7 @@ def main(args):
                         ('addresses', 'address search'), ('other', 'other files in the library')):
             if kept[k]:
                 print(f'{k:<10} {files(len(kept[k])):>12}  {size(d["kept_bytes"][k]):>12}  {what}')
-    print(f'\nTo fetch: {size(d["fetch_bytes"])} (added and changed). Already here: {size(d["reuse_bytes"])}.')
+    print(f'\nTo fetch: {size(d["fetch_bytes"])} (manifest estimate). Same in both lists: {size(d["reuse_bytes"])}.')
     if a.list:
         for k in ('added', 'changed', 'removed', 'unsafe', 'unchanged'):
             if d[k]:

@@ -594,16 +594,18 @@
       return `<div class="s-have"><div class="s-row">${ico('devices', 's-ri')}<span><b>Share this library with my devices</b><small>Checking…</small></span></div></div>`;
     }
     if (!SHARE) return '';
-    const on = !!SHARE.on, err = SHARE.error || '';
+    const on = !!SHARE.on, err = SHARE.error || '', ai = !!SHARE.ai;
     const sub = on
       ? (SHARE.link ? 'Other devices on this network can read the library with this access link. Keep it private. They cannot change settings or start downloads.'
         : (err || 'Lastbook is sharing, but it could not find this computer\'s address on the network.'))
-      : 'Other computers, phones and tablets on this Wi-Fi can read the library. Nothing is downloaded to them. Off unless you turn it on.';
+      : 'Other computers, phones and tablets on this Wi-Fi can read the library (documents, search, maps, videos). Off unless you turn it on.';
     const link = on && SHARE.link ? '<code class="s-share-link" id="shareLink"></code>' : '';
     const copy = on && SHARE.link ? '<button class="btn plain" id="shareCopy">Copy link</button>' : '';
     const btn = on ? '<button class="btn plain" id="shareStop">Stop sharing</button>' : '<button class="btn" id="shareStart">Start sharing</button>';
     const note = err && !(on && SHARE.link) ? `<p class="s-note" id="shareErr">${esc(err)}</p>` : '';
-    return `<div class="s-have"><div class="s-row">${ico('devices', 's-ri')}<span><b>Share this library with my devices</b><small>${esc(sub)}</small>${link}</span>${copy}${btn}</div>${note}</div>`;
+    const aiRow = `<div class="s-row"><span><b>Include Chat with this computer\'s local AI</b><small>Off unless you turn it on. Library browsing does not need this. Other devices still cannot turn the AI on or off, or change settings.</small></span>
+      <label class="s-check"><input type="checkbox" id="shareAi"${ai ? ' checked' : ''}${on ? '' : ' disabled'}> Include Chat</label></div>`;
+    return `<div class="s-have"><div class="s-row">${ico('devices', 's-ri')}<span><b>Share this library with my devices</b><small>${esc(sub)}</small>${link}</span>${copy}${btn}</div>${aiRow}${note}</div>`;
   }
   function bindShare() {
     if ($('#shareLink')) $('#shareLink').textContent = SHARE.link;
@@ -612,9 +614,13 @@
     if ($('#shareCopy')) $('#shareCopy').onclick = async () => {
       try { await navigator.clipboard.writeText(SHARE.link); $('#shareCopy').textContent = 'Copied' } catch { $('#shareLink') && $('#shareLink').focus() }
     };
+    if ($('#shareAi')) $('#shareAi').onchange = () => shareAct(undefined, $('#shareAi').checked);
   }
-  async function shareAct(on) {
-    const r = await shareCall({ on }).catch(() => null);
+  async function shareAct(on, ai) {
+    const body = {};
+    if (on !== undefined) body.on = on;
+    if (ai !== undefined) body.ai = ai;
+    const r = await shareCall(body).catch(() => null);
     SHARE = r;
     if (!r) { note = 'Lastbook could not change sharing. Try again.'; noteOk = false }
     manageView();

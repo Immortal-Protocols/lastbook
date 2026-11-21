@@ -440,7 +440,8 @@ def main():
     update.configure(app_folders()[0])    # opt-in update notices (off unless turned on); the window asks for the daily check
     from engine import share
     share.configure(app_folders()[0])
-    share.restore()   # only if the person left sharing on; a failure is shown in Library and local AI
+    share.install_shutdown_hooks()
+    share.restore()   # only if the person left sharing on; a failure is shown in Library and local AI, and in the sharing bar
     import bridge as B
     try:
         if sys.platform == 'darwin':

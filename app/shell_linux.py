@@ -701,6 +701,11 @@ def quit_app():
     t = threading.Thread(target=stop_ai, daemon=True, name='stop-ai')
     t.start()
     t.join(5)
+    try:
+        from engine import share
+        share.stop(forget=False, wait=True)
+    except Exception:
+        traceback.print_exc()
     sys.stdout.flush()
     os._exit(0)     # the engine's threads end here, as on the other systems
 

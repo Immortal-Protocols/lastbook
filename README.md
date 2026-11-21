@@ -56,17 +56,19 @@ other Linux distributions have not been validated for this release.
 - **One-download setup.** On first run, setup defaults to Small and selects local AI when the computer can run it.
   The person can choose Small, Medium or All, selects a state map, and starts the checked downloads. A library already on the
   computer (a folder or a pack zip) can be used instead of downloading.
-- **Check for updates, only when asked.** About has a Check for updates button (and the Mac menu has Lastbook > Check for
-  Updates…). It only says whether a newer version is on the website; nothing is downloaded or installed.
+- **App updates.** Choose **Notify me about app updates** in Settings or during first-time setup. Lastbook checks at most once
+  every 24 hours while it is open and online. If a compatible version is available, the sidebar shows **Update available**.
+  Its **Get update** button opens the official download page. Run the new installer to update the app and keep your existing
+  library. You can also check manually in About or the Mac menu under Lastbook > Check for Updates….
 
 ## Privacy and network use
 
 - **No listening port.** The desktop app opens no network port. The window and the engine talk through an in-memory bridge
   (`app/bridge.py`): WKURLSchemeHandler on macOS (`app/shell_macos.py`), WebView2 `WebResourceRequested` on Windows
   (`app/shell_windows.py`), and WebKitGTK `URISchemeRequest` on Linux (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and output and opens no socket either.
-- **Two uses of the network, both started by the person.** (1) Setup's downloader (`engine/setup/`), when the person
-  starts or resumes a download. (2) The update check (`engine/update.py`, `web/update.js`), when the person presses
-  the button. Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,
+- **Two uses of the network.** (1) Setup's downloader (`engine/setup/`), when the person starts or resumes a download.
+  (2) The app update check (`engine/update.py`, `web/update.js`), when the person checks manually or opts into daily checks.
+  Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,
   to allow-listed hosts only (`downloads.lastbook.org` for packs, maps, the manifest and update information; Hugging Face's
   download hosts for the AI model; the update check accepts `downloads.lastbook.org` alone), no proxy from the system, and a
   redirect is followed only to another allowed host.

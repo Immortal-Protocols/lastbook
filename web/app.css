@@ -84,6 +84,12 @@ svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-lin
 .side a.row-s svg{width:20px;height:20px;flex:none;stroke-width:1.75;color:var(--side-ico)}
 .side a.row-s:hover{background:var(--row-hover)}
 .side a.row-s[hidden]{display:none}
+.side a.side-upd{background:var(--accent-soft)}
+.side a.side-upd svg{color:var(--accent)}
+.upd-line{display:block}
+.upd-line[hidden],.upd-line:empty{display:none}
+.upd-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.upd-actions [hidden]{display:none}
 .side a.row-s[aria-current]{background:var(--sel-bg);color:var(--sel-ink)}
 .plat-mac .side a.row-s[aria-current] svg{color:currentColor}
 .plat-mac.inactive .side a.row-s[aria-current]{background:var(--sel-off);color:var(--ink)}

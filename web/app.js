@@ -7,6 +7,7 @@ const fileUrl = p => '/' + String(p || '').split('/').map(encodeURIComponent).jo
 const main = $('#main');
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
+if (IN_WINDOW && window.LBUpdate) LBUpdate.watch($('#sideUpdate'));   // the opt-in "Update available" row (web/update.js); hidden unless notices are on and found one
 
 /* ---------------------------------------------------------------- icons -- */
 const I = {
@@ -267,7 +268,8 @@ async function route() {
   const y = typeof at === 'number' ? scrolls[h] : null;   // read now: while the page is rebuilt it scrolls (shorter, then taller), and those scrolls are recorded too
   const v = parts[0] || 'videos';
   document.body.className = v ? 'v-' + v : 'home';
-  const nav = v === 'read' && (q.get('from') || '').startsWith('#/about') ? 'about' : NAV_OF[v] || '';   // Sources, opened from About, stays under About
+  const showUpdate = v === 'about' && q.has('updates') && !$('#sideUpdate').hidden;
+  const nav = showUpdate ? 'update' : v === 'read' && (q.get('from') || '').startsWith('#/about') ? 'about' : NAV_OF[v] || '';
   $$('[data-nav]').forEach(a => nav && (a.dataset.nav === nav || (a.dataset.also || '').split(' ').includes(nav)) ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   const rows = $$('.side a.row-s'); rows.forEach(a => a.tabIndex = a.hasAttribute('aria-current') || (!nav && a === rows[0]) ? 0 : -1);   // the sidebar is one Tab stop; arrows move inside it
   savedCount(); railTitles();
@@ -294,7 +296,7 @@ async function route() {
     else if (v === 'not-found') await notFoundPage();
     else if (v === 'shelf') await shelfPage(parts[1], q.get('kind') || 'all', q.get('q') || '');
     else if (v === 'collection') await collectionPage(q.get('name') || '', q.get('from'));
-    else if (v === 'about') await about();
+    else if (v === 'about') await about(q.has('updates'));
     else notFound();
   } catch (e) { setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
   wireRails(); dock(); barState();
@@ -1183,7 +1185,7 @@ async function localAI(action) {
   try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch { }
   setTimeout(() => { if (location.hash.startsWith('#/about')) route() }, 400);
 }
-async function about() {
+async function about(showUpdate) {
   setTitle('About this library');
   let dl = {}, st = {};
   LIB = null;   // About shows the counts as they are now
@@ -1192,14 +1194,16 @@ async function about() {
   try { dl = await api('/api/download-status') } catch { }
   try { st = await fetch('/api/assistant/status').then(r => r.json()) } catch { }   // not api(): this answer names an error when no model is running, and still holds what is wanted
   const ch = dl.channels && dl.channels.counts, ix = st.index || {};
+  const updateCard = IN_WINDOW && window.LBUpdate ? LBUpdate.card() : '';
   main.innerHTML = `<h1>About this library</h1>
   <p class="lead">Public manuals, health guides, courses, videos and encyclopedias kept on this computer, so it works when the internet and phones don’t.</p>
   <div class="cards2" style="margin-top:16px">
+   ${showUpdate ? updateCard : ''}
    <div class="card"><b>What’s in it</b><small>${(s.pdfs || 0).toLocaleString()} PDF manuals (${(s.pdf_pages || 0).toLocaleString()} pages), ${(s.web_pages || 0).toLocaleString()} saved web pages, ${(s.videos || 0).toLocaleString()} downloaded videos and ${s.collections || 0} complete encyclopedias.</small></div>
    ${ch ? `<div class="card"><b>Still arriving</b><small>${ch.pending.toLocaleString()} more videos are queued and ${ch.downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.</small></div>` : ''}
    <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
    <div class="card"><b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small></div>
-   ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
+   ${showUpdate ? '' : updateCard}
   </div>
   <h2>How sources are labelled</h2><ul>
    <li><b>International health &amp; humanitarian guidance</b> — WHO, Red Cross / Red Crescent, MSF, UNICEF, Sphere, St John Ambulance.</li>
@@ -1216,7 +1220,7 @@ async function about() {
   ${s.sources ? `<h2>Sources and credits</h2><p><a href="#/read/${encodeURIComponent(s.sources)}?${fromQ()}">Sources and permissions</a>: every publisher in this library, where it came from, and how to ask for something to be removed.</p>` : ''}
   ${IN_WINDOW ? '' : '<h2>Using it on a phone</h2><p>Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with <code>server.py --lan</code>. Phones need the access link shown in the terminal the first time.</p>'}
   ${oldServer ? '<h2>Other ways in</h2><p><a href="/reports/gap-closure-status.html" target="_blank">Gap closure report</a> · <a href="/reports/learning-pathways.html" target="_blank">Learning pathways report</a> · <a href="/reports/survival-tools-cart.html" target="_blank">Supplies planning</a></p>' : ''}`;
-  if (IN_WINDOW && window.LBUpdate) LBUpdate.mount(main);   // Check for updates (web/update.js): only when the person asks
+  if (updateCard) LBUpdate.mount(main);
 }
 
 route();

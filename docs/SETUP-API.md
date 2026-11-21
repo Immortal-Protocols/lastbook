@@ -12,8 +12,8 @@ Several sessions build this at once. This file is the interface between them. Ch
 - **The one way out.** Setup's downloader is the only code in Lastbook that may reach the internet, and only when the person
   starts or resumes a download. It fetches over HTTPS only from hosts in `ALLOWED_HOSTS` (below), with no proxy taken from
   the system, and follows a redirect only to another allowed host. Everything else stays as it is: the windows block all web
-  loads, the assistant talks to loopback or pipes only, and nothing is sent anywhere (no telemetry, no update check at
-  startup). The owner authorized this route on 2026-11-12 for the first-run install. It replaces "downloads happen outside
+  loads, the assistant talks to loopback or pipes only, and nothing is sent anywhere (no telemetry; no update check at
+  startup unless the person turned on "Notify me about app updates", see `updates` below). The owner authorized this route on 2026-11-12 for the first-run install. It replaces "downloads happen outside
   the app" for library packs and the model, and nothing more.
 - **No blanket memory floor.** The local AI is offered when the measured fit says it fits (`llm_local.judge`, about 18 GB
   of memory for model and context, plus a 2.5 GiB reserve). It is not offered below that, and the screen says why in plain words.
@@ -117,6 +117,8 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/start` `{copy_to}` | manage mode: copies the open library to `<copy_to>/LastbookData` for someone with no internet (#114): the files in `pack-manifest.tsv` (or a state map's `map-set.json`) and the manifest, each written as `.partial`, read back from the drive, and renamed only when what the drive gives back has the right SHA-256; then `START-HERE.txt` beside it (`START-HERE (Lastbook).txt` if the drive already has someone else's). Refused with `code: "fat"` on a FAT drive when a file is 4 GB or more; room is counted in the drive's clusters; a file whose real path leads outside the library refuses the copy. Nothing is downloaded and nothing of the person's own is copied. Item `kind: "copy"`, state `copying`; `result: {files, bytes, folder, start_here}`; cancel keeps what is copied, and copying to the same place again carries on |
 | `POST /api/setup/delete-old` `{path}` | deletes a `LastbookData.old-*` setup moved aside itself (listed in `current.old`): `{ok, deleting}` |
 | `POST /api/setup/remove-ai` | manage mode: deletes `LastbookData/models/<file>` (the library stays): `{ok, freed_bytes}` |
+| `GET /api/setup/updates` | "Notify me about app updates" (engine/update.py `Notices`): `{supported, notify, available, checking}`. `supported: false` outside the desktop app |
+| `POST /api/setup/updates` `{notify: true\|false}` | sets it, from the person's own checkbox only (Setup's choose screen, Settings). Off clears any saved notice at once. Starts no check. Error `code`: `save`, `unsupported`, `bad_request` |
 | `POST /api/setup/start` `{repair: true, ai}` | manage mode: re-checks every file against the library's `pack-manifest.tsv` and the model's SHA-256 (items `verifying`); fetches again only what is wrong (the pack: downloaded and switched to like an upgrade; the model: replaced in place). All well: `done`, nothing downloaded |
 
 Added by setup-backend on 2026-11-12: `pick` (answers `{path, free_bytes, disk}` or `{path: null, cancelled: true}`), `delete-old`, `remove-ai` and repair above; `hardware.disks[].name` (Macintosh HD, "Data (D:)"); `current.old` (old libraries kept after an upgrade);

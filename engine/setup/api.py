@@ -1531,7 +1531,7 @@ def startup(settings_dir, only=None):
 
 
 def opened(settings_dir, data, note):
-    """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder."""
+    """The library opened. Record the old one, mark the model checked, and clear work after recovery is complete."""
     settings_dir = Path(settings_dir)
     try:
         s = json.loads((settings_dir / 'setup.json').read_text(encoding='utf-8'))
@@ -1546,7 +1546,7 @@ def opened(settings_dir, data, note):
             print('setup: mark_checked:', type(e).__name__, e, flush=True)
     if note and note.get('old') and note['old'] not in s.get('old', []):
         s.setdefault('old', []).append(note['old'])
-    if work:
+    if work and not (note and note.get('keep_work')):
         install.confirm(_pending_file(settings_dir))
         try:
             job = json.loads(_job_file(settings_dir).read_text(encoding='utf-8'))

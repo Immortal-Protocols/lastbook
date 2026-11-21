@@ -367,28 +367,26 @@ def stage_switch(pend, new_lib, target, model_file=None, kind=None, model_sha256
     return d
 
 
-def carry_over(old, new, moved=None):
+def carry_over(old, new, moved=None, *, conflicts=None):
     """What belongs to the person, not the pack, goes with them: the model file, address indexes, and the AI's on/off setting.
-    Each move is added to `moved` as it happens, so a caller still knows what moved when a later move raises."""
+    Record moves as they happen and, when requested, files left behind because the destination was occupied."""
     old, new = Path(old), Path(new)
     moved = [] if moved is None else moved
-    src = old / 'models'
-    if src.is_dir():
-        (new / 'models').mkdir(parents=True, exist_ok=True)
-        for f in src.iterdir():
-            dest = new / 'models' / f.name
-            if f.is_file() and not dest.exists():
-                os.replace(f, dest)
-                moved.append(dest)
-    addresses = old / 'derived' / 'geo' / 'addresses'
-    if addresses.is_dir():
-        dest_dir = new / 'derived' / 'geo' / 'addresses'
+    for relative, pattern in (('models', None), ('derived/geo/addresses', r'[A-Z]{2}\.(sqlite|json)')):
+        src_dir, dest_dir = old / relative, new / relative
+        if not src_dir.is_dir():
+            continue
         dest_dir.mkdir(parents=True, exist_ok=True)
-        for source in addresses.iterdir():
+        for source in src_dir.iterdir():
+            if not source.is_file() or (pattern and not re.fullmatch(pattern, source.name)):
+                continue
             dest = dest_dir / source.name
-            if source.is_file() and re.fullmatch(r'[A-Z]{2}\.(sqlite|json)', source.name) and not dest.exists():
-                os.replace(source, dest)
-                moved.append(dest)
+            if dest.exists():
+                if conflicts is not None:
+                    conflicts.append(source)
+                continue
+            os.replace(source, dest)
+            moved.append(dest)
     state = old / 'derived' / 'llm' / 'state.json'
     if state.is_file() and not (new / 'derived' / 'llm' / 'state.json').exists():
         (new / 'derived' / 'llm').mkdir(parents=True, exist_ok=True)
@@ -608,6 +606,9 @@ def _pending_ok(d, work):
     if old is not None and not (isinstance(old, str) and _real(Path(old).parent) == _real(target.parent)
                                 and Path(old).name.startswith(target.name + '.old-')):
         return False
+    if 'rollback' in d and not (old and d.get('switched') and d.get('kind') is None
+                                and d['rollback'] in ('failed', 'staged')):
+        return False
     sha = d.get('model_sha256')
     if sha is not None and not (isinstance(sha, str) and re.fullmatch(r'[0-9a-f]{64}', sha)):
         return False
@@ -615,6 +616,41 @@ def _pending_ok(d, work):
     if mf is not None and not (isinstance(mf, str) and _real(Path(mf).parent) == _real(target / 'models')):
         return False
     return True
+
+
+def _restore_library(pend, d, target, note):
+    old, staged = Path(d['old']), Path(d['new'])
+    broken = target.with_name(target.name + '.failed')
+    note.update(old=None, model_file=None, model_sha256=None)
+    try:
+        # A restart after restoring the old folder still has to recover files before dropping the stage.
+        if 'rollback' not in d:
+            d['rollback'] = 'failed' if target.exists() else 'staged'
+            _write_json(pend, d)
+        if old.exists():
+            if target.exists():
+                os.replace(target, broken)
+            os.replace(old, target)
+    except OSError as e:
+        note['keep_work'] = True
+        note['error'] = f'Lastbook could not put the old library back ({type(e).__name__}). It is in {old}.'
+        print('setup:', note['error'], flush=True)
+        return
+
+    note['error'] = 'The new library did not open, so Lastbook put the old one back.'
+    conflicts = []
+    sources = (broken, staged) if d['rollback'] == 'failed' else (staged,)
+    for source in sources:
+        try:
+            carry_over(source, target, conflicts=conflicts if source == staged else None)
+        except OSError as e:
+            note['keep_work'] = True
+            note['error'] += f' Some files could not be moved back from {source} ({type(e).__name__}).'
+    if conflicts:
+        note['keep_work'] = True
+        note['error'] += f' Files with the same name are still in {staged}.'
+    if note.get('keep_work'):
+        print('setup:', note['error'], flush=True)
 
 
 def apply_pending(pend, work):
@@ -651,16 +687,8 @@ def apply_pending(pend, work):
         _write_json(pend, d)
         lib_ok = is_library(target)
     note['old'] = d.get('old')
-    if not lib_ok and d.get('old') and Path(d['old']).exists():
-        broken = target.with_name(target.name + '.failed')
-        moved_aside = target.exists()   # the new library can be gone already: a rename lost to a power cut, or the folder removed
-        if moved_aside:
-            os.replace(target, broken)
-        os.replace(d['old'], target)
-        if moved_aside:
-            carry_over(broken, target)      # the model file, moved into the new one, goes back too
-        note['error'] = 'The new library did not open, so Lastbook put the old one back.'
-        note['old'] = None
+    if d.get('rollback') or (not lib_ok and d.get('old') and Path(d['old']).exists()):
+        _restore_library(pend, d, target, note)
     return target if is_library(target) else None, note
 
 

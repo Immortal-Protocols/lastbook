@@ -149,6 +149,9 @@ as one map.
 
 [REGIONS-MX.md](REGIONS-MX.md) does the same for Mexico's 32 states (entidades federativas).
 
+[MAP-PY-11.md](MAP-PY-11.md) describes a first build from the Paraguay proposal: a detailed map of Central, with
+Asunción.
+
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.

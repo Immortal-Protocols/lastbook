@@ -103,6 +103,7 @@ def _member_parts(info, top_optional=False):
 MAP_FIXED = {'map-set.json', 'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'library-data/geography/resources/atlas.sqlite'}
 MAP_DIRS = {'', 'derived', 'derived/geo', 'library-data', 'library-data/geography', 'library-data/geography/resources'}
 MAP_SQLITE = re.compile(r'derived/geo/[A-Za-z0-9._-]+\.sqlite')
+REGISTRY = Path('derived') / 'geo' / 'maps.json'     # the library's map registry: {active, maps: {name: {label}}}
 SQLITE_SIDES = ('-wal', '-shm', '-journal')     # SQLite's own files beside a database: they move with it, or the new one could be damaged
 
 
@@ -401,8 +402,8 @@ def map_set(lib):
         return None
 
 
-def map_name(lib):
-    """'base', 'us' or a state code: from map-set.json, else the pack's own pack.json, else 'base'."""
+def _legacy_map_name(lib):
+    """'base', 'us' or a state code: from the root map-set.json, else the pack's own pack.json, else 'base'."""
     d = map_set(lib)
     if d and d.get('name'):
         return str(d['name'])
@@ -410,6 +411,124 @@ def map_name(lib):
         return str(json.loads((Path(lib) / 'pack.json').read_text(encoding='utf-8')).get('map') or 'base')
     except (OSError, ValueError, AttributeError):
         return 'base'
+
+
+def _registry(lib):
+    """The map registry (derived/geo/maps.json): {active, maps: {name: {label}}}, or None for a library that predates it."""
+    try:
+        d = json.loads((Path(lib) / REGISTRY).read_text(encoding='utf-8'))
+        return d if isinstance(d, dict) and isinstance(d.get('maps'), dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def _save_registry(lib, reg):
+    p = Path(lib) / REGISTRY
+    p.parent.mkdir(parents=True, exist_ok=True)
+    _write_json(p, reg)
+
+
+def active_map(lib):
+    """The map the library shows: the registry's active map, else the legacy flat map's name."""
+    reg = _registry(lib)
+    if reg and reg.get('active'):
+        return str(reg['active'])
+    return _legacy_map_name(lib)
+
+
+def map_name(lib):
+    """The active map's name, registry-aware. Kept as the old name for callers that already use it."""
+    return active_map(lib)
+
+
+def map_unit(lib, name=None):
+    """A map's folder: the library root for a legacy flat library, or derived/geo/maps/<name> once namespaced."""
+    lib = Path(lib)
+    if _registry(lib) is None:
+        return lib
+    return lib / 'derived' / 'geo' / 'maps' / (name or active_map(lib))
+
+
+def map_dirs(lib):
+    """The names of the maps in the library."""
+    reg = _registry(lib)
+    if reg:
+        return set(reg['maps'])
+    n = _legacy_map_name(lib)
+    return {n} if n != 'base' else set()
+
+
+def map_set_for(lib, name):
+    """A specific map's map-set.json, read from its own folder."""
+    return map_set(map_unit(lib, name))
+
+
+def set_active(lib, name):
+    """Make `name` the map the library shows. Refused if it is not installed."""
+    lib = Path(lib)
+    name = str(name)
+    if name not in map_dirs(lib):
+        raise Refused('map', f'The map {name!r} is not in this library.')
+    reg = _registry(lib)
+    if reg is None:
+        reg = {'active': name, 'maps': {m: {} for m in map_dirs(lib)}}
+    reg['active'] = name
+    reg['maps'].setdefault(name, {})
+    _save_registry(lib, reg)
+
+
+def _move_map_files(src, dest, skip_atlas=True):
+    """Move a map unit's files from one map-unit root to another. The shared atlas stays where it is."""
+    for rel in map_files(src):
+        if skip_atlas and rel.startswith('library-data/'):
+            continue
+        s = Path(src) / rel
+        if not s.is_file():
+            continue
+        d = Path(dest) / rel
+        d.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(s, d)
+
+
+def add_map(lib, name, src, label=None):
+    """Install one map's files (from an unpacked map unit `src`) into the library. It adds; it never removes a different map.
+    A new map becomes the active one; re-adding the same name upgrades it in place."""
+    lib = Path(lib)
+    name = str(name)
+    if not re.fullmatch(r'[A-Za-z0-9._-]+', name):
+        raise Refused('unpack', f'The map name {name!r} is not a safe folder name.')
+    src = Path(src)
+    check_map(src)
+    s = map_set(src)
+    if s and s.get('name') and s['name'] != name:
+        raise Refused('unpack', f'The map says it is {s["name"]!r}, not {name!r}.')
+    if _registry(lib) is None:
+        migrate_flat(lib)
+    dest = lib / 'derived' / 'geo' / 'maps' / name
+    dest.mkdir(parents=True, exist_ok=True)
+    _move_map_files(src, dest)
+    reg = _registry(lib) or {'active': None, 'maps': {}}
+    is_new = name not in reg['maps']
+    reg['maps'][name] = {'label': label or name}
+    if is_new:
+        reg['active'] = name
+    _save_registry(lib, reg)
+    return name
+
+
+def migrate_flat(lib):
+    """Move a legacy flat map (the library's own derived/geo files + root map-set.json) into derived/geo/maps/<name>/
+    and write the registry. Idempotent: a namespaced library, or one with no map, is left alone."""
+    lib = Path(lib)
+    if _registry(lib) is not None:
+        return
+    name = _legacy_map_name(lib)
+    if name == 'base':
+        return
+    dest = lib / 'derived' / 'geo' / 'maps' / name
+    dest.mkdir(parents=True, exist_ok=True)
+    _move_map_files(lib, dest)
+    _save_registry(lib, {'active': name, 'maps': {name: {'label': name}}})
 
 
 def check_map(lib):

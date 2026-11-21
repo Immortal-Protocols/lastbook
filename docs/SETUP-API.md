@@ -154,7 +154,8 @@ The owner wants setup to offer one US state's detailed map with any library: loc
 crops and the resource layers (water points, help points, atlas), built by `packaging/build_packs.py map <ST>`
 (rules in `derived/packs/pack-spec.json` → `map_sets.state`). A state map set is self-contained: it is the base map
 plus every row inside the state's box, so it **replaces** the library's map set and never merges with it.
-One state per library for now; choosing another state replaces the first.
+Setup installs one state map. The library can hold several maps — [MAPS.md](MAPS.md), “Several maps in one library”;
+you add more, and switch between them, from the running app's Map screen.
 
 Who owns what: **map-packages** builds, zips, uploads and lists the state maps; **setup-backend** downloads and
 installs them; **setup-ui** shows the choice. The app's Map, Ask and Videos screens are unchanged, and read the new

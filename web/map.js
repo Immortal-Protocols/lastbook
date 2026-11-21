@@ -119,6 +119,7 @@ const MapView = (() => {
       <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
+      <section class="panel"><h2>Map</h2><p class="small muted" style="margin:0 0 8px">Which map to show. Only one is active at a time; the map redraws from the one you pick.</p><div class="list small" id="maplist" style="padding:0"><li class="muted">Loading…</li></div><div class="small muted" style="margin:10px 0 4px">Add a map you built yourself (a .zip; docs/MAPS.md):</div><div style="display:flex;gap:6px"><input id="mapfile" type="text" placeholder="path to a map .zip" style="flex:1;min-width:0"><button class="btn plain" id="mapadd">Add</button></div><div id="mapaddmsg" class="small muted" style="margin-top:4px"></div></section>
       <section class="panel"><h2>Nearest to the map center</h2><p class="small muted" style="margin:0 0 4px">For the layers you have on. Straight-line distance, not by road.</p><div class="nearres" id="near" aria-live="polite"></div></section>
       <section class="panel"><h2>Your area</h2><p class="small muted" style="margin:0 0 8px">The home button returns here. Saved on this device only.</p><button class="btn plain" id="sethome">Make the map center my area</button>${navigator.geolocation && isSecureContext ? ' <button class="btn plain" id="gps">Use my location</button>' : ''}</section>
       <section class="panel"><h2>What this map covers</h2><ul class="list small" id="mdata"><li class="muted">Loading…</li></ul></section>
@@ -187,6 +188,16 @@ const MapView = (() => {
         if (info.aerial_rev !== st.aerialRev) { st.aerialRev = info.aerial_rev; st.aerialDetail = info.aerial_detail; for (const v of st.aerial?.values() || []) v.close?.(); st.aerial = new Map(); draw() }  // new sharp photos: new URLs
         if (info.version !== st.ver) { st.ver = info.version; st.gen++; st.pinBox = null; draw(); loadPins() } } catch { }
     }, 60000);
+    mapPicker();
+    $('mapadd')?.addEventListener('click', async () => {
+      const file = $('mapfile')?.value.trim(), msg = $('mapaddmsg');
+      if (!file) { if (msg) msg.textContent = 'Enter the path to a map .zip first.'; return }
+      if (msg) msg.textContent = 'Adding…';
+      try { const d = await fetch('/api/maps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file }) }).then(r => r.json());
+        if (d.error) throw new Error(d.error);
+        if (msg) msg.textContent = 'Added.'; if ($('mapfile')) $('mapfile').value = ''; mapPicker(); }
+      catch (e) { if (msg) msg.textContent = e.message; }
+    });
     if (!openWhole) { draw(); settle() }
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
@@ -225,6 +236,22 @@ const MapView = (() => {
       : outside ? 'Outside the area this map details, only main roads, towns and water show.'
       : st.have && !st.have.size && st.z >= 9 ? 'This download has the base map only: main roads, towns and water.' : '';
     statusLine();
+  }
+  // The maps in the library: one is active and the person switches between them (/api/maps). Switching changes the
+  // server's data version, so the map redraws from the new map's tiles and bounds (describe sets st.bounds).
+  async function mapPicker() {
+    const box = $('maplist'); if (!box) return;
+    let d; try { d = await fetch('/api/maps').then(r => r.json()) } catch { box.innerHTML = '<li class="muted">Map list unavailable.</li>'; return }
+    const maps = d.maps || [];
+    if (!maps.length) { box.innerHTML = '<li class="muted">No map installed yet.</li>'; return }
+    box.innerHTML = maps.map(m => `<li class="row" style="display:block"><label style="display:flex;gap:8px;align-items:center"><input type="radio" name="mapact" value="${escH(m.name)}"${m.name === d.active ? ' checked' : ''}><span>${escH(m.label || m.name)}${m.name === d.active ? ' <span class="muted">· showing</span>' : ''}</span></label></li>`).join('');
+    box.querySelectorAll('input[name=mapact]').forEach(r => r.onchange = async () => {
+      try { await fetch('/api/maps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: r.value }) }) } catch { }
+      mapPicker();
+      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return;
+        st.national = info.national; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
+        describe(info); st.ver = info.version; st.gen++; st.pinBox = null; coverage(); draw(); loadPins(); } catch { }
+    });
   }
   function statusLine(msg) {
     const el = $('mstatus'); if (!el || !st) return;

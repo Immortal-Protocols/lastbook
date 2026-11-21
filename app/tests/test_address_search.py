@@ -1,5 +1,6 @@
 """Offline address lookup must preserve house numbers and geographic qualifiers."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -128,7 +129,92 @@ class AddressSearchTests(unittest.TestCase):
         import server
         with patch.object(server, 'HERE', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
             self.assertEqual(server.places('18003 nine mile'), [])
-            lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None)
+            lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8,
+                                         near=None, model=server.assistant.LOCAL, parcel_offset=0, parcel_limit=20)
+
+
+class RegionalFallbackTests(unittest.TestCase):
+    """Rural-looking words must not hide an ordinary installed address."""
+    write_state = AddressSearchTests.write_state
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.geo = self.root / 'derived' / 'geo'
+        (self.geo / 'addresses').mkdir(parents=True)
+        self.write_state('TX', [
+            ('200', 'County Road 5 Exit', 'Exampleville', 'TX', '75000', 1, 2),
+            ('300', 'Old Highway 2 Salida Rd', 'Exampleville', 'TX', '75000', 3, 4),
+            ('19', 'KM4HM4 Boulevard', 'Las Penas', 'TX', '75000', 5, 6),
+        ])
+
+    def assert_route_finds_texas(self):
+        import server
+        with patch.object(server, 'HERE', self.root), patch.object(server.assistant, 'LOCAL', None):
+            for query, name, city in (
+                    ('200 County Road 5 Exit', '200 County Road 5 Exit', 'Exampleville'),
+                    ('300 Old Highway 2 Salida Rd', '300 Old Highway 2 Salida Rd', 'Exampleville'),
+                    ('19 KM4HM4 BLVD, Las Penas', '19 KM4HM4 Boulevard', 'Las Penas')):
+                with self.subTest(query=query):
+                    rows = server.places(query)
+                    self.assertEqual([r['name'] for r in rows], [name])
+                    self.assertEqual(rows[0]['detail'], f'{city}, TX, 75000')
+                    self.assertEqual(rows[0]['kind'], 'Street address')
+
+    def test_rural_looking_place_names_fall_through_to_installed_gazetteer(self):
+        import server
+        gazetteer = self.geo / 'places.sqlite'
+        names = ('Highway 1 Exit', 'Route 9 Parking Lot')
+        with closing(sqlite3.connect(gazetteer)) as db, db:
+            db.executescript('CREATE TABLE place(id INTEGER PRIMARY KEY,name,kind,detail,lat,lon,rank,source);'
+                             'CREATE VIRTUAL TABLE place_fts USING fts5(name,detail);')
+            for i, name in enumerate(names, 1):
+                db.execute('INSERT INTO place VALUES(?,?,?,?,?,?,?,?)', (i,name,'Place','Texas',i,2,1,'invented fixture'))
+                db.execute('INSERT INTO place_fts(rowid,name,detail) VALUES(?,?,?)', (i,name,'Texas'))
+        with patch.object(server, 'HERE', self.root), patch.object(server, 'PLACEDB', gazetteer), \
+                patch.object(server.assistant, 'LOCAL', None), patch.object(server, 'home_area', return_value=None), \
+                patch.object(server, 'national_mapdb', return_value=None), patch.object(server, 'pack_info', return_value=None), \
+                patch.object(server, 'water_places', return_value=[]):
+            for with_pr in (False, True):
+                if with_pr:
+                    with closing(sqlite3.connect(self.geo / 'addresses/PR.sqlite')) as db, db:
+                        db.execute('CREATE TABLE pr_road(route,bucket,low,high,lat0,lon0,lat1,lon1,area)')
+                for name in names:
+                    with self.subTest(pr_installed=with_pr, query=name):
+                        rows = server.places(name)
+                        self.assertEqual([r['name'] for r in rows], [name])
+                        self.assertFalse(any(r.get('parcelNumber') for r in rows))
+                        self.assertEqual(server.places(name, parcel_offset=1), [])
+
+    def test_offset_never_restarts_an_unavailable_pr_lookup_as_a_street(self):
+        import server
+        query = '200 County Road 5 Exit'
+        with patch.object(server, 'HERE', self.root), patch.object(server.assistant, 'LOCAL', None):
+            self.assertEqual(server.places(query, parcel_offset=1), [])
+            (self.geo / 'addresses/PR.sqlite').write_bytes(b'not a database')
+            self.assertEqual(server.places(query, parcel_offset=1), [])
+            self.assertEqual(server.places('099-099-099-99'), [])
+
+    def test_texas_only_index_with_rural_looking_street_names(self):
+        self.assert_route_finds_texas()
+
+    def test_pr_index_without_rural_tables_does_not_consume_query(self):
+        self.write_state('PR', [])
+        self.assert_route_finds_texas()
+
+    def test_empty_pr_rural_lookup_does_not_consume_query(self):
+        with closing(sqlite3.connect(self.geo / 'addresses' / 'PR.sqlite')) as db, db:
+            db.executescript("""
+                CREATE TABLE pr_area(id,barrio,municipio,zip);
+                CREATE TABLE pr_road(route,bucket,low,high,lat0,lon0,lat1,lon1,area);
+                CREATE TABLE pr_school(route,meters,name,street,lat,lon,area,postal,reported_city);
+            """)
+        self.assert_route_finds_texas()
+
+    def test_unreadable_pr_index_does_not_hide_other_installed_addresses(self):
+        (self.geo / 'addresses' / 'PR.sqlite').write_bytes(b'not a SQLite database')
+        self.assert_route_finds_texas()
 
 
 class QuebecAddressTests(unittest.TestCase):

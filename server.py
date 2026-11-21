@@ -1405,27 +1405,54 @@ def water_places(q, limit=10, near=None):
     return [o for _, o in out[:limit]]
 
 
-def places(q, limit=20, near=None):
-    if address_search.is_address_query(q):
-        return address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+def places(q, limit=20, near=None, parcel_offset=0):
+    if len(q) > 400:
+        return []
+    is_address = address_search.is_address_query(q)
+    if is_address:
+        addresses = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near,
+                                                  model=assistant.LOCAL, parcel_offset=parcel_offset, parcel_limit=min(limit, 30))
+        if addresses:
+            return addresses
+        # A rural-looking name can still be an ordinary gazetteer place. Keep
+        # house-number and parcel-number misses strict rather than guessing a place.
+        is_address = address_search.is_address_query(q, include_rural=False)
+    try:
+        named = [] if is_address else named_places(q, limit, near)
+    except sqlite3.Error:
+        named = []
+    if limit > 0:
+        wording = address_search.locality_wording(q, HERE / 'derived' / 'geo', parcel_offset, min(limit, 30),
+                                                  named)
+        if wording is not None:
+            return wording
+    if is_address or parcel_offset:
+        return []
+    return named
+
+
+def named_places(q, limit=20, near=None):
     if not PLACEDB.exists():
         return []
-    db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
     words = re.findall(r'\w+', q)
     if not words:
         return []
     rows = []
     full = False
-    for ws in word_sets(words):
-        if full and len(ws) < len(words):
-            break  # every word matched somewhere: no need to loosen
-        if not ws:
-            continue
-        rows += db.execute('SELECT p.name,p.kind,p.detail,p.lat,p.lon,p.rank,p.source FROM place_fts f JOIN place p ON p.id=f.rowid '
-                           'WHERE place_fts MATCH ? ORDER BY p.rank, bm25(place_fts) LIMIT 200',
-                           (' '.join('"%s"*' % w.replace('"', '') for w in ws),)).fetchall()
-        if len(ws) == len(words):
-            full = bool(rows)
+    db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
+    try:
+        for ws in word_sets(words):
+            if full and len(ws) < len(words):
+                break  # every word matched somewhere: no need to loosen
+            if not ws:
+                continue
+            rows += db.execute('SELECT p.name,p.kind,p.detail,p.lat,p.lon,p.rank,p.source FROM place_fts f JOIN place p ON p.id=f.rowid '
+                               'WHERE place_fts MATCH ? ORDER BY p.rank, bm25(place_fts) LIMIT 200',
+                               (' '.join('"%s"*' % w.replace('"', '') for w in ws),)).fetchall()
+            if len(ws) == len(words):
+                full = bool(rows)
+    finally:
+        db.close()
     rows = list(dict.fromkeys(rows))
     def norm(t):
         return ' '.join(re.sub(r'\bsaint\b', 'st', re.sub(r'[^\w ]+', ' ', t.lower())).split())
@@ -2117,7 +2144,8 @@ class Handler(library.Handler):
                     near_pt = tuple(map(float, qs['near'].split(',')))[:2] if qs.get('near') else None
                 except ValueError:
                     near_pt = None
-                return self.send_json(places(qs.get('q', '')[:100], near=near_pt))
+                return self.send_json(places(qs.get('q', ''), near=near_pt,
+                                             parcel_offset=max(0, int(qs.get('parcelOffset', '0')))))
             if path == '/api/library':
                 s = json.loads((LIB / 'summary.json').read_text(encoding='utf-8'))
                 sources = (catalog()['by_path'].get(SOURCES_PAGE) or {}).get('id')

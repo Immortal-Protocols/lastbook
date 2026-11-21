@@ -47,4 +47,5 @@ process.stdout.write(JSON.stringify({
   match: (cases.match || []).map(([text, w]) => safe(() => W.matcher(text)(w))),
   rank: (cases.rank || []).map(q => ({ q, now: safe(() => brief(W.rankTopics(q, cases.topics, stop))), before: brief(before(q, cases.topics)) })),
   rankOwn: (cases.rankOwn || []).map(([q, topics]) => safe(() => brief(W.rankTopics(q, topics, stop)))),
+  rankForms: (cases.rankForms || []).map(([q, topics]) => safe(() => brief(W.rankTopics(q, topics, stop)))),
 }));

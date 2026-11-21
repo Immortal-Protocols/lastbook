@@ -2,7 +2,7 @@
 """Convert the Geofabrik SoCal GeoPackage (OpenStreetMap, ODbL) into a compact, spatially indexed
 map database the app can draw offline.
 
-  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite
+  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite [west,south,east,north] [source] [additional.gpkg ...]
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
 the original archive is only read. Output tables:
@@ -16,6 +16,10 @@ from array import array
 
 SRC, DST = sys.argv[1], sys.argv[2]
 Q = 1e6
+CLIP = [float(v) for v in sys.argv[3].split(',')] if len(sys.argv) > 3 else None      # [west, south, east, north]
+SOURCE = sys.argv[4] if len(sys.argv) > 4 else 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'
+DATA_AS_OF = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()) if CLIP else '2026-10-25T21:21:21Z'
+BOUNDS = ','.join(f'{v:.6f}' for v in CLIP) if CLIP else '-121.36,32.50,-114.10,35.89'
 
 ROAD_Z = {'motorway': 5, 'trunk': 6, 'motorway_link': 10, 'trunk_link': 10, 'primary': 8, 'primary_link': 12,
           'secondary': 10, 'secondary_link': 13, 'tertiary': 11, 'tertiary_link': 13, 'residential': 13,
@@ -110,6 +114,13 @@ def bbox(parts):
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def intersects(parts, box):
+    """True if a feature's bounds touch the clip box [west, south, east, north]."""
+    minx, maxx, miny, maxy = bbox(parts)
+    w, s, e, n = box
+    return maxx >= w and minx <= e and maxy >= s and miny <= n
+
+
 def area_z(minx, maxx, miny, maxy, base):
     """Small polygons only appear when zoomed in."""
     size = max(maxx - minx, maxy - miny)
@@ -122,6 +133,11 @@ def area_z(minx, maxx, miny, maxy, base):
 def main():
     t0 = time.time()
     src = sqlite3.connect(SRC)
+    databases = ['main']
+    for index, path in enumerate(sys.argv[5:], 1):
+        alias = f'extract{index}'
+        src.execute(f'ATTACH DATABASE ? AS {alias}', (path,))
+        databases.append(alias)
     dst = sqlite3.connect(DST)
     dst.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
       DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
@@ -140,13 +156,21 @@ def main():
         dst.execute('INSERT INTO feat_idx VALUES (?,?,?,?,?,?,?)', (fid[0], *bx, minz, 30))
 
     def each(table, cols='fclass,name'):
-        for row in src.execute(f'SELECT geom,{cols} FROM {table}'):
+        query = f'SELECT geom,{cols} FROM {table}'
+        if len(databases) > 1:
+            # Overlapping extracts can carry the same OSM object. Keep distinct geometry pieces and distinct IDs.
+            rows = ' UNION '.join(f'SELECT osm_id,geom,{cols} FROM {db}.{table}' for db in databases)
+            query = f'SELECT geom,{cols} FROM ({rows})'
+        for row in src.execute(query):
             if row[0] is None:
                 continue
             try:
-                yield gpkg_parts(row[0]), row[1:]
+                parts = gpkg_parts(row[0])
             except Exception:
                 continue
+            if CLIP and not intersects(parts, CLIP):
+                continue
+            yield parts, row[1:]
 
     # Water bodies
     for parts, (cls, name) in each('gis_osm_water_a_free'):
@@ -196,9 +220,9 @@ def main():
             dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)', (pid, cls, name, (minx + maxx) / 2, (miny + maxy) / 2))
     dst.execute('CREATE INDEX poi_cls ON poi(cls, lon, lat)')
     dst.executemany('INSERT INTO meta VALUES (?,?)', [
-        ('source', 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'),
-        ('data_as_of', '2026-10-25T21:21:21Z'),
-        ('bounds', '-121.36,32.50,-114.10,35.89'),
+        ('source', SOURCE),
+        ('data_as_of', DATA_AS_OF),
+        ('bounds', BOUNDS),
         ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
     ])
     dst.commit()

@@ -17,6 +17,7 @@ A map set lives in the data folder. `map-set.json` at its top lists the files an
 |---|---|---|---|
 | `derived/geo/national.sqlite` | `feat`, `feat_idx`, `poi`, `meta` | Roads, water and land shapes, and the place pins | `server.py` (`national_mapdb`) |
 | `derived/geo/map.sqlite` | the same four | The original detailed street map of Southern California; it had no rows in the state map checked | `server.py` (`mapdb`) |
+| `derived/geo/detail-cells.json` | — | A region map's own box and its 0.05° cells; where present, `server.py` uses it instead of the Southern California box | `server.py` (`detail_bbox`, `socal_cells`) |
 | `derived/geo/water.sqlite` | `resource`, `spatial`, `feat`, `feat_idx` | Dams, reservoirs, lakes and ponds | `server.py` |
 | `derived/geo/crops.sqlite` | `resource`, `spatial`, `tile` | Orchards, vineyards and berries | `server.py` |
 | `derived/geo/terrain.sqlite` | `tile` | Elevation tiles for relief, contours and the 3D view | `server.py` |
@@ -76,6 +77,7 @@ so ask before adding many.
 | `places.sqlite` | `tools/build_places.py` | USGS GNIS, Census gazetteers, named OpenStreetMap places |
 | address indexes | `tools/build_addresses.py`, then `packaging/address_indexes.py` | Overture Maps addresses |
 | a state map | `packaging/build_packs.py map <ST>`, published by `packaging/state_maps.py` | The base map, then every row inside the state's box |
+| a region map | `packaging/build_packs.py map <region>`, published by `packaging/region_maps.py` | A Geofabrik OpenStreetMap extract clipped to the region's box (see "Region maps" below) |
 
 Each tool's header says what it reads, what it writes and the licence of its source. Read it before you run one: some
 expect source files that are hundreds of gigabytes.
@@ -95,14 +97,43 @@ expect source files that are hundreds of gigabytes.
 ## What is tied to the United States
 
 - Every detailed source above is a US dataset, or a worldwide one filtered to the US.
-- `server.py` treats a box around Southern California as the area `map.sqlite` covers (`_poi_sources`, `socal_classes`).
+- `server.py` treats a box around Southern California as the area `map.sqlite` covers (`_poi_sources`, `socal_classes`); a region map ships its own box in `detail-cells.json` instead.
 - Detailed maps are cut and installed one US state at a time (`docs/SETUP-API.md`, "State maps").
 - Address search knows US state names and US street words (`engine/address_search.py`, `tools/build_addresses.py`).
 - The base map of the world is drawn from `web/world-context.json` and `web/geographic-context.json`.
 
-Coverage outside the US needs a decision on each of these first: which open source replaces each federal list, under
-what licence, what a "state" is elsewhere, and how addresses are written. That is a design discussion to have in an
-issue before any code.
+## Region maps
+
+Outside the US, a **region map** is the "state" equivalent: a Geofabrik OpenStreetMap extract clipped to the region's
+box. It ships only `map.sqlite` (its own detail), `detail-cells.json`, `national-status.json` and `map-set.json`, so
+there are no federal datasets, terrain relief, crops or address search. The first region is Caracas (Distrito Capital,
+Venezuela), id `ve-a`. Add another by adding a row to `packaging/region_specs.py` and running
+`packaging/region_maps.py <id>`; the table `packaging/region_maps.py` writes is `derived/packs/REGION-MAPS.md`.
+
+### Canadian Maritimes
+
+`ca-maritimes` installs New Brunswick, Nova Scotia and Prince Edward Island together. Streets, building outlines,
+water features and mapped help points are available across all three provinces. This download has no street-address
+index, searchable town index or terrain tiles. As with other region maps, installing it replaces the current detailed map.
+
+The inputs are the provincial OpenStreetMap GeoPackages from Geofabrik, licensed under ODbL 1.0. Each is cached
+separately under `derived/packs/maps/region-source/`. Repeated rows for the same OpenStreetMap object and geometry in
+overlapping extracts appear once. The November 2026 sample is about 137 MB to download and 355 MB installed.
+[New Brunswick](https://download.geofabrik.de/north-america/canada/new-brunswick.html) ·
+[Nova Scotia](https://download.geofabrik.de/north-america/canada/nova-scotia.html) ·
+[Prince Edward Island](https://download.geofabrik.de/north-america/canada/prince-edward-island.html) ·
+[OpenStreetMap copyright and licence](https://www.openstreetmap.org/copyright)
+
+To build a local review archive from the repository root, use the build Python described in the README:
+
+```sh
+python3 -I -B packaging/build_packs.py map ca-maritimes
+python3 -I -B packaging/region_maps.py --zip-only ca-maritimes
+```
+
+The zip is written to `derived/packs/region-zips/Lastbook-Map-ca-maritimes.zip`. The release publisher scans the map,
+uploads the archive, verifies the public checksum and lists the download in the manifest. Setup then offers it under
+**Canada**.
 
 [REGIONS.md](REGIONS.md) proposes answers for Ontario, British Columbia and Guyana, as a starting point for that issue.
 [REGIONS-AR.md](REGIONS-AR.md) does the same for Argentina's provinces and the Autonomous City of Buenos Aires.
@@ -127,6 +158,8 @@ as one map.
 [REGIONS-MX.md](REGIONS-MX.md) does the same for Mexico's 32 states (entidades federativas).
 
 ## Checking a map change
+
+The proposed [Australian capital-area maps](AUSTRALIA-MAPS.md) document their boxes, sources, limits and review builds.
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.
 - A change to a pack or map tool: `packaging/test_pack_tools.py` and `packaging/scan_pack.py` check what a map set may

@@ -1040,7 +1040,10 @@ class Unpacking(Base):
 class Jobs(Base):
     def test_first_run_end_to_end(self):
         s = self.setup()
-        st = s.state()
+        # The fixture is tiny; the host disk's real 5–20 GB reserve must not
+        # decide whether this synthetic library is recommended.
+        with mock.patch.object(hardware, 'disk_of', return_value=(10 ** 12, 2 * 10 ** 12)):
+            st = s.state()
         self.assertEqual(st['mode'], 'first-run')
         self.assertEqual(st['recommend']['pack'], 'small')
         self.assertNotIn('url', json.dumps(st['manifest']))
@@ -1748,6 +1751,19 @@ def make_map(path, state='CA', extra=None):
     return files
 
 
+def make_region_map(path, region='ve-a', extra=None):
+    """A region map zip: only map.sqlite, detail-cells.json, national-status.json and map-set.json, under LastbookData/."""
+    files = {'derived/geo/map.sqlite': os.urandom(300_000),
+             'derived/geo/detail-cells.json': json.dumps({'name': region, 'bbox': [-67.1, 10.4, -66.8, 10.56], 'cells': []}).encode(),
+             'derived/geo/national-status.json': b'{"state":"complete"}'}
+    files['map-set.json'] = json.dumps({'name': region, 'files': {k: len(v) for k, v in files.items()}}).encode()
+    files.update(extra or {})
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_STORED) as z:
+        for k, v in files.items():
+            z.writestr('LastbookData/' + k, v)
+    return files
+
+
 class Maps(Base):
     def map_manifest(self, extra=None):
         files = make_map(self.tmp / 'Lastbook-Map-CA.zip', extra=extra)
@@ -1965,7 +1981,8 @@ class Maps(Base):
             a = s.start('small', False)['need_bytes']
             b = s.start('small', False, map_id='CA')['need_bytes']
         self.assertEqual(b - a, mf.map('CA')['download_bytes'] + mf.map('CA')['installed_bytes'])
-        self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
+        with mock.patch.object(hardware, 'disk_of', return_value=(10 ** 12, 2 * 10 ** 12)):
+            self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
         self.assertIn('maps', s.state()['manifest'])
         self.assertEqual(s.start(None, False, map_id='CA')['code'], 'nothing')    # first run: a library first
 
@@ -2109,6 +2126,56 @@ class AddressIndexes(Maps):
         fetched['address_indexes'][0]['files'][0]['sha256'] = '0' * 64
         merged = manifest.merge(validated, fetched)
         self.assertEqual(merged['address_indexes'][0]['files'], validated['address_indexes'][0]['files'])
+
+
+class RegionMaps(Maps):
+    def region_manifest(self, extra=None):
+        files = make_region_map(self.tmp / 'Lastbook-Map-ve-a.zip', extra=extra)
+        data = (self.tmp / 'Lastbook-Map-ve-a.zip').read_bytes()
+        self.files.data['Lastbook-Map-ve-a.zip'] = data
+        m = self.manifest().current
+        m['maps'] = [{'id': 've-a', 'title': 'Caracas (Distrito Capital)', 'kind': 'region', 'country': 'Venezuela',
+                      'includes': 'Local streets, buildings, water and places to get help',
+                      'installed_bytes': sum(map(len, files.values())),
+                      'download_bytes': len(data), 'available': True,
+                      'files': [{'name': 'Lastbook-Map-ve-a.zip', 'url': f'{self.base}/Lastbook-Map-ve-a.zip', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]}]
+        return manifest.Manifest(bundled=m, remote=None, allowed=ALLOWED, context=self.ctx), files
+
+    def test_region_map_installs_without_address_index(self):
+        mf, files = self.region_manifest()
+        s = self.setup(manifest=mf)
+        j = s.start('small', False, map_id='ve-a')
+        self.assertEqual([i['kind'] for i in j['items']], ['pack', 'map'])      # Venezuela has no address index
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, _ = api.startup(self.settings)
+        self.assertEqual(install.map_name(lib), 've-a')
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), files['derived/geo/map.sqlite'])
+        self.assertTrue((lib / 'derived/geo/detail-cells.json').is_file())
+        self.assertTrue((lib / 'library-data/catalog.json').is_file())
+        self.assertEqual(self.setup('manage', current=lib, manifest=mf).current_info()['map'], 've-a')
+
+    def test_region_manifest_validates_and_merges(self):
+        mf, _ = self.region_manifest()
+        validated = manifest.validate(mf.current, ALLOWED)
+        self.assertIsNotNone(validated)
+        self.assertEqual(validated['maps'][0]['kind'], 'region')
+        self.assertEqual(validated['maps'][0]['country'], 'Venezuela')
+        bad = json.loads(json.dumps(mf.current))
+        bad['maps'][0]['id'] = '../ve-a'
+        self.assertIsNone(manifest.validate(bad, ALLOWED))
+        merged = manifest.merge(mf.current, {**mf.current, 'maps': []})
+        self.assertEqual([x['id'] for x in merged['maps']], ['ve-a'])
+
+    def test_region_map_zip_with_other_files_refused(self):
+        mf, _ = self.region_manifest(extra={'library-data/catalog.json': b'{}'})
+        cur = self.parent / 'LastbookData'
+        (cur / 'library-data').mkdir(parents=True)
+        (cur / 'library-data/catalog.json').write_text('{"mine": 1}')
+        s = self.setup('manage', current=cur, manifest=mf)
+        s.start(None, False, map_id='ve-a')
+        j = self.wait(s)
+        self.assertEqual(j['error']['code'], 'unpack')
+        self.assertEqual((cur / 'library-data/catalog.json').read_text(), '{"mine": 1}')
 
 
 class ContentRevisions(Base):

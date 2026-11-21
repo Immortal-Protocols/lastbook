@@ -191,6 +191,10 @@ const MapView = (() => {
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
   function describe(info) {
+    if (info.region) {
+      document.querySelector('.maphead p').textContent = 'Offline map. Current damage, closures and hazards are not shown.';
+      document.querySelector('.mapattr').textContent = '© OpenStreetMap contributors · ODbL 1.0 · Natural Earth';
+    }
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     if (!info.layers) return;

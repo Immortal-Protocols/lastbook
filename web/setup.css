@@ -157,3 +157,4 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-maplabel{display:block;margin:16px 0 8px;font-size:17px;font-weight:650}
 .s-map-panel .s-select{max-width:none;min-height:56px;font-size:18px}
 .s-map-panel .s-hint{margin-top:10px}
+.s-share-link{display:block;margin-top:8px;font:15px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;user-select:all}

@@ -80,8 +80,24 @@ library-data/runtime/macos-arm64/python/bin/python3 server.py --lan
 
 Prints a one-time link `http://<this-mac>:8890/?key=…`; opening it sets a cookie. Without the key other
 devices get 403. Network clients only get the app, its APIs, encyclopedias and library content folders
-(no worker state, logs, databases or directory listings). Loopback behaves exactly as before. Delete
-`derived/lan-key` to change the key. Nothing is exposed beyond the local network by this server.
+(no worker state, logs, databases or directory listings). They cannot run setup, check for updates, write
+notes, or use other local-only tools (`/api/setup`, `/api/update`, `/api/battery`, `/api/not-found`,
+`/api/assistant/local`, `/api/tool`, `/api/tools`, and the share switch). Loopback behaves exactly as
+before. Delete `derived/lan-key` to change the key. Nothing is exposed beyond the local network by this
+server. Do not put the access link on the public internet.
+
+In the Lastbook desktop app, the same sharing is available as **Share this library with my devices** on
+the Library and local AI page. It is off unless you turn it on. While it is on, the app starts this LAN
+server (same access key in `derived/lan-key`, same cookie) and shows the access link on that page. Stop
+sharing, or quit the app, and the listening port is closed. If you left sharing on, it starts again the
+next time the app opens.
+
+The library can sit on a NAS as long as it is mounted on this computer and Lastbook can write its derived
+files there. Other devices then read it through this computer; they do not mount the NAS themselves.
+
+To use the library away from home, put this computer and the other device on a private VPN such as
+Tailscale, and open the link with this computer's VPN address (a bare IP). Named addresses, including
+Tailscale MagicDNS names, are refused, so a name cannot be used to reach the server.
 
 ## Runtime dependencies (all local)
 

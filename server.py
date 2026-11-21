@@ -1055,7 +1055,7 @@ TILE_POI = {'hospital', 'clinic', 'doctors', 'pharmacy', 'chemist', 'fire_statio
             'shelter', 'community_centre', 'supermarket', 'doityourself', 'hardware', 'spring'}
 
 
-HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharmacy': 'Pharmacy', 'chemist': 'Pharmacy',
+HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharmacy': 'Pharmacy', 'chemist': 'Drugstore',
         'dentist': 'Dentist', 'fire_station': 'Fire station', 'police': 'Police', 'drinking_water': 'Drinking water tap',
         'fountain': 'Fountain (not necessarily drinkable)', 'water_tower': 'Water tower', 'water_works': 'Water works',
         'spring': 'Spring (untested)', 'toilet': 'Public toilet', 'shelter': 'Shelter (structure)',
@@ -1252,15 +1252,19 @@ def _pins(west, south, east, north, cx, cy, kinds, version):
 
 
 def dedupe_named(rows):
-    """The same shop is often mapped twice (a pharmacy node plus a chemist building): drop same-name points within ~80 m."""
+    """Drop nearby same-name duplicates, keeping a pharmacy in preference to its chemist record."""
     kept = {}
     out = []
     for r in rows:
         if r['name']:
             near_same = kept.setdefault(r['name'].lower(), [])
-            if any(abs(r['lat'] - y) < 0.0007 and abs(r['lon'] - x) < 0.0009 for y, x in near_same):
+            match = next((i for y, x, i in near_same
+                          if abs(r['lat'] - y) < 0.0007 and abs(r['lon'] - x) < 0.0009), None)
+            if match is not None:
+                if r['cls'] == 'pharmacy' and out[match]['cls'] == 'chemist':
+                    out[match] = r
                 continue
-            near_same.append((r['lat'], r['lon']))
+            near_same.append((r['lat'], r['lon'], len(out)))
         out.append(r)
     return out
 

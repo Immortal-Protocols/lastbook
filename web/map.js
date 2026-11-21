@@ -22,7 +22,7 @@ const MapView = (() => {
     ['hospital', 'Hospitals', 'H', '#c62828', 'hospital', 'help'],
     ['clinic', 'Clinics & doctors', '+', '#d81b60', 'clinic,doctors', 'help'],
     ['dentist', 'Dentists', 'Dt', '#00695c', 'dentist', 'help'],
-    ['pharmacy', 'Pharmacies', 'Rx', '#2e7d32', 'pharmacy,chemist', 'help'],
+    ['pharmacy', 'Pharmacies & drugstores', 'Rx', '#2e7d32', 'pharmacy,chemist', 'help'],
     ['fire', 'Fire stations', 'F', '#ef6c00', 'fire_station', 'help'],
     ['police', 'Police', 'P', '#1a4f9c', 'police', 'help'],
     ['shelter', 'Shelters (structures)', '⌂', '#455a64', 'shelter', 'help'],
@@ -58,7 +58,7 @@ const MapView = (() => {
     dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', water_type: 'Water present',
     reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block', year: 'Satellite crop map year',
     FUEL_SALES: 'Fuel sales', NO_OF_RAMP_LANE_USE_ONE_TIME: 'Ramp lanes', FISH_CLEANING: 'Fish cleaning', Comments: 'Notes', Website: 'Website' };
-  const CAVEAT = { mineral: 'USGS mineral record: an occurrence or past mine, not proof of recoverable ore, access or safety. Old workings can be deadly.',
+  const CAVEAT = { chemist: 'Drugstore: may have no pharmacy counter or prescription medicine.', mineral: 'USGS mineral record: an occurrence or past mine, not proof of recoverable ore, access or safety. Old workings can be deadly.',
     oil_gas_well: 'State well record. Most are plugged or idle; never approach an unsealed well head.', fish_stocking: 'A past stocking record — it does not confirm fish are present now.',
     boat_launch: 'Facility survey data; check current access.',
     dam: 'National Inventory of Dams record. Keep away from spillways and outlets — currents and sudden releases drown people.',

@@ -147,6 +147,12 @@ UNDISTURBED = {
     'cut': ['hurt', 'bleeding'], 'well': ['land', 'water-source'], 'storm': ['disaster', 'flood'],
     'ice': ['water', 'inhome'], 'micro-hydro': ['energy', None], 'wind': ['disaster', 'hurricane'],
     'winter storm': ['shelter', 'cold'], 'furnace smells like gas': ['power', 'gas'], 'gas furnace': ['power', 'gas'],
+    # "fall" starts "fallout": a fall opens first aid, not the nuclear choice, and fallout still opens the nuclear choice.
+    'fall': ['hurt', 'bone'], 'fall from ladder': ['hurt', 'bone'], 'elderly fall': ['hurt', 'bone'], 'fell': ['hurt', 'head'],
+    'fell off ladder': ['hurt', 'head'], 'slipped and fell': ['hurt', 'head'], 'fall hit head': ['hurt', 'head'],
+    'fall not breathing': ['hurt', 'breathing'], 'fell unconscious': ['hurt', 'breathing'],
+    'fallout': ['disaster', 'nuclear-explosion'], 'nuclear fallout': ['disaster', 'nuclear-explosion'],
+    'fallout shelter': ['disaster', 'nuclear-explosion'],
     'lost in the forest': ['comms', 'signal'],
     'baby formula': ['food', 'special'], 'food allergies': ['food', 'outage'], 'spoiled food': ['food', 'outage'],
     'pet food': ['food', 'outage'],

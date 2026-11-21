@@ -20,6 +20,8 @@
   "fracture",
   "sprain",
   "splint",
+  "fall",
+  "fell",
   "CPR",
   "not breathing",
   "unconscious",
@@ -273,7 +275,7 @@
   {
    "id": "head",
    "label": "Head, neck or back injury",
-   "hint": "Fall, car crash, blow to the head, spinal or vertebral injury, fractured skull, spine or vertebrae, dislocated neck, confused or numb after an accident",
+   "hint": "Fall or fell, car crash, blow to the head, spinal or vertebral injury, fractured skull, spine or vertebrae, dislocated neck, confused or numb after an accident",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",

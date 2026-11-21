@@ -1563,6 +1563,208 @@ class Switching(Base):
         self.assertEqual((aside[0] / 'library-data' / 'catalog.json').read_text(), 'old')
         self.assertEqual((new / 'models' / 'model.gguf').read_bytes(), b'model')
 
+    def with_files(self):
+        shutil.rmtree(self.parent, ignore_errors=True)
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        (cur / 'models').mkdir()
+        (cur / 'models' / 'model.gguf').write_bytes(self.model)
+        (cur / 'derived' / 'geo' / 'addresses').mkdir(parents=True)
+        (cur / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').write_bytes(b'addr')
+        return cur, self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')
+
+    def fail_replace(self, when):
+        real = os.replace
+
+        def flaky(a, b, *x, **k):
+            if when(Path(a), Path(b)):
+                raise OSError('busy')
+            return real(a, b, *x, **k)
+        return mock.patch.object(os, 'replace', flaky)
+
+    def stranded(self):
+        """A failed switch whose model was carried into the staged library and could not go back."""
+        cur, new = self.with_files()
+        (new / 'models').mkdir()
+        os.replace(cur / 'models' / 'model.gguf', new / 'models' / 'model.gguf')
+        return cur, new
+
+    def failed_switch_settings(self):
+        work = self.parent / 'LastbookData.setup'
+        self.settings.mkdir(parents=True, exist_ok=True)
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        return work
+
+    def test_work_folder_is_kept_when_the_switch_failed(self):
+        cur, new = self.with_files()
+        work = self.failed_switch_settings()
+        (work / 'marker').write_text('x')
+        jf = api._job_file(self.settings)
+        jf.parent.mkdir(parents=True, exist_ok=True)
+        jf.write_text(json.dumps({'state': 'done'}))
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'It broke.'})
+        self.assertTrue((work / 'marker').exists())
+        self.assertFalse(jf.exists())
+
+    def test_a_failed_switch_sets_its_unpacked_library_aside(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': f'Could not move it. The file {new / "models" / "model.gguf"} is still there.'}
+        api.opened(self.settings, cur, note)
+        self.assertFalse((work / 'unpack').exists())       # the next job unpacks into a fresh folder, not over these files
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0] / 'LastbookData' / 'models' / 'model.gguf'), note['error'])     # the message points at where the files are now
+
+    def test_a_model_a_failed_switch_left_survives_choosing_another_pack(self):
+        """#86 empties the unpack folder when another pack comes next. A model a failed switch left there must not go with it."""
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'Could not move it.'})
+        api._fresh_unpack(work / 'unpack', {'pack': 'another', 'revision': 1, 'files': []})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_model_survives_another_pack_when_the_unpack_folder_cannot_be_set_aside(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack'):     # a pack file still open on Windows, say
+            api.opened(self.settings, cur, note)
+        self.assertFalse((new / 'library-data' / 'catalog.json').exists())     # nothing a next unpack could take as already there
+        api._fresh_unpack(work / 'unpack', {'pack': 'another', 'revision': 1, 'files': []})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0]), note['error'])
+
+    def test_address_indexes_survive_when_the_unpack_folder_cannot_be_set_aside(self):
+        """Maintainer on #195: the fallback kept only models, and deleted address indexes the switch had carried."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack'):
+            api.opened(self.settings, cur, note)
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').read_bytes(), b'addr')
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0]), note['error'])
+
+    def test_a_model_that_cannot_be_set_aside_is_left_where_it_is(self):
+        """Maintainer on #195: when the model could not move either, it was deleted and the message still said it was kept."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack' or 'models' in a.parts):
+            api.opened(self.settings, cur, note)
+        self.assertEqual((new / 'models' / 'model.gguf').read_bytes(), self.model)     # the last copy stays
+        self.assertIn(str(new / 'models'), note['error'])                               # and the message says where it is
+        self.assertFalse((new / 'library-data' / 'catalog.json').exists())             # the pack's own files still go
+        for k in (p for p in work.iterdir() if p.name.startswith('kept-')):
+            self.assertFalse((k / 'LastbookData' / 'models').exists())                 # nothing claims it is somewhere else
+            self.assertEqual((k / 'LastbookData' / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').read_bytes(), b'addr')
+
+    def test_a_file_still_open_is_left_and_named_when_the_rest_is_dropped(self):
+        """Maintainer on #195: a regular file Windows still has open made the fallback's unlink raise. It stays and is named."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        (new / 'pack.json').write_text('{}')
+        locked = {new / 'pack.json'}
+        real = os.unlink
+
+        def unlink(p, *a, **k):
+            if Path(p) in locked:
+                raise PermissionError(32, 'The process cannot access the file because it is being used by another process', str(p))
+            return real(p, *a, **k)
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack' or 'models' in a.parts), mock.patch.object(os, 'unlink', unlink):
+            api.opened(self.settings, cur, note)       # does not raise
+        self.assertEqual((new / 'models' / 'model.gguf').read_bytes(), self.model)     # the person's files are kept
+        for p in locked:
+            self.assertTrue(p.exists())
+            self.assertIn(str(p), note['error'])        # and the message names what could not be removed
+
+    def test_a_model_left_in_the_unpack_folder_survives_another_pack(self):
+        """A model that could not be set aside stays in the unpack folder; the next pack's unpack must not empty it away."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack' or 'models' in a.parts):
+            api.opened(self.settings, cur, note)
+        api._fresh_unpack(work / 'unpack', {'pack': 'another', 'revision': 1, 'files': []})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-') and (p / 'LastbookData' / 'models').exists()]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertEqual([p.name for p in (work / 'unpack').iterdir()], ['unpacked-from.json'])
+
+    def test_a_later_successful_setup_keeps_what_a_failed_switch_set_aside(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'Could not move it.'})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')][0]
+        (work / 'downloads').mkdir()
+        (work / 'downloads' / 'pack.zip').write_text('zip')     # what the next job made
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None})
+        self.assertTrue((kept / 'LastbookData' / 'models' / 'model.gguf').is_file())   # the message said it was kept there
+        self.assertFalse((work / 'downloads').exists())
+
+    def test_switch_that_stopped_after_the_old_library_moved_aside_is_finished_at_next_start(self):
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        d = install.stage_switch(pend, new, cur)
+        old = install.old_name(cur)
+        d['old'] = str(old)
+        install._write_json(pend, d)                       # what was written before the rename
+        install.carry_over(cur, new)
+        os.replace(cur, old)                               # ...and the process stopped here, before the new library went in
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(self.parent / 'LastbookData.setup')}))
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue((cur / 'models' / 'model.gguf').is_file())
+        self.assertTrue((cur / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').is_file())
+        self.assertEqual(note['old'], str(old))
+        self.assertTrue(old.is_dir())
+
+    def test_a_work_folder_that_is_a_link_is_not_followed(self):
+        """Codex on #195: cleaning a work folder that links to the library must not empty the library."""
+        cur, new = self.with_files()
+        shutil.rmtree(self.parent / 'LastbookData.setup')
+        work = self.parent / 'LastbookData.setup'
+        work.symlink_to(cur, target_is_directory=True)
+        self.failed_switch_settings()
+        jf = api._job_file(self.settings)
+        jf.parent.mkdir(parents=True, exist_ok=True)
+        jf.write_text(json.dumps({'state': 'done'}))
+        api.opened(self.settings, cur, None)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertEqual((cur / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_stopped_first_install_into_an_empty_folder_keeps_the_new_model(self):
+        """Codex on #195: the folder set aside was empty, not a library: nothing was carried, so nothing goes back into it."""
+        shutil.rmtree(self.parent, ignore_errors=True)
+        cur = self.parent / 'LastbookData'
+        cur.mkdir(parents=True)
+        new = self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')
+        (new / 'models').mkdir()
+        (new / 'models' / 'model.gguf').write_bytes(self.model)
+        pend = api._pending_file(self.settings)
+        d = install.stage_switch(pend, new, cur)
+        old = install.old_name(cur)
+        d['old'] = str(old)
+        install._write_json(pend, d)
+        os.replace(cur, old)                               # ...and the process stopped here
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(self.parent / 'LastbookData.setup')}))
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'models' / 'model.gguf').read_bytes(), self.model)
+
     def test_ai_only_in_manage_mode(self):
         cur = self.lib(self.parent / 'LastbookData', '{}')
         (cur / 'pack.json').write_text('{"name": "small"}')

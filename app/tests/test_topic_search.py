@@ -171,7 +171,16 @@ URGENT = {
 }
 # A breathing emergency after a sting must not open routine sting care.
 NOT_STING = ["bee sting can't breathe", 'bee sting cannot breathe', 'bee sting unconscious', 'wasp sting unconscious']
-TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *FIRST, *ALREADY_COVERED, *URGENT_FIRST, *UNDISTURBED, *URGENT, *EVERYDAY, *LISTED, *NOT_STING})
+# A search starts a word, so "pain" also finds "paint" in the garden soil hint ("lead paint"). Pain opens a medical guide
+# first, and paint still opens the soil choice.
+PAIN_NOT_PAINT = {
+    'pain': ['health', 'start'], 'stomach pain': ['health', 'start'], 'back pain': ['health', 'start'],
+    'left arm pain': ['health', 'start'], 'jaw pain': ['health', 'start'], 'severe pain': ['health', 'start'],
+    'child in pain': ['health', 'start'], 'chest pain': ['hurt', 'sudden'], 'burn pain': ['hurt', 'burn'],
+    'paint': ['grow', 'soil-unknown'], 'lead paint': ['grow', 'soil-unknown'], 'peeling paint': ['grow', 'soil-unknown'],
+    'swallowed paint': ['hurt', 'poison'],
+}
+TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *FIRST, *ALREADY_COVERED, *URGENT_FIRST, *UNDISTURBED, *URGENT, *EVERYDAY, *LISTED, *NOT_STING, *PAIN_NOT_PAINT})
 
 # Words used in Thailand and Denmark. Emergency numbers find what 911 finds; haze, PM2.5 and cloudburst sit in a
 # guide's keywords only and open the guide their US word opens. Thailand's fire number, 199, is left out: a fire
@@ -374,7 +383,7 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, us=us, segmenter=r['segmenter']):
                     self.assertTrue(top[q])
                     self.assertEqual(top[q][0][0], top[us][0][0])
-            for q, first in [*FIRST.items(), *ALREADY_COVERED.items(), *URGENT_FIRST.items(), *UNDISTURBED.items()]:
+            for q, first in [*FIRST.items(), *ALREADY_COVERED.items(), *URGENT_FIRST.items(), *UNDISTURBED.items(), *PAIN_NOT_PAINT.items()]:
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][0], first)
 

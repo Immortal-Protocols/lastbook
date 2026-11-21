@@ -217,6 +217,81 @@ EMERGENCY_UNDISTURBED = {
 }
 TOPS = sorted({*TOPS, *EMERGENCY_FIRST, *EMERGENCY_UNDISTURBED})
 
+# Labor in the words people type. One word at a time, "water broke" found unsafe tap water, "the baby is coming" a
+# hurricane and "contractions" nothing: [guide, choice] that comes first.
+PREGNANT = ['health', 'pregnant']
+LABOR = {q: PREGNANT for q in [
+    'my water broke', 'water broke', 'her water broke', 'my water just broke', 'waters broke', 'her waters have broken',
+    'the baby is coming', 'baby is coming', "the baby's coming", 'how to deliver a baby', 'delivering a baby at home',
+    'giving birth at home', 'going into labour', 'in labour', 'contractions', 'having contractions',
+    'contractions 5 minutes apart', 'childbirth', 'umbilical cord', 'cut the umbilical cord',
+    'giving birth', 'in labor', 'going into labor',
+    "my wife's water broke", 'wifes water broke', 'water broke 2 hours ago', 'contractions 5 mins apart',
+    'contractions every 3 minutes', 'baby crowning', 'labour pains', 'umbilical cord around neck',
+    'labour started at home', 'water broke call 911', 'contractions every five minutes', 'water broke pregnancy',
+]}
+# The same words about something else keep their first result; Not breathing still comes first.
+NOT_LABOR = {
+    'water main broke': ['water', 'unsafe'], 'water pipe broke': ['water', 'unsafe'], 'broke water heater': ['water', 'unsafe'],
+    'baby choking': ['hurt', 'breathing'], 'baby not breathing': ['hurt', 'breathing'], 'baby fever': ['health', 'start'],
+    'child not breathing': ['hurt', 'breathing'], 'hurricane coming': ['disaster', 'hurricane'],
+    'extension cord': ['power', 'generator'], 'apartment': ['disaster', 'highrise-fire'],
+    'unconscious and in labor': ['hurt', 'breathing'], 'water broke and she is unconscious': ['hurt', 'breathing'],
+    'water has broken through the wall': ['water', 'unsafe'], 'our water has broken': ['water', 'unsafe'],
+    'our water is broken': ['water', 'unsafe'], 'giving birth control pills': ['health', 'medicine'],
+    'contractions while having a seizure': ['hurt', 'sudden'], 'cut head having a baby': ['hurt', 'bleeding'],
+    'contractions in my neck': ['hurt', 'head'],
+}
+# A labor phrase among other words keeps its other meaning: the pregnancy choice must not come first.
+NOT_LABOR_FIRST = [
+    'minutes apart', 'take medicine 30 minutes apart', 'seizures 5 minutes apart', 'baby is coming down with a fever',
+    'the baby is coming home from the hospital', 'baby coming in and out of consciousness', 'baby coming out of the car',
+    'deliver the baby formula', 'deliver a baby goat', 'my water broke down', "grandma's water has broken",
+    "the city's water broke down", 'premature ventricular contractions', 'spasms and contractions in the neck',
+    'cramps and contractions every few minutes apart in legs', 'childbirth class', 'lightning baby is coming',
+    'labour hours', 'labour help', 'need labour fast', 'labour first time', 'his water just broke', 'our water just broke',
+    'deliver the baby to me', 'baby coming with me', 'baby coming from the hospital', 'water broke up',
+    'the water just broke', 'water broke in the car', "the hospital's water has broken", 'emergency water broke',
+    "the baby is coming to my mom's tonight", 'deliver the baby to her', 'contractions around the neck',
+    'cord around neck', 'cord around the babys neck', 'baby is coming to the hospital now',
+]
+# A labor phrase lists only guides that find the search's other words: none here, so the pregnancy choice alone.
+LABOR_ALONE = ['deliver a baby 108', 'contractions 5 minutes apart 108', 'someone is giving birth', 'giving birth care', 'contractions after birth', 'in labour after prenatal care']
+# Bleeding in labor opens the pregnancy choice, whose readings cover it, but Bleeding stays in the list.
+LABOR_BLEEDING = ['umbilical cord bleeding', 'contractions and bleeding', 'childbirth bleeding',
+                  'my water broke and she is bleeding', 'bleeding alone right now last night contractions']
+# Everyday wording (second review): filler and question words, people, places, and each moment of a birth.
+LABOR_EVERYDAY = [
+    'my water broke what should I do', 'her water broke we are at home', "my wife's water broke we're at home",
+    'my water broke and im scared', 'my water broke but no contractions', 'i think my water just broke',
+    'my waters have gone', 'did my water break or did i pee', 'our baby is coming', 'the baby is coming and no one can come',
+    'baby on the way', 'contractions are 4 min apart', 'contractions 10 minutes apart should we go to the hospital',
+    'contractions in my back', 'how do i know if im in labor', "i'm in labor and i don't know what to do",
+    'going through labor at home alone', 'baby is crowning what do i do', 'baby born at home',
+    'the head is out what now', 'baby is breech', 'how to cut the umbilical cord', "placenta won't come out", 'bloody show',
+    'how to give birth at home', 'my water broke during the hurricane', 'my water broke and the power is out',
+    'in labour no midwife', 'labour pains every 5 minutes', "she's about to give birth", 'had the baby at home what now',
+    'MY WATER BROKE!!!', 'my water broke in the bathroom', 'my sisters water broke', 'pregnant during the flood',
+    'my water broke what am i supposed to do', 'her water broke we r at home', 'pretty sure my water broke',
+    'my water broke now she is pushing', 'baby is coming out of her', 'what to do when your water breaks',
+    'her water broke in the car', 'my water broke at work',
+]
+# Every phrase of the pregnancy choice opens it on its own. Next to a life threat, the first guide is the one the search
+# gets with the choice's phrase fields taken out: a phrase never changes what comes first (Breathing, Bleeding, or
+# whatever main shows, even when that is not first aid).
+PREGNANT_CHOICE = next(c for t in TOPICS if t['id'] == 'health' for c in t['choices'] if c['id'] == 'pregnant')
+PHRASES_ALONE = [*PREGNANT_CHOICE['phrases'], *PREGNANT_CHOICE.get('weak', []),
+                 *(f'my {p}' for p in PREGNANT_CHOICE.get('weak', []) if p.startswith('water'))]
+THREATS = ['not breathing', 'unconscious', 'choking', 'having a seizure', 'chest pain', 'bleeding heavily',
+           'heavy bleeding', 'a lot of blood', 'overdose', 'poisoned']
+PHRASE_THREATS = sorted({f'{p} {t}' for p in PHRASES_ALONE for t in THREATS} | {f'{t} {p}' for p in PHRASES_ALONE[::7] for t in THREATS})
+PLAIN_TOPICS = [{**t, 'choices': [{k: v for k, v in c.items() if k not in ('phrases', 'weak', 'who', 'context', 'unless', 'alongside')}
+                                  for c in t.get('choices', [])]} for t in TOPICS]
+NOT_LABOR_NOWHERE = ['delivery', 'deliver food', 'baby formula', 'minutes', 'power cord']   # no pregnancy guide for these
+TOPS = sorted({*TOPS, *LABOR, *NOT_LABOR, *NOT_LABOR_NOWHERE, *NOT_LABOR_FIRST, *LABOR_BLEEDING, *LABOR_ALONE,
+               *LABOR_EVERYDAY, *PHRASES_ALONE,
+               *PHRASE_THREATS})
+
 # A guide whose urgent phrase the search names comes first, even when the other words pull another guide ahead or
 # below the cut; that guide is still offered: query -> (first row, a row that must still be shown).
 GUIDE_URGENT = {
@@ -256,6 +331,8 @@ CASES = {
                                  '물 끓이기', 'น้ำ'],
     'tops': TOPS,
 }
+
+CASES.update(topsPlain=PHRASE_THREATS, plainTopics=PLAIN_TOPICS)   # the same searches without the phrase fields
 
 
 def run(mode):
@@ -444,6 +521,52 @@ class TopicSearch(unittest.TestCase):
             for q, first in STILL_SHELTER.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])
+
+    def test_labor_finds_the_pregnancy_guide(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in {**LABOR, **NOT_LABOR}.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])
+            for q in NOT_LABOR_NOWHERE:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotIn(PREGNANT, top[q])
+            for q in NOT_LABOR_FIRST:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotEqual(top[q][:1], [PREGNANT])
+            for q in LABOR_BLEEDING:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [PREGNANT])
+                    self.assertIn(['hurt', 'bleeding'], top[q])
+            for q in LABOR_ALONE:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q], [PREGNANT])
+            for q in [*LABOR_EVERYDAY, *PHRASES_ALONE]:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [PREGNANT])
+
+    def test_context_never_holds_a_life_threat(self):
+        # A word in "context" lets a phrase count next to it, so a life threat there would put the pregnancy choice
+        # ahead of first aid. The main words of every urgent phrase ("breathing", not "out"), and these, stay out.
+        threats = {w for t in TOPICS for c in t.get('choices', []) for u in c.get('urgent', []) for w in u.split()
+                   if len(w) > 3 and w not in ("isn't", 'isnt')}
+        threats |= {'bleeding', 'blood', 'loss', 'weak', 'moving', 'limp', 'heavily', 'heavy', 'hemorrhage',
+                    'haemorrhage', 'seizure', 'fitting', 'convulsing', 'choking', 'breathe', 'pulse', 'chest',
+                    'overdose', 'poison', 'poisoned', 'shock', 'faint', 'fainted', 'blue', 'pale', 'stroke'}
+        for entry in [*PREGNANT_CHOICE.get('context', []), *PREGNANT_CHOICE.get('alongside', [])]:
+            with self.subTest(entry=entry):
+                self.assertFalse(set(entry.split()) & threats)
+
+    def test_a_life_threat_ranks_as_without_phrases(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            plain = dict(zip(PHRASE_THREATS, (ok(e) for e in r['topsPlain'])))
+            for t in THREATS:
+                with self.subTest(q=t, segmenter=r['segmenter']):
+                    self.assertTrue(plain[f'{PHRASES_ALONE[0]} {t}'])
+            for q in PHRASE_THREATS:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], plain[q][:1])
 
 if __name__ == '__main__':
     unittest.main()

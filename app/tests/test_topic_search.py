@@ -240,6 +240,9 @@ GUIDE_ORDINARY = {
     'radio not responding': ['comms', 'alerts-radio'], 'dental abscess': ['health', 'teeth'], 'propane burns': ['hurt', 'shock'],
     'suicidal': ['health', 'mind'], 'i want to build a bench': ['repair', 'build'], 'kill bugs': ['sanitation', 'spread'],
     'battery dying': ['power', 'batteries-solar'], 'live power line': ['water', 'apartment'],
+    # Fear words open the Health guide, and never ahead of a breathing emergency.
+    'scared': ['health', None], 'kids are scared': ['health', None], 'afraid': ['health', None],
+    'scared and cant breathe': ['hurt', 'breathing'], 'scared not breathing': ['hurt', 'breathing'],
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
 

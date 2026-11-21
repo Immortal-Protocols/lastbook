@@ -698,8 +698,9 @@ class Setup:
         and, where a state map replaced the pack's map, that map's files as map-set.json lists them (path, bytes, None). Nothing of
         the person's own is on either list: no settings, saved items, chats, notes, address indexes or local AI."""
         lib = Path(lib)
-        rows = [l.split('\t') for l in (lib / 'pack-manifest.tsv').read_text(encoding='utf-8').splitlines()[1:] if l.strip()]
-        rows = [(r[0], int(r[1]), r[2]) for r in rows]
+        rows = install.read_pack_manifest(lib / 'pack-manifest.tsv')
+        if not any(rel == install.CATALOG.as_posix() for rel, _, _ in rows):
+            raise ValueError('The file list must include the library catalog.')
         mp = install.map_set(lib)
         if mp:
             rows = [r for r in rows if not install.map_member(r[0])]
@@ -749,7 +750,7 @@ class Setup:
             except install.Refused as e:
                 return {'error': e.message, 'code': 'copy'}
             except (OSError, ValueError, IndexError):
-                return {'error': 'This library has no list of its files, so it cannot be copied. Check and repair it first.', 'code': 'unavailable'}
+                return {'error': 'The list of library files is missing or damaged. Check and repair it first.', 'code': 'unavailable'}
             total = sum(r[1] for r in rows)
             if max(r[1] for r in rows) >= FAT_MAX and (hardware.fs_type(target.parent) or '').lower() in hardware.FAT:
                 return {'error': 'That drive cannot hold files larger than 4 GB (it is FAT32), and this library has some. Use a drive formatted as exFAT.',

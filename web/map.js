@@ -116,7 +116,7 @@ const MapView = (() => {
       <div class="map-card" id="card" hidden></div>
       <div class="map-tip" id="tip" hidden></div>
       <div class="map-status" id="mstatus" aria-live="polite"></div>
-      <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
+      <div class="mapnight" id="mnight" hidden></div><div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
       <section class="panel"><h2>Nearest to the map center</h2><p class="small muted" style="margin:0 0 4px">For the layers you have on. Straight-line distance, not by road.</p><div class="nearres" id="near" aria-live="polite"></div></section>
@@ -187,6 +187,7 @@ const MapView = (() => {
         if (info.aerial_rev !== st.aerialRev) { st.aerialRev = info.aerial_rev; st.aerialDetail = info.aerial_detail; for (const v of st.aerial?.values() || []) v.close?.(); st.aerial = new Map(); draw() }  // new sharp photos: new URLs
         if (info.version !== st.ver) { st.ver = info.version; st.gen++; st.pinBox = null; draw(); loadPins() } } catch { }
     }, 60000);
+    st.sunTimer = setInterval(() => { if (st && st.style.daynight !== false && st.z < NIGHT_UNTIL) draw() }, 60000);   // the shade moves 15° an hour
     if (!openWhole) { draw(); settle() }
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
@@ -205,7 +206,7 @@ const MapView = (() => {
   function stop() {
     document.getElementById('main')?.classList.remove('map-page');
     if (typeof Terrain3D !== 'undefined') Terrain3D.close();
-    if (st) { clearInterval(st.nationalTimer); for (const t of ['nt', 'wt', 'kt', 'resizeTimer']) clearTimeout(st[t]); cancelAnimationFrame(st.raf); st.alive = false; st.ro && st.ro.disconnect(); document.removeEventListener('keydown', st.onKey); document.removeEventListener('fullscreenchange', st.onFull); if (document.fullscreenElement) document.exitFullscreen().catch(() => { }); st = null }
+    if (st) { clearInterval(st.nationalTimer); clearInterval(st.sunTimer); for (const t of ['nt', 'wt', 'kt', 'resizeTimer']) clearTimeout(st[t]); cancelAnimationFrame(st.raf); st.alive = false; st.ro && st.ro.disconnect(); document.removeEventListener('keydown', st.onKey); document.removeEventListener('fullscreenchange', st.onFull); if (document.fullscreenElement) document.exitFullscreen().catch(() => { }); st = null }
   }
   function toggleFull() {
     const w = $('mapwrap'); if (!w) return;
@@ -247,6 +248,7 @@ const MapView = (() => {
       ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${n}</button>`).join('')}<button data-p="">None</button></div>`}
       <fieldset class="style"><legend>Map style</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>Aerial photos (USGS / USDA)</span></label>`}
+        <label><input type="checkbox" data-style="daynight"${st.style.daynight !== false ? ' checked' : ''}><i class="msym style-ico">◐</i><span>Day and night now (zoomed out)</span></label>
         <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>Contour lines (from zoom 11)</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
@@ -456,6 +458,7 @@ const MapView = (() => {
     if (st.style.crops !== false) cropLayer(g, V);
     if (!st.style.aerial) terrainLayer(g, V);
     else if (st.style.contours) terrainLayer(g, V, true);
+    nightLayer(g, V);
     labels.sort((a, b) => a.pri - b.pri);
     const boxes = [];
     // pins first reserve their own space so labels don't sit on top of them
@@ -726,6 +729,58 @@ const MapView = (() => {
       if (t) g.drawImage(t, w / 2 + (tx - cx) * ts, h / 2 + (ty - cy) * ts, ts + 0.5, ts + 0.5);
     }
     g.restore();
+  }
+
+  // ------------------------------------------------------------ day & night ----
+  // Where it is day, twilight and night right now, from this computer's clock. Nothing is looked up: the sun's position
+  // comes from the Astronomical Almanac's low-precision formulas (within about 0.01° from 1950 to 2050).
+  // sun:start (app/tests/test_map_sun.py runs these functions in Node)
+  const RAD = Math.PI / 180;
+  // The point where the sun is straight overhead at a moment: its latitude is the sun's declination.
+  function sunAt(date) {
+    const d = date.getTime() / 864e5 - 10957.5;   // days since 2000-01-01 12:00 UTC
+    const g = (357.529 + 0.98560028 * d) * RAD, q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * RAD, e = (23.439 - 0.00000036 * d) * RAD;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)) / RAD, gmst = 280.46061837 + 360.98564736629 * d;
+    return { lat: Math.asin(Math.sin(e) * Math.sin(L)) / RAD, lon: (((ra - gmst) % 360) + 540) % 360 - 180 };
+  }
+  // How high the sun is above the horizon at a place, in degrees (negative: below it).
+  const sunHeight = (lat, lon, sun) => Math.asin(Math.sin(lat * RAD) * Math.sin(sun.lat * RAD) + Math.cos(lat * RAD) * Math.cos(sun.lat * RAD) * Math.cos((lon - sun.lon) * RAD)) / RAD;
+  // How dark to shade a place, 0 to 1: none while any of the sun shows (its top edge sets at -0.833°, refraction included),
+  // deepening through twilight, and full from 18° below, when the sky is fully dark.
+  const nightShade = h => Math.max(0, Math.min(1, (-0.833 - h) / (18 - 0.833)));
+  // sun:end
+  const NIGHT_UNTIL = 8;   // from this zoom in, one place fills the view: no line to show, so no shade
+  function nightLayer(g, V) {
+    const legend = $('mnight'), fade = st.style.daynight === false ? 0 : Math.max(0, Math.min(1, (NIGHT_UNTIL - st.z) / 2.5));
+    if (legend) legend.hidden = !fade;
+    if (!fade) return;
+    const now = new Date(), sun = sunAt(now), step = 6, cw = Math.ceil(V.w / step), ch = Math.ceil(V.h / step);
+    const c = st.night || (st.night = document.createElement('canvas'));
+    if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch }
+    const cg = c.getContext('2d'), img = cg.createImageData(cw, ch), o = img.data;
+    // one sample per 6 screen pixels, smoothed when drawn: the line between day and night is wide and soft anyway
+    const sd = Math.sin(sun.lat * RAD), cd = Math.cos(sun.lat * RAD), hour = new Float64Array(cw);
+    for (let i = 0; i < cw; i++) hour[i] = Math.cos((x2lon(V.cx + ((i + 0.5) * step - V.w / 2) / V.ts, V.tz) - sun.lon) * RAD);
+    for (let j = 0; j < ch; j++) {
+      const lat = y2lat(V.cy + ((j + 0.5) * step - V.h / 2) / V.ts, V.tz) * RAD, a = Math.sin(lat) * sd, b = Math.cos(lat) * cd;
+      for (let i = 0; i < cw; i++) {
+        const k = (j * cw + i) * 4;
+        o[k] = 10; o[k + 1] = 22; o[k + 2] = 60; o[k + 3] = Math.round(130 * fade * nightShade(Math.asin(Math.max(-1, Math.min(1, a + b * hour[i]))) / RAD));
+      }
+    }
+    cg.putImageData(img, 0, 0);
+    g.save(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, cw * step, ch * step);
+    // the sun, where it is straight overhead
+    const [sx, sy] = px(sun.lat, sun.lon, V), n = 2 ** V.tz * V.ts;
+    for (const x of [sx - n, sx, sx + n]) {
+      if (x < -20 || x > V.w + 20 || sy < -20 || sy > V.h + 20) continue;
+      g.globalAlpha = fade; g.strokeStyle = '#e09500'; g.lineWidth = 2; g.lineCap = 'round';
+      for (let r = 0; r < 8; r++) { const t = r * Math.PI / 4; g.beginPath(); g.moveTo(x + Math.cos(t) * 10, sy + Math.sin(t) * 10); g.lineTo(x + Math.cos(t) * 14, sy + Math.sin(t) * 14); g.stroke() }
+      g.beginPath(); g.arc(x, sy, 7, 0, 7); g.fillStyle = '#ffc107'; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke();
+    }
+    g.restore();
+    if (legend) legend.textContent = `Shaded where it is night, ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
   }
   // Height (m) at a point from the most detailed loaded tile, or null. With load=true, fetches the most detailed tile.
   function elevAt(lat, lon, load) {

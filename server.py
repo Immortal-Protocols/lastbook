@@ -52,6 +52,39 @@ remote_records = library.remote_records  # videos moved to remote drives by the 
 INDEX = None  # retrieval.Index, created in main()
 LAN_KEY = None
 SERVER = None  # the running HTTP server, so the packaged app's launcher can stop it
+SHARE_PORTS = range(8890, 8900)  # first free port in this range, when sharing from the app
+_LAN_THREAD = None
+_LAN_LOCK = threading.Lock()
+
+# Routes a phone or other device on the network must not reach, even with the access link.
+# This computer (loopback, or the in-memory bridge) can still use them.
+REMOTE_BLOCKED = (
+    '/api/setup/',
+    '/api/update/',
+    '/api/battery',
+    '/api/not-found',
+    '/api/assistant/local',
+    '/api/tool/',
+    '/api/tools',
+    '/api/share',
+)
+
+
+def is_loopback(ip):
+    """True for IPv4 and IPv6 loopback, including IPv4-mapped IPv6."""
+    return ip in ('127.0.0.1', '::1') or str(ip).startswith('::ffff:127.')
+
+
+def remote_blocked(path):
+    """True if a non-loopback client must not be given this path (setup, updates, notes, and so on)."""
+    path = path.split('?', 1)[0] or '/'
+    for prefix in REMOTE_BLOCKED:
+        if prefix.endswith('/'):
+            if path == prefix.rstrip('/') or path.startswith(prefix):
+                return True
+        elif path == prefix or path.startswith(prefix + '/'):
+            return True
+    return False
 
 _pdf_lock = threading.Lock()  # PDFium is not thread-safe
 
@@ -1847,7 +1880,7 @@ class Handler(library.Handler):
     def lan_ok(self):
         """Loopback is always allowed. Other devices need the LAN access key once (then a cookie)."""
         ip = self.client_address[0]
-        if ip in ('127.0.0.1', '::1') or ip.startswith('::ffff:127.'):
+        if is_loopback(ip):
             return True
         if not LAN_KEY:
             return False
@@ -1870,15 +1903,29 @@ class Handler(library.Handler):
         self.end_headers()
         self.wfile.write(body)
 
+    def deny_local_only(self):
+        return self.send_json({'error': 'This is only available on the computer that holds the library.'}, 403)
+
+    def admit(self):
+        """Host, LAN key, and the remote allow-list. False if this method already answered the client."""
+        ok = self.lan_ok()
+        if ok is None:
+            return False
+        if not ok:
+            self.deny()
+            return False
+        path = urllib.parse.urlsplit(self.path).path
+        if not is_loopback(self.client_address[0]) and remote_blocked(path):
+            self.deny_local_only()
+            return False
+        return True
+
     def do_HEAD(self):
         try:
             if not self.host_ok():
                 return self.send_error(403)
-            ok = self.lan_ok()
-            if ok is None:
+            if not self.admit():
                 return
-            if not ok:
-                return self.deny()
             path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
             if not self.path_ok(path):
                 return self.send_error(404)
@@ -1902,12 +1949,12 @@ class Handler(library.Handler):
     def handle_post(self):
         if not self.host_ok() or not self.origin_ok():
             return self.send_json({'error': 'not allowed from this page'}, 403)
-        ok = self.lan_ok()
-        if ok is None:
+        if not self.admit():
             return
-        if not ok:
-            return self.deny()
         rpath = urllib.parse.urlsplit(self.path).path
+        if rpath == '/api/share' or rpath.startswith('/api/share/'):
+            from engine import share
+            return share.handle(self, 'POST')
         if rpath.startswith('/api/setup/'):  # first-run setup and Library and local AI: engine/setup/api.py, this computer only
             return setup_api.handle(self, 'POST', rpath)
         if rpath.startswith('/api/update/'):  # Check for updates, when the person asks: engine/update.py, this computer only
@@ -1992,16 +2039,16 @@ class Handler(library.Handler):
         try:
             if not self.host_ok():
                 return self.send_json({'error': 'not allowed from this page'}, 403)
-            ok = self.lan_ok()
-            if ok is None:
+            if not self.admit():
                 return
-            if not ok:
-                return self.deny()
             url = urllib.parse.urlsplit(self.path)
             path = urllib.parse.unquote(url.path)
             if not self.path_ok(path):
                 return self.send_json({'error': 'not found'}, 404)
             qs = {k: v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
+            if path == '/api/share' or path.startswith('/api/share/'):
+                from engine import share
+                return share.handle(self, 'GET')
             if path.startswith('/api/setup/'):
                 return setup_api.handle(self, 'GET', path)
             if path.startswith('/api/update/'):
@@ -2217,21 +2264,111 @@ class HTTPServer(library.HTTPServer):   # queues 128 connections: opening the ma
         allow_reuse_address = False
 
 
+def load_lan_key():
+    """Create or read derived/lan-key. The same file is used by server.py --lan and the app's share switch."""
+    global LAN_KEY
+    kf = HERE / 'derived' / 'lan-key'
+    kf.parent.mkdir(parents=True, exist_ok=True)
+    if not kf.exists():
+        kf.write_text(secrets.token_urlsafe(18))
+        try:
+            os.chmod(kf, 0o600)
+        except OSError:
+            pass
+    LAN_KEY = kf.read_text(encoding='utf-8').strip()
+    return LAN_KEY
+
+
+def lan_address():
+    """This computer's likely IPv4 address on the local network, or None if it cannot be found."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return None
+
+
+def bind_http(port, lan=False):
+    """Listen on this port using library.HTTPServer (128 queued connections). lan=True listens on every interface; otherwise loopback only."""
+    return HTTPServer(('0.0.0.0' if lan else '127.0.0.1', port), Handler)
+
+
+def start_lan(port=None):
+    """Start the existing LAN server in a background thread. Reuses the current Handler and access key.
+    Opens a port only while this returns a server. Raises OSError if no port in SHARE_PORTS can be bound."""
+    global SERVER, _LAN_THREAD
+    with _LAN_LOCK:
+        if SERVER is not None:
+            return SERVER
+        load_lan_key()
+        ports = [port] if port is not None else list(SHARE_PORTS)
+        last = None
+        for p in ports:
+            try:
+                SERVER = bind_http(p, lan=True)
+                last = None
+                break
+            except OSError as e:
+                last = e
+                SERVER = None
+        if SERVER is None:
+            raise last if last is not None else OSError('could not listen')
+        _LAN_THREAD = threading.Thread(target=SERVER.serve_forever, daemon=True, name='lastbook-share')
+        _LAN_THREAD.start()
+        print(f'Lastbook is sharing on this network: port {SERVER.server_address[1]}', flush=True)
+        return SERVER
+
+
+def stop_lan(wait=True):
+    """Close the LAN server if it is running. Safe when it is not.
+    wait=True (the app is quitting, or a test): block until the port is closed.
+    wait=False (Stop was pressed in the window): close after this request finishes, so the reply can be sent."""
+    global SERVER, _LAN_THREAD
+    with _LAN_LOCK:
+        srv, th, SERVER, _LAN_THREAD = SERVER, _LAN_THREAD, None, None
+    if not srv:
+        return
+
+    def close():
+        try:
+            srv.shutdown()
+        except Exception:
+            pass
+        if th is not None:
+            th.join(timeout=5)
+        try:
+            srv.server_close()
+        except Exception:
+            pass
+        print('Lastbook stopped sharing on this network.', flush=True)
+
+    if wait:
+        close()
+    else:
+        threading.Thread(target=close, daemon=True, name='lastbook-share-stop').start()
+
+
 def serve(port, lan=False):
     """The HTTP server version: binds the port and answers until stopped."""
     global LAN_KEY, SERVER
     if lan:
-        LAN_KEY = lan_key(HERE / 'derived' / 'lan-key')
-    srv = SERVER = HTTPServer(('0.0.0.0' if lan else '127.0.0.1', port), Handler)
+        load_lan_key()
+    SERVER = bind_http(port, lan)
     print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
     if lan:
-        import socket
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('10.255.255.255', 1)); ip = s.getsockname()[0]; s.close()
-        except OSError:
-            ip = '<this-computer-ip>'
+        ip = lan_address() or '<this-computer-ip>'
         print(f'Phones on this network: http://{ip}:{port}/?key={LAN_KEY}  (keep this link private; delete derived/lan-key to change it)', flush=True)
-    srv.serve_forever()
+    try:
+        SERVER.serve_forever()
+    finally:
+        try:
+            SERVER.server_close()
+        except Exception:
+            pass
 
 
 def main():

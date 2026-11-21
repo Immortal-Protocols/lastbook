@@ -11,6 +11,7 @@
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
   const MANAGE_ASKED = /manage/.test(location.hash);   // #manage: the bridge allows no ?query on the top page
+  const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 
   const ICO = {
     disk: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 15h.01M11 15h6"/>',
@@ -32,6 +33,7 @@
     up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
     map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    devices: '<rect x="3" y="8" width="8" height="12" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/>',
   };
   const ico = (k, cls) => `<svg viewBox="0 0 24 24" aria-hidden="true"${cls ? ` class="${cls}"` : ''}>${ICO[k] || ''}</svg>`;
 
@@ -63,6 +65,13 @@
     let r; try { r = await fetch('/api/setup/' + path, opts) } catch { throw Object.assign(new Error('Lastbook did not answer. Close it and open it again.'), { status: 0 }) }
     let d = null; try { d = await r.json() } catch { }
     if (!r.ok && !(d && (d.error || d.need_bytes))) throw Object.assign(new Error(r.status === 404 ? 'Not available.' : 'Lastbook sent an unreadable reply.'), { status: r.status });
+    return d;
+  }
+  async function shareCall(body) {   // /api/share is this computer only, like setup; not under /api/setup/
+    const opts = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+    let r; try { r = await fetch('/api/share', opts) } catch { throw Object.assign(new Error('Lastbook did not answer. Close it and open it again.'), { status: 0 }) }
+    let d = null; try { d = await r.json() } catch { }
+    if (!r.ok && !(d && d.error)) throw Object.assign(new Error('Lastbook sent an unreadable reply.'), { status: r.status });
     return d;
   }
   const errCode = e => e && (typeof e === 'object' ? e.code : null);
@@ -105,6 +114,7 @@
     U = { ...r, supported: true };
     if (n) n.hidden = true;
   }
+  let SHARE;              // GET /api/share; undefined until loaded, so a re-render does not start the fetch again
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
   const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
@@ -540,6 +550,7 @@
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
       ${CAN.repair ? `<div class="s-have"><div class="s-row">${ico('ok', 's-ri')}<span><b>Library check</b><small id="lastCheck">${checkLine(c.checked)}</small></span><button class="btn plain" id="checkNow">Check now</button></div></div>` : ''}
+      ${IN_WINDOW ? shareRow() : ''}
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small>Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut">Copy to a drive…</button></div></div>
       <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}Check and repair</button>` : ''}
         <button class="s-link" id="otherLib">${ico('folder')}Open another library folder</button></div>
@@ -568,6 +579,7 @@
       if (!r || !r.path) { if (!r) { note = 'The picker could not open. Try again.'; manageView() } return }
       copyTo = r; go('copy');
     };
+    bindShare();
     if ($('#repair')) $('#repair').onclick = async () => {
       const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
       if (!r || r.error) { note = (r && r.error) || 'Repair could not start.'; manageView(); return }
@@ -575,6 +587,37 @@
     };
     renderServer();
     globalThis.LastbookI18n?.apply(main);
+  }
+  function shareRow() {
+    if (SHARE === undefined) {
+      shareCall().then(s => { SHARE = s; manageView() }).catch(() => { SHARE = null; manageView() });
+      return `<div class="s-have"><div class="s-row">${ico('devices', 's-ri')}<span><b>Share this library with my devices</b><small>Checking…</small></span></div></div>`;
+    }
+    if (!SHARE) return '';
+    const on = !!SHARE.on, err = SHARE.error || '';
+    const sub = on
+      ? (SHARE.link ? 'Other devices on this network can read the library with this access link. Keep it private. They cannot change settings or start downloads.'
+        : (err || 'Lastbook is sharing, but it could not find this computer\'s address on the network.'))
+      : 'Other computers, phones and tablets on this Wi-Fi can read the library. Nothing is downloaded to them. Off unless you turn it on.';
+    const link = on && SHARE.link ? '<code class="s-share-link" id="shareLink"></code>' : '';
+    const copy = on && SHARE.link ? '<button class="btn plain" id="shareCopy">Copy link</button>' : '';
+    const btn = on ? '<button class="btn plain" id="shareStop">Stop sharing</button>' : '<button class="btn" id="shareStart">Start sharing</button>';
+    const note = err && !(on && SHARE.link) ? `<p class="s-note" id="shareErr">${esc(err)}</p>` : '';
+    return `<div class="s-have"><div class="s-row">${ico('devices', 's-ri')}<span><b>Share this library with my devices</b><small>${esc(sub)}</small>${link}</span>${copy}${btn}</div>${note}</div>`;
+  }
+  function bindShare() {
+    if ($('#shareLink')) $('#shareLink').textContent = SHARE.link;
+    if ($('#shareStart')) $('#shareStart').onclick = () => shareAct(true);
+    if ($('#shareStop')) $('#shareStop').onclick = () => shareAct(false);
+    if ($('#shareCopy')) $('#shareCopy').onclick = async () => {
+      try { await navigator.clipboard.writeText(SHARE.link); $('#shareCopy').textContent = 'Copied' } catch { $('#shareLink') && $('#shareLink').focus() }
+    };
+  }
+  async function shareAct(on) {
+    const r = await shareCall({ on }).catch(() => null);
+    SHARE = r;
+    if (!r) { note = 'Lastbook could not change sharing. Try again.'; noteOk = false }
+    manageView();
   }
   /* ---- copy for someone else (#114): what goes onto the drive, and what does not */
   let copyTo = null;

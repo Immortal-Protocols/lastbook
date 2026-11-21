@@ -857,12 +857,12 @@ class Setup:
         self.job['result'] = {'files': c.get('files'), 'bytes': c.get('bytes'), 'folder': str(dst), 'start_here': name}
 
     def _check_library(self, it, lib, control):
-        """Files of the open library that are missing or differ from its pack-manifest.tsv (path, bytes, sha256)."""
+        """Missing or changed files, or the pack manifest itself if it cannot be read or is invalid."""
+        pack_manifest = lib / 'pack-manifest.tsv'
         try:
-            rows = [l.split('\t') for l in (lib / 'pack-manifest.tsv').read_text(encoding='utf-8').splitlines()[1:] if l.strip()]
-            rows = [(r[0], int(r[1]), r[2]) for r in rows]
-        except (OSError, ValueError, IndexError):
-            return ['pack-manifest.tsv']
+            rows = install.read_pack_manifest(pack_manifest)
+        except (OSError, ValueError):
+            return [pack_manifest.name]
         if _separate_map(lib):        # a state map replaced the pack's own: _start_repair checks it against map-set.json instead
             rows = [r for r in rows if not install.map_member(r[0])]
         total = sum(r[1] for r in rows) or 1

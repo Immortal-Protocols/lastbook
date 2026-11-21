@@ -87,7 +87,7 @@
   {
    "id": "flood-fire",
    "label": "What about floods, landslides or wildfire?",
-   "hint": "Storm runoff, hillsides, brush areas",
+   "hint": "Storm runoff, hillsides, mudslide or mudflow, brush areas",
    "read": [
     {
      "doc": "dee61b224a1299",

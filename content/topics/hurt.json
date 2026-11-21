@@ -12,7 +12,7 @@
   "blood",
   "cut",
   "wound",
-  "stitches",
+  "stitches", "bandage", "gauze",
   "infection",
   "burn",
   "scald",
@@ -142,7 +142,7 @@
   {
    "id": "closing",
    "label": "Does this wound need stitches or a doctor?",
-   "hint": "Gaping cut, old wound, deep wound, tetanus worry",
+   "hint": "Gaping cut, graze, old wound, deep wound, tetanus worry",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -192,7 +192,7 @@
   {
    "id": "bone",
    "label": "Broken bone, dislocation or sprain",
-   "hint": "Fall, twisted ankle, fractured or dislocated limb, looks bent or can't be moved",
+   "hint": "Fall, twisted ankle, bruise, fractured or dislocated limb, looks bent or can't be moved, sling",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -392,7 +392,7 @@
   {
    "id": "sting",
    "label": "Insect sting, tick, spider or jellyfish",
-   "hint": "Bee or wasp sting, ticks, mosquito or spider bite, scorpion, jellyfish or stinging fish",
+   "hint": "Bee or wasp sting or stinger, ticks, mosquito or spider bite, scorpion, jellyfish or stinging fish",
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -498,7 +498,7 @@
   {
    "id": "nohelp",
    "label": "Phones are down or help is far away",
-   "hint": "Earthquake, many injured, no ambulance coming, need to send for help",
+   "hint": "Earthquake, many injured, no ambulance coming, need to send for help, stretcher",
    "read": [
     {
      "doc": "clinical-fe3d008bfe1dd1a2",

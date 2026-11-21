@@ -135,10 +135,24 @@ FIRST = {
 # for them found nothing: [guide, choice] that comes first.
 ALREADY_COVERED = {
     'pets': ['food', 'special'], 'propane': ['power', 'gas'], 'propane tank': ['power', 'gas'], 'dental': ['health', None],
+    'respirator': ['disaster', 'smoke'], 'N95 respirator': ['disaster', 'smoke'], 'greenhouse': ['repair', 'build'],
+    'toothpaste': ['health', None], 'bandage': ['hurt', None], 'gauze': ['hurt', None], 'goggles': ['repair', None],
+    'antenna': ['comms', None], 'documents': ['disaster', None], 'important documents': ['disaster', None],
+    'bruise': ['hurt', 'bone'], 'sling': ['hurt', 'bone'], 'stretcher': ['hurt', 'nohelp'], 'stinger': ['hurt', 'sting'],
+    'graze': ['hurt', 'closing'], 'spoilage': ['preserve', 'jarcheck'], 'distillation': ['water', 'chemical'],
+    'mudslide': ['land', 'flood-fire'], 'mudflow': ['land', 'flood-fire'], 'honing': ['repair', 'dull'],
+    'fermentation': ['preserve', None], 'kombucha': ['preserve', None], 'radiological': ['disaster', None],
 }
 # An emergency that happens to mention a new word still opens the urgent choice first, not the routine one the word was added to.
 URGENT_FIRST = {
     'child unconscious after pet food': ['hurt', 'breathing'], 'child swallowed pet food': ['hurt', 'poison'],
+    'child not breathing respirator': ['hurt', 'breathing'], 'child swallowed toothpaste': ['hurt', 'poison'],
+    'bleeding through the bandage': ['hurt', 'bleeding'], 'bleeding wont stop bandage soaked': ['hurt', 'bleeding'],
+    'unconscious bleeding bandage': ['hurt', 'breathing'], 'bandage a burn': ['hurt', 'burn'], 'duct tape wound': ['hurt', 'bleeding'],
+    'bruise on head after fall': ['hurt', 'head'], 'head injury bruise': ['hurt', 'head'], 'bruised and bleeding': ['hurt', 'bleeding'],
+    'graze bleeding heavily': ['hurt', 'bleeding'], 'bleeding stinger': ['hurt', 'bleeding'], 'stinger throat swelling': ['hurt', 'breathing'],
+    'stretcher neck injury': ['hurt', 'head'], 'carry on stretcher not breathing': ['hurt', 'breathing'], 'mudslide injured': ['hurt', 'check'],
+    'pain in left arm and chest': ['hurt', 'sudden'],
 }
 # Searches the new words must not disturb: [guide, choice] that comes first.
 UNDISTURBED = {

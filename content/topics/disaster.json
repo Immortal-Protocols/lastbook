@@ -36,6 +36,7 @@
   "chemical",
   "shelter in place",
   "radiation",
+  "radiological",
   "nuclear",
   "nuke",
   "missiles",
@@ -43,7 +44,7 @@
   "bombing",
   "explosions",
   "dirty bomb",
-  "go bag",
+  "go bag", "documents",
   "kit",
   "family plan",
   "high-rise",
@@ -165,7 +166,7 @@
   {
    "id": "smoke",
    "label": "Wildfire smoke is making the air bad",
-   "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate",
+   "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate, N95 respirator",
    "read": [
     {
      "doc": "a90ff7e6f3cf01",

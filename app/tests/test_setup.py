@@ -1957,6 +1957,28 @@ class Manage(Base):
         d.mkdir()
         return d
 
+    def test_copy_refuses_a_manifest_without_the_catalog(self):
+        lib = self.installed_library()
+        listing = lib / 'pack-manifest.tsv'
+        lines = listing.read_text(encoding='utf-8').splitlines()
+        catalog_prefix = install.CATALOG.as_posix() + '\t'
+        drive = self.drive()
+        cases = {
+            'header-only': lines[:1],
+            'missing-catalog': [line for line in lines if not line.startswith(catalog_prefix)],
+        }
+        for name, rows in cases.items():
+            with self.subTest(name=name):
+                listing.write_text('\n'.join(rows) + '\n', encoding='utf-8')
+                target = drive / name
+                target.mkdir()
+                s = self.setup('manage', current=lib)
+                result = s.start(copy_to=str(target))
+                if result.get('copy'):
+                    result = self.wait(s)
+                self.assertEqual(result.get('code'), 'unavailable', result)
+                self.assertEqual(list(target.iterdir()), [])
+
     def test_copy_to_a_drive_holds_the_library_and_nothing_personal(self):
         lib = self.installed_library()
         personal = {'derived/geo/addresses/CA.sqlite': b'addresses', 'derived/index/semantic.sqlite': b'index',

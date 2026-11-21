@@ -170,7 +170,8 @@ RANK_OWN = [['agua', [OWN]], ['水', [OWN]], ['hervir', [OWN]]]
 UNCONSCIOUS = {
     'passed out': ['hurt', 'breathing'], 'my dad passed out': ['hurt', 'breathing'], 'pass out': ['hurt', 'breathing'],
     'passing out': ['hurt', 'breathing'], 'unresponsive': ['hurt', 'breathing'], "won't wake up": ['hurt', 'breathing'],
-    "baby won't wake up": ['hurt', 'breathing'],
+    "baby won't wake up": ['hurt', 'breathing'], 'wont wake up': ['hurt', 'breathing'],
+    'I keep passing out': ['hurt', 'breathing'], 'she passed out': ['hurt', 'breathing'],
 }
 # Searches with "out", "black" or "pass" about something else keep their first result.
 STILL_OUT = {
@@ -178,7 +179,10 @@ STILL_OUT = {
     'lights out': ['power', 'first-hours'], 'out of food': ['food', 'outage'],
     'black widow bite': ['hurt', 'animal-bite'], 'passing blood': ['health', 'chronic'],
 }
-TOPS = sorted({*TOPS, *UNCONSCIOUS, *STILL_OUT})
+# Ordinary searches with "pass" or "wake" in them: they never list Not breathing.
+NOT_UNCONSCIOUS = ['passing gas', 'passing stool', 'passing blood', 'passing a kidney stone', 'mountain pass', 'pass',
+                   'wake up', 'woke up', 'wake', 'out of food']
+TOPS = sorted({*TOPS, *UNCONSCIOUS, *STILL_OUT, *NOT_UNCONSCIOUS})
 
 # Emergencies where the first choice decides what someone reads first. A cardiac arrest needs CPR, not the
 # long-term care guide that "heart" also matches: [guide, choice] that comes first.
@@ -319,6 +323,9 @@ class TopicSearch(unittest.TestCase):
             for q, first in [*UNCONSCIOUS.items(), *STILL_OUT.items()]:
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
+            for q in NOT_UNCONSCIOUS:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotIn(['hurt', 'breathing'], top[q])
 
     def test_english_ranks_as_before(self):
         for r in self.modes:

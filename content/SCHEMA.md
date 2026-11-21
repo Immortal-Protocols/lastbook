@@ -58,8 +58,9 @@ Rules
   Hesperian/MSF/USDA/extension sources; mention in `note` if a source is old (e.g. 1980s civil defense) or written for
   health workers or trained responders.
 - `urgent` is only for a life-threatening choice that must win over any other choice in its topic. When a search names
-  one of its phrases, that choice is shown for its topic and the topic is listed first, ahead of guides that matched more
-  words and even below the usual 60% cut; the other guides that pass the cut follow in their usual order, at most three
-  rows in all. A search that names no `urgent` phrase is ranked exactly as without the field. Each phrase is matched as
-  whole words in order, so "not breathing" does not catch "trouble breathing".
+  one of its phrases, that choice is shown for its topic and the topic is listed first, ahead of guides that matched
+  more words, even below the usual 60% cut and even when no other word of the search matched it; the other guides that
+  pass the cut follow in their usual order, at most three rows in all. A search that names no `urgent` phrase is ranked
+  exactly as without the field. Each phrase is matched as whole words in order, so "not breathing" does not catch
+  "trouble breathing".
 - Favour fewer, better items: 1–4 readings per choice, 3–8 in prepare, 4–10 in learn.

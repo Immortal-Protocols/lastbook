@@ -394,7 +394,8 @@ def main():
     setup_api.configure(mode='manage', current=data, **setup_options())
     from engine import share
     share.configure(app_folders()[0])
-    share.restore()   # only if the person left sharing on; a failure is shown in Library and local AI
+    share.install_shutdown_hooks()
+    share.restore()   # only if the person left sharing on; a failure is shown in Library and local AI, and in the sharing bar
     import bridge as B
     try:
         if sys.platform == 'darwin':

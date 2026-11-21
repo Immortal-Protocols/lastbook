@@ -949,3 +949,8 @@ body.map-maxed{overflow:hidden}
   html.wcap .mapwrap.max,html.wcap .chat-side.open{top:var(--cap-h)}   /* the title bar stays, as in Windows' own apps */
   html.wcap:fullscreen .capband,html.wcap:has(:fullscreen) .capband{display:none}   /* nothing of the band, its drag area included, over a page in full screen */
 }
+
+/* Sharing indicator: visible in the desktop app whenever the library is on the local network. */
+.share-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;background:var(--accent-soft);color:var(--ink);border-bottom:1px solid var(--line);font-size:15px}
+.share-bar[hidden]{display:none}
+.share-bar .btn{min-height:32px;padding:4px 12px;font-size:14px}

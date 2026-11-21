@@ -448,6 +448,11 @@ class AppDelegate(Foundation.NSObject):
         return True
 
     def applicationWillTerminate_(self, note):
+        try:
+            from engine import share
+            share.stop(forget=False, wait=True)
+        except Exception:
+            traceback.print_exc()
         threading.Timer(2, os._exit, [0]).start()   # engine threads must not hold up the exit
 
 

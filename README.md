@@ -62,13 +62,17 @@ other Linux distributions have not been validated for this release.
 ## Privacy and network use
 
 - **No listening port, unless you turn on sharing.** The desktop app opens no network port unless the person turns on
-  **Share this library with my devices** in Library and local AI. Then it listens on the local network only while
-  sharing is on, using the same access-key server as `server.py --lan`. Other devices can read the library (pages,
-  search, videos) but cannot change settings, start downloads, or reach notes and updates. The port is closed when
-  sharing is stopped or the app quits. If sharing was left on, it starts again when the app opens. The window and the
-  engine talk through an in-memory bridge (`app/bridge.py`): WKURLSchemeHandler on macOS (`app/shell_macos.py`),
-  WebView2 `WebResourceRequested` on Windows (`app/shell_windows.py`), and WebKitGTK `URISchemeRequest` on Linux
-  (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and output and opens no socket either.
+  **Share this library with my devices** in Library and local AI. Then a dedicated share listener (not the desktop
+  handler) listens on the local network only while sharing is on, the same listener as `server.py --lan`. Every socket
+  request needs the access key (in the link, a cookie, or a header). Only an explicit read-only allowlist is served
+  (library browsing: pages, search, maps, encyclopedias, videos). Settings, setup, updates, notes and other private
+  state stay on the in-memory bridge, on this computer. Chat with this computer's local AI is a separate option, off
+  unless the person turns it on. The port, and any in-progress stream, is closed when sharing is stopped or the app
+  quits. If sharing was left on, it starts again when the app opens, and a bar in the window says so, with Stop. The
+  window and the engine talk through an in-memory bridge (`app/bridge.py`): WKURLSchemeHandler on macOS
+  (`app/shell_macos.py`), WebView2 `WebResourceRequested` on Windows (`app/shell_windows.py`), and WebKitGTK
+  `URISchemeRequest` on Linux (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and
+  output and opens no socket either.
 - **Three uses of the network, all started by the person.** (1) Setup's downloader (`engine/setup/`), when the person
   starts or resumes a download. (2) The update check (`engine/update.py`, `web/update.js`), when the person presses
   the button. Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,

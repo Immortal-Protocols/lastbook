@@ -1225,4 +1225,9 @@ def run(server_module, data):
     if failure:
         raise failure[0]
     print('window closed', flush=True)
+    try:
+        from engine import share
+        share.stop(forget=False, wait=True)
+    except Exception:
+        traceback.print_exc()
     os._exit(0)     # the engine's threads and any web view reads still under way end here

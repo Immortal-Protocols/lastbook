@@ -56,35 +56,9 @@ SHARE_PORTS = range(8890, 8900)  # first free port in this range, when sharing f
 _LAN_THREAD = None
 _LAN_LOCK = threading.Lock()
 
-# Routes a phone or other device on the network must not reach, even with the access link.
-# This computer (loopback, or the in-memory bridge) can still use them.
-REMOTE_BLOCKED = (
-    '/api/setup/',
-    '/api/update/',
-    '/api/battery',
-    '/api/not-found',
-    '/api/assistant/local',
-    '/api/tool/',
-    '/api/tools',
-    '/api/share',
-)
-
-
 def is_loopback(ip):
     """True for IPv4 and IPv6 loopback, including IPv4-mapped IPv6."""
     return ip in ('127.0.0.1', '::1') or str(ip).startswith('::ffff:127.')
-
-
-def remote_blocked(path):
-    """True if a non-loopback client must not be given this path (setup, updates, notes, and so on)."""
-    path = path.split('?', 1)[0] or '/'
-    for prefix in REMOTE_BLOCKED:
-        if prefix.endswith('/'):
-            if path == prefix.rstrip('/') or path.startswith(prefix):
-                return True
-        elif path == prefix or path.startswith(prefix + '/'):
-            return True
-    return False
 
 _pdf_lock = threading.Lock()  # PDFium is not thread-safe
 
@@ -1867,23 +1841,18 @@ class Handler(library.Handler):
         traceback.print_exc()
         return self.send_json({'error': f'Server error ({sys.exc_info()[0].__name__}).'}, 500)
 
-    def lan_ok(self):
-        """Loopback is always allowed. Other devices need the LAN access key once (then a cookie)."""
-        ip = self.client_address[0]
-        if is_loopback(ip):
-            return True
-        if not LAN_KEY:
-            return False
-        qs = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
-        cookie = self.headers.get('Cookie') or ''
-        if secrets.compare_digest(qs.get('key', [''])[0], LAN_KEY):
-            self.send_response(302)
-            self.send_header('Set-Cookie', f'sg_key={LAN_KEY}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000')
-            self.send_header('Location', '/')
-            self.end_headers()
-            return None
-        m = re.search(r'(?:^|;\s*)sg_key=([^;]+)', cookie)
-        return bool(m and secrets.compare_digest(m.group(1), LAN_KEY))
+    def _share_forbidden(self, path):
+        """Desktop-only routes that the share listener must never dispatch, even if asked."""
+        return (
+            path == '/api/share' or path.startswith('/api/share/')
+            or path.startswith('/api/setup/') or path == '/api/setup'
+            or path.startswith('/api/update/') or path == '/api/update'
+            or path == '/api/battery'
+            or path == '/api/not-found' or path.startswith('/api/not-found/')
+            or path == '/api/assistant/local' or path.startswith('/api/assistant/local/')
+            or path.startswith('/api/tool/') or path == '/api/tools'
+            or path.startswith('/ui/setup') or path.startswith('/ui/update')
+        )
 
     def deny(self):
         body = b'<!doctype html><meta name=viewport content="width=device-width"><title>Lastbook</title><p style="font:18px system-ui;padding:24px">This guide is shared on this network only with an access link. Ask the person running it for the link shown when it started.</p>'
@@ -1893,29 +1862,10 @@ class Handler(library.Handler):
         self.end_headers()
         self.wfile.write(body)
 
-    def deny_local_only(self):
-        return self.send_json({'error': 'This is only available on the computer that holds the library.'}, 403)
-
-    def admit(self):
-        """Host, LAN key, and the remote allow-list. False if this method already answered the client."""
-        ok = self.lan_ok()
-        if ok is None:
-            return False
-        if not ok:
-            self.deny()
-            return False
-        path = urllib.parse.urlsplit(self.path).path
-        if not is_loopback(self.client_address[0]) and remote_blocked(path):
-            self.deny_local_only()
-            return False
-        return True
-
     def do_HEAD(self):
         try:
             if not self.host_ok():
                 return self.send_error(403)
-            if not self.admit():
-                return
             path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
             if not self.path_ok(path):
                 return self.send_error(404)
@@ -1939,9 +1889,11 @@ class Handler(library.Handler):
     def handle_post(self):
         if not self.host_ok() or not self.origin_ok():
             return self.send_json({'error': 'not allowed from this page'}, 403)
-        if not self.admit():
-            return
         rpath = urllib.parse.urlsplit(self.path).path
+        if getattr(self, 'SHARE_LISTENER', False):
+            # The share listener never answers desktop-only POST routes; /api/chat is opted in earlier.
+            if rpath != '/api/chat':
+                return self.send_json({'error': 'This is not part of what is shared from this library.'}, 403)
         if rpath == '/api/share' or rpath.startswith('/api/share/'):
             from engine import share
             return share.handle(self, 'POST')
@@ -2029,13 +1981,13 @@ class Handler(library.Handler):
         try:
             if not self.host_ok():
                 return self.send_json({'error': 'not allowed from this page'}, 403)
-            if not self.admit():
-                return
             url = urllib.parse.urlsplit(self.path)
             path = urllib.parse.unquote(url.path)
             if not self.path_ok(path):
                 return self.send_json({'error': 'not found'}, 404)
             qs = {k: v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
+            if getattr(self, 'SHARE_LISTENER', False) and self._share_forbidden(path):
+                return self.send_json({'error': 'This is not part of what is shared from this library.'}, 403)
             if path == '/api/share' or path.startswith('/api/share/'):
                 from engine import share
                 return share.handle(self, 'GET')
@@ -2192,6 +2144,95 @@ def init(no_index=False):
     threading.Thread(target=prewarm_previews, daemon=True).start()
 
 
+class ShareHandler(Handler):
+    """The dedicated share listener. Every socket request needs the access key (query, cookie, or header).
+    Only routes on the read-only allowlist are served. Settings and private state stay on the bridge."""
+    SHARE_LISTENER = True
+
+    def end_headers(self):
+        if getattr(self, '_set_share_cookie', False):
+            self.send_header('Set-Cookie', f'sg_key={LAN_KEY}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000')
+            self._set_share_cookie = False
+        super().end_headers()
+
+    def deny_not_shared(self):
+        return self.send_json({'error': 'This is not part of what is shared from this library.'}, 403)
+
+    def share_admit(self):
+        """Credential, then allowlist, on the same normalized route later used for dispatch."""
+        if getattr(self, 'share_route', None):
+            return True
+        from engine.share_http import normalize_route, allowed, presented_key, key_matches
+        from engine import share as share_mod
+        route = normalize_route(self.path)
+        if route is None:
+            self.send_error(400)
+            return False
+        given, where = presented_key(self.path, self.headers)
+        if not LAN_KEY or not key_matches(given, LAN_KEY):
+            self.deny()
+            return False
+        ai = share_mod.wanted_ai()
+        if not allowed(route, self.command, ai=ai):
+            self.deny_not_shared()
+            return False
+        parts = urllib.parse.urlsplit(self.path)
+        qs = urllib.parse.parse_qs(parts.query, keep_blank_values=True)
+        if where == 'query':
+            self._set_share_cookie = True
+            qs.pop('key', None)
+        query = urllib.parse.urlencode({k: v[0] for k, v in qs.items()}) if qs else ''
+        self.path = route + (('?' + query) if query else '')
+        self.share_route = route
+        return True
+
+    def do_HEAD(self):
+        try:
+            if not self.host_ok():
+                return self.send_error(403)
+            if not self.share_admit():
+                return
+            return super().do_HEAD()
+        except library.CLIENT_GONE:
+            return
+        except Exception:
+            traceback.print_exc()
+            return self.send_error(500)
+
+    def do_GET(self):
+        try:
+            if not self.host_ok():
+                return self.send_json({'error': 'not allowed from this page'}, 403)
+            if not self.share_admit():
+                return
+            if self.share_route == '/api/assistant/status':
+                from engine import share as share_mod
+                if not share_mod.wanted_ai():
+                    return self.send_json({
+                        'online': False,
+                        'available': False,
+                        'shared': False,
+                        'coverage': {},
+                    })
+            return super().do_GET()
+        except library.CLIENT_GONE:
+            return
+        except Exception:
+            return self.internal_error()
+
+    def do_POST(self):
+        try:
+            if not self.host_ok() or not self.origin_ok():
+                return self.send_json({'error': 'not allowed from this page'}, 403)
+            if not self.share_admit():
+                return
+            return super().handle_post()
+        except library.CLIENT_GONE:
+            return
+        except Exception:
+            return self.internal_error()
+
+
 def load_lan_key():
     """Create or read derived/lan-key. The same file is used by server.py --lan and the app's share switch."""
     global LAN_KEY
@@ -2220,19 +2261,21 @@ def lan_address():
         return None
 
 
-def bind_http(port, lan=False):
-    """A ThreadingHTTPServer on this port. lan=True listens on every interface; otherwise loopback only."""
+def bind_http(port, lan=False, handler=None):
+    """A ThreadingHTTPServer on this port. lan=True listens on every interface and uses the share handler."""
     server_class = library.http.server.ThreadingHTTPServer
     if os.name == 'nt':  # SO_REUSEADDR on Windows lets a second copy silently share the port
         class server_class(server_class):
             allow_reuse_address = False
-    return server_class(('0.0.0.0' if lan else '127.0.0.1', port), Handler)
+    cls = handler if handler is not None else (ShareHandler if lan else Handler)
+    return server_class(('0.0.0.0' if lan else '127.0.0.1', port), cls)
 
 
 def start_lan(port=None):
-    """Start the existing LAN server in a background thread. Reuses the current Handler and access key.
+    """Start the dedicated share listener in a background thread (ShareHandler, allowlist, key required).
     Opens a port only while this returns a server. Raises OSError if no port in SHARE_PORTS can be bound."""
     global SERVER, _LAN_THREAD
+    from engine.share_http import ShareServer
     with _LAN_LOCK:
         if SERVER is not None:
             return SERVER
@@ -2241,8 +2284,10 @@ def start_lan(port=None):
         last = None
         for p in ports:
             try:
-                SERVER = bind_http(p, lan=True)
+                raw = bind_http(p, lan=True, handler=ShareHandler)
                 last = None
+                SERVER = raw
+                ShareServer(raw)
                 break
             except OSError as e:
                 last = e
@@ -2256,57 +2301,64 @@ def start_lan(port=None):
 
 
 def stop_lan(wait=True):
-    """Close the LAN server if it is running. Safe when it is not.
-    wait=True (the app is quitting, or a test): block until the port is closed.
-    wait=False (Stop was pressed in the window): close after this request finishes, so the reply can be sent."""
+    """Close the share listener, including every in-progress stream, and release the port.
+    Safe when it is not running. wait=True blocks until the port is free."""
     global SERVER, _LAN_THREAD
     with _LAN_LOCK:
         srv, th, SERVER, _LAN_THREAD = SERVER, _LAN_THREAD, None, None
     if not srv:
         return
-
-    def close():
+    wrapper = getattr(srv, 'share', None)
+    if wrapper is not None:
+        wrapper.stop(wait=wait)
+    else:
         try:
             srv.shutdown()
         except Exception:
             pass
-        if th is not None:
-            th.join(timeout=5)
         try:
             srv.server_close()
         except Exception:
             pass
-        print('Lastbook stopped sharing on this network.', flush=True)
-
-    if wait:
-        close()
-    else:
-        threading.Thread(target=close, daemon=True, name='lastbook-share-stop').start()
+    if wait and th is not None:
+        th.join(timeout=5)
+    print('Lastbook stopped sharing on this network.', flush=True)
 
 
 def serve(port, lan=False):
-    """The HTTP server version: binds the port and answers until stopped."""
+    """The HTTP server version: binds the port and answers until stopped.
+    --lan starts the same share listener the desktop app uses (allowlist, key required on every request).
+    Without --lan, the full Handler listens on loopback only."""
     global LAN_KEY, SERVER
+    from engine.share_http import ShareServer
     if lan:
         load_lan_key()
-    SERVER = bind_http(port, lan)
-    print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
-    if lan:
+        SERVER = bind_http(port, lan=True, handler=ShareHandler)
+        ShareServer(SERVER)
         ip = lan_address() or '<this-computer-ip>'
-        print(f'Phones on this network: http://{ip}:{port}/?key={LAN_KEY}  (keep this link private; delete derived/lan-key to change it)', flush=True)
+        print(f'Lastbook is sharing on this network: http://{ip}:{port}/?key={LAN_KEY}', flush=True)
+        print(f'On this computer (same key): http://127.0.0.1:{port}/?key={LAN_KEY}', flush=True)
+        print('Keep this link private; delete derived/lan-key to change it. Settings stay on this computer.', flush=True)
+    else:
+        SERVER = bind_http(port, lan=False, handler=Handler)
+        print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
     try:
         SERVER.serve_forever()
     finally:
-        try:
-            SERVER.server_close()
-        except Exception:
-            pass
+        wrapper = getattr(SERVER, 'share', None)
+        if wrapper is not None:
+            wrapper.stop(wait=True)
+        else:
+            try:
+                SERVER.server_close()
+            except Exception:
+                pass
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--port', type=int, default=8890)
-    ap.add_argument('--lan', action='store_true', help='also serve phones on the same network; they need the printed access link')
+    ap.add_argument('--lan', action='store_true', help='share the library on this network (read-only allowlist; every request needs the printed access key)')
     ap.add_argument('--no-index', action='store_true', help='do not update the semantic index in the background')
     ap.add_argument('--data', help='data folder holding library-data/ and derived/ (or set LASTBOOK_DATA); default: beside this program')
     a = ap.parse_args()

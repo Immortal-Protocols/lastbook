@@ -18,7 +18,7 @@ The README explains the layout and how to build the apps.
 ## Test
 
 ```bash
-python3 -B -m unittest app.tests.test_readable app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts app.tests.test_shell_macos app.tests.test_run_source_linux app.tests.test_page_tables app.tests.test_share
+python3 -B -m unittest app.tests.test_readable app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts app.tests.test_shell_macos app.tests.test_run_source_linux app.tests.test_page_tables app.tests.test_share app.tests.test_share_lan
 ```
 
 Run these before you open a pull request (`test_topic_search` needs Node and is skipped without it; `test_shell_macos` needs a Mac with PyObjC and is skipped elsewhere; `test_run_source_linux` needs bash and is skipped on Windows). If you change the packaging, also run the build for your platform: it ends
@@ -38,9 +38,11 @@ the page you mean to cite: `python3 tools/libq.py --data /path/to/LastbookData s
 
 - Setup's downloads, and the Check for updates button (`engine/update.py`, `downloads.lastbook.org` only), both
   through `engine/setup/download.py` to the hosts in `ALLOWED_HOSTS` only.
-- **Share this library with my devices** in Library and local AI: only while it is on, the app listens on the local
-  network using the same server as `server.py --lan`. Other devices can only read the library, and only with the
-  access link. Off means no listening port. The port is also closed when the app quits.
+- **Share this library with my devices** in Library and local AI: only while it is on, a dedicated share listener
+  (the same one as `server.py --lan`) listens on the local network. Every socket request needs the access key.
+  Other devices get only the read-only allowlist (library browsing). Settings and private state stay on the
+  in-memory bridge. Chat with the host's local AI is a separate option, off unless turned on. Off means no
+  listening port. Stop closes the port and any in-progress stream, and every quit path does the same.
 
 - No telemetry, analytics, crash reporting, fonts or scripts from the web, or "phone home" of any kind. The one update check
   (`engine/update.py`) runs only when the person presses its button, and only says whether a newer version exists.

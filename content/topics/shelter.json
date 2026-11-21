@@ -153,7 +153,7 @@
   {
    "id": "co",
    "label": "Using a generator, heater, grill or stove for power or heat",
-   "hint": "Power outage, space heater, camp stove, headache or dizziness indoors",
+   "hint": "Power outage, space heater, camp stove, headache or dizziness indoors, carbon monoxide",
    "read": [
     {
      "doc": "18bf4604bf28c4",

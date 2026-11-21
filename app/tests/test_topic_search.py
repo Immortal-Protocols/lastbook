@@ -47,6 +47,7 @@ EVERYDAY = {
     'spinal fracture': ['hurt', 'head'], 'fractured vertebra': ['hurt', 'head'], 'fractured vertebrae': ['hurt', 'head'],
     'vertebral fracture': ['hurt', 'head'], 'fractured vertebral column': ['hurt', 'head'],
     'I drank from the stream and have diarrhea': ['hurt', 'diarrhea'], 'I drank and feel dehydrated': ['hurt', 'diarrhea'],
+    'carbon monoxide': ['shelter', 'co'], 'carbon monoxide poisoning': ['shelter', 'co'],
 }
 
 # Injuries in a forest: since "forest fires" joined the wildfire hint, "forest" also picks wildfire, so these only have

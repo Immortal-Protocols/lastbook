@@ -29,7 +29,8 @@ TOPICS = [json.loads(p.read_text(encoding='utf-8')) for p in sorted((ROOT / 'con
 QSTOP = re.search(r"const QSTOP = new Set\('([^']*)'\.split", (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')).group(1).split(' ')
 
 # upstream/main when these numbers were measured. Re-measure BASE_FIRST on a new main and record the new one.
-BASELINE = '1d847d0 + #44'   # 9542e80 before; #44's burn hints moved the two burn rows to the burn choice
+BASELINE = '4b5750b + the carbon monoxide hint'   # '1d847d0 + #44' before; the hint moved the tent row to the CO choice
+# 9542e80 before that; #44's burn hints moved the two burn rows to the burn choice
 
 # ----------------------------------------------------------------------------------------------------------
 # The measure. #154 counts "the top 8 hits whose title or excerpt has a word a useful page would have". At
@@ -91,7 +92,7 @@ BASE_FIRST = {
     'my clothes caught fire while starting the fire': ['disaster', 'earthquake-after'],
     'i burned my hand on the camp stove': ['food', 'cook'],
     'my child swallowed lamp oil': ['hurt', 'poison'],
-    'carbon monoxide from making a fire in the tent': ['shelter', 'damaged'],
+    'carbon monoxide from making a fire in the tent': ['shelter', 'co'],        # ['shelter', 'damaged'] on 1d847d0 + #44
     'not responding to antibiotics': ['health', 'medicine'],
     'the pump is not responding': ['hurt', 'breathing'],
     'choking on smoke': ['disaster', 'smoke'],
@@ -114,7 +115,6 @@ KNOWN_GAPS = {
     'my son nearly drowned in the rainwater pool': 0.0,
     'my clothes caught fire while starting the fire': 0.0,
     'i burned my hand on the camp stove': 0.0,
-    'carbon monoxide from making a fire in the tent': 0.5,
 }
 
 CASES = {

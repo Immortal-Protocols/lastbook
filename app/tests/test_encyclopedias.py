@@ -365,6 +365,14 @@ class ChatTools(unittest.TestCase):
         self.assertIn('no readable text', text)
         self.assertIn('view_page', text)
 
+    def test_view_page_of_an_unreadable_pdf_says_so(self):
+        """A damaged or password-protected PDF is a plain sentence for the model, not a lost tool turn."""
+        assistant.S.render_page.side_effect = RuntimeError('bad pdf')
+        text, summary = assistant.run_tool('view_page', {'doc_id': 'fema-water', 'page': 1}, self.sess, [])
+        self.assertEqual(summary.get('error'), 'unreadable')
+        self.assertIn('could not be shown', text)
+        self.assertEqual(self.sess.sources, {})
+
     def _patch_zim(self, **kwargs):
         """Point the Chat helpers at this test's fake archives."""
         self.assertIs(encyclopedias, assistant.encyclopedias)

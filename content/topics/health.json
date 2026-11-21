@@ -35,6 +35,10 @@
   "anxiety",
   "depression",
   "suicide",
+  "killing myself",
+  "wants to die",
+  "end my life",
+  "want to live",
   "trauma",
   "grief",
   "disability",
@@ -180,6 +184,7 @@
    "id": "mind",
    "label": "Stress, fear, grief or someone in crisis",
    "hint": "Can't sleep, panic, hopeless, suicidal or talking about suicide, after a disaster",
+   "urgent": ["kill myself", "killing myself", "kill himself", "kill herself", "kill themselves", "want to die", "wants to die", "wanting to die", "end my life", "don't want to live", "dont want to live"],
    "read": [
     {
      "doc": "med-0faf49d8c0bd8eb2",

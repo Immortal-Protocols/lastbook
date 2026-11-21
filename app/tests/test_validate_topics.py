@@ -98,6 +98,19 @@ class Validate(unittest.TestCase):
                      'ERRORS 4'):
             self.assertIn(line, out)
 
+    def test_related_must_name_existing_topics(self):
+        """`related` is a list of topic ids the app turns into links; a missing id is silently dropped there, so the
+        curator must hear about it here."""
+        (self.topics / 'food.json').write_text(json.dumps({'id': 'food', 'intro': 'Food'}), encoding='utf-8')
+        good = self.topic('related.json', related=['water', 'food', 'missing', 7])
+        bad = self.topic('related-bad.json', related='water')
+        code, out = self.run_tool('--data', str(self.data), good, bad)
+        self.assertEqual(code, 1, out)
+        self.assertIn("related.json related: unknown topic 'missing'", out)
+        self.assertIn('related.json related: unknown topic 7', out)
+        self.assertIn('related-bad.json related: not a list', out)
+        self.assertIn('ERRORS 3', out)
+
     def test_no_library_says_so(self):
         empty = Path(self.dir.name) / 'empty'
         empty.mkdir(exist_ok=True)

@@ -63,8 +63,18 @@ def zim_problem(lib, ref):
 def main(args):
     lib, files = library(args)
     cat = {r['id']: r for r in json.loads((lib / 'catalog.json').read_text(encoding='utf-8'))}
+    files = files or sorted((HERE / 'content/topics').glob('*.json'))
+    topics = set()
+    for folder in sorted({f.parent for f in files}):   # related ids are checked inside the folder the named files live in
+        for p in folder.glob('*.json'):
+            try:
+                d = json.loads(p.read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                continue
+            if isinstance(d, dict) and isinstance(d.get('id'), str):
+                topics.add(d['id'])
     errors = 0
-    for f in files or sorted((HERE / 'content/topics').glob('*.json')):
+    for f in files:
         t = json.loads(f.read_text(encoding='utf-8')); n = 0
         for where, i in items(t):
             n += 1
@@ -78,6 +88,12 @@ def main(args):
             p = i.get('page')
             if p and r.get('pages') and not (1 <= p <= r['pages']): print(f'{f.name} {where}: page {p} out of range for {i["doc"]} ({r["pages"]})'); errors += 1
             if not i.get('label') and where != 'limits': print(f'{f.name} {where}: missing label for {i.get("doc")}'); errors += 1
+        rel = t.get('related', [])
+        if not isinstance(rel, list):
+            print(f'{f.name} related: not a list'); errors += 1
+        else:
+            for r in rel:
+                if not isinstance(r, str) or r not in topics: print(f'{f.name} related: unknown topic {r!r}'); errors += 1
         print(f'{f.name}: {n} references checked')
     print('ERRORS', errors)
     return 1 if errors else 0

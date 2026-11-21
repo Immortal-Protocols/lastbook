@@ -1591,6 +1591,26 @@ class Switching(Base):
         time.sleep(0.5)
         self.assertFalse(old.exists())
 
+    def test_missing_new_library_at_restart_restores_the_old_one(self):
+        """A pending switch that says it happened, but whose new library is gone, puts the old library back.
+        Without that, apply_pending tries to move a folder that is not there, startup ignores the pending switch and
+        the old library stays aside, where nothing looks for it."""
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        work = self.parent / 'LastbookData.setup'
+        (work / 'unpack').mkdir(parents=True)
+        old = self.parent / 'LastbookData.old-20260101'
+        os.replace(cur, old)
+        pend = api._pending_file(self.settings)
+        pend.parent.mkdir(parents=True)
+        pend.write_text(json.dumps({'new': str(work / 'unpack' / 'LastbookData'), 'target': str(cur),
+                                    'switched': True, 'old': str(old), 'written': 0}))
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertIn('error', note)
+        self.assertIsNone(note['old'])
+
     def test_new_library_that_does_not_open_is_rolled_back(self):
         cur = self.lib(self.parent / 'LastbookData', 'old')
         new = self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')

@@ -653,9 +653,12 @@ def apply_pending(pend, work):
     note['old'] = d.get('old')
     if not lib_ok and d.get('old') and Path(d['old']).exists():
         broken = target.with_name(target.name + '.failed')
-        os.replace(target, broken)
+        moved_aside = target.exists()   # the new library can be gone already: a rename lost to a power cut, or the folder removed
+        if moved_aside:
+            os.replace(target, broken)
         os.replace(d['old'], target)
-        carry_over(broken, target)      # the model file, moved into the new one, goes back too
+        if moved_aside:
+            carry_over(broken, target)      # the model file, moved into the new one, goes back too
         note['error'] = 'The new library did not open, so Lastbook put the old one back.'
         note['old'] = None
     return target if is_library(target) else None, note

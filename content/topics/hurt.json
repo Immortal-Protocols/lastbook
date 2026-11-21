@@ -36,6 +36,9 @@
   "hypothermia",
   "frostbite",
   "frostnip",
+  "frostbitten",
+  "sunstroke",
+  "overheated",
   "allergic reaction",
   "anaphylaxis",
   "epinephrine",
@@ -74,6 +77,7 @@
   "burnt",
   "bites",
   "stings",
+  "stung",
   "snakebite",
   "rabies"
  ],
@@ -167,7 +171,7 @@
   {
    "id": "burn",
    "label": "Burn or scald",
-   "hint": "Burnt or burned by fire, hot water, cooking oil, chemicals, electricity",
+   "hint": "Burnt or burned by fire, hot water, cooking oil, chemicals, electricity, electrocuted",
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -417,7 +421,7 @@
   {
    "id": "poison",
    "label": "Poisoning: swallowed a chemical, medicine or pesticide",
-   "hint": "Poisoned by a cleaning product, too many pills (overdose), fuel, button battery, a child got into something",
+   "hint": "Poisoned by a cleaning product, rat poison, too many pills (overdose), fuel, button battery, a child got into something",
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -436,7 +440,7 @@
   {
    "id": "diarrhea",
    "label": "Diarrhea, vomiting or dehydration",
-   "hint": "Diarrhoea, throwing up, stomach bug, loose motions, bad water, baby or older person dehydrated or drying out",
+   "hint": "Diarrhoea, throwing up or threw up, puking, stomach bug, loose motions, bad water, baby or older person dehydrated or drying out",
    "read": [
     {
      "doc": "med-8bd4770a63b99cc6",

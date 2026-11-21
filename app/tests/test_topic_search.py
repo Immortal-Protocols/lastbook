@@ -146,6 +146,12 @@ UNDISTURBED = {
     'heat wave': ['shelter', 'heat'], 'grill': ['food', 'cook'], 'canned food': ['food', 'cook'],
     'cut': ['hurt', 'bleeding'], 'well': ['land', 'water-source'], 'storm': ['disaster', 'flood'],
     'ice': ['water', 'inhome'], 'micro-hydro': ['energy', None], 'wind': ['disaster', 'hurricane'],
+    # Other forms of first aid words that found nothing ("threw up", "electrocuted", "stung"), and "rat poison",
+    # which opened Snakebite because "rat" starts "rattlesnake". The last four are guards.
+    'threw up': ['hurt', 'diarrhea'], 'puking': ['hurt', 'diarrhea'], 'electrocuted': ['hurt', 'burn'],
+    'rat poison': ['hurt', 'poison'], 'ate rat poison': ['hurt', 'poison'], 'stung': ['hurt', None], 'sunstroke': ['hurt', None],
+    'frostbitten': ['hurt', None], 'overheated': ['hurt', None], 'electrocuted not breathing': ['hurt', 'breathing'],
+    "stung can't breathe": ['hurt', 'breathing'], 'bad food': ['food', 'outage'], 'throwing up': ['hurt', 'diarrhea'],
     'winter storm': ['shelter', 'cold'], 'furnace smells like gas': ['power', 'gas'], 'gas furnace': ['power', 'gas'],
     'lost in the forest': ['comms', 'signal'],
     'baby formula': ['food', 'special'], 'food allergies': ['food', 'outage'], 'spoiled food': ['food', 'outage'],

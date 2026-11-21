@@ -149,6 +149,8 @@ as one map.
 
 [REGIONS-MX.md](REGIONS-MX.md) does the same for Mexico's 32 states (entidades federativas).
 
+[REGIONS-BR.md](REGIONS-BR.md) does the same for Brazil's 26 states and the Federal District (Distrito Federal), 27 in all.
+
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.

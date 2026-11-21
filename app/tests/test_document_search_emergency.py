@@ -125,7 +125,10 @@ class SearchPathIntegration(unittest.TestCase):
                         ('ordinary', 1, 'Fire making', '', '', '',
                          'light a fire with tinder kindling'))
         self.db.commit()
-        db_patch = patch.object(assistant.S.library, 'DB', self.db_path)
+        server_patch = patch.object(assistant, 'S', server)
+        server_patch.start()
+        self.addCleanup(server_patch.stop)
+        db_patch = patch.object(server.library, 'DB', self.db_path)
         db_patch.start()
         self.addCleanup(db_patch.stop)
 
@@ -149,6 +152,15 @@ class SearchPathIntegration(unittest.TestCase):
         self.assertIn(('ordinary', 1), keys)
         self.assertIn(('urgent', 1), keys)
         self.assertEqual(len(keys), len(set(keys)))
+
+    def test_drown_out_idiom_is_not_an_emergency(self):
+        self.assertIsNone(server.emergency_fts_expr('drown out generator noise'))
+
+    def test_auxiliary_query_failure_preserves_strict_results(self):
+        original = server.emergency_fts_expr
+        with patch.object(server, 'emergency_fts_expr', return_value='invalid:fts:expression'):
+            keys = [(r[0], r[1]) for r in assistant._fts('light a fire')]
+        self.assertIn(('ordinary', 1), keys)
 
     def test_ordinary_query_keeps_search_results(self):
         keys = [(r[0], r[1]) for r in assistant._fts('light a fire')]

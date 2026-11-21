@@ -305,6 +305,7 @@
    "id": "heatcold",
    "label": "Too hot or too cold (heat stroke, hypothermia, frostbite)",
    "hint": "Heatstroke or heat wave, no AC, confused and hot, shivering, frostnip, numb white fingers",
+   "urgent": ["heat stroke", "sun stroke", "stroke from the heat", "stroke in the heat"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -468,6 +469,7 @@
    "id": "sudden",
    "label": "Chest pain, stroke signs, seizure or diabetic emergency",
    "hint": "Crushing chest pain or heart attack, face drooping, fit or convulsion, diabetic acting confused",
+   "urgent": ["stroke"],
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",

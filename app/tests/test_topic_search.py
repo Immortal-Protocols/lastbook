@@ -208,12 +208,18 @@ EMERGENCY_FIRST = {
     'cardiac arrest': ['hurt', 'breathing'], 'heart stopped': ['hurt', 'breathing'], 'AED': ['hurt', 'breathing'],
     'aed': ['hurt', 'breathing'], 'defibrillator': ['hurt', 'breathing'], 'heart attack': ['hurt', 'sudden'],
     'having a heart attack': ['hurt', 'sudden'], 'signs of heart attack': ['hurt', 'sudden'],
+    # A stroke needs the stroke signs, not heat illness, which also says "stroke" ("heat stroke") and is listed first.
+    'stroke': ['hurt', 'sudden'], 'a stroke': ['hurt', 'sudden'], 'having a stroke': ['hurt', 'sudden'],
+    'my dad is having a stroke': ['hurt', 'sudden'], 'stroke symptoms': ['hurt', 'sudden'], 'mini stroke': ['hurt', 'sudden'],
 }
 # Searches those words must not disturb: [guide, choice] that comes first.
 EMERGENCY_UNDISTURBED = {
     'heart': ['health', 'chronic'], 'heart disease': ['health', 'chronic'], 'blood pressure': ['health', 'chronic'],
     'chest pain': ['hurt', 'sudden'], 'collapsed': ['hurt', 'breathing'], 'not breathing': ['hurt', 'breathing'],
     'drowning': ['hurt', 'breathing'], 'cpr': ['hurt', None], 'stopped': ['disaster', 'earthquake-after'],
+    'heat stroke': ['hurt', 'heatcold'], 'sun stroke': ['hurt', 'heatcold'], 'heat stroke symptoms': ['hurt', 'heatcold'],
+    'stroke from the heat': ['hurt', 'heatcold'], 'stroke in the heat': ['hurt', 'heatcold'],   # heat phrases win over "stroke"
+    'signs of a stroke': ['hurt', 'sudden'],
 }
 TOPS = sorted({*TOPS, *EMERGENCY_FIRST, *EMERGENCY_UNDISTURBED})
 

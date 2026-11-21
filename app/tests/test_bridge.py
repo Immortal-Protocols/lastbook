@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, threading, time, types, unittest
+import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
 from pathlib import Path
 from unittest import mock
 
@@ -830,6 +830,32 @@ class AssistantHTTPMessages(unittest.TestCase):
         body = self.round(messages)
         self.assertEqual(body['messages'], messages)
         self.assertNotIn('tools', body)
+
+
+class LanKey(unittest.TestCase):
+    """derived/lan-key: the key phones need for server.py --lan."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp(prefix='lastbook-lankey-'))
+        self.addCleanup(shutil.rmtree, self.dir)
+        self.kf = self.dir / 'lan-key'
+
+    def test_made_when_missing(self):
+        key = server.lan_key(self.kf)
+        self.assertGreaterEqual(len(key), 20)
+        self.assertEqual(self.kf.read_text(encoding='utf-8'), key)
+        self.assertEqual(server.lan_key(self.kf), key)   # kept on the next start
+
+    def test_empty_file_gets_a_new_key(self):
+        # A write cut short left an empty file, and every phone was refused until someone deleted it.
+        self.kf.write_text('')
+        self.assertGreaterEqual(len(server.lan_key(self.kf)), 20)
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_only_this_user_can_read_it(self):
+        server.lan_key(self.kf)
+        self.assertEqual(self.kf.stat().st_mode & 0o777, 0o600)
+        self.assertEqual([p.name for p in self.dir.iterdir()], ['lan-key'])   # no temporary file left
 
 
 class NothingGoesOut(unittest.TestCase):

@@ -2145,15 +2145,29 @@ def init(no_index=False):
     threading.Thread(target=prewarm_previews, daemon=True).start()
 
 
+def lan_key(kf):
+    """The key phones need, kept in kf. A missing or empty file gets a new key, written whole and readable by this user only:
+    an empty key refuses every phone, and a key written first and locked down after is readable by others in between."""
+    try:
+        key = kf.read_text(encoding='utf-8').strip()
+    except FileNotFoundError:
+        key = ''
+    if key:
+        return key
+    key = secrets.token_urlsafe(18)
+    tmp = kf.with_name(kf.name + '.tmp')
+    tmp.unlink(missing_ok=True)   # O_CREAT keeps an old file's mode
+    with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w', encoding='utf-8') as f:
+        f.write(key)
+    os.replace(tmp, kf)
+    return key
+
+
 def serve(port, lan=False):
     """The HTTP server version: binds the port and answers until stopped."""
     global LAN_KEY, SERVER
     if lan:
-        kf = HERE / 'derived' / 'lan-key'
-        if not kf.exists():
-            kf.write_text(secrets.token_urlsafe(18))
-            os.chmod(kf, 0o600)
-        LAN_KEY = kf.read_text(encoding='utf-8').strip()
+        LAN_KEY = lan_key(HERE / 'derived' / 'lan-key')
     server_class = library.http.server.ThreadingHTTPServer
     if os.name == 'nt':  # SO_REUSEADDR on Windows lets a second copy silently share the port
         class server_class(server_class):

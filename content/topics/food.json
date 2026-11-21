@@ -111,7 +111,7 @@
   {
    "id": "cook",
    "label": "Cooking without power or gas",
-   "hint": "Camp stove, grill, fireplace, canned or tinned food",
+   "hint": "Camp stove, grill, fireplace, no cooker or hob, canned or tinned food",
    "read": [
     {
      "doc": "18bf4604bf28c4",

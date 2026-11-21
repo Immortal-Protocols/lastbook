@@ -53,6 +53,8 @@ other Linux distributions have not been validated for this release.
   picks the state; Lastbook never detects location.
 - **Optional local AI.** Ask questions in plain words and get answers that cite library pages, from a model that runs on
   the computer itself (see "The local AI" below). Without it, Chat still finds the right pages.
+- **Saved video moments.** Keep several named positions in a video and open them from the player or Saved. Names and
+  positions stay on this device; the video and its captions are unchanged.
 - **One-download setup.** On first run, setup defaults to Small and selects local AI when the computer can run it.
   The person can choose Small, Medium or All, selects a state map, and starts the checked downloads. A library already on the
   computer (a folder or a pack zip) can be used instead of downloading.
@@ -185,7 +187,8 @@ so some of its paths and ports describe that setup. The desktop app does not use
 
 The builds write into `derived/app-build/` and refuse to finish if the package scan finds something that must not ship:
 test code, a network call outside setup's downloader, a web address in our own pages, or a word from the private list
-(see below). The builds also run the TLS roots gate.
+(see below). The builds also run the TLS roots gate and check that the packaged
+localization assets are present and up to date. [Localization guide](docs/i18n.md)
 
 **macOS (Apple Silicon, needs [uv](https://github.com/astral-sh/uv)):**
 

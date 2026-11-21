@@ -37,7 +37,7 @@
   {
    "id": "first-hours",
    "label": "The power just went out",
-   "hint": "Lights out, hydro is out, fridge off, no idea how long it will last",
+   "hint": "Lights out, no electricity, hydro is out, fridge off, no idea how long it will last",
    "read": [
     {
      "doc": "18bf4604bf28c4",
@@ -210,7 +210,7 @@
   {
    "id": "long-outage",
    "label": "The outage could last days or weeks",
-   "hint": "Planning, heat or cold, staying put or leaving",
+   "hint": "No electricity for days, planning, heat or cold, staying put or leaving",
    "read": [
     {
      "doc": "e629b2983d95e4",

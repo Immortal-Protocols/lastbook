@@ -144,6 +144,13 @@ URGENT_FIRST = {
 UNDISTURBED = {
     'bus': ['disaster', 'no-car'], 'no bus': ['disaster', 'no-car'], 'bar soap': ['sanitation', 'hands'],
     'heat wave': ['shelter', 'heat'], 'grill': ['food', 'cook'], 'canned food': ['food', 'cook'],
+    # Everyday phrases that opened the wrong guide or none: "no electricity" opened Burn or scald, "high fever" the
+    # high-rise fire choice, and "bathroom" and "no cell service" found nothing. The rest are guards.
+    'no electricity': ['power', 'first-hours'], 'electricity': ['power', 'first-hours'],
+    'no electricity for days': ['power', 'long-outage'], 'electricity burn': ['hurt', 'burn'], 'electric shock': ['hurt', 'burn'],
+    'high fever': ['health', 'start'], 'baby has a high fever': ['health', 'start'], 'high blood pressure': ['health', 'chronic'],
+    'bathroom': ['sanitation', None], 'where to go to the bathroom': ['sanitation', None], 'bat bite': ['hurt', 'animal-bite'],
+    'no cell service': ['comms', 'phones-down'], 'radio reception': ['comms', 'alerts-radio'], 'service dog': ['hurt', 'animal-bite'],
     'cut': ['hurt', 'bleeding'], 'well': ['land', 'water-source'], 'storm': ['disaster', 'flood'],
     'ice': ['water', 'inhome'], 'micro-hydro': ['energy', None], 'wind': ['disaster', 'hurricane'],
     'winter storm': ['shelter', 'cold'], 'furnace smells like gas': ['power', 'gas'], 'gas furnace': ['power', 'gas'],

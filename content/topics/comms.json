@@ -33,7 +33,7 @@
   {
    "id": "phones-down",
    "label": "Phones or internet are down or overloaded",
-   "hint": "Calls won't connect, need to find family",
+   "hint": "Calls won't connect, cell towers down, need to find family",
    "read": [
     {
      "doc": "d0fbb2e051cd46",

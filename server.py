@@ -353,6 +353,9 @@ EMERGENCY_ANCHORS = (
 
 def emergency_fts_expr(q):
     """Optional, narrow FTS5 query for explicit emergency terminology."""
+    # "drown out" is an ordinary idiom, not a drowning emergency.
+    if re.search(r'\bdrown(?:s|ed|ing)?\s+out\b', q, re.I):
+        return None
     for rx, terms in EMERGENCY_ANCHORS:
         if re.search(rx, q, re.I):
             return fts_expr([terms])
@@ -381,21 +384,26 @@ def find(q, kind='all', limit=30):
     sql = ("SELECT doc_id,page,snippet(pages,6,'\u0001','\u0002',' … ',28),bm25(pages,0,6,1,1,0,0,1) "
            "FROM pages WHERE pages MATCH ? ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT 600")
     rows, mode = [], 'all words'
+    strict_rows, relaxed_rows, emergency_rows = [], [], []
     try:
         strict_rows = con.execute(sql, (fts_expr(groups),)).fetchall()
-        # Decide whether to relax based on the original strict matches, not
-        # additional emergency matches (which must not suppress the fallback).
-        relaxed_rows = []
-        if len(strict_rows) < 8 and len(groups) > 1:
-            mode = 'some words'
-            relaxed_rows = con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),)).fetchall()
-        emergency = emergency_fts_expr(q)
-        emergency_rows = con.execute(sql, (emergency,)).fetchall() if emergency else []
-        rows = unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
-        if emergency_rows:
-            mode = 'emergency and keywords'
     except sqlite3.OperationalError:
-        rows = []
+        pass
+    if len(strict_rows) < 8 and len(groups) > 1:
+        try:
+            relaxed_rows = con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),)).fetchall()
+            mode = 'some words'
+        except sqlite3.OperationalError:
+            pass
+    emergency = emergency_fts_expr(q)
+    if emergency:
+        try:
+            emergency_rows = con.execute(sql, (emergency,)).fetchall()
+        except sqlite3.OperationalError:
+            pass
+    rows = unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
+    if emergency_rows:
+        mode = 'emergency and keywords'
     con.close()
     cat = catalog()['by_id']
     docs = {}

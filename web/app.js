@@ -607,10 +607,13 @@ async function watch(id, t, from) {
   remember({ key: 'v:' + id, title: d.title, href: selfHref, sub: 'Video · ' + fmtDur(d.duration) });
   const p = vprog()[id];
   const resumeAt = !t && p && p.t > 15 && (!d.duration || p.t < d.duration - 20) ? p.t : 0;
+  // An AV1 or VP9 video this computer can't decode plays from its H.264 copy, when the library has one (#49).
+  const copyUrl = d.copy ? fileUrl(d.path) + '?copy=h264' : '';
+  const needCopy = !!(copyUrl && UNPLAYABLE[d.copy.codec] && !document.createElement('video').canPlayType(UNPLAYABLE[d.copy.codec][1]));
   main.innerHTML = `<div class="rtop">${backButton(from, 'Videos')}</div>
   <div class="watch">
     <div>
-      <div class="player"><video id="vid" controls preload="metadata" playsinline src="${fileUrl(d.path)}${t ? '#t=' + t : ''}"></video></div>
+      <div class="player"><video id="vid" controls preload="metadata" playsinline src="${needCopy ? copyUrl : fileUrl(d.path)}${t ? '#t=' + t : ''}"></video></div>
       <div class="video-speed"><label for="videoSpeed">Playback speed</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">Stored on the remote drive “${esc(d.remote)}”. It plays only while that computer is reachable.</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
@@ -634,7 +637,23 @@ async function watch(id, t, from) {
     speed.value = value;
   });
   if (d.thumb) vid.poster = fileUrl(d.thumb);
-  vid.addEventListener('error', async () => {
+  // The original can still fail where the browser said it could play it (an M1 iPad reports AV1 as playable and decodes no
+  // pictures): then switch to the copy once, at the same moment, and keep playing if it was playing.
+  let onCopy = needCopy;
+  const toCopy = () => {
+    if (onCopy || !copyUrl) return false;
+    onCopy = true;
+    const at = vid.currentTime || t || 0, playing = !vid.paused, rate = vid.playbackRate;
+    vid.defaultPlaybackRate = rate;   // a new source starts at the default rate: keep the speed the person chose
+    vid.src = copyUrl + (at ? '#t=' + at : '');
+    vid.playbackRate = rate;
+    if (playing) vid.play().catch(() => { });
+    return true;
+  };
+  vid.addEventListener('loadeddata', () => { if (!vid.videoWidth) toCopy() });   // sound but no picture
+  vid.addEventListener('error', async function failed() {
+    if (toCopy()) return;
+    vid.removeEventListener('error', failed);
     const say = why => vid.closest('.player')?.insertAdjacentHTML('afterend', `<div class="err">${why}</div>`);
     if (d.remote) return say(`This video is on the remote drive “${esc(d.remote)}”, which isn’t reachable right now. The transcript below still works.`);
     // Say why when the reason is the format: some library videos are AV1, which a computer without an AV1 decoder (a Mac before the M3) can't play.
@@ -642,7 +661,7 @@ async function watch(id, t, from) {
     if (!vid.isConnected) return;   // the person has gone to another page
     say(f ? `This video is saved in the ${f[0]} format, which this computer can’t play in Lastbook. Try another video player that supports ${f[0]}, such as VLC: the file is in your Lastbook data folder, at <b style="overflow-wrap:anywhere">library-data/${esc(d.path)}</b>.`
       : `This video file couldn’t be played here. <a href="${fileUrl(d.path)}" target="_blank" rel="noopener">Open the file directly</a>.`);
-  }, { once: true });
+  });
   if (resumeAt) {
     $('#resYes').onclick = () => { vid.currentTime = resumeAt; vid.play().catch(() => { }); $('#resume').remove() };
     $('#resNo').onclick = () => { vid.currentTime = 0; vid.play().catch(() => { }); $('#resume').remove() };

@@ -42,9 +42,33 @@ def link_out():
     LINKED = good
 
 
+COPY_SIZE = 12 * MiB   # the made-up H.264 copy of videos/a.mp4: pattern bytes from COPY_AT on, so it can't be mistaken for the original
+COPY_AT = 64 * MiB
+
+
+def video_copy():
+    """derived/video-compat/h264-v1: a copy of videos/a.mp4 (as AV1), and entries that must never be served. Checked on every run."""
+    d = DATA / 'derived' / 'video-compat' / 'h264-v1'
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / 'vida.mp4'
+    if not f.is_file() or f.stat().st_size != COPY_SIZE:
+        with open(f, 'wb') as out:
+            for off in range(0, COPY_SIZE, MiB):
+                out.write(pattern(COPY_AT + off, min(MiB, COPY_SIZE - off)))
+    (d / 'short.mp4').write_bytes(b'x' * 10)
+    item = lambda file, n, codec='av01', video='avc1': {'file': file, 'bytes': n, 'source_video': codec, 'video': video}
+    (d / 'manifest.json').write_text(json.dumps({'version': 'h264-v1', 'items': {
+        'videos/a.mp4': item('vida.mp4', COPY_SIZE),
+        'videos/b.webm': item('short.mp4', 11),                    # the wrong size: a partial copy
+        'videos/huge.mkv': item('../../../library-data/canary-root.txt', len(CANARY)),   # not a plain file name
+        'documents/s.pdf': item('vida.mp4', COPY_SIZE, codec='avc1'),   # not an AV1 or VP9 original
+    }}))
+
+
 def ensure():
     if (DATA / 'ready').exists():
         link_out()
+        video_copy()
         return DATA
     for d in ('videos', 'documents', 'pages', 'tools', 'logs', 'collections', 'transcripts', 'assets'):
         (LIB / d).mkdir(parents=True, exist_ok=True)
@@ -87,6 +111,7 @@ def ensure():
     con.commit()
     con.close()
     (DATA / 'derived' / 'geo' / 'national-status.json').write_text(json.dumps({'state': 'complete', 'features': 7, 'source': '/Users/someone/library-data/x.pbf', 'database': '/Users/someone/derived/geo/national.sqlite'}))
+    video_copy()
     (DATA / 'ready').write_text('1')
     return DATA
 

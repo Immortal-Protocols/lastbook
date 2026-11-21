@@ -151,6 +151,11 @@ UNDISTURBED = {
     'baby formula': ['food', 'special'], 'food allergies': ['food', 'outage'], 'spoiled food': ['food', 'outage'],
     'pet food': ['food', 'outage'],
     'dentist': ['health', None], 'toothache': ['health', 'teeth'],
+    # These opened the first aid guide with no choice, or the sting or shock choice. The severe allergy choice cites the
+    # reading on using an epinephrine auto-injector. The last three are guards.
+    'anaphylaxis': ['hurt', 'allergy'], 'anaphylactic shock': ['hurt', 'allergy'], 'epinephrine': ['hurt', 'allergy'],
+    'adrenaline': ['hurt', 'allergy'], 'auto-injector': ['hurt', 'allergy'], 'bee sting anaphylaxis': ['hurt', 'allergy'],
+    'anaphylaxis not breathing': ['hurt', 'breathing'], 'bee sting': ['hurt', 'sting'], 'pale and sweaty': ['hurt', 'shock'],
     'cold frame': ['repair', 'build'], 'freezing': ['shelter', 'cold'],
     'fire alarm': ['disaster', 'home-fire'], 'smoke alarm': ['disaster', 'home-fire'], 'smoke': ['disaster', 'smoke'],
     'fires after an earthquake': ['disaster', 'earthquake-after'],

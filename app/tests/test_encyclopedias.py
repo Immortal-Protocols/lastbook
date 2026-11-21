@@ -356,6 +356,23 @@ class ChatTools(unittest.TestCase):
         self.assertEqual(valid, [])
         self.assertEqual(invalid, ['S1', 'S2'])
 
+    def test_read_pages_without_a_text_file_says_so(self):
+        """An extraction that failed leaves a catalog record with no pages (engine/library.py): the tool must say that,
+        not fail on the empty list before the model can check a citation."""
+        assistant.S.page_texts.return_value = []
+        text, summary = assistant.run_tool('read_pages', {'doc_id': 'fema-water', 'pages': [1]}, self.sess, [])
+        self.assertEqual(summary.get('error'), 'no text')
+        self.assertIn('no readable text', text)
+        self.assertIn('view_page', text)
+
+    def test_view_page_of_an_unreadable_pdf_says_so(self):
+        """A damaged or password-protected PDF is a plain sentence for the model, not a lost tool turn."""
+        assistant.S.render_page.side_effect = RuntimeError('bad pdf')
+        text, summary = assistant.run_tool('view_page', {'doc_id': 'fema-water', 'page': 1}, self.sess, [])
+        self.assertEqual(summary.get('error'), 'unreadable')
+        self.assertIn('could not be shown', text)
+        self.assertEqual(self.sess.sources, {})
+
     def _patch_zim(self, **kwargs):
         """Point the Chat helpers at this test's fake archives."""
         self.assertIs(encyclopedias, assistant.encyclopedias)

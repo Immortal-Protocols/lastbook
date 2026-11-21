@@ -362,6 +362,12 @@ def run_tool(name, args, sess, extra_msgs, root=None):
             return f'No document with id {d!r} in the library.', {'doc_id': d, 'error': 'unknown'}
         texts = S.page_texts(r)
         pages = [int(p) for p in (args.get('pages') or [1])][:3]
+        if not texts:
+            # A failed extraction keeps the catalog record but writes no text file (engine/library.py). Say so, so the
+            # model can fall back to view_page instead of losing the turn to an IndexError.
+            hint = ' Use view_page to look at a page.' if r['kind'] == 'pdf' else ''
+            return ('This document has no readable text in this library (it may be a scan, or its text was not extracted).' + hint,
+                    {'doc_id': d, 'error': 'no text'})
         pub = S.public(r)
         out = []
         for p in pages:
@@ -378,7 +384,12 @@ def run_tool(name, args, sess, extra_msgs, root=None):
         r = cat.get(d)
         if not r or r['kind'] != 'pdf' or not 1 <= p <= (r.get('pages') or 1):
             return 'That page is not available as an image (only PDF pages within the document can be viewed).', {'doc_id': d, 'page': p, 'error': 'unavailable'}
-        png = S.render_page(r, p, 900)
+        try:
+            png = S.render_page(r, p, 900)
+        except Exception:
+            # A damaged, encrypted or unsupported PDF: tell the model, so it can say the page cannot be shown.
+            return ('That page could not be shown. The file may be damaged or need a password.',
+                    {'doc_id': d, 'page': p, 'error': 'unreadable'})
         pub = S.public(r)
         src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'pdf', 'trust': pub['trust'],
                'pages': pub['pages'], 'page': p, 't': None, 'excerpt': '', 'image': True, 'notes': (r.get('notes') or '')[:300]}

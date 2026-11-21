@@ -578,7 +578,7 @@ const MapView = (() => {
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
       const i = y * 256 + x, l = h[y * 256 + Math.max(0, x - 1)], r = h[y * 256 + Math.min(255, x + 1)], u = h[Math.max(0, y - 1) * 256 + x], d = h[Math.min(255, y + 1) * 256 + x];
       const dx = (r - l) * ex / (2 * m), dy = (d - u) * ex / (2 * m), n = Math.hypot(dx, dy, 1);
-      const hs = (-dx * lx + dy * ly + lz) / n, v = Math.max(0, Math.min(1, hs / lz));  // 1 on flat ground: multiply leaves it untouched
+      const hs = (-dx * lx - dy * ly + lz) / n, v = Math.max(0, Math.min(1, hs / lz));  // 1 on flat ground: multiply leaves it untouched
       const s = Math.round(255 * (0.55 + 0.45 * v));
       o[i * 4] = s; o[i * 4 + 1] = s; o[i * 4 + 2] = Math.min(255, s + 6); o[i * 4 + 3] = 255;
     }

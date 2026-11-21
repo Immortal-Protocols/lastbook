@@ -121,7 +121,7 @@ const Terrain3D = (() => {
       }
       for (let j = 0; j <= M; j++) for (let i = 0; i <= N; i++) {
         const k = j * (N + 1) + i, l = hts[j * (N + 1) + Math.max(0, i - 1)], r = hts[j * (N + 1) + Math.min(N, i + 1)], u = hts[Math.max(0, j - 1) * (N + 1) + i], d = hts[Math.min(M, j + 1) * (N + 1) + i];
-        const n = norm([-(r - l) * ex / (2 * W / N), (u - d) * ex / (2 * Hm / M), 1]); nrm.set(n, k * 3);
+        const n = norm([-(r - l) * ex / (2 * W / N), (d - u) * ex / (2 * Hm / M), 1]); nrm.set(n, k * 3);
       }
       for (const [buf, data] of [[pb, pos], [ub, uv], [nb, nrm]]) { gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW) }
       buildBldg(ex);

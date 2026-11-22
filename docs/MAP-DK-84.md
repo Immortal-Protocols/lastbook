@@ -49,9 +49,13 @@ derived/buildenv/bin/python tools/build_region_map.py denmark-latest.osm.pbf \
     --id DK-84 --name Hovedstaden --bbox 11.54,54.83,15.35,56.36 --out derived/regions
 
 # 4. Check the files, then check that the engine can use them with every connection blocked.
+#    These are the exact commands behind "What was checked" and "Searches" below.
 python3 tools/check_region_map.py derived/regions/DK-84
 python3 tools/check_region_map.py derived/regions/DK-84 --engine \
-    --find Rigshospitalet --find Nørrebro --find Rønne --find Tivoli --find Hillerød --near 55.6761,12.5683
+    --find Rigshospitalet --find Nørrebro --find Rønne --find Hillerød --find Elsinore --find "Kgs. Lyngby" \
+    --find København --find Tivoli --find Copenhagen --find Kobenhavn --find Koebenhavn --find Hillerod \
+    --find Helsingor --find Christiansø --find Christianso --near 55.6761,12.5683
+python3 tools/check_region_map.py derived/regions/DK-84 --engine --near 55.1004,14.7010     # Rønne, on Bornholm
 ```
 
 On Windows the same steps work in Git Bash, with `derived/buildenv/Scripts/python` in place of
@@ -143,18 +147,44 @@ the English one where OpenStreetMap has it.
 
 ## What was checked, and how
 
-`tools/check_region_map.py` passed all 37 file checks and all 12 engine checks on the build above. With `--engine`,
-every connection blocked and an empty library:
+The first command passed all 37 file checks. The second runs those 37 again, then 7 engine checks and one per search: 59
+in all, 55 passed and 4 failed. The 4 failures are the searches marked "No rows" under "Searches": the checker counts a
+search that returns nothing as a failure. The third, around Rønne, made 44 checks and all passed. With `--engine`, every
+connection blocked and an empty library:
 
 - **Map display.** Tiles at zoom 10, 13 and 16 around Copenhagen's city hall square: roads, water, land, railways and
   place labels at the wider zooms, 78 building outlines in one zoom-16 tile.
 - **Pins.** 80 pin groups around the city hall square.
 - **Nearest help.** Pharmacies at 0.3 and 0.36 km, and the police at Copenhagen Central Station at 0.5 km. Around Rønne
-  on Bornholm: a pharmacy at 0.73 km, the police at 1.41 km and Bornholms Hospital at 1.45 km.
-- **Place search, with Danish letters.** "Rigshospitalet" finds the hospital; "Nørrebro", "Rønne" and "Hillerød" find
-  the district and the two towns; "Tivoli" finds a place of that name, tagged as a hamlet; "Elsinore" finds Helsingør by its English name; "Kgs.
-  Lyngby" finds Kongens Lyngby.
+  on Bornholm (the third command): a pharmacy at 0.37 km, the police at 0.83 km and Bornholms Hospital at
+  1.05 km.
+- **Place search.** Every search in the command above, with what it finds, is under "Searches" below.
 - **What the app is told.** 40 kinds, within 11.54, 54.83, 15.19, 56.13, the extent of the data inside the box.
+
+### Searches
+
+A search passes the checker as soon as it returns any row, so this table says, for each search in the command above,
+whether it finds the place it is meant to. "First rows" is what the checker prints (up to three). Where the place comes
+lower, its rank is from the app's own place search, with the server running as under "Build it", for example `curl
+"http://127.0.0.1:8890/api/places?q=Karon"`: the same `places()` the checker calls, with no location.
+
+| Search | Meant to find | First rows | Result |
+|---|---|---|---|
+| `Rigshospitalet` | the hospital | Rigshospitalet (hospital) | Finds it first |
+| `Nørrebro` | the district | Nørrebro (suburb); Nørrebroparken (park); Nørrebrogade (park) | Finds it first |
+| `Rønne` | the town on Bornholm | Rønne (town); Rønnede (village); Rønnebæk (village) | Finds it first |
+| `Hillerød` | the town | Hillerød (town); Hillerød Øst (suburb); Hillerødsholm (neighbourhood) | Finds it first |
+| `Elsinore` | Helsingør, by its English name | Helsingør (town) | Finds it first |
+| `Kgs. Lyngby` | Kongens Lyngby | Kongens Lyngby (town); Lyngbyvejskvarteret (quarter); Store Lyngby (village) | Finds it first |
+| `København` | the city | København (city); Københavns Byret (courthouse); Københavns Cykelbørs (bicycle shop) | Finds it first |
+| `Tivoli` | Tivoli Gardens (not a kept class) | Tivoli (hamlet) | Rows, but not the intended place |
+| `Copenhagen` | the city København | Copenhagen Bikeshop (bicycle shop); Copenhagen Camping (camp site); Copenhagen Bicycle Store (bicycle shop) | Finds it, 14 of 20 |
+| `Kobenhavn` | the city København | (none) | No rows (the checker reports FAIL) |
+| `Koebenhavn` | the city København | (none) | No rows (the checker reports FAIL) |
+| `Hillerod` | the town Hillerød | (none) | No rows (the checker reports FAIL) |
+| `Helsingor` | the town Helsingør | Sveriges Konsulat i Helsingör (embassy) | Rows, but not the intended place |
+| `Christiansø` | the island (it has no place row) | Christiansø Købmandshandel (convenience); Christiansø Posthus (post office); Christiansø Skole (school) | Rows, but not the intended place |
+| `Christianso` | the island (it has no place row) | (none) | No rows (the checker reports FAIL) |
 
 `tools/test_build_region_map.py`: 9 tests pass with pyosmium.
 
@@ -194,8 +224,8 @@ to the map center" list filled in; and the search box took the map to Rigshospit
   `ø`, `æ` and `å` are letters of their own, not accented ones. "Kobenhavn", "Koebenhavn", "Hillerod" and "Christianso"
   find nothing, and "Helsingor" finds only the Swedish consulate. Someone on a keyboard without these letters cannot
   find Copenhagen by its Danish name.
-- **"Copenhagen" does not find the city.** The English name is kept in the row's detail line, and name matches rank
-  first, so the first twelve results are shops, clinics and schools with "Copenhagen" in their names. "København" finds
+- **"Copenhagen" finds the city 14th of 20.** The English name is kept in the row's detail line, and name matches
+  rank first, so shops, clinics and schools with "Copenhagen" in their names come before it. "København" finds
   the city first.
 - **Hospital rows are not hospitals.** The 95 hospital rows are 47 places when rows within 150 m are grouped:
   OpenStreetMap often has one hospital as a point and again as each of its buildings. More than half of them (53) are

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A made-up sample in the shape of a Costa Brava extract (ES-CT), for app/tests/test_region_builder.py. Not real data:
+     names are common place words, positions are rough. The coastline runs north with the land on its left, as
+     OpenStreetMap draws coastlines, so the sea is to the east. -->
+<osm version="0.6" generator="hand-written fixture">
+  <node id="1" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.000" lon="3.100"/>
+  <node id="2" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.050" lon="3.120"/>
+  <node id="3" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.100" lon="3.110"/>
+  <node id="10" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.040" lon="3.000"/>
+  <node id="11" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.050" lon="3.050"/>
+  <node id="20" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.0600" lon="3.0200"/>
+  <node id="21" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.0600" lon="3.0204"/>
+  <node id="22" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.0603" lon="3.0204"/>
+  <node id="23" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.0603" lon="3.0200"/>
+  <node id="30" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.080" lon="3.050">
+    <tag k="place" v="town"/><tag k="name" v="Vila de Mar"/>
+  </node>
+  <node id="31" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.020" lon="2.950">
+    <tag k="place" v="village"/><tag k="name" v="Sant Pere de l'Horta"/>
+  </node>
+  <node id="40" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.081" lon="3.051">
+    <tag k="amenity" v="pharmacy"/><tag k="name" v="Farmàcia del Port"/>
+  </node>
+  <node id="41" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.079" lon="3.049">
+    <tag k="amenity" v="hospital"/><tag k="name" v="Hospital Comarcal"/>
+  </node>
+  <node id="42" version="1" timestamp="2026-11-01T00:00:00Z" lat="42.082" lon="3.052">
+    <tag k="amenity" v="fountain"/><tag k="drinking_water" v="yes"/>
+  </node>
+  <node id="43" version="1" timestamp="2026-11-05T00:00:00Z" lat="42.060" lon="3.080">
+    <tag k="natural" v="peak"/><tag k="name" v="Puig Alt"/><tag k="ele" v="303"/>
+  </node>
+  <way id="100" version="1" timestamp="2026-11-01T00:00:00Z">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><tag k="natural" v="coastline"/>
+  </way>
+  <way id="101" version="1" timestamp="2026-11-01T00:00:00Z">
+    <nd ref="10"/><nd ref="11"/><tag k="highway" v="residential"/><tag k="name" v="Carrer Major"/>
+  </way>
+  <way id="102" version="1" timestamp="2026-11-01T00:00:00Z">
+    <nd ref="20"/><nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="20"/><tag k="building" v="yes"/><tag k="building:levels" v="3"/>
+  </way>
+</osm>

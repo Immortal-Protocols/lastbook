@@ -1923,7 +1923,7 @@ class Handler(library.Handler):
             text, summary = assistant.run_tool(name, args, sess, extra)
             images = [p['image_url']['url'] for m in extra for p in m['content'] if isinstance(p, dict) and p.get('type') == 'image_url']
             return self.send_json({'text': text, 'summary': summary, 'sources': list(sess.sources.values()), 'images': images})
-        if rpath == '/api/assistant/local':   # the optional local AI: look again for the file, turn it on or off, stop it
+        if rpath == '/api/assistant/local':   # the optional local AI: look again for the file, turn it on or off, stop or unload it
             if not assistant.LOCAL:
                 return self.send_json({'error': 'no local AI in this version'}, 404)
             try:
@@ -1937,8 +1937,11 @@ class Handler(library.Handler):
                 assistant.LOCAL.set_enabled(action == 'on')
             elif action == 'stop':
                 assistant.LOCAL.stop('asked')
+            elif action == 'unload':   # Chat's unload button: only when no answer is being written, in any window or for any client
+                if not assistant.LOCAL.stop('asked', only_idle=True):
+                    return self.send_json({**assistant.LOCAL.status(), 'busy': True})
             else:
-                return self.send_json({'error': 'action is rescan, on, off or stop'}, 400)
+                return self.send_json({'error': 'action is rescan, on, off, stop or unload'}, 400)
             return self.send_json(assistant.LOCAL.status())
         if rpath != '/api/chat':
             return self.send_json({'error': 'not found'}, 404)
@@ -1973,7 +1976,8 @@ class Handler(library.Handler):
             emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
             return
         try:
-            assistant.chat(msgs, about, emit, lambda: gone[0])
+            with assistant.answering():   # until this answer ends, an unload asked for by hand leaves the local AI running
+                assistant.chat(msgs, about, emit, lambda: gone[0])
         except Exception as e:
             traceback.print_exc()
             emit({'type': 'error', 'error': 'internal', 'text': f'The assistant stopped on an internal error ({type(e).__name__}).'})

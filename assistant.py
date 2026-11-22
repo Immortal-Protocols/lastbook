@@ -9,6 +9,7 @@ import retrieval
 from engine import encyclopedias
 from engine.paths import ro_uri
 from engine import page_tables, sections
+from engine import typos    # spelling mistakes in search questions
 
 import os
 from engine.model_server import LOOPBACK, loopback_base, model_open   # noqa: F401  (LOOPBACK and model_open: also used by the tests)
@@ -115,6 +116,7 @@ def _allowed(kind):
 
 def hybrid(q, k=8, kind='any', doc=None):
     """Best passages for q from keyword and meaning-based search, fused, with provenance."""
+    q = typos.correct(q)    # both searches get the misspellings put right (engine/typos.py)
     cat = S.catalog()
     allowed = _allowed(kind)
     if doc:

@@ -489,17 +489,19 @@ def _apple_silicon_linux(tree='/proc/device-tree'):
             return False
 
 
-def judge(fit, size):
+def judge(fit, size=None):
     """Does the whole of it fit this computer? llama.cpp's fit places the model on the graphics memory it finds and counts
     the rest as the computer's own memory, which it takes to be unlimited. So the computer's own memory is checked here:
-    on a Mac the two are one memory; on Windows the part placed on the graphics card is not in it."""
+    on a Mac the two are one memory; on Windows the part placed on the graphics card is not in it. Without a size, the
+    largest model Lastbook knows is judged, which is the one this branch pins."""
     total = fit.get('ram_total') or 0
     dev, host = fit.get('device_bytes') or 0, fit.get('host_bytes') or 0
     devices = [m for m in fit.get('memory') or [] if m.get('kind') == 'device']
     unified = sys.platform == 'darwin' or _apple_silicon_linux()
     # Windows: weights left in the mapped file (not on a graphics card, not repacked) are outside llama.cpp's count, yet in use
     # while answering. Measured with no GPU: the fit said 9.6 GB, the program held 16.5 to 26 GB.
-    mapped = 0 if unified else max(0, size - sum(m.get('model') or 0 for m in fit.get('memory') or []))
+    model_size = MODELS[0]['size'] if size is None else size
+    mapped = 0 if unified else max(0, model_size - sum(m.get('model') or 0 for m in fit.get('memory') or []))
     in_ram = dev + host if unified else host + mapped
     needs = in_ram + RESERVE
     placement = [{'device': m.get('desc') or m.get('name'), 'bytes': m['model'] + m['context'] + m['compute'], 'free': m.get('free')} for m in devices]

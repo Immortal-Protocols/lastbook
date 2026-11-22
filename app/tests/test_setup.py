@@ -3752,6 +3752,258 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
         self.assertIn('Choose a library zip or AI model file', html)
 
 
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class SetupScreen(unittest.TestCase):
+    """setup.js's own first screen and its buttons, run as the page runs them. First run used to throw ReferenceError
+    (MANAGE_ASKED read after its declaration was replaced) instead of showing Set up Lastbook. The Chat model controls
+    are added beside the buttons that were already there: "I have the files" still opens the file picker, and
+    "Add local AI" still opens the choose screen with the AI selected."""
+
+    def screen(self, state, hash='', actions=()):
+        script = r"""
+const fs = require('fs');
+const src = fs.readFileSync(process.argv[1], 'utf8');
+const cfg = JSON.parse(process.argv[2]);
+const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+
+function parseAttrs(s) {
+  const attrs = {};
+  const re = /([:@\w-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  let m;
+  while ((m = re.exec(s))) attrs[m[1]] = m[2] ?? m[3] ?? m[4] ?? '';
+  return attrs;
+}
+function parseFragment(html) {
+  const root = [];
+  const stack = [{ children: root, tag: '' }];
+  const re = /<!--[\s\S]*?-->|<(\/)?([A-Za-z][\w:-]*)([^>]*?)(\/)?>/g;
+  let m;
+  while ((m = re.exec(html))) {
+    if (m[0].startsWith('<!--')) continue;
+    const parent = stack[stack.length - 1];
+    if (m[1]) {
+      const tag = m[2].toLowerCase();
+      while (stack.length > 1 && stack[stack.length - 1].tag !== tag) stack.pop();
+      if (stack.length > 1) stack.pop();
+      continue;
+    }
+    const el = makeEl(m[2].toLowerCase(), parseAttrs(m[3] || ''));
+    parent.children.push(el);
+    if (!(m[4] || VOID.has(el.tag))) stack.push(el);
+  }
+  return root;
+}
+function makeEl(tag, attrs) {
+  const el = {
+    tag, attrs, id: attrs.id || '', children: [],
+    hidden: false, value: attrs.value || '', onclick: null, onchange: null, tabIndex: 0,
+    classList: { contains(name) { return (attrs.class || '').split(/\s+/).includes(name); }, add() {}, remove() {} },
+    style: {},
+    dataset: {},
+    focus() {},
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    removeAttribute(k) { delete this.attrs[k]; },
+    contains(other) {
+      const walk = n => n === other || n.children.some(walk);
+      return walk(this);
+    },
+  };
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('data-')) {
+      const key = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      el.dataset[key] = v;
+    }
+  }
+  Object.defineProperty(el, 'innerHTML', {
+    get() { return this._html || ''; },
+    set(v) { this._html = String(v); this.children = parseFragment(this._html); },
+  });
+  Object.defineProperty(el, 'textContent', {
+    get() { return (this._html || '').replace(/<[^>]*>/g, ''); },
+    set(v) { this._html = String(v); this.children = []; },
+  });
+  Object.defineProperty(el, 'disabled', {
+    get() { return this.attrs.disabled != null; },
+    set(v) { if (v) this.attrs.disabled = ''; else delete this.attrs.disabled; },
+  });
+  Object.defineProperty(el, 'checked', {
+    get() { return this.attrs.checked != null; },
+    set(v) { if (v) this.attrs.checked = ''; else delete this.attrs.checked; },
+  });
+  el.querySelector = sel => queryAll(el.children, sel)[0] || null;
+  el.querySelectorAll = sel => queryAll(el.children, sel);
+  return el;
+}
+function matches(el, sel) {
+  let rest = sel.trim();
+  if (!rest) return false;
+  let tag = '';
+  if (/^[A-Za-z]/.test(rest)) {
+    tag = rest.match(/^[A-Za-z][\w-]*/)[0];
+    rest = rest.slice(tag.length);
+  }
+  let id = '';
+  if (rest.startsWith('#')) {
+    id = rest.slice(1).match(/^[\w-]+/)[0];
+    rest = rest.slice(1 + id.length);
+  }
+  const attrs = [];
+  while (rest.startsWith('[')) {
+    const m = rest.match(/^\[([^\]=\s]+)(?:\s*=\s*(?:"([^"]*)"|([^\]]+)))?\]/);
+    if (!m) return false;
+    attrs.push([m[1], m[2] ?? m[3] ?? null]);
+    rest = rest.slice(m[0].length);
+  }
+  if (rest) return false;
+  if (tag && el.tag !== tag.toLowerCase()) return false;
+  if (id && el.id !== id) return false;
+  for (const [k, v] of attrs) {
+    if (!(k in el.attrs)) return false;
+    if (v != null && el.attrs[k] !== v) return false;
+  }
+  return true;
+}
+function queryAll(list, sel) {
+  const out = [];
+  const walk = nodes => {
+    for (const n of nodes) {
+      if (matches(n, sel)) out.push(n);
+      walk(n.children);
+    }
+  };
+  walk(list);
+  return out;
+}
+
+const nodes = parseFragment('<a id="sBack" hidden></a><main id="main"></main><p id="live"></p>');
+const calls = [];
+globalThis.scrollTo = () => {};
+globalThis.addEventListener = () => {};
+globalThis.location = { hash: cfg.hash || '' };
+globalThis.document = {
+  documentElement: { classList: { contains: () => false } },
+  activeElement: null,
+  querySelector: sel => queryAll(nodes, sel)[0] || null,
+  querySelectorAll: sel => queryAll(nodes, sel),
+};
+globalThis.fetch = async (url, opts) => {
+  const path = String(url).replace(/^\/api\/setup\//, '');
+  const body = opts && opts.body ? JSON.parse(opts.body) : null;
+  calls.push([path, body]);
+  let data = cfg.state;
+  if (path === 'pick') data = cfg.pick || { path: null, cancelled: true };
+  else if (path === 'model-server') data = { ok: true, model_server: { base: 'http://127.0.0.1:11434', model: 'gemma4' } };
+  else if (path !== 'state') data = {};
+  return { ok: true, status: 200, json: async () => data };
+};
+
+const kind = id => {
+  const el = document.querySelector('#' + id);
+  return el && typeof el.onclick === 'function' ? 'function' : el ? 'element' : 'missing';
+};
+
+(async () => {
+  let error = null;
+  let rejected = null;
+  process.on('unhandledRejection', e => { rejected = e; });
+  try {
+    eval(src);
+    await new Promise(r => setImmediate(r));
+    if (rejected) throw rejected;
+    for (const step of cfg.actions || []) {
+      const el = document.querySelector('#' + (step === 'msSave' ? 'msSave' : step));
+      if (!el || typeof el.onclick !== 'function') throw new TypeError('#' + step + ' has no click handler');
+      if (step === 'msSave') {
+        document.querySelector('#msBase').value = 'http://127.0.0.1:11434';
+        document.querySelector('#msModel').value = 'gemma4';
+      }
+      await el.onclick();
+      await new Promise(r => setImmediate(r));
+      if (rejected) throw rejected;
+    }
+  } catch (e) {
+    error = { name: e.name, message: e.message };
+  }
+  const main = document.querySelector('#main');
+  const ai = document.querySelector('#aiBox');
+  console.log(JSON.stringify({
+    error,
+    html: main ? main.innerHTML : '',
+    haveFile: kind('haveFile'),
+    msSave: kind('msSave'),
+    msClear: kind('msClear'),
+    addAi: kind('addAi'),
+    msEdit: kind('msEdit'),
+    aiChecked: !!(ai && ai.checked),
+    calls,
+  }));
+})();
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js'), json.dumps(
+            {'hash': hash, 'state': state, 'actions': list(actions)})],
+            check=True, capture_output=True, text=True, encoding='utf-8')
+        return json.loads(r.stdout)
+
+    def _state(self, **kw):
+        state = {
+            'mode': 'first-run', 'current': None, 'job': None,
+            'recommend': {'pack': 'small', 'ai': False, 'folder': '/tmp/LastbookData'},
+            'default_folder': '/tmp',
+            'hardware': {'ai': {'fits': True}, 'disks': [{'path': '/tmp', 'name': 'disk', 'free_bytes': 10 ** 12}]},
+            'manifest': {'packs': [{'id': 'small', 'title': 'Small', 'available': True, 'download_bytes': 1000,
+                                    'installed_bytes': 2000, 'summary': 'a small library'}],
+                         'models': [{'available': True, 'size': 17000000000}], 'maps': [], 'address_indexes': []},
+            'found': [], 'model_server': {}}
+        state.update(kw)
+        return state
+
+    def test_first_run_opens_the_initial_screen(self):
+        out = self.screen(self._state(), actions=['haveFile', 'msSave'])
+        self.assertIsNone(out['error'], out['error'])
+        self.assertIn('Set up Lastbook', out['html'])
+        self.assertIn('>Chat model<', out['html'])
+        self.assertIn('id="haveFile"', out['html'])
+        self.assertEqual(out['haveFile'], 'function')
+        self.assertEqual(out['msSave'], 'function')
+        self.assertEqual(out['msClear'], 'function')   # Save re-renders, and Forget it is wired too
+        self.assertEqual(out['calls'][1:], [
+            ['pick', {'files': True}],
+            ['model-server', {'base': 'http://127.0.0.1:11434', 'model': 'gemma4'}]])
+
+    def test_manage_hash_without_a_library_still_opens_choose(self):
+        """#manage on a computer with no library still evaluates the routing variable and shows the initial screen."""
+        out = self.screen(self._state(), hash='#manage')
+        self.assertIsNone(out['error'], out['error'])
+        self.assertIn('Set up Lastbook', out['html'])
+        self.assertNotIn('Library and local AI</h1>', out['html'])
+        self.assertEqual(out['haveFile'], 'function')
+        self.assertEqual(out['msSave'], 'function')
+
+    def test_add_local_ai_and_the_server_choice_both_handle_clicks(self):
+        current = {'pack': 'small', 'folder': '/tmp/LastbookData', 'model': None, 'map': None, 'address_indexes': [], 'old': []}
+        state = self._state(mode='manage', current=current)
+        idle = self.screen(state, hash='#manage')
+        self.assertIsNone(idle['error'], idle['error'])
+        self.assertIn('id="addAi"', idle['html'])
+        self.assertIn('id="msEdit"', idle['html'])
+        self.assertEqual(idle['addAi'], 'function')
+        self.assertEqual(idle['msEdit'], 'function')
+        added = self.screen(state, hash='#manage', actions=['addAi'])
+        self.assertIsNone(added['error'], added['error'])
+        self.assertIn('Change the library', added['html'])
+        self.assertTrue(added['aiChecked'])
+        self.assertEqual(added['haveFile'], 'function')
+        self.assertEqual(added['msSave'], 'function')
+        edited = self.screen(state, hash='#manage', actions=['msEdit'])
+        self.assertIsNone(edited['error'], edited['error'])
+        self.assertIn('id="msH"', edited['html'])
+        self.assertIn('Change the library', edited['html'])
+        self.assertFalse(edited['aiChecked'])
+        self.assertEqual(edited['haveFile'], 'function')
+        self.assertEqual(edited['msSave'], 'function')
+
+
 @unittest.skipUnless(os.environ.get('LASTBOOK_FULL_DISK') == '1' and sys.platform == 'darwin', 'LASTBOOK_FULL_DISK=1 on a Mac')
 class FullDisk(Base):
     def test_disk_fills_during_download(self):

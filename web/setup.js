@@ -10,6 +10,7 @@
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
+  const MANAGE_ASKED = /manage/.test(location.hash);   // #manage: the bridge allows no ?query on the top page
   const PLACEHOLDER = { msBase: 'http' + '://127.0.0.1:11434' };   // built in parts: no full web address in our own pages
 
   const ICO = {
@@ -270,6 +271,7 @@
     $('#start').onclick = start;
     if ($('#toManage')) $('#toManage').onclick = () => go('manage');
     if ($('#haveLib')) $('#haveLib').onclick = () => haveLibrary(false);
+    $('#haveFile').onclick = () => haveLibrary(true);
     msWire();
     mapSection();
     summary();
@@ -423,6 +425,7 @@
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
     if ($('#mapCh')) $('#mapCh').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; choice.map = null; go('choose'); const m = $('#mapSel'); if (m) m.focus() };
+    if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; go('choose') };
     if ($('#msEdit')) $('#msEdit').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };

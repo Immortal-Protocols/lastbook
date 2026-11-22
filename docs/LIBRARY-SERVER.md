@@ -81,10 +81,15 @@ library-data/runtime/macos-arm64/python/bin/python3 server.py --lan
 ```
 
 Starts the dedicated share listener (also used by **Share this library with my devices** in the desktop app). It
-prints a link `http://<this-computer>:8890/?key=…`. Opening it sets a cookie. The same key can be sent as
-`X-Lastbook-Key` or `Authorization: Bearer …` (for a script or a native client). Without the key, every request,
-including `/` and video Range requests, is 403 — including from this computer over a socket. Delete
+prints a link `http://<this-computer>:8890/?key=…`. Opening a page with that link sets a cookie and redirects to
+a clean URL, so the key does not stay in the address bar or a bookmark. API, video, and Range requests that
+pass `?key=` are served in place (players such as AVPlayer cannot rely on the cookie). The same key can be sent
+as `X-Lastbook-Key` or `Authorization: Bearer …` (for a script or a native client). Without the key, every
+request, including `/` and video Range requests, is 403 — including from this computer over a socket. Delete
 `derived/lan-key` to change the key.
+
+The share switch tracks only this listener. The ordinary local reader (`python3 server.py` without `--lan`,
+loopback, no key) is started and stopped separately and is not affected when you start or stop sharing.
 
 The listener serves only an explicit read-only allowlist: the app UI (except setup and update pages), library
 files, encyclopedias, maps, search, and similar browsing APIs. Setup, updates, notes, battery, local-AI

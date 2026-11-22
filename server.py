@@ -51,10 +51,11 @@ import secrets  # noqa: E402
 remote_records = library.remote_records  # videos moved to remote drives by the library's workers; none in the packaged app
 INDEX = None  # retrieval.Index, created in main()
 LAN_KEY = None
-SERVER = None  # the running HTTP server, so the packaged app's launcher can stop it
+SERVER = None  # the ordinary local reader (loopback), so the packaged app's launcher can stop it
+SHARE_SERVER = None  # the share listener only; the share switch reports and controls this, never SERVER
 SHARE_PORTS = range(8890, 8900)  # first free port in this range, when sharing from the app
-_LAN_THREAD = None
-_LAN_LOCK = threading.Lock()
+_SHARE_THREAD = None
+_SHARE_LOCK = threading.Lock()
 
 def is_loopback(ip):
     """True for IPv4 and IPv6 loopback, including IPv4-mapped IPv6."""
@@ -2248,14 +2249,24 @@ class ShareHandler(Handler):
         if not allowed(route, self.command, ai=ai):
             self.deny_not_shared()
             return False
+        from engine.share_http import should_redirect_key
         parts = urllib.parse.urlsplit(self.path)
         qs = urllib.parse.parse_qs(parts.query, keep_blank_values=True)
         if where == 'query':
             self._set_share_cookie = True
             qs.pop('key', None)
         query = urllib.parse.urlencode({k: v[0] for k, v in qs.items()}) if qs else ''
-        self.path = route + (('?' + query) if query else '')
+        clean = route + (('?' + query) if query else '')
         self.share_route = route
+        self.path = clean
+        # Browser page navigations: set the cookie and redirect to a clean URL, so the key
+        # does not stay in the address bar or a bookmark. API, video and Range requests
+        # with ?key= are served in place (AVPlayer and AirPlay cannot rely on the cookie).
+        if where == 'query' and should_redirect_key(route, self.command, self.headers):
+            self.send_response(302)
+            self.send_header('Location', clean or '/')
+            self.end_headers()
+            return False
         return True
 
     def do_HEAD(self):
@@ -2341,12 +2352,13 @@ def bind_http(port, lan=False, handler=None):
 
 def start_lan(port=None):
     """Start the dedicated share listener in a background thread (ShareHandler, allowlist, key required).
-    Opens a port only while this returns a server. Raises OSError if no port in SHARE_PORTS can be bound."""
-    global SERVER, _LAN_THREAD
+    Opens a port only while this returns a server. Does not touch the ordinary local reader (SERVER).
+    Raises OSError if no port in SHARE_PORTS can be bound."""
+    global SHARE_SERVER, _SHARE_THREAD
     from engine.share_http import ShareServer
-    with _LAN_LOCK:
-        if SERVER is not None:
-            return SERVER
+    with _SHARE_LOCK:
+        if SHARE_SERVER is not None:
+            return SHARE_SERVER
         load_lan_key()
         ports = [port] if port is not None else list(SHARE_PORTS)
         last = None
@@ -2354,26 +2366,27 @@ def start_lan(port=None):
             try:
                 raw = bind_http(p, lan=True, handler=ShareHandler)
                 last = None
-                SERVER = raw
+                SHARE_SERVER = raw
                 ShareServer(raw)
                 break
             except OSError as e:
                 last = e
-                SERVER = None
-        if SERVER is None:
+                SHARE_SERVER = None
+        if SHARE_SERVER is None:
             raise last if last is not None else OSError('could not listen')
-        _LAN_THREAD = threading.Thread(target=SERVER.serve_forever, daemon=True, name='lastbook-share')
-        _LAN_THREAD.start()
-        print(f'Lastbook is sharing on this network: port {SERVER.server_address[1]}', flush=True)
-        return SERVER
+        _SHARE_THREAD = threading.Thread(target=SHARE_SERVER.serve_forever, daemon=True, name='lastbook-share')
+        _SHARE_THREAD.start()
+        print(f'Lastbook is sharing on this network: port {SHARE_SERVER.server_address[1]}', flush=True)
+        return SHARE_SERVER
 
 
 def stop_lan(wait=True):
     """Close the share listener, including every in-progress stream, and release the port.
-    Safe when it is not running. wait=True blocks until the port is free."""
-    global SERVER, _LAN_THREAD
-    with _LAN_LOCK:
-        srv, th, SERVER, _LAN_THREAD = SERVER, _LAN_THREAD, None, None
+    Safe when it is not running. Does not stop the ordinary local reader (SERVER).
+    wait=True blocks until the port is free."""
+    global SHARE_SERVER, _SHARE_THREAD
+    with _SHARE_LOCK:
+        srv, th, SHARE_SERVER, _SHARE_THREAD = SHARE_SERVER, _SHARE_THREAD, None, None
     if not srv:
         return
     wrapper = getattr(srv, 'share', None)
@@ -2395,32 +2408,32 @@ def stop_lan(wait=True):
 
 def serve(port, lan=False):
     """The HTTP server version: binds the port and answers until stopped.
-    --lan starts the same share listener the desktop app uses (allowlist, key required on every request).
-    Without --lan, the full Handler listens on loopback only."""
-    global LAN_KEY, SERVER
+    --lan starts the same share listener the desktop app uses (allowlist, key required on every request),
+    tracked as SHARE_SERVER. Without --lan, the full Handler listens on loopback only (SERVER)."""
+    global LAN_KEY, SERVER, SHARE_SERVER
     from engine.share_http import ShareServer
     if lan:
         load_lan_key()
-        SERVER = bind_http(port, lan=True, handler=ShareHandler)
-        ShareServer(SERVER)
+        SHARE_SERVER = bind_http(port, lan=True, handler=ShareHandler)
+        ShareServer(SHARE_SERVER)
         ip = lan_address() or '<this-computer-ip>'
         print(f'Lastbook is sharing on this network: http://{ip}:{port}/?key={LAN_KEY}', flush=True)
         print(f'On this computer (same key): http://127.0.0.1:{port}/?key={LAN_KEY}', flush=True)
         print('Keep this link private; delete derived/lan-key to change it. Settings stay on this computer.', flush=True)
-    else:
-        SERVER = bind_http(port, lan=False, handler=Handler)
-        print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
+        try:
+            SHARE_SERVER.serve_forever()
+        finally:
+            stop_lan(wait=True)
+        return
+    SERVER = bind_http(port, lan=False, handler=Handler)
+    print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
     try:
         SERVER.serve_forever()
     finally:
-        wrapper = getattr(SERVER, 'share', None)
-        if wrapper is not None:
-            wrapper.stop(wait=True)
-        else:
-            try:
-                SERVER.server_close()
-            except Exception:
-                pass
+        try:
+            SERVER.server_close()
+        except Exception:
+            pass
 
 
 def main():

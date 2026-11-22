@@ -149,6 +149,49 @@ def presented_key(path, headers):
     return None, None
 
 
+# File types a player or downloader may request with ?key= in the URL. Never redirect these,
+# or AVPlayer, AirPlay and Range requests would follow a 302 and lose the query key.
+_MEDIA_PREFIXES = ('/videos/', '/videos-external/', '/transcripts/', '/metadata/videos/')
+_MEDIA_SUFFIXES = (
+    '.mp4', '.webm', '.mkv', '.m4v', '.mov', '.m3u8',
+    '.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac',
+)
+
+# Static assets a page loads with ?key= still attached; serve them in place.
+_ASSET_SUFFIXES = (
+    '.js', '.css', '.map', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico',
+    '.woff', '.woff2', '.ttf', '.otf', '.webmanifest', '.json',
+)
+
+
+def should_redirect_key(route, command='GET', headers=None):
+    """True only for a browser page navigation, so the access key leaves the address bar.
+
+    API calls, video and Range requests, documents, and static assets are served in place
+    with the key still on the request. Players such as AVPlayer cannot follow a redirect
+    and still present the key on every range fetch.
+    """
+    if (command or 'GET').upper() != 'GET':
+        return False
+    headers = headers or {}
+    get = headers.get
+    if get('Range') or get('range'):
+        return False
+    if not route or route.startswith('/api/'):
+        return False
+    lower = route.lower()
+    if route.startswith(_MEDIA_PREFIXES) or lower.endswith(_MEDIA_SUFFIXES):
+        return False
+    if lower.endswith(_ASSET_SUFFIXES) or route == '/sw.js':
+        return False
+    if route.startswith(('/zim/', '/documents/', '/pages/', '/courses/', '/collections/', '/assets/')):
+        return False
+    # The access link itself, and any HTML page in the app UI.
+    if route in ('/', '/index.html') or lower.endswith(('.html', '.htm')):
+        return True
+    return False
+
+
 class ShareServer:
     """A ThreadingHTTPServer that can close every active client, including a stream in progress."""
 
@@ -174,13 +217,20 @@ class ShareServer:
                     outer._conns.discard(request)
 
         def process_request(request, client_address):
+            def run():
+                try:
+                    server.process_request_thread(request, client_address)
+                finally:
+                    with outer._lock:
+                        outer._threads.discard(threading.current_thread())
+
             t = threading.Thread(
-                target=server.process_request_thread,
-                args=(request, client_address),
+                target=run,
                 daemon=True,
                 name='lastbook-share-client',
             )
             with outer._lock:
+                outer._threads = {x for x in outer._threads if x.is_alive()}
                 outer._threads.add(t)
             t.start()
 
@@ -210,6 +260,16 @@ class ShareServer:
                 s.close()
             except OSError:
                 pass
+
+    def prune_workers(self):
+        """Drop threads that have already finished, so the set does not grow for the life of the listener."""
+        with self._lock:
+            self._threads = {t for t in self._threads if t.is_alive()}
+
+    def live_workers(self):
+        self.prune_workers()
+        with self._lock:
+            return len(self._threads)
 
     def join_clients(self, timeout=5):
         import time

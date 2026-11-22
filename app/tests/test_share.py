@@ -15,7 +15,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'app'), str(HERE)]
 
 import server  # noqa: E402
 from engine import share  # noqa: E402
-from engine.share_http import allowed, key_matches, normalize_route, presented_key  # noqa: E402
+from engine.share_http import allowed, key_matches, normalize_route, presented_key, should_redirect_key  # noqa: E402
 
 
 def listening(port, host='127.0.0.1'):
@@ -130,6 +130,21 @@ class NormalizeAndAllow(unittest.TestCase):
         self.assertEqual(presented_key('/', {'Authorization': 'Bearer secret'}), ('secret', 'header'))
         self.assertEqual(presented_key('/', {}), (None, None))
 
+    def test_only_html_navigations_redirect_the_key(self):
+        self.assertTrue(should_redirect_key('/', 'GET'))
+        self.assertTrue(should_redirect_key('/index.html', 'GET'))
+        self.assertTrue(should_redirect_key('/ui/about.html', 'GET'))
+        self.assertFalse(should_redirect_key('/sw.js', 'GET'))
+        self.assertFalse(should_redirect_key('/ui/app.js', 'GET'))
+        self.assertFalse(should_redirect_key('/api/topics', 'GET'))
+        self.assertFalse(should_redirect_key('/api/topics', 'POST'))
+        self.assertFalse(should_redirect_key('/videos/a.mp4', 'GET'))
+        self.assertFalse(should_redirect_key('/videos-external/a.mkv', 'GET'))
+        self.assertFalse(should_redirect_key('/documents/a.pdf', 'GET'))
+        self.assertFalse(should_redirect_key('/', 'GET', {'Range': 'bytes=0-99'}))
+        self.assertFalse(should_redirect_key('/videos/a.mp4', 'GET', {'Range': 'bytes=0-99'}))
+        self.assertFalse(should_redirect_key('/', 'HEAD'))
+
 
 class ShareFlag(unittest.TestCase):
     def setUp(self):
@@ -191,28 +206,28 @@ class ShareListener(unittest.TestCase):
     def _start(self, handler=None):
         if handler is None:
             self.assertTrue(share.start())
-            return server.SERVER
+            return server.SHARE_SERVER
         server.load_lan_key()
         raw = server.bind_http(0, lan=True, handler=handler)
         from engine.share_http import ShareServer
         ShareServer(raw)
-        server.SERVER = raw
+        server.SHARE_SERVER = raw
         t = threading.Thread(target=raw.serve_forever, daemon=True, name='lastbook-share-test')
-        server._LAN_THREAD = t
+        server._SHARE_THREAD = t
         t.start()
         share._save_flag(on=True)
         return raw
 
     def test_restore_does_nothing_when_off(self):
         share.restore()
-        self.assertIsNone(server.SERVER)
+        self.assertIsNone(server.SHARE_SERVER)
         self.assertFalse(share.wanted())
 
     def test_share_switch_is_not_on_the_listener(self):
         h = H(ip='127.0.0.1', body={'on': True}, listener=True)
         share.handle(h, 'POST')
         self.assertEqual(h.status, 403)
-        self.assertIsNone(server.SERVER)
+        self.assertIsNone(server.SHARE_SERVER)
         h = H(ip='192.168.1.20', body={'on': True})
         share.handle(h, 'POST')
         self.assertEqual(h.status, 403)
@@ -224,15 +239,15 @@ class ShareListener(unittest.TestCase):
         body = h.answer()
         self.assertTrue(body['on'])
         self.assertFalse(body['ai'])
-        self.assertIsNotNone(server.SERVER)
+        self.assertIsNotNone(server.SHARE_SERVER)
         share.stop(forget=True, wait=True)
 
     def test_start_and_stop_open_and_close_the_port(self):
         self.assertTrue(share.start())
-        port = server.SERVER.server_address[1]
+        port = server.SHARE_SERVER.server_address[1]
         self.assertTrue(listening(port))
         share.stop(forget=True, wait=True)
-        self.assertIsNone(server.SERVER)
+        self.assertIsNone(server.SHARE_SERVER)
         deadline = time.time() + 2
         while time.time() < deadline and listening(port):
             time.sleep(0.05)
@@ -242,19 +257,19 @@ class ShareListener(unittest.TestCase):
         self.assertTrue(share.start())
         share.stop(forget=False, wait=True)
         self.assertTrue(share.wanted())
-        self.assertIsNone(server.SERVER)
+        self.assertIsNone(server.SHARE_SERVER)
 
     def test_restore_starts_when_left_on(self):
         self.settings.mkdir(parents=True, exist_ok=True)
         (self.settings / share.FLAG).write_text(json.dumps({'on': True}), encoding='utf-8')
         share.restore()
-        self.assertIsNotNone(server.SERVER)
+        self.assertIsNotNone(server.SHARE_SERVER)
         self.assertTrue(share.status()['on'])
         share.stop(forget=False, wait=True)
 
     def test_socket_client_needs_the_key_even_on_loopback(self):
         self._start()
-        port = server.SERVER.server_address[1]
+        port = server.SHARE_SERVER.server_address[1]
         key = server.LAN_KEY
         c = HTTPConnection('127.0.0.1', port, timeout=3)
         c.request('GET', '/sw.js')
@@ -272,7 +287,7 @@ class ShareListener(unittest.TestCase):
 
     def test_wrong_key_is_refused(self):
         self._start()
-        port = server.SERVER.server_address[1]
+        port = server.SHARE_SERVER.server_address[1]
         c = HTTPConnection('127.0.0.1', port, timeout=3)
         c.request('GET', '/api/topics', headers={'X-Lastbook-Key': 'nope'})
         r = c.getresponse(); r.read(); c.close()
@@ -280,13 +295,116 @@ class ShareListener(unittest.TestCase):
 
     def test_restart_after_stop_works(self):
         self.assertTrue(share.start())
-        port1 = server.SERVER.server_address[1]
+        port1 = server.SHARE_SERVER.server_address[1]
         share.stop(forget=True, wait=True)
-        self.assertFalse(listening(port1) and server.SERVER is not None)
+        self.assertFalse(listening(port1) and server.SHARE_SERVER is not None)
         self.assertTrue(share.start())
-        port2 = server.SERVER.server_address[1]
+        port2 = server.SHARE_SERVER.server_address[1]
         self.assertTrue(listening(port2))
         share.stop(forget=True, wait=True)
+
+    def test_html_query_key_redirects_to_a_clean_url(self):
+        self._start()
+        port = server.SHARE_SERVER.server_address[1]
+        key = server.LAN_KEY
+        c = HTTPConnection('127.0.0.1', port, timeout=3)
+        c.request('GET', f'/?key={key}&from=videos')
+        r = c.getresponse(); body = r.read(); headers = dict(r.getheaders()); c.close()
+        self.assertEqual(r.status, 302)
+        self.assertEqual(headers.get('Location'), '/?from=videos')
+        cookie = headers.get('Set-Cookie') or headers.get('set-cookie') or ''
+        self.assertIn('sg_key=', cookie)
+        # After the cookie is set, the clean URL is enough.
+        c = HTTPConnection('127.0.0.1', port, timeout=3)
+        c.request('GET', '/?from=videos', headers={'Cookie': f'sg_key={key}'})
+        r = c.getresponse(); r.read(); c.close()
+        self.assertEqual(r.status, 200)
+
+    def test_api_and_video_query_key_are_not_redirected(self):
+        raw = self._start(SlowShare)
+        port = raw.server_address[1]
+        key = server.LAN_KEY
+        c = HTTPConnection('127.0.0.1', port, timeout=3)
+        c.request('GET', f'/sw.js?key={key}')
+        r = c.getresponse(); r.read(); headers = dict(r.getheaders()); c.close()
+        self.assertEqual(r.status, 200)
+        self.assertIsNone(headers.get('Location'))
+        c = HTTPConnection('127.0.0.1', port, timeout=3)
+        c.request('GET', f'/videos/slow.bin?key={key}', headers={'Range': 'bytes=0-99'})
+        r = c.getresponse(); body = r.read(); headers = dict(r.getheaders()); c.close()
+        self.assertEqual(r.status, 206)
+        self.assertIsNone(headers.get('Location'))
+        self.assertEqual(len(body), 100)
+
+    def test_finished_workers_are_removed(self):
+        self._start()
+        port = server.SHARE_SERVER.server_address[1]
+        key = server.LAN_KEY
+        wrapper = server.SHARE_SERVER.share
+        for _ in range(5):
+            c = HTTPConnection('127.0.0.1', port, timeout=3)
+            c.request('GET', '/sw.js', headers={'X-Lastbook-Key': key})
+            r = c.getresponse(); r.read(); c.close()
+            self.assertEqual(r.status, 200)
+        deadline = time.time() + 2
+        while time.time() < deadline and wrapper.live_workers():
+            time.sleep(0.05)
+        self.assertEqual(wrapper.live_workers(), 0)
+
+    def test_start_and_stop_sharing_leaves_the_local_reader(self):
+        """The share switch must not start, stop, or report the ordinary loopback reader."""
+        reader = server.bind_http(0, lan=False, handler=server.Handler)
+        server.SERVER = reader
+        rt = threading.Thread(target=reader.serve_forever, daemon=True, name='lastbook-reader-test')
+        rt.start()
+        rport = reader.server_address[1]
+        try:
+            c = HTTPConnection('127.0.0.1', rport, timeout=3)
+            c.request('GET', '/sw.js')
+            r = c.getresponse(); r.read(); c.close()
+            self.assertEqual(r.status, 200)
+
+            self.assertTrue(share.start())
+            self.assertIs(server.SERVER, reader)
+            self.assertIsNotNone(server.SHARE_SERVER)
+            sport = server.SHARE_SERVER.server_address[1]
+            self.assertNotEqual(sport, rport)
+            self.assertTrue(share.status()['on'])
+            self.assertEqual(share.status()['port'], sport)
+
+            # The share listener still requires the key.
+            c = HTTPConnection('127.0.0.1', sport, timeout=3)
+            c.request('GET', '/sw.js')
+            r = c.getresponse(); r.read(); c.close()
+            self.assertEqual(r.status, 403)
+
+            # The local reader stays up, still without a key.
+            c = HTTPConnection('127.0.0.1', rport, timeout=3)
+            c.request('GET', '/sw.js')
+            r = c.getresponse(); r.read(); c.close()
+            self.assertEqual(r.status, 200)
+
+            share.stop(forget=True, wait=True)
+            self.assertIsNone(server.SHARE_SERVER)
+            self.assertIs(server.SERVER, reader)
+            self.assertFalse(share.status()['on'])
+            self.assertTrue(listening(rport))
+            c = HTTPConnection('127.0.0.1', rport, timeout=3)
+            c.request('GET', '/sw.js')
+            r = c.getresponse(); r.read(); c.close()
+            self.assertEqual(r.status, 200)
+        finally:
+            try:
+                reader.shutdown()
+            except Exception:
+                pass
+            try:
+                reader.server_close()
+            except Exception:
+                pass
+            rt.join(timeout=3)
+            if server.SERVER is reader:
+                server.SERVER = None
 
 
 class SlowShare(server.ShareHandler):
@@ -359,9 +477,9 @@ class StopCutsStream(unittest.TestCase):
         raw = server.bind_http(0, lan=True, handler=SlowShare)
         from engine.share_http import ShareServer
         ShareServer(raw)
-        server.SERVER = raw
+        server.SHARE_SERVER = raw
         t = threading.Thread(target=raw.serve_forever, daemon=True)
-        server._LAN_THREAD = t
+        server._SHARE_THREAD = t
         t.start()
         port = raw.server_address[1]
         key = server.LAN_KEY
@@ -396,7 +514,7 @@ class StopCutsStream(unittest.TestCase):
         server.stop_lan(wait=True)
         worker.join(6)
         self.assertFalse(listening(port))
-        self.assertIsNone(server.SERVER)
+        self.assertIsNone(server.SHARE_SERVER)
         # The downloader was cut (error or a short body), not given the full megabyte after a long wait.
         if got and len(got) >= 2 and got[0] == 206:
             self.assertLess(got[1], 1024 * 1024)

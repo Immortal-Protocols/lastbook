@@ -114,8 +114,8 @@ def status():
     """What the Library and local AI page and the sharing indicator show.
     Never includes the raw key on its own; it is only inside `link`."""
     import server
-    on = bool(server.SERVER)
-    port = int(server.SERVER.server_address[1]) if on else None
+    on = bool(server.SHARE_SERVER)
+    port = int(server.SHARE_SERVER.server_address[1]) if on else None
     ip = server.lan_address() if on else None
     key = server.LAN_KEY if on else None
     link = None

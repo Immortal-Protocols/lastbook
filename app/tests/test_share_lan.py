@@ -54,9 +54,9 @@ class LanShare(unittest.TestCase):
         server.load_lan_key()
         raw = server.bind_http(0, lan=True, handler=SlowShare)
         ShareServer(raw)
-        server.SERVER = raw
+        server.SHARE_SERVER = raw
         t = threading.Thread(target=raw.serve_forever, daemon=True, name='lastbook-share-lan')
-        server._LAN_THREAD = t
+        server._SHARE_THREAD = t
         t.start()
         cls.port = raw.server_address[1]
         cls.key = server.LAN_KEY
@@ -101,6 +101,14 @@ class LanShare(unittest.TestCase):
         r = self._run('query key', ['-o', '/dev/null', '-w', '%{http_code}', f'{self.base}/sw.js?key={self.key}'])
         self.assertIn('200', r.stdout)
 
+    def test_04b_html_query_key_redirects(self):
+        # Do not follow the redirect: the access key must leave the URL after the cookie is set.
+        r = self._run('html redirect', ['--max-redirs', '0', f'{self.base}/?key={self.key}&from=videos'])
+        self.assertIn('HTTP/1.0 302', r.stdout)
+        self.assertIn('Location: /?from=videos', r.stdout)
+        self.assertIn('Set-Cookie:', r.stdout)
+        self.assertNotIn('HTTP/1.0 200', r.stdout)
+
     def test_05_allowlist_blocks_setup(self):
         r = self._run('setup blocked', ['-o', '/dev/null', '-w', '%{http_code}', '-H', f'X-Lastbook-Key: {self.key}', f'{self.base}/api/setup/state'])
         self.assertIn('403', r.stdout)
@@ -134,7 +142,7 @@ class LanShare(unittest.TestCase):
         size = os.path.getsize('/tmp/lastbook-share-lan-stream') if os.path.exists('/tmp/lastbook-share-lan-stream') else 0
         self.log.append(f'curl exit={proc.returncode} bytes={size} stderr={err.strip()}')
         self.assertFalse(listening(self.port))
-        self.assertIsNone(server.SERVER)
+        self.assertIsNone(server.SHARE_SERVER)
         self.assertLess(size, 1024 * 1024)
 
 

@@ -349,17 +349,30 @@ const Chat = (() => {
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
+    // When the search is unsure the server offers what the question may be about (assistant.chat_reply, engine/confidence.py)
+    let sugg = '';
+    if (!running && (m.suggest || []).length && i === cur.messages.length - 1) {
+      // coloured so they stand out from the page: the emergency choices red, "Something else" green
+      const sg = c => /^something else/i.test(c.label || '') ? 'sg-other' : 'sg-danger';
+      const prompt = `<p class="small muted">${esc(m.suggestPrompt || 'Is this about something else?')}</p>`;
+      sugg = m.suggestStyle === 'compact'   // an everyday question gets the same buttons, smaller (confidence.everyday_level)
+        ? `<div class="suggest compact">${prompt}<div class="chips">${m.suggest.map(c => `<button class="chip ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`
+        : `<div class="suggest">${prompt}<div class="ans-actions">${m.suggest.map(c => `<button class="btn plain ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`;
+    }
     // the library's pages and the encyclopedia articles are two searches, shown apart, each in its own order
     const [libF, wikiF] = byShelf(found);
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${libF.length ? srcCards(libF.slice(0, 6), true) : ''}${wikiF.length ? `<p class="small muted">From the encyclopedias (community-written background):</p>${srcCards(wikiF.slice(0, 3), true)}` : ''}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
+    h += sugg;
     if (!running && m.content) {
       const cited = sourcesForFinish(m);
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
-      h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
+      // a "please say more" reply (engine/confidence.py) is not an answer: no legend, no unverified-answer notice
+      if (!m.unsure) h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
       const [libC, wikiC] = byShelf(cited);
-      if (libC.length) h += `<h3 class="srch">Sources (${libC.length})</h3>${srcFilter(libC, m.srcType, i)}${srcCards(libC, false, m.srcType)}`;
-      else if (!cited.length) h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
+      // the request to say more gives the pages it found too: not an answer's sources, so named for what they are
+      if (libC.length) h += `<h3 class="srch">${m.unsure ? 'Pages the library found' : 'Sources'} (${libC.length})</h3>${srcFilter(libC, m.srcType, i)}${srcCards(libC, false, m.srcType)}`;
+      else if (!cited.length && !m.unsure) h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
       const [libO, wikiO] = byShelf((m.consulted || []).filter(s => s.kind !== 'place'));
       // the encyclopedias' own search, shown whether the answer used it or not: the ones it cited first, then the rest
       if (wikiC.length || wikiO.length) h += `<h3 class="srch">From the encyclopedias (${wikiC.length + wikiO.length})</h3><p class="small muted">A separate search of the encyclopedias: community-written background${wikiC.length ? '' : ', not used in this answer'}.</p>${wikiC.length ? srcCards(wikiC, false) : ''}${wikiO.length ? srcCards(wikiO.slice(0, 6), true) : ''}`;
@@ -510,6 +523,8 @@ const Chat = (() => {
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
     });
+    // a suggestion button sends its label as the next message; "Something else" only puts the cursor in the box
+    $$('[data-say]', el).forEach(b => b.onclick = () => { if (busy()) return; if (b.dataset.say) send(b.dataset.say); else $('#chatIn')?.focus() });
     $$('.srcfilter button', el).forEach(b => b.onclick = () => { showType(b.parentNode, b.dataset.type); persist() });
     // citation chips scroll to their card instead of changing the route; a card the filter hides comes back with all the others
     $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c && c.hidden) { const f = c.parentNode.previousElementSibling; if (f && f.matches('.srcfilter')) { showType(f, ''); persist() } } if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
@@ -600,9 +615,10 @@ const Chat = (() => {
     else if (ev.type === 'found') m.steps.push({ name: 'found', count: ev.count });
     else if (ev.type === 'tool') { if (ev.phase === 'start') m.steps.push({ name: ev.name, args: ev.args }); else { const s = [...m.steps].reverse().find(x => x.name === ev.name && !x.summary); if (s) s.summary = ev.summary } m.state = 'searching' }
     else if (ev.type === 'sources') m.sources = ev.sources;
+    else if (ev.type === 'suggest') { m.suggest = Array.isArray(ev.choices) ? ev.choices.slice(0, 8) : null; m.suggestPrompt = typeof ev.prompt === 'string' ? ev.prompt.slice(0, 120) : ''; m.suggestStyle = ev.style === 'compact' ? 'compact' : '' }
     else if (ev.type === 'delta') m.content += ev.text;
     else if (ev.type === 'reset') m.content = '';
-    else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
+    else if (ev.type === 'done') { m.unsure = !!ev.unsure; m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
       if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
       else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }

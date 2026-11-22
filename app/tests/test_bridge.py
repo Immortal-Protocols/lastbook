@@ -1236,6 +1236,19 @@ class TypoCorrection(unittest.TestCase):
             typos.words_for = real
             typos._state['memo'] = {}
 
+    def test_retrieve_says_how_sure_the_first_result_is(self):
+        """/api/retrieve adds engine/confidence.py's estimate of the search; LASTBOOK_CONF=0 leaves it out (null)."""
+        b = B.Bridge(MOD, 'buffer', OR['buffer'], tmpdir=str(TMP), log=lambda *a: None)
+        try:
+            got = json.loads(call(b, 'GET', '/api/retrieve?q=boil%20water').body)
+            self.assertLessEqual({'p', 'mode', 'level'}, set(got['confidence']))
+            self.assertTrue(0 <= got['confidence']['p'] <= 1)
+            self.assertIn(got['confidence']['level'], ('sure', 'buttons', 'unsure'))
+            os.environ['LASTBOOK_CONF'] = '0'
+            self.assertIsNone(json.loads(call(b, 'GET', '/api/retrieve?q=boil%20water').body)['confidence'])
+        finally:
+            os.environ.pop('LASTBOOK_CONF', None)
+
     def test_pronoun_contractions_are_not_searched(self):
         # "i'm", "he's", "there's" say nothing to search for; the negations stay
         for q, want in [("i'm bleeding", ['bleeding']), ("he's not breathing and there's blood", ['breathing', 'blood']),

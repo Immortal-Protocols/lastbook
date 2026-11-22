@@ -33,7 +33,8 @@ baseline recorded on `main`. The modules described below arrive in the later pul
 | 1 | Long pages in sections (`engine/sections.py`) | 2 (#403) |
 | 3 | Typo correction (`engine/typos.py`, word list) | 3 (#404) |
 | 2 | Encyclopedia articles by best section (`engine/wiki_pick.py`) | 4 (#405) |
-| 4, 5, 8 | Body signs, confidence estimate, injury guard on everyday phrases (`engine/confidence.py`) | 5 (#406) |
+| 4, 5 | Body signs, confidence estimate (`engine/confidence.py`) | 5 (#406) |
+| 8 | Everyday phrases that hijack injury questions (`confidence.INJURY`, `server.PHRASES`) | 7 (#408) |
 | 6 | The runner's `--embed` mode (`packaging/llm/lastbook_llm.cpp`) | 6 (#407) |
 | 4, 6 | Urgency on one source (`urgent` phrases in the guides, `assistant.is_danger`, `engine/meaning_red.py`) | 7 (#408) |
 | 7 | Conversation handling (`assistant.turn_hits`) | 8 (#409) |
@@ -155,8 +156,8 @@ Code: `engine/typos.py`. Entry points `correct(q)` (memoised, 2,000 entries), `c
 `LASTBOOK_BODY_FIX=0`. Called first in `assistant.hybrid`, `server.query_groups` and `assistant.is_danger`.
 `/api/find` and `/api/retrieve` add `corrected` (what was searched) when it differs from the question.
 
-In pull request 3, `body_fix` and `LASTBOOK_BODY_FIX` are not there yet: they need the body words of
-`engine/confidence.py` and come with it in pull request 5. `assistant.is_danger` comes in pull request 7.
+In pull request 3, `body_fix` and `LASTBOOK_BODY_FIX` were not there: they need the body words of
+`engine/confidence.py`. Pull request 5 adds them. `assistant.is_danger` comes in pull request 7.
 
 **Word forms.** The corrector does not change word endings: an English word is never changed, so "tourniquets",
 "fainting" and "choked" are searched as typed. The library search's own form rule is older than this module: a word of
@@ -256,6 +257,10 @@ Measured on the author's fork:
 Code: `engine/confidence.py` (`URGENT`, `NOT_URGENT`, `urgent`, `not_urgent_text`, `BODY_WORDS`, `BODY_PHRASES`, `BODY_GLUED`,
 `body_signs`, `body_match`) and `assistant.py` (`DANGER`, `danger_signs`, `is_danger`, `plea`).
 
+In pull request 5, `urgent`, `not_urgent_text` and the body signs are in `engine/confidence.py`, and the chat uses them
+only to decide whether pages may be held back (section 5). `DANGER`, `is_danger` and `plea` come in pull requests 7 and 8,
+which also move urgency to one shared source: the word list of `urgent` is then read from the guides.
+
 ```
 not_urgent_text(t)   = t with every NOT_URGENT match (72 idiom alternatives) replaced by a space
 urgent(*texts)       = any(URGENT.search(not_urgent_text(t)) for t in texts)  OR  body_signs(*texts) is non-empty
@@ -295,6 +300,13 @@ Measured (red recall, false flags): section 6's table, definitions in section 9.
 
 Code: `engine/confidence.py` (`MODELS`, `features`, `probability`, `estimate`, `unknown_words`, `thresholds`, `everyday_level`),
 `assistant.py` (`search_confidence`, `chat_level`, `chat_reply`).
+
+In pull request 5, `assistant.hybrid` and `assistant._fts` fill the search trace (word groups, rows with every word, bm25 per
+row, cosines), `assistant.question_hits` reads the first search's estimate, and `assistant.chat` asks for more words or
+offers buttons (`web/chat.js` draws them; `/api/retrieve` returns the estimate as `confidence`). A question counts as urgent
+by `confidence.urgent` alone (the meaning check and `DANGER` come in pull request 7). There are no conversation routes yet
+(pull request 8): only the first question of a chat can be asked to say more; a later message gets the buttons and the
+answer. A bare plea ("911", "help") is not told apart yet either.
 
 Model: `p = 1 / (1 + exp(-(bias + sum_k w_k * x_k)))` on the raw (not standardised) signals; one set per mode.
 

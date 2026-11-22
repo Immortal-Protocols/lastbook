@@ -137,7 +137,7 @@ class WhatShips(unittest.TestCase):
             self.assertIsNone(mod.HOUSEHOLD.search(mod.numbers(compile('A = (39.0997, 2.5)', 'x', 'exec'))))
 
     def test_shipped_code_names_no_household_place(self):
-        for rel in ('server.py', 'assistant.py', 'retrieval.py', 'engine/library.py', 'engine/saved_pages.py', 'engine/paths.py', 'app/main.py', 'app/bridge.py',
+        for rel in ('server.py', 'assistant.py', 'retrieval.py', 'engine/library.py', 'engine/saved_pages.py', 'engine/paths.py', 'engine/confidence.py', 'app/main.py', 'app/bridge.py',
                     'app/shell_macos.py', 'app/update_macos.py', 'app/shell_windows.py'):
             self.assertIsNone(HOUSEHOLD.search((ROOT / rel).read_text(encoding='utf-8')), rel)
         self.assertNotIn('118.4', (ROOT / 'server.py').read_text(encoding='utf-8'))
@@ -158,7 +158,8 @@ class WhatShips(unittest.TestCase):
             for name in ('english_words.txt.gz', 'english_words.LICENSE.txt'):
                 self.assertIn(name, text, rel)
         for rel in ('packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh'):
-            self.assertIn('typos', (ROOT / rel).read_text(encoding='utf-8'), rel)    # the module itself
+            for module in ('typos', 'confidence'):      # the modules themselves
+                self.assertIn(module, (ROOT / rel).read_text(encoding='utf-8'), rel)
 
 
 if __name__ == '__main__':

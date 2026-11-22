@@ -4,13 +4,14 @@ Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model i
 MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
-import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import base64, inspect, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
 from engine import encyclopedias
 from engine.paths import ro_uri
 from engine import page_tables, sections
 from engine import typos    # spelling mistakes in search questions
 from engine import wiki_pick    # encyclopedia articles by their best section
+from engine import confidence   # how likely a search's first page is right
 
 import os
 from engine.model_server import LOOPBACK, loopback_base, model_open   # noqa: F401  (LOOPBACK and model_open: also used by the tests)
@@ -84,22 +85,33 @@ def model_status():
 
 
 # --------------------------------------------------------------- retrieval --
-def _fts(q, limit=80, ids=None):
-    """ids: a JSON list from S.search_ids, so the LIMIT counts only the rows the caller can use."""
+def _fts(q, limit=80, ids=None, trace=None):
+    """(doc_id, page, snippet) rows for q, best first.
+    ids: a JSON list from S.search_ids, so the LIMIT counts only the rows the caller can use.
+    trace (a dict), when given, gets what engine/confidence.py reads: the query's word groups, how many rows had every
+    word, whether the any-word fallback ran, and each row's bm25."""
     content, groups = S.query_groups(q)
+    if trace is not None:
+        trace.update(groups=[list(g) for g in groups], strict=0, any_word=False, bm25=[])
     if not groups:
         return []
     # Long saved web pages are searched in their sections (engine/sections.py).
-    run = lambda m: sections.query(S.library.DB, S.kind_of, "doc_id,page,snippet(pages,6,'','',' … ',40)",
+    run = lambda m: sections.query(S.library.DB, S.kind_of, "doc_id,page,snippet(pages,6,'','',' … ',40),bm25(pages,0,6,1,1,0,0,1)",
                                    'bm25(pages,0,6,1,1,0,0,1)', m, limit, ids)
     rows = []
     try:
         rows = run(S.fts_expr(groups))
+        if trace is not None:
+            trace['strict'] = len(rows)
         if len(rows) < 10 and len(groups) > 1:
             rows += run(' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups))
+            if trace is not None:
+                trace['any_word'] = True
     except sqlite3.OperationalError:
         pass
-    return rows
+    if trace is not None:
+        trace['bm25'] = [r[3] for r in rows]
+    return [r[:3] for r in rows]
 
 
 def _page(r, page):
@@ -115,9 +127,11 @@ def _allowed(kind):
     return lambda d: d in cat and cat[d]['kind'] != 'metadata' and (ok is None or cat[d]['kind'] in ok)
 
 
-def hybrid(q, k=8, kind='any', doc=None):
-    """Best passages for q from keyword and meaning-based search, fused, with provenance."""
+def hybrid(q, k=8, kind='any', doc=None, trace=None):
+    """Best passages for q from keyword and meaning-based search, fused, with provenance. trace (a dict), when given,
+    gets the raw scores of both searches for engine/confidence.py (keyword bm25 per row, meaning-based cosine per passage)."""
     q = typos.correct(q)    # both searches get the misspellings put right (engine/typos.py)
+    kwt = {} if trace is not None else None
     cat = S.catalog()
     allowed = _allowed(kind)
     if doc:
@@ -125,7 +139,7 @@ def hybrid(q, k=8, kind='any', doc=None):
     kw = []
     # Videos only, in the query itself (as S.find does): a broad word would fill the LIMIT with manual pages.
     ids = S.search_ids(lambda r: r['kind'] == 'video' and allowed(r['id'])) if kind == 'video' else None
-    for doc_id, page, snip in _fts(q, 120, ids):
+    for doc_id, page, snip in _fts(q, 120, ids, trace=kwt):
         r = cat['by_id'].get(doc_id)
         if not r:
             continue
@@ -143,6 +157,9 @@ def hybrid(q, k=8, kind='any', doc=None):
     qwords = [w for w in re.findall(r'[a-z0-9-]{3,}', q.lower()) if w not in S.STOP]
     models = [w for w in re.findall(r'[a-z0-9-]+', q.lower()) if re.search(r'\d', w) and re.search(r'[a-z]', w) and len(w) >= 3]
     lists = [('keyword', [key(*x[:3]) for x in kw]), ('meaning', [key(*x[:3]) for x in sem_l])]
+    if trace is not None:
+        trace.update(kwt, q=q, semantic=bool(sem_l), cos=[x[4] for x in sem_l],
+                     kw_keys=list(dict.fromkeys(lists[0][1]))[:8], sem_keys=list(dict.fromkeys(lists[1][1]))[:8])
     fused = retrieval.rrf(lists)
     text = {}
     for d, p, t, snip in kw:
@@ -665,6 +682,108 @@ def _fit_prompt(msgs, tools, llm_local):
         work[long]['content'] = work[long]['content'][:len(work[long]['content']) // 2] + '\n[…shortened to fit]'
 
 
+# ---------------------------------------------------------------- confidence --
+# What the chat says when the search is probably wrong (engine/confidence.py), and the buttons it offers.
+UNSURE_TEXT = ("Please help me help you: I can't tell what your question is about from what the library found, so I won't "
+               "guess. Could you say it another way, in a few more words: who it is about, what happened, what you can see? "
+               "Or pick one of the buttons below.")
+UNSURE_DANGER = ("In case this is urgent, here are the pages the library found first, but I'm not sure they fit your "
+                 "question. Please help me help you: say a few more words about what happened and what you can see, or pick "
+                 "one of the buttons below.")
+UNSURE_DANGER_NONE = ("The library found nothing that fits your question. Please help me help you: say a few more words about "
+                      "what happened and what you can see, or pick one of the buttons below.")
+# The request to say more always comes with the pages found (as sources the person can open), an everyday question's too.
+UNSURE_PAGES = ("Here are the pages the library found first, but I can't tell if they fit your question, so I won't guess "
+                "an answer. Please help me help you: say it another way, in a few more words (who it is about, what "
+                "happened, what you can see), or pick one of the buttons below.")
+SUGGEST_PROMPT = {'buttons': 'Not sure these pages fit. Is it about one of these?', 'unsure': 'Is it about one of these?'}
+# Buttons offered when the search is unsure. Each sends its label as the next message; "Something else" only opens the box.
+DANGER_CHOICES = ('Not breathing', 'Heavy bleeding', 'Burn', 'Poison', 'Fire')
+
+
+def _traced(q, k, tr):
+    """hybrid(q, k), filling tr with its raw scores (a test's stand-in for hybrid may take no trace: then tr stays empty)."""
+    if 'trace' in inspect.signature(hybrid).parameters:
+        return hybrid(q, k, trace=tr)
+    return hybrid(q, k)
+
+
+def search_confidence(hits, trace):
+    """engine.confidence's estimate for one search, or None when it is off or the search left no trace."""
+    if not confidence.on() or not trace or 'groups' not in trace:
+        return None
+    return confidence.estimate(hits, trace)
+
+
+def question_hits(question, k=8):
+    """The first library search for a chat's newest question -> (hits, info). No model.
+    info['confidence']: engine.confidence's estimate ({'p', 'mode', 'level'}) for this search, or None.
+    info['danger']: the question may be about an emergency, by its words (engine/confidence.urgent, as typed or with its
+    misspellings put right). Only the words say so here: its pages are never held back either way.
+    info['body']: the body signs the question names (engine/confidence.body_signs), sorted; then chat_level never only asks."""
+    tr = {}
+    hits = _traced(question, k, tr)
+    fixed = typos.correct(question)
+    return hits, {'danger': confidence.urgent(question, fixed), 'confidence': search_confidence(hits, tr),
+                  'body': sorted(confidence.body_signs(question, fixed))}
+
+
+def urgent_answer_on():
+    """A question that may be urgent and whose search is very unsure is answered from its pages, with the buttons (as a
+    body sign's is), instead of getting the pages without an answer. LASTBOOK_CONF_URGENT_ANSWER=0: the pages only."""
+    return os.environ.get('LASTBOOK_CONF_URGENT_ANSWER', '1') != '0'
+
+
+def chat_level(turn, asked=1):
+    """What the chat does with question_hits' info for a message (asked: how many user messages so far) -> (level, the
+    confidence as shown, everyday). level 'sure' answers; 'buttons' answers with buttons; 'unsure' asks the person to say
+    more (always with the pages found). An everyday question (not info['danger']) gets buttons only when the search is very
+    unsure, and smaller ones. A question that names a body sign (info['body'], engine/confidence.body_signs), or that may
+    be urgent (info['danger'], with urgent_answer_on) and whose words are the library's, is never only asked to say more:
+    it is answered from its pages, with the buttons. Only a conversation's first question is asked to say more: a later
+    message is often a follow-up ("and at night?") that only makes sense with the earlier ones, so it gets the buttons."""
+    conf = turn.get('confidence')
+    level = conf['level'] if conf else 'sure'
+    everyday = not turn.get('danger')
+    if everyday and conf:
+        level = confidence.everyday_level(conf['p'])
+        conf = dict(conf, level=level, everyday=True)
+    if level == 'unsure' and asked > 1:
+        level = 'buttons'
+    if level == 'unsure' and turn.get('body'):
+        level = 'buttons'       # "he has no puls": the answer from the pages, never only "help me help you"
+        conf = dict(conf, level=level, body=True) if conf else conf
+    elif level == 'unsure' and turn.get('danger') and urgent_answer_on() and conf and not conf.get('unknown_words'):
+        level = 'buttons'       # "took 20 of her sleeping tablets": the answer from the pages, with the buttons
+        conf = dict(conf, level=level, urgent=True)
+    return level, conf, everyday
+
+
+def chat_reply(turn, found, asked=1):
+    """What the chat does for a message, without the model: {'level', 'confidence', 'everyday', 'action', 'text', 'style'}.
+    found: how many pages the first search gave. action: 'answer' | 'buttons' | 'compact buttons' (the model answers;
+    buttons above it) | 'ask+pages' (the request to say more, the pages as sources, buttons) | 'ask (nothing found)'.
+    text: the reply when the model is not asked; style: the buttons' look ('compact' for an everyday question)."""
+    level, conf, everyday = chat_level(turn, asked)
+    out = {'level': level, 'confidence': conf, 'everyday': everyday, 'text': None, 'style': 'compact' if everyday else ''}
+    if level == 'unsure':
+        danger = bool(turn.get('danger'))
+        if not found:
+            out.update(action='ask (nothing found)', text=UNSURE_DANGER_NONE if danger else UNSURE_TEXT)
+        else:
+            out.update(action='ask+pages', text=UNSURE_DANGER if danger else UNSURE_PAGES)
+    elif level != 'sure':
+        out['action'] = 'compact buttons' if everyday else 'buttons'
+    else:
+        out['action'] = 'answer'
+    return out
+
+
+def suggest_choices():
+    """The buttons: the commonest emergencies, and Something else (text '': the box only gets the focus)."""
+    return [{'label': c, 'text': c} for c in DANGER_CHOICES] + [{'label': 'Something else', 'text': ''}]
+
+
 def chat(messages, about, emit, cancelled):
     """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early."""
     t0 = time.time()
@@ -679,10 +798,27 @@ def chat(messages, about, emit, cancelled):
     # Search for the question straight away: the person sees matching pages at once, and the model starts with them.
     question = next((m['content'] for m in reversed(messages) if m.get('role') == 'user' and isinstance(m.get('content'), str)), '')
     if question and not about:
-        hits = hybrid(question[:300], 8)
+        hits, turn = question_hits(question[:300])
         wiki = first_wiki(question[:300])
         msgs.extend(initial_messages(sess, hits, wiki))
         emit({'type': 'found', 'count': len(hits) + len(wiki)})
+        # How likely the first page is right (engine/confidence.py). Unsure: buttons. Very unsure: ask for more words
+        # instead of answering from pages that are probably wrong, and give the pages found all the same.
+        asked = sum(1 for m in messages if m.get('role') == 'user' and isinstance(m.get('content'), str))
+        reply = chat_reply(turn, len(hits), asked)
+        level, conf = reply['level'], reply['confidence']
+        if level != 'sure':
+            ev = {'type': 'suggest', 'choices': suggest_choices(), 'confidence': conf, 'prompt': SUGGEST_PROMPT[level]}
+            if reply['style']:
+                ev['style'] = reply['style']    # compact: the same buttons, drawn smaller (web/chat.js)
+            emit(ev)
+        if level == 'unsure':
+            found = list(sess.sources.values())
+            emit({'type': 'sources', 'sources': found})
+            emit({'type': 'done', 'answer': reply['text'], 'sources': found[:6], 'consulted': found[6:],
+                  'invalid': [], 'tools': [], 'unsure': True, 'confidence': conf,
+                  'latency': {'first_token_s': None, 'total_s': round(time.time() - t0, 2)}})
+            return
     if sess.sources:
         emit({'type': 'sources', 'sources': list(sess.sources.values())})
     answer, first_tok, tool_log, state = '', None, [], [None]

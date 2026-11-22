@@ -26,12 +26,15 @@ misspelled word back to a word the library uses, before the keyword search and t
   "kitchen on fire". Only a word of 8+ letters the index doesn't hold, so "hypothermia", "firecraft" and "Gutenberg"
   stay; each piece may have one of the slips above. A run typed with an apostrophe inside ("he'snotbreathing",
   "i'mchoking") is split too, from 6 letters; a hyphenated word only part by part. Off with LASTBOOK_TYPO_SPLIT=0.
-- An ordinary English word is never corrected or split (is_english: engine/english_words.txt.gz, the hunspell en_US
+- An ordinary English word is never corrected, split or made a body word (is_english: engine/english_words.txt.gz, the hunspell en_US
   words with every form, 78,238; British spellings through the American one), so "keeled", "puking" and "gasps" stay.
   A short, explicit list of real words that are slips for an emergency word is put right: SLIPS ("chocking", "brunt")
   and PHRASE_SLIPS, by the words around them ("he cant breed" -> breathe, "breeding a lot from the leg" -> bleeding,
   "sea sure" -> seizure, "past out", "cheat pain", "hart attack", "gas leek"). Letters typed again and again are cut
   first ("bloooood" -> blood). Off with LASTBOOK_TYPO_ENGLISH=0 (the word list, the slips and the cutting).
+- Body words one slip away that the library also has as words ("puls", on 24 pages, so the rules above leave it) are put
+  right (body_fix, with the body words of engine/confidence.py), and so is a glued run around a body word that could not
+  be split ("mybbyisntbreathing" -> "not breathing"). Off with LASTBOOK_BODY_FIX=0.
 - Off with LASTBOOK_TYPO_FIX=0.
 """
 import math, os, re, sqlite3, threading, time, unicodedata
@@ -532,6 +535,25 @@ def looks_foreign(q):
     return sum(t in OTHER_WORDS for t in toks) > sum(t in ENGLISH_WORDS and t not in SHARED for t in toks)
 
 
+def body_fix_on():
+    return os.environ.get('LASTBOOK_BODY_FIX', '1') != '0'
+
+
+def body_fix(w, words):
+    """w (lower-case, left as typed by fix_word and split_word) as the body word it is a slip for, or w. Only the body
+    words of engine/confidence.BODY_WORDS, and only where the library has w on fewer than confidence.BODY_COMMON pages:
+    "puls" (24 pages, a real word to fix_word) -> pulse. A glued run with a body stem that could not be split
+    ("mybbyisntbreathing") -> the stem's words ("not breathing"), so the search finds those pages instead of nothing."""
+    from engine import confidence       # here: confidence imports this module
+    if not confidence.body_on() or w in STOP or not w.isalpha() or (is_english(w) and w not in confidence.BODY_WORDS):
+        return w
+    b = confidence.body_match(w, words.V)
+    if b and b != w and (w not in words.V or _how(w, b)):   # a word of the library: one plausible slip only
+        return b
+    glued = confidence.glued_body(w, words.V)
+    return ' '.join(x for x, _ in glued) if glued else w
+
+
 def correct_with(q, words):
     """q with its misspelled words put right, against these words. Everything else stays as typed."""
     if not q or looks_foreign(q):
@@ -568,6 +590,8 @@ def correct_with(q, words):
         if parts:       # words typed with no spaces
             return case(t, ' '.join(parts))
         f = fix_word(w, words)
+        if f == w and body_fix_on():
+            f = body_fix(f, words)
         if f == t.lower():
             return t
         return f.upper() if t.isupper() and len(t) > 1 else f[0].upper() + f[1:] if t[0].isupper() else f

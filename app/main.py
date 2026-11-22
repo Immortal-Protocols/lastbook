@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 import traceback
+from contextlib import suppress
 from pathlib import Path
 
 FROZEN = bool(getattr(sys, 'frozen', False))
@@ -55,10 +56,18 @@ def remembered():
 
 def remember(folder):
     settings = app_folders()[0] / 'settings.json'
+    tmp = None
     try:
         settings.parent.mkdir(parents=True, exist_ok=True)
-        settings.write_text(json.dumps({'library': str(folder)}), encoding='utf-8')
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=settings.parent,
+                                         prefix=settings.name + '.', suffix='.tmp', delete=False) as out:
+            tmp = Path(out.name)
+            json.dump({'library': str(folder)}, out)
+        os.replace(tmp, settings)   # a write cut short leaves the old choice, never half a file
     except OSError as e:   # it still opens this time; it asks again next time
+        if tmp is not None:
+            with suppress(OSError):
+                tmp.unlink(missing_ok=True)
         print('could not remember the library:', e, flush=True)
 
 

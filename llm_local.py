@@ -22,11 +22,18 @@ from pathlib import Path
 
 from engine import paths
 
-FILE = 'gemma-4-26B-A4B-it-UD-Q4_K_M.gguf'
-SIZE = 16_947_541_728
-SHA256 = 'f2c28b3dc4776931ac6f879e11f203dec637ea0f14267a86ec8f6165f63f293f'
-NAME = 'Gemma 4 26B A4B (Unsloth 4-bit, UD-Q4_K_M)'
-SOURCE = 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a94ffccb261841'
+# The models Lastbook knows, largest first. Setup offers the first one this computer has the memory for (engine/setup/manifest.py).
+# memory_bytes: what lastbook-llm --measure reports for the model and a CTX context (device_bytes + host_bytes), before RESERVE.
+MODELS = (
+    {'id': 'gemma-4-26b-a4b', 'title': 'Gemma 4 26B A4B', 'file': 'gemma-4-26B-A4B-it-UD-Q4_K_M.gguf', 'size': 16_947_541_728,
+     'sha256': 'f2c28b3dc4776931ac6f879e11f203dec637ea0f14267a86ec8f6165f63f293f', 'memory_bytes': 18_160_150_464 + 867_233_792,
+     'name': 'Gemma 4 26B A4B (Unsloth 4-bit, UD-Q4_K_M)',
+     'source': 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a94ffccb261841'},
+    {'id': 'gemma-4-e4b', 'title': 'Gemma 4 E4B', 'file': 'gemma-4-E4B-it-Q4_K_M.gguf', 'size': 4_977_171_584,
+     'sha256': '85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87', 'memory_bytes': 6_307_922_592,
+     'name': 'Gemma 4 E4B (Unsloth 4-bit, Q4_K_M)',
+     'source': 'unsloth/gemma-4-E4B-it-GGUF, revision bfc15c382204943c3a8fff0c750b94ae2364d7a3'},
+)
 CTX = 16384               # tokens the model holds: the system prompt, sources, the conversation and the answer
 RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook beyond what llama.cpp measures for the model
 IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds without a question before the model is stopped, to give its memory back
@@ -41,6 +48,34 @@ def runner_path():
     if not paths.FROZEN:
         here.append(paths.APP / 'derived' / 'llm' / {'win32': 'bin-win', 'darwin': 'bin-mac'}.get(sys.platform, 'bin-linux') / exe)
     return next((p for p in here if p.is_file()), None)
+
+
+def _ram_bytes():
+    """This computer's memory via the setup probe, or None when it cannot be read."""
+    try:
+        from engine.setup.hardware import ram_bytes
+        return ram_bytes()
+    except Exception:
+        return None
+
+
+def _fit_facts():
+    """(ram_bytes, dedicated gpu bytes) for the one fit rule, via the setup probe; RAM alone when the setup package is not here."""
+    try:
+        from engine.setup.hardware import ai_machine
+        ai = ai_machine()
+        return ai['ram_bytes'], ai['gpu_bytes']
+    except Exception:
+        return _ram_bytes(), 0
+
+
+def _in_ram(memory_bytes, gpu_bytes):
+    """The part of a model's memory that must sit in RAM, via the setup probe's rule; RAM alone when the setup package is not here."""
+    try:
+        from engine.setup.hardware import in_ram_bytes
+        return in_ram_bytes(memory_bytes, gpu_bytes)
+    except Exception:
+        return memory_bytes + RESERVE
 
 
 def places():
@@ -84,7 +119,8 @@ def mark_checked(path, sha256):
     """For setup: it has just checked this file's SHA-256 while downloading it, so the AI need not read it again.
     sha256 is the digest setup computed; it must be the published one, or nothing is recorded."""
     p = Path(path)
-    if p.name != FILE or p.stat().st_size != SIZE or str(sha256).lower() != SHA256:
+    m = next((m for m in MODELS if m['file'] == p.name), None)
+    if not m or p.stat().st_size != m['size'] or str(sha256).lower() != m['sha256']:
         raise ValueError('not the model file')
     LOCAL.saved['checked'] = _stamp(p)
     _save(LOCAL.saved)
@@ -110,6 +146,7 @@ class Local:
         self.gen_lock = threading.Lock()       # one answer at a time: the model holds one conversation
         self.state, self.pct, self.message = 'absent', None, ''
         self.path, self.fit, self.ready_info = None, None, None
+        self.model = MODELS[0]     # the one found, or the one asked for while none is
         self.proc, self.events, self.last_used = None, None, 0
         self.next_id = 0
         self.failed_loads = 0     # loads in a row that ended before the model was ready
@@ -121,7 +158,7 @@ class Local:
     def status(self):
         with self.lock:
             fit = self.fit or {}
-            return {'name': NAME, 'file': FILE, 'size': SIZE, 'state': self.state, 'pct': self.pct, 'message': self.message,
+            return {'name': self.model['name'], 'file': self.model['file'], 'size': self.model['size'], 'state': self.state, 'pct': self.pct, 'message': self.message,
                     'found_at': self.path and _folder_name(self.path), 'enabled': self.enabled(), 'runtime': bool(self.runner),
                     'needs_bytes': fit.get('needs'), 'ram_total': fit.get('ram_total'), 'placement': fit.get('placement'),
                     'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]]}
@@ -155,32 +192,44 @@ class Local:
                 self.state, self.message = 'error', 'This copy of Lastbook has no local AI runtime.'
                 return
             self.state, self.pct, self.message = 'absent', None, ''
-        found, wrong = None, None
-        for folder in places():
-            p = folder / FILE
-            try:
-                if not p.is_file():
+        found, wrong, model = None, None, None
+        cands = []
+        for m in MODELS:
+            for folder in places():
+                p = folder / m['file']
+                try:
+                    if not p.is_file():
+                        continue
+                    size = p.stat().st_size
+                except OSError:
                     continue
-                size = p.stat().st_size
-            except OSError:
-                continue
-            if size == SIZE:
-                found = p
-                break
-            wrong = wrong or (p, size)
+                if size == m['size']:
+                    cands.append((m, p))
+                    break
+                wrong = wrong or (p, size, m)
+        if cands:
+            # Both files can sit on one computer; setup offered the one that fits the
+            # memory. Apply setup's own rule here (the largest found that fits, else the
+            # smallest), so the runtime honors what setup chose instead of the first file.
+            ram, gpu_bytes = _fit_facts()
+            fitting = [c for c in cands if ram and _in_ram(c[0]['memory_bytes'], gpu_bytes) <= ram]
+            model, found = (fitting or cands[-1:])[0]
         if not found:
             with self.lock:
                 if not self.enabled():
                     return
+                self.model = wrong[2] if wrong else self.model
                 if wrong:
-                    p, size = wrong
-                    done = size < SIZE
+                    p, size, m = wrong
+                    done = size < m['size']
                     self.state = 'wrong'
-                    self.message = (f'The file in {_folder_name(p)} is {_gb(size)} of {_gb(SIZE)}. ' +
+                    self.message = (f'The file in {_folder_name(p)} is {_gb(size)} of {_gb(m["size"])}. ' +
                                     ('The download may not have finished.' if done else 'It is not the file Lastbook expects.'))
                 else:
                     self.state = 'absent'
             return
+        with self.lock:
+            self.model = model
         stamp = _stamp(found)
         if self.saved.get('checked') != stamp:
             if not self._check(found):
@@ -205,13 +254,13 @@ class Local:
                 while chunk := f.read(8 * 2**20):
                     h.update(chunk)
                     done += len(chunk)
-                    self.pct = int(done * 100 / SIZE)
+                    self.pct = int(done * 100 / self.model['size'])
         except OSError as e:
             with self.lock:
                 if self.enabled():
                     self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
             return False
-        if h.hexdigest() != SHA256:
+        if h.hexdigest() != self.model['sha256']:
             with self.lock:
                 if self.enabled():
                     self.state, self.pct = 'wrong', None
@@ -239,7 +288,7 @@ class Local:
                 if out is not None:
                     print('local AI: measure output:', out.stdout[-2000:], out.stderr[-3000:], flush=True)
                 return
-            self.fit = judge(fit)
+            self.fit = judge(fit, self.model['size'])
             print('local AI: fit', json.dumps(self.fit), flush=True)
             if self.fit['fits']:
                 self.state, self.message = 'stopped', ''
@@ -440,17 +489,19 @@ def _apple_silicon_linux(tree='/proc/device-tree'):
             return False
 
 
-def judge(fit):
+def judge(fit, size=None):
     """Does the whole of it fit this computer? llama.cpp's fit places the model on the graphics memory it finds and counts
     the rest as the computer's own memory, which it takes to be unlimited. So the computer's own memory is checked here:
-    on a Mac the two are one memory; on Windows the part placed on the graphics card is not in it."""
+    on a Mac the two are one memory; on Windows the part placed on the graphics card is not in it. Without a size, the
+    largest model Lastbook knows is judged, which is the one this branch pins."""
     total = fit.get('ram_total') or 0
     dev, host = fit.get('device_bytes') or 0, fit.get('host_bytes') or 0
     devices = [m for m in fit.get('memory') or [] if m.get('kind') == 'device']
     unified = sys.platform == 'darwin' or _apple_silicon_linux()
     # Windows: weights left in the mapped file (not on a graphics card, not repacked) are outside llama.cpp's count, yet in use
     # while answering. Measured with no GPU: the fit said 9.6 GB, the program held 16.5 to 26 GB.
-    mapped = 0 if unified else max(0, SIZE - sum(m.get('model') or 0 for m in fit.get('memory') or []))
+    model_size = MODELS[0]['size'] if size is None else size
+    mapped = 0 if unified else max(0, model_size - sum(m.get('model') or 0 for m in fit.get('memory') or []))
     in_ram = dev + host if unified else host + mapped
     needs = in_ram + RESERVE
     placement = [{'device': m.get('desc') or m.get('name'), 'bytes': m['model'] + m['context'] + m['compute'], 'free': m.get('free')} for m in devices]

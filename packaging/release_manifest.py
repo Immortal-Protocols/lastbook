@@ -25,17 +25,16 @@ sys.path[:0] = [str(ROOT)]
 import llm_local                                   # noqa: E402  (constants only: importing it starts nothing)
 from engine.setup import download, manifest        # noqa: E402
 
-MEASURED_MEMORY = 18_160_150_464 + 867_233_792     # Mac Studio M3 Ultra, 12 Nov 2026, --ctx 16384: device_bytes + host_bytes
 BASE = 'https://downloads.lastbook.org'     # live since 12 Nov 2026; packs and maps are accepted from this host only
 SMALL_SUMMARY = 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'
 
 
-def model_entry(memory_bytes):
-    rev = re.search(r'revision ([0-9a-f]{40})', llm_local.SOURCE).group(1)
-    repo = llm_local.SOURCE.split(',')[0].strip()
-    return {'id': 'gemma-4-26b-a4b', 'title': 'Gemma 4 26B A4B', 'file': llm_local.FILE,
-            'url': f'https://huggingface.co/{repo}/resolve/{rev}/{llm_local.FILE}?download=true',
-            'size': llm_local.SIZE, 'sha256': llm_local.SHA256, 'memory_bytes': int(memory_bytes), 'available': True}
+def model_entry(m, memory_bytes=None):
+    rev = re.search(r'revision ([0-9a-f]{40})', m['source']).group(1)
+    repo = m['source'].split(',')[0].strip()
+    return {'id': m['id'], 'title': m['title'], 'file': m['file'],
+            'url': f'https://huggingface.co/{repo}/resolve/{rev}/{m["file"]}?download=true',
+            'size': m['size'], 'sha256': m['sha256'], 'memory_bytes': int(memory_bytes or m['memory_bytes']), 'available': True}
 
 
 def measure(gguf):
@@ -66,7 +65,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--packs', default=str(ROOT / 'derived' / 'release' / 'manifest-v1.json'))
     ap.add_argument('--out', default=str(ROOT / 'derived' / 'release' / 'setup' / 'manifest-v1.json'))
-    ap.add_argument('--measure', help='a copy of the model file to measure memory_bytes from')
+    ap.add_argument('--measure', help='a copy of a model file to measure memory_bytes from, instead of the number in llm_local.MODELS')
     ap.add_argument('--small-from', help='a release folder holding Lastbook-Small.zip and SHA256SUMS.txt')
     a = ap.parse_args()
     try:
@@ -86,13 +85,14 @@ def main():
         sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),
            'address_indexes': list(src.get('address_indexes') or []),
-           'models': [model_entry(measure(a.measure) if a.measure else MEASURED_MEMORY)]}
+           'models': [model_entry(m, measure(a.measure) if a.measure and Path(a.measure).name == m['file'] else None)
+                      for m in llm_local.MODELS]}
     if manifest.validate(out) is None:
         bad = [f.get('url') for p in packs for f in p.get('files', []) if not download.url_allowed(f.get('url'))]
         sys.exit('the manifest does not pass engine/setup/manifest.validate' + (f'; addresses not allowed: {bad}' if bad else ''))
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(out, indent=1) + '\n', encoding='utf-8')
-    print(f'{a.out}: {len(out["maps"])} maps, {len(packs)} packs ({", ".join(p["id"] + ("" if p.get("available") else " later") for p in packs)}), 1 model')
+    print(f'{a.out}: {len(out["maps"])} maps, {len(packs)} packs ({", ".join(p["id"] + ("" if p.get("available") else " later") for p in packs)}), {len(out["models"])} models')
 
 
 if __name__ == '__main__':

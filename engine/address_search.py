@@ -47,12 +47,12 @@ def is_address_query(query, include_rural=True):
                 pr_parcels.number(query) or (include_rural and (pr_rural.looks_rural(query) or pr_rural.parcel_direction(query))))
 
 
-def street_forms(street):
+def street_forms(street, infer_direction=True):
     words = street.split()
     forms = [street, ' '.join(TO_DIGITS.get(word, word) for word in words),
              ' '.join(TO_WORDS.get(word, word) for word in words)]
     forms += [re.sub(r'\b(\d+)(st|nd|rd|th)\b', r'\1', form) for form in forms[:]]
-    if words[0] not in ('n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'):
+    if infer_direction and words[0] not in ('n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'):
         forms += [f'{direction} {form}' for form in forms[:] for direction in ('n', 's', 'e', 'w')]
     return list(dict.fromkeys(forms))
 
@@ -120,6 +120,17 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
     """Find indexed street addresses or explicitly labeled rural road references."""
     if limit <= 0:
         return []
+
+    def prefer_exact_street(rows):
+        # Parcel evidence still wins. A street fix can replace an approximate pin,
+        # but should not discard a separately recorded site such as a school.
+        if (not parcel_offset and any(row['kind'] == 'Road kilometer' for row in rows)
+                and not any('parcelNumber' in row for row in rows)):
+            exact = _street_lookup(query, geo_directory, limit, near, exact_only=True)
+            if exact:
+                return (exact + [row for row in rows if row['kind'] != 'Road kilometer'])[:limit]
+        return rows
+
     key = pr_parcels.number(query)
     rural = pr_rural.parse(query, parcel=True)
     if key or rural or pr_rural.looks_rural(query) or pr_rural.parcel_direction(query):
@@ -145,13 +156,13 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
 
                     rows = lookup(rural)
                     if rows:
-                        return rows
+                        return prefer_exact_street(rows)
                     interpreted = pr_rural_model.interpret(model, query, rural)
                     rows = lookup(interpreted)
                     if rows:
                         for row in rows:
                             row['interpreted'] = pr_rural_model.description(interpreted)
-                        return rows
+                        return prefer_exact_street(rows)
             except sqlite3.Error:
                 pass
             finally:
@@ -160,19 +171,23 @@ def find_addresses(query, geo_directory, limit=8, near=None, model=None, parcel_
     # Ordinary addresses and places have no parcel continuation pages.
     if parcel_offset:
         return []
+    return _street_lookup(query, geo_directory, limit, near)
+
+
+def _street_lookup(query, geo_directory, limit, near, exact_only=False):
     legacy_number = re.match(r'^\s*\d[\w-]*\s+\S', query)
     pr_parts = pr_addresses.components(query)
     if not (legacy_number or pr_parts):
         return []
     readings = _readings(query) if legacy_number else [('', [], '', '', 'starts')]
     for reading in readings:
-        found = _lookup(*reading, geo_directory, limit, near, pr_parts)
+        found = _lookup(*reading, geo_directory, limit, near, pr_parts, exact_only=exact_only)
         if found:
             return found
     return []
 
 
-def _lookup(number, words, state, postcode, town, geo_directory, limit, near, pr_parts=None):
+def _lookup(number, words, state, postcode, town, geo_directory, limit, near, pr_parts=None, *, exact_only=False):
     geo_directory = Path(geo_directory)
     paths = sorted((geo_directory / 'addresses').glob('*.sqlite'))
     if state:
@@ -209,9 +224,15 @@ def _lookup(number, words, state, postcode, town, geo_directory, limit, near, pr
                 continue
             city = ' '.join(words[count:])
             rows = []
-            for form in street_forms(street):
-                conditions = ['num IN (?, ?)', 'norm >= ?', 'norm < ?']
-                parameters = [number, number.lower(), form, form + '\uffff']
+            for form in street_forms(street, infer_direction=not exact_only):
+                conditions = ['num IN (?, ?)']
+                parameters = [number, number.lower()]
+                if exact_only:
+                    conditions.append('norm = ?')
+                    parameters.append(form)
+                else:
+                    conditions.extend(('norm >= ?', 'norm < ?'))
+                    parameters.extend((form, form + '\uffff'))
                 if state:
                     conditions.append('state = ?')
                     parameters.append(state)
@@ -219,8 +240,9 @@ def _lookup(number, words, state, postcode, town, geo_directory, limit, near, pr
                     conditions.append('zip = ?')
                     parameters.append(postcode)
                 if city:
-                    conditions.append('lower(city) = ?' if town == 'whole' else 'lower(city) LIKE ?')
-                    parameters.append(city if town == 'whole' else city + '%')
+                    whole_city = exact_only or town == 'whole'
+                    conditions.append('lower(city) = ?' if whole_city else 'lower(city) LIKE ?')
+                    parameters.append(city if whole_city else city + '%')
                 sql = ('SELECT num,street,city,state,zip,lat,lon,norm FROM addr WHERE '
                        + ' AND '.join(conditions) + ' ORDER BY length(norm),norm LIMIT ?')
                 for connection in connections:

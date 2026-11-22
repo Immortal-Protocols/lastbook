@@ -54,14 +54,27 @@ class RuralLookup(unittest.TestCase):
                   '19 KM4HM4 BLVD, Las Penas', 'Bo Las Penas, PR-19, Km 4.4', 'Carr. 19KM4.4, Villa Ejemplo'):
             self.assertEqual(self.lookup(q)[0]['name'], 'PR-19 km 4.4')
 
-    def test_road_pin_has_no_continuation_page(self):
+    def test_exact_texas_address_takes_precedence_over_populated_pr_road_index(self):
         import server
-        with closing(sqlite3.connect(self.geo / 'addresses/TX.sqlite')) as db, db:
+        query = '19 KM4HM4 BLVD, Las Penas'
+        tx = self.geo / 'addresses/TX.sqlite'
+        with closing(sqlite3.connect(tx)) as db, db:
             db.execute('CREATE TABLE addr(num,street,norm,city,state,zip,lat,lon)')
-            db.execute("INSERT INTO addr VALUES('19','KM4HM4 Boulevard','km4hm4 blvd','Las Penas','TX','75000',5,6)")
+            db.execute("INSERT INTO addr VALUES('19','KM4HM4 Boulevard Extension','km4hm4 blvd extension','Las Penas','TX','75000',7,8)")
         with patch.object(server, 'HERE', self.root), patch.object(server.assistant, 'LOCAL', None):
-            self.assertTrue(server.places('19 KM4HM4 BLVD, Las Penas'))
-            self.assertEqual(server.places('19 KM4HM4 BLVD, Las Penas', parcel_offset=1), [])
+            # A prefix hit is not exact and must not displace a valid PR road position.
+            row = server.places(query)[0]
+            self.assertEqual((row['kind'], row['name']), ('Road kilometer', 'PR-19 km 4.4'))
+            self.assertEqual(server.places(query, parcel_offset=1), [])
+            with closing(sqlite3.connect(tx)) as db, db:
+                db.execute("INSERT INTO addr VALUES('19','KM4HM4 Boulevard','km4hm4 blvd','Las Penas','TX','75000',5,6)")
+            rows = server.places(query)
+            self.assertEqual([row['kind'] for row in rows], ['Street address', 'Public school'])
+            row = rows[0]
+            self.assertEqual((row['kind'], row['name'], row['detail'], row['lat'], row['lon']),
+                             ('Street address', '19 KM4HM4 Boulevard', 'Las Penas, TX, 75000', 5, 6))
+            self.assertEqual(server.places(query, parcel_offset=1), [])
+            self.assertEqual(server.places('PR-19 km 4.4, Bo. Las Peñas')[0]['kind'], 'Road kilometer')
 
     def test_interior_sector_and_landmark_are_only_road_hints(self):
         q = 'Sector Sol, Bo las Peñas, frente a la cancha, KM 4.4 Interior, Carr. 19, Villa Ejemplo'

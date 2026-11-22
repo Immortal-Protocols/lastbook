@@ -57,10 +57,12 @@ derived/buildenv/bin/python tools/build_region_map.py denmark-latest.osm.pbf \
     --id DK-85 --name Sjælland --bbox 10.73,54.41,12.71,56.15 --out derived/regions
 
 # 4. Check the files, then check that the engine can use them with every connection blocked.
+#    These are the exact commands behind "What was checked" and "Searches" below.
 python3 tools/check_region_map.py derived/regions/DK-85
 python3 tools/check_region_map.py derived/regions/DK-85 --engine \
-    --find Roskilde --find Køge --find Næstved --find "Nykøbing Falster" \
-    --find "Sjællands Universitetshospital" --near 55.6415,12.0803
+    --find Roskilde --find Køge --find Næstved --find Holbæk --find Kalundborg --find "Nykøbing Falster" \
+    --find Vordingborg --find Sorø --find "Sjællands Universitetshospital" --find "Roskilde Domkirke" \
+    --find Koge --find Naestved --find Holbaek --find Soro --find Møn --find Lolland --near 55.6415,12.0803
 ```
 
 On Windows the same steps work in Git Bash, with `derived/buildenv/Scripts/python` in place of
@@ -151,18 +153,43 @@ English one where OpenStreetMap has it.
 
 ## What was checked, and how
 
-`tools/check_region_map.py` passed all 37 file checks and all 16 engine checks on the build above. With `--engine`,
-every connection blocked and an empty library:
+The first command passed all 37 file checks. The second runs those 37 again, then 7 engine checks and one per search: 60
+in all, 56 passed and 4 failed. The 4 failures are the searches marked "No rows" under "Searches": the checker counts a
+search that returns nothing as a failure. With `--engine`, every connection blocked and an empty library:
 
 - **Map display.** Tiles at zoom 10, 13 and 16 around the centre of Roskilde: roads, water, land, railways and place
   labels at the wider zooms, 143 building outlines in one zoom-16 tile.
 - **Pins.** 13 pin groups around the centre of Roskilde.
 - **Nearest help.** A pharmacy at 0.18 km, Roskilde Privathospital at 0.39 km, another pharmacy at 0.5 km and the
   police station at 0.52 km.
-- **Place search, with Danish letters.** "Roskilde", "Køge", "Næstved", "Holbæk", "Kalundborg", "Nykøbing Falster" and
-  "Vordingborg" find the towns first; "Sjællands Universitetshospital" finds both its Køge and its Nykøbing F. sites.
-  "Roskilde Domkirke" finds the city: places of worship are not a kept class, so the search falls back to "Roskilde".
+- **Place search.** Every search in the command above, with what it finds, is under "Searches" below.
 - **What the app is told.** 40 kinds, within 10.73, 54.56, 12.69, 56.13, the extent of the data inside the box.
+
+### Searches
+
+A search passes the checker as soon as it returns any row, so this table says, for each search in the command above,
+whether it finds the place it is meant to. "First rows" is what the checker prints (up to three). Where the place comes
+lower, its rank is from the app's own place search, with the server running as under "Build it", for example `curl
+"http://127.0.0.1:8890/api/places?q=Karon"`: the same `places()` the checker calls, with no location.
+
+| Search | Meant to find | First rows | Result |
+|---|---|---|---|
+| `Roskilde` | the city | Roskilde (city); Roskilde Camping (camp site); Roskilde Dyreklinik (veterinary) | Finds it first |
+| `Køge` | the town | Køge (town); Køge Søhuse (hamlet); Køge Bibliotek (library) | Finds it first |
+| `Næstved` | the town | Næstved (town); Næstved Bibliotek (library); Næstved Lokalpoliti (police) | Finds it first |
+| `Holbæk` | the town | Holbæk (town); Holbæk Huse (quarter); Holbæk Seniorlandsby (quarter) | Finds it first |
+| `Kalundborg` | the town | Kalundborg (town); Kalundborg Lyng (quarter); Kalundborg Lokalstation (police) | Finds it first |
+| `Nykøbing Falster` | the town | Nykøbing Falster (town); Nykøbing Falster Bibliotek (library); Nykøbing Falster Lokalpoliti (police) | Finds it first |
+| `Vordingborg` | the town | Vordingborg (town); Vordingborg-senderen (comms tower); Vordingborg Kommune (town hall) | Finds it first |
+| `Sorø` | the town | Sorø (town); Sorø Rådhus (town hall); Sorø Apotek (pharmacy) | Finds it first |
+| `Sjællands Universitetshospital` | the hospital | Sjællands Universitetshospital, Køge (hospital); Sjællands Universitetshospital, Nykøbing F. (hospital) | Finds it first |
+| `Roskilde Domkirke` | the cathedral (not a kept class) | Roskilde (city); Roskilde Camping (camp site); Roskilde Dyreklinik (veterinary) | Rows, but not the intended place |
+| `Koge` | the town Køge | (none) | No rows (the checker reports FAIL) |
+| `Naestved` | the town Næstved | (none) | No rows (the checker reports FAIL) |
+| `Holbaek` | the town Holbæk | (none) | No rows (the checker reports FAIL) |
+| `Soro` | the town Sorø | (none) | No rows (the checker reports FAIL) |
+| `Møn` | the island (it has no place row) | Mønge (hamlet); Mønge Huse (hamlet); Møns Contregarde (locality) | Rows, but not the intended place |
+| `Lolland` | the island (it has no place row) | Lolland-Falster Brandvæsen (fire station); Rådhuset Lolland Kommune (town hall); S/I FGU Lolland-Falster (school) | Rows, but not the intended place |
 
 `tools/test_build_region_map.py`: 9 tests pass with pyosmium.
 

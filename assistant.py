@@ -100,13 +100,23 @@ def _fts(q, limit=80, ids=None):
     sql = ("SELECT doc_id,page,snippet(pages,6,'','',' … ',40) FROM pages WHERE pages MATCH ? " +
            ("AND doc_id IN (SELECT value FROM json_each(?)) " if only else "") +
            "ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT ?")
-    rows = []
+    strict_rows, relaxed_rows, emergency_rows = [], [], []
     try:
-        rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
-        if len(rows) < 10 and len(groups) > 1:
-            rows += con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups),) + only + (limit,)).fetchall()
+        strict_rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
     except sqlite3.OperationalError:
         pass
+    if len(strict_rows) < 10 and len(groups) > 1:
+        try:
+            relaxed_rows = con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups),) + only + (limit,)).fetchall()
+        except sqlite3.OperationalError:
+            pass
+    emergency = S.emergency_fts_expr(q)
+    if emergency:
+        try:
+            emergency_rows = con.execute(sql, (emergency,) + only + (limit,)).fetchall()
+        except sqlite3.OperationalError:
+            pass
+    rows = S.unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
     con.close()
     return rows
 

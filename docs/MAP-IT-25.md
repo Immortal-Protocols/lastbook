@@ -1,12 +1,17 @@
 # A detailed map of Lombardia (`IT-25`): how it is built and what it holds
 
-A worked example for `tools/build_region_map.py` in Italy, after Bangkok ([MAP-TH-10.md](MAP-TH-10.md)), Central,
-Paraguay ([MAP-PY-11.md](MAP-PY-11.md)) and Region Hovedstaden ([MAP-DK-84.md](MAP-DK-84.md)), built with that tool
-unchanged. It is the first map from Italy and the first from a region with no sea coast. It uses the id and the box that
-[REGIONS-IT.md](REGIONS-IT.md) proposes, and covers the whole of that box.
+A worked example for `tools/build_region_map.py` in Italy, after Bangkok
+([MAP-TH-10.md in #80](https://github.com/Immortal-Protocols/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/docs/MAP-TH-10.md)),
+Central, Paraguay
+([MAP-PY-11.md in #152](https://github.com/Immortal-Protocols/lastbook/blob/aa4f9e7502038d2d31ab93f29272e109709dfae9/docs/MAP-PY-11.md))
+and Region Hovedstaden
+([MAP-DK-84.md in #180](https://github.com/Immortal-Protocols/lastbook/blob/eb15773c427d2c3ab50d151b4ea74962ddbe37bd/docs/MAP-DK-84.md)),
+built with that tool unchanged. It is the first map from Italy and the first from a region with no sea coast. It uses
+the id and the box that [REGIONS-IT.md](REGIONS-IT.md) proposes, and covers the whole of that box.
 
 The tool, its checker and the Bangkok page come from pull request #80, and the Paraguay and Copenhagen pages from #152
-and #180; none of them is in this repository until they are merged. REGIONS-IT.md is proposed in its own pull request.
+and #180; none of them is in this repository until they are merged, so the links above point to each file at the head
+commit of its pull request. REGIONS-IT.md was merged in #225.
 This map was built and checked with the tool as it was at commit `a453274` (#80's head when this was written), the
 same commit #152 and #180 used. The files at that commit:
 
@@ -109,7 +114,8 @@ build of only the box of the Città metropolitana di Milano (8.55, 45.01, 9.71, 
 | `derived/geo/national-status.json` | 60 | `c90778102b7d4a9bd1e6521d159f4e07c12cb35911c66045436c82b456e479bd` |
 | `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
 
-The map set is 881,926,206 bytes. The map was built once; whether a second build gives the same bytes was not tested.
+The map set is 881,926,206 bytes. A second build from the dated input gave the same bytes in every file (see "The
+input, and how far it can be repeated").
 
 ## The input, and how far it can be repeated
 
@@ -130,9 +136,22 @@ a different checksum and slightly different counts. The same data is in a dated 
 
 The two files differ in 3 bytes, all in the file header, where Geofabrik has since moved the Nord-Ovest files into a
 `nord-ovest/` folder; every data block is the same. The tool reads only the date from the header, so a build from the
-dated file should give the same map, but that build was not run. The full SHA-256 of the file the build used is
+dated file should give the same map. The full SHA-256 of the file the build used is
 `823c1fdc12aca0d2d87290026c5cad9d82c06dcba1c76de0ac7e10d19e3e50b8`, and of the dated file
 `374846d5bc0857324bd17b529ff4ed5551bd3dbea444f36ab0786161a8521209`.
+
+That build was run on 22 November 2026, following "Build it" above: the dated file was downloaded on the build machine,
+its `.md5` checked, the file renamed, and the same build and check commands run with the tool at `a453274`. The
+machine was a cloud VM of the same size as the first (52,214 MiB, 8 vCPUs, x86-64) with a different processor (AMD
+EPYC 7B12 instead of Intel Xeon), with Python 3.13.18, SQLite 3.45.1 and the same package versions as the first build
+(pyosmium 4.3.2). It took 703 seconds, with a peak memory of 6,158 MB. The result:
+
+- The five files in the table above and `map-set.json` have the same sizes and the same SHA-256 as the first build.
+- `IT-25.build.json` differs in three values only: the source SHA-256 (the dated file's, since the header differs),
+  the build time (`built`) and the seconds it took. Every count is the same: 4,378,939 features, 68,134 help points,
+  58,691 place finder rows.
+- The file checks, both engine runs and the 9 tests gave the same output as for the first build, apart from the
+  folder name in the command line.
 
 The limit: Geofabrik's index on 22 November 2026 listed daily Nord-Ovest files for 12 to 21 November, and older ones
 only for the first of September, October and November 2026 and the first of January of each year since 2016. No stated

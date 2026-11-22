@@ -172,6 +172,45 @@ The goal is a detailed map for any place a person lives.
 
 The design discussion is in #23, #25, #31 and #95.
 
+## Building a map outside the US from an OpenStreetMap extract
+
+`tools/build_osm_region.py` builds a region's detailed map from the raw OpenStreetMap extract (`.osm.pbf`), which every
+extract site publishes, and `tools/build_terrain.py --src` adds elevation from Copernicus GLO-30, which covers the whole
+world. The same steps work for each of the 281 regions in `tools/regions/europe.json` (28 countries, from OSM France's
+extracts; `tools/region_catalog.py` makes it, and `--source geofabrik` lists Geofabrik's instead). Ids are ISO 3166-2
+codes where the region is a current first-level subdivision (220 of them: `ES-CT`, `CH-ZH`, `SE-AB`), as the proposals
+above suggest; otherwise the country code and a slug (`FR-alsace`, an OSM France extract of a pre-2016 region). The 19
+Spanish ids are the codes in [regions-es-proposed.json](regions-es-proposed.json).
+
+```bash
+python3 tools/build_europe_region.py ES-CT --work /path/to/work --out dist/      # download, build, finish, zip
+```
+
+or step by step:
+
+| Step | Tool | Source | Licence |
+|---|---|---|---|
+| Streets, rail, water, land, places, help points, the sea; building outlines with heights; the place finder | `tools/build_osm_region.py EXTRACT OUT --name --credit` | An OpenStreetMap `.osm.pbf` extract | ODbL 1.0 |
+| Elevation | `tools/build_terrain.py --src --out --bbox --source` | Copernicus DEM GLO-30 tiles, public bucket `copernicus-dem-30m.s3.amazonaws.com` | Copernicus DEM licence (free, with attribution) |
+| Credits, data date, units, `map-set.json`, the zip | `tools/finish_region_map.py OUT ES-CT --title --credit --zip DIR` | | |
+
+What the builder writes:
+
+- The region's detail goes in `national.sqlite`, as a state map's does, with the same layer and class names, and
+  `map.sqlite` is empty, so no Southern California box is involved.
+- The sea comes from `natural=coastline`. Closed rings are islands. Each open chain is closed through the water on its
+  right, since OpenStreetMap draws coastlines with the land on the left. The page paints the view as sea and then a
+  coarse world outline as land, so a region also carries its own land polygon (`island`, class `mainland`) on the land
+  side. Both are cut into pieces of a few thousand points, so a tile clips only the coast near it.
+- `national.sqlite`'s meta holds `credit`, `data_as_of`, `datasets`, `region`, `title` and `units` (`metric` by
+  default), for the map to show in place of the US credits once the shared runtime reads them (#31).
+- The zip holds only what `engine/setup/install.py`'s `map_member` allows, and unpacks through setup's own checks
+  (`app/tests/test_region_builder.py`).
+
+Catalonia (`ES-CT`) was built this way from OSM France's `catalunya.osm.pbf`: a few minutes on 4 cores and a 340 MB
+map zip. Not covered by this step: street addresses, setup's picker for regions outside the US, and
+the map's credits, data date and units at runtime. Those are the shared installer and address work in #31.
+
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.

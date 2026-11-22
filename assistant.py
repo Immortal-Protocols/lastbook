@@ -130,9 +130,9 @@ def _allowed(kind):
 # Title variants for the same emergency, not arbitrary keyword overlap.
 # Keep this narrow: an emergency title must also identify first-aid guidance.
 EMERGENCY_TITLE_ALIASES = (
-    (r'\\bdrown(?:ing|ed)?\\b', r'\\b(?:drown(?:ing|ed)?|submersion|near[ -]?drowning)\\b'),
-    (r'\\bhypothermia\\b', r'\\b(?:hypothermia|cold[ -]?exposure|cold[ -]?injur(?:y|ies))\\b'),
-    (r'\\bcarbon monoxide\\b', r'\\b(?:carbon monoxide|\\bco[ -]?poisoning)\\b'),
+    (r'\bdrown(?:ing|ed)?\b', r'\b(?:drown(?:ing|ed)?|submersion|near[ -]?drowning)\b'),
+    (r'\bhypothermia\b', r'\b(?:hypothermia|cold[ -]?exposure|cold[ -]?injur(?:y|ies))\b'),
+    (r'\bcarbon monoxide\b', r'\b(?:carbon monoxide|\bco[ -]?poisoning)\b'),
 )
 
 
@@ -140,7 +140,7 @@ def promote_emergency_first_aid(out, q, k, cat):
     """Promote at most one matching emergency guide into the top-k window."""
     if k <= 0 or not S.emergency_fts_expr(q):
         return out
-    cleaned = re.sub(r'\\bdrown(?:s|ed|ing)?\\s+out\\b', '', q, flags=re.I)
+    cleaned = re.sub(r'\bdrown(?:s|ed|ing)?\s+out\b', '', q, flags=re.I)
     title_patterns = [title_rx for query_rx, title_rx in EMERGENCY_TITLE_ALIASES
                       if re.search(query_rx, cleaned, re.I)]
     if not title_patterns:

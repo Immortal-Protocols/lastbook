@@ -98,10 +98,97 @@ so ask before adding many.
 | `buildings.sqlite` | `tools/build_buildings.py`, `tools/build_osm_heights.py` | Microsoft building footprints (ODbL), OpenStreetMap heights |
 | `places.sqlite` | `tools/build_places.py` | USGS GNIS, Census gazetteers, named OpenStreetMap places |
 | address indexes | `tools/build_addresses.py`, then `packaging/address_indexes.py` | Overture Maps addresses |
+| Puerto Rico address index | `tools/build_pr_addresses.py` | OpenStreetMap addresses and Census boundaries, with optional measured roads, public schools, CRIM parcels and permit address records |
 | a state map | `packaging/build_packs.py map <ST>`, published by `packaging/state_maps.py` | The base map, then every row inside the state's box |
 
 Each tool's header says what it reads, what it writes and the licence of its source. Read it before you run one: some
 expect source files that are hundreds of gigabytes.
+
+### Puerto Rico street addresses and land parcels
+
+The optional Puerto Rico index uses mapped house numbers and street names. Queries for
+`7 Ave. Constitucion, San Juan, PR` and `7 Avenida Constitución, San Juan, PR` find the same point.
+Results keep the source spelling. Search also accepts common forms of calle, carretera, camino and
+bulevar, alphanumeric house numbers, and a comma-separated urbanización such as `Urb. Sol, A-12 Calle Ejemplo`.
+A supplied ZIP, locality or urbanización must match the record. Urbanización names and ZIPs are often missing.
+
+A rural search accepts the numbered road, kilometer and barrio in any order. Try
+`Carr. 916 km 4 hm 4, Bo. Cerro Gordo, San Lorenzo` or `Bº Cerro Gordo, km 4,4, PR-916, San Lorenzo`.
+Both refer to kilometer 4.4. A decimal before a road, as in `0.6 Carr 119`, also identifies a kilometer.
+A whole number in that position can be a house number.
+
+If the Puerto Rico index is unavailable or has no applicable rural result, the desktop reader continues with ordinary installed address or place lookup. Words such as “Exit” or “Salida” in another region’s street name do not stop that lookup. An exact street match takes precedence over an approximate road pin; a street prefix does not. House-number and parcel-number misses do not guess a nearby place. Parcel continuation requests do not restart ordinary lookup.
+
+- **Road kilometer** places the marker along a measured road segment from the Federal Highway Administration.
+  The builder converts each vertex's mile measure to meters and splits the segment at barrio and ZIP-area boundaries.
+  Search interpolates between two measured vertices on the same path. A missing segment leaves a gap.
+  The point is on the road. Someone meeting you at a house may still need a turn, gate or driveway.
+- **Public school** uses the NCES coordinates for a named school whose published street address contains the
+  same road and kilometer. Its address can name a local barrio or postal city. Lastbook labels the school by name.
+- A supplied barrio, municipality or ZIP restricts the search. Census ZIP Code Tabulation Areas approximate
+  postal areas. Road estimates label unverified sectors, interior flags and landmarks. An explicit lot or interior access name needs a matching parcel record.
+
+An indexed match appears immediately. When that lookup misses and local AI is enabled and available, Gemma
+reads free-form directions such as `Por la 916, en el kilómetro cuatro punto cuatro, barrio Cerro Gordo de San Lorenzo`.
+Lastbook checks the proposed road, kilometer, place names and other qualifiers against the text, then searches the
+same on-device index. Gemma keeps the supplied solar or lote, sector and interior access name or number.
+It can read a parcel address that omits the kilometer. A result from this path displays the interpretation. A busy, disabled or absent model leaves
+the ordinary reader available. A map request stops waiting after 60 seconds.
+
+When a rural query names the municipio, the reader also checks the original address on individual SIP and ARPE permits. It can recognize reordered labelled details, abbreviations, and Spanish road and kilometer numbers spoken aloud. A matching permit appears first with its recorded wording. Permits that use relative directions or multiple roads require the literal wording for this match. Other matching parcels follow, and each land boundary appears once. Older packs use their existing structured search.
+
+When the barrio is in the saved gazetteer, `Barrio Las Peñas, Villa Ejemplo` finds that place even if a parcel records only `BO. LAS PEÑAS` as its address. Include a lot, sector, road or another specific address detail to search the parcel wording. Recorded wording remains available when the gazetteer has no matching place.
+
+Newly prepared indexes also match reordered labelled fields with or without a final period on the barrio, sector or lot. Internal kilometer decimals and the supplied lot, sector, municipio and ZIP still have to agree. The index keeps the original wording and signatures for older readers.
+
+Newly prepared indexes also store sparse lookup aliases for repeated field-ending periods, empty comma fields before words, and comma spacing in literal text. Alias creation preserves the stored signatures and display wording. The CSV formatter preserves decimal commas inside explicit kilometer measures. It does not turn a comma-separated pair of road numbers into a decimal road. Aliases do not combine numeric comma sequences or reorder relative directions. Rebuild a prepared index to add them; older indexes remain readable.
+
+A tight comma after a kilometer value is read as a decimal (`km 4,123`); a source that intended a separate house number needs a clearer separator.
+
+Non-placeholder CRIM and consultation wording that cannot be parsed is retained for an exact paste with its municipio. A municipio or ZIP alone does not become a parcel address. Unparsed wording does not supply inferred road, lot or sector fields.
+
+When the directions match land records, the map outlines the possible parcels and numbers the pins.
+Open **Show matches** to compare them. Each row shows the recorded road and kilometer, when known.
+A solar, sector or interior detail helps distinguish parcels on the same road. The barrio and municipio
+appear underneath. Select a pin or a row to inspect the boundary. **All matches** returns to the group.
+**Show more parcels** adds the next page. Each candidate satisfies the supplied lot, sector and interior details.
+Even a single candidate is labeled **Possible parcel**. When a source lists the road and area
+but omits the requested kilometer, the result says **km unrecorded**. The parcel marker lies
+within the recorded land boundary. Its position does not identify an entrance or a building.
+These screenshots use invented parcels. [Numbered boundaries](pr-parcels-map.png) · [Match list](pr-parcels-list.png)
+
+If a property document gives a **número de catastro**, pasting it into the same box opens the recorded
+land boundary directly. The reader accepts an 11-digit land number with or without hyphens and a full
+account number with a recorded suffix. Leading zeros count.
+
+#### Build or use a local index
+
+The reader and builder do not fetch address records. This change does not ship a Puerto Rico index or expand
+the coverage of an existing one. House-number lookup is limited to house numbers stored in the installed
+index. Parcel wording and boundaries require a separately supplied index or source inputs; an address-only
+index is not a substitute for that coverage.
+
+On a separate build machine with the required Python dependencies already installed, the offline builder
+can assemble an index from files you already have permission to use:
+
+```sh
+python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson output --rural rural-inputs --parcels parcel-inputs
+```
+
+Omit `--parcels` for roads and schools without parcel search, or both optional arguments for house
+numbers only. Compatible parcel inputs may include a locally supplied physical-address CSV via
+`--crim-addresses`. These options do not grant permission to acquire or share the underlying records.
+The output includes a coverage report so you can see what was actually indexed by municipio.
+
+To try a compatible index locally, quit Lastbook, keep a backup of the existing index, and place the
+prepared `PR.sqlite` at `derived/geo/addresses/PR.sqlite` inside the Lastbook data folder. Reopen the reader
+and search offline. Parcel boundaries are candidates, not confirmed entrances.
+
+Run the offline reader and builder checks with the synthetic fixtures:
+
+```sh
+python -m unittest app.tests.test_address_search app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels
+```
 
 ### Not in this repository
 

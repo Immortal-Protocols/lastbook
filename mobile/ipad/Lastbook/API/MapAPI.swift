@@ -372,8 +372,8 @@ fileprivate final class MapEngine: @unchecked Sendable {
                 let v = try? s.components(separatedBy: ",").map { try pyFloat($0) }
                 if let v, v.count >= 2 { nearPt = (v[0], v[1]) } else if let v, v.count == 1 { _ = v; throw PyError(name: "IndexError") }
             }
-            let q = String(String.UnicodeScalarView((qs("q") ?? "").unicodeScalars.prefix(100)))
-            return .json(try places(q, near: nearPt))
+            let q = qs("q") ?? ""
+            return .json(try places(q, near: nearPt, parcelOffset: max(0, try pyIntStr(qs("parcelOffset") ?? "0"))))
         }
         if p.hasPrefix("/api/map/") { return .json(["error": "not found"], status: 404) }
         return nil
@@ -1123,10 +1123,26 @@ fileprivate final class MapEngine: @unchecked Sendable {
             .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
-    func places(_ q: String, limit: Int = 20, near: (Double, Double)?) throws -> [[String: Any]] {
-        if AddressSearch.isAddressQuery(q) {
-            return AddressSearch.find(q, limit: min(limit, 8), near: near)
+    func places(_ q: String, limit: Int = 20, near: (Double, Double)?, parcelOffset: Int = 0) throws -> [[String: Any]] {
+        guard q.unicodeScalars.count <= 400 else { return [] }
+        let isAddress = AddressSearch.isAddressQuery(q)
+        if isAddress {
+            let rows = AddressSearch.find(q, limit: min(limit, 8), near: near, parcelOffset: parcelOffset, parcelLimit: min(limit, 30))
+            if !rows.isEmpty { return rows }
         }
+        let named = isAddress ? [] : ((try? namedPlaces(q, limit: limit, near: near)) ?? [])
+        if limit > 0, q.firstMatch(#"[,;\s]"#) != nil,
+           let index = Library.shared.db("addresses/PR.sqlite", geo: true) {
+            let wording = PuertoRicoPermits.matches(q, index, namedPlaces: named)
+            if !wording.isEmpty {
+                return PuertoRicoParcels.find(nil, index, limit: min(limit, 30), offset: max(0, parcelOffset), wording: wording)
+            }
+        }
+        if isAddress { return [] }
+        return named
+    }
+
+    func namedPlaces(_ q: String, limit: Int, near: (Double, Double)?) throws -> [[String: Any]] {
         guard let db = placeDB else { return [] }
         let ws = words(q)
         if ws.isEmpty { return [] }
@@ -1359,13 +1375,73 @@ fileprivate enum AddressSearch {
         text.lowercased().replacing("[^a-z0-9 ]+", with: " ").split(separator: " ").map { WORDS[String($0)] ?? String($0) }.joined(separator: " ")
     }
 
-    static func isAddressQuery(_ q: String) -> Bool { q.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil }
+    static let prStreetTypes = ["avenida": "ave", "avda": "ave", "av": "ave", "ave": "ave",
+                                "calle": "cll", "cl": "cll", "cll": "cll", "carretera": "carr", "ctra": "carr",
+                                "carr": "carr", "camino": "cam", "cam": "cam", "bulevar": "blvd",
+                                "boulevard": "blvd", "blvd": "blvd"]
+    static func fold(_ text: String) -> String {
+        text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .lowercased().allMatches("[a-z0-9]+").joined(separator: " ")
+    }
 
-    static func streetForms(_ street: String) -> [String] {
+    static func prParts(_ query: String) -> (String, String, String)? {
+        var address: [String] = [], urbanizations: [String] = []
+        for raw in query.precomposedStringWithCanonicalMapping.components(separatedBy: CharacterSet(charactersIn: ",\n")) {
+            let part = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if part.isEmpty { continue }
+            if let tag = part.firstMatch(#"(?i)^(?:urb\.?|urbanizaci[oó]n)\s+(?=\S)"#) {
+                urbanizations.append(fold(String(part.dropFirst(tag.count))))
+            } else { address.append(part) }
+        }
+        let tokens = address.joined(separator: " ").split(maxSplits: 1, whereSeparator: { $0.isWhitespace })
+        guard tokens.count == 2, urbanizations.count <= 1 else { return nil }
+        let num = String(tokens[0].hasPrefix("#") ? tokens[0].dropFirst() : tokens[0][...]), tail = String(tokens[1])
+        guard num.fullMatch(#"(?i:[a-z]{1,3}\(\d+\)-\d+|[a-z]{1,3}-?\d[\w-]*(?:\(\d+\))?|\d[\w/-]*)"#) else { return nil }
+        if num.fullMatch(#"(?i:(?:PR|US|I)-\d+|[a-z]{1,3}\d\w*)"#), urbanizations.isEmpty, !tokens[0].hasPrefix("#"),
+           prStreetTypes[String(fold(tail).split(separator: " ").first ?? "")] == nil,
+           tail.firstMatch(#"(?i)\s(?:PR|Puerto Rico)(?:\s+\d{5}(?:-\d{4})?)?$"#) == nil { return nil }
+        return (num, tail, urbanizations.first ?? "")
+    }
+
+    static func prFind(_ db: SQLiteDB, _ parts: (String, String, String), limit: Int, near: (Double, Double)?) -> [[String: Any]] {
+        let (num, tail, urb) = parts
+        let postal = tail.firstMatch(#"(?:^|\s)\d{5}(?:-\d{4})?\s*$"#) ?? ""
+        let postcode = String(postal.trimmingCharacters(in: .whitespaces).prefix(5))
+        let street = String(tail.dropLast(postal.count)).replacing(#"(?i)\s+(?:PR|Puerto\s+Rico)\s*$"#, with: "")
+        var words = fold(street).components(separatedBy: " ")
+        guard let first = words.first, !first.isEmpty else { return [] }
+        words[0] = prStreetTypes[first] ?? first
+        let rows = db.query("""
+            SELECT DISTINCT num,street,city,zip,lat,lon,urbanization FROM addr WHERE num = ? COLLATE NOCASE
+            AND ? IN (street_key, street_key || ' ' || city_key, street_key || ' ' || municipio_key)
+            AND (? = '' OR zip = ?) AND (? = '' OR urb_key = ?) ORDER BY city, urbanization, street, lat, lon
+            """, [num, words.joined(separator: " "), postcode, postcode, urb, urb])
+        let results: [[String: Any]] = rows.map { r in
+            let urbanization = r["urbanization"]?.text ?? ""
+            let detail = [urbanization.isEmpty ? "" : "Urb. " + urbanization, r["city"]?.text ?? "", "PR", r["zip"]?.text ?? ""]
+                .filter { !$0.isEmpty }.joined(separator: ", ")
+            return ["name": (r["num"]?.text ?? "") + " " + (r["street"]?.text ?? ""), "kind": "Street address", "detail": detail,
+                    "lat": nn(r["lat"]?.json), "lon": nn(r["lon"]?.json), "source": "© OpenStreetMap contributors", "onMap": true]
+        }
+        return Array(byDistance(results, near).prefix(limit))
+    }
+
+    static func byDistance(_ results: [[String: Any]], _ near: (Double, Double)?) -> [[String: Any]] {
+        guard let near else { return results }
+        let scale = cos(near.0 * degToRad)
+        func distance(_ r: [String: Any]) -> Double {
+            pow((r["lat"] as? Double ?? 0) - near.0, 2) + pow(((r["lon"] as? Double ?? 0) - near.1) * scale, 2)
+        }
+        return stableSort(results) { distance($0) < distance($1) }
+    }
+
+    static func isAddressQuery(_ q: String) -> Bool { q.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil || prParts(q) != nil || PuertoRicoParcels.number(q) != nil || PuertoRicoRoads.looksRural(q) || PuertoRicoRoads.parcelDirection(q) }
+
+    static func streetForms(_ street: String, inferDirection: Bool = true) -> [String] {
         let words = street.split(separator: " ").map(String.init)
         var forms = [street, words.map { TO_DIGITS[$0] ?? $0 }.joined(separator: " "), words.map { TO_WORDS[$0] ?? $0 }.joined(separator: " ")]
         forms += forms.map { $0.replacing(#"\b(\d+)(st|nd|rd|th)\b"#, with: "$1") }
-        if !["n", "s", "e", "w", "ne", "nw", "se", "sw"].contains(words.first ?? "") {
+        if inferDirection && !["n", "s", "e", "w", "ne", "nw", "se", "sw"].contains(words.first ?? "") {
             forms += forms.flatMap { f in ["n", "s", "e", "w"].map { "\($0) \(f)" } }
         }
         var seen = Set<String>()
@@ -1389,27 +1465,82 @@ fileprivate enum AddressSearch {
         return (number, normalize(rem.joined(separator: " ")).split(separator: " ").map(String.init), state, postcode)
     }
 
-    static func find(_ query: String, limit: Int = 8, near: (Double, Double)?) -> [[String: Any]] {
-        guard isAddressQuery(query), let geo = Library.shared.geo else { return [] }
-        let (number, words, state, postcode) = parts(query)
-        if words.isEmpty { return [] }
+    static func find(_ query: String, limit: Int = 8, near: (Double, Double)?, parcelOffset: Int = 0, parcelLimit: Int = 8) -> [[String: Any]] {
+        guard limit > 0 else { return [] }
+        let key = PuertoRicoParcels.number(query), rural = PuertoRicoRoads.parse(query, parcel: true)
+        let ruralish = key != nil || rural != nil || PuertoRicoRoads.looksRural(query) || PuertoRicoRoads.parcelDirection(query)
+        if ruralish, let db = Library.shared.db("addresses/PR.sqlite", geo: true) {
+            let parcels = db.one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_parcel'") != nil
+            let roads = db.one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pr_road'") != nil
+            if let key {
+                if parcels && parcelOffset == 0 {
+                    let rows = PuertoRicoParcels.byNumber(db, key)
+                    if !rows.isEmpty { return rows }
+                }
+            } else if parcels || roads {
+                let wording = parcels ? PuertoRicoPermits.matches(query, db) : [:]
+                func lookup(_ a: PuertoRicoRoads.Address?) -> [Rec] {
+                    let candidates = parcels ? PuertoRicoParcels.find(a, db, limit: parcelLimit, offset: parcelOffset, wording: wording) : []
+                    return candidates + (roads && parcelOffset == 0 ? a.map { PuertoRicoRoads.find($0, db, limit) } ?? [] : [])
+                }
+                func preferExactStreet(_ rows: [Rec]) -> [Rec] {
+                    guard parcelOffset == 0,
+                          rows.contains(where: { $0["kind"] as? String == "Road kilometer" }),
+                          !rows.contains(where: { $0["parcelNumber"] != nil }) else { return rows }
+                    let exact = findStreet(query, limit: limit, near: near, exactOnly: true)
+                    return exact.isEmpty ? rows : Array((exact + rows.filter { $0["kind"] as? String != "Road kilometer" }).prefix(limit))
+                }
+                let rows = lookup(rural)
+                if !rows.isEmpty { return preferExactStreet(rows) }
+                if let a = PuertoRicoModel.interpret(query, rural) {
+                    let interpreted = lookup(a).map { row in
+                        var result = row
+                        result["interpreted"] = PuertoRicoModel.description(a)
+                        return result
+                    }
+                    if !interpreted.isEmpty { return preferExactStreet(interpreted) }
+                }
+            }
+        }
+        guard parcelOffset == 0 else { return [] }
+        return findStreet(query, limit: limit, near: near)
+    }
+
+    private static func findStreet(_ query: String, limit: Int, near: (Double, Double)?, exactOnly: Bool = false) -> [Rec] {
+        let legacyNumber = query.firstMatch(#"^\s*\d[\w-]*\s+\S"#) != nil, pr = prParts(query)
+        guard limit > 0, legacyNumber || pr != nil, let geo = Library.shared.geo else { return [] }
+        let (number, words, state, postcode) = legacyNumber ? parts(query) : ("", [String](), "", "")
         let dir = geo.appendingPathComponent("addresses")
         var names = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0.hasSuffix(".sqlite") }.sorted(by: pyLess)
         if !state.isEmpty { names = names.filter { String($0.dropLast(7)).uppercased() == state } }
         var dbs = names.compactMap { Library.shared.db("addresses/" + $0, geo: true) }
         if names.isEmpty, let legacy = Library.shared.db("addresses.sqlite", geo: true) { dbs = [legacy] }
+        var prResults: [[String: Any]] = []
+        if let idx = dbs.firstIndex(where: { URL(fileURLWithPath: $0.path).lastPathComponent.uppercased() == "PR.SQLITE" }) {
+            let db = dbs[idx]
+            if !db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='meta'").isEmpty,
+               db.query("SELECT value FROM meta WHERE key='search_profile'").first?["value"]?.text == "pr-osm-v1" {
+                dbs.remove(at: idx)
+                if let pr { prResults = prFind(db, pr, limit: limit, near: near) }
+            }
+        }
+        if dbs.isEmpty || words.isEmpty || !(pr?.2 ?? "").isEmpty { return prResults }
         for count in stride(from: words.count, through: 1, by: -1) {
             let streetWords = Array(words[..<count])
             if streetWords.allSatisfy(WORD_VALUES.contains) { continue }
             let street = streetWords.joined(separator: " ")
             let city = words[count...].joined(separator: " ")
             var rows: [SQLiteDB.Row] = []
-            for form in streetForms(street) {
-                var conds = ["num IN (?, ?)", "norm >= ?", "norm < ?"]
-                var params: [Any?] = [number, number.lowercased(), form, form + "\u{FFFF}"]
+            for form in streetForms(street, inferDirection: !exactOnly) {
+                var conds = exactOnly ? ["num IN (?, ?)", "norm = ?"] : ["num IN (?, ?)", "norm >= ?", "norm < ?"]
+                var params: [Any?] = [number, number.lowercased(), form]
+                if !exactOnly { params.append(form + "\u{FFFF}") }
                 if !state.isEmpty { conds.append("state = ?"); params.append(state) }
                 if !postcode.isEmpty { conds.append("zip = ?"); params.append(postcode) }
-                if !city.isEmpty { conds.append("lower(city) LIKE ?"); params.append(city + "%") }
+                if !city.isEmpty {
+                    conds.append(exactOnly ? "lower(city) = ?" : "lower(city) LIKE ?")
+                    params.append(exactOnly ? city : city + "%")
+                }
                 let sql = "SELECT num,street,city,state,zip,lat,lon,norm FROM addr WHERE " + conds.joined(separator: " AND ") + " ORDER BY length(norm),norm LIMIT ?"
                 for db in dbs { rows += db.query(sql, params + [limit * 3]) }
             }
@@ -1444,8 +1575,9 @@ fileprivate enum AddressSearch {
                                 "lat": nn(r["lat"]?.json), "lon": nn(r["lon"]?.json), "source": "Overture Maps", "onMap": true])
                 if results.count == limit { break }
             }
-            return results
+            if prResults.isEmpty { return results }
+            return Array(byDistance(prResults + results, near).prefix(limit))
         }
-        return []
+        return prResults
     }
 }

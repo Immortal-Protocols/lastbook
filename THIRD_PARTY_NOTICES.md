@@ -91,3 +91,15 @@ There is no published iPad build. These parts go into an iPad app that a contrib
 The manuals, videos, encyclopedias and map data in the library packs are not part of this repository. Each pack has a
 Sources and permissions page with the publisher and terms of every item. The offline map uses OpenStreetMap data
 (ODbL, © OpenStreetMap contributors) and US government data such as USGS, NOAA and USACE, as credited on the map.
+
+The OpenStreetMap features in the Puerto Rico address database are © OpenStreetMap contributors, available under the
+[Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Address features come from
+[Geofabrik’s Puerto Rico extract](https://download.geofabrik.de/north-america/us/puerto-rico.html).
+The US Census Bureau supplies municipio, barrio and ZIP Code Tabulation Area boundaries. [TIGERweb](https://tigerweb.geo.census.gov/)
+The Federal Highway Administration supplies the measured routes. [HPMS 2024](https://catalog.data.gov/dataset/highway-performance-monitoring-system-hpms-2024)
+The National Center for Education Statistics supplies school names, physical addresses and locations. [EDGE public school locations, 2024–25](https://catalog.data.gov/dataset/public-school-locations-2024-25)
+The optional Puerto Rico parcel index uses CRIM land polygons from the Junta de Planificación’s February 2025 snapshot. [CRIM parcel layer](https://sigejp.pr.gov/server/rest/services/crim/crim_feb_2025/MapServer/0)
+Rural address evidence comes from the Junta’s permit layers. [SIP](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/8) · [ARPE](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/16)
+The offline builder reads OSM using [PyOsmium](https://github.com/osmcode/pyosmium) (BSD-2-Clause)
+and processes polygons using [Shapely](https://github.com/shapely/shapely) (BSD-3-Clause) with GEOS
+(LGPL-2.1). These libraries run on the machine that prepares the index.

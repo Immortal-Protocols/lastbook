@@ -1,0 +1,189 @@
+"""Exercise the public place finder with invented parcel identifiers, boundaries and directions."""
+import json
+import os
+import sqlite3
+from contextlib import closing
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+from engine import pr_permit, pr_rural, pr_rural_model
+
+
+class ParcelSearch(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        self.root = Path(self.scratch.name)
+        import server
+        gazetteer = patch.object(server, 'PLACEDB', self.root / 'places.sqlite')
+        gazetteer.start()
+        self.addCleanup(gazetteer.stop)
+        path = self.root / 'derived/geo/addresses/PR.sqlite'
+        path.parent.mkdir(parents=True)
+        db = sqlite3.connect(path)
+        self.addCleanup(db.close)
+        db.executescript("""
+            CREATE TABLE pr_parcel(id INTEGER PRIMARY KEY,base,barrio,municipio,zip,lat,lon,area,rings);
+            CREATE TABLE pr_account(number TEXT PRIMARY KEY);
+            CREATE TABLE pr_parcel_address(base,route,meters,lot,sector,interior,access,postal,landmark,source);
+        """)
+        for i in range(1, 25):
+            lon = 2 + i / 1000
+            ring = [[[lon,1],[lon,1.001],[lon+.001,1.001],[lon,1]]]
+            key = f'001002003{i:02d}'
+            db.execute('INSERT INTO pr_parcel VALUES(?,?,?,?,?,?,?,?,?)',
+                       (i,key,'Las Peñas','Villa Ejemplo','00700',1.0005,lon+.0001,1,json.dumps(ring)))
+            db.execute('INSERT INTO pr_parcel_address VALUES(?,?,?,?,?,?,?,?,?,?)',
+                       (key,19,None if i == 24 else 4400,str(i),'sol' if i < 4 else '',i in (3,4),
+                        '7' if i == 3 else '','', '', 'CRIM'))
+        db.execute("INSERT INTO pr_account VALUES('00100200303007')")
+        db.execute("INSERT INTO pr_parcel_address VALUES('00100200303',19,4400,'8','luna',0,'','','','SIP permit')")
+        db.commit()
+
+    def search(self, query, offset=0, model=None):
+        import server
+        with patch.object(server,'HERE',self.root), patch.object(server.assistant,'LOCAL',model):
+            return server.places(query, parcel_offset=offset)
+
+    def test_exhausted_parcel_page_does_not_restart_as_an_ordinary_address(self):
+        path = self.root / 'derived/geo/addresses/TX.sqlite'
+        with closing(sqlite3.connect(path)) as db, db:
+            db.execute('CREATE TABLE addr(num,street,norm,city,state,zip,lat,lon)')
+            db.execute("INSERT INTO addr VALUES('19','KM4HM4 Boulevard','km4hm4 blvd','Las Penas','TX','75000',5,6)")
+        query = '19 KM4HM4 BLVD, Las Penas'
+        first = self.search(query)
+        self.assertTrue(first)
+        self.assertTrue(all(row['kind'] == 'Possible parcel' for row in first))
+        self.assertEqual(self.search(query, first[0]['parcelCount']), [])
+        self.assertEqual(self.search(query, first[0]['parcelCount'] + 1), [])
+        # With no PR match, the same ordinary address is available on the first page.
+        with closing(sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite')) as db, db:
+            db.execute('DELETE FROM pr_parcel_address')
+        self.assertEqual([r['name'] for r in self.search(query)], ['19 KM4HM4 Boulevard'])
+
+    def test_exact_identifiers_and_leading_zeros(self):
+        for q in ['00100200303','001-002-003-03','Número de catastro: 001-002-003-03-00','00100200303000']:
+            with self.subTest(q=q):
+                hit, = self.search(q)
+                self.assertEqual((hit['kind'],hit['parcelNumber']),('CRIM parcel','001-002-003-03'))
+                self.assertEqual(len(hit['rings'][0]),4)
+        self.assertTrue(self.search('CRIM 001-002-003-03-007'))
+        self.assertEqual(self.search('CRIM 001-002-003-03-006'),[])
+        self.assertEqual(self.search('099-099-099-99'),[])
+
+    def test_complete_permit_wording_and_spoken_directions(self):
+        wording = 'CARR 135, KM 4.400, SOLAR 3, SECT EL SOL, INT 7, BO ALIAS, 00700'
+        relative = 'CARR 135, KM 4.4, DESPUÉS DEL PUENTE, BO ALIAS'
+        with sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite') as db:
+            db.execute('CREATE TABLE municipios(name)')
+            db.executemany('INSERT INTO municipios VALUES (?)', [('Villa Ejemplo',), ('Otro Pueblo',)])
+            db.execute(pr_permit.SCHEMA)
+            for base, text in [('00100200303',wording), ('00100200304',wording), ('00100200305',relative)]:
+                signature = pr_permit.key(text, 'villa ejemplo', source=True)
+                db.execute('INSERT INTO pr_permit_wording VALUES (?,?,?,?,?,?)',
+                           ('villa ejemplo', *signature, base, 'ARPE permit', text))
+        q = ('Es en Villa Ejemplo, en el sector El Sol, interior 7, por la carretera ciento treinta y cinco, '
+             'en el kilómetro cuatro punto cuatro, solar tres, en el barrio Alias.')
+        for query in [q, wording + ', Villa Ejemplo']:
+            rows = self.search(query)
+            self.assertEqual([r['parcelNumber'] for r in rows], ['001-002-003-03','001-002-003-04'])
+            self.assertTrue(all(r['name'] == wording and r['parcelCount'] == 2 for r in rows))
+            self.assertEqual(self.search(query, 1), rows[1:])
+        for original, changed in [('tres','siete'), ('interior 7','interior 8'), ('El Sol','El Río'),
+                                  ('punto cuatro','punto cero cuatro'), ('Villa Ejemplo','Otro Pueblo')]:
+            self.assertEqual(self.search(q.replace(original,changed)), [])
+        self.assertEqual(self.search(wording.replace('00700','00701') + ', Villa Ejemplo'), [])
+        self.assertEqual(self.search(relative + ', Villa Ejemplo')[0]['name'], relative)
+        self.assertEqual(self.search(relative.replace('DESPUÉS','ANTES') + ', Villa Ejemplo'), [])
+
+        # A full wording match promotes an existing structured candidate across page boundaries.
+        query = 'PR-19 km 4.4, Villa Ejemplo'
+        with sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite') as db:
+            db.execute('INSERT INTO pr_permit_wording VALUES (?,?,?,?,?,?)',
+                       ('villa ejemplo', *pr_permit.key(query, 'villa ejemplo'), '00100200324', 'SIP permit', query))
+        rows = self.search(query) + self.search(query, 20)
+        self.assertEqual((rows[0]['parcelNumber'], rows[0]['name']), ('001-002-003-24',query))
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(len({r['parcelNumber'] for r in rows}), 24)
+        self.assertTrue(all(r['parcelCount'] == 24 for r in rows))
+
+    def test_candidate_pages_and_incomplete_kilometer(self):
+        query = 'PR-19 km 4.4, Bo. Las Peñas, Villa Ejemplo'
+        first, second = self.search(query), self.search(query,20)
+        self.assertEqual((len(first),len(second)),(20,4))
+        self.assertEqual(len({r['parcelNumber'] for r in first+second}),24)
+        self.assertTrue(all(r['kind']=='Possible parcel' and r['parcelCount']==24 and r['rings'] for r in first+second))
+        self.assertEqual(first[0]['name'], 'Solar 1 · PR-19 km 4.4')
+        self.assertEqual(second[-1]['name'], 'Solar 24 · PR-19')
+        self.assertIn('km unrecorded',second[-1]['detail'])
+        self.assertEqual(self.search(query,100),[])
+        self.assertEqual(self.search(query.replace('Las Peñas','Otro')),[])
+        self.assertEqual(self.search(query + ', 00888'),[])
+
+    def test_qualifiers_must_match_one_source_record(self):
+        query = 'Int. 7, Lote 3, Sector Sol, PR-19 km 4.4, Bo Las Penas, Villa Ejemplo'
+        for q in (query, query.replace('Lote 3','solar tres'), 'Sector Sol, Solar 3, Bo Las Peñas, PR-19 Int. 7'):
+            hit, = self.search(q)
+            self.assertEqual(hit['parcelNumber'],'001-002-003-03')
+            self.assertEqual(hit['kind'],'Possible parcel')
+            self.assertEqual(hit['name'], 'Solar 3 · PR-19 km 4.4')
+            for part in ('Interior 7','Sector sol','Bo. Las Peñas','Villa Ejemplo'):
+                self.assertIn(part, hit['detail'])
+        for q in (query.replace('Sol,','Luna,'),query.replace('Int. 7','Int. 8'),query.replace('Lote 3','Lot 99')):
+            self.assertEqual(self.search(q),[])
+
+    def test_directions_display_when_no_solar_is_recorded(self):
+        with sqlite3.connect(self.root / 'derived/geo/addresses/PR.sqlite') as db:
+            db.execute("UPDATE pr_parcel_address SET lot='' WHERE route=19")
+        rows = self.search('PR-19 km 4.4, Bo. Las Peñas, Villa Ejemplo')
+        by_parcel = {r['parcelNumber']: r for r in rows}
+        self.assertEqual(by_parcel['001-002-003-01']['name'], 'Sector sol · PR-19 km 4.4')
+        self.assertEqual(by_parcel['001-002-003-04']['name'], 'Interior · PR-19 km 4.4')
+        self.assertEqual(by_parcel['001-002-003-05']['name'], 'PR-19 km 4.4')
+        self.assertTrue(all(r['parcelNumber'] not in r['name'] and r['parcelNumber'] not in r['detail'] for r in rows))
+
+    @unittest.skipUnless(os.environ.get('LASTBOOK_TEST_PARCEL_MODEL') == '1', 'opt-in test with the pinned local Gemma')
+    def test_real_gemma_parcel_directions(self):
+        import llm_local
+        cases = [
+            ('Sector Sol, solar tres, interior 7, por la diecinueve, kilómetro cuatro punto cuatro, barrio Las Peñas', '03', True),
+            ('Bo Las Peñas, por la diecinueve, kilómetro cuatro punto cuatro, lote 2, sector Sol', '02', True),
+            ('Carr. 19 km 4.4, solar 3, sector Sol, interior 7, Bo Las Peñas', '03', False),
+            ('Lot 3, Sector Sol, Interior 8, PR-19 km 4.4, Bo Las Peñas', None, False),
+            ('Por la diecinueve, sector Sol, interior 7, solar tres, barrio Las Peñas', '03', True),
+        ]
+        model = llm_local.LOCAL
+        self.addCleanup(model.stop, 'parcel test finished')
+        model.discover()
+        self.assertIsNone(model.ensure_running())
+        for query, suffix, interpreted in cases:
+            with self.subTest(query=query):
+                rows = self.search(query, model=model)
+                expected = ['001-002-003-' + suffix] if suffix else []
+                self.assertEqual([row['parcelNumber'] for row in rows], expected)
+                self.assertEqual(any(row.get('interpreted') for row in rows), interpreted)
+
+    def test_gemma_preserves_qualifiers_and_never_supplies_geometry(self):
+        q = 'Sector Sol, solar tres, interior 7, por la diecinueve, kilómetro cuatro punto cuatro, barrio Las Peñas'
+        answer = [19,'4.4','Las Peñas','',True,'Sol','','3','7']
+        model = Mock()
+        model.gen_lock.locked.return_value = False
+        model.ensure_running.return_value = None
+        model.generate.side_effect = lambda s,n,c,emit,**kw: emit(json.dumps(answer))
+        hit, = self.search(q,model=model)
+        self.assertEqual(hit['parcelNumber'],'001-002-003-03')
+        self.assertIn('interior 7',hit['interpreted'])
+        self.assertIn('lot 3',hit['interpreted'])
+        without_km = q.replace('kilómetro cuatro punto cuatro, ', '')
+        answer[1] = None
+        hit, = self.search(without_km, model=model)
+        self.assertEqual(hit['parcelNumber'], '001-002-003-03')
+        self.assertIsNone(pr_rural_model.validated(q, pr_rural_model.fields(answer), None))
+        answer[1] = '4.4'
+        self.assertEqual(self.search(q + ' ' * 400 + 'lote 8', model=model), [])
+        for index, wrong in [(4,False),(5,'Luna'),(7,''),(7,'8'),(8,'')]:
+            saved, answer[index] = answer[index], wrong
+            self.assertIsNone(pr_rural_model.validated(q,pr_rural_model.fields(answer),pr_rural.parse(q)))
+            answer[index] = saved

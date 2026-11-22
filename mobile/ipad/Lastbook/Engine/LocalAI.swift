@@ -22,7 +22,7 @@ protocol LocalModel: AnyObject {
     func ensureRunning(onWait: (Int?) -> Void, cancelled: () -> Bool) -> String?
     /// Streams the visible text for an already-rendered Gemma 4 prompt (segments of text and special markup, so library text
     /// can never inject turn tokens). Returns the runner's done event; throws a plain sentence.
-    func generate(segments: [Segment], maxTokens: Int, cancelled: @escaping () -> Bool, piece: @escaping (String) -> Void) throws -> Rec
+    func generate(segments: [Segment], maxTokens: Int, onlyIfIdle: Bool, cancelled: @escaping () -> Bool, piece: @escaping (String) -> Void) throws -> Rec
     /// Free the model's memory (idle stop, background, memory warning, quit, or asked).
     func stop(_ why: String)
     /// Load in the background if installed, enabled, verified and fitting. Idempotent; never blocks.
@@ -32,6 +32,12 @@ protocol LocalModel: AnyObject {
     func didEnterBackground()
     func memoryWarning()
     func willTerminate()
+}
+
+extension LocalModel {
+    func generate(segments: [Segment], maxTokens: Int, cancelled: @escaping () -> Bool, piece: @escaping (String) -> Void) throws -> Rec {
+        try generate(segments: segments, maxTokens: maxTokens, onlyIfIdle: false, cancelled: cancelled, piece: piece)
+    }
 }
 
 /// Pinned identity of the one model, copied from desktop llm_local.py.

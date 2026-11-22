@@ -1,0 +1,97 @@
+{
+  "prefix": "^(?:(?:la direccion(?: fisica)? es|(?:eso |esto )?(?:queda|esta|es)(?: ubicad[oa])?(?= (?:por|en|la carretera|el kilometro))|para llegar(?: alli)?[, ]+|nos encuentras)\\s*(?:en\\s+)?)",
+  "postal": "(?:^|,\\s*)(00[679][0-9]{2}(?:-?[0-9]{4})?)(?=\\s*(?:,|$))",
+  "literal": "\\b(?:entre|desde|hasta|antes|despues|frente|detras|lado|cerca|pasando|pasas|izquierda|derecha|salida|ramal|interseccion|esquina|opuesto|between|before|after)\\b|\\d\\s*[-/]\\s*\\d",
+  "aliases": [
+    [
+      "\\b(?:por|coge|toma|sigue) la (?=\\d|[a-z]+(?: y [a-z]+)?\\s+(?:hasta|en el kilometro))",
+      "carretera "
+    ],
+    [
+      "\\b(?:por|en) la (?=(?:carretera|carr|ruta)\\b)",
+      ""
+    ],
+    [
+      "\\b(?:en|por) el (?=(?:km|kilometro|barrio|sector|solar|interior|camino)\\b)",
+      ""
+    ],
+    [
+      "\\b(?:en la|en el) (?=(?:calle|parcela|urbanizacion|comunidad|municipio)\\b)",
+      ""
+    ],
+    [
+      "\\b(?:carretera|carr?|ruta|ctra)\\.?\\s*(?:pr\\.?\\s*)?[-# ]*(?=\\d)|\\bpr[-# .]*(?=\\d)",
+      "|road "
+    ],
+    [
+      "\\b(?:kilometros?|km(?:\\.?\\s*hm)?)\\.?\\s*#?\\s*(?=\\d)",
+      "|km "
+    ],
+    [
+      "\\b(?:bo|barr|barrio)\\b\\.?\\s*",
+      "|barrio "
+    ],
+    [
+      "\\b(?:sect?|sector)\\b\\.?\\s*",
+      "|sector "
+    ],
+    [
+      "\\b(?:interior|int)\\b\\.?\\s*",
+      "|interior "
+    ],
+    [
+      "\\b(?:solar|lote|lot)\\b\\.?\\s*",
+      "|solar "
+    ],
+    [
+      "\\b(?:parcela|parcel|parc|prcl)\\b\\.?\\s*",
+      "|parcela "
+    ],
+    [
+      "\\b(?:urb|urbanizacion)\\b\\.?\\s*",
+      "|urbanizacion "
+    ],
+    [
+      "\\b(?:comunidad|com)\\b\\.?\\s*",
+      "|comunidad "
+    ],
+    [
+      "\\b(?:calle|cll)\\b\\.?\\s*",
+      "|calle "
+    ],
+    [
+      "\\b(?:cmno|camino)\\b\\.?\\s*",
+      "|camino "
+    ],
+    [
+      "\\b(?:edif|edificio)\\b\\.?\\s*",
+      "|edificio "
+    ]
+  ],
+  "intro": [
+    [
+      "^(?:vas|sigues|sigue) por (?=la (?:carretera|ruta)\\b)",
+      "por "
+    ],
+    [
+      "\\b(?:por|en) la (?=(?:carretera|ruta)\\b)",
+      ""
+    ],
+    [
+      "\\b(?:carretera|ruta) (?:numero|num\\.) ",
+      "carretera "
+    ],
+    [
+      "\\b(?:es )?(?:por|en) el interior\\b",
+      "interior"
+    ],
+    [
+      "\\ben (?:el|la) (?=(?:barrio|sector|urbanizacion|comunidad|solar|lote|calle|parcela|kilometro|km)\\b)",
+      ""
+    ],
+    [
+      "^la (?=carretera\\b)",
+      ""
+    ]
+  ]
+}

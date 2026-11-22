@@ -64,7 +64,7 @@ find "$OPT/lib" -type f -name '*_tests*' -delete
 mkdir -p "$OPT/app" "$OPT/engine/setup" "$OPT/setup"
 cp "$ROOT/app/main.py" "$ROOT/app/bridge.py" "$ROOT/app/shell_linux.py" "$ROOT/app/ui_language.py" "$OPT/app/"
 cp "$ROOT/server.py" "$ROOT/retrieval.py" "$ROOT/assistant.py" "$ROOT/llm_local.py" "$OPT/"
-cp "$ROOT/engine/__init__.py" "$ROOT/engine/paths.py" "$ROOT/engine/library.py" "$ROOT/engine/safe_paths.py" "$ROOT/engine/encyclopedias.py" "$ROOT/engine/saved_pages.py" "$ROOT/engine/address_search.py" "$ROOT/engine/page_tables.py" "$ROOT/engine/update.py" "$ROOT/engine/notes.py" "$OPT/engine/"
+cp "$ROOT/engine/__init__.py" "$ROOT/engine/paths.py" "$ROOT/engine/library.py" "$ROOT/engine/safe_paths.py" "$ROOT/engine/encyclopedias.py" "$ROOT/engine/saved_pages.py" "$ROOT/engine/address_search.py" "$ROOT/engine/page_tables.py" "$ROOT/engine/update.py" "$ROOT/engine/notes.py" "$ROOT/engine/lang.py" "$OPT/engine/"
 cp "$ROOT"/engine/setup/*.py "$ROOT/engine/setup/roots.pem" "$OPT/engine/setup/"
 cp -R "$OUT/ship/web" "$OUT/ship/content" "$OPT/"
 cp "$OUT/ship/setup/manifest-v1.json" "$OPT/setup/"

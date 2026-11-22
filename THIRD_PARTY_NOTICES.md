@@ -92,6 +92,3 @@ Rural address evidence comes from the Junta’s permit layers. [SIP](https://sig
 The offline builder reads OSM using [PyOsmium](https://github.com/osmcode/pyosmium) (BSD-2-Clause)
 and processes polygons using [Shapely](https://github.com/shapely/shapely) (BSD-3-Clause) with GEOS
 (LGPL-2.1). These libraries run on the machine that prepares the index.
-The optional CRIM prefix collector uses [Playwright for Python](https://github.com/microsoft/playwright-python)
-1.65.2 (Apache-2.0, checked against the installed package metadata) to operate the public search form.
-Playwright and its downloaded Chromium browser run on the connected preparation computer and are separate from the reader.

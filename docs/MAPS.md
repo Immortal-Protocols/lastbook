@@ -94,7 +94,7 @@ A rural search accepts the numbered road, kilometer and barrio in any order. Try
 Both refer to kilometer 4.4. A decimal before a road, as in `0.6 Carr 119`, also identifies a kilometer.
 A whole number in that position can be a house number.
 
-If the Puerto Rico index is unavailable or has no applicable rural result, the desktop reader continues with ordinary installed address or place lookup. Words such as “Exit” or “Salida” in another region’s street name do not stop that lookup. House-number and parcel-number misses do not guess a nearby place. Parcel continuation requests do not restart ordinary lookup.
+If the Puerto Rico index is unavailable or has no applicable rural result, the desktop reader continues with ordinary installed address or place lookup. Words such as “Exit” or “Salida” in another region’s street name do not stop that lookup. An exact street match takes precedence over an approximate road pin; a street prefix does not. House-number and parcel-number misses do not guess a nearby place. Parcel continuation requests do not restart ordinary lookup.
 
 - **Road kilometer** places the marker along a measured road segment from the Federal Highway Administration.
   The builder converts each vertex's mile measure to meters and splits the segment at barrio and ZIP-area boundaries.
@@ -138,116 +138,34 @@ If a property document gives a **número de catastro**, pasting it into the same
 land boundary directly. The reader accepts an 11-digit land number with or without hyphens and a full
 account number with a recorded suffix. Leading zeros count.
 
-To build a parcel-enabled Puerto Rico pack, use Python 3.11 or newer in a separate build environment on a computer with internet access. The command fetches the islandwide public inputs directly from their publishers and writes `Lastbook-Addresses-PR.zip`, `PR.sqlite` and `PR.coverage.json` in the chosen directory. Reusing the directory reuses its source files. Using a new directory fetches a new snapshot.
+#### Build or use a local index
+
+The reader and builder do not fetch address records. This change does not ship a Puerto Rico index or expand
+the coverage of an existing one. House-number lookup is limited to house numbers stored in the installed
+index. Parcel wording and boundaries require a separately supplied index or source inputs; an address-only
+index is not a substitute for that coverage.
+
+On a separate build machine with the required Python dependencies already installed, the offline builder
+can assemble an index from files you already have permission to use:
 
 ```sh
-python -m pip install osmium==4.3.2 shapely==2.2.0
-python tools/prepare_pr_address_index.py derived/pr-addresses
+python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson output --rural rural-inputs --parcels parcel-inputs
 ```
 
-The builder uses address nodes and points inside valid closed ways. Each point must fall within one municipio.
-It uses the mapped city when present and accepts the containing municipio as a search qualifier. It uses an
-urbanización only when the address identifies one. Coverage varies by municipio. `PR.coverage.json` lists
-house counts for all 78, reasons for skipped objects, rural coverage, source fingerprints and the SQLite checksum.
-The parcel fetcher reads numbered land polygons from the February 2025 CRIM layer. It also reads
-physical addresses and cadastral numbers from the SIP and ARPE permit layers. Many ARPE numbers start with a two-digit CRIM municipio code. The builder accepts those records when the code, the permit's municipio and the indexed municipio of the parcel agree. A multi-parcel permit or conflicting municipality cannot supply a prefixed match.
+Omit `--parcels` for roads and schools without parcel search, or both optional arguments for house
+numbers only. Compatible parcel inputs may include a locally supplied physical-address CSV via
+`--crim-addresses`. These options do not grant permission to acquire or share the underlying records.
+The output includes a coverage report so you can see what was actually indexed by municipio.
 
-The November 2026 build found 1,292,468 distinct land numbers. The two permit layers supplied searchable numbered-road addresses for **62,164 parcels across all 78 municipios**. Of these, 52,816 had at least one recorded kilometer. The fetcher requests only the land number, geometry or directions, municipio and the source record identifier. See the counts for each municipio and the results of searching 234 real permit addresses. [Municipio coverage and search results](pr-parcel-coverage.md) · [CRIM municipio codes](https://portal.crim360.com/crimpr/CMS/DOCUMENTOS/download/362.pdf)
-[CRIM parcel boundaries](https://sigejp.pr.gov/server/rest/services/crim/crim_feb_2025/MapServer/0) ·
-[SIP permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/8) ·
-[ARPE permits](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/16)
+To try a compatible index locally, quit Lastbook, keep a backup of the existing index, and place the
+prepared `PR.sqlite` at `derived/geo/addresses/PR.sqlite` inside the Lastbook data folder. Reopen the reader
+and search offline. Parcel boundaries are candidates, not confirmed entrances.
 
-The public build uses the land number to connect the address on a permit to its mapped boundary.
-It works with those public sources alone. If a builder already has a CRIM physical-address CSV, it can
-supply extra directions with `--crim-addresses file.csv`. Accepted headers include
-`número de catastro,dirección física,municipio` and `catastro,address,municipio`. The builder reads
-those three fields and reports the additional coverage separately.
-
-#### Prepare selected areas for offline use
-
-Before losing connectivity, build the parcel-enabled index above or start with a copy of an existing parcel-enabled `PR.sqlite`. From this checkout and the same Python environment, run the municipal builder. For example, to add the Planning Board’s land-use consultation records for Utuado:
+Run the offline reader and builder checks with the synthetic fixtures:
 
 ```sh
-python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --municipio Utuado --planning-board
+python -m unittest app.tests.test_address_search app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels
 ```
-
-This downloads the parcel number, municipio and two location fields from the [Planning Board consulta layer](https://sigejp.pr.gov/server/rest/services/MIPR/Permisos/MapServer/20). A consultation can describe a tract shared by several homes. Coverage depends on which parcels appear in the source. The command reports how many wordings it added and how many additional parcels now have searchable wording.
-
-For a local CRIM physical-address file, use `--crim-addresses file.csv` with the headers above. You can combine both options, or run with just the CSV while disconnected. Both preparation tools accept repeated `--municipio` selections, regional presets and `--all`. The builder reads the selected municipios, preserves the recorded wording, and joins it to land numbers mapped to the reported municipio. It creates a separate output file. Multiple selected municipios are imported together in one pass.
-
-To use the result, quit Lastbook, keep a backup of your index, and copy the prepared `PR.sqlite` to `derived/geo/addresses/PR.sqlite` inside your Lastbook data folder. Reopen a reader built from this branch, open the map, and enter the address with its municipio. Keep the prepared file if you reinstall an official address pack. Searching works offline. For a shared description, open **Show matches** to inspect the numbered parcel boundaries.
-
-#### Collect CRIM physical addresses for selected areas
-
-The connected preparation tool can operate the **Parcela** prefix search in the [public CRIM viewer](https://catastro.crimpr.net/cdprpc/). It opens a fresh browser, submits the mapped grid prefixes for the selected area, and reads the displayed **Parcela**, **Dirección física** and **Municipio** fields. It preserves the address wording and punctuation.
-
-Each query is tried up to three times when the viewer explicitly responds **Query failed !**, with short pauses between attempts. After three failures, collection continues with other prefixes and leaves the failed prefix unqueried. Three consecutive failed prefixes stop the run so it can be retried later. The command reports an incomplete run and lists explicit failures from that run in `summary.json` as `failed_prefixes`; `complete` and `unqueried_parcels` describe the selected area's remaining work. Run the same command again to retry it; completed prefixes stay saved. Other errors stop the run with its completed searches retained.
-
-Install the build tool and its browser before running it:
-
-```sh
-python -m pip install playwright==1.65.2
-python -m playwright install chromium
-python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-utuado --municipio Utuado
-python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --municipio Utuado --crim-addresses derived/pr-crim-utuado/addresses.csv
-```
-
-After installing Playwright and Chromium, run `LASTBOOK_TEST_CRIM_UI=1 python -B -m unittest tools.test_fetch_pr_crim` to exercise retry and pagination handling against an invented local form. The test makes no CRIM requests.
-
-Choose the whole island with `--all`, combine presets with repeated `--region`, or choose individual municipios. `--plan` shows the resolved municipio list and mapped parcel and prefix counts. For example:
-
-```sh
-python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite --all --plan
-python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite --region metro --region east --plan
-python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-custom --municipio Utuado --municipio Jayuya
-python tools/fetch_pr_crim.py derived/pr-addresses/PR.sqlite derived/pr-crim-island --all
-python tools/prepare_pr_municipio.py derived/pr-addresses/PR.sqlite prepared/PR.sqlite --all --crim-addresses derived/pr-crim-island/addresses.csv
-```
-
-For a large selection, add `--group-grids` to combine neighboring grids in fewer public form searches. The viewer must finish every result page before any grid is saved. Results with more than 5,000 cards, failed or timed-out grouped searches and empty grouped searches are narrowed to smaller prefixes in a fresh page. Individual grids keep the same checkpoints, original wording and area filtering, so either mode can resume the other.
-
-For requested grids, a card with an unusable land number but a complete matching grid prefix has its original fields saved in the checkpoint's `unusable_number` table. This also retains unsupported unit-level identifiers. The summary's `unusable_number_records` counts distinct saved tuples for the selected area's grids. These records are excluded from the address CSV; the collector assigns addresses only to complete 11-digit land numbers. Unexpected fields and cards from a different prefix still stop the search.
-
-Presets expand to explicit municipio lists. Overlapping selections and shared search prefixes are deduplicated. `metro` uses the nine-municipio San Juan metropolitan group in Guaynabo's 2024 planning memorandum. `east`, `north`, `south`, `central` and `capital` follow the Tourism Company's municipal lists. `west` combines its Porta del Sol Norte and Sur groups. The east preset includes Vieques and Culebra. Inspect the members with `--plan` and combine presets and individual municipios to choose an area. [Metro definition](https://jp.pr.gov/wp-content/uploads/2024/08/Memorial-Justificativo-sobre-Posible-Enmienda-Menor-PUT-PR-2015_PT-MAG_2024_VEDA.pdf) · [Tourism Company groups](https://tourism.pr.gov/regions/)
-
-Area selection controls supplemental address collection. The input Puerto Rico pack supplies the statewide base map and parcel outlines.
-
-The collector follows the viewer's **Load more** control until every displayed card is read. It saves each completed prefix in `prefixes.sqlite` and waits between searches. Run the same command to resume after interruption, or expand the selection in the same directory. Earlier single-municipio checkpoints are upgraded automatically. Each completed prefix records the mapped land numbers it covered. Adding a neighboring municipio revisits a shared prefix when it contains additional selected parcels. Cached records are retained, and `addresses.csv` exports the current selection.
-
-The CSV preserves the original nonblank physical address and reported municipio for every returned land number in the selected roster. The index builder joins records whose reported municipio agrees with the mapped parcel. `summary.json` reports the selected municipios, collected parcels, matching municipios, blank addresses, missing parcels and unqueried parcels.
-
-Use `--prefix 000-000` to test a particular mapped grid, or `--show-browser` to watch the search. A new output directory starts a fresh snapshot. A changed viewer layout or incomplete result stops the run and leaves completed prefixes available for resumption. Follow the installation step above to use the prepared index offline. The browser and collector run on the preparation computer. The Lastbook reader searches the resulting SQLite file.
-
-For a build from existing inputs, run `python tools/build_pr_addresses.py puerto-rico.osm.pbf municipios.geojson derived/pr-addresses --rural derived/pr-rural-inputs --parcels derived/pr-parcel-inputs`. Omit `--parcels` for the earlier road and school index. The OSM and Census inputs are the [Puerto Rico PBF](https://download.geofabrik.de/north-america/us/puerto-rico.html) and [municipio boundaries](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATE%3D%2772%27&outFields=NAME%2CGEOID&outSR=4326&geometryPrecision=5&f=geojson).
-
-A missing house number has no exact address result. Omitting `--rural` builds the smaller house-only index.
-To reproduce the road and school preview, use the release's four archived rural inputs and its identified OSM and municipio inputs. For a parcel build, retain the parcel input directory as well. The coverage report fingerprints the raw parcel and permit snapshots.
-
-Run the builder and reader regressions with `python -m unittest tools.test_build_pr_addresses tools.test_build_pr_rural tools.test_build_pr_parcels tools.test_prepare_pr_municipio tools.test_fetch_pr_crim app.tests.test_pr_addresses app.tests.test_pr_rural app.tests.test_pr_parcels app.tests.test_address_search`.
-
-Road measures come from [Puerto Rico HPMS 2024](https://geo.dot.gov/server/rest/services/Hosted/HPMS_FULL_PR_2024/FeatureServer/0).
-Area labels come from [Census barrios](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/1)
-and [ZIP Code Tabulation Areas](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/1).
-School names, directions and coordinates come from [NCES EDGE, 2024–25](https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_GEOCODE_PUBLICSCH_2425/MapServer/0).
-
-The comparison in `tools/evaluate_pr_rural.py` uses public [HRSA health center site addresses](https://gisportal.hrsa.gov/server/rest/services/HealthCareFacilities/PrimaryHealthCareFacilities_FS/MapServer/0),
-public NCES addresses, synthetic spoken directions, ordering variants and ambiguous inputs.
-It checks the extracted road, kilometer, locality, ZIP, interior, sector, landmark, lot and access fields and compares results from the same offline index, including empty results and qualifier warnings.
-Run it with the SQLite path and a new output filename. Add `--gemma` to run the same queries through Lastbook's
-local runner with its pinned model. Set `LASTBOOK_MODEL_DIR` to the model directory and `LASTBOOK_DATA` to a writable test library.
-Use `--live-map` to exercise the production place finder. This mode reads the supplied SQLite file from the test library's
-`derived/geo/addresses/PR.sqlite`. The release's public JSON Lines results can also be scored with `--replay`.
-With the same model settings, run `LASTBOOK_TEST_PARCEL_MODEL=1 python -m unittest app.tests.test_pr_parcels`
-to exercise five parcel directions against invented boundaries, including a conflicting interior and an omitted kilometer.
-
-For local use, close the library and extract the single ZIP member, `derived/geo/addresses/PR.sqlite`,
-under `LastbookData/` and open it with the updated reader. For a release, upload the ZIP to the Lastbook
-download URL in `PR.manifest.json`, verify the downloaded size and SHA-256, and replace the PR entry in
-`address_indexes` in the release manifest. If using the per-state publisher cache, replace its saved
-`PR` entry in `derived/packs/address-indexes.json` as well. The OSM address features are available under the ODbL.
-Credit © OpenStreetMap contributors when redistributing them. The CRIM service item lists no redistribution terms.
-Confirm permissions for the cadastral and permit sources before distributing a combined archive.
-[Planning Board parcel service item](https://sigejp.pr.gov/portal/sharing/rest/content/items/cb0f3da3de93455b9515e6a3392d795b?f=pjson) [OpenStreetMap copyright and attribution](https://www.openstreetmap.org/copyright)
 
 ### Not in this repository
 

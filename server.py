@@ -37,6 +37,8 @@ import engine.paths as lastbook_paths  # noqa: E402  (data folder and program fo
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search, encyclopedias, sections  # noqa: E402
 from engine import typos  # noqa: E402  (spelling mistakes in search questions)
+from engine import confidence  # noqa: E402  (its injury words stop the how-to phrases)
+from engine import meaning_red  # noqa: E402  (a meaning check for urgent questions: words OR meaning)
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -318,6 +320,7 @@ def fts_expr(groups):
     return ' AND '.join('(' + ' OR '.join(q(t) for t in g) + ')' for g in groups)
 
 
+HOWTO = 'howto'     # a phrase's fourth item: a how-to phrase, not used when the question names an injury
 PHRASES = [  # everyday phrases -> one idea, checked before single words
     (r"power (cut|outage|failure)|no (power|electricity)|lights? (are )?out|blackout", ['outage', 'blackout', 'power outage']),
     (r"(phone|cell|mobile)( is| was)? (dead|flat|out of battery)|(dead|flat) (phone|battery)", [['phone', 'phones', 'cell phone'], ['charge', 'charging', 'charger', 'power bank']]),
@@ -327,15 +330,41 @@ PHRASES = [  # everyday phrases -> one idea, checked before single words
     (r"(passed|blacked) out|fainted", ['unconscious', 'fainting', 'unresponsive']),
     (r"food (went|gone|is) bad|spoiled food", ['spoilage', 'food safety']),
     (r"can'?t breathe|not breathing|stopped breathing", ['breathing', 'resuscitation', 'airway']),
+    # The manuals teach making fire as tinder, kindling and firecraft. "start a fire" alone ranks fire-safety pages
+    # first, and "no matches and no gas" pulls them further up, because those pages warn about matches and gas.
+    # Not "building fire", which is a building on fire. Not "ignition": it brought welding and hazmat pages back.
+    # Unless the question is about a fire that is an emergency: one in a kitchen or a building, by accident, spreading.
+    # Or about keeping a fire from starting, or getting away from one (#128's review, #154): "how do i prevent a
+    # generator from starting a fire", "make a fire escape plan for my family", "what causes a fire to start". A fire drill,
+    # but not a bow drill, which is how a fire is made.
+    (r"\b(start|make|light|build|starting|making|lighting)( up)?( a| the| my| our)? ?(camp)?fire\b", [['fire', 'fires'], ['tinder', 'kindling', 'firecraft']],
+     r"\b(kitchen|building|apartment|garage|accident(al|ally)?|by mistake|arson|spread(s|ing)?|evacuat\w*)\b|\bin (the|my|our|a) (house|home)\b"
+     r"|\b(prevent\w*|avoid\w*|stop\w*|risk\w*|hazard\w*|caus\w*|escape|spread\w*|safety)\b|(?<!bow )\bdrills?\b", HOWTO),
+    # Water damage is a flooded home, not drinking water. The verb goes with it: a "treat" left behind has to be on the page.
+    # Not "flood damage": flood questions already find flood pages, and these words pulled garden pages in ("mold").
+    (r"\b((treat|fix|repair|clean( up)?|deal with|dry( out)?)( the| my| our)? )?water[- ]damage[ds]?\b", ['water damage', 'flood damage', 'flooding', 'mold', 'mould']),
+    # "make the water safe" in the manuals' words. Not water damage or a water heater. Nor too much water in the body
+    # (#128's review: "how do i treat water intoxication" got wastewater manuals), water poisoning, water in the lungs.
+    (r"\b(make|making|get|keep)( the| my| our)? water (safe|drinkable|potable)|purify (the )?water|treat (the )?water", [['water'], ['disinfect', 'disinfection', 'purify', 'purification', 'treatment', 'chlorine']],
+     r"\bwater (damage[ds]?|heaters?)\b|\b(intoxicat\w*|poison\w*|lungs?|overdos\w*)\b", HOWTO),
 ]
+
+
+def phrase_injury_on():
+    """LASTBOOK_PHRASE_INJURY=0 turns off the injury exception of the how-to phrases (docs/TRIAGE-SEARCH.md, section 8)."""
+    return os.environ.get('LASTBOOK_PHRASE_INJURY', '1') != '0'
 
 
 def query_groups(q):
     q = typos.correct(q)    # misspelled words put right first ("breating" -> breathing), engine/typos.py
     q = q.lower().replace('\u2019', "'")
     phrase_groups = []
-    for rx, g in PHRASES:
-        if re.search(rx, q):
+    hurt = phrase_injury_on() and confidence.injury(q)
+    for rx, g, *rest in PHRASES:        # an optional third regex: when it is found in the question, the phrase is not used
+        unless, kind = (rest + [None, None])[:2]
+        if kind == HOWTO and hurt:      # nor a how-to phrase in a question about an injury (engine/confidence.INJURY)
+            continue
+        if re.search(rx, q) and not (unless and re.search(unless, q)):
             phrase_groups += g if isinstance(g[0], list) else [g]
             q = re.sub(rx, ' ', q)
     words = [w.lower() for w in re.findall(r"[\w'-]+", q)]
@@ -2005,7 +2034,8 @@ class Handler(library.Handler):
             emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
             return
         try:
-            assistant.chat(msgs, about, emit, lambda: gone[0])
+            # wiki: the chat setting or the "Not an emergency?" button; only passed when set, as chat had 4 arguments
+            assistant.chat(msgs, about, emit, lambda: gone[0], **({'wiki': True} if req.get('wiki') is True else {}))
         except Exception as e:
             traceback.print_exc()
             emit({'type': 'error', 'error': 'internal', 'text': f'The assistant stopped on an internal error ({type(e).__name__}).'})
@@ -2181,6 +2211,7 @@ def init(no_index=False):
         threading.Thread(target=INDEX.run_forever, daemon=True).start()
     threading.Thread(target=prewarm_previews, daemon=True).start()
     threading.Thread(target=lambda: sections.ensure(library.DB, kind_of), daemon=True).start()   # before the first search
+    meaning_red.start()     # the meaning check loads on its own thread; until then the urgent words alone decide
 
 
 class HTTPServer(library.HTTPServer):   # queues 128 connections: opening the map asks for 20 or more tiles at once

@@ -12,6 +12,7 @@ from engine import page_tables, sections
 from engine import typos    # spelling mistakes in search questions
 from engine import wiki_pick    # encyclopedia articles by their best section
 from engine import confidence   # how likely a search's first page is right
+from engine import meaning_red  # a meaning-based second opinion on urgent questions (words OR meaning)
 
 import os
 from engine.model_server import LOOPBACK, loopback_base, model_open   # noqa: F401  (LOOPBACK and model_open: also used by the tests)
@@ -715,16 +716,32 @@ def search_confidence(hits, trace):
     return confidence.estimate(hits, trace)
 
 
+def is_danger(msg, english=None, meaning=None):
+    """The message may be about an emergency: one of the danger buttons, or the urgent words (engine/confidence.urgent: the
+    guides' `urgent` phrases and the wide word list, as typed or with its misspellings put right), or else the meaning
+    check (engine/meaning_red, on the misspellings put right) says it is close to the urgent examples. The meaning check
+    only adds: what the words call urgent stays urgent. english: the message's English search words, when it was not in
+    English. meaning, a dict when given, gets the check's score, fired and state, and words (what the words alone said).
+    Its pages are never held back."""
+    msg = msg or ''
+    fixed = typos.correct(msg)
+    words = msg.strip().lower() in {c.lower() for c in DANGER_CHOICES} or confidence.urgent(msg, fixed, english)
+    m = meaning_red.check(fixed or msg)
+    if meaning is not None:
+        meaning.update(m, words=bool(words))
+    return bool(words or m['fired'])
+
+
 def question_hits(question, k=8):
     """The first library search for a chat's newest question -> (hits, info). No model.
     info['confidence']: engine.confidence's estimate ({'p', 'mode', 'level'}) for this search, or None.
-    info['danger']: the question may be about an emergency, by its words (engine/confidence.urgent, as typed or with its
-    misspellings put right). Only the words say so here: its pages are never held back either way.
+    info['danger']: the question may be about an emergency (is_danger: the urgent words, or the meaning check). Its pages
+    are never held back either way; chat leaves the encyclopedias out for it unless the person asks for them.
     info['body']: the body signs the question names (engine/confidence.body_signs), sorted; then chat_level never only asks."""
     tr = {}
     hits = _traced(question, k, tr)
     fixed = typos.correct(question)
-    return hits, {'danger': confidence.urgent(question, fixed), 'confidence': search_confidence(hits, tr),
+    return hits, {'danger': is_danger(question), 'confidence': search_confidence(hits, tr),
                   'body': sorted(confidence.body_signs(question, fixed))}
 
 
@@ -784,8 +801,18 @@ def suggest_choices():
     return [{'label': c, 'text': c} for c in DANGER_CHOICES] + [{'label': 'Something else', 'text': ''}]
 
 
-def chat(messages, about, emit, cancelled):
-    """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early."""
+def wiki_skipped(urgent, wiki=False):
+    """Are the encyclopedia articles left out of the first results? Yes for an urgent question (question_hits' info['danger']),
+    so the manuals have the first results to themselves (prefer a manual for safety-critical steps), unless wiki is True
+    (the chat setting "Encyclopedias on urgent questions too", or its "Not an emergency?" button) or LASTBOOK_WIKI_URGENT=1.
+    The urgent label is the wide one that never holds pages back, so it also catches everyday questions ("how to use a fire
+    extinguisher"): hence the button. Nothing else about the urgent label changes."""
+    return bool(urgent) and not (wiki or os.environ.get('LASTBOOK_WIKI_URGENT') == '1')
+
+
+def chat(messages, about, emit, cancelled, wiki=False):
+    """Run one assistant turn. emit(event: dict) streams to the browser; cancelled() -> True stops early.
+    wiki True: encyclopedia articles even when the question is labelled urgent (wiki_skipped)."""
     t0 = time.time()
     sess = Session()
     msgs = [{'role': 'system', 'content': SYSTEM}]
@@ -799,9 +826,12 @@ def chat(messages, about, emit, cancelled):
     question = next((m['content'] for m in reversed(messages) if m.get('role') == 'user' and isinstance(m.get('content'), str)), '')
     if question and not about:
         hits, turn = question_hits(question[:300])
-        wiki = first_wiki(question[:300])
-        msgs.extend(initial_messages(sess, hits, wiki))
-        emit({'type': 'found', 'count': len(hits) + len(wiki)})
+        skipped = wiki_skipped(turn['danger'], wiki)
+        articles = [] if skipped else first_wiki(question[:300])
+        msgs.extend(initial_messages(sess, hits, articles))
+        emit({'type': 'found', 'count': len(hits) + len(articles)})
+        if skipped and encyclopedias.list_files():
+            emit({'type': 'wiki_offer'})    # labelled urgent, so no encyclopedias; web/chat.js offers to add them
         # How likely the first page is right (engine/confidence.py). Unsure: buttons. Very unsure: ask for more words
         # instead of answering from pages that are probably wrong, and give the pages found all the same.
         asked = sum(1 for m in messages if m.get('role') == 'user' and isinstance(m.get('content'), str))

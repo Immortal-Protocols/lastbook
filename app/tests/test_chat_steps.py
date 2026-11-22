@@ -811,6 +811,13 @@ class Suggestions(unittest.TestCase):
         self.assertIn('Sources (1)', answer)
         self.assertIn('unverified', self.html(self.message(cited=[])))      # an answer with no sources still says so
 
+    def test_the_encyclopedia_offer_is_a_button_under_the_last_message(self):
+        """An urgent question is answered without the encyclopedias (assistant.wiki_skipped); the message says so with a button."""
+        offer = self.html(self.message(wikiOffer=True))
+        self.assertIn('<button class="chip sg-other" data-act="wiki">Not an emergency? Add the encyclopedias</button>', offer)
+        self.assertNotIn('data-act="wiki"', self.html(self.message(wikiOffer=True), last=False))
+        self.assertNotIn('data-act="wiki"', self.html(self.message()))
+
 
 if __name__ == '__main__':
     unittest.main()

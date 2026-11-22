@@ -167,6 +167,9 @@ def main():
     for name in ('english_words.txt.gz', 'english_words.LICENSE.txt'):   # engine/typos.py's English words
         if not any((a.app / 'Contents' / d / 'engine' / name).is_file() for d in ('Resources', 'Frameworks')):
             problems.append(f'missing from the package: engine/{name}')
+    for name in ('data/meaning_red_manifest.json',):   # engine/meaning_red.py: what setup may download
+        if not any((a.app / 'Contents' / d / 'engine' / name).is_file() for d in ('Resources', 'Frameworks')):
+            problems.append(f'missing from the package: engine/{name}')
     if 'ui_language' not in modules:
         problems.append('missing module from the package: ui_language')
     print(f'files {n_files}, native binaries {n_macho}, modules looked inside {n_mods}')

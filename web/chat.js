@@ -34,6 +34,9 @@ const Chat = (() => {
 
   function load() { try { return JSON.parse(localStorage.getItem('sg.chats')) || [] } catch { return [] } }
   const keep = () => { try { return localStorage.getItem('sg.chatKeep') !== 'no' } catch { return true } };
+  // encyclopedia articles on questions labelled urgent too (assistant.wiki_skipped); off (the default): the manuals alone, and
+  // the "Not an emergency? Add the encyclopedias" button
+  const wikiUrgent = () => { try { return localStorage.getItem('sg.wikiUrgent') === 'yes' } catch { return false } };
   function persist() { if (!keep()) return; try { localStorage.setItem('sg.chats', JSON.stringify(chats.slice(0, 60))) } catch { } }
   const byId = id => chats.find(c => c.id === id);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -65,6 +68,8 @@ const Chat = (() => {
         <div class="cs-privacy">
           <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
           <p class="small muted">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
+          <label><input type="checkbox" id="wikiUrgent" ${wikiUrgent() ? 'checked' : ''}> Encyclopedias on urgent questions too</label>
+          <p class="small muted">Off: urgent questions use the manuals alone.</p>
           <button class="btn plain" id="clearChats">Delete all chats</button>
         </div>
       </aside>
@@ -98,6 +103,10 @@ const Chat = (() => {
     $('#composer').addEventListener('submit', e => { e.preventDefault(); if (busy()) return stop(); send(ta.value) });
     $('#openSide').onclick = () => $('#chatSide').classList.add('open');
     $('#closeSide').onclick = () => $('#chatSide').classList.remove('open');
+    $('#wikiUrgent').onchange = e => {
+      try { localStorage.setItem('sg.wikiUrgent', e.target.checked ? 'yes' : 'no') } catch { }
+      toast(e.target.checked ? 'Urgent questions will use the encyclopedias too' : 'Urgent questions will use the manuals alone');
+    };
     $('#keepChats').onchange = e => {
       try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { }
       if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast('Chats will be forgotten when you close this page') } else { persist(); toast('Chats will be kept on this device') }
@@ -364,6 +373,8 @@ const Chat = (() => {
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${libF.length ? srcCards(libF.slice(0, 6), true) : ''}${wikiF.length ? `<p class="small muted">From the encyclopedias (community-written background):</p>${srcCards(wikiF.slice(0, 3), true)}` : ''}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     h += sugg;
+    // labelled urgent, so the encyclopedias were left out (assistant.wiki_skipped); the person can say it is not an emergency
+    if (!running && m.wikiOffer && i === cur.messages.length - 1) h += `<div class="suggest compact wiki-offer"><div class="chips"><button class="chip sg-other" data-act="wiki">Not an emergency? Add the encyclopedias</button></div></div>`;
     if (!running && m.content) {
       const cited = sourcesForFinish(m);
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
@@ -522,6 +533,7 @@ const Chat = (() => {
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
+      if (b.dataset.act === 'wiki' && !busy()) { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q, { wiki: true }) }
     });
     // a suggestion button sends its label as the next message; "Something else" only puts the cursor in the box
     $$('[data-say]', el).forEach(b => b.onclick = () => { if (busy()) return; if (b.dataset.say) send(b.dataset.say); else $('#chatIn')?.focus() });
@@ -555,8 +567,9 @@ const Chat = (() => {
   }
 
   /* -------------------------------------------------------------- send --- */
-  async function send(text) {
+  async function send(text, opts) {
     text = (text || '').trim();
+    const wiki = !!(opts && opts.wiki) || wikiUrgent();   // the setting, or "Not an emergency? Add the encyclopedias"
     if (!text) return;
     if (!cur) {
       cur = { id: newId(), title: text.slice(0, 70), created: Date.now(), updated: Date.now(), messages: [], about: aboutCtx ? aboutCtx.about : null, aboutInfo: aboutCtx };
@@ -576,7 +589,7 @@ const Chat = (() => {
     try {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
-      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
+      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about, ...(wiki ? { wiki: true } : {}) }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = '';
@@ -613,6 +626,7 @@ const Chat = (() => {
   function onEvent(m, ev) {
     if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct }
     else if (ev.type === 'found') m.steps.push({ name: 'found', count: ev.count });
+    else if (ev.type === 'wiki_offer') m.wikiOffer = true;
     else if (ev.type === 'tool') { if (ev.phase === 'start') m.steps.push({ name: ev.name, args: ev.args }); else { const s = [...m.steps].reverse().find(x => x.name === ev.name && !x.summary); if (s) s.summary = ev.summary } m.state = 'searching' }
     else if (ev.type === 'sources') m.sources = ev.sources;
     else if (ev.type === 'suggest') { m.suggest = Array.isArray(ev.choices) ? ev.choices.slice(0, 8) : null; m.suggestPrompt = typeof ev.prompt === 'string' ? ev.prompt.slice(0, 120) : ''; m.suggestStyle = ev.style === 'compact' ? 'compact' : '' }

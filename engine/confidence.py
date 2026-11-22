@@ -21,14 +21,15 @@ When the question's words are not the library's (unknown_words: keyboard mash, a
 split), the search is unsure whatever the model says. LASTBOOK_CONF_UNKNOWN=0 turns that off.
 
 urgent() and the body signs below say whether a question may be an emergency, so that its pages are never held back.
-They are the only urgency check in this module's pull request; the series moves urgency to one shared source later
-(docs/TRIAGE-SEARCH.md, section 4).
+Its phrases are the guides' own: the `urgent` fields of content/topics/*.json, read by engine/urgent_phrases.py, the
+same ones the guide search uses. What a phrase cannot say stays here, as the wide word list URGENT (words with endings,
+everyday wordings), the idioms to cut, the body signs and the typo handling (docs/TRIAGE-SEARCH.md, section 4).
 """
 import math
 import os
 import re
 
-from engine import typos
+from engine import typos, urgent_phrases
 
 BUTTONS = 0.60      # below this, the chat offers buttons (0.75 put them on 68 % of keyword-only questions)
 UNSURE = 0.25       # below this, the chat asks the person to say more (and still gives the pages if it may be urgent)
@@ -48,8 +49,10 @@ EMERGENCY_TITLE = re.compile(r"first aid|emergency care|resuscitation|where ther
                              r"|fire safety|are you ready|cert basic|emergency medic|life support|wilderness medic", re.I)
 NOT_EMERGENCY_TITLE = re.compile(r"financial", re.I)
 
-# Words that may mean an emergency. Wide on purpose: a match only means the pages are never held back when the search
-# is unsure, so an everyday "cut" or "car" costs nothing.
+# Words that may mean an emergency, besides the guides' `urgent` phrases. Wide on purpose: a match only means the pages
+# are never held back when the search is unsure, so an everyday "cut" or "car" costs nothing. Phrases that name one
+# life-threatening state belong in a guide's `urgent` field, not here; this is for what a phrase cannot say (stems such as
+# "breath*", words that only matter near others, everyday wordings).
 URGENT = re.compile(
     r"\b(breath\w*|chok\w*|unconscious|unresponsive|collaps\w*|pass(ed)? out|faint\w*|wake|pulse|cpr"
     r"|bleed\w*|blood\w*|spurt\w*|wound\w*|stab\w*|shot|shoot\w*|gun\w*|knife|impal\w*|amputat\w*|severed|cut\w*"
@@ -149,6 +152,27 @@ NOT_URGENT = re.compile(
 def not_urgent_text(text):
     """Text with NOT_URGENT's everyday phrases cut out, each replaced by a space."""
     return NOT_URGENT.sub(' ', (text or '').replace('’', "'"))
+
+
+# The injury words of URGENT, for server.PHRASES. A how-to phrase ("light a fire", "treat water") is not used when the
+# question also names an injury or a danger to the body: "light a fire to keep him warm with hypothermia" is about
+# hypothermia, not firecraft. Not URGENT itself: its fire, smoke, gas, flood, baby and cut would also stop "how do i light a
+# campfire", "make the water safe for a baby's formula" and "cut kindling". A bare "burn" or "smoke" is how a fire is
+# made too ("wood that burns longer", "a fire without smoke"), so only a burn on someone and smoke breathed in count.
+# Added to URGENT's words: lungs, monoxide alone, inhaled, blisters, electrocuted, coughing.
+INJURY = re.compile(
+    r"\b(breath\w*|chok\w*|unconscious|unresponsive|collaps\w*|pass(ed)? out|faint\w*|pulse|cpr|bleed\w*|blood\w*"
+    r"|wound\w*|stab\w*|amputat\w*|drown\w*|submerg\w*|lungs?|cough\w*|electrocut\w*|shock\w*|live wire|lightning"
+    r"|burn(ed|t)|scald\w*|blister\w*|inhal\w*|carbon monoxide|monoxide|fumes|poison\w*|swallow\w*|overdos\w*"
+    r"|bitten|stung|anaphyla\w*|seizure\w*|convuls\w*|hypotherm\w*|frostbit\w*|shiver\w*|heat ?stroke|injur\w*|hurt\w*"
+    r"|fractur\w*|caught fire|on fire|in flames|fell|fallen|dying)\b"
+    r"|\b(a|the|my|his|her|their|bad|first|second|third)[ -](degree )?burns?\b|\bburns? (on|to)\b",
+    re.I)
+
+
+def injury(text):
+    """True when the text names an injury or a danger to the body (INJURY): then server.PHRASES' how-to phrases are not used."""
+    return bool(INJURY.search((text or '').replace('’', "'")))
 
 
 # Body signs. A question that names one (no pulse, not breathing, blue lips, unconscious, choking, bleeding, a
@@ -318,9 +342,13 @@ def everyday_level(p):
 
 
 def urgent(*texts):
-    """True when any of the texts (the question as typed, as searched, its English words) may be about an emergency: a word
-    of URGENT, or a body sign (body_signs: "he has no puls", "mybbyisntbreathing")."""
-    return any(URGENT.search(not_urgent_text(t)) for t in texts) or bool(body_signs(*texts))
+    """True when any of the texts (the question as typed, as searched, its English words) may be about an emergency: it names
+    an `urgent` phrase of a guide choice (engine/urgent_phrases.py), or has a word of URGENT, or a body sign (body_signs:
+    "he has no puls", "mybbyisntbreathing"). Idioms are cut out first (not_urgent_text), so "drowning in homework" is not
+    a phrase. Callers pass the text as typed and with its misspellings put right (typos.correct), so "he isnt braething"
+    names "isn't breathing"."""
+    cut = [not_urgent_text(t) for t in texts]
+    return (urgent_phrases.hit(*cut) or any(URGENT.search(t) for t in cut) or bool(body_signs(*texts)))
 
 
 def _words():

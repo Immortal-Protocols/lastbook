@@ -20,6 +20,7 @@ DATA = fixture.ensure()
 os.environ['LASTBOOK_DATA'] = str(DATA)
 os.environ['SURVIVAL_MODEL_BASE'] = 'http://127.0.0.1:9'   # a dead address: the real model server is never contacted
 os.environ['SURVIVAL_DISABLE_INDEX_WATCH'] = '1'
+os.environ['LASTBOOK_MEANING_RED'] = '0'                  # server.init would start the meaning check's runner: not in these tests
 sys.modules['onnxruntime'] = None                          # importing it now raises ImportError: this Mac runs no AI models
 
 import server, assistant, retrieval  # noqa: E402
@@ -1255,6 +1256,91 @@ class TypoCorrection(unittest.TestCase):
                         ("what's a normal heart rate", ['normal', 'heart', 'rate'])]:
             self.assertEqual(server.query_groups(q)[0], want, q)
         self.assertIn("hasn't", server.query_groups("baby hasn't moved")[0])
+
+
+class HowToPhrases(unittest.TestCase):
+    """Making fire and making water safe searched in the manuals' words (server.PHRASES), and not when the question names an
+    injury (engine/confidence.INJURY); docs/TRIAGE-SEARCH.md, section 8."""
+
+    def test_making_fire_is_tinder_and_kindling(self):
+        for q in ('i need to start a fire but i have no matches and no gas', 'how do i light a campfire', 'make fire'):
+            self.assertIn(['tinder', 'kindling', 'firecraft'], server.query_groups(q)[1], q)
+        for q in ('there is a building fire next door', 'the fire started in the kitchen', 'how do i put out a fire',
+                  'start a fire in the kitchen by accident', 'someone tried to light a fire in the building',
+                  'i accidentally started a fire', 'my kid lit a fire in the house', 'how do i stop a fire spreading'):
+            self.assertNotIn(['tinder', 'kindling', 'firecraft'], server.query_groups(q)[1], q)
+            self.assertIn('fire', [g[0] for g in server.query_groups(q)[1]], q)    # still searched as a fire
+
+    def test_making_water_safe_is_disinfecting(self):
+        for q in ('how do i purify water from a creek', 'how do i make the water safe', 'treat water with bleach'):
+            self.assertIn(['water'], server.query_groups(q)[1], q)
+            self.assertTrue(any('disinfect' in g for g in server.query_groups(q)[1]), q)
+        for q in ('how do i make it safe to go back inside', 'how do i treat water damage in my house', 'treat water damaged drywall',
+                  'how do i treat the water heater before winter'):    # ("purify" alone still means disinfect: upstream's SYN)
+            self.assertFalse(any('disinfect' in g for g in server.query_groups(q)[1]), q)
+
+    def test_no_how_to_phrase_in_an_injury_question(self):
+        """A how-to phrase is not used when the question names an injury (engine/confidence.INJURY).
+        LASTBOOK_PHRASE_INJURY=0 turns the exception off."""
+        helper = lambda q: [w for g in server.query_groups(q)[1] for w in g if w in ('tinder', 'disinfect')]
+        hurt = ('treat water in the lungs after drowning', 'light a fire to keep him warm with hypothermia',
+                'carbon monoxide from making a fire in the tent', 'burned my hand trying to light a fire',
+                'he got an electric shock, should i make a fire', 'he is not breathing, start a fire for warmth',
+                'how do i treat water poisoning', 'smoke inhalation from lighting a fire indoors')
+        for q in hurt:
+            self.assertEqual(helper(q), [], q)
+        self.assertIn('drowning', server.query_groups(hurt[0])[0])
+        self.assertIn('fire', server.query_groups(hurt[1])[0])          # still a fire, without firecraft
+        for q in ('how do i light a campfire', 'i need to start a fire but i have no matches and no gas',
+                  'how do i make the water safe to drink', 'how do i purify water from a creek',
+                  "how to make the water safe for a baby's formula", 'make a fire that burns all night',
+                  'start a fire without much smoke'):
+            self.assertTrue(helper(q), q)
+        self.assertIn('mold', server.query_groups('how do i treat water damage on the floor')[1][0])
+        self.assertIn('outage', server.query_groups('power cut and he is not breathing')[1][0])   # not a how-to phrase
+        os.environ['LASTBOOK_PHRASE_INJURY'] = '0'
+        try:
+            for q in hurt[1:4]:     # (not hurt[0]: water in the lungs is now the water phrase's own exception)
+                self.assertTrue(helper(q), q)
+            self.assertEqual(helper(hurt[0]), [])
+        finally:
+            os.environ.pop('LASTBOOK_PHRASE_INJURY', None)
+
+    def test_how_to_paired_with_its_safety_or_medical_counterpart(self):
+        """#128's review asked for each how-to phrase's example paired with its safety or medical counterpart, the
+        counterpart keeping its own search terms. The fire-making phrase is not used when the question is about keeping a
+        fire from starting or getting away from one (prevent, avoid, stop, risk, hazard, cause, escape, spread, safety, a
+        drill but not a bow drill); the water-safe phrase not for water in the body (intoxication, poisoning, lungs, overdose).
+        docs/TRIAGE-SEARCH.md, section 8."""
+        helper = lambda q: {w for g in server.query_groups(q)[1] for w in g if w in ('tinder', 'disinfect')}
+        words = lambda q: server.query_groups(q)[0]
+        pairs = [
+            ('how do i start a fire', 'how do i prevent a generator from starting a fire', ['generator', 'fire']),
+            ('how do i make a fire', 'make a fire escape plan for my family', ['escape', 'plan', 'family']),
+            ('how to light a fire in the woods', 'how to avoid starting a fire in the woods', ['avoid', 'woods']),
+            ('starting a fire with wet wood', 'what is the risk of starting a fire with a space heater', ['risk', 'heater']),
+            ('how to build a campfire', 'what can cause my dryer to start a fire', ['cause', 'dryer']),
+            ('making a fire in the rain', 'fire safety when making a fire indoors', ['safety', 'indoors']),
+            ('how do i make the water safe to drink', 'how do i treat water intoxication', ['intoxication']),
+            ('treat water with bleach', 'how do i treat water poisoning', ['poisoning']),
+            ('purify water from a creek', 'how do i treat water in the lungs', ['lungs']),
+            ('how do i make the water safe', 'how do i treat a water overdose', ['overdose']),
+        ]
+        for how_to, other, keep in pairs:
+            self.assertTrue(helper(how_to), how_to)                         # the how-to still gets the manuals' words
+            self.assertEqual(helper(other), set(), other)                   # its counterpart does not
+            self.assertTrue(set(keep) <= set(words(other)), (other, words(other)))
+        for q in ('how to make a fire with a bow drill', 'start a fire without matches'):
+            self.assertTrue(helper(q), q)                                   # a bow drill makes fire
+        self.assertEqual(helper('how to run a fire drill at home'), set())   # no phrase there anyway
+        self.assertEqual(helper('make a fire for the evacuation drill'), set())
+
+    def test_water_damage_is_a_flooded_home(self):
+        for q in ('how do i treat water damage in my house', 'fix the water-damaged wall', 'water damage'):
+            groups = server.query_groups(q)[1]
+            self.assertIn('mold', groups[0], q)
+            self.assertNotIn(['treat'], groups, q)        # the verb goes with the phrase: no page has to say "treat"
+        self.assertNotIn('mold', [w for g in server.query_groups('our basement has flood damage')[1] for w in g])
 
 
 class NothingGoesOut(unittest.TestCase):

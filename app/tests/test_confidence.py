@@ -41,7 +41,7 @@ WEAK = ([hit('z1', 'Tools and Their Uses', 'a hammer and a saw')],
         {'groups': [['zebra'], ['cellar'], ['tomato']], 'strict': 0, 'any_word': True, 'bm25': [-1.5], 'semantic': False})
 
 
-SWITCHES = ('LASTBOOK_CONF', 'LASTBOOK_BODY_', 'LASTBOOK_TYPO_', 'LASTBOOK_AI_')
+SWITCHES = ('LASTBOOK_CONF', 'LASTBOOK_BODY_', 'LASTBOOK_TYPO_', 'LASTBOOK_AI_', 'LASTBOOK_MEANING_RED', 'LASTBOOK_WIKI_URGENT')
 
 
 def clean_env(test):
@@ -183,6 +183,17 @@ class Signals(unittest.TestCase):
                   'colour is grey and ashen', 'blood is pouring out'):
             self.assertTrue(confidence.urgent(q), q)
 
+    def test_injury_words(self):
+        """INJURY: the injury words of URGENT, for server.PHRASES' how-to phrases (docs/TRIAGE-SEARCH.md, section 8)."""
+        for q in ('treat water in the lungs after drowning', 'he is not breathing, start a fire for warmth', 'burned my hand lighting a fire',
+                  'carbon monoxide from making a fire in the tent', 'light a fire to keep him warm with hypothermia',
+                  'he got an electric shock', 'smoke inhalation from lighting a fire indoors', 'a second degree burn on his arm',
+                  'the baby fell off the bed', 'how do i treat water poisoning'):
+            self.assertTrue(confidence.injury(q), q)
+        for q in ('how do i light a campfire', "how to make the water safe for a baby's formula", 'cut kindling', 'a fire without much smoke',
+                  'wood that burns longer', 'start a fire with no matches and no gas', '', None):
+            self.assertFalse(confidence.injury(q), q)
+
     def test_everyday_idioms_are_not_urgent(self):
         for q in ('how to bleed brakes on a bike', 'blood orange marmalade', 'a breath of fresh air', 'feeling blue lately',
                   'stroke of luck', 'two stroke oil', 'drowning in paperwork', 'the tent collapsed in the storm',
@@ -192,6 +203,39 @@ class Signals(unittest.TestCase):
         for q in ('bad breath and now he cant breathe', 'blood orange juice and now hes bleeding from the nose',
                   'feeling blue and his lips are blue', 'the tent collapsed on him and he is not breathing'):
             self.assertTrue(confidence.urgent(q), q)                         # the rest of the question still counts
+
+
+class IsDanger(unittest.TestCase):
+    """assistant.is_danger: the urgent words (as typed or put right) or a danger button, or else the meaning check; the meaning
+    check's own tests are in test_meaning_red."""
+
+    def setUp(self):
+        clean_env(self)
+        self.a = own_assistant(self)
+
+    def test_words_and_buttons(self):
+        for q in ("my son isn't breathing", 'he has been poisoned', 'Poison', 'burn', 'FIRE', 'Heavy bleeding', 'Not breathing'):
+            self.assertTrue(self.a.is_danger(q), q)
+        for q in ('how do i purify water', 'how to build a root cellar', '', None):
+            self.assertFalse(self.a.is_danger(q), q)
+
+    def test_as_typed_or_put_right(self):
+        with mock.patch.object(self.a.typos, 'correct', lambda q: q.replace('braething', 'breathing')):
+            self.assertTrue(self.a.is_danger('he isnt braething'))
+
+    def test_english_words_count_too(self):
+        self.assertFalse(self.a.is_danger('mi hijo no respira'))
+        self.assertTrue(self.a.is_danger('mi hijo no respira', 'my son is not breathing'))
+
+    def test_the_meaning_check_only_adds(self):
+        info = {}
+        self.assertTrue(self.a.is_danger("he isn't breathing", meaning=info))
+        self.assertEqual((info['words'], info['fired']), (True, False))        # not started here: the words alone decide
+        yes = lambda t: {'score': 0.1, 'fired': True, 'state': 'ready'}
+        with mock.patch.object(self.a.meaning_red, 'check', yes):
+            info = {}
+            self.assertTrue(self.a.is_danger('how do i purify water', meaning=info))
+            self.assertEqual((info['words'], info['fired']), (False, True))
 
 
 class BodySigns(unittest.TestCase):
@@ -355,14 +399,57 @@ class ChatConfidence(unittest.TestCase):
             self.addCleanup(p.stop)
         self.hits = [hit('w1', 'Purify Water', 'boil it')]
 
-    def run_chat(self, question, level, danger=False, p=None, body=(), unknown=False, messages=None):
+    def run_chat(self, question, level, danger=False, p=None, body=(), unknown=False, messages=None, wiki=False):
         p = {'sure': 0.9, 'buttons': 0.5, 'unsure': 0.1}[level] if p is None else p
         info = {'danger': danger, 'body': list(body),
                 'confidence': dict({'p': p, 'mode': 'keyword', 'level': level}, **({'unknown_words': True} if unknown else {}))}
         events = []
         with mock.patch.object(self.a, 'question_hits', lambda *a, **k: (self.hits, dict(info))):
-            self.a.chat(messages or [{'role': 'user', 'content': question}], None, events.append, lambda: False)
+            self.a.chat(messages or [{'role': 'user', 'content': question}], None, events.append, lambda: False, wiki=wiki)
         return {e['type']: e for e in events}, events
+
+    def test_encyclopedia_articles_of_an_urgent_question_are_left_out(self):
+        asked = []
+        art = {'title': 'Water purification', 'zim': 'appropedia_en_all_maxi_2026-02.zim', 'article': 'Water_purification',
+               'zim_key': 'zim/appropedia_en_all_maxi_2026-02.zim/Water_purification', 'excerpt': 'Boil water for one minute.'}
+
+        def wiki(q, **k):
+            asked.append(q)
+            return [dict(art)]
+        with mock.patch.object(self.a, 'first_wiki', wiki):
+            ev, _ = self.run_chat('how do i purify water', 'sure')          # an everyday question: searched, as before
+            self.assertEqual((len(asked), ev['found']['count']), (1, 2))
+            self.assertTrue([m for m in self.rounds[0] if 'Encyclopedia article' in (m['content'] or '')])
+            self.assertNotIn('wiki_offer', ev)
+            # urgent: the encyclopedias are not searched at all; the manuals have the first results
+            asked.clear()
+            self.rounds.clear()
+            ev, _ = self.run_chat('he is not breathing', 'sure', danger=True)
+            self.assertEqual(asked, [])
+            self.assertEqual(ev['found']['count'], 1)
+            self.assertFalse([m for m in self.rounds[0] if 'Encyclopedia article' in (m['content'] or '')])
+            self.assertNotIn('wiki_offer', ev)                              # no encyclopedias installed: nothing to offer
+            with mock.patch.object(self.a.encyclopedias, 'list_files', lambda root=None: ['x.zim']):
+                ev, _ = self.run_chat('he is not breathing', 'sure', danger=True)
+                self.assertIn('wiki_offer', ev)                             # "Not an emergency? Add the encyclopedias"
+                ev, _ = self.run_chat('how do i purify water', 'sure')
+                self.assertNotIn('wiki_offer', ev)
+                # the button, or the chat setting: the same question, and the articles come back; nothing else changes
+                asked.clear()
+                ev, _ = self.run_chat('he is not breathing', 'sure', danger=True, wiki=True)
+                self.assertEqual(len(asked), 1)
+                self.assertNotIn('wiki_offer', ev)
+                self.assertEqual(ev['found']['count'], 2)
+                os.environ['LASTBOOK_WIKI_URGENT'] = '1'                    # the same for every client
+                asked.clear()
+                ev, _ = self.run_chat('he is not breathing', 'sure', danger=True)
+                self.assertEqual((len(asked), ev['found']['count']), (1, 2))
+
+    def test_wiki_skipped(self):
+        self.assertTrue(self.a.wiki_skipped(True))
+        self.assertFalse(self.a.wiki_skipped(False))
+        self.assertFalse(self.a.wiki_skipped(True, wiki=True))
+        self.assertFalse(self.a.wiki_skipped(None))
 
     def test_sure_answers_as_before(self):
         ev, _ = self.run_chat('how do i purify water', 'sure')

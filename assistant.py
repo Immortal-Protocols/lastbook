@@ -10,6 +10,7 @@ from engine import encyclopedias
 from engine.paths import ro_uri
 from engine import page_tables, sections
 from engine import typos    # spelling mistakes in search questions
+from engine import wiki_pick    # encyclopedia articles by their best section
 
 import os
 from engine.model_server import LOOPBACK, loopback_base, model_open   # noqa: F401  (LOOPBACK and model_open: also used by the tests)
@@ -263,6 +264,51 @@ def encyclopedia_hits(q, limit=encyclopedias.INITIAL_LIMIT, excerpt=encyclopedia
     except Exception as e:
         print(f'encyclopedia search: {type(e).__name__}', flush=True)
         return []
+
+
+def first_wiki(q, root=None):
+    """The encyclopedia articles for Chat's first results, by their best section (engine/wiki_pick.py), searched for the
+    question with its typos put right (engine/typos.py). The plain encyclopedia_hits when that fails or
+    LASTBOOK_WIKI_PICK=0. Never raises."""
+    if os.environ.get('LASTBOOK_WIKI_PICK') != '0':
+        try:
+            return wiki_pick.pick(typos.correct(q), root=root)
+        except Exception as e:
+            print(f'encyclopedia pick: {type(e).__name__}', flush=True)
+    return encyclopedia_hits(q, limit=encyclopedias.INITIAL_LIMIT, excerpt=encyclopedias.INITIAL_CHARS, root=root)
+
+
+LIBRARY_RESULTS = 'Initial library search results for the latest question (already retrieved — search again only if these are not enough; use read_pages or read_encyclopedia to check exact wording):\n\n'
+WIKI_RESULTS = 'Encyclopedia articles for the latest question, from a separate search beside the library (community-written background: prefer the library results above for safety-critical steps; use read_encyclopedia to check exact wording):\n\n'
+WIKI_ALONE = 'The library search found nothing; these encyclopedia articles were found beside it (community-written background; use read_encyclopedia to check exact wording):\n\n'
+NOTHING_FOUND = 'An initial library search for the latest question found nothing. Try other wording once, or search_encyclopedia; if still nothing, say the library does not cover it.'
+
+
+def initial_messages(sess, hits, wiki):
+    """The system messages that carry Chat's first results. The library's pages and the encyclopedia articles stay in
+    two messages, each in its own order: they come from two searches whose scores mean different things."""
+    lib = []
+    for n, h in enumerate(hits):
+        body = h['excerpt']
+        if n < 4 and h['kind'] == 'pdf' and h.get('page'):  # whole page for the best few, so a second read is rarely needed
+            r = S.catalog()['by_id'][h['doc_id']]
+            ps = S.page_texts(r)
+            if 0 < h['page'] <= len(ps):
+                body = page_body(ps[h['page'] - 1], 3200)
+        lib.append(_src_block(sess.add(h), h, body))
+    art = []
+    for it in wiki:
+        src = wiki_row(it)
+        art.append(_src_block(sess.add(src), src, '(Encyclopedia article: community-written, background only; prefer a manual '
+                              'for safety-critical steps when both exist.)\n' + (it.get('excerpt') or src['excerpt'])))
+    msgs = []
+    if lib:
+        msgs.append({'role': 'system', 'content': LIBRARY_RESULTS + '\n\n'.join(lib)})
+    if art:
+        msgs.append({'role': 'system', 'content': (WIKI_RESULTS if lib else WIKI_ALONE) + '\n\n'.join(art)})
+    if not msgs:
+        msgs.append({'role': 'system', 'content': NOTHING_FOUND})
+    return msgs
 
 
 # ------------------------------------------------------------------- tools --
@@ -634,26 +680,8 @@ def chat(messages, about, emit, cancelled):
     question = next((m['content'] for m in reversed(messages) if m.get('role') == 'user' and isinstance(m.get('content'), str)), '')
     if question and not about:
         hits = hybrid(question[:300], 8)
-        wiki = encyclopedia_hits(question[:300], limit=encyclopedias.INITIAL_LIMIT, excerpt=encyclopedias.INITIAL_CHARS)
-        blocks = []
-        for n, h in enumerate(hits):
-            body = h['excerpt']
-            if n < 4 and h['kind'] == 'pdf' and h.get('page'):  # whole page for the best few, so a second read is rarely needed
-                r = S.catalog()['by_id'][h['doc_id']]
-                ps = S.page_texts(r)
-                if 0 < h['page'] <= len(ps):
-                    body = page_body(ps[h['page'] - 1], 3200)
-            blocks.append(_src_block(sess.add(h), h, body))
-        if wiki:
-            blocks.append('Encyclopedia articles (community-written — background only; prefer a manual for safety-critical steps when both exist):')
-            for it in wiki:
-                src = wiki_row(it)
-                body = it.get('excerpt') or src['excerpt']
-                blocks.append(_src_block(sess.add(src), src, body))
-        if blocks:
-            msgs.append({'role': 'system', 'content': 'Initial library search results for the latest question (already retrieved — search again only if these are not enough; use read_pages or read_encyclopedia to check exact wording):\n\n' + '\n\n'.join(blocks)})
-        else:
-            msgs.append({'role': 'system', 'content': 'An initial library search for the latest question found nothing. Try other wording once, or search_encyclopedia; if still nothing, say the library does not cover it.'})
+        wiki = first_wiki(question[:300])
+        msgs.extend(initial_messages(sess, hits, wiki))
         emit({'type': 'found', 'count': len(hits) + len(wiki)})
     if sess.sources:
         emit({'type': 'sources', 'sources': list(sess.sources.values())})

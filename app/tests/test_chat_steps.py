@@ -721,5 +721,27 @@ class StopKeepsSources(unittest.TestCase):
         self.assertEqual(got, [['S1'], ['S1'], [], [], []])
 
 
+SHELF = r"""
+const fs = require('fs');
+const chat = fs.readFileSync(process.argv[1], 'utf8');
+const i = chat.indexOf('const isWiki'), j = chat.indexOf('\n  function srcHref');
+const byShelf = new Function(chat.slice(i, j) + '\nreturn byShelf;')();
+const [lib, wiki] = byShelf(JSON.parse(process.argv[2]));
+process.stdout.write(JSON.stringify([lib.map(s => s.key), wiki.map(s => s.key)]));
+"""
+
+
+@unittest.skipUnless(NODE, 'needs Node')
+class Shelves(unittest.TestCase):
+    """The library's pages and the encyclopedia articles are shown apart, each keeping its own order."""
+
+    def test_encyclopedia_articles_are_split_from_library_pages(self):
+        rows = [{'key': 'S1', 'kind': 'pdf'}, {'key': 'S2', 'kind': 'zim', 'zim': 'zim/x.zim/A'}, {'key': 'S3', 'kind': 'html'},
+                {'key': 'S4', 'kind': 'video'}, {'key': 'S5', 'zim': 'zim/x.zim/B'}, {'key': 'M1', 'kind': 'place'}]
+        r = subprocess.run([NODE, '-e', SHELF, str(ROOT / 'web/chat.js'), json.dumps(rows)],
+                           capture_output=True, text=True, check=True, encoding='utf-8')
+        self.assertEqual(json.loads(r.stdout), [['S1', 'S3', 'S4', 'M1'], ['S2', 'S5']])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -403,7 +403,7 @@ const Chat = (() => {
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
       else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
-      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
+      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page && s.kind === 'html' ? `section ${s.page}` : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';   // a long web page is cited by section (engine/sections.py)
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
         ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}

@@ -85,7 +85,8 @@ Numbers (measured on the author's fork):
 | Sections + typo correction + conversation handling | 26 → 4 (both modes); typo questions' useful pages 2.23 → 4.72 of 8 (kw) |
 | Build on the test data folder | 351 pages → 7,623 sections in 4.2 s, at most 1,890 sections in one page (read from the file's `meta` and `long` tables) |
 
-Rerun: `tools/search_eval/score.py --rows` before and after, and count the questions whose top 8 hold that book.
+Rerun: `tools/search_eval/score.py --rows` before, and `--rows --sections <scratch folder>` after, and count the questions whose
+top 8 hold that book.
 The mean hybrid search time per question over the triage set was 0.67 s on the fork; a before/after time for the long
 pages alone was not stored.
 
@@ -523,8 +524,8 @@ bge-small-en-v1.5 in `derived/models/` and, for hybrid runs, a meaning index bui
 uses an index built by main's own indexer (338,910 passages); the measurements of sections 1-10 were made earlier on the
 author's fork, against its own index (337,016 passages). `tools/search_eval/baseline-files.md` identifies every file.
 The scorer reads the data folder and never writes it: it opens the meaning index read-only (immutable when no
-write-ahead log is pending), never truncates `vectors.f16`, refuses the sections build (from PR 2 on), and starts no
-indexer and no local model.
+write-ahead log is pending), never truncates `vectors.f16`, never builds or removes a sections file there (`--sections <folder>`,
+from PR 2 on, keeps it in another folder), and starts no indexer and no local model.
 
 **Commands** (from the repository root):
 

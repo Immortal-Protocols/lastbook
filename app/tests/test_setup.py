@@ -316,7 +316,9 @@ class Allowlist(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertTrue(m['models'] and m['packs'])
 
-    def test_model_offered_is_the_largest_that_fits_the_memory(self):
+    def test_model_offered_is_the_largest_that_fits_with_room_to_spare(self):
+        """hardware.choose_model on one shared memory (no graphics card here): the largest whose need leaves a third of it free,
+        else the largest that fits, else the smallest."""
         def model(mid, memory):
             return {'id': mid, 'file': mid + '.gguf', 'url': 'https://huggingface.co/m', 'size': 1, 'sha256': '1' * 64,
                     'memory_bytes': memory, 'available': True}
@@ -324,10 +326,21 @@ class Allowlist(unittest.TestCase):
         m = manifest.Manifest(bundled=manifest.validate({'version': 1, 'published': '2026-11-15', 'packs': [
             {'id': 'small', 'available': True, 'installed_bytes': 5, 'files': [{'name': 'a.zip', 'url': 'https://downloads.lastbook.org/a.zip', 'size': 1, 'sha256': '0' * 64}]}],
             'models': [model('big', 19 * GiB), model('small', 6 * GiB)]}), remote=None)
-        for ram, want in ((96 * GiB, 'big'), (22 * GiB, 'big'), (21 * GiB, 'small'), (15 * GiB, 'small'), (4 * GiB, 'small'), (None, 'small')):
-            with mock.patch.object(hardware, 'ram_bytes', lambda ram=ram: ram):
+        # big needs 21.5 GiB with the reserve: it fits from 21.5 GiB, and leaves a third free from 32.25 GiB
+        for ram, want in ((96 * GiB, 'big'), (40 * GiB, 'big'), (22 * GiB, 'small'), (21 * GiB, 'small'), (15 * GiB, 'small'),
+                          (4 * GiB, 'small'), (None, 'small')):
+            with mock.patch.object(hardware, 'ai_machine', lambda ram=ram: {'ram_bytes': ram, 'gpu_bytes': 0}):
                 self.assertEqual(m.model()['id'], want, ram)
         self.assertEqual(m.model('big')['id'], 'big')
+
+    def test_choose_model_falls_back_to_the_largest_that_fits(self):
+        """Nothing leaves a third free: the largest that fits, not the smallest."""
+        GiB = 2 ** 30
+        ms = [{'id': 'big', 'memory_bytes': 19 * GiB}, {'id': 'mid', 'memory_bytes': 9 * GiB}, {'id': 'small', 'memory_bytes': 6 * GiB}]
+        self.assertEqual(hardware.choose_model(ms, 16 * GiB, 0)['id'], 'small')    # small needs 8.5 of 16: roomy
+        self.assertEqual(hardware.choose_model(ms, 12 * GiB, 0)['id'], 'mid')      # 11.5 fits; nothing is roomy
+        self.assertEqual(hardware.choose_model(ms, 8 * GiB, 0)['id'], 'small')     # nothing fits: the smallest
+        self.assertIsNone(hardware.choose_model([], 8 * GiB, 0))
 
     def test_model_fit_counts_a_discrete_gpu(self):
         # wonderdawg's PR 9 case: 16 GiB of RAM plus a 12 GiB dedicated card runs the 26B; RAM alone would pick the E4B.

@@ -51,7 +51,7 @@ allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is 
 
 | Component | Version | Licence | Source | Checked |
 |---|---|---|---|---|
-| Gemma 4 26B A4B instruct, GGUF quantization by Unsloth (`gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`) | revision pinned in `llm_local.py` | Apache-2.0, per the model card | https://huggingface.co/unsloth (Google's Gemma 4 release) | Upstream: check the model card and its licence file before release |
+| Gemma 4 instruct models, GGUF quantizations by Unsloth, the one setup picks: 26B A4B (`gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`, `gemma-4-26B-A4B-it-UD-IQ3_S.gguf`), 12B (`gemma-4-12b-it-UD-Q4_K_XL.gguf`), E4B (`gemma-4-E4B-it-Q4_K_M.gguf`), E2B (`gemma-4-E2B-it-UD-Q4_K_XL.gguf`) | revisions pinned in `llm_local.py` (`MODELS`) | Apache-2.0, per the model cards | https://huggingface.co/unsloth (Google's Gemma 4 release) | Upstream: check each model card and its licence file before release |
 | BAAI bge-small-en-v1.5 (ONNX), meaning-based search | as pinned | MIT, per the model card | https://huggingface.co/BAAI/bge-small-en-v1.5 | Upstream: the local copy has no licence file beside it |
 
 ## Development and test tools (not bundled, not downloaded by the apps)

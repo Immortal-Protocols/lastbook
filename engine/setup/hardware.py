@@ -333,6 +333,22 @@ def in_ram_bytes(memory_bytes, gpu_bytes):
     return int(max(memory_bytes - max(gpu_bytes - VRAM_KEPT, 0), 0) + RESERVE)
 
 
+ROOMY = 2 / 3       # on one shared memory, the default model leaves a third of it for the system, the browser and the rest
+
+
+def choose_model(models, ram, gpu_bytes):
+    """The one rule setup and the runtime use to pick a model (models listed largest first, each with memory_bytes).
+    The largest that fits; but where the model shares the computer's one memory (Apple silicon, or no graphics card), the
+    largest that leaves a third of it free, if one does: a model that fits with little to spare slows the whole computer.
+    If none fits, the smallest, so that setup can say what the smallest needs. None if there are no models."""
+    if not models:
+        return None
+    need = {id(m): in_ram_bytes(m['memory_bytes'], gpu_bytes) for m in models}
+    fits = [m for m in models if ram and need[id(m)] <= ram]
+    roomy = [m for m in fits if need[id(m)] <= ROOMY * ram] if not gpu_bytes else []
+    return (roomy or fits or models[-1:])[0]
+
+
 def ai_machine():
     """The memory facts a model fit needs: the computer's RAM and the dedicated graphics memory it can spend (0 on Apple silicon)."""
     d = detect()

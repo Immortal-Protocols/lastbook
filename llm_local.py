@@ -22,17 +22,30 @@ from pathlib import Path
 
 from engine import paths
 
-# The models Lastbook knows, largest first. Setup offers the first one this computer has the memory for (engine/setup/manifest.py).
+# The models Lastbook knows, largest first. Setup offers the one engine/setup/hardware.choose_model picks for this computer.
 # memory_bytes: what lastbook-llm --measure reports for the model and a CTX context (device_bytes + host_bytes), before RESERVE.
 MODELS = (
     {'id': 'gemma-4-26b-a4b', 'title': 'Gemma 4 26B A4B', 'file': 'gemma-4-26B-A4B-it-UD-Q4_K_M.gguf', 'size': 16_947_541_728,
      'sha256': 'f2c28b3dc4776931ac6f879e11f203dec637ea0f14267a86ec8f6165f63f293f', 'memory_bytes': 18_160_150_464 + 867_233_792,
      'name': 'Gemma 4 26B A4B (Unsloth 4-bit, UD-Q4_K_M)',
      'source': 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a94ffccb261841'},
+    # memory_bytes of the next two and of the E2B: what judge() counts in memory on Linux x86_64, CPU only, at CTX (20 Nov 2026)
+    {'id': 'gemma-4-26b-a4b-q3', 'title': 'Gemma 4 26B A4B, 3-bit', 'file': 'gemma-4-26B-A4B-it-UD-IQ3_S.gguf', 'size': 11_289_671_136,
+     'sha256': '878be93f9c238ea853b3fd1eb602637ce3cf1cddea56dc345d9a7bf2d6093e29', 'memory_bytes': 12_523_875_808,
+     'name': 'Gemma 4 26B A4B (Unsloth 3-bit, UD-IQ3_S)',
+     'source': 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a94ffccb261841'},
+    {'id': 'gemma-4-12b', 'title': 'Gemma 4 12B', 'file': 'gemma-4-12b-it-UD-Q4_K_XL.gguf', 'size': 7_366_423_360,
+     'sha256': '90fd944d227e9d9b68e7e2c7d5b57b79d4c66ed521b0919fbbd932cf834f6f8e', 'memory_bytes': 8_740_612_928,
+     'name': 'Gemma 4 12B (Unsloth 4-bit, UD-Q4_K_XL)',
+     'source': 'unsloth/gemma-4-12b-it-GGUF, revision fc034cfff751157913579611efad8462ac1be606'},
     {'id': 'gemma-4-e4b', 'title': 'Gemma 4 E4B', 'file': 'gemma-4-E4B-it-Q4_K_M.gguf', 'size': 4_977_171_584,
      'sha256': '85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87', 'memory_bytes': 6_307_922_592,
      'name': 'Gemma 4 E4B (Unsloth 4-bit, Q4_K_M)',
      'source': 'unsloth/gemma-4-E4B-it-GGUF, revision bfc15c382204943c3a8fff0c750b94ae2364d7a3'},
+    {'id': 'gemma-4-e2b', 'title': 'Gemma 4 E2B', 'file': 'gemma-4-E2B-it-UD-Q4_K_XL.gguf', 'size': 3_184_496_736,
+     'sha256': 'b52f438017efaec5debf1c0d8be690571e212a07c312f1102bbce927258cfc32', 'memory_bytes': 3_886_551_136,
+     'name': 'Gemma 4 E2B (Unsloth 4-bit, UD-Q4_K_XL)',
+     'source': 'unsloth/gemma-4-E2B-it-GGUF, revision 0314792d7f1f7e229411f620751375812bb9faf2'},
 )
 CTX = 16384               # tokens the model holds: the system prompt, sources, the conversation and the answer
 RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook beyond what llama.cpp measures for the model
@@ -76,6 +89,16 @@ def _in_ram(memory_bytes, gpu_bytes):
         return in_ram_bytes(memory_bytes, gpu_bytes)
     except Exception:
         return memory_bytes + RESERVE
+
+
+def _choose(models, ram, gpu_bytes):
+    """Setup's own rule (engine/setup/hardware.choose_model), so the runtime runs the model setup offered; the largest that
+    fits when the setup package is not here."""
+    try:
+        from engine.setup.hardware import choose_model
+        return choose_model(models, ram, gpu_bytes)
+    except ImportError:
+        return next((m for m in models if ram and _in_ram(m['memory_bytes'], gpu_bytes) <= ram), models[-1])
 
 
 def places():
@@ -208,12 +231,11 @@ class Local:
                     break
                 wrong = wrong or (p, size, m)
         if cands:
-            # Both files can sit on one computer; setup offered the one that fits the
-            # memory. Apply setup's own rule here (the largest found that fits, else the
-            # smallest), so the runtime honors what setup chose instead of the first file.
+            # Several files can sit on one computer; setup offered one of them. Apply setup's own rule here
+            # (engine/setup/hardware.choose_model), so the runtime honors what setup chose instead of the first file.
             ram, gpu_bytes = _fit_facts()
-            fitting = [c for c in cands if ram and _in_ram(c[0]['memory_bytes'], gpu_bytes) <= ram]
-            model, found = (fitting or cands[-1:])[0]
+            model = _choose([m for m, _ in cands], ram, gpu_bytes)
+            found = next(p for m, p in cands if m is model)
         if not found:
             with self.lock:
                 if not self.enabled():
@@ -677,6 +699,7 @@ def hide_thinking(text):
     if '<channel|>' in t:
         t = t.rsplit('<channel|>', 1)[1]
     return t
+
 
 def size_of(segments):
     """A rough count of tokens, on the high side: about 3.2 characters a token for English text."""

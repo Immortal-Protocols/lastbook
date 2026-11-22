@@ -25,7 +25,7 @@ What goes in (nationwide, about 230k rows, conf 0.95):
 Why: OSM is thin in suburbs, and these are the places people go in a long blackout (schools and churches become shelters,
 libraries are warming/cooling centres, hospitals and nursing homes have generators, medicine and vulnerable people).
 Personal data is dropped: only a class, a clean name and a point are kept (no addresses, phone numbers or contacts). A side
-table `detail` keeps a little game data per row as JSON (hospital beds/trauma/type/helipad, shelter capacity/generator,
+table `detail` keeps a little game data per row as JSON (hospital beds/trauma/type/helipad/er = confirmed emergency department, shelter capacity/generator,
 nursing home certified beds, school public/private).
 
 Same place table as tools/build_places_overture.py so game/serve.py can merge it. Raw files live in
@@ -292,6 +292,25 @@ def nursing_homes():
             yield 'nursing_home', r['provider_name'], la, lo, {'beds': int(float(beds))} if beds.strip() else {}
 
 
+def hospital_er(typ, trauma):
+    """'yes' when HIFLD itself confirms an emergency department, else None (unknown).
+
+    Confirmed: a designated trauma level (every trauma centre runs one) or a CMS critical access hospital (the
+    rules for that status require 24-hour emergency care). Other types, general acute care included, do not say,
+    so they stay unknown. HIFLD never says that a hospital has none, so this never returns 'no'.
+    """
+    if (trauma or '').upper().startswith('LEVEL') or (typ or '').strip().upper() == 'CRITICAL ACCESS':
+        return 'yes'
+    return None
+
+
+def hospital_detail(typ, beds, trauma, heli):
+    d = {'type': (typ or '').lower() or None, 'beds': int(beds) if beds and beds > 0 else None,
+         'trauma': trauma if trauma and trauma.upper().startswith('LEVEL') else None, 'helipad': heli == 'Y' or None,
+         'er': hospital_er(typ, trauma)}
+    return {k: v for k, v in d.items() if v}
+
+
 def hospitals():
     con = duckdb.connect()
     files = f"{SRC / 'hifld/hospitals'}/*.parquet"
@@ -299,9 +318,7 @@ def hospitals():
             WHERE coalesce(STATUS, '') <> 'CLOSED'"""
     for name, la, lo, beds, trauma, typ, heli, zc in con.execute(q).fetchall():
         if ok(la, lo) and near_zip(la, lo, zc):
-            d = {'type': (typ or '').lower() or None, 'beds': int(beds) if beds and beds > 0 else None,
-                 'trauma': trauma if trauma and trauma.upper().startswith('LEVEL') else None, 'helipad': heli == 'Y' or None}
-            yield 'hospital', name, la, lo, {k: v for k, v in d.items() if v}
+            yield 'hospital', name, la, lo, hospital_detail(typ, beds, trauma, heli)
 
 
 def shelters():

@@ -5,7 +5,9 @@ The map set shipped with Lastbook is Southern California, built from the US gove
 Geofabrik extract. This tool does the same job from a single .osm.pbf for any region: towns, villages,
 islands and named places go into `places.sqlite` (with the FTS index the place finder reads), and hospitals,
 clinics, pharmacies, police, fire stations, drinking water, shelters, camp sites, fuel and supermarkets go
-into the `poi` table of `national.sqlite`, which the map draws and the assistant can cite.
+into the `poi` table of `national.sqlite`, which the map draws and the assistant can cite. A hospital keeps its
+emergency-department status in `poi.er`: `yes` (OSM `emergency=yes`), `no` (`emergency=no`) or NULL (no tag, so
+unknown). Unknown is never read as yes or as no.
 
 Every region writes into its own directory (`derived/geo/regions/<region>/` by default), holding one
 `places.sqlite` and one `national.sqlite`. Nothing outside that directory is read or written, so a regional
@@ -88,6 +90,17 @@ def poi_class(tags):
     return None
 
 
+def er_status(tags):
+    """Whether a hospital has an emergency department: 'yes', 'no', or None when the map data does not say.
+
+    Only an explicit `emergency=yes` or `emergency=no` on a hospital counts. A missing tag is unknown, not no:
+    most hospitals are not tagged, and a hospital pin alone does not confirm an emergency department.
+    """
+    if tags.get('amenity') != 'hospital':
+        return None
+    return {'yes': 'yes', 'no': 'no'}.get(tags.get('emergency', '').strip().lower())
+
+
 def ring_centroid(points):
     """Area-weighted centroid of a closed ring of (lon, lat); mean of the points when the ring is degenerate."""
     pts = points[:-1] if len(points) > 1 and points[0] == points[-1] else points
@@ -143,7 +156,7 @@ class Extract(osmium.SimpleHandler):
         cls = poi_class(tags)
         if cls:
             # Unnamed help points are kept: an unnamed water tank or clinic is still worth knowing about.
-            self.pois.append((cls, name or '', lon, lat))
+            self.pois.append((cls, name or '', lon, lat, er_status(tags)))
         return bool(cls)
 
     def node(self, n):
@@ -217,6 +230,8 @@ def open_dbs(out, fresh, region, want_poi=True):
         return pdb, None
     ndb = sqlite3.connect(national)
     ndb.executescript('CREATE TABLE IF NOT EXISTS poi(id INTEGER PRIMARY KEY, cls TEXT, name TEXT, lon REAL, lat REAL);')
+    if 'er' not in [c[1] for c in ndb.execute('PRAGMA table_info(poi)')]:
+        ndb.execute('ALTER TABLE poi ADD COLUMN er TEXT')  # 'yes' / 'no' / NULL = unknown (hospitals only)
     unique(ndb, 'poi', 'cls,name,lon,lat')
     for db in (pdb, ndb):
         db.executescript('CREATE TABLE IF NOT EXISTS build_meta(key TEXT PRIMARY KEY, value TEXT);')
@@ -268,7 +283,8 @@ def main():
     pdb.execute("INSERT INTO place_fts(place_fts) VALUES ('rebuild')")
     pdb.commit()
     if ndb is not None:
-        ndb.executemany('INSERT OR IGNORE INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)', h.pois)
+        ndb.executemany('INSERT INTO poi(cls,name,lon,lat,er) VALUES (?,?,?,?,?) '
+                        'ON CONFLICT(cls,name,lon,lat) DO UPDATE SET er=excluded.er', h.pois)
         ndb.commit()
     if bbox and not (h.places or h.pois):
         print('warning: nothing matched --bbox — it is west,south,east,north (lon first), not lat,lon',

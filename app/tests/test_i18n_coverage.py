@@ -1,4 +1,4 @@
-"""Hard-coded web and Setup chrome should not regress once those surfaces are wired."""
+"""Hard-coded UI chrome should not regress: every user-visible string is catalogued."""
 import sys
 import unittest
 from pathlib import Path
@@ -6,12 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'packaging'))
 import i18n_scan as scan  # noqa: E402
-
-
-def _is_later_surface(loc):
-    later = ('shell_linux.py', 'shell_macos.py', 'shell_windows.py', 'main.py',
-             'lastbook_setup.py', 'lastbook.desktop', 'native/')
-    return any(part in loc for part in later)
 
 
 class Coverage(unittest.TestCase):
@@ -22,28 +16,23 @@ class Coverage(unittest.TestCase):
         cls.hits = scan.scan_web() + scan.scan_python()
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
-        cls.web_setup_chrome = {
-            text: locs for text, locs in cls.chrome.items()
-            if any(not _is_later_surface(loc) for loc in locs)
-        }
 
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
 
-    def test_no_unique_hardcoded_web_or_setup_chrome(self):
-        leftover = {text: [loc for loc in locs if not _is_later_surface(loc)]
-                    for text, locs in self.web_setup_chrome.items()}
-        leftover = {t: locs for t, locs in leftover.items() if locs}
+    def test_no_unique_hardcoded_chrome(self):
+        leftover = {text: locs for text, locs in self.chrome.items()}
         self.assertEqual(
             leftover, {},
-            'hard-coded web or Setup chrome left untranslated:\n' + '\n'.join(
+            'hard-coded UI chrome left untranslated:\n' + '\n'.join(
                 f'  {text!r}\n    {", ".join(locs)}' for text, locs in sorted(leftover.items())
             ),
         )
 
     def test_scanner_still_classifies_surfaces(self):
+        # The inventory should keep seeing the desktop surfaces even when chrome is 0.
         self.assertGreater(self.totals['wired'], 1000)
-        self.assertGreater(self.totals['technical'], 0)
+        self.assertEqual(self.totals['chrome'], 0)
 
     def test_scanner_flattens_interpolated_templates(self):
         sample = 'live.textContent = `Hello, ${name}, welcome.`;'

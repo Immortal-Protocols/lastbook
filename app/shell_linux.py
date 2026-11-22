@@ -63,6 +63,8 @@ FEATURES_OFF = ('PeerConnectionEnabled', 'NavigationAPIEnabled', 'LinkPreconnect
                 'LinkPrefetchEnabled', 'SpeculationRulesPrefetchEnabled', 'WebSocketEnabled', 'WebTransportEnabled', 'BeaconAPIEnabled', 'PushAPIEnabled',
                 'PrivateClickMeasurementEnabled', 'SafeBrowsingEnabled')
 MENU_KEEP = {getattr(WebKit2.ContextMenuAction, n) for n in ('COPY', 'CUT', 'PASTE', 'SELECT_ALL', 'COPY_IMAGE_TO_CLIPBOARD', 'PASTE_AS_PLAIN_TEXT') if hasattr(WebKit2.ContextMenuAction, n)}
+from i18n_native import native_t
+
 STOPPED = 'A page stopped working, so it was closed.'
 TOO_BIG = 'A page was using too much memory, so it was closed.'
 GO = [('Videos', '#/videos'), ('Map', '#/map'), ('Chat', '#/ask')]
@@ -132,7 +134,7 @@ def choose_folder(title, message):
         return None
     d = Gtk.MessageDialog(message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.NONE, text=title)
     d.format_secondary_text(message)
-    d.add_buttons('Quit', Gtk.ResponseType.CANCEL, 'Choose Folder…', Gtk.ResponseType.ACCEPT)
+    d.add_buttons(native_t('native.quit', 'Quit'), Gtk.ResponseType.CANCEL, native_t('native.chooseFolder', 'Choose Folder…'), Gtk.ResponseType.ACCEPT)
     d.set_default_response(Gtk.ResponseType.ACCEPT)
     _icon(d)
     r = d.run()
@@ -174,7 +176,7 @@ def claim(lock_dir):
         _lock_file = open(os.path.join(lock_dir, 'lastbook.lock'), 'w')
         fcntl.flock(_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        show_error('Lastbook is already open.')
+        show_error(native_t('native.alreadyOpen', 'Lastbook is already open.'))
         return False
     return True
 
@@ -399,25 +401,26 @@ class Shell:
         bar = Gtk.HeaderBar(title='Lastbook', show_close_button=True)
         menu = Gio.Menu()
         go = Gio.Menu()
+        go_names = {'Videos': 'nav.videos', 'Map': 'nav.map', 'Chat': 'nav.chat'}
         for i, (name, _) in enumerate(GO):
-            go.append(name, f'win.go{i}')
+            go.append(native_t(go_names.get(name, ''), name), f'win.go{i}')
         menu.append_section(None, go)
         view = Gio.Menu()
-        view.append('Show or Hide Sidebar', 'win.sidebar')
-        view.append('Find…', 'win.find')
-        view.append('Full Screen', 'win.fullscreen')
+        view.append(native_t('native.menu.showOrHideSidebar', 'Show or Hide Sidebar'), 'win.sidebar')
+        view.append(native_t('native.menu.find', 'Find…'), 'win.find')
+        view.append(native_t('native.menu.fullScreen', 'Full Screen'), 'win.fullscreen')
         menu.append_section(None, view)
         helps = Gio.Menu()
-        helps.append('Lastbook Help', 'win.help')
-        helps.append('Check for Updates…', 'win.updates')
-        helps.append('Quit Lastbook', 'win.quit')
+        helps.append(native_t('native.menu.lastbookHelp', 'Lastbook Help'), 'win.help')
+        helps.append(native_t('native.menu.checkUpdates', 'Check for Updates…'), 'win.updates')
+        helps.append(native_t('native.menu.quitLastbook', 'Quit Lastbook'), 'win.quit')
         menu.append_section(None, helps)
         btn = Gtk.MenuButton(menu_model=menu, image=Gtk.Image.new_from_icon_name('open-menu-symbolic', Gtk.IconSize.BUTTON))
-        btn.set_tooltip_text('Menu')
+        btn.set_tooltip_text(native_t('native.menu.menu', 'Menu'))
         bar.pack_end(btn)
         nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         nav.get_style_context().add_class('linked')
-        for icon, tip, act in (('go-previous-symbolic', 'Back', 'win.back'), ('go-next-symbolic', 'Forward', 'win.forward')):
+        for icon, tip, act in (('go-previous-symbolic', native_t('native.menu.back', 'Back'), 'win.back'), ('go-next-symbolic', native_t('native.menu.forward', 'Forward'), 'win.forward')):
             b = Gtk.Button.new_from_icon_name(icon, Gtk.IconSize.BUTTON)
             b.set_tooltip_text(tip)
             b.set_action_name(act)
@@ -610,7 +613,7 @@ class Shell:
     def on_terminated(self, view, reason):
         if _restarting:     # before_exec ended it: starting a new one now would only leave it behind
             return
-        why = TOO_BIG if reason == getattr(WebKit2.WebProcessTerminationReason, 'EXCEEDED_MEMORY_LIMIT', -1) else STOPPED
+        why = native_t('native.pageTooBig', TOO_BIG) if reason == getattr(WebKit2.WebProcessTerminationReason, 'EXCEEDED_MEMORY_LIMIT', -1) else native_t('native.pageStopped', STOPPED)
         if reason == getattr(WebKit2.WebProcessTerminationReason, 'TERMINATED_BY_API', -1):
             return
         print(f'the page process ended: {reason}', flush=True)

@@ -41,17 +41,16 @@ sign_target "$DIST"
 
 cp "$HERE/icon/Lastbook.ico" "$OUTU/Lastbook.ico"
 
-cat > "$OUTU/version.txt" <<EOF
-VSVersionInfo(ffi=FixedFileInfo(filevers=(${VERSION//./, }, 0), prodvers=(${VERSION//./, }, 0)),
-  kids=[StringFileInfo([StringTable('040904B0', [StringStruct('CompanyName', 'Lastbook'), StringStruct('FileDescription', 'Lastbook Setup'),
-    StringStruct('FileVersion', '$VERSION'), StringStruct('ProductName', 'Lastbook'), StringStruct('ProductVersion', '$VERSION')])]),
-    VarFileInfo([VarStruct('Translation', [1033, 1200])])])
-EOF
+STAMP="${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
+# en-US plus es-MX (stand-in for es-419) and es-ES string tables. See packaging/windows_versioninfo.py.
+"$PY" -I -B "$HEREW\\windows_versioninfo.py" --format pyinstaller --kind setup --version "$VERSION" --stamp "$STAMP" --out "$OUT\\version-setup.txt"
+"$PY" -I -B "$HEREW\\windows_versioninfo.py" --format pyinstaller --kind uninstall --version "$VERSION" --stamp "$STAMP" --out "$OUT\\version-uninstall.txt"
 
 build() {   # name, output folder, extra PyInstaller arguments
   local name="$1" dir="$2"; shift 2
   "$PY" -I -B -m PyInstaller --noconfirm --clean --onefile --windowed --noupx --name "$name" --icon "$OUT\\Lastbook.ico" \
-    --version-file "$OUT\\version.txt" --distpath "$OUT\\$dir" --workpath "$OUT\\work-$dir" --specpath "$OUT\\work-$dir" \
+    --version-file "${VERSION_FILE}" --distpath "$OUT\\$dir" --workpath "$OUT\\work-$dir" --specpath "$OUT\\work-$dir" \
+    --add-data "$HEREW\\i18n_installer.json;." \
     --hidden-import clr --collect-all clr_loader --collect-all pythonnet \
     --exclude-module tkinter --exclude-module unittest --exclude-module pydoc --exclude-module doctest --exclude-module pdb \
     --exclude-module setuptools --exclude-module pkg_resources --exclude-module _distutils_hack --exclude-module numpy \
@@ -59,7 +58,7 @@ build() {   # name, output folder, extra PyInstaller arguments
     --exclude-module http --exclude-module xml --exclude-module _decimal \
     "$@" "$HEREW\\lastbook_setup.py"
 }
-build "Uninstall Lastbook" uninstall
+VERSION_FILE="$OUT\\version-uninstall.txt" build "Uninstall Lastbook" uninstall
 sign_target "$OUT\\uninstall\\Uninstall Lastbook.exe"
 "$PY" -I -B - "$DIST" "$OUT\\uninstall\\Uninstall Lastbook.exe" "$OUT\\Lastbook.ico" "$OUT\\payload\\app.zip" <<'ZIP'
 import os, sys, zipfile
@@ -73,7 +72,7 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     z.write(uninstaller, 'Uninstall Lastbook.exe')
     z.write(icon, 'Lastbook.ico')
 ZIP
-build "Lastbook-$VERSION-Setup" setup --add-data "$OUT\\payload\\app.zip;."
+VERSION_FILE="$OUT\\version-setup.txt" build "Lastbook-$VERSION-Setup" setup --add-data "$OUT\\payload\\app.zip;."
 sign_target "$OUT\\setup\\Lastbook-$VERSION-Setup.exe"
 
 # The front (packaging/setup_stub/lastbook_setup_stub.c): what the person runs. It allows DLLs from System32 only, then runs the
@@ -82,30 +81,7 @@ CLANG="${CLANG:?Set CLANG to the clang.exe of llvm-mingw}"
 CLANGU="$(cygpath -u "$CLANG")"; BIN="$(dirname "$CLANGU")"
 STUB="$OUTU/stub"; rm -rf "$STUB"; mkdir -p "$STUB"
 cp "$OUTU/Lastbook.ico" "$STUB/Lastbook.ico"
-cat > "$STUB/stub.rc" <<RC
-1 ICON "Lastbook.ico"
-1 VERSIONINFO
-FILEVERSION ${VERSION//./,},0
-PRODUCTVERSION ${VERSION//./,},0
-BEGIN
-  BLOCK "StringFileInfo"
-  BEGIN
-    BLOCK "040904B0"
-    BEGIN
-      VALUE "CompanyName", "Lastbook"
-      VALUE "FileDescription", "Lastbook Setup"
-      VALUE "FileVersion", "$VERSION"
-      VALUE "ProductName", "Lastbook"
-      VALUE "ProductVersion", "$VERSION"
-      VALUE "Comments", "build ${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
-    END
-  END
-  BLOCK "VarFileInfo"
-  BEGIN
-    VALUE "Translation", 0x409, 1200
-  END
-END
-RC
+"$PY" -I -B "$HEREW\\windows_versioninfo.py" --format rc --kind setup --version "$VERSION" --stamp "$STAMP" --out "$STUB/stub.rc"
 ( cd "$STUB" && "$BIN/llvm-windres" stub.rc -O coff -o stub.res )
 "$CLANGU" -O2 -s -ffreestanding -fno-stack-protector -nostdlib -mwindows -municode -Wl,-e,WinMainCRTStartup \
   "$(cygpath -m "$HERE/setup_stub/lastbook_setup_stub.c")" "$(cygpath -m "$STUB/stub.res")" -lkernel32 -luser32 -o "$(cygpath -m "$STUB/stub.exe")"

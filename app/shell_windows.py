@@ -58,6 +58,8 @@ MEMORY_EVERY = 0.1
 MEMORY_QUIET = 10   # seconds after ending a renderer before ending another: the system needs a moment to give the memory back
 WHOLE_COPIES = 11   # measured: while the runtime takes one whole answer of 476 MB, this process holds about ten times that for 2 to 3 seconds, wherever the bytes come from.
                     # Only the app's own navigation can get such an answer, and none is larger than bridge.WHOLE_MAX, or too large for half this computer's memory at that rate.
+from i18n_native import native_t
+
 TOO_BIG = 'A page was using too much memory, so it was closed.'
 
 # msOneAuthWAM: without it the runtime makes outbound connections for account sign-in even with everything else here off.
@@ -492,7 +494,7 @@ def choose_folder(title, text):
         buttons = F.FlowLayoutPanel()
         buttons.FlowDirection, buttons.AutoSize, buttons.Dock = F.FlowDirection.RightToLeft, True, F.DockStyle.Fill
         buttons.Margin = F.Padding(0)
-        for name, result in (('Quit', F.DialogResult.Cancel), ('Choose Folder…', F.DialogResult.OK)):
+        for name, result in ((native_t('native.quit', 'Quit'), F.DialogResult.Cancel), (native_t('native.chooseFolder', 'Choose Folder…'), F.DialogResult.OK)):
             b = F.Button()
             b.Text, b.AutoSize, b.DialogResult = name, True, result
             b.MinimumSize, b.Padding, b.Margin = D.Size(S(96), S(30)), F.Padding(S(10), 0, S(10), 0), F.Padding(S(8), 0, 0, 0)
@@ -563,12 +565,12 @@ def preflight():
         n = net()
     except Exception:
         traceback.print_exc()
-        return f'Lastbook could not load the files it needs to show its window.\n\nThey should be in {_lib_dir()}.'
+        return native_t('native.couldNotLoadWindowFiles', 'Lastbook could not load the files it needs to show its window.\n\nThey should be in {path}.', path=_lib_dir())
     try:
         version = n.Core.CoreWebView2Environment.GetAvailableBrowserVersionString()
     except Exception as e:
         print('WebView2 runtime check:', type(e).__name__, e, flush=True)
-        return NO_RUNTIME
+        return native_t('native.needWebView2', NO_RUNTIME)
     print('WebView2 runtime', version, flush=True)
     global RUNTIME
     RUNTIME = str(version or '')
@@ -1170,7 +1172,7 @@ class Shell:
                 ended_at = now
                 print(f'ending renderer {pid}: the web view holds {total} bytes, {sizes[pid]} of it there', flush=True)
                 note(kind='memory-limit', total=total, pid=pid, size=sizes[pid])
-                self.ended_why = TOO_BIG
+                self.ended_why = native_t('native.pageTooBig', TOO_BIG)
                 if not procs.end(pid):
                     self.ended_why = None
                     print('could not end it', ctypes.get_last_error(), flush=True)

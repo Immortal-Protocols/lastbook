@@ -28,6 +28,8 @@ LOG_LIMIT = 5 * 1024 * 1024
 LOG_BACKUPS = 3
 
 
+from i18n_native import configure as configure_i18n, native_t
+
 DATA_NAME = 'LastbookData'
 CATALOG = os.path.join('library-data', 'catalog.json')
 ASK_TITLE = 'Find your Lastbook library'
@@ -119,26 +121,26 @@ def data_folder(arg):
 def choose_folder(message):
     if sys.platform == 'darwin':
         import shell_macos
-        return shell_macos.choose_folder(ASK_TITLE, message)
+        return shell_macos.choose_folder(native_t('native.findLibraryTitle', ASK_TITLE), message)
     if sys.platform == 'win32':
         import shell_windows
-        return shell_windows.choose_folder(ASK_TITLE, message)
+        return shell_windows.choose_folder(native_t('native.findLibraryTitle', ASK_TITLE), message)
     if sys.platform.startswith('linux'):
         import shell_linux
-        return shell_linux.choose_folder(ASK_TITLE, message)
+        return shell_linux.choose_folder(native_t('native.findLibraryTitle', ASK_TITLE), message)
     show_error(message)
     return None
 
 
 def ask_for_library():
     """Asks until the person chooses a library or quits. The choice is remembered."""
-    message = ASK
+    message = native_t('native.findLibraryBody', ASK)
     while True:
         chosen = choose_folder(message)
         if chosen is None:      # Quit
             return None
         if not chosen:          # the picker was cancelled: start over, without an old reason
-            message = ASK
+            message = native_t('native.findLibraryBody', ASK)
             continue
         found, message = check(Path(chosen))
         if found:
@@ -258,7 +260,11 @@ def setup_finished(folder):
 
 def setup_options():
     parent, why = default_choice()
-    return {'settings_dir': app_folders()[0], 'default_parent': parent, 'default_why': why, 'on_finish': setup_finished,
+    why_part = None
+    if why:
+        why_part = {'key': 'setup.why.savesToShortPath', 'params': {'short': str(parent)}, 'text': why}
+    return {'settings_dir': app_folders()[0], 'default_parent': parent, 'default_why': why,
+            'default_why_part': why_part, 'on_finish': setup_finished,
             'pick_folder': pick_folder, 'look_for_libraries': libraries_here}
 
 
@@ -269,6 +275,7 @@ def language_file():
 
 def run_setup():
     """No library yet: the window opens on setup instead. Nothing here reaches the network until the person starts a download."""
+    configure_i18n(app_folders()[0])
     from engine.setup import api as setup_api
     import bridge as B
     work = app_folders()[1] / 'Setup'      # the window's own files and this run's log, until there is a library
@@ -294,7 +301,7 @@ def run_setup():
         import shell_linux
         shell_linux.run(B.Bridge(setup_api.SetupServer, 'stream', B.ORIGIN_MAC, language_file=language_file()), linux_dirs())
         return 0
-    show_error('The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py')
+    show_error(native_t('native.desktopOnly', 'The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py'))
     return 2
 
 
@@ -365,6 +372,7 @@ def open_log(data):
 
 
 def main():
+    configure_i18n(app_folders()[0])
     ap = argparse.ArgumentParser(description='Lastbook')
     ap.add_argument('--data', help='data folder holding library-data/ and derived/ (or set LASTBOOK_DATA)')
     ap.add_argument('--ask', action='store_true', help='ask for the library folder in a dialog instead of opening setup')
@@ -389,7 +397,7 @@ def main():
             return run_setup()
     data = data.resolve()
     if not (data / CATALOG).is_file():   # only a folder named by --data or LASTBOOK_DATA gets here unchecked
-        show_error(f'Lastbook could not find its library.\n\nIt looked in:\n{data}\n\nThat folder must hold {CATALOG}.')
+        show_error(native_t('native.couldNotFindLibrary', 'Lastbook could not find its library.\n\nIt looked in:\n{path}\n\nThat folder must hold {catalog}.', path=data, catalog=CATALOG))
         return 2
     os.environ['LASTBOOK_DATA'] = str(data)   # before the engine is imported: it reads this once
     os.environ.setdefault('LASTBOOK_LOCAL_AI', '1')   # the optional local AI (llm_local.py), used when its model file is found
@@ -423,7 +431,7 @@ def main():
         import shell_linux
         shell_linux.run(B.Bridge(server, 'stream', B.ORIGIN_MAC, language_file=language_file()), linux_dirs())
     else:
-        show_error('The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py')
+        show_error(native_t('native.desktopOnly', 'The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py'))
         return 2
     return 0
 
@@ -438,5 +446,5 @@ if __name__ == '__main__':
         raise
     except BaseException as e:
         traceback.print_exc()
-        show_error(f'Lastbook could not start: {type(e).__name__}: {e}')
+        show_error(native_t('native.couldNotStart', 'Lastbook could not start: {error}', error=f'{type(e).__name__}: {e}'))
         sys.exit(1)

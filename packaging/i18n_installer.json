@@ -1,0 +1,51 @@
+{
+  "en": {
+    "installer.addDesktopShortcut": "Add a desktop shortcut",
+    "installer.appOpen": "Lastbook is open. Close it, then try again.",
+    "installer.cancel": "Cancel",
+    "installer.close": "Close",
+    "installer.comments": "build {stamp}",
+    "installer.companyName": "Lastbook",
+    "installer.couldNotInstall": "Lastbook could not be installed.\n\n{detail}",
+    "installer.couldNotOpen": "Lastbook could not be opened.\n\n{detail}",
+    "installer.couldNotRemove": "Lastbook could not be removed.\n\n{detail}",
+    "installer.fileDescription": "Lastbook Setup",
+    "installer.findInStart": "Find it in the Start menu.",
+    "installer.install": "Install",
+    "installer.installFolder": "Install folder",
+    "installer.installLastbook": "Install Lastbook",
+    "installer.installed": "Lastbook is installed",
+    "installer.openLastbook": "Open Lastbook",
+    "installer.productName": "Lastbook",
+    "installer.removeConfirm": "Remove Lastbook from this computer?\n\nYour library (LastbookData) and settings stay.",
+    "installer.removed": "Lastbook is removed.",
+    "installer.setupTitle": "Lastbook Setup",
+    "installer.uninstallFileDescription": "Uninstall Lastbook"
+  },
+  "locales": {
+    "de": {},
+    "es-419": {
+      "installer.addDesktopShortcut": "Agregar un acceso directo al escritorio",
+      "installer.appOpen": "Lastbook está abierto. Ciérralo y vuelve a intentarlo.",
+      "installer.cancel": "Cancelar",
+      "installer.close": "Cerrar",
+      "installer.comments": "compilación {stamp}",
+      "installer.companyName": "Lastbook",
+      "installer.couldNotInstall": "No se pudo instalar Lastbook.\n\n{detail}",
+      "installer.couldNotOpen": "No se pudo abrir Lastbook.\n\n{detail}",
+      "installer.couldNotRemove": "No se pudo quitar Lastbook.\n\n{detail}",
+      "installer.fileDescription": "Instalación de Lastbook",
+      "installer.findInStart": "Lo encuentras en el menú Inicio.",
+      "installer.install": "Instalar",
+      "installer.installFolder": "Carpeta de instalación",
+      "installer.installLastbook": "Instalar Lastbook",
+      "installer.installed": "Lastbook está instalado",
+      "installer.openLastbook": "Abrir Lastbook",
+      "installer.productName": "Lastbook",
+      "installer.removeConfirm": "¿Quieres quitar Lastbook de esta computadora?\n\nTu biblioteca (LastbookData) y tus ajustes se quedan.",
+      "installer.removed": "Lastbook se quitó.",
+      "installer.setupTitle": "Instalación de Lastbook",
+      "installer.uninstallFileDescription": "Desinstalar Lastbook"
+    }
+  }
+}

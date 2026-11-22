@@ -259,3 +259,30 @@ class CatalogueCoverage(unittest.TestCase):
         missing = sorted(used - set(en))
         self.assertEqual(missing, [], f'missing from en.json: {missing}')
         self.assertGreaterEqual(len(used), 200)
+
+class WindowsVersionInfo(unittest.TestCase):
+    """App and Setup VERSIONINFO tables include es-MX / es-ES stand-ins for es-419."""
+
+    def setUp(self):
+        import windows_versioninfo as versioninfo
+        self.versioninfo = versioninfo
+        self.english, self.locales = versioninfo.load_catalogs()
+
+    def test_pyinstaller_and_rc_include_spanish_tables(self):
+        py = self.versioninfo.render_pyinstaller('setup', '1.2.3', '20261121-010203', self.english, self.locales)
+        rc = self.versioninfo.render_rc('setup', '1.2.3', '20261121-010203', self.english, self.locales)
+        for text in (py, rc):
+            self.assertIn('040904B0', text)
+            self.assertIn('080A04B0', text)
+            self.assertIn('0C0A04B0', text)
+            self.assertIn('Lastbook Setup', text)
+            self.assertIn('Instalación de Lastbook', text)
+            self.assertIn('build 20261121-010203', text)
+            self.assertIn('compilación 20261121-010203', text)
+        self.assertIn('1033, 1200, 2058, 1200, 3082, 1200', py)
+        self.assertIn('0x409, 1200, 0x80A, 1200, 0xC0A, 1200', rc)
+        uninstall = self.versioninfo.render_pyinstaller('uninstall', '1.2.3', 'stamp', self.english, self.locales)
+        self.assertIn('Uninstall Lastbook', uninstall)
+        self.assertIn('Desinstalar Lastbook', uninstall)
+        app = self.versioninfo.render_pyinstaller('app', '1.2.3', 'stamp', self.english, self.locales)
+        self.assertIn("StringStruct('FileDescription', 'Lastbook')", app)

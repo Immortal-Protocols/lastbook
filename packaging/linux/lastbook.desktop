@@ -2,7 +2,11 @@
 Type=Application
 Name=Lastbook
 GenericName=Offline survival library
+GenericName[es_419]=Biblioteca de supervivencia sin conexión
+GenericName[es]=Biblioteca de supervivencia sin conexión
 Comment=Search and read the survival library on this computer, with no internet
+Comment[es_419]=Busca y lee la biblioteca de supervivencia en esta computadora, sin internet
+Comment[es]=Busca y lee la biblioteca de supervivencia en esta computadora, sin internet
 Exec=/usr/bin/lastbook
 Icon=lastbook
 Terminal=false

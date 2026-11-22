@@ -8,6 +8,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'translations' / 'desktop'
 WEB = ROOT / 'web'
+APP = ROOT / 'app'
+NATIVE = APP / 'i18n_native.json'
+INSTALLER = ROOT / 'packaging' / 'i18n_installer.json'
+INSTALLER_PREFIXES = ('installer.',)
 REQUIRED = {'en', 'es-419'}
 SCRIPTS = ('i18n-core.js', 'i18n-dom.js', 'i18n-en.js', 'i18n-locales.js', 'i18n-app.js')
 ENTRIES = {'index.html': 'app.js', 'setup.html': 'setup.js'}
@@ -117,9 +121,17 @@ def generate(source=SOURCE):
         except (OSError, ValueError) as error:
             raise ValueError(f'{path}: {error}') from error
     english = catalogs.pop('en')
+    native = json.dumps({'en': english, 'locales': catalogs}, ensure_ascii=False, indent=2, sort_keys=True).encode('utf-8') + b'\n'
+    installer = {
+        'en': {k: v for k, v in english.items() if k.startswith(INSTALLER_PREFIXES)},
+        'locales': {loc: {k: v for k, v in cat.items() if k.startswith(INSTALLER_PREFIXES)} for loc, cat in catalogs.items()},
+    }
+    installer_bytes = json.dumps(installer, ensure_ascii=False, indent=2, sort_keys=True).encode('utf-8') + b'\n'
     return {
         'i18n-en.js': script('lastbookI18nEnglish', english),
         'i18n-locales.js': script('lastbookI18nLocales', catalogs),
+        'native': native,
+        'installer': installer_bytes,
     }
 
 
@@ -128,8 +140,15 @@ def check_assets(web, generated):
         if not (web / name).is_file():
             raise ValueError(f'{web / name}: required localization asset missing')
     for name, expected in generated.items():
+        if name in ('native', 'installer'):
+            continue
         if (web / name).read_bytes() != expected:
             raise ValueError(f'{web / name}: stale catalogue. Run python3 packaging/i18n_catalogs.py')
+    if web.resolve() == WEB.resolve():
+        if not NATIVE.is_file() or NATIVE.read_bytes() != generated['native']:
+            raise ValueError(f'{NATIVE}: stale catalogue. Run python3 packaging/i18n_catalogs.py')
+        if not INSTALLER.is_file() or INSTALLER.read_bytes() != generated['installer']:
+            raise ValueError(f'{INSTALLER}: stale catalogue. Run python3 packaging/i18n_catalogs.py')
     for page, controller in ENTRIES.items():
         scripts = LocalScripts()
         scripts.feed((web / page).read_text(encoding='utf-8'))
@@ -156,7 +175,12 @@ def main():
             check_assets(args.web_dir or WEB, generated)
         else:
             for name, contents in generated.items():
-                (WEB / name).write_bytes(contents)
+                if name == 'native':
+                    NATIVE.write_bytes(contents)
+                elif name == 'installer':
+                    INSTALLER.write_bytes(contents)
+                else:
+                    (WEB / name).write_bytes(contents)
     except (OSError, ValueError) as error:
         parser.exit(1, f'Localization: {error}\n')
 

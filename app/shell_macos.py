@@ -74,6 +74,8 @@ PULSE_EVERY = 1                  # seconds between asking the page's process for
 STUCK_AFTER = 12                 # that many asks unanswered in a row: stuck
 SLOW_ANSWER = 3                  # an answer this many seconds late...
 SLOW_IN_A_ROW = 3                # ...this many times in a row: a page freezing the window on purpose, in slices
+from i18n_native import native_t
+
 STOPPED = 'A page stopped working, so it was closed.'
 TOO_BIG = 'A page was using too much memory, so it was closed.'
 STUCK = 'A page stopped responding, so it was closed.'
@@ -100,15 +102,15 @@ def choose_folder(title, message):
     alert = AppKit.NSAlert.alloc().init()
     alert.setMessageText_(title)
     alert.setInformativeText_(message)
-    alert.addButtonWithTitle_('Choose Folder…')
-    alert.addButtonWithTitle_('Quit').setKeyEquivalent_('\x1b')
+    alert.addButtonWithTitle_(native_t('native.chooseFolder', 'Choose Folder…'))
+    alert.addButtonWithTitle_(native_t('native.quit', 'Quit')).setKeyEquivalent_('\x1b')
     if alert.runModal() != MODAL_FIRST_BUTTON:
         return None
     panel = AppKit.NSOpenPanel.openPanel()
     panel.setCanChooseDirectories_(True)
     panel.setCanChooseFiles_(False)
     panel.setAllowsMultipleSelection_(False)
-    panel.setMessage_('Choose the folder called LastbookData.')
+    panel.setMessage_(native_t('native.chooseLastbookData', 'Choose the folder called LastbookData.'))
     panel.setPrompt_('Choose')
     panel.setDirectoryURL_(Foundation.NSURL.fileURLWithPath_(os.path.expanduser('~/Downloads')))
     if panel.runModal() == AppKit.NSModalResponseOK:
@@ -522,7 +524,7 @@ class Shell:
         self.view.setNavigationDelegate_(self.guard)
         self.view.setUIDelegate_(self.guard)
         self.window.contentView().addSubview_(self.view)
-        self.pulse = self.scheme.pulse = _Pulse(self.view, lambda: self.end_page(STUCK, 'not answering'))
+        self.pulse = self.scheme.pulse = _Pulse(self.view, lambda: self.end_page(native_t('native.pageStuck', STUCK), 'not answering'))
         self.switch_off_network()
         self.pulse_timer = Foundation.NSTimer.scheduledTimerWithTimeInterval_repeats_block_(PULSE_EVERY, True, lambda timer: self._each_second())
         self._each_second()
@@ -614,7 +616,7 @@ class Shell:
                 total = pages + (_footprint(me) or 0) + NETWORK_SHARE
                 # MEMORY_FLOOR: with the page's share this small, ending it would give nothing back.
                 if total > MEMORY_LIMIT and pages > MEMORY_FLOOR and pids and pids[0] and time.monotonic() - self.ended_at > MEMORY_QUIET:
-                    self.end_page(TOO_BIG, f'over the memory limit: {total} bytes, {pages} of it the page\'s')
+                    self.end_page(native_t('native.pageTooBig', TOO_BIG), f'over the memory limit: {total} bytes, {pages} of it the page\'s')
             except Exception:
                 traceback.print_exc()
 
@@ -627,7 +629,7 @@ class Shell:
         os.kill(pid, signal.SIGKILL)   # the only end a stuck page cannot put off. WebKit's own _killWebContentProcess left it running and the view wedged.
 
     def page_process_ended(self):
-        message = self.ended_why or STOPPED
+        message = self.ended_why or native_t('native.pageStopped', STOPPED)
         self.ended_why = None
         self.ended_at = time.monotonic()
         self.pulse.reset()
@@ -638,9 +640,9 @@ class Shell:
     def ask(self, kind, message, done):
         alert = AppKit.NSAlert.alloc().init()
         alert.setMessageText_(message)
-        alert.addButtonWithTitle_('OK')
+        alert.addButtonWithTitle_(native_t('native.ok', 'OK'))
         if kind == 'confirm':
-            alert.addButtonWithTitle_('Cancel')
+            alert.addButtonWithTitle_(native_t('native.cancel', 'Cancel'))
         self.pulse.paused += 1      # an alert from the app's own page holds its process until it is answered: that is not a page stuck
 
         def answered(r):
@@ -682,7 +684,7 @@ class _Go(Foundation.NSObject):
     @objc.python_method
     def _side_title(self, shown):
         if self.side_item is not None:
-            self.side_item.setTitle_('Hide Sidebar' if shown else 'Show Sidebar')
+            self.side_item.setTitle_(native_t('native.menu.hideSidebar', 'Hide Sidebar') if shown else native_t('native.menu.showSidebar', 'Show Sidebar'))
 
     def menuNeedsUpdate_(self, menu):
         one_each(menu)
@@ -756,18 +758,19 @@ def install_menu(app, go=None):
     Full screen, Start Dictation and Emoji & Symbols are this menu's own items; the copies AppKit adds are taken out (one_each), so there is one of each."""
     Foundation.NSUserDefaults.standardUserDefaults().registerDefaults_({'NSFullScreenMenuItemEverywhere': False})
     bar = AppKit.NSMenu.alloc().init()
-    edit = _menu('Edit', [('Undo', 'undo:', 'z'), ('Redo', 'redo:', 'Z'), (None, None, None), ('Cut', 'cut:', 'x'), ('Copy', 'copy:', 'c'), ('Paste', 'paste:', 'v'), ('Select All', 'selectAll:', 'a'), (None, None, None), ('Find\u2026', 'find:', 'f'),
-                                  (None, None, None), ('Start Dictation\u2026', 'startDictation:', ''), ('Emoji & Symbols', 'orderFrontCharacterPalette:', ' ', CTRL_CMD)], go)
-    view = _menu('View', [('Hide Sidebar', 'toggleSidebar:', 's', CTRL_CMD), (None, None, None), ('Enter Full Screen', 'toggleFullScreen:', 'f', CTRL_CMD)], go)
-    window = _menu('Window', [('Minimize', 'performMiniaturize:', 'm'), ('Zoom', 'performZoom:', ''), (None, None, None), ('Close', 'performClose:', 'w'),
-                              (None, None, None), ('Bring All to Front', 'arrangeInFront:', '')])
-    helps = _menu('Help', [('Lastbook Help', 'help:', '?')], go)
-    for holder in (_menu('Lastbook', [('About Lastbook', 'orderFrontStandardAboutPanel:', ''), ('Check for Updates\u2026', 'checkUpdates:', ''), (None, None, None),
-                                      ('Hide Lastbook', 'hide:', 'h'), ('Hide Others', 'hideOtherApplications:', 'h', OPT_CMD), ('Show All', 'unhideAllApplications:', ''),
-                                      (None, None, None), ('Quit Lastbook', 'terminate:', 'q')], go),
+    edit = _menu(native_t('native.menu.edit', 'Edit'), [(native_t('native.menu.undo', 'Undo'), 'undo:', 'z'), (native_t('native.menu.redo', 'Redo'), 'redo:', 'Z'), (None, None, None), (native_t('native.menu.cut', 'Cut'), 'cut:', 'x'), (native_t('native.menu.copy', 'Copy'), 'copy:', 'c'), (native_t('native.menu.paste', 'Paste'), 'paste:', 'v'), (native_t('native.menu.selectAll', 'Select All'), 'selectAll:', 'a'), (None, None, None), (native_t('native.menu.find', 'Find\u2026'), 'find:', 'f'),
+                                  (None, None, None), (native_t('native.menu.startDictation', 'Start Dictation\u2026'), 'startDictation:', ''), (native_t('native.menu.emojiSymbols', 'Emoji & Symbols'), 'orderFrontCharacterPalette:', ' ', CTRL_CMD)], go)
+    view = _menu(native_t('native.menu.view', 'View'), [(native_t('native.menu.hideSidebar', 'Hide Sidebar'), 'toggleSidebar:', 's', CTRL_CMD), (None, None, None), (native_t('native.menu.enterFullScreen', 'Enter Full Screen'), 'toggleFullScreen:', 'f', CTRL_CMD)], go)
+    window = _menu(native_t('native.menu.window', 'Window'), [(native_t('native.menu.minimize', 'Minimize'), 'performMiniaturize:', 'm'), (native_t('native.menu.zoom', 'Zoom'), 'performZoom:', ''), (None, None, None), (native_t('native.menu.close', 'Close'), 'performClose:', 'w'),
+                              (None, None, None), (native_t('native.menu.bringAllToFront', 'Bring All to Front'), 'arrangeInFront:', '')])
+    helps = _menu(native_t('native.menu.help', 'Help'), [(native_t('native.menu.lastbookHelp', 'Lastbook Help'), 'help:', '?')], go)
+    go_names = {'Videos': 'nav.videos', 'Map': 'nav.map', 'Chat': 'nav.chat'}
+    for holder in (_menu('Lastbook', [(native_t('native.menu.about', 'About Lastbook'), 'orderFrontStandardAboutPanel:', ''), (native_t('native.menu.checkUpdates', 'Check for Updates\u2026'), 'checkUpdates:', ''), (None, None, None),
+                                      (native_t('native.menu.hideLastbook', 'Hide Lastbook'), 'hide:', 'h'), (native_t('native.menu.hideOthers', 'Hide Others'), 'hideOtherApplications:', 'h', OPT_CMD), (native_t('native.menu.showAll', 'Show All'), 'unhideAllApplications:', ''),
+                                      (None, None, None), (native_t('native.menu.quitLastbook', 'Quit Lastbook'), 'terminate:', 'q')], go),
                    edit,
                    view,
-                   _menu('Go', [('Back', 'goBack:', '['), ('Forward', 'goForward:', ']'), (None, None, None)] + [(name, 'go:', str(i + 1)) for i, (name, _) in enumerate(GO)], go),
+                   _menu(native_t('native.menu.go', 'Go'), [(native_t('native.menu.back', 'Back'), 'goBack:', '['), (native_t('native.menu.forward', 'Forward'), 'goForward:', ']'), (None, None, None)] + [(native_t(go_names.get(name, ''), name), 'go:', str(i + 1)) for i, (name, _) in enumerate(GO)], go),
                    window, helps):
         bar.addItem_(holder)
     if go is not None:

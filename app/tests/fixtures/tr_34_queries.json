@@ -356,9 +356,9 @@
     "requirement": "Results for existing US indexes remain identical with TR-34.sqlite installed; do not normalize or attribute US rows as Turkish data."
   },
   "source_requirements": {
-    "address_index": "OpenStreetMap (ODbL 1.0) & İBB Open Data Portal (CC BY 4.0)",
-    "map_index": "OpenStreetMap contributors via Geofabrik (ODbL 1.0); İBB Open Data Portal (CC BY 4.0)",
-    "must_preserve_licenses": ["ODbL 1.0", "CC BY 4.0"],
+    "address_index": "OpenStreetMap (ODbL 1.0); İstanbul Büyükşehir Belediyesi Açık Veri Lisansı 1.0 (https://data.ibb.gov.tr/license); İstanbul Büyükşehir Belediyesi Açık Veri Portalı. Atıf 4.0 Uluslararası (CC BY 4.0) kapsamında lisanslanan kamu sektörü bilgilerini içerir.",
+    "map_index": "OpenStreetMap contributors via Geofabrik (ODbL 1.0); İstanbul Büyükşehir Belediyesi Açık Veri Lisansı 1.0 (https://data.ibb.gov.tr/license)",
+    "must_preserve_licenses": ["ODbL 1.0", "İstanbul Büyükşehir Belediyesi Açık Veri Lisansı 1.0 (https://data.ibb.gov.tr/license)"],
     "address_result_source": "Use the installed address index metadata; never substitute a hard-coded US/Overture attribution.",
     "runtime_integration": "Declarative requirement for shared issue #31; not exercised by this data-only fixture."
   }

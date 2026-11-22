@@ -15,8 +15,8 @@ Sources (all redistributable; details, dates and checksums end up in derived/reg
     points clipped to Istanbul (ODbL 1.0, "© OpenStreetMap contributors").
   - OpenStreetMap via Overpass API inside ISO3166-2=TR-34: street addresses (addr:housenumber + addr:street) and
     earthquake/evacuation assembly points (emergency=assembly_point) (ODbL 1.0, "© OpenStreetMap contributors").
-  - Istanbul Metropolitan Municipality (İBB) Open Data Portal (data.ibb.gov.tr), İBB Open Data License v1.0
-    (CC BY 4.0 / ODC-By compatible):
+  - İstanbul Büyükşehir Belediyesi (İBB) Açık Veri Portalı, İstanbul Büyükşehir Belediyesi Açık Veri Lisansı 1.0
+    (https://data.ibb.gov.tr/license):
       * Health institutions (saglik-tesisleri.xlsx): hospitals, clinics, doctors, dentists, pharmacies, vets, care homes
       * Fire stations (itfaiye-istasyon-konumlar.2025.xlsx): 136 municipal fire stations
       * Neighbourhood headmen offices (muhtarlik_lokasyon.geojson): 984 mahalle headmen offices and locality centres
@@ -24,6 +24,10 @@ Sources (all redistributable; details, dates and checksums end up in derived/reg
       * Fuel stations (akaryakt_istasyonlar_veri_seti_20261012t130600.csv): active licensed fuel stations
   - OCHA HDX COD-AB Türkiye administrative boundaries (tur_admin_boundaries.geojson.zip, General Command of Mapping,
     CC BY-IGO): official province boundary (TUR034) and 39 district (ilçe) boundaries.
+
+The required IBB fallback attribution is: "Atıf 4.0 Uluslararası (CC BY 4.0) kapsamında lisanslanan kamu sektörü
+bilgilerini içerir." This sentence is attribution text, not a claim that İBB data is licensed under CC BY 4.0 or an
+equivalent licence.
 
 The fetch step needs the network; build and check do not. Python 3.9+ standard library only.
 """
@@ -58,7 +62,12 @@ DATA = BASE / 'data'
 GEO = DATA / 'derived' / 'geo'
 REPORT = BASE / 'build.json'
 TR_NORM = 'tr-1'
-ADDRESS_SOURCE = 'OpenStreetMap (ODbL 1.0) & İBB Open Data Portal (CC BY 4.0)'
+IBB_LICENCE = 'İstanbul Büyükşehir Belediyesi Açık Veri Lisansı 1.0 (https://data.ibb.gov.tr/license)'
+IBB_ATTR = (
+    'İstanbul Büyükşehir Belediyesi Açık Veri Portalı. '
+    'Atıf 4.0 Uluslararası (CC BY 4.0) kapsamında lisanslanan kamu sektörü bilgilerini içerir.'
+)
+ADDRESS_SOURCE = f'OpenStreetMap (ODbL 1.0); {IBB_LICENCE}; {IBB_ATTR}'
 FIXTURES = ROOT / 'app' / 'tests' / 'fixtures' / 'tr_34_queries.json'
 
 COVERED_TABLES = {
@@ -87,8 +96,6 @@ OVERPASS_ENDPOINTS = (
     'https://lz4.overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
 )
-IBB_LICENCE = 'İBB Open Data License v1.0 (CC BY 4.0 compatible, https://data.ibb.gov.tr/license)'
-IBB_ATTR = 'İstanbul Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0)'
 
 DOWNLOADS = {
     'ibb_health.xlsx': (
@@ -614,7 +621,7 @@ def build_map_db(fetched, ist_rings):
     )
     map_source = (
         f"OpenStreetMap contributors, via Geofabrik {osm['name']} (ODbL 1.0); "
-        'İBB Open Data Portal (CC BY 4.0)'
+        f"{IBB_LICENCE}; {IBB_ATTR}"
     )
     meta_db = sqlite3.connect(national)
     try:
@@ -723,9 +730,10 @@ def build_map_db(fetched, ist_rings):
         db.execute(f"DELETE FROM poi WHERE cls IN ({','.join('?' * len(OFFICIAL_REPLACED))})", OFFICIAL_REPLACED)
         db.executemany('INSERT INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)', ibb_pois + assembly_rows)
         db.execute("INSERT OR REPLACE INTO meta VALUES ('help_points', ?)", (
-            'hospital, pharmacy, fire_station: İBB Open Data Portal (CC BY 4.0), replacing OpenStreetMap; '
-            'clinic, doctors, dentist, veterinary, nursing_home, town_hall (muhtarlık), toilet, fuel: İBB + OpenStreetMap; '
-            'assembly_point and all other classes: OpenStreetMap (ODbL 1.0)',
+            f'İBB-sourced help points: {IBB_LICENCE}; {IBB_ATTR}; '
+            f'hospital, pharmacy, fire_station replace OpenStreetMap; '
+            f'other IBB classes supplement OpenStreetMap; assembly_point and all other classes: '
+            f'OpenStreetMap (ODbL 1.0)',
         ))
         db.execute("INSERT OR REPLACE INTO meta VALUES ('region', ?)", (REGION,))
         db.commit()
@@ -987,6 +995,12 @@ def build_places(ist_rings, districts):
 
 def build():
     fetched = json.loads((SOURCE / 'fetched.json').read_text(encoding='utf-8'))
+    # Cached source records may carry stale licence/attribution labels. Refresh only these
+    # descriptive fields in memory; preserve cached identity, URL, dates and digests on disk.
+    for filename, (_, licence, attribution) in DOWNLOADS.items():
+        if filename.startswith('ibb_') and filename in fetched['files']:
+            fetched['files'][filename]['licence'] = licence
+            fetched['files'][filename]['attribution'] = attribution
     if DATA.exists():
         shutil.rmtree(DATA)
     GEO.mkdir(parents=True)
@@ -1111,7 +1125,7 @@ def check():
     extra = source_files['osm_istanbul_extra.json']
     expected_map_source = (
         f"OpenStreetMap contributors, via Geofabrik {osm['name']} (ODbL 1.0); "
-        'İBB Open Data Portal (CC BY 4.0)'
+        f"{IBB_LICENCE}; {IBB_ATTR}"
     )
     expected_bounds = ','.join(map(str, LAND_BBOX))
     for rel, info in report['outputs'].items():
@@ -1158,8 +1172,8 @@ def check():
                        ('bounds', expected_bounds), ('region', REGION)):
         expect(nat_meta.get(key) == value, f'national.sqlite meta {key} identifies Istanbul data')
     expect('ODbL 1.0' in nat_meta.get('help_points', '') and
-           'CC BY 4.0' in nat_meta.get('help_points', ''),
-           'help-point metadata preserves ODbL and CC BY attribution')
+           IBB_LICENCE in nat_meta.get('help_points', '') and IBB_ATTR in nat_meta.get('help_points', ''),
+           'help-point metadata preserves ODbL, native İBB licence and attribution')
     nat.close()
 
     map_db = open_readonly(GEO / 'map.sqlite')
@@ -1182,7 +1196,7 @@ def check():
     expect(addr_meta.get('region') == REGION, 'address metadata region is TR-34')
     expect(addr_meta.get('norm') == TR_NORM, 'address metadata normalization is tr-1')
     expect(addr_meta.get('count') == str(count), 'address metadata count matches addr rows')
-    expect(addr_meta.get('source') == ADDRESS_SOURCE, 'address metadata preserves ODbL and CC BY sources')
+    expect(addr_meta.get('source') == ADDRESS_SOURCE, 'address metadata preserves ODbL, native İBB licence and attribution')
     expect(addr_meta.get('data_as_of') == (extra.get('data_as_of') or ''),
            'address metadata records the Overpass source timestamp')
     bad_norm = sum(normalize_tr(street) != norm for street, norm in addr.execute('SELECT street,norm FROM addr'))
@@ -1231,8 +1245,8 @@ def check():
     source_requirements = fixtures['source_requirements']
     us = fixtures['us_coexistence']
     expect(source_requirements['address_index'] == ADDRESS_SOURCE, 'fixture source requirement matches address metadata')
-    expect({'ODbL 1.0', 'CC BY 4.0'} <= set(source_requirements['must_preserve_licenses']),
-           'fixtures retain ODbL and CC BY license requirements')
+    expect({'ODbL 1.0', IBB_LICENCE} <= set(source_requirements['must_preserve_licenses']),
+           'fixtures retain ODbL and native İBB licence requirements')
     expect(us['index_filename'] == 'MI.sqlite' and len(us['queries']) >= 4,
            'US coexistence regression cases remain declared')
     print('runtime integration not checked (address search, place routing, and setup belong to issue #31)')

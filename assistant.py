@@ -116,7 +116,7 @@ def _fts(q, limit=80, ids=None):
             emergency_rows = con.execute(sql, (emergency,) + only + (limit,)).fetchall()
         except sqlite3.OperationalError:
             pass
-    rows = S.unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
+    rows = S.unique_search_rows(strict_rows, relaxed_rows, emergency_rows)
     con.close()
     return rows
 

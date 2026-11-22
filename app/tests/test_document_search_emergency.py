@@ -122,6 +122,9 @@ class SearchPathIntegration(unittest.TestCase):
                         ('urgent', 1, 'Hypothermia first aid', '', '', '',
                          'hypothermia cold exposure warming first aid'))
         self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('drowning', 1, 'Drowning first aid', '', '', '',
+                         'drowning airway resuscitation first aid'))
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
                         ('ordinary', 1, 'Fire making', '', '', '',
                          'light a fire with tinder kindling'))
         self.db.commit()
@@ -166,12 +169,21 @@ class SearchPathIntegration(unittest.TestCase):
     def test_multiple_emergency_anchors_are_included(self):
         expr = server.emergency_fts_expr('drowning and hypothermia')
         self.assertIsNotNone(expr)
-        titles = [r[0] for r in self.db.execute(
-            'SELECT title FROM pages WHERE pages MATCH ?', (expr,))]
-        self.assertIn('urgent', titles)
         self.assertIn(' OR ', expr)
-        self.assertIn('drowning', expr)
-        self.assertIn('hypothermia', expr)
+        keys = [(r[0], r[1]) for r in assistant._fts('drowning and hypothermia')]
+        self.assertIn(('drowning', 1), keys)
+        self.assertIn(('urgent', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_precise_match_precedes_broad_emergency_fallback(self):
+        # A strict hit must not be demoted by a broader emergency match.
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('precise', 1, 'Hypothermia fire first aid', '', '', '',
+                         'light fire hypothermia warming first aid'))
+        self.db.commit()
+        keys = [(r[0], r[1]) for r in assistant._fts('light fire hypothermia')]
+        self.assertEqual(keys[0], ('precise', 1))
+        self.assertIn(('urgent', 1), keys)
 
     def test_auxiliary_query_failure_preserves_strict_results(self):
         original = server.emergency_fts_expr

@@ -50,6 +50,61 @@ class Anchors(html.parser.HTMLParser):
             self.anchors.append(dict(attrs))
 
 
+MD = r"""
+const fs = require('fs');
+const chat = fs.readFileSync(process.argv[1], 'utf8').replace(/\r/g, ''), app = fs.readFileSync(process.argv[2], 'utf8');
+const esc = app.split('\n').find(l => /^const esc\s*=/.test(l));
+const i = chat.indexOf('function md('), end = i < 0 ? -1 : chat.indexOf('\n  }\n', i);   // its closing brace (CRs removed above)
+if (!esc || end < 0) throw new Error('test_chat_steps: could not find ' + (esc ? 'md() and its closing "  }" in web/chat.js' : 'const esc in web/app.js'));
+const md = new Function(esc + '\n' + chat.slice(i, end + 4) + '\nreturn md;')();
+if (typeof md !== 'function') throw new Error('test_chat_steps: md() from web/chat.js did not come out as a function');
+process.stdout.write(JSON.stringify(md(process.argv[3], {sources: [{key: 'S1'}], cited: [{key: 'S1'}]})));
+"""
+
+
+@unittest.skipUnless(NODE, 'needs Node')
+class SpanishAnswers(unittest.TestCase):
+    """An answer in Spanish (the question was not in English, assistant.LANGUAGE_NOTE). Its special headings may come
+    translated, and its sentences start with ¿, ¡ or capitals like É and Ñ."""
+
+    def html(self, text):
+        r = subprocess.run([NODE, '-e', MD, str(ROOT / 'web/chat.js'), str(ROOT / 'web/app.js'), text],
+                           capture_output=True, text=True, encoding='utf-8', check=True)
+        return json.loads(r.stdout)
+
+    def test_translated_headings_are_the_special_sections(self):
+        for head, sec in (('**No encontrado en la biblioteca:**', 'missing'), ('## NO SE ENCONTRÓ EN LA BIBLIOTECA', 'missing'),
+                          ('**Si la biblioteca no cubre algo que necesitas:**', 'missing'),
+                          ('**Información que falta en la biblioteca**', 'missing'),
+                          ('### Las fuentes no coinciden', 'disagree'), ('**Desacuerdo entre las fuentes:**', 'disagree'),
+                          ('**Mi propio razonamiento (no de la biblioteca):**', 'reasoning'),
+                          ('**Not found in the library:**', 'missing')):
+            got = self.html(f'Hierve el agua [S1].\n\n{head}\nNada sobre el yodo ni la pastilla de cloro.')
+            self.assertIn(f'<div class="sec-{sec}">', got, head)
+            if sec != 'missing' or 'biblioteca' in head:
+                self.assertNotIn(head.strip('*#: '), got)       # replaced by Chat's own title
+            self.assertIn('Nada sobre el yodo ni la pastilla de cloro.', got)
+
+    def test_body_lines_and_other_headings_stay(self):
+        got = self.html('**Pasos para el niño**\nNo hay luz en la biblioteca del pueblo [S1].\n\n'
+                        '**Lo que dice la biblioteca:**\nÑandú, pingüino, güemul: agüita hervida [S1].')
+        self.assertNotIn('sec-', got)
+        for t in ('Pasos para el niño', 'Lo que dice la biblioteca', 'No hay luz en la biblioteca del pueblo',
+                  'Ñandú, pingüino, güemul: agüita hervida'):
+            self.assertIn(t, got)
+
+    def test_uncited_sentences_after_spanish_punctuation(self):
+        got = self.html('Hierve el agua un minuto [S1]. ¿Está turbia? Fíltrala con un paño limpio antes de hervirla. '
+                        'Él dice que sí [S1]. ¡Ojo con el vapor caliente en la cara del niño! Ñuble queda lejos de aquí, a dos horas.')
+        uncited = re.findall(r'<span class="uncited"[^>]*>(.*?)</span>', got)
+        self.assertIn('¡Ojo con el vapor caliente en la cara del niño!', uncited)
+        self.assertIn('Ñuble queda lejos de aquí, a dos horas.', uncited)
+        self.assertIn('Fíltrala con un paño limpio antes de hervirla.', uncited)
+        self.assertFalse(any('¿Está turbia?' in u for u in uncited))      # too short to mark
+        self.assertFalse(any('[S1]' in u or 'cite' in u for u in uncited))
+        self.assertNotIn('Él dice que sí', ' '.join(uncited))     # cited, so not marked
+
+
 @unittest.skipUnless(NODE, 'needs Node')
 class Steps(unittest.TestCase):
     def text(self, steps):
@@ -792,6 +847,21 @@ class Suggestions(unittest.TestCase):
         self.assertIn('<div class="suggest compact">', compact)
         self.assertIn('<button class="chip sg-danger" data-say="Not breathing">', compact)
         self.assertNotIn('btn plain sg-', compact)
+
+    def test_a_plea_shows_the_emergency_buttons_before_the_text(self):
+        """A bare "911" or "help" (assistant.plea): the buttons come first, full size, then the reply."""
+        urgent = self.html(self.message(suggestStyle='urgent', unsure=True, content='If someone may die, call now.'))
+        self.assertIn('<div class="suggest urgent">', urgent)
+        self.assertLess(urgent.index('class="suggest urgent"'), urgent.index('class="answer"'))
+        plain = self.html(self.message(unsure=True, content='Please help me help you.'))
+        self.assertLess(plain.index('class="answer"'), plain.index('class="suggest"'))      # any other: under the text
+
+    def test_still_about_is_green_like_something_else(self):
+        """After noise the first button is the last sensible question (assistant.suggest_choices): not an emergency choice."""
+        choices = [{'label': 'Still about: how do i purify water', 'text': 'Still about: how do i purify water'}] + CHOICES
+        got = self.html(self.message(suggest=choices))
+        self.assertIn('class="btn plain sg-other" data-say="Still about: how do i purify water"', got)
+        self.assertIn('class="btn plain sg-danger" data-say="Not breathing"', got)
 
     def test_buttons_only_under_the_last_message_and_not_while_it_writes(self):
         self.assertNotIn('data-say', self.html(self.message(), last=False))

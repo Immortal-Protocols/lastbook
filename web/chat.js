@@ -357,22 +357,24 @@ const Chat = (() => {
     let h = '';
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
-    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    // When the search is unsure the server offers what the question may be about (assistant.chat_reply, engine/confidence.py)
+    // When the search is unsure, or the message was noise, the server offers what the question may be about
+    // (assistant.chat_reply, engine/confidence.py, assistant.turn_hits)
     let sugg = '';
     if (!running && (m.suggest || []).length && i === cur.messages.length - 1) {
-      // coloured so they stand out from the page: the emergency choices red, "Something else" green
-      const sg = c => /^something else/i.test(c.label || '') ? 'sg-other' : 'sg-danger';
+      // coloured so they stand out from the page: the emergency choices red, "Still about…" and "Something else" green
+      const sg = c => /^(something else|still about)/i.test(c.label || '') ? 'sg-other' : 'sg-danger';
       const prompt = `<p class="small muted">${esc(m.suggestPrompt || 'Is this about something else?')}</p>`;
       sugg = m.suggestStyle === 'compact'   // an everyday question gets the same buttons, smaller (confidence.everyday_level)
         ? `<div class="suggest compact">${prompt}<div class="chips">${m.suggest.map(c => `<button class="chip ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`
-        : `<div class="suggest">${prompt}<div class="ans-actions">${m.suggest.map(c => `<button class="btn plain ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`;
+        : `<div class="suggest${m.suggestStyle === 'urgent' ? ' urgent' : ''}">${prompt}<div class="ans-actions">${m.suggest.map(c => `<button class="btn plain ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`;
     }
+    if (m.suggestStyle === 'urgent') h += sugg;   // a bare plea ("911", "help"): the emergency buttons first (assistant.chat_reply)
+    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     // the library's pages and the encyclopedia articles are two searches, shown apart, each in its own order
     const [libF, wikiF] = byShelf(found);
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${libF.length ? srcCards(libF.slice(0, 6), true) : ''}${wikiF.length ? `<p class="small muted">From the encyclopedias (community-written background):</p>${srcCards(wikiF.slice(0, 3), true)}` : ''}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
-    h += sugg;
+    if (m.suggestStyle !== 'urgent') h += sugg;
     // labelled urgent, so the encyclopedias were left out (assistant.wiki_skipped); the person can say it is not an emergency
     if (!running && m.wikiOffer && i === cur.messages.length - 1) h += `<div class="suggest compact wiki-offer"><div class="chips"><button class="chip sg-other" data-act="wiki">Not an emergency? Add the encyclopedias</button></div></div>`;
     if (!running && m.content) {
@@ -492,7 +494,8 @@ const Chat = (() => {
     };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
       if (section !== 'main' || m.running) return inline(raw);
-      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
+      // a sentence also starts at ¿, ¡ or a capital like É or Ñ (an answer in Spanish)
+      return raw.split(/(?<=[.!?])\s+(?=[\p{Lu}(“"¿¡])/u).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
     };
     for (let ln of lines) {
       const t = ln.trim();
@@ -502,12 +505,16 @@ const Chat = (() => {
       before = t;
       const head = /^#{1,4}\s+(.*)$/.exec(t) || /^\*\*([^*]+:)\*\*$/.exec(t) || /^\*\*([^*]+)\*\*:?$/.exec(t);
       const hText = head ? head[1] : '';
-      const sec = /not found in the library/i.test(t) ? 'missing' : /sources disagree/i.test(t) ? 'disagree' : /own reasoning/i.test(t) ? 'reasoning' : null;
+      // an answer in Spanish may translate these headings (assistant.LANGUAGE_NOTE asks for the answer in the question's language, not for English headings); only as a heading
+      const es = head ? (/\bbiblioteca\b/i.test(hText) && /(^|\s)(no|sin|falta\w*|fuera)\s/i.test(hText) ? 'missing'
+        : /fuentes (no coinciden|discrepan|difieren|en desacuerdo)|desacuerdo entre (las )?fuentes/i.test(hText) ? 'disagree'
+        : /propio razonamiento|razonamiento propio/i.test(hText) ? 'reasoning' : null) : null;
+      const sec = /not found in the library/i.test(t) ? 'missing' : /sources disagree/i.test(t) ? 'disagree' : /own reasoning/i.test(t) ? 'reasoning' : es;
       if (sec || head) {
         close();
         if (out.includes('<div class="sec-')) out += '</div>';
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = sec === es ? '' : t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
@@ -629,7 +636,7 @@ const Chat = (() => {
     else if (ev.type === 'wiki_offer') m.wikiOffer = true;
     else if (ev.type === 'tool') { if (ev.phase === 'start') m.steps.push({ name: ev.name, args: ev.args }); else { const s = [...m.steps].reverse().find(x => x.name === ev.name && !x.summary); if (s) s.summary = ev.summary } m.state = 'searching' }
     else if (ev.type === 'sources') m.sources = ev.sources;
-    else if (ev.type === 'suggest') { m.suggest = Array.isArray(ev.choices) ? ev.choices.slice(0, 8) : null; m.suggestPrompt = typeof ev.prompt === 'string' ? ev.prompt.slice(0, 120) : ''; m.suggestStyle = ev.style === 'compact' ? 'compact' : '' }
+    else if (ev.type === 'suggest') { m.suggest = Array.isArray(ev.choices) ? ev.choices.slice(0, 8) : null; m.suggestPrompt = typeof ev.prompt === 'string' ? ev.prompt.slice(0, 120) : ''; m.suggestStyle = ev.style === 'compact' || ev.style === 'urgent' ? ev.style : '' }
     else if (ev.type === 'delta') m.content += ev.text;
     else if (ev.type === 'reset') m.content = '';
     else if (ev.type === 'done') { m.unsure = !!ev.unsure; m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }

@@ -6,7 +6,7 @@
 No library and no model: the library's words are given, hybrid() is a stand-in that fills the trace as the real one does,
 and chat() runs with a stand-in model round. Checked: the signals and the probability (plain numbers, strong searches
 above weak ones), the thresholds and their environment overrides, the switch, the confidence of a question's first search
-(question_hits; none from a stand-in without a trace) and what _fts leaves in the trace, and the chat: sure answers as
+(turn_hits; none from a stand-in without a trace) and what _fts leaves in the trace, and the chat: sure answers as
 before, unsure offers buttons, very unsure asks for more words without the model, always with the pages it found as
 sources (urgent or not); when the question may be urgent or names a body sign ("he has no puls", "mybbyisntbreathing")
 the model answers from the pages, with buttons, instead. Everyday questions (not urgent): buttons only below the much
@@ -284,7 +284,7 @@ class BodySigns(unittest.TestCase):
 
 
 class QuestionHits(unittest.TestCase):
-    """assistant.question_hits with a hybrid stand-in that fills its trace."""
+    """assistant.turn_hits (one message) with a hybrid stand-in that fills its trace."""
 
     def setUp(self):
         clean_env(self)
@@ -304,36 +304,36 @@ class QuestionHits(unittest.TestCase):
             self.addCleanup(p.stop)
 
     def test_one_question(self):
-        hits, info = self.a.question_hits('how do i purify water')
+        hits, info = self.a.turn_hits([{'role': 'user', 'content': 'how do i purify water'}])
         self.assertEqual((len(hits), info['confidence']['level'], info['danger'], info['body']), (8, 'sure', False, []))
-        _, info = self.a.question_hits('zebra cellar tomato')
+        _, info = self.a.turn_hits([{'role': 'user', 'content': 'zebra cellar tomato'}])
         self.assertEqual(info['confidence']['level'], 'unsure')
 
     def test_unknown_words_in_a_question(self):
         self.canned['qqzx wwvb'] = (STRONG[0], dict(STRONG[1], q='qqzx wwvb'))    # hits that look right, for mash
-        _, info = self.a.question_hits('qqzx wwvb')
+        _, info = self.a.turn_hits([{'role': 'user', 'content': 'qqzx wwvb'}])
         self.assertEqual(info['confidence']['level'], 'unsure')             # the chat asks for more words, with buttons
         self.assertTrue(info['confidence']['unknown_words'])
 
     def test_off_and_without_a_trace(self):
         os.environ['LASTBOOK_CONF'] = '0'
-        self.assertIsNone(self.a.question_hits('how do i purify water')[1]['confidence'])
+        self.assertIsNone(self.a.turn_hits([{'role': 'user', 'content': 'how do i purify water'}])[1]['confidence'])
         os.environ.pop('LASTBOOK_CONF')
         with mock.patch.object(self.a, 'hybrid', lambda q, k=8, kind='any', doc=None: list(STRONG[0])):
-            self.assertIsNone(self.a.question_hits('how do i purify water')[1]['confidence'])
+            self.assertIsNone(self.a.turn_hits([{'role': 'user', 'content': 'how do i purify water'}])[1]['confidence'])
 
     def test_body_signs(self):
         """"he has no puls" (the library's word, not corrected) and a glued "mybbyisntbreathing": urgent, the body
         sign in info['body'], and chat_level answers with buttons, never only "help me help you"."""
         for q, sign in (('he has no puls what do i do', 'pulse'), ('mybbyisntbreathing', 'breathing')):
             self.canned[q] = WEAK
-            _, info = self.a.question_hits(q)
+            _, info = self.a.turn_hits([{'role': 'user', 'content': q}])
             self.assertEqual((info['danger'], info['body']), (True, [sign]), q)
             self.assertEqual(info['confidence']['level'], 'unsure', q)
             level, conf, everyday = self.a.chat_level(info)
             self.assertEqual((level, conf['body'], everyday), ('buttons', True, False), q)
         os.environ['LASTBOOK_BODY_SIGNS'] = '0'
-        _, info = self.a.question_hits('he has no puls what do i do')
+        _, info = self.a.turn_hits([{'role': 'user', 'content': 'he has no puls what do i do'}])
         self.assertEqual((info['danger'], info['body']), (False, []))
         self.assertEqual(self.a.chat_level(info)[0], 'unsure')             # the bare "help me help you"
 
@@ -380,7 +380,7 @@ class SearchTrace(unittest.TestCase):
 
 
 class ChatConfidence(unittest.TestCase):
-    """assistant.chat with question_hits and the model round stood in for: which events the browser gets."""
+    """assistant.chat with turn_hits and the model round stood in for: which events the browser gets."""
 
     def setUp(self):
         clean_env(self)
@@ -401,10 +401,10 @@ class ChatConfidence(unittest.TestCase):
 
     def run_chat(self, question, level, danger=False, p=None, body=(), unknown=False, messages=None, wiki=False):
         p = {'sure': 0.9, 'buttons': 0.5, 'unsure': 0.1}[level] if p is None else p
-        info = {'danger': danger, 'body': list(body),
+        info = {'danger': danger, 'body': list(body), 'route': 'first', 'buttons': False, 'still': '',
                 'confidence': dict({'p': p, 'mode': 'keyword', 'level': level}, **({'unknown_words': True} if unknown else {}))}
         events = []
-        with mock.patch.object(self.a, 'question_hits', lambda *a, **k: (self.hits, dict(info))):
+        with mock.patch.object(self.a, 'turn_hits', lambda *a, **k: (self.hits, dict(info))):
             self.a.chat(messages or [{'role': 'user', 'content': question}], None, events.append, lambda: False, wiki=wiki)
         return {e['type']: e for e in events}, events
 

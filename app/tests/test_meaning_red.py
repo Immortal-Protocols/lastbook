@@ -362,13 +362,14 @@ class OnlyAdds(unittest.TestCase):
         finally:
             fresh()
 
-    def test_question_info_carries_it(self):
+    def test_turn_info_carries_it(self):
         yes = lambda t: {'score': 0.05, 'fired': True, 'state': 'ready'}
         with mock.patch.object(meaning_red, 'check', yes), mock.patch.object(self.a, 'hybrid', lambda q, k=8, trace=None: []):
-            hits, info = self.a.question_hits('how do i bake sourdough bread')
+            hits, info = self.a.turn_hits([{'role': 'user', 'content': 'how do i bake sourdough bread'}])
         self.assertTrue(info['danger'])
+        self.assertEqual(info['meaning'], {'score': 0.05, 'fired': True, 'state': 'ready', 'words': False})
         with mock.patch.object(self.a, 'hybrid', lambda q, k=8, trace=None: []):
-            hits, info = self.a.question_hits('how do i bake sourdough bread')      # the meaning check is not started here
+            hits, info = self.a.turn_hits([{'role': 'user', 'content': 'how do i bake sourdough bread'}])      # the meaning check is not started here
         self.assertFalse(info['danger'])
 
 

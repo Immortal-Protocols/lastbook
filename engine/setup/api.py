@@ -12,6 +12,7 @@ import errno
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import threading
@@ -154,6 +155,48 @@ def _same_disk(a, b):
         return False
 
 
+# Ollama keeps each model's files under their SHA-256 (<store>/blobs/sha256-<hex>; older versions wrote sha256:<hex>), beside
+# <store>/manifests/. A GGUF it pulled from the same source as Lastbook's model is the very same file, so it is found by the published
+# SHA-256 alone. It stays Ollama's: setup links or copies it into the library and never moves it.
+OLLAMA_BLOB = re.compile(r'sha256[-:][0-9a-f]{64}')
+
+
+def ollama_blobs(p):
+    """The blobs folder of an Ollama model store when p is the store, its .ollama or models folder, the blobs folder or a file in it;
+    None otherwise. Only what the person chose is looked at: Lastbook never goes looking for Ollama on its own."""
+    p = Path(p)
+    if p.is_file():
+        return p.parent if OLLAMA_BLOB.fullmatch(p.name) else None
+    if p.name == 'blobs' and (p.parent / 'manifests').is_dir():
+        return p
+    for store in (p, p / 'models'):
+        if (store / 'blobs').is_dir() and (store / 'manifests').is_dir():
+            return store / 'blobs'
+    return None
+
+
+def ollama_blob_for(blobs, sha256):
+    for name in ('sha256-' + sha256,) + (('sha256:' + sha256,) if os.name != 'nt' else ()):   # ':' is not a file name character on Windows
+        if (blobs / name).is_file():
+            return blobs / name
+    return None
+
+
+def _link_or_copy(src, dest):
+    """dest becomes a copy of src, and src is left as it was: a hard link on the same disk (no extra space), else a copy."""
+    tmp = dest.with_name(dest.name + '.partial')
+    try:
+        tmp.unlink()
+    except FileNotFoundError:
+        pass
+    try:
+        os.link(src, tmp)
+    except OSError:
+        shutil.copyfile(src, tmp)
+    os.replace(tmp, dest)
+    tmp.unlink(missing_ok=True)     # replace does nothing when dest already is that same file, and leaves tmp beside it
+
+
 class _Item:
     """Progress of one item (the pack, or the model), with rate and time left."""
 
@@ -275,8 +318,10 @@ class Setup:
         if {(i.get('kind'), i.get('id')) for i in items} != wanted:
             return None
         names = ([f['name'] for f in pack['files']] if pack else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else []) + ([model['file']] if model else [])
+        ollamas = ('sha256-' + model['sha256'], 'sha256:' + model['sha256']) if model else ()      # Ollama's copy of the model is named by its hash
         sources = {n: str(v) for n, v in (plan.get('sources') or {}).items()
-                   if n in names and isinstance(v, str) and Path(v).name == n and Path(v).is_file()}
+                   if n in names and isinstance(v, str) and Path(v).is_file()
+                   and (Path(v).name == n or (model and n == model['file'] and Path(v).name in ollamas))}
         switch = bool(plan.get('switch')) and pack is not None
         clean = {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
                  'sources': sources, 'explicit': bool(plan.get('explicit')), 'retried': {}, 'switch': switch, 'repair': bool(plan.get('repair'))}
@@ -407,21 +452,21 @@ class Setup:
         places = [self.default_parent]
         if self.current:
             places += [self.current / 'models', self.current]
-        candidates = [Path(p) for p in self.sources.values()]
+        candidates = [(name, Path(p)) for name, p in self.sources.items()]     # by the published name: an Ollama file's own name is its hash
         for place in places:
             try:
-                candidates.extend(c for c in place.iterdir() if c.name in files or (c.name.startswith('Lastbook-') and c.name.endswith('.zip')))
+                candidates.extend((c.name, c) for c in place.iterdir() if c.name in files or (c.name.startswith('Lastbook-') and c.name.endswith('.zip')))
             except OSError:
                 continue
-        for c in candidates:
+        for name, c in candidates:
             key = str(c.resolve())
             if key in seen or not c.is_file():
                 continue
             seen.add(key)
-            kind, pid, size = files.get(c.name, ('pack', None, None))
+            kind, pid, size = files.get(name, ('pack', None, None))
             st = c.stat()
             rejected = self.rejected.get(str(c)) == (st.st_size, st.st_mtime_ns)
-            out.append({'kind': kind, 'path': str(c), 'name': c.name, 'id': pid, 'size': st.st_size,
+            out.append({'kind': kind, 'path': str(c), 'name': name, 'id': pid, 'size': st.st_size,
                         'size_ok': size == st.st_size and not rejected, 'rejected': rejected})
         return out
 
@@ -971,6 +1016,15 @@ class Setup:
             return {'error': 'Lastbook cannot find that file or folder.', 'code': 'missing'}
         if library_only and not p.is_dir():
             return {'error': f'Choose a library folder, the one called {DATA_NAME}, not a file.', 'code': 'not_library'}
+        blobs = None if library_only else ollama_blobs(p)     # Open another library folder takes only a library (#266)
+        m = self.manifest.model()
+        if blobs and m:
+            blob = ollama_blob_for(blobs, m['sha256'])
+            if blob:
+                return self._use_model(blob)
+            return {'error': f'This is Ollama’s model folder. It doesn’t have the model Lastbook’s local AI uses ({m["title"]}, '
+                             f'the file {m["file"]}), and Lastbook can’t use Ollama’s other models. Download the model in setup instead.',
+                    'code': 'ollama'}
         if p.is_dir():
             lib = p if install.is_library(p) else p / DATA_NAME
             if library_only and not install.is_library(lib):
@@ -1025,25 +1079,30 @@ class Setup:
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
                 return self.public_job() or {'job': None, 'noted': True}
-        m = self.manifest.model()
         if m and name == m['file']:
-            if p.stat().st_size != m['size']:
-                return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'code': 'size'}
-            self.sources[name] = str(p)
-            with self.lock:
-                job = self.job
-                if (job and job['state'] == 'failed' and (job['error'] or {}).get('code') == 'network'
-                        and (job['plan'].get('model') or {}).get('file') == name
-                        and any(it['kind'] == 'model' and it['state'] == 'failed' and not it['bytes_done'] for it in job['items'])):
-                    job['plan']['sources'][name] = str(p)
-                    job['plan']['verified'] = [n for n in job['plan'].get('verified', []) if n != name]
-                    job['plan']['explicit'] = True
-                    _tag_sources(job)
-                    return self.retry()  # keep the finished pack; check the chosen model before using it
-            if self.mode == 'manage':
-                return self.start(None, True, None, {name: str(p)}, explicit=True)
-            return self.public_job() or {'job': None, 'noted': True}
+            return self._use_model(p)
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
+
+    def _use_model(self, p):
+        """The model file the person chose: the published file itself, or Ollama's copy of it (found by its SHA-256)."""
+        m = self.manifest.model()
+        if p.stat().st_size != m['size']:
+            return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'code': 'size'}
+        name = m['file']
+        self.sources[name] = str(p)
+        with self.lock:
+            job = self.job
+            if (job and job['state'] == 'failed' and (job['error'] or {}).get('code') == 'network'
+                    and (job['plan'].get('model') or {}).get('file') == name
+                    and any(it['kind'] == 'model' and it['state'] == 'failed' and not it['bytes_done'] for it in job['items'])):
+                job['plan']['sources'][name] = str(p)
+                job['plan']['verified'] = [n for n in job['plan'].get('verified', []) if n != name]
+                job['plan']['explicit'] = True
+                _tag_sources(job)
+                return self.retry()  # keep the finished pack; check the chosen model before using it
+        if self.mode == 'manage':
+            return self.start(None, True, None, {name: str(p)}, explicit=True)
+        return self.public_job() or {'job': None, 'noted': True}
 
     def finish(self):
         with self.lock:
@@ -1360,7 +1419,9 @@ class Setup:
         dest = lib / 'models' / m['file']
         dest.parent.mkdir(parents=True, exist_ok=True)
         self._set(it, 'activating')
-        if ours or _same_disk(path, dest):
+        if OLLAMA_BLOB.fullmatch(Path(path).name):      # Ollama's own file: it stays where it is, for Ollama
+            _link_or_copy(path, dest)
+        elif ours or _same_disk(path, dest):
             os.replace(path, dest)
         else:
             tmp = dest.with_name(dest.name + '.partial')

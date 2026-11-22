@@ -177,6 +177,25 @@ def hybrid(q, k=8, kind='any', doc=None):
             score *= 1.3
         out.append((score, kkey, e))
     out.sort(key=lambda x: -x[0])
+    # A large strict-match set can consume all eight slots before a useful
+    # emergency first-aid fallback is seen. Reserve at most one slot for a
+    # clearly relevant first-aid document, without changing ordinary queries
+    # or reordering the remaining precise matches.
+    emergency = S.emergency_fts_expr(q)
+    if emergency and k > 0:
+        matched_anchors = [rx for rx, _ in S.EMERGENCY_ANCHORS
+                           if re.search(rx, re.sub(r'\\bdrown(?:s|ed|ing)?\\s+out\\b', '', q, flags=re.I), re.I)]
+        def first_aid_candidate(item):
+            d, _, _ = item[1]
+            r = cat['by_id'][d]
+            title = r['title']
+            return (re.search(r'first[ -]?aid|resuscitat|emergency', title, re.I)
+                    and any(re.search(rx, title, re.I) for rx in matched_anchors))
+        if not any(first_aid_candidate(item) for item in out[:k]):
+            candidate = next((item for item in out[k:] if first_aid_candidate(item)), None)
+            if candidate is not None:
+                out.remove(candidate)
+                out.insert(k - 1, candidate)
     res, per_doc = [], {}
     for score, kkey, e in out:
         d, p, _ = kkey

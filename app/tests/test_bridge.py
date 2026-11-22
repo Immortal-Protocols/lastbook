@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, threading, time, types, unittest
+import faulthandler, hashlib, json, os, shutil, socket, sqlite3, statistics, subprocess, sys, threading, time, types, unittest
 from pathlib import Path
 from unittest import mock
 
@@ -1286,21 +1286,37 @@ class MeaningSearchFails(unittest.TestCase):
         self.assertNotIn('search_error', self.idx.status)
 
 
-class IndexThroughRunner(unittest.TestCase):
+class IndexCase(unittest.TestCase):
+    # An index in a folder of its own. What the code prints on a failure is kept off the screen: the tests cause them on purpose.
+
+    def setUp(self, **names):
+        self.dir = TMP / f'index-{os.getpid()}-{time.time_ns()}'
+        self.dir.mkdir(parents=True)
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        for p in [mock.patch.object(retrieval, k, v) for k, v in dict(IDX=self.dir, AVAILABLE=True, **names).items()] + [quiet()]:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def open(self):
+        return retrieval.Index(lambda: {'by_id': {}}, lambda r: (0, 0), None)
+
+    def rows(self, sql):
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        try:
+            return con.execute(sql).fetchall()
+        finally:
+            con.close()
+
+
+class IndexThroughRunner(IndexCase):
     # Building the index through the program. A document that fails (its pass fails, or its texts are refused) is tried
     # once more after the program has embedded a
     # check text; if it fails again it is passed over for this pass, with nothing written, so the next pass tries it again.
     # Three passed over in a row end the pass. A program that fails everything, cannot start or is resting writes nothing.
 
     def setUp(self):
-        self.dir = TMP / f'index-{os.getpid()}-{time.time_ns()}'
-        self.dir.mkdir(parents=True)
-        self.addCleanup(shutil.rmtree, self.dir, True)
-        for name, value in (('IDX', self.dir), ('AVAILABLE', True), ('ENGINE', 'llama')):
-            p = mock.patch.object(retrieval, name, value)
-            p.start()
-            self.addCleanup(p.stop)
-        self.idx = retrieval.Index(lambda: {'by_id': {}}, lambda r: (0, 0), None)
+        super().setUp(ENGINE='llama', model_in_use=lambda: retrieval.made_by(retrieval.MODEL_ID))   # no model file here
+        self.idx = self.open()
         self.docs, self.bad = ['d1', 'd2', 'd3'], {'d2'}
         self.idx.sources = lambda: [(d, 's-' + d, 0, ('fake', None)) for d in self.docs]
         self.idx.excluded = lambda: set()
@@ -1309,23 +1325,12 @@ class IndexThroughRunner(unittest.TestCase):
             n = 5 if d == 'd2' else 3
             return [(1, None, f'{"BAD " if d in self.bad and i == n - 1 else ""}text of {d} {i}') for i in range(n)]
         self.idx._texts = texts
-        q = quiet()
-        q.start()
-        self.addCleanup(q.stop)
 
     def use(self, mode, *extra):
         self.idx.emb.close()
         self.idx.emb = fake_runner(mode, *extra)
         self.addCleanup(self.idx.emb.close)
         return self.idx.emb
-
-    def rows(self, sql):
-        import sqlite3
-        con = sqlite3.connect(self.dir / 'semantic.sqlite')
-        try:
-            return con.execute(sql).fetchall()
-        finally:
-            con.close()
 
     def nothing_written(self):
         self.assertEqual(self.rows('SELECT count(*) FROM docstate'), [(0,)])
@@ -1413,6 +1418,266 @@ class IndexThroughRunner(unittest.TestCase):
         with self.assertRaises(retrieval.RunnerFailed):
             self.idx.update(batch=2)
         self.nothing_written()
+
+
+class IndexMadeBy(IndexCase):
+    # The index records what made its vectors (model and settings). With any other, meaning search stays off and nothing is
+    # deleted. An index from before the record is adopted only when three of its passages, embedded again, give back their vectors.
+    real_model_in_use, real_embedder = staticmethod(retrieval.model_in_use), retrieval.Embedder
+
+    class Emb:   # the same text always gives the same vector; another `seed` is another model
+        def __init__(self, seed=0):
+            self.seed, self.texts, self.closed = seed, [], False
+
+        def embed(self, texts, search=False, force=False):
+            self.texts += texts
+            np = retrieval.np
+            out = [np.random.default_rng([self.seed, int(hashlib.sha256(t.encode()).hexdigest()[:8], 16)]).standard_normal(retrieval.DIM) for t in texts]
+            return np.array([v / np.linalg.norm(v) for v in out], dtype=np.float32)
+
+        def close(self):
+            self.closed = True
+
+    def setUp(self):
+        self.emb, self.now = self.Emb(), retrieval.made_by(retrieval.MODEL_ID)
+        super().setUp(ENGINE='onnx', Embedder=lambda: self.emb, model_in_use=self.model)
+
+    def model(self):   # model_in_use(): self.now, or the error that reading the model file gives
+        if isinstance(self.now, Exception):
+            raise self.now
+        return self.now
+
+    def write(self, sql, *args):   # as another process would
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        con.execute(sql, args)
+        con.commit()
+        con.close()
+
+    def record(self):
+        rows = self.rows("SELECT v FROM meta WHERE k='made_by'")
+        return json.loads(rows[0][0]) if rows else None
+
+    def old_index(self, emb=None):
+        """An index as it was before the record: ten passages and their vectors, and no meta table."""
+        texts = [f'passage {i} about boiling water' for i in range(10)]
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        con.executescript('''CREATE TABLE chunk(id INTEGER PRIMARY KEY, doc_id TEXT, page INTEGER, t REAL, text TEXT, active INTEGER DEFAULT 1);
+          CREATE INDEX chunk_doc ON chunk(doc_id);
+          CREATE TABLE docstate(doc_id TEXT PRIMARY KEY, sig TEXT, nchunks INTEGER, at REAL);
+          CREATE TABLE gaps(doc_id TEXT PRIMARY KEY, reason TEXT);''')
+        con.executemany('INSERT INTO chunk(id,doc_id,page,t,text) VALUES (?,?,1,NULL,?)', [(i, 'd', t) for i, t in enumerate(texts, 1)])
+        con.commit()
+        con.close()
+        (emb or self.Emb()).embed(texts).astype(retrieval.np.float16).tofile(self.dir / 'vectors.f16')
+
+    def assert_off(self, why):
+        """Opening the index leaves meaning search off for this reason, and every passage and vector as it was."""
+        before = self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()
+        self.emb.closed = False
+        idx = self.open()
+        self.assertEqual((idx.emb, idx.status['state'], idx.status['chunks'], len(idx.mat), self.emb.closed), (None, 'off', 0, 0, True))
+        self.assertIn(why, idx.status['note'])
+        self.assertEqual(idx.semantic('boil water'), [])
+        self.assertEqual((self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()), before)
+
+    def test_an_index_with_no_passage_yet_takes_the_model_in_use(self):
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), {'model': 'bge-small-en-v1.5', 'dim': 384, 'pooling': 'cls', 'max_tokens': 320, 'passage_prefix': '',
+                                         'query_prefix': 'Represent this sentence for searching relevant passages: '})
+        self.now = retrieval.made_by('sha256:' + '1' * 64)     # e.g. the first start saw a model file that was still being copied
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+
+    def test_another_process_recording_meanwhile(self):
+        # the app and `python retrieval.py` adopt the same older index at once: the same model is fine, another one is not
+        self.old_index()
+        real = retrieval.Index._same_vectors
+
+        def recording(theirs):
+            def meanwhile(idx, db, ids):
+                self.write("INSERT INTO meta VALUES ('made_by', ?)", json.dumps(theirs, sort_keys=True))
+                return real(idx, db, ids)
+            return mock.patch.object(retrieval.Index, '_same_vectors', meanwhile)
+        with recording(self.now):
+            self.assertIs(self.open().emb, self.emb)
+        self.write('DELETE FROM meta')
+        with recording(retrieval.made_by('sha256:' + '2' * 64)):
+            self.assert_off('made with another search model, or with other settings')
+
+    def test_onnxruntime_with_another_vector_size_gives_no_vectors(self):
+        e = self.real_embedder.__new__(self.real_embedder)   # no onnxruntime: a stand-in session that gives 768 numbers
+        e.tok = types.SimpleNamespace(encode_batch=lambda texts: [types.SimpleNamespace(ids=[1, 2], attention_mask=[1, 1])] * len(texts))
+        e.sess = types.SimpleNamespace(run=lambda _, feed: [retrieval.np.ones((len(feed['input_ids']), 2, 768), dtype=retrieval.np.float32)])
+        e.inputs, e.lock = set(), threading.Lock()
+        with self.assertRaises(retrieval.WrongModel):
+            e.embed(['a passage'])
+
+    def test_an_older_index_whose_vectors_come_back_is_adopted(self):
+        self.old_index()
+        idx = self.open()
+        self.assertIs(idx.emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+        self.assertEqual(len(idx.mat), 10)
+        self.assertEqual(self.emb.texts, [f'passage {i} about boiling water' for i in (0, 5, 9)])   # first, middle, last
+        self.emb.texts.clear()
+        self.assertIs(self.open().emb, self.emb)     # from then on the record decides: nothing is embedded again
+        self.assertEqual(self.emb.texts, [])
+
+    def test_another_model_or_other_settings_keep_meaning_search_off(self):
+        self.old_index()
+        self.open()
+        made = self.record()
+        self.emb.texts.clear()
+        for other in (retrieval.made_by('sha256:' + '0' * 64), dict(made, max_tokens=512), dict(made, query_prefix='')):
+            self.now = other
+            self.assert_off('made with another search model, or with other settings')
+        self.assertEqual((self.record(), self.emb.texts), (made, []))     # the record decides: nothing is embedded again
+        self.now = made
+        self.write("UPDATE meta SET v='not json'")
+        self.assert_off('made with another search model, or with other settings')
+
+    def test_passages_no_longer_in_use_do_not_count(self):
+        self.old_index()
+        self.open()
+        self.write('UPDATE chunk SET active=0')
+        self.now = retrieval.made_by('sha256:' + '1' * 64)
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+
+    def test_an_older_index_from_another_model_is_left_alone(self):
+        self.old_index(emb=self.Emb(seed=1))
+        self.assert_off('made with another search model, or with other settings')
+        for answer in ({'return_value': retrieval.np.ones((3, 768), dtype=retrieval.np.float32)},
+                       {'side_effect': retrieval.WrongModel('768 numbers per vector')}):   # another vector size, as both engines say it
+            with mock.patch.object(self.emb, 'embed', **answer):
+                self.assert_off('made with another search model, or with other settings')
+        self.assertIsNone(self.record())
+
+    def test_an_older_index_that_cannot_be_checked_is_checked_at_the_next_start(self):
+        self.old_index()
+        for broken in (OSError('lastbook-llm could not start'), [retrieval.np.full((3, retrieval.DIM), retrieval.np.nan)]):
+            with mock.patch.object(self.emb, 'embed', side_effect=broken):
+                self.assert_off('could not check')
+        self.assertIsNone(self.record())
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+
+    def test_an_older_index_from_an_interrupted_run_is_checked_by_the_passages_that_have_vectors(self):
+        self.old_index()
+        with open(self.dir / 'vectors.f16', 'r+b') as f:
+            f.truncate(7 * retrieval.DIM * 2 + 3)      # passages 8 to 10 have no vectors, and part of a row is left
+        self.assertEqual(len(self.open().mat), 7)
+        self.assertEqual(self.emb.texts, [f'passage {i} about boiling water' for i in (0, 3, 6)])
+
+    def test_an_older_index_is_left_alone_when_one_passage_differs(self):
+        # the two forms of bge-small agree to 0.998 or more (#168): 0.995 is the same model, 0.98 is not
+        self.old_index()
+        np, v = retrieval.np, self.Emb().embed(['passage 5 about boiling water'])[0]
+        u = np.roll(v, 1) - (np.roll(v, 1) @ v) * v      # at a right angle to v
+        for cos in (0.98, 0.995):
+            with open(self.dir / 'vectors.f16', 'r+b') as f:
+                f.seek(5 * retrieval.DIM * 2)
+                f.write((cos * v + (1 - cos * cos) ** 0.5 * u / np.linalg.norm(u)).astype(np.float16).tobytes())
+            if cos < 0.99:
+                self.assert_off('made with another search model, or with other settings')
+        self.assertIs(self.open().emb, self.emb)
+
+    def test_a_change_while_lastbook_runs_stops_indexing(self):
+        # checked before each pass and in each document's write: on a Mac lastbook-llm reads the model file again at each of its
+        # starts, and while no passage has a vector, a second process with another model takes the index
+        made, other, top, real = self.now, retrieval.made_by('sha256:' + '3' * 64), self.dir, self.emb.embed
+
+        def another_process():
+            self.now = other
+            self.assertIs(self.open().emb, self.emb)
+            self.now = made
+        new_file, unreadable = lambda: setattr(self, 'now', other), lambda: setattr(self, 'now', OSError('gone'))
+        for during, record in ((False, lambda: self.write("UPDATE meta SET v=?", json.dumps(other, sort_keys=True))), (True, another_process)):
+            for change, make in {'file': new_file, 'record': record, 'unreadable': unreadable}.items():
+                self.dir, self.now = top / f'{during}-{change}', made
+                with self.subTest(during=during, change=change), mock.patch.object(retrieval, 'IDX', self.dir):
+                    if not during:
+                        self.dir.mkdir()
+                        self.old_index()
+                    idx = self.open()
+                    idx.sources = lambda: [(d, 's', 0, None) for d in ('d1', 'd2') if during]
+                    idx._texts = lambda d, how: [(1, None, f'text of {d}')]
+                    if during:
+                        (self.dir / 'vectors.f16').touch()
+                    else:   # a pass would write nothing, but drop passage 11, which has no vector, and cut part of a row
+                        self.write("INSERT INTO chunk(id,doc_id,page,text) VALUES (11,'d',1,'no vector yet')")
+                        with open(self.dir / 'vectors.f16', 'ab') as f:
+                            f.write(b'abc')
+                        make()
+                    before = self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()
+                    with mock.patch.object(self.emb, 'embed', side_effect=lambda texts, **kw: (make(), real(texts))[1]):   # during: as d1 is embedded
+                        self.assertEqual(idx.update(), 0)
+                    self.assertEqual((idx.emb, idx.status['chunks']), (None, 0))
+                    self.assertIn('changed while Lastbook was open', idx.status['note'])
+                    self.assertEqual((self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()), before)
+
+    def test_an_older_index_that_cannot_be_written_keeps_it_off(self):
+        self.old_index()
+        self.rows('PRAGMA journal_mode=WAL')               # as the app leaves every index
+        os.chmod(self.dir / 'semantic.sqlite', 0o444)      # e.g. copied from read-only media
+        self.addCleanup(os.chmod, self.dir / 'semantic.sqlite', 0o644)
+        if os.access(self.dir / 'semantic.sqlite', os.W_OK):
+            self.skipTest('this user can write to read-only files (root)')
+        self.assert_off('could not open or write to the search index')
+
+    def test_an_empty_index_is_looked_at_and_taken_in_one_transaction(self):
+        # no other process may write vectors between the look and the record
+        real, locked = retrieval.Index._with_vectors, []
+
+        def look(idx, db):
+            other = sqlite3.connect(self.dir / 'semantic.sqlite', timeout=0, isolation_level=None)
+            try:
+                other.execute('BEGIN IMMEDIATE')
+                other.execute('ROLLBACK')
+                locked.append(False)
+            except sqlite3.OperationalError:
+                locked.append(True)
+            finally:
+                other.close()
+            return real(idx, db)
+        with mock.patch.object(retrieval.Index, '_with_vectors', look):
+            self.assertIs(self.open().emb, self.emb)
+        self.assertEqual((locked[-1], self.record()), (True, self.now))
+
+    def test_following_another_process_that_writes_for_another_model_turns_it_off(self):
+        idx = self.open()
+        self.write("UPDATE meta SET v=?", json.dumps(retrieval.made_by('sha256:' + '7' * 64), sort_keys=True))   # it took the index while empty
+        with open(self.dir / 'indexer.lock', 'w') as theirs:      # and is in its pass
+            retrieval.lastbook_paths.try_lock(theirs)
+            self.assertEqual(idx.update(), 0)                     # its vectors are not loaded
+        self.assertEqual((idx.emb, idx.status['chunks'], len(idx.mat)), (None, 0, 0))
+        self.assertIn('changed while Lastbook was open', idx.status['note'])
+
+    def test_a_model_file_that_cannot_be_read_keeps_it_off(self):
+        self.old_index()
+        self.now = PermissionError('denied')
+        self.assert_off('could not read the search model file')
+
+    def test_the_model_file_is_known_by_its_fingerprint(self):
+        self.assertEqual(set(retrieval.KNOWN_MODELS.values()), {retrieval.MODEL_ID})   # the onnxruntime and llama.cpp forms of one model
+        model = self.dir / 'models'
+        model.mkdir()
+        (model / 'model.onnx').write_bytes(b'a model file')
+        sha = hashlib.sha256(b'a model file').hexdigest()
+        with mock.patch.object(retrieval, 'MODEL', model), mock.patch.dict(retrieval.MODEL_SHA, clear=True):
+            self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + sha)      # unknown: named by itself
+            with mock.patch.dict(retrieval.KNOWN_MODELS, {sha: retrieval.MODEL_ID}):
+                self.assertEqual(self.real_model_in_use(), retrieval.made_by(retrieval.MODEL_ID))
+                with mock.patch.object(retrieval.hashlib, 'file_digest', side_effect=AssertionError('read again')):
+                    self.real_model_in_use()                                           # read once while size and time stay
+            (model / 'm.gguf').write_bytes(b'the other form')
+            with mock.patch.object(retrieval, 'ENGINE', 'llama'), mock.patch.object(retrieval, 'GGUF', model / 'm.gguf'):
+                self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + hashlib.sha256(b'the other form').hexdigest())
+            (model / 'model.onnx').write_bytes(b'a model filf')                             # same size, written later
+            os.utime(model / 'model.onnx', ns=(time.time_ns() + 2 * 10**9,) * 2)
+            self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + hashlib.sha256(b'a model filf').hexdigest())
+            (model / 'model.onnx').write_bytes(b'another model file')
+            self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + hashlib.sha256(b'another model file').hexdigest())
 
 
 class StreamTests(Both, unittest.TestCase):

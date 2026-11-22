@@ -6,7 +6,8 @@ video timestamp, and which retriever found it.
 
 The semantic index lives in derived/index/ (SSD): semantic.sqlite (chunks, per-document signatures) and vectors.f16
 (append-only float16 rows). It grows incrementally: documents whose catalog signature changed or that are new get
-(re)embedded; nothing in library-data is written.
+(re)embedded; nothing in library-data is written. semantic.sqlite also records what made the vectors (meta 'made_by'),
+and meaning search stays off with any other model or settings.
 """
 import atexit, hashlib, html, json, math, os, re, sqlite3, subprocess, sys, threading, time, traceback, weakref
 from pathlib import Path
@@ -23,6 +24,16 @@ MODEL = HERE / 'derived' / 'models' / 'bge-small-en-v1.5'
 DIM = 384
 CHUNK, OVERLAP, MINLEN = 1100, 150, 80
 QUERY_PREFIX = 'Represent this sentence for searching relevant passages: '
+MAX_TOKENS = 320   # where both engines cut a passage
+MODEL_ID = 'bge-small-en-v1.5'
+# The index records what made its vectors: another model's vectors, or this model's with other settings, cannot be compared
+# with them. A file is known by its SHA-256, so the two forms of bge-small count as one model. A form is listed only after its
+# vectors were compared with the other's (#168: cosine 0.998 or more on 10,000 passages). Any other file is named by its own
+# SHA-256, so an index it builds works with that file alone.
+KNOWN_MODELS = {
+    '828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35': MODEL_ID,   # model.onnx, BAAI's ONNX export (onnxruntime)
+    'bf40c42ad7d89382e9ba7376d5c4b73f6b556cb541fab37aaa1da9c320149b65': MODEL_ID,   # bge-small-en-v1.5-f32.gguf (lastbook-llm --embed)
+}
 
 TELEMETRY = 'onnxruntime not loaded'
 # This app stays offline. Read when onnxruntime is imported: the Mac build otherwise opens a usage store and connects to
@@ -73,7 +84,7 @@ class Embedder:
         so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
         self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=['CPUExecutionProvider'])
         self.tok = Tokenizer.from_file(str(MODEL / 'tokenizer.json'))
-        self.tok.enable_truncation(max_length=320)
+        self.tok.enable_truncation(max_length=MAX_TOKENS)
         self.tok.enable_padding()
         self.inputs = {i.name for i in self.sess.get_inputs()}
         self.lock = threading.Lock()
@@ -88,6 +99,8 @@ class Embedder:
         with self.lock:
             out = self.sess.run(None, feed)[0]
         v = out[:, 0, :]  # bge uses the [CLS] vector
+        if v.shape[1] != DIM:   # another model: its vectors must never reach the index
+            raise WrongModel(f'model.onnx gives vectors of {v.shape[1]} numbers; the index needs {DIM}')
         v = v / np.linalg.norm(v, axis=1, keepdims=True).clip(1e-9)
         return v.astype(np.float32)
 
@@ -99,6 +112,10 @@ class RunnerFailed(RuntimeError):
     def __init__(self, msg, died=False, resting=False):
         super().__init__(msg)
         self.died, self.resting = died, resting
+
+
+class WrongModel(RunnerFailed):
+    """The model gives vectors of another size or pooling: it is another model, not a passing failure."""
 
 
 class TextRejected(RuntimeError):
@@ -167,7 +184,7 @@ class RunnerEmbedder:
         # numbers: a file that says otherwise would give vectors of the right size but the wrong meaning. Older builds
         # do not say, and always pooled CLS.
         if ready.get('pooling', 'cls') != 'cls' or ready.get('dim', DIM) != DIM:
-            raise RunnerFailed(f"lastbook-llm loaded a model with {ready.get('pooling')} pooling and {ready.get('dim')} "
+            raise WrongModel(f"lastbook-llm loaded a model with {ready.get('pooling')} pooling and {ready.get('dim')} "
                                f'numbers per vector; this index needs cls and {DIM}')
 
     def _stop(self):
@@ -247,7 +264,7 @@ class RunnerEmbedder:
                 raise RunnerFailed('lastbook-llm failed a moment ago; it is tried again later', resting=True)
             self.next_id += 1
             rid = self.next_id
-            line = (json.dumps({'op': 'embed', 'id': rid, 'texts': texts, 'max_tokens': 320}) + '\n').encode()
+            line = (json.dumps({'op': 'embed', 'id': rid, 'texts': texts, 'max_tokens': MAX_TOKENS}) + '\n').encode()
             seconds = self.SEARCH_S if search else self.BASE_S + self.PER_TEXT_S * len(texts)
             for attempt in range(2):
                 started = self.proc is None or self.proc.poll() is not None
@@ -293,6 +310,35 @@ class RunnerEmbedder:
                 proc.kill()
             except OSError:
                 pass
+
+
+def made_by(model):
+    """What an index records about the vectors it holds: the model, the settings that change its vectors, and the prefixes
+    put before passages (none for bge) and questions. The record is compared as text: changing what goes into it turns
+    every index made before the change off, so a later version that adds a setting must also add it, with the value older
+    indexes used, to their stored records."""
+    return {'model': model, 'dim': DIM, 'pooling': 'cls', 'passage_prefix': '', 'query_prefix': QUERY_PREFIX, 'max_tokens': MAX_TOKENS}
+
+
+MODEL_SHA = {}   # (path, size, mtime_ns) -> SHA-256: the checks before each write then only look at the file's size and time
+
+
+class ModelChanged(Exception):
+    """The model file or the index's record is no longer what this start checked."""
+    note = ('the search model file or the search index changed while Lastbook was open. Close and reopen Lastbook to check '
+            'again')
+
+
+def model_in_use():
+    """made_by() for the model file the engine uses, named by its SHA-256 (read once while its size and time stay the same)."""
+    path = GGUF if ENGINE == 'llama' else MODEL / 'model.onnx'
+    st = path.stat()
+    key = (str(path), st.st_size, st.st_mtime_ns)
+    if key not in MODEL_SHA:
+        with open(path, 'rb') as f:
+            MODEL_SHA[key] = hashlib.file_digest(f, 'sha256').hexdigest()
+    sha = MODEL_SHA[key]
+    return made_by(KNOWN_MODELS.get(sha, 'sha256:' + sha))
 
 
 def norm_ws(s):
@@ -392,7 +438,103 @@ class Index:
         self.status = {'state': 'starting' if AVAILABLE else 'off', 'chunks': 0, 'docs': 0, 'pending': None, 'rate': None}
         if not AVAILABLE:
             self.status['note'] = 'Meaning-based search is off: no model in this library. Keyword search still works.'
+        else:
+            try:
+                self._check_made_by()
+            except sqlite3.Error as e:   # a read-only or full drive, a write lock held over 60 s, a damaged file
+                print(f'semantic index: {e}', file=sys.stderr, flush=True)
+                self._off('Lastbook could not open or write to the search index: the drive may be full or read-only, or '
+                          'another Lastbook may be using it. Close and reopen Lastbook to try again')
         self._load()
+
+    def _check_made_by(self):
+        """The index must have been made by the model and settings in use, or meaning search stays off: two models' vectors
+        must never be mixed or compared. Nothing is deleted. An index with no passage yet takes the model in use. An index from
+        before this record is adopted when a few of its passages, embedded again now, give back their stored vectors; if that
+        cannot be checked, the next start tries again."""
+        try:
+            want = json.dumps(model_in_use(), sort_keys=True)
+        except OSError as e:
+            print(f'semantic index: {e}', file=sys.stderr, flush=True)
+            return self._off('Lastbook could not read the search model file')
+        self.made = want
+        other = ('the search index in this data folder was made with another search model, or with other settings. If you '
+                 'replaced the search model file, putting the earlier one back turns it on again. To build the index again for '
+                 'the model now in use, close Lastbook and delete the derived/index folder in the Lastbook data folder; Lastbook '
+                 'then builds it again, which can take hours')
+        db = self._db()
+        try:
+            db.execute('CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)')
+            row = one(db, "SELECT v FROM meta WHERE k='made_by'")
+            if row and row[0] == want:
+                return
+
+            def take_if_empty(db):   # one transaction: a pass that writes its first vectors meanwhile comes before or after it
+                ids = self._with_vectors(db)
+                if not ids:          # nothing to mix with
+                    db.execute("INSERT OR REPLACE INTO meta VALUES ('made_by', ?)", (want,))
+                return ids
+            ids = self._with_vectors(db) or self.tx(db, take_if_empty)   # found vectors can only lead to off or the check below
+            if not ids:
+                return
+            if row:
+                print(f'semantic index: the index records {row[0]}; in use: {want}', file=sys.stderr, flush=True)
+                return self._off(other)
+            same = self._same_vectors(db, ids)
+            if same is None:
+                return self._off('Lastbook could not check the search index against the search model this time. Close and '
+                                 'reopen Lastbook to try again')
+            if not same:
+                return self._off(other)
+            self.tx(db, lambda db: db.execute("INSERT OR IGNORE INTO meta VALUES ('made_by', ?)", (want,)))
+            if one(db, "SELECT v FROM meta WHERE k='made_by'")[0] != want:     # another process recorded another model meanwhile
+                return self._off(other)
+        finally:
+            db.close()
+
+    def _with_vectors(self, db):
+        """Passages in use that have a whole row in the vector file (an interrupted run can leave part of a row at its end)."""
+        whole = self.vec_path.stat().st_size // (DIM * 2) if self.vec_path.exists() else 0
+        return [i for (i,) in db.execute("SELECT id FROM chunk WHERE active=1 AND text!='' AND id<=? ORDER BY id", (whole,))]
+
+    def _same_vectors(self, db, ids):
+        """For an index with no record: do three of its passages, embedded again, give back their stored vectors? None if the
+        model could not embed them."""
+        pick = sorted({ids[0], ids[len(ids) // 2], ids[-1]})
+        try:
+            new = self.emb.embed([one(db, 'SELECT text FROM chunk WHERE id=?', (i,))[0] for i in pick])
+        except WrongModel:
+            return False
+        except Exception as e:
+            print(f'semantic index: could not check what made this index: {e}', file=sys.stderr, flush=True)
+            return None
+        if new.shape != (len(pick), DIM):      # a model with another vector size
+            return False
+        if not (np.isfinite(new).all() and np.linalg.norm(new, axis=1).all()):   # a broken answer says nothing about the index
+            return None
+        old = np.stack([np.fromfile(self.vec_path, dtype=np.float16, count=DIM, offset=(i - 1) * DIM * 2) for i in pick]).astype(np.float32)
+        cos = (old * new).sum(1) / (np.linalg.norm(old, axis=1) * np.linalg.norm(new, axis=1) + 1e-9)
+        return bool((cos >= 0.99).all())
+
+    def _off(self, why):
+        if hasattr(self.emb, 'close'):
+            self.emb.close()
+        self.emb = None
+        self.status.update(state='off', chunks=0, docs=0, pending=None,   # the pages read chunks to say meaning search is in use
+                           note=f'Meaning-based search is off: {why}. Keyword search still works.')
+        print(f'semantic index: off: {why}', file=sys.stderr, flush=True)
+
+    def _still_made_by(self, db):
+        """Raises ModelChanged unless the model file and the record are still those this start checked. Called before each
+        pass, each document written, and each load of another process's vectors: lastbook-llm reads the model file again at
+        each of its starts, and another process may have recorded another model since this start."""
+        try:
+            same = (json.dumps(model_in_use(), sort_keys=True) == self.made
+                    and one(db, "SELECT v FROM meta WHERE k='made_by'") == (self.made,))
+        except OSError:
+            same = False
+        if not same:
+            raise ModelChanged
 
     def _db(self):
         """Writer connection: autocommit, so no transaction is ever left open by accident; writes use tx()."""
@@ -430,7 +572,7 @@ class Index:
             self._load(truncate=False)
 
     def _load(self, truncate=True, db=None):
-        if not self.vec_path.exists() or not AVAILABLE:
+        if not self.emb or not self.vec_path.exists():   # no model, or not this index's: its vectors are left as they are
             self.mat = np.zeros((0, DIM), dtype=np.float16) if AVAILABLE else None
             self.active = np.zeros(0, dtype=bool) if AVAILABLE else None
             return
@@ -514,18 +656,28 @@ class Index:
         lockf = open(IDX / 'indexer.lock', 'w')
         try:
             lastbook_paths.try_lock(lockf)
-        except OSError:  # another process is indexing; just follow its progress
+        except OSError:  # another process is indexing; follow its progress if it writes what this start checked
+            lockf.close()
+            try:
+                self._still_made_by(self._ro())
+            except ModelChanged:
+                self._off(ModelChanged.note)
+                return 0
             self.refresh()
             self.status['state'] = 'indexing (other process)'
             return -1
         try:
             db = self._db()
             try:
+                self._still_made_by(db)
                 self._reconcile(db)
                 self._load(truncate=True, db=db)
             finally:
                 db.close()
             return self._update(budget_s, batch)
+        except ModelChanged:
+            self._off(ModelChanged.note)
+            return 0
         finally:
             lastbook_paths.unlock(lockf)
             lockf.close()
@@ -624,6 +776,7 @@ class Index:
                         raise RuntimeError(f'vector file has {len(self.mat)} rows but the database has {start - 1}; rebuild derived/index')
 
                 def w(db):
+                    self._still_made_by(db)   # in the write transaction: no other process can record another model until it ends
                     db.execute('UPDATE chunk SET active=0 WHERE doc_id=?', (doc_id,))
                     if parts:
                         db.executemany('INSERT INTO chunk(id,doc_id,page,t,text,active) VALUES (?,?,?,?,?,1)',
@@ -684,10 +837,11 @@ class Index:
 
     # ------------------------------------------------------------- search --
     def semantic(self, q, k=60, allowed=None, floor=0.55):
-        if not self.emb or self.mat is None or not len(self.mat):
+        emb = self.emb   # read once: indexing may turn meaning search off meanwhile
+        if not emb or self.mat is None or not len(self.mat):
             return []
         try:
-            qv = self.emb.embed([QUERY_PREFIX + q], search=True)[0]   # float32: scores() multiplies in float32 (#224)
+            qv = emb.embed([QUERY_PREFIX + q], search=True)[0]   # float32: scores() multiplies in float32 (#224)
         except Exception as e:   # meaning search is an extra: when it fails, keyword search and Chat carry on without it
             if 'search_error' not in self.status:   # the first of a run of failures; in full if it is not the program's
                 print(f'semantic search failed; keyword search carries on: {e}', file=sys.stderr, flush=True)

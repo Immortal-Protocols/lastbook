@@ -30,7 +30,8 @@ class FakeEmb:
 def make_index(tmp, rows):
     """rows: [(doc_id, vector)]. Writes the chunk table and vectors, returns an Index with a fake embedder."""
     tmp = Path(tmp)
-    with mock.patch.object(retrieval, 'IDX', tmp), mock.patch.object(retrieval, 'AVAILABLE', True), mock.patch.object(retrieval, 'Embedder', FakeEmb):
+    with mock.patch.object(retrieval, 'IDX', tmp), mock.patch.object(retrieval, 'AVAILABLE', True), mock.patch.object(retrieval, 'Embedder', FakeEmb), \
+            mock.patch.object(retrieval, 'model_in_use', lambda: retrieval.made_by(retrieval.MODEL_ID)):
         idx = retrieval.Index(lambda: {}, lambda r: ('', 1), tmp / 'fts.sqlite')
         db = idx._db()
         for i, (d, v) in enumerate(rows, 1):

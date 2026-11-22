@@ -77,6 +77,15 @@ These are reference figures, not checksums for a new build; use the new `build.j
 
 ## Independent checks
 
+Run the source-address parser regressions without downloading or building data:
+
+```sh
+python3 -B -m unittest app.tests.test_build_region_tr_34
+```
+
+İBB house-number extraction keeps a separate door suffix (`No:25 F YALIKÖY/…` → `25F`), but does not
+consume a neighbourhood's first letter (`No:75 FENERYOLU/KADIKÖY` → `75`).
+
 `check` exits non-zero on data failures and validates:
 
 - Every output's recorded size and SHA-256; map-set name and sizes; SQLite integrity for all four databases.

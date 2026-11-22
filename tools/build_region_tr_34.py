@@ -787,7 +787,8 @@ def parse_ibb_address(addr_text):
     """Extract (street, house_number) from İBB strings such as 'Çayır Cad. No:25 F YALIKÖY/BEYKOZ'."""
     if not addr_text:
         return '', ''
-    m = re.search(r'^(.+?\b(?:Cad\.|Caddesi|Sk\.|Sok\.|Sokak|Sokağı|Bulvarı|Bulv\.|Blv\.|Meydanı|Yolu))\s*No\s*[:.]?\s*(\d+(?:\s*[/\s-]\s*[A-Za-z])?)', addr_text.strip(), flags=re.I)
+    # A suffix must end its token; never take the first letter of the following neighbourhood.
+    m = re.search(r'^(.+?\b(?:Cad\.|Caddesi|Sk\.|Sok\.|Sokak|Sokağı|Bulvarı|Bulv\.|Blv\.|Meydanı|Yolu))\s*No\s*[:.]?\s*(\d+(?:\s*[/\s-]\s*[A-Za-z]\b)?)', addr_text.strip(), flags=re.I)
     if not m:
         return '', ''
     street = re.sub(r'^.+?\b(?:Mah\.|Mahallesi|Mh\.)\s*', '', m.group(1).strip(), flags=re.I)

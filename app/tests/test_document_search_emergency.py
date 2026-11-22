@@ -185,6 +185,31 @@ class SearchPathIntegration(unittest.TestCase):
         self.assertEqual(keys[0], ('precise', 1))
         self.assertIn(('urgent', 1), keys)
 
+    def test_emergency_first_aid_reaches_top_eight(self):
+        # Twelve precise-looking results previously hid a first-aid fallback.
+        cat = {'by_id': {f'precise-{i}': {'title': f'Drowning equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['aid'] = {'title': 'Drowning first aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('aid', 1, None), {}))
+        result = assistant.promote_emergency_first_aid(
+            ranked[:], 'drowning rescue', 8, cat)
+        self.assertIn('aid', [row[1][0] for row in result[:8]])
+        self.assertEqual([row[1][0] for row in result[:7]],
+                         [f'precise-{i}' for i in range(7)])
+
+    def test_precise_ordinary_query_keeps_top_eight(self):
+        cat = {'by_id': {f'precise-{i}': {'title': f'Fire equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['aid'] = {'title': 'Drowning first aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('aid', 1, None), {}))
+        result = assistant.promote_emergency_first_aid(
+            ranked[:], 'fire equipment', 8, cat)
+        self.assertEqual(result, ranked)
+
     def test_auxiliary_query_failure_preserves_strict_results(self):
         original = server.emergency_fts_expr
         with patch.object(server, 'emergency_fts_expr', return_value='invalid:fts:expression'):

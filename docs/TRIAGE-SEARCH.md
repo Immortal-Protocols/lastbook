@@ -203,7 +203,7 @@ are skipped when a machine, food or animal word is in the question. Letters type
 (`unstretch`: "bloooood" → blood).
 
 **Order in `correct_with(q)`:** a question that looks foreign (non-ASCII letters, or more Spanish/Portuguese/French function words
-than English ones) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
+than English ones; "a", "me" and "no" count for neither, added in pull request 3 after test list 4) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
 then `phrase_slips`; then each token: not plain letters or ALL CAPS (unless most of the question is capitals) or with inner capitals
 ("ODing", "iPhone"): kept (a run with an apostrophe or hyphen inside goes to `glued`); `unstretch`; `split_word`; `fix_word`;
 `body_fix`; capitalisation restored.

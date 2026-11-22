@@ -223,7 +223,7 @@ class Browser(unittest.TestCase):
             self.assertEqual(page.locator('img[src=x]').count(), 0)
             self.assertIsNone(page.evaluate('window.bad'))
             page.evaluate("location.hash = '#/watch/vida?from=%23%2Fsearch'")
-            expect(page.locator('.rtop .back')).to_have_text('Resultados de búsqueda')
+            expect(page.locator('.rtop .back')).to_have_text('Resultados de la búsqueda')
             expect(page.locator('h1')).to_have_text('vida')  # library title
             page.evaluate("location.hash = '#/missing'")
             expect(page.get_by_role('link', name='Ir a Videos')).to_be_visible()

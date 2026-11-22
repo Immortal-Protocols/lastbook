@@ -69,7 +69,7 @@ def validate(m, allowed=None):
         for x in m.get(key) or []:
             if not isinstance(x, dict) or not isinstance(x.get('id'), str) or not NAME.match(x['id']):
                 return None
-            if key == 'address_indexes' and not re.fullmatch(r'[A-Z]{2}', x['id']):
+            if key == 'address_indexes' and not re.fullmatch(r'[A-Z]{2}(-[A-Za-z0-9_]{1,48})?', x['id']):   # 'CA', or an ISO 3166-2 region: 'ES-CT'
                 return None
             files = []
             for f in x.get('files') or []:
@@ -80,7 +80,10 @@ def validate(m, allowed=None):
             available = bool(x.get('available')) and bool(files) and all(f['size'] for f in files)
             if available and not _int(x.get('installed_bytes')):
                 return None
+            # country groups the maps in setup (country first, then region); Lastbook's own manifest has none: its maps are US states
+            cc = x.get('country') if isinstance(x.get('country'), str) and re.fullmatch(r'[A-Z]{2}', x.get('country') or '') else 'US'
             entries.append({'id': x['id'], 'title': str(x.get('title') or x['id']), 'kind': str(x.get('kind') or 'state'),
+                         'country': cc, 'country_name': str(x.get('country_name') or ('United States' if cc == 'US' else cc)),
                          'includes': str(x.get('includes') or ''),
                          'installed_bytes': x.get('installed_bytes') if _int(x.get('installed_bytes')) else None,
                          'download_bytes': sum(f['size'] for f in files), 'available': available, 'files': files})

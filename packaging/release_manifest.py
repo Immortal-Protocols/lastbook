@@ -62,12 +62,29 @@ def small_from(folder):
             'files': [{'name': z.name, 'url': f'{BASE}/{z.name}', 'size': z.stat().st_size, 'sha256': sums[z.name], 'kind': 'zip'}]}
 
 
+def add_regions(out, folder):
+    """Each region's map and address index, as tools/build_europe_region.py wrote them (<id>.json), after the ones already listed."""
+    for f in sorted(folder.glob('*.json')):
+        try:
+            entries = json.loads(f.read_text(encoding='utf-8'))
+        except ValueError:
+            continue
+        if not isinstance(entries, dict) or not isinstance(entries.get('maps'), dict):
+            continue          # not a region entry (e.g. a manifest copied into the folder)
+        for key in ('maps', 'address_indexes'):
+            e = entries.get(key)
+            if isinstance(e, dict) and e.get('id') not in {x.get('id') for x in out[key]}:
+                out[key].append(e)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--packs', default=str(ROOT / 'derived' / 'release' / 'manifest-v1.json'))
     ap.add_argument('--out', default=str(ROOT / 'derived' / 'release' / 'setup' / 'manifest-v1.json'))
     ap.add_argument('--measure', help='a copy of the model file to measure memory_bytes from')
     ap.add_argument('--small-from', help='a release folder holding Lastbook-Small.zip and SHA256SUMS.txt')
+    ap.add_argument('--regions', help='a folder of <id>.json entries from tools/build_europe_region.py (the Region maps workflow): '
+                                      'their maps and address indexes are added')
     a = ap.parse_args()
     try:
         src = json.loads(Path(a.packs).read_text(encoding='utf-8'))
@@ -87,6 +104,8 @@ def main():
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),
            'address_indexes': list(src.get('address_indexes') or []),
            'models': [model_entry(measure(a.measure) if a.measure else MEASURED_MEMORY)]}
+    if a.regions:
+        add_regions(out, Path(a.regions))
     if manifest.validate(out) is None:
         bad = [f.get('url') for p in packs for f in p.get('files', []) if not download.url_allowed(f.get('url'))]
         sys.exit('the manifest does not pass engine/setup/manifest.validate' + (f'; addresses not allowed: {bad}' if bad else ''))

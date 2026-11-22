@@ -1,0 +1,104 @@
+# Builds detailed maps for European regions (tools/regions/europe.json) on GitHub's runners and stages them on a GitHub
+# release: each region's map zip, its address zip where there is one (Spain), and its manifest entries (<id>.json).
+# Run it from the Actions tab: "Region maps" -> Run workflow.
+#   regions: a country code (ES), region ids (ES-CT ES-RI), or all
+# Each region: about 2-10 minutes and a few hundred MB (tools/build_europe_region.py). Regions already on the release are rebuilt.
+#
+# Setup takes maps from downloads.lastbook.org only, so the entries point there (base_url). To publish: copy the zips to
+# that host, then add the entries to the setup manifest:
+#   gh release download maps --pattern '*.json' --dir regions
+#   python3 packaging/release_manifest.py --regions regions ...
+name: Region maps
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: 'Country code (ES), region ids separated by spaces, or "all"'
+        required: true
+        default: 'ES'
+      tag:
+        description: 'Release that holds the maps and manifest-v1.json'
+        required: true
+        default: 'maps'
+      batch:
+        description: 'Regions per job'
+        required: true
+        default: '2'
+      base_url:
+        description: 'Where the zips will be published (the manifest entries point there)'
+        required: true
+        default: 'https://downloads.lastbook.org'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: region-maps
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag }}
+  BASE_URL: ${{ inputs.base_url }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      batches: ${{ steps.plan.outputs.batches }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          REGIONS: ${{ inputs.regions }}
+          BATCH: ${{ inputs.batch }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          regions = json.load(open('tools/regions/europe.json'))['regions']
+          want = os.environ['REGIONS'].split()
+          ids = [r['id'] for r in regions if 'all' in want or r['id'] in want or r['country'] in want]
+          missing = [w for w in want if w != 'all' and w not in {r['id'] for r in regions} and w not in {r['country'] for r in regions}]
+          if missing:
+              raise SystemExit(f'not in tools/regions/europe.json: {missing}')
+          # big regions alone, the rest in batches
+          area = {r['id']: r['area_km2'] or 0 for r in regions}
+          n = max(1, int(os.environ['BATCH']))
+          big = [i for i in ids if area[i] > 60000]
+          rest = [i for i in ids if area[i] <= 60000]
+          batches = [[i] for i in big] + [rest[k:k + n] for k in range(0, len(rest), n)]
+          if len(batches) > 256:
+              raise SystemExit(f'{len(batches)} jobs: raise the batch size')
+          print(len(ids), 'regions in', len(batches), 'jobs')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('batches=' + json.dumps([' '.join(b) for b in batches]) + '\n')
+          EOF
+      - name: The release for the maps
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease --title "Region maps" \
+            --notes "Detailed region maps and their setup manifest entries, built by the Region maps workflow."
+
+  build:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        batch: ${{ fromJson(needs.plan.outputs.batches) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install osmium numpy tifffile imagecodecs duckdb
+      - name: Build and publish
+        run: |
+          for id in ${{ matrix.batch }}; do
+            python tools/build_europe_region.py "$id" --work "$RUNNER_TEMP/work" --out "$RUNNER_TEMP/dist" --base-url "$BASE_URL"
+            gh release upload "$TAG" "$RUNNER_TEMP"/dist/* --clobber
+            rm -rf "$RUNNER_TEMP/dist" "$RUNNER_TEMP/work"
+          done
+

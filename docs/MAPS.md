@@ -155,22 +155,80 @@ as one map.
 
 The goal is a detailed map for any place a person lives.
 
-- [ ] **Region ids.** The manifest already accepts map ids such as `DE-BE` and `CA-ON`. Address-index ids in
-  `engine/setup/manifest.py` and the address-index filenames carried over by `engine/setup/install.py` still use
-  two capital letters. The map builders in `packaging/state_maps.py` and `packaging/build_packs.py` use US regions.
-  Most proposals above use ISO 3166-2 ids to avoid reusing US state codes such as `DE` and `CA`.
-- [ ] **Sources.** Pick an open replacement for each US dataset, region by region, with its licence. The region
-  proposals above do this.
-- [ ] **No Southern California box.** `server.py` assumes `map.sqlite` covers Southern California (`_poi_sources`,
-  `socal_classes`).
-- [ ] **Setup.** First run asks for a US state map (#267). Installing several maps or a locally built map through
-  Setup is #53. A hand-built library already opens with [`--data`](#opening-a-locally-built-map-on-windows).
-- [ ] **Address search.** It knows US state names and US street words. Other countries write the number after the
-  street, fold accents, or have no postcode.
-- [ ] **Units.** The map shows distances in miles above 1.6 km and contour lines in feet (`web/map.js`).
+- [x] **Region ids.** Address-index ids and the filenames `install.py` carries over now take ISO 3166-2 ids such as
+  `ES-CT` as well as two capital letters. Regions outside the US are built by `tools/build_europe_region.py`, not
+  `packaging/state_maps.py` (see below).
+- [x] **Sources.** One set that covers all of Europe, so every region builds the same way today: OpenStreetMap,
+  Copernicus GLO-30 and, for Spain, Overture's addresses. A national source can replace a layer later, region by region,
+  as the proposals above suggest.
+- [x] **No Southern California box.** A region's map carries its detail in `national.sqlite` with an empty `map.sqlite`,
+  and the map opens on the region's own help points.
+- [x] **Setup.** When the manifest lists maps from several countries, setup asks for the country first, then the
+  region. A manifest with US states only looks as before.
+- [x] **Address search**, for Spain: the number after the street, Catalan and Spanish street words, folded accents.
+  Other countries still need their own rules (`engine/address_search.py`).
+- [x] **Units.** Kilometres and metres outside the US, chosen by the map, the locale or a click on the scale bar.
 - [ ] **Emergency number** for the person's country (#261).
 
 The design discussion is in #23, #25, #31 and #95.
+
+## Building a map outside the US
+
+A region outside the US is built from sources that cover all of Europe, so the same steps work for each of the 281
+regions in `tools/regions/europe.json` (28 countries, from OSM France's extracts; `tools/region_catalog.py` makes it,
+and `--source geofabrik` lists Geofabrik's extracts instead where that site is reachable). Ids are ISO 3166-2 codes
+where the region is a current first-level subdivision (220 of them: `ES-CT`, `CH-ZH`, `SE-AB`), else the country code
+and a slug (`FR-alsace`, a pre-2016 region).
+
+One command builds a region from start to finish, with the zips and its manifest entries (`<id>.json`):
+
+```bash
+python tools/build_europe_region.py ES-CT --work /path/to/work --out dist/
+```
+
+The **Region maps** workflow (`.github/workflows/regions.yml`) runs the same command on GitHub's runners for a country,
+a list of ids or all of them, and stages the results on a GitHub release. To publish them, copy the zips to
+downloads.lastbook.org and add the entries to the setup manifest with
+`packaging/release_manifest.py --regions <folder of <id>.json>`.
+
+Catalonia was built and checked this way on 20 November 2026 (about 6 minutes on 4 cores;
+a 340 MB map zip and a 63 MB address zip, 905 MB installed).
+
+| Step | Tool | Source | Licence |
+|---|---|---|---|
+| Streets, rail, water, land, places, help points, the sea; building outlines with heights; the place finder | `tools/build_osm_region.py` | An OpenStreetMap `.osm.pbf` extract, e.g. `download.openstreetmap.fr/extracts/europe/spain/catalunya.osm.pbf` (Geofabrik's free GeoPackage, which `build_map.py` reads, is not needed) | ODbL 1.0 |
+| Elevation | `tools/build_terrain.py --src --out --source` | Copernicus DEM GLO-30 tiles, public bucket `copernicus-dem-30m.s3.amazonaws.com`, worldwide | Copernicus DEM licence (free, attribution) |
+| Street addresses (Spain) | `tools/build_addresses_es.py CT` | Overture Maps' address theme, Spanish rows (scne.es), cut by the region's province postcode prefixes | CC BY 4.0 |
+| Credits, `map-set.json`, the two zips | `tools/finish_region_map.py OUT ES-CT --title Catalonia --credit … --zip DIR` | | |
+
+```bash
+python tools/build_osm_region.py catalunya.osm.pbf out/ES-CT --name Catalonia --credit "OpenStreetMap contributors, … (ODbL 1.0)"
+python tools/build_terrain.py --src dem/ --out out/ES-CT/derived/geo/terrain.sqlite --bbox 0.0,40.37,3.49,43.02 --source "Copernicus DEM GLO-30 …"
+python tools/build_addresses_es.py CT out/ES-CT
+python tools/finish_region_map.py out/ES-CT ES-CT --title Catalonia --credit "© OpenStreetMap contributors · Copernicus DEM … · Addresses: scne.es (CC BY 4.0) via Overture Maps" --zip zips/
+```
+
+What the app does with such a map, and what changed for it:
+
+- The region's detail goes in `national.sqlite` (as a state map's does); `map.sqlite` is empty. The map opens on the
+  region by itself, because `map_contents` takes its box from the help points.
+- The page paints the whole view as sea and then a coarse world outline as land. A region therefore also carries its
+  own land polygon (`island`, class `mainland`) on the land side of the coastline, and both it and the sea are cut into
+  pieces of a few thousand points, so that a tile clips only the coast near it.
+- `national.sqlite`'s meta can hold `credit`, `data_as_of` and `datasets`; `server.py` (`region_meta`) passes them to
+  `web/map.js`, which shows them instead of the US credit line, the US data date and the US source list. US maps carry
+  none of these keys and look as before.
+- Spanish address search (`engine/address_search.py`, `find_es_addresses`) reads indexes named `ES-<region>.sqlite`:
+  the street before the number, Catalan and Spanish street types and their abbreviations, accents, articles moved to
+  the end by the cadastre, a letter after the number, the town or postcode after it. As for the US, it returns an exact
+  house number or nothing. A query that finds no address goes on to the place finder.
+- Setup accepts address index ids such as `ES-CT` (`manifest.py`), and carries them over on an upgrade (`install.py`).
+
+- Distances, the scale bar, contour lines and elevations are in kilometres and metres when the map's meta says
+  `units: metric` (`finish_region_map.py --units`), or the locale is not the US; a click on the scale bar switches.
+
+Not done yet: dams and reservoirs (`water.sqlite`, e.g. MITECO's inventory, see REGIONS-ES.md), crops, address search
+outside Spain, and the emergency number.
 
 ## Checking a map change
 

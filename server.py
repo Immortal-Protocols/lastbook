@@ -421,9 +421,7 @@ def find(q, kind='all', limit=30):
             emergency_rows = con.execute(sql, (emergency,) + only).fetchall()
         except sqlite3.OperationalError:
             pass
-    rows = unique_search_rows(emergency_rows, strict_rows, relaxed_rows)
-    if emergency_rows:
-        mode = 'emergency and keywords'
+    rows = unique_search_rows(strict_rows, relaxed_rows, emergency_rows)
     con.close()
     cat = catalog()['by_id']
     docs = {}

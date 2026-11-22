@@ -1366,7 +1366,7 @@ async function about() {
 (async () => {
   const b = $('#savePower'), state = $('#savePowerState'), note = $('#savePowerNote');
   if (!b) return;
-  const show = s => { b.setAttribute('aria-pressed', !!s.save); state.textContent = s.save ? 'On' : 'Off'; note.hidden = !s.save; html.classList.toggle('save-power', !!s.save) };
+  const show = s => { b.setAttribute('aria-pressed', !!s.save); state.textContent = s.save ? 'On' : 'Off'; state.setAttribute('data-i18n', s.save ? 'nav.switchOn' : 'nav.switchOff'); translateRendered(b); note.hidden = !s.save; html.classList.toggle('save-power', !!s.save) };
   try { show(await api('/api/power')) } catch { return }
   b.hidden = false;
   b.addEventListener('click', async () => {

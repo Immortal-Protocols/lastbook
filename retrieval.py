@@ -438,7 +438,7 @@ class Index:
             except Exception as e:
                 print(f'semantic index: {e}', file=sys.stderr, flush=True)
                 self.status.update(state='error', error=type(e).__name__, error_at=time.strftime('%Y-%m-%dT%H:%M:%S'))  # shown to clients: no paths
-            time.sleep(every)
+            time.sleep(15 if self.paused else every)     # a pass Save power cut short goes on soon after it is switched off
 
 
     # ------------------------------------------------------------- search --

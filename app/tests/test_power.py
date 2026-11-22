@@ -188,6 +188,45 @@ class Indexing(unittest.TestCase):
         fake.update.assert_not_called()
         self.assertEqual(fake.status['state'], 'paused to save power')
 
+    def test_a_pass_cut_short_resumes_soon_and_finishes(self):
+        """The real Index: Save power switched on during the first of three documents, then off. The other two are indexed after
+        a 15 s wait, not at the next five-minute pass, and the first is not indexed again."""
+        if retrieval.np is None:
+            self.skipTest('needs numpy')
+        embedded, waits = [], []
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(retrieval, 'IDX', Path(d)), mock.patch.object(retrieval, 'AVAILABLE', False):
+            index = retrieval.Index(lambda: {}, lambda r: '', Path(d) / 'none.sqlite')
+            index.sources = lambda: [(f'd{i}', 'sig', None, 'text') for i in range(3)]
+            index.excluded = lambda: set()
+            index._texts = lambda doc, how: [(1, None, f'the text of {doc}')]
+
+            def embed(texts):
+                embedded.extend(texts)
+                if len(embedded) == 1:
+                    index.paused = True                     # Save power, switched on mid-pass
+                return retrieval.np.zeros((len(texts), retrieval.DIM), dtype='float32')
+
+            def update(budget_s=None):
+                db = index._db()
+                try:
+                    return index._update_with(db, budget_s, 8)
+                finally:
+                    db.close()
+            index.mat, index.active = retrieval.np.zeros((0, retrieval.DIM), dtype='float16'), retrieval.np.zeros(0, dtype=bool)
+            index.emb, index.update = mock.Mock(embed=embed), update
+
+            def sleep(s):
+                waits.append(s)
+                if len(waits) == 1:
+                    self.assertEqual(len(embedded), 1)      # it did stop
+                    index.paused = False                    # and Save power is switched off
+                else:
+                    raise StopIteration
+            with mock.patch.object(retrieval.time, 'sleep', sleep), self.assertRaises(StopIteration):
+                index.run_forever()
+        self.assertEqual(waits, [15, 300])
+        self.assertEqual(embedded, [f'the text of d{i}' for i in range(3)])
+
 
 if __name__ == '__main__':
     unittest.main()

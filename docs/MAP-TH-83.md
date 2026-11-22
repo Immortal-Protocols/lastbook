@@ -43,9 +43,11 @@ derived/buildenv/bin/python tools/build_region_map.py thailand-latest.osm.pbf \
     --id TH-83 --name Phuket --bbox 98.10,7.33,98.63,8.36 --out derived/regions
 
 # 4. Check the files, then check that the engine can use them with every connection blocked.
+#    These are the exact commands behind "What was checked" and "Searches" below.
 python3 tools/check_region_map.py derived/regions/TH-83
 python3 tools/check_region_map.py derived/regions/TH-83 --engine \
-    --find Vachira --find ป่าตอง --find "Bangkok Hospital Phuket" --find ภูเก็ต --near 7.8961,98.2964
+    --find Vachira --find "Bangkok Hospital Phuket" --find ป่าตอง --find "Pa Tong" --find Patong --find ภูเก็ต \
+    --find Karon --find Chalong --find Kata --near 7.8961,98.2964
 ```
 
 On Windows the same steps work in Git Bash, with `derived/buildenv/Scripts/python` in place of
@@ -134,17 +136,35 @@ and others) and 1,180 named help points. 273 rows carry a second name, the Engli
 
 ## What was checked, and how
 
-`tools/check_region_map.py` passed all 37 file checks and all 14 engine checks on the build above. With `--engine`,
-every connection blocked and an empty library:
+The first command passed all 37 file checks. The second runs those 37 again, then 7 engine checks and one per search: 53
+in all, and all passed. A search passes the checker when it returns any row, so "Searches" below says which ones find
+the place they are meant to. With `--engine`, every connection blocked and an empty library:
 
 - **Map display.** Tiles at zoom 10, 13 and 16 around Patong beach: roads, water, land, beaches and place labels at the
   wider zooms, 219 building outlines in one zoom-16 tile.
 - **Pins.** 62 pin groups around Patong.
 - **Nearest help.** Pharmacies at 0.15, 0.18 and 0.19 km from the middle of Patong beach, the police at 0.28 km.
-- **Place search, in both scripts.** "Vachira" finds Vachira Phuket Hospital (โรงพยาบาลวชิระภูเก็ต) by its English
-  name; "Bangkok Hospital Phuket" finds it (โรงพยาบาลกรุงเทพ ภูเก็ต) and Bangkok Hospital Siriroj; ป่าตอง finds the town
-  of Patong, and ภูเก็ต the city.
+- **Place search.** Every search in the command above, with what it finds, is under "Searches" below.
 - **What the app is told.** 39 kinds, within 98.26, 7.47, 98.63, 8.35, the extent of the data inside the box.
+
+### Searches
+
+A search passes the checker as soon as it returns any row, so this table says, for each search in the command above,
+whether it finds the place it is meant to. "First rows" is what the checker prints (up to three). Where the place comes
+lower, its rank is from the app's own place search, with the server running as under "Build it", for example `curl
+"http://127.0.0.1:8890/api/places?q=Karon"`: the same `places()` the checker calls, with no location.
+
+| Search | Meant to find | First rows | Result |
+|---|---|---|---|
+| `Vachira` | Vachira Phuket Hospital | โรงพยาบาลวชิระภูเก็ต (hospital) | Finds it first |
+| `Bangkok Hospital Phuket` | the hospital | Bangkok Hospital Siriroj (hospital); โรงพยาบาลกรุงเทพ ภูเก็ต (hospital) | Finds it, 2 of 2 |
+| `ป่าตอง` | the town of Patong | ป่าตอง (town) | Finds it first |
+| `Pa Tong` | the town of Patong | ป่าตอง (town) | Finds it first |
+| `Patong` | the town of Patong | Patong Whiskey (convenience); Patong Post Office (post office); Patong Municipality Office (town hall) | Rows, but not the intended place |
+| `ภูเก็ต` | the city of Phuket | ภูเก็ต (city); โรงเรียนสตรีภูเก็ต (school); ตำรวจท่องเที่ยว ภูเก็ต (police) | Finds it first |
+| `Karon` | the town of Karon | Karon Avenue (supermarket); Karon Clinic (clinic); Karon Police Station (police) | Finds it, 5 of 10 |
+| `Chalong` | the town of Chalong | Chalong Post (post office); Chalong Hospital (hospital); Chalong Beach (beach) | Finds it, 6 of 9 |
+| `Kata` | Ban Kata (a quarter; Kata has no town row) | Katanoi Minimart (convenience); Katabeach​ Healthcare (pharmacy); Kata Pharmacy & minimart (pharmacy) | Finds it, 6 of 13 |
 
 `tools/test_build_region_map.py`: 9 tests pass with pyosmium.
 
@@ -181,11 +201,11 @@ center" list filled in. The browser's request log showed 63 requests, all to the
 
 **Known limits**
 
-- **Visitors' spellings find shops, not towns.** Town labels are in Thai, and their English names are kept in each
-  row's detail line. Place search ranks names that start with the query before everything else, so "Patong" lists
-  twelve shops, offices and pharmacies and never the town, which OpenStreetMap spells "Pa Tong" in English; "Kata"
-  never finds the town; "Karon" finds it fifth and "Chalong" sixth. ป่าตอง and "Pa Tong" find it first. In a
-  province full of visitors who type in Latin letters, this matters more than anywhere else built so far.
+- **Visitors' spellings find shops, not towns.** Town labels are in Thai, and their English names are kept in each row's
+  detail line. Place search ranks names that start with the query before everything else, so "Patong" lists twelve
+  shops, offices and pharmacies and never the town, which OpenStreetMap spells "Pa Tong" in English; "Kata" has no town
+  row, and the quarter Ban Kata comes sixth of 13; "Karon" finds its town fifth and "Chalong" sixth. ป่าตอง and "Pa Tong" find
+  it first. In a province full of visitors who type in Latin letters, this matters more than anywhere else built so far.
 - **Hospital rows are not all hospitals.** The 29 hospital rows are 23 places when rows within 150 m are grouped, 4
   have no name, and some are clinics tagged as hospitals (Siam International Clinic and Dr. Bangla Clinic in Patong
   are shown under "Hospitals"). "Nearest hospital" can

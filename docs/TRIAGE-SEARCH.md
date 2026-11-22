@@ -381,6 +381,12 @@ hits. The fitting script is on the author's fork and can come with PR 5 if wante
 Code: `engine/meaning_red.py` (`Embedder`, `Model.score`, `check`, `find`, `fetch`), builder `tools/meaning_red_model.py`, examples
 `engine/data/meaning_red_examples.jsonl`, manifest `engine/data/meaning_red_manifest.json`, runner mode `packaging/llm/lastbook_llm.cpp --embed`.
 
+In pull request 6, only the runner's `--embed` mode is here: `lastbook-llm --model FILE --embed [--cpu-only] [--threads N]`
+reads one JSON line per request on its standard input, says `{"ev":"ready",...,"embed":true,"pooling":"cls","dim":384}`,
+answers `{"op":"embed","id":N,"texts":[...],"max_tokens":320}` with `{"ev":"embedding","id":N,"dim":384,"vectors":[...],...}`
+and leaves on `{"op":"quit"}`. Nothing calls it yet: `engine/meaning_red.py`, the examples and the manifest come in pull
+request 7. Chat mode is unchanged.
+
 ```
 text   = typos.correct(question) or question          (cut at 2,000 characters)
 v      = embedding of text: bge-small-en-v1.5, q8_0 GGUF, [CLS] pooling, unit length, max 320 tokens, NO query prefix

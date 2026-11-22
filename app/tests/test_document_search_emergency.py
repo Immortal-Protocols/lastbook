@@ -199,6 +199,30 @@ class SearchPathIntegration(unittest.TestCase):
         self.assertEqual([row[1][0] for row in result[:7]],
                          [f'precise-{i}' for i in range(7)])
 
+    def test_cold_exposure_first_aid_is_promoted_for_hypothermia(self):
+        cat = {'by_id': {f'precise-{i}': {'title': f'Hypothermia equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['cold'] = {'title': 'Cold Exposure First Aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('cold', 1, None), {}))
+        result = assistant.promote_emergency_first_aid(
+            ranked, 'hypothermia rescue', 8, cat)
+        self.assertEqual(result[7][1][0], 'cold')
+        self.assertEqual([r[1][0] for r in result[:7]],
+                         [f'precise-{i}' for i in range(7)])
+        self.assertEqual(ranked[12][1][0], 'cold')  # input not mutated
+
+    def test_unrelated_first_aid_is_not_promoted(self):
+        cat = {'by_id': {f'precise-{i}': {'title': f'Hypothermia equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['unrelated'] = {'title': 'Burn First Aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('unrelated', 1, None), {}))
+        self.assertEqual(assistant.promote_emergency_first_aid(
+            ranked, 'hypothermia rescue', 8, cat), ranked)
+
     def test_precise_ordinary_query_keeps_top_eight(self):
         cat = {'by_id': {f'precise-{i}': {'title': f'Fire equipment {i}'}
                          for i in range(12)}}

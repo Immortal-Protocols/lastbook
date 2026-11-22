@@ -113,6 +113,62 @@
      "label": "How much chlorine to use, and what 'free chlorine' means",
      "note": "Hesperian Community Guide to Environmental Health (2012). Explains why water should smell slightly of chlorine, and doubling the dose for cloudy water. Sources differ on drop counts; each states its bleach strength."
     }
+   ],
+   "tools": [
+    {
+     "kind": "dose",
+     "id": "bleach",
+     "title": "Work out the bleach for your amount of water",
+     "note": "Sources give different amounts, and each assumes its own bleach strength. Use one source’s amount and method, not a mix.",
+     "sources": [
+      {
+       "doc": "ed5bac0a81b009",
+       "page": 135,
+       "strength": "Bleach strength not stated",
+       "rates": [
+        {
+         "amount": 8,
+         "per": "gal",
+         "when": "Clear water"
+        },
+        {
+         "amount": 16,
+         "per": "gal",
+         "when": "Cloudy or dirty water"
+        }
+       ],
+       "note": "Says to let it stand 30 minutes, and gives a top-up if it does not smell of bleach."
+      },
+      {
+       "doc": "med-953dfe1df69e0773",
+       "page": 23,
+       "strength": "For 5% bleach (the page says to use more if it is weaker)",
+       "rates": [
+        {
+         "amount": 2,
+         "per": "L"
+        },
+        {
+         "amount": 8,
+         "per": "gal"
+        }
+       ],
+       "note": "Says to filter cloudy water first, stir, and wait at least 30 minutes. Its chart also lists 1/2 teaspoon for 5 gallons (20 liters) and 5 teaspoons for a 200-liter barrel."
+      },
+      {
+       "doc": "f7ff53bcaae9cc",
+       "page": 14,
+       "strength": "For 5.25–6% plain household bleach (strength given on page 13)",
+       "rates": [
+        {
+         "amount": 16,
+         "per": "gal"
+        }
+       ],
+       "note": "Says 16 drops is 1/8 teaspoon, to stir and let stand 30 minutes, and what to do if it does not smell slightly of bleach."
+      }
+     ]
+    }
    ]
   },
   {

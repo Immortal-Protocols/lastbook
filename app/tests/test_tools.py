@@ -125,5 +125,50 @@ class Words(unittest.TestCase):
         self.assertIn("at.addEventListener('blur', commit)", js)
 
 
+CLOCK = r"""
+// tools.js's own clock on stand-in elements and a clock moved by hand
+const fs = require('fs');
+const tools = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
+const esc = app.split('\n').find(l => /^const esc\s*=/.test(l));
+let now = 0, kept = null;
+const RealDate = Date;
+class At extends RealDate { constructor(...a) { if (a.length) super(...a); else super(now) } static now() { return now } }
+const el = () => ({ on: {}, value: '', hidden: false, innerHTML: '', textContent: '', addEventListener(t, f) { this.on[t] = f }, focus() {} });
+const parts = { '[data-show]': el(), '[data-at]': el(), '[data-clear]': el(), '[data-now]': el(), '[data-said]': el() };
+const section = { isConnected: true, dataset: { id: 'tq' } };
+const timers = [];
+const Tools = new Function('store', 'navigator', 'document', 'Date', '$', '$$', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout',
+  esc + '\n' + tools + '\nreturn Tools;')({ get: () => kept, set: (k, v) => { kept = v } }, { language: 'en-US' }, { activeElement: null }, At,
+  s => parts[s], () => [section], () => 0, () => {}, f => (timers.push(f), timers.length), i => { if (i) timers[i - 1] = null });
+Tools.wire({}, [{ id: 'tq', kind: 'clock' }]);
+const at = parts['[data-at]'], day = (d, h, m) => new RealDate(2026, 10, d, h, m).getTime();
+const pause = () => timers.splice(0).forEach(f => f && f());
+const out = {};
+now = day(21, 12, 0); at.value = '11:15'; at.on.change(); at.on.blur();
+out.earlier_today = kept && kept.at === day(21, 11, 15);
+parts['[data-clear]'].on.click(); pause();
+out.cleared = kept === null;
+now = day(21, 9, 0); at.value = '10:00'; at.on.change(); pause();
+out.later_was_yesterday = kept && kept.at === day(20, 10, 0);
+now = day(21, 10, 5); at.on.blur();
+out.leaving_untouched_keeps_it = kept && kept.at === day(20, 10, 0);
+at.on.keydown({ key: 'Enter' });
+out.enter_untouched_keeps_it = kept && kept.at === day(20, 10, 0);
+at.value = '10:02'; at.on.change(); at.on.keydown({ key: 'Enter' });
+out.changed_is_kept = kept && kept.at === day(21, 10, 2);
+process.stdout.write(JSON.stringify(out));
+"""
+
+
+@unittest.skipUnless(NODE, 'needs Node')
+class Clock(unittest.TestCase):
+    """A typed time later than now was yesterday; and only a time the person changed is kept, so passing through the field
+    never moves a kept time (10:00 typed at 9:00 is yesterday; at 10:05 the same digits would read as today)."""
+
+    def test_typed_times(self):
+        r = subprocess.run([NODE, '-e', CLOCK, str(ROOT / 'web/tools.js'), str(ROOT / 'web/app.js')], capture_output=True, text=True, check=True)
+        self.assertEqual({k: v for k, v in json.loads(r.stdout).items() if v is not True}, {})
+
+
 if __name__ == '__main__':
     unittest.main()

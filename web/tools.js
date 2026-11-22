@@ -104,9 +104,11 @@ const Tools = (() => {
       said.textContent = `Kept: on at ${hm(new Date(ms))}.`;
     };
     now.addEventListener('click', () => set(Date.now()));
-    let typed = 0;
+    let typed = 0, changed = false;
     const commit = () => {   // a typed time is kept when typing pauses or the field is left, not at each arrow-key step
       clearTimeout(typed);
+      if (!changed) return;  // the same digits read again later could mean another day: only a time the person changed is kept
+      changed = false;
       const [h, m] = (at.value || '').split(':').map(Number);
       if (!Number.isFinite(h) || !Number.isFinite(m)) return;
       const d = new Date(); d.setHours(h, m, 0, 0);
@@ -114,7 +116,7 @@ const Tools = (() => {
       const v = store.get(key, null);
       if (!v || v.at !== d.getTime()) set(d.getTime());
     };
-    at.addEventListener('change', () => { clearTimeout(typed); typed = setTimeout(commit, 1200) });
+    at.addEventListener('change', () => { changed = true; clearTimeout(typed); typed = setTimeout(commit, 1200) });
     at.addEventListener('blur', commit);
     at.addEventListener('keydown', e => { if (e.key === 'Enter') commit() });
     clear.addEventListener('click', () => {

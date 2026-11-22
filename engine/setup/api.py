@@ -194,6 +194,7 @@ def _link_or_copy(src, dest):
     except OSError:
         shutil.copyfile(src, tmp)
     os.replace(tmp, dest)
+    tmp.unlink(missing_ok=True)     # replace does nothing when dest already is that same file, and leaves tmp beside it
 
 
 class _Item:
@@ -317,8 +318,10 @@ class Setup:
         if {(i.get('kind'), i.get('id')) for i in items} != wanted:
             return None
         names = ([f['name'] for f in pack['files']] if pack else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else []) + ([model['file']] if model else [])
+        ollamas = ('sha256-' + model['sha256'], 'sha256:' + model['sha256']) if model else ()      # Ollama's copy of the model is named by its hash
         sources = {n: str(v) for n, v in (plan.get('sources') or {}).items()
-                   if n in names and isinstance(v, str) and Path(v).name == n and Path(v).is_file()}
+                   if n in names and isinstance(v, str) and Path(v).is_file()
+                   and (Path(v).name == n or (model and n == model['file'] and Path(v).name in ollamas))}
         switch = bool(plan.get('switch')) and pack is not None
         clean = {'pack': pack, 'model': model, 'map': mp, 'addresses': addresses, 'parent': str(parent), 'target': str(target), 'work': str(work),
                  'sources': sources, 'explicit': bool(plan.get('explicit')), 'retried': {}, 'switch': switch, 'repair': bool(plan.get('repair'))}

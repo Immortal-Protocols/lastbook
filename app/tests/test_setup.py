@@ -1403,6 +1403,48 @@ class Jobs(Base):
         self.assertEqual(blob.read_bytes(), self.model)             # still Ollama's: linked or copied, never moved
         self.assertEqual(sorted(x.name for x in (store / 'blobs').iterdir()), sorted(f'sha256-{sha(d)}' for d in (b'another model', self.model)))
 
+    def test_ollama_copy_is_still_used_after_a_restart(self):
+        """Saved before the worker ran, then Lastbook reopened: the job still has Ollama's file, named by its hash, so Resume
+        downloads no model. A source of any other name is still refused."""
+        store = self.ollama_store(self.model)
+        s = self.setup()
+        self.assertTrue(s.use(str(store))['noted'])
+        with mock.patch.object(api.Setup, '_run', lambda self_: None):
+            s.start('small', True)
+        again = self.setup()
+        again.resume()
+        self.assertEqual(self.wait(again)['state'], 'done')
+        self.assertEqual([name for name, _, _ in self.files.log], ['Lastbook-Small.zip'])
+        self.assertEqual((store / 'blobs' / f'sha256-{sha(self.model)}').read_bytes(), self.model)
+
+    def test_open_another_library_folder_does_not_take_an_ollama_store(self):
+        store = self.ollama_store(self.model)
+        lib = self.parent / 'LastbookData'
+        (lib / 'library-data').mkdir(parents=True)
+        (lib / 'library-data' / 'catalog.json').write_text('{}')
+        s = self.setup('manage', current=lib)
+        for chosen in (store, store / 'blobs', store.parent, store / 'blobs' / f'sha256-{sha(self.model)}'):
+            with self.subTest(chosen=chosen.name):
+                self.assertEqual(s.use(str(chosen), library_only=True).get('code'), 'not_library')
+        self.assertIsNone(s.public_job())
+
+    def test_ollama_copy_chosen_after_a_network_stop_carries_that_job_on(self):
+        s, stopped = self.model_download_stopped()
+        store = self.ollama_store(self.model)
+        s.use(str(store))
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['id']), ('done', stopped['id']))
+        self.assertTrue((store / 'blobs' / f'sha256-{sha(self.model)}').is_file())
+
+    def test_linking_the_same_ollama_file_again_leaves_nothing_beside_it(self):
+        blob = self.ollama_store(self.model) / 'blobs' / f'sha256-{sha(self.model)}'
+        dest = self.tmp / 'models' / 'model.gguf'
+        dest.parent.mkdir()
+        api._link_or_copy(blob, dest)
+        api._link_or_copy(blob, dest)
+        self.assertEqual([p.name for p in dest.parent.iterdir()], ['model.gguf'])
+        self.assertEqual(blob.read_bytes(), self.model)
+
     def test_ollama_store_without_the_model_says_why(self):
         store = self.ollama_store(b'some other model')
         other = store / 'blobs' / f'sha256-{sha(b"some other model")}'

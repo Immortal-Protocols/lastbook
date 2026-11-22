@@ -14,6 +14,8 @@
     cache), so the SHA-256 is ready when the last piece lands: no second pass over a 400 GB file. Every 206 must carry the
     ETag and total size of the first; another ETag starts the file over, and a 200 to a Range goes back to one connection.
     The .json then says "parallel": true, and bytes_done is the hashed run: a resume keeps that and fetches the window again.
+  - Giving up on broken connections says which: 'unreachable' when the host that broke never answered this download at all (a
+    network that resets or blocks it, or no internet), else 'network' (it answered, then the connection kept breaking).
   - Nothing here runs unless the person started or resumed a download (or opened setup: one GET of the manifest).
 
 Tests pass their own `allowed` and `context` to reach a local test server. The product never does.
@@ -244,10 +246,12 @@ def _cancellable_body(conn, response, stopping, timeout):
     sock.recv_into = recv_into
 
 
-def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, stopping=None):
+def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, stopping=None, answered=None):
     """(connection, response, final url) for a GET from byte `start` (to byte `end`, included, when given), after following
     allowed redirects. `opened(conn)`, when given, hears of each connection, so another thread can close it. With `stopping`
-    (an Event), connecting and the TLS handshake end soon after it is set, raising Stopped, rather than at the timeout."""
+    (an Event), connecting and the TLS handshake end soon after it is set, raising Stopped, rather than at the timeout.
+    `answered(host)`, when given, hears of each host that sent an answer; a connection error carries the host it was for
+    (`.lastbook_host`), so a caller can tell a host that never answers from one whose connection broke."""
     for _ in range(MAX_REDIRECTS + 1):
         if not url_allowed(url, allowed):
             raise Failed('network', 'Lastbook refused to download from an address it does not know.')
@@ -267,8 +271,14 @@ def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, st
             headers['Range'] = f'bytes={start}-'
             if etag:
                 headers['If-Range'] = etag
-        conn.request('GET', (u.path or '/') + ('?' + u.query if u.query else ''), headers=headers)
-        r = conn.getresponse()
+        try:
+            conn.request('GET', (u.path or '/') + ('?' + u.query if u.query else ''), headers=headers)
+            r = conn.getresponse()
+        except (OSError, http.client.HTTPException) as e:
+            e.lastbook_host = u.hostname
+            raise
+        if answered:
+            answered(u.hostname)
         if stopping is not None:
             _cancellable_body(conn, r, stopping, timeout)
         if r.status in (301, 302, 303, 307, 308):
@@ -354,6 +364,15 @@ class Download:
         self.control, self.progress, self.waiting = control, progress, waiting
         self.allowed, self.context, self.timeout = allowed, context, timeout
         self.connections = connections
+        self.answered = set()           # hosts that sent any answer to this download (a redirect counts)
+
+    def _gave_up(self, e):
+        """The Failed for connections that kept breaking: 'unreachable' (with the host) when the host they broke on never
+        answered this download, so retrying on this network will not help; else 'network'."""
+        host = getattr(e, 'lastbook_host', None)
+        if host and host not in self.answered:
+            return Failed('unreachable', f'Lastbook could not reach {host} from this network.', host=host)
+        return Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.')
 
     def done_bytes(self):
         """Bytes from 0 that are surely the file's: the .part's length, or after pieces, the hashed run the .json records."""
@@ -470,7 +489,7 @@ class Download:
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
                 if tries >= NETWORK_TRIES:
-                    raise Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.')
+                    raise self._gave_up(e)
                 print(f'setup: download broke at {start} of {self.size}: {type(e).__name__}: {e}; trying again', flush=True)
                 self.control.sleep(BACKOFF[min(tries, len(BACKOFF) - 1)])
         if h.hexdigest() != self.sha256:
@@ -485,7 +504,7 @@ class Download:
 
     def _fetch(self, start, etag, h, ctx):
         """Reads until the end or a break. Returns (bytes done, etag). Raises _Restart when the server's file is not the one begun."""
-        conn, r, final = _open(self.url, start, etag, self.allowed, ctx, self.timeout)
+        conn, r, final = _open(self.url, start, etag, self.allowed, ctx, self.timeout, answered=self.answered.add)
         try:
             if r.status == 416 or r.status >= 400:
                 if 500 <= r.status < 600 or r.status == 429:
@@ -648,7 +667,7 @@ class Download:
                 return
             try:
                 conn, r, _ = _open(self.url, pos, st.etag, self.allowed, ctx, self.timeout, end=b - 1, opened=st.opened,
-                                   stopping=st.stopping)
+                                   stopping=st.stopping, answered=self.answered.add)
                 try:
                     if 500 <= r.status < 600 or r.status == 429:
                         raise _Busy(r.status, r.getheader('Retry-After'))     # up but busy: wait, as over one connection
@@ -708,7 +727,7 @@ class Download:
                     raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
                 tries += 1
                 if tries >= NETWORK_TRIES:
-                    raise Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.')
+                    raise self._gave_up(e)
                 print(f'setup: piece at {pos} of {self.size} broke: {type(e).__name__}: {e}; trying again', flush=True)
                 if st.stopping.wait(BACKOFF[min(tries - 1, len(BACKOFF) - 1)]):
                     return

@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "norm": "tr-1",
+  "region": "TR-34",
+  "index_filename": "TR-34.sqlite",
+  "description": "Declarative address and place-search regression fixtures adapted from app/tests/test_address_search.py. These seven address rows are synthetic; they are not guaranteed to exist in the live TR-34 index.",
+  "address_rows": [
+    {
+      "id": "bagdat-kadikoy-75",
+      "num": "75",
+      "street": "Bağdat Caddesi",
+      "norm": "bagdat cd",
+      "city": "Kadıköy",
+      "state": "TR-34",
+      "zip": "34724",
+      "lat": 40.9806,
+      "lon": 29.0427,
+      "district": "Feneryolu",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    },
+    {
+      "id": "kadife-kadikoy-18",
+      "num": "18",
+      "street": "Kadife Sokak",
+      "norm": "kadife sk",
+      "city": "Kadıköy",
+      "state": "TR-34",
+      "zip": "34710",
+      "lat": 40.9866,
+      "lon": 29.0265,
+      "district": "Caferağa",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    },
+    {
+      "id": "abdullahaga-uskudar-7b",
+      "num": "7B",
+      "street": "Abdullahağa Caddesi",
+      "norm": "abdullahaga cd",
+      "city": "Üsküdar",
+      "state": "TR-34",
+      "zip": "34676",
+      "lat": 41.0435,
+      "lon": 29.0439,
+      "district": "Beylerbeyi",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    },
+    {
+      "id": "19mayis-sisli-135",
+      "num": "135",
+      "street": "19 Mayıs Caddesi",
+      "norm": "19 mayis cd",
+      "city": "Şişli",
+      "state": "TR-34",
+      "zip": "34360",
+      "lat": 41.0541,
+      "lon": 28.9897,
+      "district": "Meşrutiyet",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    },
+    {
+      "id": "istiklal-beyoglu-41",
+      "num": "41",
+      "street": "İstiklâl Caddesi",
+      "norm": "istiklal cd",
+      "city": "Beyoğlu",
+      "state": "TR-34",
+      "zip": "34435",
+      "lat": 41.0335,
+      "lon": 28.9778,
+      "district": "Kuloğlu",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    },
+    {
+      "id": "ataturk-fatih-10",
+      "num": "10",
+      "street": "Atatürk Bulvarı",
+      "norm": "ataturk blv",
+      "city": "Fatih",
+      "state": "TR-34",
+      "zip": "34134",
+      "lat": 41.0121,
+      "lon": 28.9554,
+      "district": "Aksaray",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    },
+    {
+      "id": "ataturk-pendik-10",
+      "num": "10",
+      "street": "Atatürk Bulvarı",
+      "norm": "ataturk blv",
+      "city": "Pendik",
+      "state": "TR-34",
+      "zip": "34903",
+      "lat": 40.9234,
+      "lon": 29.3081,
+      "district": "Yenişehir",
+      "source": "OpenStreetMap contributors, via Geofabrik turkey-latest-free.gpkg.zip (ODbL 1.0)",
+      "fixture_status": "synthetic-regression-fixture"
+    }
+  ],
+  "normalization_examples": [
+    {
+      "operation": "fold",
+      "input": "İSTANBUL IĞDIR ŞİŞLİ KADIKÖY",
+      "expected": "istanbul igdir sisli kadikoy"
+    },
+    {
+      "operation": "normalize",
+      "input": "İstiklâl Caddesi",
+      "expected": "istiklal cd"
+    },
+    {
+      "operation": "normalize",
+      "input": "ISTIKLAL CAD.",
+      "expected": "istiklal cd"
+    },
+    {
+      "operation": "normalize",
+      "input": "Veysi Paşa Sokağı",
+      "expected": "veysi pasa sk"
+    },
+    {
+      "operation": "normalize",
+      "input": "Atatürk Bulvarı",
+      "expected": "ataturk blv"
+    },
+    {
+      "operation": "normalize",
+      "input": "19 Mayıs Sokak",
+      "expected": "19 mayis sk"
+    }
+  ],
+  "address_queries": [
+    {
+      "query": "Bağdat Caddesi No: 75",
+      "kind": "address",
+      "expected_fixture_ids": ["bagdat-kadikoy-75"],
+      "expected_name": "Bağdat Caddesi No: 75",
+      "expected_detail": "Feneryolu, Kadıköy, 34724",
+      "exact_sql": {"norm": "bagdat cd", "num": "75"}
+    },
+    {
+      "query": "Bagdat Cad. 75, 34724 Kadikoy",
+      "kind": "address",
+      "expected_fixture_ids": ["bagdat-kadikoy-75"],
+      "expected_name": "Bağdat Caddesi No: 75",
+      "expected_detail": "Feneryolu, Kadıköy, 34724",
+      "exact_sql": {"norm": "bagdat cd", "num": "75", "zip": "34724", "city": "Kadıköy"}
+    },
+    {
+      "query": "BAĞDAT CD NO 75 FENERYOLU MAH. KADIKÖY",
+      "kind": "address",
+      "expected_fixture_ids": ["bagdat-kadikoy-75"],
+      "expected_name": "Bağdat Caddesi No: 75",
+      "expected_detail": "Feneryolu, Kadıköy, 34724",
+      "exact_sql": {"norm": "bagdat cd", "num": "75", "city": "Kadıköy", "district": "Feneryolu"}
+    },
+    {
+      "query": "Bagdat 75 Kadikoy",
+      "kind": "address",
+      "expected_fixture_ids": ["bagdat-kadikoy-75"],
+      "expected_name": "Bağdat Caddesi No: 75",
+      "expected_detail": "Feneryolu, Kadıköy, 34724",
+      "exact_sql": {"norm": "bagdat cd", "num": "75"}
+    },
+    {
+      "query": "Abdullahağa Caddesi No: 7/B Üsküdar",
+      "kind": "address",
+      "expected_fixture_ids": ["abdullahaga-uskudar-7b"],
+      "expected_name": "Abdullahağa Caddesi No: 7B",
+      "expected_detail": "Beylerbeyi, Üsküdar, 34676",
+      "exact_sql": {"norm": "abdullahaga cd", "num": "7B", "city": "Üsküdar"}
+    },
+    {
+      "query": "Abdullahaga Cad 7B",
+      "kind": "address",
+      "expected_fixture_ids": ["abdullahaga-uskudar-7b"],
+      "expected_name": "Abdullahağa Caddesi No: 7B",
+      "expected_detail": "Beylerbeyi, Üsküdar, 34676",
+      "exact_sql": {"norm": "abdullahaga cd", "num": "7B"}
+    },
+    {
+      "query": "Abdullahağa Cd. 7 b",
+      "kind": "address",
+      "expected_fixture_ids": ["abdullahaga-uskudar-7b"],
+      "expected_name": "Abdullahağa Caddesi No: 7B",
+      "expected_detail": "Beylerbeyi, Üsküdar, 34676",
+      "exact_sql": {"norm": "abdullahaga cd", "num": "7B"}
+    },
+    {
+      "query": "19 Mayıs Caddesi No: 135 Şişli",
+      "kind": "address",
+      "expected_fixture_ids": ["19mayis-sisli-135"],
+      "expected_name": "19 Mayıs Caddesi No: 135",
+      "expected_detail": "Meşrutiyet, Şişli, 34360",
+      "exact_sql": {"norm": "19 mayis cd", "num": "135", "city": "Şişli"}
+    },
+    {
+      "query": "19 Mayis Cad 135",
+      "kind": "address",
+      "expected_fixture_ids": ["19mayis-sisli-135"],
+      "expected_name": "19 Mayıs Caddesi No: 135",
+      "expected_detail": "Meşrutiyet, Şişli, 34360",
+      "exact_sql": {"norm": "19 mayis cd", "num": "135"}
+    },
+    {
+      "query": "19 Mayıs Caddesi",
+      "kind": "address-no-house-number",
+      "expected_fixture_ids": []
+    },
+    {
+      "query": "Atatürk Bulvarı 10 İstanbul",
+      "kind": "ambiguous-address",
+      "expected_fixture_ids": ["ataturk-fatih-10", "ataturk-pendik-10"],
+      "exact_sql": {"norm": "ataturk blv", "num": "10"}
+    },
+    {
+      "query": "Atatürk Bulvarı 10 Fatih",
+      "kind": "address",
+      "expected_fixture_ids": ["ataturk-fatih-10"],
+      "expected_detail": "Aksaray, Fatih, 34134",
+      "exact_sql": {"norm": "ataturk blv", "num": "10", "city": "Fatih"}
+    },
+    {
+      "query": "Ataturk Blv No:10 Pendik",
+      "kind": "address",
+      "expected_fixture_ids": ["ataturk-pendik-10"],
+      "expected_detail": "Yenişehir, Pendik, 34903",
+      "exact_sql": {"norm": "ataturk blv", "num": "10", "city": "Pendik"}
+    },
+    {
+      "query": "Ataturk Bulvari 10 Yenisehir",
+      "kind": "address",
+      "expected_fixture_ids": ["ataturk-pendik-10"],
+      "expected_detail": "Yenişehir, Pendik, 34903",
+      "exact_sql": {"norm": "ataturk blv", "num": "10", "district": "Yenişehir"}
+    },
+    {
+      "query": "Bağdat Caddesi 75 Beşiktaş",
+      "kind": "address-no-hit",
+      "expected_fixture_ids": [],
+      "exact_sql": {"norm": "bagdat cd", "num": "75", "city": "Beşiktaş"}
+    },
+    {
+      "query": "Bağdat Caddesi 76 Kadıköy",
+      "kind": "address-no-hit",
+      "expected_fixture_ids": [],
+      "exact_sql": {"norm": "bagdat cd", "num": "76", "city": "Kadıköy"}
+    },
+    {
+      "query": "Bağdat Caddesi 75 Kadıköy 99999",
+      "kind": "address-no-hit",
+      "expected_fixture_ids": [],
+      "exact_sql": {"norm": "bagdat cd", "num": "75", "city": "Kadıköy", "zip": "99999"}
+    },
+    {
+      "query": "Bağdat Caddesi No: 99999 Kadıköy",
+      "kind": "address-no-hit",
+      "expected_fixture_ids": [],
+      "exact_sql": {"norm": "bagdat cd", "num": "99999", "city": "Kadıköy"}
+    }
+  ],
+  "place_rows": [
+    {
+      "id": "postcode-34710",
+      "name": "34710",
+      "kind": "postcode area",
+      "detail": "Kadıköy, İstanbul"
+    },
+    {
+      "id": "route-66-arizona",
+      "name": "Route 66",
+      "kind": "Locale",
+      "detail": "Arizona"
+    },
+    {
+      "id": "kadikoy-district",
+      "name": "Kadıköy",
+      "kind": "district (ilçe)",
+      "detail": "İstanbul"
+    },
+    {
+      "id": "caferaga-neighbourhood",
+      "name": "Caferağa",
+      "kind": "neighbourhood (mahalle)",
+      "detail": "Kadıköy, İstanbul"
+    },
+    {
+      "id": "istiklal-street",
+      "name": "İstiklâl Caddesi",
+      "kind": "street",
+      "detail": "Beyoğlu, İstanbul"
+    }
+  ],
+  "postcode_place_cases": [
+    {
+      "query": "34710 Kadıköy",
+      "route": "postcode-place",
+      "must_not_be_address": true,
+      "expected_fixture_place_id": "kadikoy-district"
+    },
+    {
+      "query": "34710",
+      "route": "postcode-place",
+      "must_not_be_address": true,
+      "expected_fixture_place_id": "postcode-34710"
+    },
+    {
+      "query": "34710, Caferaga",
+      "route": "postcode-place",
+      "must_not_be_address": true,
+      "expected_fixture_place_id": "caferaga-neighbourhood"
+    },
+    {
+      "query": "34710 Besiktas",
+      "route": "postcode-place",
+      "must_not_be_address": true,
+      "expected_fixture_place_id": null
+    },
+    {
+      "query": "Route 66",
+      "route": "place",
+      "must_not_be_address": true,
+      "expected_fixture_place_id": "route-66-arizona"
+    }
+  ],
+  "native_fts_queries": [
+    {
+      "query": "Kadikoy",
+      "place_name": "Kadıköy",
+      "kind": "district (ilçe)",
+      "native_match_terms": ["\"kadıkoy\""]
+    },
+    {
+      "query": "ISTIKLAL CADDESI",
+      "place_name": "İstiklâl Caddesi",
+      "kind": "street",
+      "native_match_terms": ["\"istiklal caddesi\""]
+    }
+  ],
+  "us_coexistence": {
+    "index_filename": "MI.sqlite",
+    "source": "Overture Maps addresses 2026-10-21.0",
+    "queries": [
+      "18001 nine mile",
+      "18001 W Nine Mile Road, Novi, MI 48375",
+      "21 ninth st Example CA",
+      "18003 nine mile"
+    ],
+    "requirement": "Results for existing US indexes remain identical with TR-34.sqlite installed; do not normalize or attribute US rows as Turkish data."
+  },
+  "source_requirements": {
+    "address_index": "OpenStreetMap (ODbL 1.0) & İBB Open Data Portal (CC BY 4.0)",
+    "map_index": "OpenStreetMap contributors via Geofabrik (ODbL 1.0); İBB Open Data Portal (CC BY 4.0)",
+    "must_preserve_licenses": ["ODbL 1.0", "CC BY 4.0"],
+    "address_result_source": "Use the installed address index metadata; never substitute a hard-coded US/Overture attribution.",
+    "runtime_integration": "Declarative requirement for shared issue #31; not exercised by this data-only fixture."
+  }
+}

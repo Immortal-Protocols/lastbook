@@ -150,6 +150,7 @@ as one map.
 [REGIONS-MX.md](REGIONS-MX.md) does the same for Mexico's 32 states (entidades federativas).
 
 [REGIONS-BR.md](REGIONS-BR.md) does the same for Brazil's 26 states and the Federal District (Distrito Federal), 27 in all.
+[MAP-TR-34.md](MAP-TR-34.md) describes Istanbul's independently buildable map, civic-address index and Turkish query fixtures; shared runtime integration remains in #31.
 
 ### To do: maps for every place on Earth
 

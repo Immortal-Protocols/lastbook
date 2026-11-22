@@ -113,15 +113,15 @@ def _dest_ok(dst, rel):
     """A copy writes only inside its own LastbookData on the drive. Refuses when the copy folder, any folder on the way to rel, the
     file, or its .partial is a link: a link left on a drive could otherwise send the copy into someone else's folder."""
     if dst.is_symlink():
-        raise install.Refused('copy', f'The {DATA_NAME} folder on the drive is a link, so nothing was written there. Choose another drive or folder.')
+        raise install.Refused('copy', f'The {DATA_NAME} folder on the drive is a link, so nothing was written there. Choose another drive or folder.', key='setup.err.copyDataFolderIsLink', params={'name': DATA_NAME})
     p = dst
     for part in Path(rel).parts:
         p = p / part
         if p.is_symlink():
             raise install.Refused('copy', f'On the drive, {rel} goes through a link that could lead outside the copy, so nothing more was '
-                                          'written. Choose another drive or folder.')
+                                          'written. Choose another drive or folder.', key='setup.err.copyRelThroughLink', params={'name': rel})
     if p.with_name(p.name + '.partial').is_symlink():
-        raise install.Refused('copy', f'On the drive, {rel}.partial is a link, so nothing more was written. Choose another drive or folder.')
+        raise install.Refused('copy', f'On the drive, {rel}.partial is a link, so nothing more was written. Choose another drive or folder.', key='setup.err.copyPartialIsLink', params={'name': rel})
 
 
 def _inside(dst, path):
@@ -185,10 +185,21 @@ class _Item:
         self.t, self.at, self.rate = time.time(), d.get('bytes_done', 0), 0.0
 
 
+
+def user_error(code, message, key=None, params=None, **extra):
+    """An error for the setup screen: English `error` stays for tests, plus a catalogue key the client translates."""
+    out = {'error': message, 'code': code, **extra}
+    if key:
+        out['key'] = key
+    if params:
+        out['params'] = params
+    return out
+
+
 class Setup:
     def __init__(self, mode, settings_dir, default_parent, current=None, manifest=None, allowed=None, context=None,
                  on_finish=None, pick_folder=None, look_for_libraries=None, home=None, llm_local=None, default_why=None,
-                 on_model_server=None):
+                 default_why_part=None):
         """mode: 'first-run' or 'manage'. current: the open library (manage). on_finish(folder): the app opens that library
         (it relaunches). pick_folder(): a folder the person chose, or None. look_for_libraries(): LastbookData folders found."""
         self.mode, self.current = mode, Path(current) if current else None
@@ -197,7 +208,7 @@ class Setup:
         self.allowed, self.context = allowed, context
         self.on_finish, self.pick_folder, self.look_for_libraries = on_finish, pick_folder, look_for_libraries
         self.default_why = default_why     # why the default folder is not the usual one (a long Windows user folder), for the screen
-        self.on_model_server = on_model_server   # (base, model) or (None, None): the open library's assistant switches at once (manage)
+        self.default_why_part = default_why_part
         self._llm = llm_local
         self.lock = threading.RLock()
         self.choice_lock = threading.Lock()    # one model-server choice at a time: saved and switched in the same order (two windows)
@@ -517,8 +528,16 @@ class Setup:
         model = self.manifest.model()
         need = {p['id']: install.need_bytes(p, None) for p in available}
         map_need = {x['id']: _map_need(x, ()) for x in self.manifest.current.get('maps', []) if x['available']}
+        def why_part(key, text, **params):
+            item = {'key': key, 'text': text}
+            if params:
+                item['params'] = params
+            return item
+
         if not packs:
-            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'why': 'No library is ready to download yet.'}
+            text = 'No library is ready to download yet.'
+            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'why': text,
+                    'why_key': 'setup.why.noLibraryReady', 'why_parts': [why_part('setup.why.noLibraryReady', text)]}
         margin = _margin(total)
         choice, folder, elsewhere = None, parent, None
         for p in packs:        # the disk that holds the home folder (or the open library) whenever anything fits there
@@ -535,26 +554,38 @@ class Setup:
                     break
         if not choice:
             small = packs[-1]
-            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need,
-                    'why': f'The smallest library, {small["title"]}, needs {_gb(need[small["id"]])} free, and this computer has {_gb(free)} free.'}
+            text = f'The smallest library, {small["title"]}, needs {_gb(need[small["id"]])} free, and this computer has {_gb(free)} free.'
+            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'why': text,
+                    'why_key': 'setup.why.smallestNeeds',
+                    'why_params': {'title': small['title'], 'need': _gb(need[small['id']]), 'free': _gb(free)},
+                    'why_parts': [why_part('setup.why.smallestNeeds', text, title=small['title'], need=_gb(need[small['id']]), free=_gb(free))]}
         if elsewhere:
             home_free = free
             free, margin = elsewhere['free_bytes'], _margin(elsewhere['total_bytes'])
         left = free - need[choice['id']]
         ai = bool(model and hw['ai']['fits'] and left >= model['size'] + margin)
+        parts = []
         if elsewhere:
             name = elsewhere.get('name') or Path(elsewhere['path']).name or elsewhere['path']
             why = (f'This computer’s own disk has {_gb(home_free)} free, not enough for any library, so {choice["title"]} goes on {name}. '
                    'Keep that disk connected: Lastbook reads the library from it.')
+            parts.append(why_part('setup.why.goesOnOtherDisk', why, home_free=_gb(home_free), title=choice['title'], name=name))
         else:
             why = 'Small is selected to get started. You can choose a larger library.'
+            parts.append(why_part('setup.why.smallToStart', why))
         if self.default_why and not elsewhere and not self.current:
             why = self.default_why + ' ' + why
+            part = self.default_why_part or why_part('setup.why.savesToShortPath', self.default_why, short=str(self.default_parent))
+            parts.insert(0, part)
         if model and hw['ai']['fits'] and not ai:
-            why += ' The local AI fits this computer’s memory, but not on the disk as well.'
+            extra = ' The local AI fits this computer’s memory, but not on the disk as well.'
+            why += extra
+            parts.append(why_part('setup.why.aiFitsMemoryNotDisk', extra.strip()))
         elif model and not hw['ai']['fits']:
             why += ' ' + hw['ai']['why']
-        return {'pack': choice['id'], 'ai': ai, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why}
+            ai_why = hw['ai']
+            parts.append(why_part(ai_why.get('why_key') or '', ai_why.get('why') or '', **(ai_why.get('why_params') or {})) if ai_why.get('why_key') else {'text': ai_why.get('why') or ''})
+        return {'pack': choice['id'], 'ai': ai, 'folder': str(folder), 'need_bytes': need, 'map_need_bytes': map_need, 'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': why, 'why_parts': [p for p in parts if p and (p.get('text') or p.get('key'))]}
 
     def state(self):
         self.manifest.fetch_once()
@@ -624,10 +655,10 @@ class Setup:
             return self._start_repair(ai, check_only=check)
         with self.lock:
             if self.job and self.job['state'] in ACTIVE + ('paused',):
-                return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
+                return user_error('busy', 'A download is already under way. Pause or cancel it first.', 'setup.err.downloadUnderWay')
             pack = self.manifest.pack(pack_id) if pack_id else None
             if pack_id and (not pack or not pack['available']):
-                return {'error': 'That library is not available yet.', 'code': 'unavailable'}
+                return user_error('unavailable', 'That library is not available yet.', 'setup.err.libraryUnavailable')
             cur = self.current_info() or {}
             if folder and self.current and install._real(Path(folder).expanduser()) == install._real(self.current):
                 folder = None
@@ -636,10 +667,10 @@ class Setup:
                 pack = None        # the same library again: only the AI is wanted
             model = self.manifest.model() if ai else None
             if ai and not model:
-                return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
+                return user_error('unavailable', 'No local AI is offered for this version.', 'setup.err.noLocalAiOffered')
             mp = self.manifest.map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
-                return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
+                return user_error('unavailable', 'That state’s map is not available yet.', 'setup.err.stateMapUnavailable')
             requested_address = address_id
             address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
             if address_id in ('base', 'us'):
@@ -647,7 +678,7 @@ class Setup:
             addresses = self.manifest.address_index(address_id) if address_id else None
             if not addresses or not addresses['available']:
                 if requested_address:
-                    return {'error': 'That state’s address search is not available yet.', 'code': 'unavailable'}
+                    return user_error('unavailable', 'That state’s address search is not available yet.', 'setup.err.stateAddressUnavailable')
                 addresses = None
             if folder and self.current and install._real(Path(folder).expanduser()) == install._real(self.current):
                 folder = None      # the window sends the shown folder, which in manage mode is the open library itself
@@ -661,24 +692,23 @@ class Setup:
             if mp and not pack and cur.get('map') == mp['id']:
                 mp = None          # this state's map is the one here already
             if self.mode == 'first-run' and not pack and (model or mp or addresses):
-                return {'error': 'Choose a library first.', 'code': 'nothing'}
+                return user_error('nothing', 'Choose a library first.', 'setup.err.chooseLibraryFirst')
             if not pack and not model and not mp and not addresses:
                 if self.mode == 'first-run':
-                    return {'error': 'Choose a library first.', 'code': 'nothing'}
-                return {'error': 'Nothing to add: this library and the local AI are already here.', 'code': 'nothing'}
+                    return user_error('nothing', 'Choose a library first.', 'setup.err.chooseLibraryFirst')
+                return user_error('nothing', 'Nothing to add: this library and the local AI are already here.', 'setup.err.nothingToAdd')
             try:
                 parent.mkdir(parents=True, exist_ok=True)
             except OSError as e:
-                return {'error': f'Lastbook cannot make a folder there ({type(e).__name__}).', 'code': 'folder'}
+                return user_error('folder', f'Lastbook cannot make a folder there ({type(e).__name__}).', 'setup.err.cannotMakeFolder', {'error': type(e).__name__})
             if not os.access(parent, os.W_OK):
-                return {'error': 'Lastbook cannot save in that folder. Choose another.', 'code': 'folder'}
+                return user_error('folder', 'Lastbook cannot save in that folder. Choose another.', 'setup.err.cannotSaveInFolder')
             if path_too_deep(target):
                 room = WINDOWS_MAX_PATH - LONGEST_INSIDE - len('\\') - len(DATA_NAME) - 1
-                return {'error': f'That folder is too deep for Windows: the library’s longest file name would not fit. '
-                                 f'Choose a folder whose path is at most {room} characters long, such as Documents.', 'code': 'folder'}
+                return user_error('folder', f'That folder is too deep for Windows: the library’s longest file name would not fit. Choose a folder whose path is at most {room} characters long, such as Documents.', 'setup.err.folderTooDeep', {'room': room})
             if self.mode == 'first-run' and target.exists() and not install.is_library(target):
                 if any(target.iterdir()):
-                    return {'error': f'There is already a folder called {DATA_NAME} there that is not a library. Choose another place.', 'code': 'folder'}
+                    return user_error('folder', f'There is already a folder called {DATA_NAME} there that is not a library. Choose another place.', 'setup.err.folderNotLibrary', {'name': DATA_NAME})
             work = _work_for(target)
             srcs = dict(self.sources)
             srcs.update(sources or {})
@@ -701,8 +731,7 @@ class Setup:
                         pass
             free, _ = hardware.disk_of(parent)
             if free < need:
-                return {'error': f'This needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space or choose another disk.',
-                        'code': 'no_space', 'need_bytes': need, 'free_bytes': free}
+                return user_error('no_space', f'This needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space or choose another disk.', 'setup.err.needsFreeOnDisk', {'need': _gb(need), 'free': _gb(free)}, need_bytes=need, free_bytes=free)
             items = []
             if pack:
                 items.append({'id': pack['id'], 'kind': 'pack', 'title': pack['title'], 'state': 'waiting', 'bytes_done': 0,
@@ -736,19 +765,14 @@ class Setup:
         and the job's 'result' says what is damaged, so the person can choose Repair."""
         with self.lock:
             if self.job and self.job['state'] in ACTIVE + ('paused',):
-                return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
+                return user_error('busy', 'A download is already under way. Pause or cancel it first.', 'setup.err.downloadUnderWay')
             cur = self.current_info()
             if self.mode != 'manage' or not cur:
-                return {'error': 'There is no library to check yet.' if check_only else 'There is no library to repair yet.', 'code': 'nothing'}
+                return user_error('nothing', 'There is no library to repair yet.', 'setup.err.noLibraryToRepair')
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             if not pack or not pack['available']:
-                return {'error': f'Lastbook cannot tell which library this is, so it cannot {"check" if check_only else "repair"} it. Download a library instead.', 'code': 'unavailable'}
-            # A model file in models/ is checked (and repaired) whatever its size: current_info() names a model only when its size
-            # already matches, so a model one byte short would otherwise be skipped and the library called clean. A check looks only
-            # at what is installed; a truly absent model stays "not installed".
-            m = self.manifest.model()
-            present = bool(m) and (self.current / 'models' / m['file']).is_file()
-            model = m if (present if check_only else (ai or present)) else None
+                return user_error('unavailable', 'Lastbook cannot tell which library this is, so it cannot repair it. Download a library instead.', 'setup.err.cannotTellLibraryRepair')
+            model = self.manifest.model() if (ai or cur['model']) else None
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model', 'map')}
@@ -763,8 +787,7 @@ class Setup:
                 if map_damaged:                               # Repair fetches the map again
                     mp = self.manifest.map(cur['map'])
                     if not mp or not mp['available']:
-                        return {'error': f'The {cur["map"]} map in this library is damaged, and this version does not offer it to download again. '
-                                         'Choose a map again.', 'code': 'unavailable'}
+                        return user_error('unavailable', f'The {cur["map"]} map in this library is damaged, and this version does not offer it to download again. Choose a map again.', 'setup.err.damagedMapNotOffered', {'name': cur['map']})
                     if mp:
                         items.insert(1, {'id': mp['id'], 'kind': 'map', 'title': mp['title'], 'state': 'waiting', 'bytes_done': 0,
                                          'bytes_total': mp['download_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
@@ -801,51 +824,50 @@ class Setup:
         root = lib.resolve()
         for rel, _, _ in rows:
             if '..' in Path(rel).parts or Path(rel).is_absolute():
-                raise install.Refused('copy', f'The library lists a file outside itself ({rel[:80]!r}), so it was not copied.')
+                raise install.Refused('copy', f'The library lists a file outside itself ({rel[:80]!r}), so it was not copied.', key='setup.err.copyListsFileOutside', params={'name': repr(rel[:80])})
             real = (lib / rel).resolve()        # a link inside the library must not bring in a file from elsewhere (as library.real_path)
             if root not in real.parents:
-                raise install.Refused('copy', f'The library’s {rel[:80]} leads outside the library, so nothing was copied.')
+                raise install.Refused('copy', f'The library’s {rel[:80]} leads outside the library, so nothing was copied.', key='setup.err.copyLeadsOutside', params={'name': rel[:80]})
         return rows
 
     def _start_copy(self, where):
         """Copy the open library to <where>/LastbookData, for someone with no internet. Nothing is downloaded."""
         with self.lock:
             if self.job and self.job['state'] in ACTIVE + ('paused',):
-                return {'error': 'Something else is under way. Let it finish, or cancel it, first.', 'code': 'busy'}
+                return user_error('busy', 'Something else is under way. Let it finish, or cancel it, first.', 'setup.err.somethingElseUnderWay')
             cur = self.current_info()
             if self.mode != 'manage' or not cur:
-                return {'error': 'There is no library to copy yet.', 'code': 'nothing'}
+                return user_error('nothing', 'There is no library to copy yet.', 'setup.err.noLibraryToCopy')
             if _pending_file(self.settings_dir).exists():
-                return {'error': 'An update is waiting for Lastbook to restart. Restart it, then copy.', 'code': 'busy'}
+                return user_error('busy', 'An update is waiting for Lastbook to restart. Restart it, then copy.', 'setup.err.updateWaitingRestart')
             p = Path(str(where or '')).expanduser()
             target = p if p.name == DATA_NAME else p / DATA_NAME
             here = self.current.resolve()
             try:
                 there = target.resolve()
             except OSError:
-                return {'error': 'Lastbook cannot use that place. Choose a drive or folder.', 'code': 'folder'}
+                return user_error('folder', 'Lastbook cannot use that place. Choose a drive or folder.', 'setup.err.cannotUsePlace')
             if not str(where or '').strip() or not target.parent.is_dir():
-                return {'error': 'Lastbook cannot find that drive or folder.', 'code': 'missing'}
+                return user_error('missing', 'Lastbook cannot find that drive or folder.', 'setup.err.cannotFindDrive')
             if there == here or here in there.parents or there in here.parents:
-                return {'error': 'Choose a place outside this library, such as a USB drive.', 'code': 'folder'}
+                return user_error('folder', 'Choose a place outside this library, such as a USB drive.', 'setup.err.chooseOutsideLibrary')
             if target.is_symlink():
-                return {'error': f'The {DATA_NAME} folder there is a link. Choose another drive or folder.', 'code': 'folder'}
+                return user_error('folder', f'The {DATA_NAME} folder there is a link. Choose another drive or folder.', 'setup.err.folderIsLink', {'name': DATA_NAME})
             if target.exists() and not target.is_dir():
-                return {'error': f'There is already a file called {DATA_NAME} there. Choose another drive or folder.', 'code': 'folder'}
+                return user_error('folder', f'There is already a file called {DATA_NAME} there. Choose another drive or folder.', 'setup.err.fileAlreadyCalled', {'name': DATA_NAME})
             if target.exists() and any(target.iterdir()) and not (target / COPY_MARK).exists():
-                return {'error': f'There is already a {DATA_NAME} folder there. Choose another drive or folder.', 'code': 'folder'}
+                return user_error('folder', f'There is already a {DATA_NAME} folder there. Choose another drive or folder.', 'setup.err.folderAlreadyThere', {'name': DATA_NAME})
             if not os.access(target.parent, os.W_OK):
-                return {'error': 'Lastbook cannot save there. Choose a drive you can write to.', 'code': 'folder'}
+                return user_error('folder', 'Lastbook cannot save there. Choose a drive you can write to.', 'setup.err.cannotSaveThere')
             try:
                 rows = self.copy_rows(self.current)
             except install.Refused as e:
-                return {'error': e.message, 'code': 'copy'}
+                return user_error('copy', e.message, getattr(e, 'key', None), getattr(e, 'params', None))
             except (OSError, ValueError, IndexError):
-                return {'error': 'This library has no list of its files, so it cannot be copied. Check and repair it first.', 'code': 'unavailable'}
+                return user_error('unavailable', 'This library has no list of its files, so it cannot be copied. Check and repair it first.', 'setup.err.noFileListCopy')
             total = sum(r[1] for r in rows)
             if max(r[1] for r in rows) >= FAT_MAX and (hardware.fs_type(target.parent) or '').lower() in hardware.FAT:
-                return {'error': 'That drive cannot hold files larger than 4 GB (it is FAT32), and this library has some. Use a drive formatted as exFAT.',
-                        'code': 'fat'}
+                return user_error('fat', 'That drive cannot hold files larger than 4 GB (it is FAT32), and this library has some. Use a drive formatted as exFAT.', 'setup.err.fat32TooSmall')
             cluster = hardware.cluster_size(target.parent) or 128 * 1024   # unknown: assume exFAT's usual 128 KB
             on_disk = lambda n: -(-n // cluster) * cluster                     # every file takes whole clusters
             dirs = {str(Path(rel).parent) for rel, _, _ in rows}
@@ -853,8 +875,7 @@ class Setup:
             left += len(dirs) * cluster
             free, _ = hardware.disk_of(target.parent)
             if free < left + 64 * 2 ** 20:
-                return {'error': f'This needs {_gb(left)} free, and that drive has {_gb(free)}. Choose a larger drive.', 'code': 'no_space',
-                        'need_bytes': left, 'free_bytes': free}
+                return user_error('no_space', f'This needs {_gb(left)} free, and that drive has {_gb(free)}. Choose a larger drive.', 'setup.err.needsFreeLargerDrive', {'need': _gb(left), 'free': _gb(free)}, need_bytes=left, free_bytes=free)
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             title = (pack or {}).get('title') or cur['pack'] or 'Lastbook'
             self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'error': None, 'started': _now(), 'folder': str(target), 'copy': True,
@@ -888,10 +909,10 @@ class Setup:
                 tracker.progress(done, total, 'copying')
                 continue
             if not a.is_file() or a.stat().st_size != size:
-                raise install.Refused('copy', f'The library’s {rel} is missing or the wrong size, so the copy stopped. Check and repair the library, then copy again.')
+                raise install.Refused('copy', f'The library’s {rel} is missing or the wrong size, so the copy stopped. Check and repair the library, then copy again.', key='setup.err.copyMissingOrWrongSize', params={'name': rel})
             b.parent.mkdir(parents=True, exist_ok=True)
             if not _inside(dst, b.parent):           # checked again now the folders exist
-                raise install.Refused('copy', f'On the drive, {rel} would land outside the copy, so nothing more was written. Choose another drive or folder.')
+                raise install.Refused('copy', f'On the drive, {rel} would land outside the copy, so nothing more was written. Choose another drive or folder.', key='setup.err.copyWouldLandOutside', params={'name': rel})
             part = b.with_name(b.name + '.partial')
             plan['partial'] = str(part)
             h, base, written = hashlib.sha256(), done, 0
@@ -912,17 +933,17 @@ class Setup:
             except OSError as e:
                 too_big = size > FAT_MAX and written >= FAT_MAX - 64 * 2 ** 20
                 if too_big and e.errno in (errno.EFBIG, errno.EINVAL, errno.ENOSPC):   # Windows says "disk full" at FAT's 4 GB limit
-                    raise install.Refused('copy', 'That drive cannot hold files larger than 4 GB (it is probably FAT32). Use a drive formatted as exFAT.')
+                    raise install.Refused('copy', 'That drive cannot hold files larger than 4 GB (it is probably FAT32). Use a drive formatted as exFAT.', key='setup.err.copyFat32Probably')
                 raise
             source = h.hexdigest()
             if digest is not None and source != digest:
                 part.unlink()
-                raise install.Refused('copy', f'The library’s {rel} does not match its published copy, so it was not copied. Check and repair the library, then copy again.')
+                raise install.Refused('copy', f'The library’s {rel} does not match its published copy, so it was not copied. Check and repair the library, then copy again.', key='setup.err.copyDigestMismatch', params={'name': rel})
             back = _read_back(part, control, lambda n: tracker.progress(base + (size + n) // 2, total, 'copying'))
             if back != source:
                 part.unlink()
                 raise install.Refused('copy', f'The drive gave back different bytes for {rel} than were written to it. It may be faulty, or smaller '
-                                              'than it claims. Use another drive.')
+                                              'than it claims. Use another drive.', key='setup.err.copyReadBackMismatch', params={'name': rel})
             os.replace(part, b)
             plan.pop('partial', None)
             done = base + size
@@ -937,7 +958,7 @@ class Setup:
         names = ['START-HERE.txt', 'START-HERE (Lastbook).txt'] + [f'START-HERE (Lastbook {n}).txt' for n in range(2, 100)]
         name = next((n for n in names if not (dst.parent / n).is_symlink() and (not (dst.parent / n).exists() or _ours(dst.parent / n))), None)
         if name is None:
-            raise install.Refused('copy', 'The drive already holds many START-HERE files that are not Lastbook’s. Remove some, then copy again.')
+            raise install.Refused('copy', 'The drive already holds many START-HERE files that are not Lastbook’s. Remove some, then copy again.', key='setup.err.copyTooManyStartHere')
         tmp = dst.parent / f'.{name}.{uuid.uuid4().hex[:8]}.partial'      # a fresh name: never someone else's file, never a link
         with _open_new(tmp) as f:
             f.write(text.replace('\n', '\r\n').encode('utf-8'))       # Windows line ends: every computer's text editor opens it
@@ -1068,13 +1089,13 @@ class Setup:
         and nothing starts, so choosing a folder can never begin replacing the open library."""
         p = Path(path or '').expanduser()
         if not str(path or '').strip() or not p.exists():
-            return {'error': 'Lastbook cannot find that file or folder.', 'code': 'missing'}
+            return user_error('missing', 'Lastbook cannot find that file or folder.', 'setup.err.cannotFindFileOrFolder')
         if library_only and not p.is_dir():
-            return {'error': f'Choose a library folder, the one called {DATA_NAME}, not a file.', 'code': 'not_library'}
+            return user_error('not_library', f'Choose a library folder, the one called {DATA_NAME}, not a file.', 'setup.err.chooseLibraryFolder', {'name': DATA_NAME})
         if p.is_dir():
             lib = p if install.is_library(p) else p / DATA_NAME
             if library_only and not install.is_library(lib):
-                return {'error': f'“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.', 'code': 'not_library'}
+                return user_error('not_library', f'“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.', 'setup.err.notALibrary', {'name': p.name, 'folder': DATA_NAME})
             if not install.is_library(lib):
                 known = {f['name'] for pk in self.manifest.current['packs'] for f in pk['files']}
                 model = self.manifest.model()
@@ -1083,14 +1104,14 @@ class Setup:
                 inside = sorted(c for c in p.iterdir() if c.name in known and c.is_file()) if p.is_dir() else []
                 if inside:          # the person explicitly chose this folder
                     return self.use(str(inside[0]))
-                return {'error': f'“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.', 'code': 'not_library'}
+                return user_error('not_library', f'“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.', 'setup.err.notALibrary', {'name': p.name, 'folder': DATA_NAME})
             if self.current and install._real(lib) == install._real(self.current):
-                return {'error': 'That library is the one open now.', 'code': 'current'}
+                return user_error('current', 'That library is the one open now.', 'setup.err.libraryAlreadyOpen')
             if not os.access(lib, os.W_OK):
-                return {'error': f'Lastbook cannot save in “{lib.name}”. Move it somewhere you can save to, then choose it there.', 'code': 'folder'}
+                return user_error('folder', f'Lastbook cannot save in “{lib.name}”. Move it somewhere you can save to, then choose it there.', 'setup.err.cannotSaveInNamed', {'name': lib.name})
             with self.lock:
                 if self.job and self.job['state'] in ACTIVE:
-                    return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
+                    return user_error('busy', 'A download is under way. Pause or cancel it first.', 'setup.err.downloadUnderWayShort')
                 self.job = {'id': uuid.uuid4().hex[:12], 'state': 'done', 'error': None, 'started': _now(), 'folder': str(lib),
                             'items': [{'id': 'library', 'kind': 'pack', 'title': lib.name, 'state': 'done', 'bytes_done': 0, 'bytes_total': 0,
                                        'rate_bps': 0, 'eta_s': None, 'error': None}],
@@ -1101,16 +1122,16 @@ class Setup:
             for f in pk['files']:
                 if f['name'] == name:
                     if p.stat().st_size != f['size']:
-                        return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'code': 'size'}
+                        return user_error('size', f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'setup.err.fileSizeMismatch', {'actual': _gb(p.stat().st_size), 'expected': _gb(f['size']), 'name': name})
                     if not pk['available']:
-                        return {'error': 'That library is not available in this version.', 'code': 'unavailable'}
+                        return user_error('unavailable', 'That library is not available in this version.', 'setup.err.libraryUnavailableVersion')
                     self.sources[name] = str(p)
                     return self.start(pk['id'], False, None, {name: str(p)}, explicit=True)
         for x in self.manifest.current.get('maps', []):
             for f in x['files']:
                 if f['name'] == name:
                     if p.stat().st_size != f['size']:
-                        return {'error': f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'code': 'size'}
+                        return user_error('size', f'That file is {_gb(p.stat().st_size)}, not the {_gb(f["size"])} of the published {name}. The download may not have finished.', 'setup.err.fileSizeMismatch', {'actual': _gb(p.stat().st_size), 'expected': _gb(f['size']), 'name': name})
                     self.sources[name] = str(p)
                     if self.mode == 'manage':
                         return self.start(None, False, None, {name: str(p)}, explicit=True, map_id=x['id'])
@@ -1120,7 +1141,7 @@ class Setup:
                 if file['name'] != name:
                     continue
                 if p.stat().st_size != file['size']:
-                    return {'error': 'The address index download is incomplete.', 'code': 'size'}
+                    return user_error('size', 'The address index download is incomplete.', 'setup.err.addressIndexIncomplete')
                 self.sources[name] = str(p)
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
@@ -1128,7 +1149,7 @@ class Setup:
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:
-                return {'error': f'That file is {p.stat().st_size:,} bytes, not the {m["size"]:,} of the model. The download may not have finished.', 'code': 'size'}   # exact: a nearly finished 17 GB download rounds to the same GB
+                return user_error('size', f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'setup.err.modelSizeMismatch', {'actual': _gb(p.stat().st_size), 'expected': _gb(m['size'])})
             self.sources[name] = str(p)
             with self.lock:
                 job = self.job
@@ -1147,17 +1168,15 @@ class Setup:
             if self.mode == 'manage':
                 return self.start(None, True, None, {name: str(p)}, explicit=True)
             return self.public_job() or {'job': None, 'noted': True}
-        return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
+        return user_error('unknown', 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'setup.err.unknownFile')
 
     def finish(self):
         with self.lock:
             job = self.job
             if not job or job['state'] != 'done':
-                return {'error': 'Setup has not finished yet.', 'code': 'not_done'}
-            if job.get('check'):      # a check changed nothing: there is nothing to restart into
-                return {'error': 'A check changes nothing, so there is nothing to open.', 'code': 'nothing'}
+                return user_error('not_done', 'Setup has not finished yet.', 'setup.err.setupNotFinished')
             if job.get('copy'):       # a copy went to a drive: there is no library here to switch to
-                return {'error': 'A copy has no library to open here. It is on the drive.', 'code': 'nothing'}
+                return user_error('nothing', 'A copy has no library to open here. It is on the drive.', 'setup.err.copyNoLibraryHere')
             plan = job['plan']
             folder = plan.get('use_library') or plan['target']
         if not self.on_finish:
@@ -1185,13 +1204,13 @@ class Setup:
         """Manage mode: the model file goes from the open library. The library itself is not touched."""
         m = self.manifest.model()
         if self.mode != 'manage' or not self.current or not m:
-            return {'error': 'There is no local AI in this library to remove.', 'code': 'nothing'}
+            return user_error('nothing', 'There is no local AI in this library to remove.', 'setup.err.noLocalAiToRemove')
         with self.lock:
             if self.job and self.job['state'] in ACTIVE:
-                return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
+                return user_error('busy', 'A download is under way. Pause or cancel it first.', 'setup.err.downloadUnderWayShort')
         p = self.current / 'models' / m['file']
         if not p.is_file():
-            return {'error': 'There is no local AI in this library to remove.', 'code': 'nothing'}
+            return user_error('nothing', 'There is no local AI in this library to remove.', 'setup.err.noLocalAiToRemove')
         llm = self.llm()
         local = getattr(llm, 'LOCAL', None) if llm else None
         try:
@@ -1203,7 +1222,7 @@ class Setup:
         try:
             p.unlink()
         except OSError as e:
-            return {'error': f'Lastbook could not remove the model file ({type(e).__name__}). Quit anything using it, then try again.', 'code': 'folder'}
+            return user_error('folder', f'Lastbook could not remove the model file ({type(e).__name__}). Quit anything using it, then try again.', 'setup.err.cannotRemoveModel', {'error': type(e).__name__})
         if local is not None and getattr(local, '_started', False):
             threading.Thread(target=local.discover, daemon=True).start()
         return {'ok': True, 'freed_bytes': size}
@@ -1212,10 +1231,10 @@ class Setup:
         s = self._settings()
         olds = s.get('old', [])
         if path not in olds:
-            return {'error': 'Lastbook only deletes an old library it moved aside itself.', 'code': 'unknown'}
+            return user_error('unknown', 'Lastbook only deletes an old library it moved aside itself.', 'setup.err.onlyDeletesOwnOld')
         p = Path(path)
         if '.old-' not in p.name:
-            return {'error': 'That is not an old library.', 'code': 'unknown'}
+            return user_error('unknown', 'That is not an old library.', 'setup.err.notAnOldLibrary')
 
         def gone():
             shutil.rmtree(p, ignore_errors=True)
@@ -1236,9 +1255,13 @@ class Setup:
             self.job['state'] = state
             self._save_job()
 
-    def _fail(self, it, code, message, **extra):
+    def _fail(self, it, code, message, key=None, params=None, **extra):
         with self.lock:
             err = {'code': code, 'message': message, **extra}
+            if key:
+                err['key'] = key
+            if params:
+                err['params'] = params
             if it is not None:
                 it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', err, 0, None
             self.job['state'], self.job['error'] = 'failed', err
@@ -1289,9 +1312,9 @@ class Setup:
                     job['state'] = 'paused'
                 self._save_quietly()
         except download.Failed as e:
-            self._fail(it, e.code, e.message, **e.extra)
+            self._fail(it, e.code, e.message, key=getattr(e, 'key', None), params=getattr(e, 'params', None), **e.extra)
         except install.Refused as e:
-            self._fail(it, e.code, e.message)
+            self._fail(it, e.code, e.message, key=getattr(e, 'key', None), params=getattr(e, 'params', None))
         except OSError as e:
             if plan.get('check_only'):  # a file it could not read, not the internet: a check downloads nothing
                 traceback.print_exc()
@@ -1299,18 +1322,18 @@ class Setup:
             elif plan.get('copy'):      # the drive, not the internet: a copy downloads nothing
                 traceback.print_exc()
                 if download.disk_full(e):
-                    self._fail(it, 'no_space', 'The drive filled up. What was copied is kept: use a larger drive, or free some space and copy again to the same place.')
+                    self._fail(it, 'no_space', 'The drive filled up. What was copied is kept: use a larger drive, or free some space and copy again to the same place.', key='setup.err.driveFilledCopy')
                 else:
                     self._fail(it, 'copy', f'Lastbook could not read or write a file for the copy ({type(e).__name__}: {e.strerror or e}). '
-                                           'Check the drive is still connected, then copy again to the same place to carry on.')
+                                           'Check the drive is still connected, then copy again to the same place to carry on.', key='setup.err.copyReadWrite', params={'detail': f'{type(e).__name__}: {e.strerror or e}'})
             elif download.disk_full(e):
-                self._fail(it, 'no_space', 'The disk filled up. Free some space, then try again.')
+                self._fail(it, 'no_space', 'The disk filled up. Free some space, then try again.', key='setup.err.diskFilledTryAgain')
             else:
                 traceback.print_exc()
-                self._fail(it, 'unpack' if it and job['state'] == 'unpacking' else 'network', f'Lastbook could not write a file ({type(e).__name__}: {e.strerror or e}).')
+                self._fail(it, 'unpack' if it and job['state'] == 'unpacking' else 'network', f'Lastbook could not write a file ({type(e).__name__}: {e.strerror or e}).', key='setup.err.couldNotWriteFile', params={'detail': f'{type(e).__name__}: {e.strerror or e}'})
         except Exception as e:
             traceback.print_exc()
-            self._fail(it, 'activate', f'Setup stopped on an internal error ({type(e).__name__}).')
+            self._fail(it, 'activate', f'Setup stopped on an internal error ({type(e).__name__}).', key='setup.err.internalError', params={'error': type(e).__name__})
 
     def _get_file(self, it, f, plan, work, control, offset):
         """The file, checked against its SHA-256: one already on this computer, or a download. Returns its path."""
@@ -1333,7 +1356,7 @@ class Setup:
             if explicit_use:
                 folder = Path(src).parent.name or str(Path(src).parent)
                 raise download.Failed('found_mismatch', f'The {name} in {folder} doesn’t match the published file, so it was not used. '
-                                                        'It was left as it is. Download it instead?', file=src)
+                                                        'It was left as it is. Download it instead?', key='setup.err.foundMismatchLeft', params={'name': name, 'folder': folder}, file=src)
             print(f'setup: {src} does not match; downloading instead', flush=True)
         dest = work / 'downloads' / name
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
@@ -1344,7 +1367,7 @@ class Setup:
             free, _ = hardware.disk_of(work)
             if free < still + 512 * 2 ** 20:
                 raise download.Failed('no_space', f'Downloading {name} needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.',
-                                      need_bytes=still, free_bytes=free)
+                                      key='setup.err.downloadingNeedsFree', params={'name': name, 'need': _gb(still), 'free': _gb(free)}, need_bytes=still, free_bytes=free)
         while True:
             self._set(it, 'downloading')
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
@@ -1355,7 +1378,7 @@ class Setup:
             except download.BadChecksum:
                 tries = plan['retried'].get(name, 0)
                 if tries >= 1:
-                    raise download.Failed('checksum', f'{name} did not match its published checksum twice. The file on the server may be damaged; try again later.')
+                    raise download.Failed('checksum', f'{name} did not match its published checksum twice. The file on the server may be damaged; try again later.', key='setup.err.checksumTwice', params={'name': name})
                 plan['retried'][name] = tries + 1
                 print(f'setup: {name} failed its checksum; downloading it once more', flush=True)
             except download.Failed as e:
@@ -1378,7 +1401,7 @@ class Setup:
             need = install.need_bytes(pack, None, set(plan['sources']))
             free, _ = hardware.disk_of(work.parent)
             if free < need:
-                raise download.Failed('no_space', f'{len(bad)} files need fetching again. That needs {_gb(need)} free, and the disk has {_gb(free)}.')
+                raise download.Failed('no_space', f'{len(bad)} files need fetching again. That needs {_gb(need)} free, and the disk has {_gb(free)}.', key='setup.err.filesNeedFetching', params={'count': len(bad), 'need': _gb(need), 'free': _gb(free)})
             with self.lock:
                 it['bytes_total'], it['bytes_done'] = pack['download_bytes'], 0
         staged = work / 'unpack'
@@ -1394,13 +1417,13 @@ class Setup:
         still = max(total - _tree_size(staged), 0)
         free, _ = hardware.disk_of(work)
         if free < still + 512 * 2 ** 20:
-            raise download.Failed('no_space', f'Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.')
+            raise download.Failed('no_space', f'Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.', key='setup.err.unpackingNeedsFree', params={'need': _gb(still), 'free': _gb(free)})
         for path, _ in got:
             lib = install.unpack(path, staged, pack['installed_bytes'], control, lambda d, t: tracker.progress(d, t, 'unpacking'))
         if pack.get('revision'):
             metadata = json.loads((lib / 'pack.json').read_text(encoding='utf-8'))
             if metadata.get('content_revision') != pack['revision']:
-                raise install.Refused('unpack', 'The library content version does not match this download.')
+                raise install.Refused('unpack', 'The library content version does not match this download.', key='setup.err.contentVersionMismatch')
         current = self.current_info() or {}
         if (not plan.get('map') and Path(plan['target']) == self.current and current.get('pack') == pack['id']
                 and _separate_map(self.current)):          # kept only when Repair found it whole, or it would have its own item
@@ -1427,7 +1450,7 @@ class Setup:
         for path, _ in got:
             lib = install.unpack(path, staged, mp['installed_bytes'], control, lambda d, t: tracker.progress(d, t, 'unpacking'), allowed=install.map_member)
         if install.map_name(lib) != mp['id']:
-            raise install.Refused('unpack', f'The map file says it is {install.map_name(lib)}, not {mp["id"]}.')
+            raise install.Refused('unpack', f'The map file says it is {install.map_name(lib)}, not {mp["id"]}.', key='setup.err.mapFileWrongId', params={'actual': install.map_name(lib), 'expected': mp['id']})
         if plan['switch']:
             install.replace_map_in(work / 'unpack' / DATA_NAME, lib)
             shutil.rmtree(staged, ignore_errors=True)
@@ -1448,7 +1471,7 @@ class Setup:
         def verify(lib):
             path = lib / relative
             if not path.is_file() or path.stat().st_size != entry['installed_bytes']:
-                raise install.Refused('unpack', 'The address index is missing or the wrong size.')
+                raise install.Refused('unpack', 'The address index is missing or the wrong size.', key='setup.err.addressIndexWrongSize')
 
         got = []
         offset = 0
@@ -1522,7 +1545,7 @@ class Setup:
             elif plan['switch']:
                 lib = work / 'unpack' / DATA_NAME
                 if not install.is_library(lib):
-                    raise install.Refused('activate', 'The new library is not complete.')
+                    raise install.Refused('activate', 'The new library is not complete.', key='setup.err.newLibraryIncomplete')
                 install.stage_switch(_pending_file(self.settings_dir), lib, plan['target'], plan.get('model_file'), model_sha256=plan.get('model_sha256'))
             elif plan.get('map_new'):
                 install.stage_switch(_pending_file(self.settings_dir), plan['map_new'], plan['target'], kind='map')
@@ -1608,7 +1631,7 @@ def _fresh_unpack(staged, stamp):
             shutil.rmtree(staged)
         except OSError as e:
             raise install.Refused('unpack', f'Lastbook could not clear the files of the previous download ({type(e).__name__}). '
-                                            'Close anything that may be using them, then try again.')
+                                            'Close anything that may be using them, then try again.', key='setup.err.couldNotClearPrevious', params={'error': type(e).__name__})
     Path(staged).mkdir(parents=True, exist_ok=True)
     install._write_json(note, stamp)
 

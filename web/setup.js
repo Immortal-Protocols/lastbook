@@ -7,6 +7,15 @@
   const main = $('#main'), live = $('#live');
   const languageHasFocus = () => $('#languageSettings')?.contains(document.activeElement);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function tr(key, params, fallback) {
+    const text = globalThis.LastbookI18n?.t?.(key, params);
+    if (text != null) return text;
+    if (params && typeof fallback === 'string') {
+      return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => (params[n] != null ? String(params[n]) : '{' + n + '}'));
+    }
+    return fallback;
+  }
+  globalThis.lastbookTr = tr;
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
@@ -48,25 +57,48 @@
   const rate = bps => bps > 0 ? (bps / UNIT ** 2 >= 10 ? Math.round(bps / UNIT ** 2) : (bps / UNIT ** 2).toFixed(1)) + ' MB/s' : '';
   function eta(s) {
     if (s == null || !isFinite(s) || s < 0) return '';
-    if (s < 60) return 'under a minute left';
+    if (s < 60) return tr('setup.etaUnderMinute', null, 'under a minute left');
     const m = Math.round(s / 60);
-    if (m < 60) return `about ${m} min left`;
+    if (m < 60) return tr('setup.etaMinutes', { count: m }, 'about {count} min left');
     const h = Math.floor(m / 60), r = m % 60;
-    return `about ${h} h${r ? ` ${r} min` : ''} left`;
+    return r ? tr('setup.etaHoursMinutes', { hours: h, minutes: r }, 'about {hours} h {minutes} min left') : tr('setup.etaHours', { hours: h }, 'about {hours} h left');
   }
-  const retryIn = s => `The server is busy. Retrying in ${s < 60 ? 'under a minute' : Math.ceil(s / 60) + ' min'}`;
+  const retryIn = s => s < 60 ? tr('setup.retryUnderMinute', null, 'The server is busy. Retrying in under a minute') : tr('setup.retryMinutes', { count: Math.ceil(s / 60) }, 'The server is busy. Retrying in {count} min');
   const home = p => String(p || '').replace(/^\/Users\/[^/]+/, '~').replace(/^[A-Z]:\\Users\\[^\\]+\\/i, '');   // ~/… on a Mac; Documents\… on Windows, as Explorer names it
 
   /* ------------------------------------------------------------ the engine */
   async function call(path, body) {
     const opts = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-    let r; try { r = await fetch('/api/setup/' + path, opts) } catch { throw Object.assign(new Error('Lastbook did not answer. Close it and open it again.'), { status: 0 }) }
+    let r; try { r = await fetch('/api/setup/' + path, opts) } catch { throw Object.assign(new Error(tr('setup.noAnswer', null, 'Lastbook did not answer. Close it and open it again.')), { status: 0 }) }
     let d = null; try { d = await r.json() } catch { }
-    if (!r.ok && !(d && (d.error || d.need_bytes))) throw Object.assign(new Error(r.status === 404 ? 'Not available.' : 'Lastbook sent an unreadable reply.'), { status: r.status });
+    if (!r.ok && !(d && (d.error || d.need_bytes))) throw Object.assign(new Error(r.status === 404 ? tr('setup.notAvailable', null, 'Not available.') : tr('setup.unreadableReply', null, 'Lastbook sent an unreadable reply.')), { status: r.status });
     return d;
   }
   const errCode = e => e && (typeof e === 'object' ? e.code : null);
-  const errText = e => e && (typeof e === 'object' ? e.message || e.error : e);
+  const errText = e => {
+    if (!e) return '';
+    if (typeof e !== 'object') return e;
+    if (e.key) return tr(e.key, e.params || null, e.message || e.error || '');
+    return e.message || e.error || '';
+  };
+  const recommendWhy = r => {
+    if (!r) return '';
+    if (Array.isArray(r.why_parts) && r.why_parts.length) {
+      return r.why_parts.map(p => {
+        if (!p) return '';
+        if (typeof p === 'string') return p;
+        return tr(p.key, p.params || null, p.text || '');
+      }).filter(Boolean).join(' ');
+    }
+    if (r.why_key) return tr(r.why_key, r.why_params || null, r.why || '');
+    return r.why || '';
+  };
+  const joinList = parts => {
+    const and = tr('common.and', null, 'and');
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return parts[0] + ' ' + and + ' ' + parts[1];
+    return parts.slice(0, -1).join(', ') + ' ' + and + ' ' + parts[parts.length - 1];
+  };
 
   /* ------------------------------------------------------------ state */
   let S = null;           // GET state
@@ -118,7 +150,7 @@
   /* state maps (docs/SETUP-API.md, State maps). The person picks the state; Lastbook never looks for where it is */
   const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));   // by name, as people look for theirs
   const mapById = id => maps().find(m => m.id === id);
-  const mapName = id => id === 'us' ? 'the whole US' : (mapById(id) || {}).title || id;
+  const mapName = id => id === 'us' ? tr('setup.wholeUS', null, 'the whole US') : (mapById(id) || {}).title || id;
   /* the detailed map the library will have once the chosen pack is in: the person's state map, or the one the pack carries */
   const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
   const packMap = id => { const p = packById(id) || {}; return 'map' in p ? p.map || null : PACK_MAP[id] || null };
@@ -134,7 +166,7 @@
     if (p.id !== 'medium' || !maps().length) return text;
     // The manifest describes the archive's bundled map. Setup replaces it with the chosen state map.
     const state = selectedState();
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your state'));
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : tr('setup.yourState', null, 'your state')));
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -151,8 +183,8 @@
     for (const d of ds) if (p.startsWith(norm(d.path)) && (!best || d.path.length > best.path.length)) best = d;
     return best || (path ? null : ds[0] || null);   // a folder on a disk the engine did not report: its free space is not known here
   }
-  const diskName = d => !d ? 'this disk' : d.name || (WIN ? (String(d.path).match(/^[A-Z]:/i) || ['this disk'])[0].toUpperCase()   // C:, D:
-    : /^\/Volumes\/[^/]+/.test(d.path) ? d.path.split('/')[2] : /Linux/.test(navigator.platform || '') ? 'this computer' : 'this Mac');
+  const diskName = d => !d ? tr('setup.thisDisk', null, 'this disk') : d.name || (WIN ? (String(d.path).match(/^[A-Z]:/i) || [tr('setup.thisDisk', null, 'this disk')])[0].toUpperCase()   // C:, D:
+    : /^\/Volumes\/[^/]+/.test(d.path) ? d.path.split('/')[2] : /Linux/.test(navigator.platform || '') ? 'this computer' : tr('setup.thisMac', null, 'this Mac'));
 
   function plan() {   // what the current choice adds: bytes to download, space it needs (download + unpacked + 2 GB, as the engine counts)
     const c = cur() || {};
@@ -218,19 +250,19 @@
   /* ---- this computer */
   function computer() {
     const h = S.hardware || {}, d = diskFor(folder), tiles = [];
-    if (d) tiles.push([ico('disk'), size(d.free_bytes), `free on ${esc(diskName(d))}`]);
-    if (h.ram_bytes) tiles.push([ico('chip'), ram(h.ram_bytes), h.unified_memory ? 'memory, shared with graphics' : 'memory']);
+    if (d) tiles.push([ico('disk'), size(d.free_bytes), `${tr('setup.freeOn', { disk: diskName(d) }, 'free on {disk}')}`]);
+    if (h.ram_bytes) tiles.push([ico('chip'), ram(h.ram_bytes), h.unified_memory ? tr('setup.memoryShared', null, 'memory, shared with graphics') : tr('setup.memory', null, 'memory')]);
     if (!h.unified_memory) {
       const g = (h.gpus || []).slice().sort((a, b) => (b.vram_bytes || 0) - (a.vram_bytes || 0))[0];
-      tiles.push(g ? [ico('gpu'), g.vram_bytes ? ram(g.vram_bytes) : '—', `graphics: ${esc(g.name)}`] : [ico('gpu'), 'None', 'graphics card for the AI']);
+      tiles.push(g ? [ico('gpu'), g.vram_bytes ? ram(g.vram_bytes) : '—', `${tr('setup.graphicsNamed', { name: g.name }, 'graphics: {name}')}`] : [ico('gpu'), tr('setup.none', null, 'None'), tr('setup.graphicsCard', null, 'graphics card for the AI')]);
     }
-    return `<section class="s-pc" aria-label="This computer">${tiles.map(t => `<div class="s-tile">${t[0]}<b>${t[1]}</b><small>${t[2]}</small></div>`).join('')}</section>`;
+    return `<section class="s-pc" aria-label="${tr('setup.thisComputer', null, "This computer")}">${tiles.map(t => `<div class="s-tile">${t[0]}<b>${t[1]}</b><small>${t[2]}</small></div>`).join('')}</section>`;
   }
   function recommendLine() {
     const r = S.recommend || {}, p = packById(r.pack);
-    if (!p) return r.why ? `<p class="s-rec bad">${ico('warn')}<span>${esc(r.why)}</span></p>` : '';
+    if (!p) return (r.why || r.why_key || (r.why_parts && r.why_parts.length)) ? `<p class="s-rec bad">${ico('warn')}<span>${esc(recommendWhy(r))}</span></p>` : '';
     const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
-    return `<p class="s-rec">${ico('ok')}<span><b>Suggested: ${what}.</b> ${esc(r.why || '')}</span></p>`;
+    return `<p class="s-rec">${ico('ok')}<span><b>${esc(tr('setup.suggested', { what }, 'Suggested: {what}.'))}</b> ${esc(recommendWhy(r))}</span></p>`;
   }
 
   /* ---- choose */
@@ -239,35 +271,35 @@
     const packCards = packs().map(p => {
       const update = c && c.pack === p.id && packNeedsInstall(p);
       const off = p.available === false, here = c && c.pack === p.id && !update, rec = (S.recommend || {}).pack === p.id && !c;
-      const badge = off ? '<span class="s-badge later">Coming later</span>' : update ? '<span class="s-badge rec">Update available</span>' : here ? '<span class="s-badge here">Installed</span>' : rec ? '<span class="s-badge rec">Suggested</span>' : '';
+      const badge = off ? '<span class="s-badge later">' + tr('setup.comingLater', null, 'Coming later') + '</span>' : update ? '<span class="s-badge rec">' + tr('setup.updateAvailable', null, 'Update available') + '</span>' : here ? '<span class="s-badge here">' + tr('setup.installed', null, 'Installed') + '</span>' : rec ? '<span class="s-badge rec">' + tr('setup.suggested', null, 'Suggested') + '</span>' : '';
       return `<label class="s-opt${off ? ' off' : ''}">
         <input type="radio" name="pack" value="${esc(p.id)}"${choice.pack === p.id ? ' checked' : ''}${off ? ' disabled' : ''}>
         <span class="s-opt-in"><span class="s-opt-h"><b>${esc(p.title)}</b>${badge}</span>
         <small data-pack-summary="${esc(p.id)}">${esc(packSummary(p))}</small>
-        <span class="s-sizes">${off ? 'Not ready to download yet' : here ? 'On this computer' : `<span>${foundFor('pack', p.id) ? 'Already downloaded' : size(packDl(p)) + ' download'}</span><span>${size(p.installed_bytes)} on disk</span>`}</span></span></label>`;
+        <span class="s-sizes">${off ? tr('setup.notReadyDownload', null, 'Not ready to download yet') : here ? tr('setup.onThisComputer', null, 'On this computer') : `<span>${foundFor('pack', p.id) ? tr('setup.alreadyDownloaded', null, 'Already downloaded') : tr('setup.sizeDownload', { size: size(packDl(p)) }, '{size} download')}</span><span>${size(p.installed_bytes)} on disk</span>`}</span></span></label>`;
     }).join('');
     let ai = '';
     if (m && m.available !== false) {
       const has = c && c.model;
       ai = aiFits() || has
         ? `<label class="s-opt s-ai"><input type="checkbox" id="aiBox"${choice.ai || has ? ' checked' : ''}${has ? ' disabled' : ''}>
-            <span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b>${has ? '<span class="s-badge here">Installed</span>' : (S.recommend || {}).ai && !c ? '<span class="s-badge rec">Suggested</span>' : '<span class="s-badge">Optional</span>'}</span>
-            <small>Answers questions from the library, in plain words. Works offline.</small>
-            <span class="s-sizes">${has ? 'On this computer' : foundFor('model') ? '<span>Already downloaded</span>' : `<span>About ${size(m.size)} download</span>`}</span></span></label>`
-        : `<div class="s-opt s-ai off" role="group" aria-label="Local AI"><span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b><span class="s-badge later">Not for this computer</span></span>
-            <small>${esc((S.hardware.ai && S.hardware.ai.why) || 'This computer does not have enough memory for it.')}</small></span></div>`;
+            <span class="s-opt-in"><span class="s-opt-h"><b>${tr('setup.localAi', null, 'Local AI')}</b>${has ? '<span class="s-badge here">' + tr('setup.installed', null, 'Installed') + '</span>' : (S.recommend || {}).ai && !c ? '<span class="s-badge rec">' + tr('setup.suggested', null, 'Suggested') + '</span>' : '<span class="s-badge">' + tr('setup.optional', null, 'Optional') + '</span>'}</span>
+            <small>${tr('setup.aiLead', null, 'Answers questions from the library, in plain words. Works offline.')}</small>
+            <span class="s-sizes">${has ? tr('setup.onThisComputer', null, 'On this computer') : foundFor('model') ? '<span>' + tr('setup.alreadyDownloaded', null, 'Already downloaded') + '</span>' : `<span>${tr('setup.aboutDownload', { size: size(m.size) }, 'About {size} download')}</span>`}</span></span></label>`
+        : `<div class="s-opt s-ai off" role="group" aria-label="${tr('setup.localAi', null, "Local AI")}"><span class="s-opt-in"><span class="s-opt-h"><b>${tr('setup.localAi', null, 'Local AI')}</b><span class="s-badge later">${tr('setup.notForThisComputer', null, 'Not for this computer')}</span></span>
+            <small>${esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notEnoughMemory', null, 'This computer does not have enough memory for it.'))}</small></span></div>`;
     }
     const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · doesn’t match the published file, so it is not used</small></span></div>`
-      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? 'A Lastbook library' : f.kind === 'model' ? 'The local AI file' : (packById(f.id) ? packById(f.id).title + ' library' : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
-        <button class="btn plain" data-use="${i}">Use the file you already have</button></div>`).join('');
+      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? packById(f.id).title + ' library' : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
+        <button class="btn plain" data-use="${i}">${tr('setup.useFileYouHave', null, 'Use the file you already have')}</button></div>`).join('');
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span data-i18n="setup.settingsTitle">Library and local AI</span></button>` : ''}
       ${c ? '<h1 data-i18n="setup.changeLibrary">Change the library</h1>' : '<h1 data-i18n="setup.title">Set up Lastbook</h1>'}
       ${c ? '' : '<p class="lead" data-i18n="setup.chooseIntro">Choose your state and library. Lastbook downloads them for offline use.</p>'}
       ${computer()}
       ${c ? '' : recommendLine()}
-      ${found ? `<h2>Found on this computer</h2><div class="s-founds">${found}</div>` : ''}
-      <section id="mapBox" class="s-map-panel" aria-label="Your local map"></section>
+      ${found ? `<h2 data-i18n="setup.foundOnComputer">Found on this computer</h2><div class="s-founds">${found}</div>` : ''}
+      <section id="mapBox" class="s-map-panel" aria-label="${tr('setup.yourLocalMap', null, "Your local map")}"></section>
       <h2 id="packH" data-i18n="nav.library">Library</h2>
       <div class="s-opts" role="radiogroup" aria-labelledby="packH">${packCards}</div>
       ${ai ? `<h2>Local AI</h2>${ai}` : ''}
@@ -276,8 +308,8 @@
       ${c ? '' : updatesBox()}
       <div class="s-go">
         <button class="btn big" id="start"></button>
-        ${c ? '' : '<button class="s-link" id="haveLib">Choose an existing library folder</button>'}
-        <button class="s-link" id="haveFile">Choose a library zip or AI model file</button>
+        ${c ? '' : '<button class="s-link" id="haveLib" data-i18n="setup.chooseExistingFolder">Choose an existing library folder</button>'}
+        <button class="s-link" id="haveFile" data-i18n="setup.chooseZipOrAi">Choose a library zip or AI model file</button>
       </div>
       <p class="s-note" id="haveNote" hidden></p>`;
     main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { choice.pack = r.value; shortfall = null; mapSection(); summary() });
@@ -305,7 +337,7 @@
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
-      const details = off ? 'coming later' : bytes ? size(bytes) + ' download' : 'included';
+      const details = off ? tr('setup.comingLater', null, 'coming later') : bytes ? size(bytes) + ' download' : 'included';
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
     }).join('');
     const sel = mapById(selected), a = addressAdds();
@@ -313,13 +345,13 @@
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your state map is already included.') + ' Street-address search is not available for this state yet.';
-    box.innerHTML = `<h2>${ico('map')}Your local map</h2>
-      <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
-      ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your state for offline street-address search.</p>' : ''}
-      <label class="s-maplabel" for="mapSel">Choose your state</label>
-      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select a state</option>${opts}</select>
+    let hint = !sel ? tr('setup.selectState', null, 'Select your state to continue.') : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
+    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : tr('setup.stateIncluded', null, 'Your state map is already included.')) + ' ' + tr('setup.noAddressSearch', null, 'Street-address search is not available for this state yet.');
+    box.innerHTML = `<h2>${ico('map')}${tr('setup.yourLocalMap', null, 'Your local map')}</h2>
+      <p class="s-mapnote">${tr('setup.mapIntro', null, 'Local streets, buildings, water and places to get help. Available offline.')}</p>
+      ${now === 'us' ? `<p class="s-mapnote">${tr('setup.allStatesNote', null, 'All includes every state map. Choose your state for offline street-address search.')}</p>` : ''}
+      <label class="s-maplabel" for="mapSel">${tr('setup.chooseYourState', null, 'Choose your state')}</label>
+      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>${tr('setup.selectAState', null, 'Select a state')}</option>${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;
     $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
   }
@@ -329,20 +361,20 @@
     const pct = need && free ? Math.min(100, need / free * 100) : short ? 100 : 0;
     const c = cur();
     $('#sum').innerHTML = need ? `
-      <div class="s-nums"><span><small>Download</small><b>${dl ? size(dl) : 'None'}</b></span><span><small>Space needed</small><b>${size(short ? short.need_bytes : need)}</b></span><span><small>Free on ${esc(diskName(d))}</small><b>${short ? size(short.free_bytes) : free != null ? size(free) : 'Checked at start'}</b></span></div>
-      ${free == null && !short ? '' : `<div class="s-meter${short ? ' bad' : ''}" role="img" aria-label="Uses ${Math.round(pct)} percent of the free space"><i style="width:${pct}%"></i></div>`}
-      ${short ? `<p class="s-short">${ico('warn')}<span>Not enough room: this needs ${size(short.need_bytes)}, and ${esc(diskName(d))} has ${size(short.free_bytes)} free. Pick a smaller library or another folder.</span></p>` : ''}
+      <div class="s-nums"><span><small>${esc(tr('setup.stage.download', null, 'Download'))}</small><b>${dl ? size(dl) : tr('setup.none', null, 'None')}</b></span><span><small>${esc(tr('setup.spaceNeeded', null, 'Space needed'))}</small><b>${size(short ? short.need_bytes : need)}</b></span><span><small>${esc(tr('setup.freeOnLabel', { disk: diskName(d) }, 'Free on {disk}'))}</small><b>${short ? size(short.free_bytes) : free != null ? size(free) : tr('setup.checkedAtStart', null, 'Checked at start')}</b></span></div>
+      ${free == null && !short ? '' : `<div class="s-meter${short ? ' bad' : ''}" role="img" aria-label="${esc(tr('setup.usesPercentFree', { percent: Math.round(pct) }, 'Uses {percent} percent of the free space'))}"><i style="width:${pct}%"></i></div>`}
+      ${short ? `<p class="s-short">${ico('warn')}<span>${esc(tr('setup.notEnoughRoomNeeds', { need: size(short.need_bytes), disk: diskName(d), free: size(short.free_bytes) }, 'Not enough room: this needs {need}, and {disk} has {free} free. Pick a smaller library or another folder.'))}</span></p>` : ''}
       ${folderRow()}`
-      : `<p class="s-nothing">${c ? 'This is what you have now.' : 'Pick a library.'}</p>${c ? '' : folderRow()}`;
+      : `<p class="s-nothing">${c ? tr('setup.whatYouHave', null, 'This is what you have now.') : tr('setup.pickLibrary', null, 'Pick a library.')}</p>${c ? '' : folderRow()}`;
     const b = $('#start');
     b.disabled = !need || !!short || mapMissing();
     const newPack = c && packNeedsInstall(packById(choice.pack)), newAi = c && choice.ai && !c.model, newMap = c && mapAdds(), newAddresses = c && addressAdds();
-    const parts = [newPack && packById(choice.pack).title, newAi && 'the local AI', newMap && `the ${newMap.title} map`, newAddresses && !newMap && 'offline address search'].filter(Boolean);
-    b.textContent = mapMissing() ? 'Choose your state to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
-    if (newPack && choice.pack === c.pack && !mapMissing()) b.textContent = 'Download and install update';
+    const parts = [newPack && packById(choice.pack).title, newAi && tr('setup.theLocalAi', null, 'the local AI'), newMap && tr('setup.theNamedMap', { name: newMap.title }, 'the {name} map'), newAddresses && !newMap && tr('setup.offlineAddressSearch', null, 'offline address search')].filter(Boolean);
+    b.textContent = mapMissing() ? tr('setup.chooseStateContinue', null, 'Choose your state to continue') : !c ? tr('setup.downloadInstall', null, 'Download and install') : parts.length ? tr('setup.getWhat', { what: joinList(parts) }, 'Get {what}') : tr('setup.nothingToAdd', null, 'Nothing to add');
+    if (newPack && choice.pack === c.pack && !mapMissing()) b.textContent = tr('setup.downloadInstallUpdate', null, 'Download and install update');
     const ch = $('#chFolder'); if (ch) ch.onclick = pickFolder;
   }
-  const folderRow = () => `<div class="s-folder">${ico('folder')}<span><small>Saves to</small><b title="${esc(folder)}">${esc(home(folder))}</b></span>${cur() ? '' : '<button class="btn plain" id="chFolder">Change…</button>'}</div>`;
+  const folderRow = () => `<div class="s-folder">${ico('folder')}<span><small>${tr('setup.savesTo', null, 'Saves to')}</small><b title="${esc(folder)}">${esc(home(folder))}</b></span>${cur() ? '' : `<button class="btn plain" id="chFolder">${tr('setup.changeEllipsis', null, 'Change…')}</button>`}</div>`;
 
   async function pickFolder() {
     const b = $('#chFolder'); b.disabled = true;
@@ -355,9 +387,10 @@
         const pc = main.querySelector('.s-pc'); if (pc) pc.outerHTML = computer();
       }
       summary();
-    } catch { b.disabled = false; b.textContent = 'Can’t change here' }
+    } catch { b.disabled = false; b.textContent = tr('setup.cantChangeHere', null, 'Can’t change here') }
   }
   async function haveLibrary(files, btn, only) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     const n = $('#haveNote');
     try {
       const r = await call('pick', { files });
@@ -366,7 +399,7 @@
       throw 0;
     } catch {
       n.hidden = false;
-      n.textContent = 'The picker could not open. Try choosing the file or folder again.';
+      n.textContent = tr('setup.pickerFailed', null, 'The picker could not open. Try choosing the file or folder again.');
     }
   }
   async function useFile(path, btn, only) {
@@ -374,7 +407,7 @@
     try {
       const r = await call('use', { path, ...only });
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'The local AI file will be used. No need to download it.'; return }
+      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = tr('setup.aiFileWillBeUsed', null, 'The local AI file will be used. No need to download it.'); return }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
@@ -386,7 +419,7 @@
     const b = $('#start'); b.disabled = true;
     const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
-    if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'Setup could not start.'; return }
+    if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || tr('setup.error', null, 'Setup could not start.'); return }
     S.job = r; go('job'); poll();
   }
 
@@ -489,20 +522,19 @@
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       <div class="s-have">
-        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
+        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? tr('setup.updatedEdition', { detail: '' }, 'Updated edition available · {detail}') : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
-        ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
+        ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>${tr('setup.localAi', null, 'Local AI')}</b><small>${c.model ? tr('setup.onThisComputerSize', { detail: size(m.size) }, 'On this computer · {detail}') : aiFits() ? tr('setup.notInstalledAbout', { size: size(m.size) }, 'Not installed · about {size}') : esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notForComputer', null, 'Not for this computer.'))}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
-          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
-          <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
+          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? tr('setup.detailedMapNamed', { name: mapName(mNow) }, 'Detailed map: {name}') : tr('setup.detailedMap', null, 'Detailed map')}</b><small>${mNow ? (mNow === 'us' ? tr('setup.streetsEverywhere', null, 'Local streets and terrain everywhere') : tr('setup.streetsBuildings', null, 'Local streets, buildings and terrain')) : tr('setup.noneYetState', null, 'None yet. Add one for your state.')}</small></span>
+          <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? tr('setup.chooseState', null, 'Choose state') : tr('setup.addAddressSearch', null, 'Add address search')}</button></div>` })() : ''}
       </div>
       ${cloudNote(c)}
       <div id="srvSlot"></div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
-      ${CAN.repair ? `<div class="s-have"><div class="s-row">${ico('ok', 's-ri')}<span><b>Library check</b><small id="lastCheck">${checkLine(c.checked)}</small></span><button class="btn plain" id="checkNow">Check now</button></div></div>` : ''}
-      <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small>Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut">Copy to a drive…</button></div></div>
+      <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small data-i18n="setup.copyIntro">Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut" data-i18n="setup.copyToDrive">Copy to a drive…</button></div></div>
       <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}Check and repair</button>` : ''}
         <button class="s-link" id="otherLib">${ico('folder')}Open another library folder</button></div>
       <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>
@@ -516,23 +548,18 @@
     if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
-    if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', 'The local AI was removed.');   // the engine stops the AI first
+    if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', tr('setup.aiRemoved', null, 'The local AI was removed.'));   // the engine stops the AI first
     if ($('#rmOld')) $('#rmOld').onclick = () => { confirmOld = true; manageView(); $('#oldNo').focus() };
     if ($('#oldNo')) $('#oldNo').onclick = () => { confirmOld = false; manageView(); $('#rmOld').focus() };
-    if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', 'The old library is being deleted.', { path: old.path });
-    if ($('#checkNow')) $('#checkNow').onclick = async () => {   // the Repair check alone: it downloads and changes nothing
-      const r = await call('start', { check: true }).catch(e => ({ error: e.message }));
-      if (!r || r.error) { note = (r && r.error) || 'The check could not start.'; manageView(); return }
-      repair = null; S.job = r; go('job'); poll();
-    };
+    if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', tr('setup.oldLibraryDeleting', null, 'The old library is being deleted.'), { path: old.path });
     if ($('#copyOut')) $('#copyOut').onclick = async () => {   // #114: choose the drive, then say what will be copied before copying
       const r = await call('pick', {}).catch(() => null);
-      if (!r || !r.path) { if (!r) { note = 'The picker could not open. Try again.'; manageView() } return }
+      if (!r || !r.path) { if (!r) { note = tr('setup.pickerFailedRetry', null, 'The picker could not open. Try again.'); manageView() } return }
       copyTo = r; go('copy');
     };
     if ($('#repair')) $('#repair').onclick = async () => {
       const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
-      if (!r || r.error) { note = (r && r.error) || 'Repair could not start.'; manageView(); return }
+      if (!r || r.error) { note = (r && r.error) || tr('setup.repairFailed', null, 'Repair could not start.'); manageView(); return }
       repair = { fixed: false, sure: true }; S.job = r; go('job'); poll();
     };
     renderServer();
@@ -553,18 +580,18 @@
     $('#copyGo').onclick = async () => {
       $('#copyGo').disabled = true;
       const x = await call('start', { copy_to: r.path }).catch(e => ({ error: e.message }));
-      if (!x || x.error) { note = (x && x.error) || 'The copy could not start.'; copyView(); return }
+      if (!x || x.error) { note = (x && x.error) || tr('setup.copyFailedStart', null, 'The copy could not start.'); copyView(); return }
       repair = null; S.job = x; go('job'); poll();
     };
     globalThis.LastbookI18n?.apply(main);
   }
   function copiedView() {
     const r = (S.job && S.job.result) || {};
-    main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>Copied</h1>
-      <p class="lead">The drive now holds the library (${r.files || 0} files${r.bytes ? ', ' + size(r.bytes) : ''}, each read back and checked) and ${esc(r.start_here || 'START-HERE.txt')}, which says how to set it up on another computer.</p>
-      <p class="s-note"><b>Eject the drive before you unplug it</b>, so the last files are written.</p>
-      <button class="btn big" id="back">Back to Library and local AI</button></div>`;
-    live.textContent = 'Copied.';
+    main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${tr('setup.copiedHeading', null, 'Copied')}</h1>
+      <p class="lead">${tr('setup.copyDoneLead', { files: r.files || 0, size: r.bytes ? ', ' + size(r.bytes) : '', name: esc(r.start_here || 'START-HERE.txt') }, 'The drive now holds the library ({files} files{size}, each read back and checked) and {name}, which says how to set it up on another computer.')}</p>
+      <p class="s-note"><b>${tr('setup.ejectBeforeUnplug', null, 'Eject the drive before you unplug it')}</b>${tr('setup.soLastFilesWritten', null, ', so the last files are written.')}</p>
+      <button class="btn big" id="back">${tr('setup.backToLibraryAi', null, 'Back to Library and local AI')}</button></div>`;
+    live.textContent = tr('setup.copied', null, 'Copied.');
     S.job = null;
     $('#back').onclick = async () => { S = await call('state').catch(() => S); go('manage') };
   }
@@ -578,7 +605,7 @@
     return `Last checked ${esc(when)} · ${what}`;
   }
   async function act(path, done, body) {
-    const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? 'This Lastbook cannot do that yet.' : e.message }));
+    const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? tr('setup.cannotDoThat', null, 'This Lastbook cannot do that yet.') : e.message }));
     confirmRemove = confirmOld = false;
     noteOk = !(r && r.error);
     if (r && r.error) note = r.error;
@@ -588,45 +615,39 @@
   }
 
   /* ---- job */
-  const STEPS = { pack: [['downloading', 'Download'], ['verifying', 'Check'], ['unpacking', 'Unpack'], ['activating', 'Finish']],
-                  model: [['downloading', 'Download'], ['verifying', 'Check'], ['activating', 'Finish']] };
-  STEPS.map = [['downloading', 'Download'], ['unpacking', 'Unpack']];   // the engine's map item: waiting, downloading, unpacking, done
+  const STEPS = { pack: [['downloading', tr('setup.stage.download', null, 'Download')], ['verifying', tr('setup.stage.check', null, 'Check')], ['unpacking', tr('setup.stage.unpack', null, 'Unpack')], ['activating', tr('setup.stage.finish', null, 'Finish')]],
+                  model: [['downloading', tr('setup.stage.download', null, 'Download')], ['verifying', tr('setup.stage.check', null, 'Check')], ['activating', tr('setup.stage.finish', null, 'Finish')]] };
+  STEPS.map = [['downloading', tr('setup.stage.download', null, 'Download')], ['unpacking', tr('setup.stage.unpack', null, 'Unpack')]];   // the engine's map item: waiting, downloading, unpacking, done
   STEPS.addresses = STEPS.map;
-  STEPS.check = [['verifying', 'Check']];   // Check now: every item is only read
-  STEPS.copy = [['copying', 'Copy']];
-  const WORD = { waiting: 'Waiting', downloading: 'Downloading', paused: 'Paused', verifying: 'Checking', unpacking: 'Unpacking', activating: 'Finishing', copying: 'Copying', done: 'Done', failed: 'Stopped' };
+  STEPS.copy = [['copying', tr('setup.stage.copy', null, 'Copy')]];
+  const WORD = { waiting: tr('setup.state.waiting', null, 'Waiting'), downloading: tr('setup.state.downloading', null, 'Downloading'), paused: tr('setup.state.paused', null, 'Paused'), verifying: tr('setup.state.checking', null, 'Checking'), unpacking: tr('setup.state.unpacking', null, 'Unpacking'), activating: tr('setup.state.finishing', null, 'Finishing'), copying: tr('setup.state.copying', null, 'Copying'), done: tr('setup.state.done', null, 'Done'), failed: tr('setup.state.stopped', null, 'Stopped') };
   const ACTIVE = new Set(['waiting', 'downloading', 'verifying', 'unpacking', 'activating', 'copying']);
   let shapeKey = '', lastAct = null;   // lastAct: the button just pressed, so focus lands on what replaced it
 
   function errorBox(j) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     const e = j.error, code = errCode(e) || j.code, c = cur();
-    const failedModel = (j.items || []).some(it => it.kind === 'model' && it.state === 'failed');
-    const blockedModel = failedModel && (code === 'unreachable' || (code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done)));
-    const safe = c ? 'Your library is untouched and still works.' : 'Nothing else on this computer was changed.';
+    const blockedModel = code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done);
+    const safe = c ? tr('setup.libraryUntouched', null, 'Your library is untouched and still works.') : tr('setup.nothingElseChanged', null, 'Nothing else on this computer was changed.');
     const d = diskFor(j.folder || folder);
     const T = {
       found_mismatch: (() => {   // a file of the person's own that did not match: nothing was downloaded, and their file is left alone
         const f = String((e && e.file) || ''), name = f.split(/[\\/]/).pop() || 'file', at = f.split(/[\\/]/).slice(-2, -1)[0];
-        return [`The ${esc(name)}${at ? ' in ' + esc(at) : ''} doesn’t match the published file, so it was not used.`, 'It was left as it is. Download it instead?', 'download'];
+        return [tr('setup.fileMismatchNamedAt', { name, at: at ? tr('setup.inFolder', { folder: at }, ' in {folder}') : '' }, '{name}{at} doesn’t match the published file, so it was not used.'), tr('setup.leftAsIsDownload', null, 'It was left as it is. Download it instead?'), tr('setup.downloadNoun', null, 'download')];
       })(),
-      no_space: j.copy ? ['The drive is full.', 'What was copied is kept. Free some space on it, then retry.', 'retry'] : [`Not enough room on ${esc(diskName(d))}${e && e.need_bytes ? `: this needs ${size(e.need_bytes)}, and ${size(e.free_bytes)} is free` : ''}.`, 'Free some space, then retry, or go back and choose less.', 'retry'],
+      no_space: j.copy ? [tr('setup.driveFull', null, 'The drive is full.'), tr('setup.driveFullHint', null, 'What was copied is kept. Free some space on it, then retry.'), 'retry'] : [e && e.need_bytes ? tr('setup.notEnoughRoomOnDiskSized', { disk: diskName(d), need: size(e.need_bytes), free: size(e.free_bytes) }, 'Not enough room on {disk}: this needs {need}, and {free} is free.') : tr('setup.notEnoughRoomOnDisk', { disk: diskName(d) }, 'Not enough room on {disk}.'), tr('setup.freeThenRetryLess', null, 'Free some space, then retry, or go back and choose less.'), 'retry'],
       network: blockedModel
-        ? ['This network could not reach the local AI download server.', 'What is downloaded is kept. Retry, or choose the published AI model file downloaded another way.', 'retry']
-        : ['The internet connection dropped.', 'What is downloaded is kept. Retry when you are online again.', 'retry'],
-      unreachable: [`Lastbook can’t reach ${esc((e && e.host) || 'the download server')}.`,   // the host never answered this download (#254)
-        'It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, '
-        + (blockedModel ? 'then choose it here.' : 'then choose it with Choose again and “Choose a library zip or AI model file”.'), 'retry'],
-      server: ['The download server stayed busy.', 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.', 'retry'],
-      checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
-      unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
-      activate: ['The new library is ready but could not be switched in.', 'Retry, or close Lastbook and open it again.', 'retry'],
-      check: ['The check stopped.', esc(errText(e) || 'A file could not be read.') + ' Nothing was changed or downloaded.', 'retry'],
-      copy: ['The copy stopped.', esc(errText(e) || 'Copy again to the same place to carry on.'), 'retry'],
-      cancelled: j.check ? ['The check was cancelled.', 'Nothing was changed or downloaded.', 'back'] : j.copy ? ['The copy was cancelled.', 'What was copied is still on the drive: copy again to the same place to carry on.', 'back'] : ['The download was cancelled.', 'Start again when you are ready.', 'back'],
-    }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
+        ? [tr('setup.aiServerUnreachable', null, 'This network could not reach the local AI download server.'), tr('setup.aiServerHint', null, 'What is downloaded is kept. Retry, or choose the published AI model file downloaded another way.'), 'retry']
+        : [tr('setup.connectionDropped', null, 'The internet connection dropped.'), tr('setup.connectionHint', null, 'What is downloaded is kept. Retry when you are online again.'), 'retry'],
+      server: [tr('setup.serverBusy', null, 'The download server stayed busy.'), tr('setup.serverBusyHint', null, 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.'), 'retry'],
+      checksum: [tr('setup.damagedTwice', null, 'The download came out damaged twice, so it was not used.'), tr('setup.damagedHint', null, 'Retry to download it once more.'), 'retry'],
+      unpack: [e && e.key ? esc(errText(e)) : tr('setup.unpackFailed', null, 'Unpacking did not finish.'), tr('setup.unpackHint', null, 'Check there is room on the disk, then retry.'), 'retry'],
+      activate: [e && e.key ? esc(errText(e)) : tr('setup.switchFailed', null, 'The new library is ready but could not be switched in.'), tr('setup.switchHint', null, 'Retry, or close Lastbook and open it again.'), 'retry'],
+      copy: [tr('setup.copyStopped', null, 'The copy stopped.'), esc(errText(e) || tr('setup.copyAgainHint', null, 'Copy again to the same place to carry on.')), 'retry'],
+      cancelled: j.copy ? [tr('setup.copyCancelled', null, 'The copy was cancelled.'), tr('setup.copyCancelledHint', null, 'What was copied is still on the drive: copy again to the same place to carry on.'), 'back'] : [tr('setup.downloadCancelled', null, 'The download was cancelled.'), tr('setup.startAgainReady', null, 'Start again when you are ready.'), 'back'],
+    }[code] || [esc(errText(e) || tr('app.errorGeneric', null, 'Something went wrong.')), tr('setup.retryOrChoose', null, 'Retry, or go back and choose again.'), 'retry'];
     return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
-      ${code === 'unreachable' && e && e.name ? facts(e) : ''}
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === tr('setup.downloadNoun', null, 'download') ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
@@ -644,14 +665,14 @@
       <div class="s-item-h">${ico(it.kind === 'model' ? 'ai' : it.kind === 'map' ? 'map' : it.kind === 'copy' ? 'folder' : 'book', 's-ri')}<b>${esc(itemTitle(it))}</b><span class="s-state" data-f="word">${it.state === 'done' ? ico('ok') : ''}${Object.hasOwn(WORD, it.state) ? WORD[it.state] : ''}</span></div>
       <div class="s-bar new${busy && j.state !== 'paused' ? ' busy' : ''}" role="progressbar" aria-label="${esc(it.title)}" aria-valuemin="0" aria-valuemax="100" data-f="bar"><i></i></div>
       <p class="s-line" data-f="line"></p>
-      <ol class="s-steps" aria-label="Steps">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
+      <ol class="s-steps" aria-label="${tr('setup.steps', null, "Steps")}">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
+  const itemTitle = it => it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);
-  const STOPPED = { verifying: 'Checking stopped', unpacking: 'Unpacking stopped', activating: 'Finishing stopped' };
+  const STOPPED = { verifying: tr('setup.checkingStopped', null, 'Checking stopped'), unpacking: tr('setup.unpackingStopped', null, 'Unpacking stopped'), activating: tr('setup.finishingStopped', null, 'Finishing stopped') };
   const above = it => { const items = (S.job && S.job.items) || [], i = items.findIndex(x => x.id === it.id && x.kind === it.kind); return items.slice(0, Math.max(i, 0)) };
   const behind = it => above(it).some(x => x.state !== 'done' && !noDownload(x));   // a download waits for the downloads above it
   const afterAbove = it => above(it).some(x => x.state !== 'done');                // a file already here waits for everything above it
@@ -672,24 +693,22 @@
     if (showPct) bar.setAttribute('aria-valuenow', Math.round(pct)); else bar.removeAttribute('aria-valuenow');
     let t = '';
     if (it.state === 'done') t = it.bytes_total ? size(it.bytes_total) : '';
-    else if (it.state === 'downloading') t = [`${size(it.bytes_done)} of ${size(it.bytes_total)}`, it.retry_in_s ? retryIn(it.retry_in_s) : rate(it.rate_bps), eta(it.eta_s)].filter(Boolean).join(' · ');
-    else if (it.kind === 'copy' && it.state === 'waiting') t = it.bytes_total ? `${size(it.bytes_total)} to copy` : '';   // a copy's lines come before a download's: it downloads nothing
-    else if (it.kind === 'copy' && (it.state === 'copying' || it.state === 'paused' || it.state === 'failed')) t = [`${size(it.bytes_done)} of ${size(it.bytes_total)} copied and checked`, it.state === 'copying' ? rate(it.rate_bps) : '', it.state === 'copying' ? eta(it.eta_s) : ''].filter(Boolean).join(' · ');
-    else if (it.state === 'paused' && noDownload(it)) t = `${STOPPED[it.paused_from] || 'Stopped'}${it.paused_from === 'unpacking' && it.bytes_done && it.bytes_total ? ` at ${size(it.bytes_done)} of ${size(it.bytes_total)}` : ''}. Nothing to download.`;
-    else if (S.job && S.job.check && !it.bytes_done && (it.state === 'waiting' || it.state === 'paused')) t = it.bytes_total ? `Already on this computer: ${size(it.bytes_total)} to check${afterAbove(it) ? ', after the one above' : ''}` : '';
-    else if (it.state === 'waiting' && !it.bytes_done && checkOnly(it)) t = it.bytes_total ? `Already on this computer: ${size(it.bytes_total)} to check${afterAbove(it) ? ', after the one above' : ''}` : '';
-    else if ((it.state === 'waiting' || it.state === 'paused') && !it.bytes_done) t = it.bytes_total ? `${size(it.bytes_total)} to download${behind(it) ? ', after the one above' : ''}` : '';
- else if (it.state === 'paused' || it.state === 'waiting' || it.state === 'failed') t = it.bytes_total && it.bytes_done ? `${size(it.bytes_done)} of ${size(it.bytes_total)}` : '';
+    else if (it.state === 'downloading') t = [tr('setup.progressOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total}'), it.retry_in_s ? retryIn(it.retry_in_s) : rate(it.rate_bps), eta(it.eta_s)].filter(Boolean).join(' · ');
+    else if (it.state === 'paused' && noDownload(it)) t = `${STOPPED[it.paused_from] || tr('setup.state.stopped', null, 'Stopped')}${it.paused_from === 'unpacking' && it.bytes_done && it.bytes_total ? tr('setup.atProgressOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, ' at {done} of {total}') : ''}. ${tr('setup.nothingToDownload', null, 'Nothing to download.')}`;
+    else if (it.state === 'waiting' && !it.bytes_done && checkOnly(it)) t = it.bytes_total ? tr('setup.alreadyOnComputerCheck', { size: size(it.bytes_total) }, 'Already on this computer: {size} to check') + (afterAbove(it) ? ', ' + tr('setup.afterTheOneAbove', null, 'after the one above') : '') : '';
+    else if ((it.state === 'waiting' || it.state === 'paused') && !it.bytes_done) t = it.bytes_total ? tr('setup.sizeToDownload', { size: size(it.bytes_total) }, '{size} to download') + (behind(it) ? ', ' + tr('setup.afterTheOneAbove', null, 'after the one above') : '') : '';
+ else if (it.state === 'paused' || it.state === 'waiting' || it.state === 'failed') t = it.bytes_total && it.bytes_done ? tr('setup.progressOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total}') : '';
+    else if (it.kind === 'copy' && (it.state === 'copying' || it.state === 'paused' || it.state === 'failed')) t = [tr('setup.copiedAndChecked', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total} copied and checked'), it.state === 'copying' ? rate(it.rate_bps) : '', it.state === 'copying' ? eta(it.eta_s) : ''].filter(Boolean).join(' · ');
     else if (it.state === 'verifying') {
       /* a resumed download re-reads the part it already has while the job stays 'downloading'; a check of a whole item (a repair,
          or a file already here) sets the job to 'verifying' too. Only that whole check has a true time left */
       const resumed = !!(S.job && S.job.state === 'downloading'), whole = !resumed && (it.source === 'found' || !!(S.job && S.job.repair));
-      t = !it.bytes_total ? 'Making sure every byte is right'
-        : resumed ? `Checking what is already downloaded: ${size(it.bytes_done)} so far`
-        : [`Checking: ${size(Math.min(it.bytes_done, it.bytes_total))} of ${size(it.bytes_total)}`, whole ? eta(it.eta_s) : ''].filter(Boolean).join(' · ');
+      t = !it.bytes_total ? tr('setup.makingSureBytes', null, 'Making sure every byte is right')
+        : resumed ? tr('setup.checkingDownloadedSoFar', { size: size(it.bytes_done) }, 'Checking what is already downloaded: {size} so far')
+        : [tr('setup.checkingOf', { done: size(Math.min(it.bytes_done, it.bytes_total)), total: size(it.bytes_total) }, 'Checking: {done} of {total}'), whole ? eta(it.eta_s) : ''].filter(Boolean).join(' · ');
     }
-    else if (it.state === 'unpacking') t = it.bytes_total ? `Unpacking: ${size(it.bytes_done)} of ${size(it.bytes_total)}${it.eta_s != null ? ' · ' + eta(it.eta_s) : ''}` : 'Opening the files into the library folder';
-    else if (it.state === 'activating') t = it.kind === 'map' ? 'Switching to the new map' : 'Switching to the new library';
+    else if (it.state === 'unpacking') t = it.bytes_total ? tr('setup.unpackingOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, 'Unpacking: {done} of {total}') + (it.eta_s != null ? ' · ' + eta(it.eta_s) : '') : tr('setup.openingFiles', null, 'Opening the files into the library folder');
+    else if (it.state === 'activating') t = it.kind === 'map' ? tr('setup.switchingMap', null, 'Switching to the new map') : tr('setup.switchingLibrary', null, 'Switching to the new library');
     line.textContent = t;
   }
   /* the job screen's heading. A Check now is known from the engine's job (check), so also after a restart */
@@ -702,7 +721,7 @@
     if (j.state === 'done') { go('done'); return }
     syncRepair(j);
     const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
-    const head = jobHead(j);
+    const head = { paused: tr('setup.state.paused', null, 'Paused'), failed: errCode(j.error) === 'cancelled' ? tr('setup.state.cancelled', null, 'Cancelled') : tr('setup.state.stopped', null, 'Stopped') }[j.state] || (j.copy ? tr('setup.copyingToDrive', null, 'Copying to the drive') : repair && !repair.fixed ? tr('setup.checkingLibrary', null, 'Checking the library') : repair ? tr('setup.state.repairing', null, 'Repairing') : tr('setup.state.installing', null, 'Installing'));
     if (key !== shapeKey) {
       const had = lastAct || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null);
       lastAct = null;
@@ -713,7 +732,7 @@
         ${j.state === 'failed' ? errorBox(j) : ''}
         <div class="s-items">${j.items.map(it => itemHTML(it, j)).join('')}</div>
         ${j.state === 'failed' ? '' : `<div class="s-go left">${confirmCancel
-          ? `<span class="s-confirm"><span>${j.check ? 'Stop checking? Nothing is changed.' : j.copy ? 'Stop copying? What is copied stays on the drive.' : 'Stop and throw away the download?'}</span><button class="btn danger" data-act="cancel-yes">Stop</button><button class="btn plain" data-act="cancel-no">Keep going</button></span>`
+          ? `<span class="s-confirm"><span>${j.copy ? tr('setup.stopCopyConfirm', null, 'Stop copying? What is copied stays on the drive.') : tr('setup.stopThrowAway', null, 'Stop and throw away the download?')}</span><button class="btn danger" data-act="cancel-yes">Stop</button><button class="btn plain" data-act="cancel-no">Keep going</button></span>`
           : jobControls(j)}</div>`}`;
       main.querySelectorAll('[data-act]').forEach(b => b.onclick = () => jobAct(b.dataset.act, b));
       const again = had && main.querySelector(`[data-act="${had}"]`) || (had && main.querySelector('[data-act]'));
@@ -729,24 +748,25 @@
     if (fresh.length) { void main.offsetWidth; fresh.forEach(b => b.classList.remove('new')) }   // a new screen shows the bar where it is, without growing from nothing
   }
   /* The line under the heading. A copy has its own words first: it downloads nothing, and a copy paused at 100% (its last file
-     read back, not yet finished) is not "stopped when Lastbook closed" (#204 review). */
+     read back, not yet finished) is not tr('setup.stoppedWhenClosed', null, "stopped when Lastbook closed") (#204 review). */
   function jobLead(j) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     if (j.state === 'failed') return '';
-    if (j.copy) return j.state === 'paused' ? 'What is copied is kept. Resume when you are ready. If Lastbook closes, copy again to the same place to carry on.'
-      : 'You can keep using this computer. If Lastbook closes, copy again to the same place to carry on.';
-    if (j.check) return j.state === 'paused' ? 'Nothing was downloaded or changed. Resume to check again from the start, even after closing Lastbook.'
-      : 'You can keep using this computer. Checking reads every file and downloads nothing.';
+    if (j.copy) return j.state === 'paused' ? tr('setup.copyKeptResume', null, 'What is copied is kept. Resume when you are ready. If Lastbook closes, copy again to the same place to carry on.')
+      : tr('setup.copyKeepUsing', null, 'You can keep using this computer. If Lastbook closes, copy again to the same place to carry on.');
     const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
-    return quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
-      : j.state === 'paused' ? 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.'
-      : 'You can keep using this computer. Closing Lastbook pauses it.';
+    return quiet ? tr('setup.stoppedClosedResume', null, 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.')
+      : j.state === 'paused' ? tr('setup.downloadKeptResume', null, 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.')
+      : tr('setup.keepUsingPauses', null, 'You can keep using this computer. Closing Lastbook pauses it.');
   }
   /* Resume when paused; Pause while it downloads, waits, or copies (a copy pauses between chunks, as a download does) */
   function jobControls(j) {
-    return `${j.state === 'paused' ? `<button class="btn" data-act="resume">${ico('play')}Resume</button>` : (j.state === 'downloading' || j.state === 'copying' || (j.state === 'waiting' && !j.repair)) ? `<button class="btn plain" data-act="pause">${ico('pause')}Pause</button>` : ''}
-             <button class="btn plain" data-act="cancel">${ico('x')}Cancel</button>`;
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
+    return `${j.state === 'paused' ? `<button class="btn" data-act="resume">${ico('play')}${tr('setup.resume', null, 'Resume')}</button>` : (j.state === 'downloading' || j.state === 'copying' || (j.state === 'waiting' && !j.repair)) ? `<button class="btn plain" data-act="pause">${ico('pause')}${tr('setup.pause', null, 'Pause')}</button>` : ''}
+             <button class="btn plain" data-act="cancel">${ico('x')}${tr('common.cancel', null, 'Cancel')}</button>`;
   }
   async function jobAct(a, b) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     if (a === 'model-file') { await haveLibrary(true, b); return }
     if (a === 'back') { S = await call('state').catch(() => S); S.job = null; shortfall = null; go('choose'); return }   // fresh: found[] may now mark a file as not matching
     if (a === 'cancel') { confirmCancel = true; jobView(S.job); main.querySelector('[data-act="cancel-no"]').focus(); return }
@@ -754,7 +774,7 @@
     if (a === 'cancel-yes') { confirmCancel = false; a = 'cancel' }
     b.disabled = true; lastAct = a;
     try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { }
-    if (a === 'cancel') { const was = S.job && S.job.copy, wasCheck = S.job && S.job.check; S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = wasCheck ? 'The check was stopped. Nothing was changed.' : was ? 'The copy was stopped. What was copied is on the drive.' : 'The download was cancelled.'; return }
+    if (a === 'cancel') { const was = S.job && S.job.copy; S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = was ? tr('setup.copyStoppedOnDrive', null, 'The copy was stopped. What was copied is on the drive.') : tr('setup.downloadCancelled', null, 'The download was cancelled.'); return }
     jobView(S.job);
     poll();
   }
@@ -778,15 +798,15 @@
     const j = S.job || { items: [] }, r = j.result;   // the engine's result says what a repair did; without one, what this page saw
     const fixed = repair && (r ? !!r.repaired : repair.fixed), checked = repair && !fixed, unsure = checked && !r && !repair.sure;   // unsure: opened again late in a repair
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
-    main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? 'Checked' : checked ? 'All good' : fixed ? 'Repaired' : 'Ready'}</h1>
-      <p class="lead">${unsure ? 'The library was checked and is complete. Anything that was damaged was downloaded again.' : checked ? 'The library was checked and is complete.' : fixed ? repairedWords(r || {}) : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? 'The library you chose is ready to open.' : 'The library is installed.'}</p>
+    main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? tr('setup.checked', null, 'Checked') : checked ? tr('common.ok', null, 'All good') : fixed ? tr('setup.repaired', null, 'Repaired') : tr('setup.ready', null, 'Ready')}</h1>
+      <p class="lead">${unsure ? tr('setup.checkedRepaired', null, 'The library was checked and is complete. Anything that was damaged was downloaded again.') : checked ? tr('setup.checkedComplete', null, 'The library was checked and is complete.') : fixed ? tr('setup.damagedAside', null, 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.') : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? tr('setup.libraryReadyOpen', null, 'The library you chose is ready to open.') : tr('setup.libraryInstalled', null, 'The library is installed.')}</p>
       <button class="btn big" id="open">Open the library</button><p class="s-note" id="openNote" hidden></p></div>`;
-    live.textContent = checked ? 'The library was checked.' : fixed ? 'Repaired. Ready to open.' : 'Installed. Ready to open.';
+    live.textContent = checked ? tr('setup.libraryChecked', null, 'The library was checked.') : fixed ? tr('setup.repairedReady', null, 'Repaired. Ready to open.') : tr('setup.installedReady', null, 'Installed. Ready to open.');
     $('#open').onclick = async () => {
-      const b = $('#open'); b.disabled = true; b.textContent = 'Opening your library…';
+      const b = $('#open'); b.disabled = true; b.textContent = tr('setup.openingLibrary', null, 'Opening your library…');
       const r = await call('finish', {}).catch(e => ({ error: e.message }));   // on {ok} the app relaunches itself into the library
-      if (!r || r.error) { b.disabled = false; b.textContent = 'Open the library'; const n = $('#openNote'); n.hidden = false; n.textContent = (r && r.error) || 'The library did not open. Try again.' }
-      else live.textContent = 'Opening your library…';
+      if (!r || r.error) { b.disabled = false; b.textContent = tr('setup.openLibrary', null, 'Open the library'); const n = $('#openNote'); n.hidden = false; n.textContent = (r && r.error) || tr('setup.libraryDidNotOpen', null, 'The library did not open. Try again.') }
+      else live.textContent = tr('setup.openingLibrary', null, 'Opening your library…');
     };
   }
 

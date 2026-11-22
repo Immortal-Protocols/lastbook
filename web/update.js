@@ -11,6 +11,14 @@
    it opens, every hour, and when the system says it is online again; the engine decides whether a check is due (at most one a day,
    and none at all unless the setting is on). Failures say nothing. */
 (() => {
+  function tr(key, params, fallback) {
+    const text = globalThis.LastbookI18n?.t?.(key, params);
+    if (text != null) return text;
+    if (params && typeof fallback === 'string') {
+      return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => (params[n] != null ? String(params[n]) : '{' + n + '}'));
+    }
+    return fallback;
+  }
   const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const HOUR = 60 * 60 * 1000, FIRST = 5000, POLL = 2000;
   let timer = null, menuAsked = false, row = null, rowTimer = null;
@@ -23,31 +31,14 @@
 
   function view(s) {
     const btn = (t) => `<button class="btn plain" data-upd="check">${t}</button>`;
-    const ver = s.current ? `Version ${E(s.current)}.` : 'This copy has no version number (it was not built as an app).';
-    /* The last verified notice stands in only when there is no newer verdict: nothing checked by the person yet (idle, which is
-       also what an automatic check looks like here, so its failures stay quiet), or the person's own check failed (error, e.g.
-       offline), where the failure is shown above the still-valid offer. up_to_date, too_old_os and not_published replace it. */
-    const failed = s.state === 'error';
-    const found = s.state === 'available' ? s.version : s.state === 'idle' || failed ? s.notice : null;
-    const now = !!s.can_update_now;
-    if (found) return `${ver}${failed ? ` <span class="upd-line" role="alert">${E(s.message)}</span>` : ''} Version ${E(found)} is available${failed ? ' (found by an earlier check)' : ''}.
-      <span class="upd-line">${now ? 'Update now asks you to confirm, installs the signed update and restarts Lastbook. Your library, settings and chats stay as they are.'
-                                    : 'Run the installer to update Lastbook and keep your existing library.'}</span>
-      ${s.update_now_error ? `<span class="upd-line" role="alert">${E(s.update_now_error)}</span>` : ''}
-      <span class="upd-actions">
-        ${now ? '<button class="btn" data-upd="now">Update now</button>' : ''}
-        ${s.can_open_download ? `<button class="btn${now ? ' plain' : ''}" data-upd="open">Open download page</button>` : ''}
-        ${s.download_url ? `<button class="btn plain" data-upd="copy" data-url="${E(s.download_url)}"${s.can_open_download ? ' hidden' : ''}>Copy download link</button>` : ''}
-        ${btn(failed ? 'Try again' : 'Check again')}
-      </span>
-      <span class="upd-line" data-upd-status role="status"></span>
-      <span class="upd-line" data-upd-address hidden>${E(s.download_url || '')}</span>`;
+    const ver = s.current ? tr('update.version', { version: E(s.current) }, 'Version {version}.') : tr('update.noVersion', null, 'This copy has no version number (it was not built as an app).');
     switch (s.state) {
-      case 'checking': return `${ver} Checking for updates…`;
-      case 'up_to_date': return `${ver} Lastbook is up to date. ${btn('Check again')}`;
-      case 'not_published': return `${ver} No update information yet. ${btn('Try again')}`;
-      case 'too_old_os': case 'error': return `${ver} ${E(s.message)} ${btn('Try again')}`;
-      default: return `${ver} ${btn('Check for updates')}`;
+      case 'checking': return `${ver} ${tr('update.checking', null, 'Checking for updates…')}`;
+      case 'up_to_date': return `${ver} ${tr('update.upToDate', null, 'Lastbook is up to date.')} ${btn(tr('update.checkAgain', null, 'Check again'))}`;
+      case 'available': return `${ver} ${tr('update.available', { version: E(s.version), website: E(s.website) }, 'Version {version} is available. Download it from {website}. Your library, local AI and chats stay.')} ${btn(tr('update.checkAgain', null, 'Check again'))}`;
+      case 'not_published': return `${ver} ${tr('update.noInfo', null, 'No update information yet.')} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
+      case 'too_old_os': case 'error': return `${ver} ${E(s.message)} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
+      default: return `${ver} ${btn(tr('update.checkFor', null, 'Check for updates'))}`;
     }
   }
 
@@ -60,7 +51,7 @@
 
   async function refresh(el) {
     if (!el.isConnected) return;
-    try { paint(el, await call('state')) } catch { el.textContent = 'Lastbook could not ask about updates.' }
+    try { paint(el, await call('state')) } catch { el.textContent = tr('update.failed', null, 'Lastbook could not ask about updates.') }
   }
 
   async function check(el) {
@@ -68,7 +59,7 @@
       const s = await call('check');
       if (s.error && !s.state) { el.textContent = s.error; return }
       paint(el, s);
-    } catch { el.textContent = 'Lastbook could not ask about updates.' }
+    } catch { el.textContent = tr('update.failed', null, 'Lastbook could not ask about updates.') }
   }
 
   async function copyLink(button, el) {
@@ -151,7 +142,7 @@
   const nudge = () => sync(navigator.onLine === false ? 'notice' : 'auto');
 
   window.LBUpdate = {
-    card: () => '<div class="card"><b>Lastbook app</b><small id="updBox">…</small></div>',
+    card: () => `<div class="card"><b data-i18n="update.appName">${tr('update.appName', null, 'Lastbook app')}</b><small id="updBox">…</small></div>`,
     mount(root) {
       const el = root.querySelector('#updBox'); if (!el) return;
       el.addEventListener('click', e => {

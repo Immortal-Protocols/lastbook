@@ -223,14 +223,14 @@ class Browser(unittest.TestCase):
             self.assertEqual(page.locator('img[src=x]').count(), 0)
             self.assertIsNone(page.evaluate('window.bad'))
             page.evaluate("location.hash = '#/watch/vida?from=%23%2Fsearch'")
-            expect(page.locator('.rtop .back')).to_have_text('Resultados de búsqueda')
+            expect(page.locator('.rtop .back')).to_have_text('Resultados de la búsqueda')
             expect(page.locator('h1')).to_have_text('vida')  # library title
             page.evaluate("location.hash = '#/missing'")
             expect(page.get_by_role('link', name='Ir a Videos')).to_be_visible()
 
             page.set_viewport_size({'width': 1280, 'height': 850})
             page.evaluate("location.hash = '#/guides'")
-            expect(page.locator('h1')).to_have_text('What do you need?')
+            expect(page.locator('h1')).to_have_text('¿Qué necesitas?')
             page.evaluate("window.guideView = document.querySelector('.hero')")
             sidebar.get_by_role('link', name='Ajustes').click()
             expect(page.locator('h1')).to_have_text('Biblioteca e IA local')
@@ -540,7 +540,7 @@ class Browser(unittest.TestCase):
             page.set_viewport_size({'width': 390, 'height': 780})
             back.click()
             page.wait_for_url('**/#guides')
-            expect(page.locator('h1')).to_have_text('What do you need?')
+            expect(page.locator('h1')).to_have_text('¿Qué necesitas?')
 
     def test_local_http_has_no_preference_route_and_keeps_its_shell_offline(self):
         self.configure_setup(current=DATA)

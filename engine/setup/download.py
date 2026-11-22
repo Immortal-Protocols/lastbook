@@ -74,9 +74,10 @@ class Stopped(Exception):
 class Failed(Exception):
     """A plain sentence for the person, and a code from docs/SETUP-API.md."""
 
-    def __init__(self, code, message, **extra):
+    def __init__(self, code, message, key=None, params=None, **extra):
         super().__init__(message)
         self.code, self.message, self.extra = code, message, extra
+        self.key, self.params = key, params
 
 
 class BadChecksum(Failed):
@@ -123,7 +124,7 @@ def tls_context():
     roots = roots_path()
     if not roots.is_file():
         raise Failed('network', 'This copy of Lastbook is missing its list of trusted download servers, so it cannot download. '
-                                'Download Lastbook again.')
+                                'Download Lastbook again.', key='setup.err.missingTrustedServers')
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)          # check_hostname on and CERT_REQUIRED; no default certificates loaded
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.load_verify_locations(cafile=str(roots))
@@ -260,7 +261,7 @@ def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, st
     (`.lastbook_host`), so a caller can tell a host that never answers from one whose connection broke."""
     for _ in range(MAX_REDIRECTS + 1):
         if not url_allowed(url, allowed):
-            raise Failed('network', 'Lastbook refused to download from an address it does not know.')
+            raise Failed('network', 'Lastbook refused to download from an address it does not know.', key='setup.err.unknownDownloadAddress')
         u = urllib.parse.urlsplit(url)
         if stopping is not None:
             conn = _StoppableConnection(u.hostname, u.port or 443, timeout, context, stopping)
@@ -292,11 +293,11 @@ def _open(url, start, etag, allowed, context, timeout, end=None, opened=None, st
             r.close()
             conn.close()
             if not loc:
-                raise Failed('network', 'The download server answered with a move to nowhere.')
+                raise Failed('network', 'The download server answered with a move to nowhere.', key='setup.err.moveToNowhere')
             url = urllib.parse.urljoin(url, loc)
             continue
         return conn, r, url
-    raise Failed('network', 'The download server sent Lastbook round in circles.')
+    raise Failed('network', 'The download server sent Lastbook round in circles.', key='setup.err.redirectCircles')
 
 
 def fetch_small(url, limit=1 << 20, allowed=None, context=None, timeout=10):
@@ -471,7 +472,7 @@ class Download:
                 etag = _load_meta(self.meta).get('etag') or etag
                 wait = min(max(BUSY_BACKOFF[min(busy, len(BUSY_BACKOFF) - 1)], b.wait), BUSY_LIMIT - waited)
                 if wait <= 0:
-                    raise Failed('server', f'The download server stayed busy ({b}). Try again later.')
+                    raise Failed('server', f'The download server stayed busy ({b}). Try again later.', key='setup.err.serverBusyNamed', params={'detail': b})
                 busy += 1
                 waited += wait
                 print(f'setup: the server is busy at {start} of {self.size} ({b}); trying again in {wait}s', flush=True)
@@ -479,10 +480,10 @@ class Download:
                 self.control.sleep(wait)
             except ssl.SSLCertVerificationError:
                 raise Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '
-                                        'A network that intercepts secure connections (some offices, hotels) can cause this.')
+                                        'A network that intercepts secure connections (some offices, hotels) can cause this.', key='setup.err.cannotConfirmServer')
             except (OSError, http.client.HTTPException, ValueError) as e:
                 if disk_full(e):
-                    raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
+                    raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.', key='setup.err.diskFilledDownloading')
                 now = self.done_bytes()
                 if isinstance(e, _DiskWriteError):
                     # The OS may have written a prefix before raising. Rebuild the hash from those actual bytes.
@@ -495,7 +496,7 @@ class Download:
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
                 if tries >= NETWORK_TRIES:
-                    raise self._gave_up(e)
+                    raise Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.', key='setup.err.connectionKeptBreaking', params={'error': type(e).__name__})
                 print(f'setup: download broke at {start} of {self.size}: {type(e).__name__}: {e}; trying again', flush=True)
                 self.control.sleep(BACKOFF[min(tries, len(BACKOFF) - 1)])
         if h.hexdigest() != self.sha256:
@@ -515,7 +516,7 @@ class Download:
             if r.status == 416 or r.status >= 400:
                 if 500 <= r.status < 600 or r.status == 429:
                     raise _Busy(r.status, r.getheader('Retry-After'))
-                raise Failed('network', f'The download server refused the file (HTTP {r.status}).')
+                raise Failed('network', f'The download server refused the file (HTTP {r.status}).', key='setup.err.serverRefusedHttp', params={'status': r.status})
             new_etag = r.getheader('ETag')
             if r.status == 206:
                 cr = _content_range(r.getheader('Content-Range'))
@@ -739,7 +740,7 @@ class Download:
                     if 500 <= r.status < 600 or r.status == 429:
                         raise _Busy(r.status, r.getheader('Retry-After'))     # up but busy: wait, as over one connection
                     if r.status >= 400:
-                        raise Failed('network', f'The download server refused the file (HTTP {r.status}).')
+                        raise Failed('network', f'The download server refused the file (HTTP {r.status}).', key='setup.err.serverRefusedHttp', params={'status': r.status})
                     if r.status == 200:
                         st.same(r.getheader('ETag'))      # a server that honours If-Range sends 200 when its copy changed
                         if not stray:                     # one 200 to a Range can be a passing hiccup at the edge: ask once more
@@ -786,15 +787,15 @@ class Download:
                     wait = st.busy_rest()
             except ssl.SSLCertVerificationError:
                 raise Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '
-                                        'A network that intercepts secure connections (some offices, hotels) can cause this.')
+                                        'A network that intercepts secure connections (some offices, hotels) can cause this.', key='setup.err.cannotConfirmServer')
             except (OSError, http.client.HTTPException, ValueError) as e:
                 if st.stopping.is_set():
                     return
                 if disk_full(e):
-                    raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
+                    raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.', key='setup.err.diskFilledDownloading')
                 tries += 1
                 if tries >= NETWORK_TRIES:
-                    raise self._gave_up(e)
+                    raise Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.', key='setup.err.connectionKeptBreaking', params={'error': type(e).__name__})
                 print(f'setup: piece at {pos} of {self.size} broke: {type(e).__name__}: {e}; trying again', flush=True)
                 if st.stopping.wait(BACKOFF[min(tries - 1, len(BACKOFF) - 1)]):
                     return
@@ -856,7 +857,7 @@ class _Pieces:
                 return self.resume_at - now, True
             wait = min(max(BUSY_BACKOFF[min(self.busy, len(BUSY_BACKOFF) - 1)], b.wait), BUSY_LIMIT - self.waited)
             if wait <= 0:
-                raise Failed('server', f'The download server stayed busy ({b}). Try again later.')
+                raise Failed('server', f'The download server stayed busy ({b}). Try again later.', key='setup.err.serverBusyNamed', params={'detail': b})
             self.busy += 1
             self.waited += wait
             self.resume_at = now + wait

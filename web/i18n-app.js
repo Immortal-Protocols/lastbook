@@ -28,8 +28,19 @@
   let phase = 'loading';
   let readGeneration = 0;
 
-  const apply = (scope = document, paramsFor) => applyI18n(scope, engine, paramsFor);
-  window.LastbookI18n = Object.freeze({ apply });
+  function paramsFrom(element) {
+    const raw = element.getAttribute('data-i18n-params');
+    if (!raw) return undefined;
+    try { return JSON.parse(raw); } catch { return undefined; }
+  }
+  const apply = (scope = document, paramsFor) => applyI18n(scope, engine, paramsFor === undefined ? paramsFrom : paramsFor);
+  window.LastbookI18n = Object.freeze({
+    apply,
+    t(key, params) { return engine.t(key, params); },
+    number(value, options) { return engine.number(value, options); },
+    date(value, options) { return engine.date(value, options); },
+    get locale() { return engine.locale; },
+  });
 
   // The file behind the bridge is the truth. Its last answer is also kept in this window's own storage, only so the
   // next page can start in the right language instead of flashing English until the bridge replies.

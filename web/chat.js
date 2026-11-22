@@ -1,4 +1,13 @@
 'use strict';
+function tr(key, params, fallback) {
+  const text = globalThis.LastbookI18n?.t?.(key, params);
+  if (text != null) return text;
+  if (params && typeof fallback === 'string') {
+    return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => (params[n] != null ? String(params[n]) : '{' + n + '}'));
+  }
+  return fallback;
+}
+globalThis.lastbookTr = tr;
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
   const STARTERS = [
@@ -25,8 +34,8 @@ const Chat = (() => {
   const stage = m => ({ at: STAGE_AT[m.state] ?? 0, pct: m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null });
   const stageClass = (i, at) => i < at ? 'done' : i === at ? 'now' : '';
   function progress(m) {
-    const { at, pct } = stage(m);
-    const stages = STAGES.map((t, i) => `<li class="${stageClass(i, at)}">${t}</li>`).join('');
+    const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
+    const stages = STAGES.map((name, i) => { const key = 'chat.stage.' + name.toLowerCase(); return `<li class="${i < at ? 'done' : i === at ? 'now' : ''}" data-i18n="${key}">${tr(key, null, name)}</li>`; }).join('');
     return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
   }
   let chats = load(), live = {};   // live[chatId] = {abort, state, steps}
@@ -53,36 +62,36 @@ const Chat = (() => {
     if (id && !cur) { swap('#/ask'); return }
     const about = q.get('about');
     aboutCtx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
-    document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
-    $('#tbTitle').textContent = cur ? cur.title : 'Chat';
+    document.title = (cur ? cur.title : tr('nav.chat', null, 'Chat')) + ' · Lastbook';
+    $('#tbTitle').textContent = cur ? cur.title : tr('nav.chat', null, 'Chat');
     main.innerHTML = `<div class="chat">
-      <aside class="chat-side" id="chatSide" aria-label="Conversations">
-        <div class="cs-head"><b>Chats</b><button class="iconbtn" id="closeSide" aria-label="Close chat list">${ico('back')}</button></div>
+      <aside class="chat-side" id="chatSide" aria-label="${tr('chat.conversations', null, "Conversations")}">
+        <div class="cs-head"><b data-i18n="library.chats">${tr('library.chats', null, 'Chats')}</b><button class="iconbtn" id="closeSide" aria-label="${tr('chat.closeList', null, "Close chat list")}">${ico('back')}</button></div>
         <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}New chat</a>
         <ul class="cs-list" id="csList"></ul>
         <div class="cs-privacy">
           <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
-          <p class="small muted">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
-          <button class="btn plain" id="clearChats">Delete all chats</button>
+          <p class="small muted" data-i18n="chat.stayOnDevice">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
+          <button class="btn plain" id="clearChats" data-i18n="chat.deleteAll">Delete all chats</button>
         </div>
       </aside>
       <section class="chat-main">
         <div class="chat-top">
-          <button class="btn plain chat-histbtn" id="openSide" aria-label="Show chats">${ico("clock")}<span>Chats</span></button>
+          <button class="btn plain chat-histbtn" id="openSide" aria-label="${esc(tr('chat.showList', null, 'Show chats'))}" data-i18n-aria-label="chat.showList">${ico("clock")}<span data-i18n="library.chats">Chats</span></button>
           <div class="chat-status" id="chatStatus" aria-live="polite"></div>
-          <a class="btn plain" href="#/ask" id="newChat" aria-label="New chat">${ico('ask')}<span>New</span></a>
+          <a class="btn plain" href="#/ask" id="newChat" aria-label="${esc(tr('chat.new', null, 'New chat'))}" data-i18n-aria-label="chat.new">${ico('ask')}<span data-i18n="chat.newShort">New</span></a>
         </div>
         ${q.get('from') && !cur ? `<div style="margin:2px 0 8px">${backButton(q.get('from'))}</div>` : ''}
         <div class="ai-setup" id="aiSetup" hidden></div>
-        <div class="chat-log" id="chatLog" role="log" aria-live="polite" aria-label="Conversation"></div>
+        <div class="chat-log" id="chatLog" role="log" aria-live="polite" aria-label="${esc(tr('chat.conversation', null, 'Conversation'))}" data-i18n-aria-label="chat.conversation"></div>
         <form class="composer" id="composer">
           <div class="ctxchip" id="ctxChip" hidden></div>
           <div class="comp-row">
-            <label class="sr" for="chatIn">Your question</label>
-            <textarea id="chatIn" rows="1" placeholder="Ask a question…" enterkeyhint="send"></textarea>
-            <button class="sendbtn" id="sendBtn" aria-label="Send">${ico("up")}</button>
+            <label class="sr" for="chatIn" data-i18n="chat.yourQuestion">Your question</label>
+            <textarea id="chatIn" rows="1" placeholder="${esc(tr('chat.placeholder', null, 'Ask a question…'))}" data-i18n-placeholder="chat.placeholder" enterkeyhint="send"></textarea>
+            <button class="sendbtn" id="sendBtn" aria-label="${esc(tr('chat.send', null, 'Send'))}" data-i18n-aria-label="chat.send">${ico("up")}</button>
           </div>
-          <p class="comp-note">Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.</p>
+          <p class="comp-note" data-i18n="chat.disclaimer">Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.</p>
         </form>
         <div class="ask-more" id="askMore" hidden></div>
       </section></div>`;
@@ -98,9 +107,9 @@ const Chat = (() => {
     $('#closeSide').onclick = () => $('#chatSide').classList.remove('open');
     $('#keepChats').onchange = e => {
       try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { }
-      if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast('Chats will be forgotten when you close this page') } else { persist(); toast('Chats will be kept on this device') }
+      if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast(tr('chat.forgotten', null, 'Chats will be forgotten when you close this page')) } else { persist(); toast(tr('chat.kept', null, 'Chats will be kept on this device')) }
     };
-    $('#clearChats').onclick = () => { if (!confirm('Delete all chats on this device?')) return; Object.values(live).forEach(l => l.abort && l.abort()); chats = []; try { localStorage.removeItem('sg.chats') } catch { } location.hash = '#/ask' };
+    $('#clearChats').onclick = () => { if (!confirm(tr('chat.deleteAllConfirm', null, 'Delete all chats on this device?'))) return; Object.values(live).forEach(l => l.abort && l.abort()); chats = []; try { localStorage.removeItem('sg.chats') } catch { } location.hash = '#/ask' };
     leaving = () => { document.removeEventListener('keydown', escStop) };
     document.addEventListener('keydown', escStop);
     statusLine();
@@ -117,17 +126,17 @@ const Chat = (() => {
   function localLine(l) {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
     return ({
-      ready: [true, 'Local AI ready'],
-      stopped: [true, 'Local AI available · your first question loads it and may take a while'],
-      loading: [true, `Starting the local AI${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
-      checking: [false, `Checking the local AI file${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
-      measuring: [false, 'Checking this computer’s memory…'],
-      absent: [false, 'No local AI added'],
-      wrong: [false, l.message || 'The local AI file is not the right one.'],
+      ready: [true, tr('chat.ready', null, 'Local AI ready')],
+      stopped: [true, tr('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
+      loading: [true, tr('chat.state.startingPct', { pct: l.pct ? ' ' + l.pct + '%' : '…' }, 'Starting the local AI{pct}')],
+      checking: [false, tr('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
+      measuring: [false, tr('chat.checkingMemory', null, 'Checking this computer’s memory…')],
+      absent: [false, tr('chat.notAdded', null, 'No local AI added')],
+      wrong: [false, l.message || tr('chat.wrongFile', null, 'The local AI file is not the right one.')],
       too_big: [false, l.message || `The local AI needs about ${gb(l.needs_bytes || 0)} of memory.`],
-      off: [false, 'Local AI is off'],
-      error: [false, l.message || 'The local AI could not start.'],
-    })[l.state] || [false, l.message || 'Local AI unavailable'];
+      off: [false, tr('chat.isOff', null, 'Local AI is off')],
+      error: [false, l.message || tr('chat.startFailed', null, 'The local AI could not start.')],
+    })[l.state] || [false, l.message || tr('chat.unavailable', null, 'Local AI unavailable')];
   }
   let polling = null;
   async function statusLine() {
@@ -136,13 +145,12 @@ const Chat = (() => {
     const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
+      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : tr('chat.searchReadingStill', null, ' — search and reading still work')}</span>`;
     } else {
-      const srv = s.server;   // a model server the person chose in Settings (#78)
-      el.innerHTML = s.online ? `<span class="dotok"></span>${srv ? esc(srv.model) + ' ready' : 'Local assistant ready'}${still}`
-        : `<span class="dotoff"></span><span>${srv ? `The model server at ${esc(srv.address)} is not answering` : 'Assistant offline'}<span class="long"> — search and browsing still work</span></span>`;
+      el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
+        : `<span class="dotoff"></span><span>${esc(tr('chat.assistantOffline', null, 'Assistant offline'))}<span class="long">${esc(tr('chat.searchBrowsingStill', null, ' — search and browsing still work'))}</span></span>`;
     }
-    const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
+    const sb = $('#sendBtn'); if (sb) sb.title = s.online ? tr('chat.send', null, 'Send') : tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
     setupCard(s);
     clearTimeout(polling);
     if (l && /checking|measuring|loading/.test(l.state) && $('#chatStatus')) polling = setTimeout(statusLine, 1000);
@@ -154,11 +162,11 @@ const Chat = (() => {
     box.hidden = !show;
     if (!show) return;
     box.innerHTML = l.state === 'off'
-      ? `<p>The local AI is turned off.</p><div class="row"><button class="btn" data-ai="on">Turn on</button></div>`
-      : l.state === 'error' ? `<p>${esc(l.message || 'The local AI could not start.')}</p><div class="row"><button class="btn" data-ai="rescan">Look again</button></div>`
-      : `<p><b>Add the local AI to get written answers.</b> It is about 17 GB, and runs on this computer only.</p>
-         <div class="row"><a class="btn" href="/ui/setup.html#manage">Add the local AI</a><button class="btn plain" data-ai="rescan">Look again</button></div>
-         <p class="small">Already downloaded <code>${esc(l.file)}</code>? Move it into the <b>models</b> folder inside your <b>LastbookData</b> folder, then Look again. Or open <b>Add the local AI</b> and pick the file you already have.</p>`;
+      ? `<p>${esc(tr('chat.aiTurnedOff', null, 'The local AI is turned off.'))}</p><div class="row"><button class="btn" data-ai="on">${esc(tr('about.turnOn', null, 'Turn on'))}</button></div>`
+      : l.state === 'error' ? `<p>${esc(l.message || tr('chat.startFailed', null, 'The local AI could not start.'))}</p><div class="row"><button class="btn" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>`
+      : `<p><b>${esc(tr('chat.addAiToGetAnswers', null, 'Add the local AI to get written answers.'))}</b> ${esc(tr('chat.addAiRunsOnThisComputer', null, 'It is about 17 GB, and runs on this computer only.'))}</p>
+         <div class="row"><a class="btn" href="/ui/setup.html#manage">${esc(tr('about.addTheLocalAi', null, 'Add the local AI'))}</a><button class="btn plain" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>
+         <p class="small">${esc(tr('chat.alreadyHaveModelLead', null, 'Already downloaded'))} <code>${esc(l.file)}</code>? ${esc(tr('chat.alreadyHaveModelHint', null, 'Move it into the models folder inside your LastbookData folder, then Look again. Or open Add the local AI and pick the file you already have.'))}</p>`;
     $$('[data-ai]', box).forEach(b => b.onclick = async () => {
       b.disabled = true;
       try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: b.dataset.ai }) }) } catch { }
@@ -170,7 +178,7 @@ const Chat = (() => {
     try {
       if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: 'Guide', kind } }
       const d = await api('/api/doc/' + encodeURIComponent(id));
-      return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : 'Video') : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
+      return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : tr('nav.video', null, 'Video')) : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
     } catch { return null }
   }
   function renderCtx() {
@@ -178,13 +186,13 @@ const Chat = (() => {
     const a = aboutCtx;
     if (!a) { el.hidden = true; return }
     el.hidden = false;
-    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>Asking about: <b>${esc(a.label)}</b> <span class="muted">${esc(a.sub || '')}</span></span>${cur && cur.messages.length ? '' : '<button type="button" aria-label="Don’t use this as context" id="ctxX">×</button>'}`;
+    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>${esc(tr('chat.askingAbout', null, 'Asking about:'))} <b>${esc(a.label)}</b> <span class="muted">${esc(a.sub || '')}</span></span>${cur && cur.messages.length ? '' : `<button type="button" aria-label="${esc(tr('chat.dontUseContext', null, "Don’t use this as context"))}" id="ctxX">×</button>`}`;
     const x = $('#ctxX'); if (x) x.onclick = () => { aboutCtx = null; renderCtx(); renderLog() };
   }
   function renderSide() {
     const el = $('#csList'); if (!el) return;
-    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${c.messages.filter(m => m.role === 'user').length} question${c.messages.filter(m => m.role === 'user').length > 1 ? 's' : ''}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="Delete this chat">×</button></li>`).join('')
-      : '<li class="muted small" style="padding:8px 4px">No chats yet.</li>';
+    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${tr('chat.questions', { count: c.messages.filter(m => m.role === 'user').length })}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="${esc(tr('chat.deleteThis', null, 'Delete this chat'))}">×</button></li>`).join('')
+      : `<li class="muted small" style="padding:8px 4px">${esc(tr('chat.noneYet', null, 'No chats yet.'))}</li>`;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
     // the list fades at an edge with more chats past it, so a row cut off there reads as more to scroll to
@@ -201,8 +209,8 @@ const Chat = (() => {
     if (more) { more.hidden = !home; more.innerHTML = home ? homeMore() : '' }
     if (home) {
       log.innerHTML = `<div class="ask-hero">
-        <div><h1>What do you need to know?</h1>
-        <p class="lead">Answers from the guides, manuals and videos on this computer, with the page or video moment for each point.</p></div>
+        <div><h1 data-i18n="chat.heroTitle">${tr('chat.heroTitle', null, 'What do you need to know?')}</h1>
+        <p class="lead" data-i18n="chat.heroLead">${tr('chat.heroLead', null, 'Answers from the guides, manuals and videos on this computer, with the page or video moment for each point.')}</p></div>
         <img class="ink-art" src="/ui/ink-pair.svg" alt="" width="240" height="120"></div>`;
       $$('[data-start]', more).forEach(b => b.onclick = () => send(b.dataset.start));
       return;
@@ -223,12 +231,12 @@ const Chat = (() => {
     wire(log);
   }
   function homeMore() {
-    const q = Object.fromEntries(STARTERS), title = id => esc(SHORT[id] || id);
-    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>Runs on this computer. Nothing you ask leaves it.</p>
-      <h2 class="ask-h">Start with what matters</h2>
+    const q = Object.fromEntries(STARTERS.map(([id, en]) => [id, tr('chat.starter.' + id, null, en)])), title = id => esc((typeof shortName === 'function' ? shortName(id) : SHORT[id]) || id);
+    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>${tr('chat.runsLocal', null, 'Runs on this computer. Nothing you ask leaves it.')}</p>
+      <h2 class="ask-h" data-i18n="chat.startWithWhatMatters">${tr('chat.startWithWhatMatters', null, 'Start with what matters')}</h2>
       <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
         <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
-      <div class="ask-learn-head"><h2 class="ask-h">Keep learning</h2><a href="#/library">All skills</a></div>
+      <div class="ask-learn-head"><h2 class="ask-h" data-i18n="chat.keepLearning">${tr('chat.keepLearning', null, 'Keep learning')}</h2><a href="#/library" data-i18n="chat.allSkills">${tr('chat.allSkills', null, 'All skills')}</a></div>
       <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small>Step-by-step guide</small></span></a>`).join('')}</div>`;
   }
   // The page itself never scrolls while a chat is empty: in a window too short for every suggestion (or with lines wrapped narrow beside
@@ -240,8 +248,8 @@ const Chat = (() => {
     const over = () => document.scrollingElement.scrollHeight > innerHeight;
     if (!over()) return;
     const shown = all.filter(x => x.offsetWidth);
-    for (let k = shown.length; k > 2 && over(); k -= 2) shown.slice(k - 2, k).forEach(x => x.style.display = 'none');
-    for (const x of extra) if (over()) x.style.display = 'none';
+    for (let k = shown.length; k > 2 && over(); k -= 2) shown.slice(k - 2, k).forEach(x => x.style.display = tr('map.noneOn', null, 'none'));
+    for (const x of extra) if (over()) x.style.display = tr('map.noneOn', null, 'none');
   }
   addEventListener('resize', () => { if ($('.chat-empty')) fitEmpty() });
   function updateBot(i) {
@@ -344,44 +352,46 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${esc(tr('chat.state.' + m.state, null, STATES[m.state] || tr('chat.working', null, 'Working…')))}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
-    if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
+    if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
+    if (m.fallback) h += srcCards(m.fallback, true);
     if (!running && m.content) {
-      const cited = sourcesForFinish(m);
-      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
-      h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
-      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
-      else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
+      const cited = m.cited || [];
+      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">${esc(tr('chat.invalidSources', { list: m.invalid.join(', ') }, 'The model referred to sources that don’t exist ({list}); those markers were removed.'))}</p>`;
+      h += `<div class="legend small"><span><span class="lg-c">1</span> ${esc(tr('chat.linkedToPageOrVideo', null, 'linked to a page or video'))}</span><span><span class="lg-u">dotted</span> ${esc(tr('chat.modelsOwnWording', null, 'the model’s own wording, not linked to a source'))}</span></div>`;
+      if (cited.length) h += `<h3 class="srch">${esc(tr('chat.sourcesCount', { count: cited.length }, 'Sources ({count})'))}</h3>${srcCards(cited, false)}`;
+      else h += `<p class="notice small">${esc(tr('chat.noLinkedSources', null, 'This answer has no linked sources. Treat it as unverified.'))}</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');
-      if (other.length) h += `<details class="also"><summary>Also looked at (${other.length}, not used)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
-      if ((m.steps || []).length) h += `<details class="also"><summary>How it searched (${m.steps.length} ${m.steps.length === 1 ? 'step' : 'steps'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
-      h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">Copy</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Save answer</button><button class="btn plain" data-act="export">Export chat</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Ask again</button>` : ''}</div>`;
+      if (other.length) h += `<details class="also"><summary>${esc(tr('chat.alsoLookedAt', { count: other.length }, 'Also looked at ({count}, not used)'))}</summary>${srcCards(other.slice(0, 10), true)}</details>`;
+      if ((m.steps || []).length) h += `<details class="also"><summary>${esc(tr(m.steps.length === 1 ? 'chat.howSearchedOne' : 'chat.howSearched', { count: m.steps.length, latency: m.latency ? `, ${m.latency.total_s}s` : '' }, m.steps.length === 1 ? 'How it searched ({count} step{latency})' : 'How it searched ({count} steps{latency})'))}</summary><ul class="steps">${steps}</ul></details>`;
+      h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">${esc(tr('common.copy', null, 'Copy'))}</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}${esc(tr('chat.saveAnswer', null, 'Save answer'))}</button><button class="btn plain" data-act="export">${esc(tr('chat.exportChat', null, 'Export chat'))}</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">${esc(tr('chat.askAgain', null, 'Ask again'))}</button>` : ''}</div>`;
     }
     return h;
   }
   function stepText(s) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     // s.args is the model's own tool call, as it sent it: use only plain text and numbers from it, never convert anything else.
     const plain = v => typeof v === 'string' || typeof v === 'number' ? v : '';
     const raw = s.args && typeof s.args === 'object' ? s.args : {}, r = s.summary || {};
     const a = { query: plain(raw.query), kind: plain(raw.kind), doc_id: plain(raw.doc_id), page: plain(raw.page), pages: raw.pages, article: plain(raw.article) };
-    if (s.name === 'search_library') return `Searched “${esc(a.query || '')}”${a.kind && a.kind !== 'any' ? ' (' + esc(a.kind) + 's)' : ''} — ${r.count ?? '…'} passage${r.count === 1 ? '' : 's'}`;
+    if (s.name === 'search_library') return tr(r.count === 1 ? 'chat.step.searchedOne' : 'chat.step.searched', { query: esc(a.query || ''), kind: a.kind && a.kind !== 'any' ? ' (' + esc(a.kind) + 's)' : '', count: r.count ?? '…' }, r.count === 1 ? 'Searched “{query}”{kind} — {count} passage' : 'Searched “{query}”{kind} — {count} passages');
     if (s.name === 'read_pages') {
       const pages = (Array.isArray(a.pages) ? a.pages : [a.pages]).filter(p => typeof p === 'number' || typeof p === 'string');
-      return r.error ? 'Tried to read an unknown document' : `Read ${esc(r.title || a.doc_id)}, page${pages.length > 1 ? 's' : ''} ${esc(pages.join(', '))}`;
+      return r.error ? tr('chat.unknownDocument', null, 'Tried to read an unknown document') : tr(pages.length > 1 ? 'chat.step.readPages' : 'chat.step.readPage', { title: esc(r.title || a.doc_id), pages: esc(pages.join(', ')) }, pages.length > 1 ? 'Read {title}, pages {pages}' : 'Read {title}, page {pages}');
     }
-    if (s.name === 'view_page') return r.error ? 'Couldn’t view that page' : `Looked at the picture of ${esc(r.title || '')}, page ${esc(a.page)}`;
-    if (s.name === 'get_timed_transcript') return r.error ? `No transcript for ${esc(r.title || 'that video')}` : `Read the transcript of ${esc(r.title || '')}`;
-    if (s.name === 'lookup_place') return `Looked up “${esc(a.query || '')}” on the offline map`;
-    if (s.name === 'search_encyclopedia') return `Searched the encyclopedias for “${esc(a.query || '')}” — ${r.count ?? '…'} article${r.count === 1 ? '' : 's'}`;
-    if (s.name === 'read_encyclopedia') return r.error ? 'Tried to read an unknown encyclopedia article' : `Read the encyclopedia article “${esc(r.title || a.article)}”`;
-    if (s.name === 'found') return `Matched ${s.count} passage${s.count === 1 ? '' : 's'} for your question`;
+    if (s.name === 'view_page') return r.error ? tr('chat.couldntView', null, 'Couldn’t view that page') : tr('chat.step.viewedPage', { title: esc(r.title || ''), page: esc(a.page) }, 'Looked at the picture of {title}, page {page}');
+    if (s.name === 'get_timed_transcript') return r.error ? tr('chat.step.noTranscript', { title: esc(r.title || tr('chat.thatVideo', null, 'that video')) }, 'No transcript for {title}') : tr('chat.step.readTranscript', { title: esc(r.title || '') }, 'Read the transcript of {title}');
+    if (s.name === 'lookup_place') return tr('chat.step.lookupPlace', { query: esc(a.query || '') }, 'Looked up “{query}” on the offline map');
+    if (s.name === 'search_encyclopedia') return tr(r.count === 1 ? 'chat.step.searchedWikiOne' : 'chat.step.searchedWiki', { query: esc(a.query || ''), count: r.count ?? '…' }, r.count === 1 ? 'Searched the encyclopedias for “{query}” — {count} article' : 'Searched the encyclopedias for “{query}” — {count} articles');
+    if (s.name === 'read_encyclopedia') return r.error ? tr('chat.unknownArticle', null, 'Tried to read an unknown encyclopedia article') : tr('chat.step.readArticle', { title: esc(r.title || a.article) }, 'Read the encyclopedia article “{title}”');
+    if (s.name === 'found') return tr(s.count === 1 ? 'chat.step.matchedOne' : 'chat.step.matched', { count: s.count }, s.count === 1 ? 'Matched {count} passage for your question' : 'Matched {count} passages for your question');
     return esc(s.name);
   }
   function srcHref(s) {
-    if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || 'Place from the answer')}`;
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
+    if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || tr('chat.placeFromAnswer', null, 'Place from the answer'))}`;
     if (s.kind === 'video') return `#/watch/${encodeURIComponent(s.doc_id)}?${s.t != null ? 't=' + Math.floor(s.t) + '&' : ''}from=${encodeURIComponent(here())}`;
     if (s.kind === 'zim' || s.zim) {
       // s.path is already percent-encoded (encyclopedias.ui_path), as on the Encyclopedias page. A row without one
@@ -428,6 +438,7 @@ const Chat = (() => {
 
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
   function md(text, m) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
     const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : '';
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
@@ -451,7 +462,7 @@ const Chat = (() => {
       if (!table) return;
       const head = table.length > 1 && SEP.test(table[1]) ? cells(table[0]) : null, rows = table.slice(head ? 2 : 0).filter(r => !SEP.test(r)).map(cells);
       const cited = section !== 'main' || m.running || /\[[SM]\d+\]/.test(table.join(' ') + ' ' + before);
-      const no = cited ? '' : ' title="Not linked to a source"', width = head ? head.length : (rows[0] || []).length;
+      const no = cited ? '' : ` title="${esc(tr('chat.notLinked', null, 'Not linked to a source'))}"`, width = head ? head.length : (rows[0] || []).length;
       // A row with more or fewer cells than the header would put numbers under the wrong heading, so show the lines as written.
       if (rows.some(r => r.length !== width)) out += `<p class="ans-raw${cited ? '' : ' uncited'}"${no}>${table.map(inline).join('<br>')}</p>`;
       else out += `<div class="ans-table${cited ? '' : ' uncited'}"${no}><table>${head ? `<thead><tr>${head.map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead>` : ''}<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -459,7 +470,7 @@ const Chat = (() => {
     };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
       if (section !== 'main' || m.running) return inline(raw);
-      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
+      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="${esc(tr('chat.notLinked', null, 'Not linked to a source'))}">${inline(sn)}</span>`).join(' ');
     };
     for (let ln of lines) {
       const t = ln.trim();
@@ -474,7 +485,7 @@ const Chat = (() => {
         close();
         if (out.includes('<div class="sec-')) out += '</div>';
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? tr('chat.notInLibrary', null, 'Not found in the library') : sec === 'disagree' ? 'Sources disagree' : tr('chat.modelReasoning', null, 'The model’s own reasoning — not from the library')}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
@@ -493,7 +504,7 @@ const Chat = (() => {
   function wire(el) {
     $$('[data-act]', el).forEach(b => b.onclick = () => {
       const i = +b.dataset.i, m = cur.messages[i];
-      if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast('Copied'), () => toast('Couldn’t copy')) }
+      if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast(tr('chat.copied', null, 'Copied')), () => toast(tr('chat.couldntCopy', null, 'Couldn’t copy'))) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
         toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${new Date().toLocaleDateString()}` }, null);
@@ -509,7 +520,7 @@ const Chat = (() => {
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
     let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
-    if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
+    if ((m.cited || []).length) t += '\n\n' + tr('chat.sourcesHeading', null, 'Sources:') + '\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? tr('chat.citePage', { page: s.page }, ', page {page}') : ''}${s.t != null ? tr('chat.citeAt', { time: clock(s.t) }, ', at {time}') : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
   function exportChat(c) {
@@ -519,14 +530,14 @@ const Chat = (() => {
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
     a.download = `survival-chat-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
-    toast('Saved as a file on this device');
+    toast(tr('chat.savedAsFile', null, 'Saved as a file on this device'));
   }
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
     return c.messages.filter(m => m.content).map(m => {
       if (m.role !== 'assistant') return { role: m.role, content: m.content };
       const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-      return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? ', p. ' + map[k].page : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
+      return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? tr('chat.citePageShort', { page: map[k].page }, ', p. {page}') : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
     });
   }
 
@@ -569,11 +580,11 @@ const Chat = (() => {
           redraw();
         }
       }
-      if (m.running && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
+      if (m.running && !m.content && !m.error) m.error = tr('chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.');
     } catch (e) {
       if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
-      else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text) }
-      else m.error = e.message || 'Something went wrong.';
+      else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || tr('chat.modelNotRunning', null, 'The local assistant model isn’t running right now.'); await fallback(m, text) }
+      else m.error = e.message || tr('app.errorGeneric', null, 'Something went wrong.');
     }
     m.running = false; delete m.state;
     if (m.stopped && m.content) {
@@ -608,7 +619,7 @@ const Chat = (() => {
   function setBusy(on) {
     const b = $('#sendBtn'); if (!b) return;
     b.innerHTML = on ? '<span class="stopsq"></span>' : ico('up');
-    b.setAttribute('aria-label', on ? 'Stop the answer' : 'Send');
+    b.setAttribute('aria-label', on ? tr('chat.stopAnswer', null, 'Stop the answer') : tr('chat.send', null, 'Send'));
     b.classList.toggle('stop', on);
   }
   function scrollEnd(force) {

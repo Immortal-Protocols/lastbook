@@ -2787,7 +2787,7 @@ let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const job = code => ({copy: true, folder: '/srv/x/LastbookData', error: {code, message: 'Lastbook could not read or write a file for the copy. Check the drive is still connected, then copy again to the same place to carry on.'}, items: []});
 console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_space')), cancelled: errorBox(job('cancelled')),
-                            confirm: src.includes("j.copy ? 'Stop copying? What is copied stays on the drive.'"),
+                            confirm: src.includes("'Stop copying? What is copied stays on the drive.'"),
                             live: src.includes("'The copy was stopped. What was copied is on the drive.'")}));
 """
         r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js')],

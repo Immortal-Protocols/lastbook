@@ -258,5 +258,4 @@ class CatalogueCoverage(unittest.TestCase):
             used.update(k for k in re.findall(r'''\btr\(\s*['"]([A-Za-z][A-Za-z0-9_.-]*)['"]''', text) if not k.endswith('.'))
         missing = sorted(used - set(en))
         self.assertEqual(missing, [], f'missing from en.json: {missing}')
-        # The floor is the already-wired sample slice; later PRs raise it as more of the UI is marked.
-        self.assertGreaterEqual(len(used), 30)
+        self.assertGreaterEqual(len(used), 200)

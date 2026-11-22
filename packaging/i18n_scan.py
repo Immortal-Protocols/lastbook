@@ -144,7 +144,9 @@ def looks_technical(s: str) -> bool:
     if s.strip() in {'{…}', ''} or set(s) <= set('{…} \t\n'):
         return True
     body = s.replace('{…}', '')
-    if body.startswith('calc(') or (s.startswith('[') and ' ' not in body and any(body.startswith(p) for p in ('[data-', '[aria-', '[id'))):
+    if body.startswith('calc('):
+        return True
+    if s.startswith('[') and ' ' not in body and body.endswith(']'):
         return True
     if re.fullmatch(r'[\[\](){}a-zA-Z0-9_.:/-]*', body) and not re.search(r'[A-Za-z]{4,}', body):
         return True

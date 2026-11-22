@@ -27,9 +27,10 @@ COPY = 4 * 1024 * 1024
 
 
 class Refused(Exception):
-    def __init__(self, code, message):
+    def __init__(self, code, message, key=None, params=None):
         super().__init__(message)
         self.code, self.message = code, message
+        self.key, self.params = key, params
 
 
 def _my_sid():
@@ -81,22 +82,22 @@ def is_library(folder):
 def _member_parts(info, top_optional=False):
     name = info.filename
     if '\\' in name or '\x00' in name:
-        raise Refused('unpack', f'The pack holds a file with a name Lastbook does not accept ({name[:80]!r}).')
+        raise Refused('unpack', f'The pack holds a file with a name Lastbook does not accept ({name[:80]!r}).', key='setup.err.packBadName', params={'name': repr(name[:80])})
     p = PurePosixPath(name)
     if p.is_absolute() or name.startswith('/') or (p.parts and ':' in p.parts[0]):
-        raise Refused('unpack', f'The pack holds a file with an absolute path ({name[:80]!r}).')
+        raise Refused('unpack', f'The pack holds a file with an absolute path ({name[:80]!r}).', key='setup.err.packAbsolutePath', params={'name': repr(name[:80])})
     parts = [x for x in p.parts if x not in ('', '.')]
     if any(x == '..' for x in parts):
-        raise Refused('unpack', f'The pack holds a file that would land outside the library ({name[:80]!r}).')
+        raise Refused('unpack', f'The pack holds a file that would land outside the library ({name[:80]!r}).', key='setup.err.packOutsideLibraryNamed', params={'name': repr(name[:80])})
     if top_optional and parts and parts[0] != DATA_NAME:
         parts = [DATA_NAME] + parts     # a state map zip may hold its files at the top, without the LastbookData folder
     if not parts or parts[0] != DATA_NAME:
-        raise Refused('unpack', f'The pack holds a file outside its LastbookData folder ({name[:80]!r}).')
+        raise Refused('unpack', f'The pack holds a file outside its LastbookData folder ({name[:80]!r}).', key='setup.err.packOutsideDataFolder', params={'name': repr(name[:80])})
     mode = (info.external_attr >> 16) & 0o170000
     if mode and mode not in (stat.S_IFREG, stat.S_IFDIR):
-        raise Refused('unpack', f'The pack holds a link or a special file ({name[:80]!r}).')
+        raise Refused('unpack', f'The pack holds a link or a special file ({name[:80]!r}).', key='setup.err.packLinkOrSpecial', params={'name': repr(name[:80])})
     if info.flag_bits & 0x1:
-        raise Refused('unpack', 'The pack is encrypted.')
+        raise Refused('unpack', 'The pack is encrypted.', key='setup.err.packEncrypted')
     return parts
 
 
@@ -119,21 +120,21 @@ def check_zip(path, installed_bytes=None, allowed=None):
     try:
         z = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as e:
-        raise Refused('unpack', f'The pack could not be opened as a zip file ({type(e).__name__}).')
+        raise Refused('unpack', f'The pack could not be opened as a zip file ({type(e).__name__}).', key='setup.err.packNotZip', params={'error': type(e).__name__})
     with z:
         members, total, seen = [], 0, set()
         for info in z.infolist():
             parts = _member_parts(info, top_optional=allowed is not None)
             if allowed and not allowed('/'.join(parts[1:]), info.is_dir()):
-                raise Refused('unpack', f'The map holds a file that is not part of a map ({info.filename[:80]!r}).')
+                raise Refused('unpack', f'The map holds a file that is not part of a map ({info.filename[:80]!r}).', key='setup.err.mapHoldsNonMap', params={'name': repr(info.filename[:80])})
             key = '/'.join(parts).lower()      # two names that differ only in case would overwrite each other on a Mac or Windows
             if key in seen and not info.is_dir():
-                raise Refused('unpack', f'The pack holds the same file twice ({info.filename[:80]!r}).')
+                raise Refused('unpack', f'The pack holds the same file twice ({info.filename[:80]!r}).', key='setup.err.packDuplicateFile', params={'name': repr(info.filename[:80])})
             seen.add(key)
             if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
-                raise Refused('unpack', f'The pack uses a kind of compression Lastbook does not accept ({info.filename[:80]!r}).')
+                raise Refused('unpack', f'The pack uses a kind of compression Lastbook does not accept ({info.filename[:80]!r}).', key='setup.err.packBadCompression', params={'name': repr(info.filename[:80])})
             if info.compress_type == zipfile.ZIP_STORED and info.compress_size != info.file_size:
-                raise Refused('unpack', f'The pack holds a stored file whose sizes disagree ({info.filename[:80]!r}).')
+                raise Refused('unpack', f'The pack holds a stored file whose sizes disagree ({info.filename[:80]!r}).', key='setup.err.packSizeDisagree', params={'name': repr(info.filename[:80])})
             total += info.file_size
             members.append((info, parts))
         # No two entries may share bytes: each one's local header (at least 30 bytes) and data must end before the next begins,
@@ -143,9 +144,9 @@ def check_zip(path, installed_bytes=None, allowed=None):
         for a, b in zip(spans, spans[1:] + [None]):
             limit = b.header_offset if b is not None else end_of_data
             if limit is not None and a.header_offset + 30 + a.compress_size > limit:
-                raise Refused('unpack', f'The pack holds entries that overlap ({a.filename[:80]!r}).')
+                raise Refused('unpack', f'The pack holds entries that overlap ({a.filename[:80]!r}).', key='setup.err.packEntriesOverlap', params={'name': repr(a.filename[:80])})
     if installed_bytes is not None and total > installed_bytes * SLACK + 1024 * 1024:
-        raise Refused('unpack', f'The pack unpacks to {total:,} bytes, more than the {installed_bytes:,} it should.')
+        raise Refused('unpack', f'The pack unpacks to {total:,} bytes, more than the {installed_bytes:,} it should.', key='setup.err.packUnpacksTooBig', params={'total': f'{total:,}', 'expected': f'{installed_bytes:,}'})
     return members, total
 
 
@@ -165,13 +166,13 @@ def unpack(zip_path, into, installed_bytes, control, progress, allowed=None, ver
             control.check()
             dest = root.joinpath(*parts)
             if root not in dest.parents and dest != root:
-                raise Refused('unpack', 'The pack holds a file that would land outside the library.')
+                raise Refused('unpack', 'The pack holds a file that would land outside the library.', key='setup.err.packOutsideLibrary')
             if info.is_dir():
                 dest.mkdir(parents=True, exist_ok=True)
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
             if dest.is_symlink():
-                raise Refused('unpack', 'A link appeared in the unpack folder.')
+                raise Refused('unpack', 'A link appeared in the unpack folder.', key='setup.err.unpackLinkAppeared')
             if dest.is_file() and dest.stat().st_size == info.file_size:
                 done += info.file_size          # whole from an earlier run
                 progress(done, total)
@@ -186,12 +187,12 @@ def unpack(zip_path, into, installed_bytes, control, progress, allowed=None, ver
                         break
                     written += len(b)
                     if written > info.file_size:        # stop at once, not after: a member never grows past its declared size
-                        raise Refused('unpack', f'A file in the pack is larger than it says ({info.filename[:80]!r}).')
+                        raise Refused('unpack', f'A file in the pack is larger than it says ({info.filename[:80]!r}).', key='setup.err.packFileLarger', params={'name': repr(info.filename[:80])})
                     out.write(b)
                     done += len(b)
                     progress(done, total)
             if part.stat().st_size != info.file_size:
-                raise Refused('unpack', f'A file in the pack came out the wrong size ({info.filename[:80]!r}).')
+                raise Refused('unpack', f'A file in the pack came out the wrong size ({info.filename[:80]!r}).', key='setup.err.packFileWrongSize', params={'name': repr(info.filename[:80])})
             os.replace(part, dest)
             t = time.mktime(info.date_time + (0, 0, -1))
             os.utime(dest, (t, t))
@@ -201,7 +202,7 @@ def unpack(zip_path, into, installed_bytes, control, progress, allowed=None, ver
     elif allowed:
         check_map(lib)
     elif not is_library(lib):
-        raise Refused('unpack', 'The unpacked pack has no library catalog in it.')
+        raise Refused('unpack', 'The unpacked pack has no library catalog in it.', key='setup.err.unpackNoCatalog')
     return lib
 
 
@@ -400,7 +401,7 @@ def switch(new_lib, target):
     """The renames. Returns the old library's new name, or None when there was none. Raises Refused, leaving things as they were."""
     new_lib, target = Path(new_lib), Path(target)
     if not is_library(new_lib):
-        raise Refused('activate', 'The new library is not complete.')
+        raise Refused('activate', 'The new library is not complete.', key='setup.err.newLibraryIncomplete')
     old = None
     carried = []
     if target.exists():
@@ -409,11 +410,11 @@ def switch(new_lib, target):
             try:
                 carry_over(target, new_lib, carried)
             except OSError as e:
-                _refuse_carried_back(carried, new_lib, target, f'Lastbook could not move your files into the new library ({type(e).__name__}). Close anything using them, then try again.')
+                _refuse_carried_back(carried, new_lib, target, f'Lastbook could not move your files into the new library ({type(e).__name__}). Close anything using them, then try again.', key='setup.err.couldNotMoveFilesIn', key_stuck='setup.err.couldNotMoveFilesInStuck', params={'error': type(e).__name__})
         try:
             os.replace(target, old)
         except OSError as e:
-            _refuse_carried_back(carried, new_lib, target, f'Lastbook could not move the old library aside ({type(e).__name__}). Close anything using it, then try again.')
+            _refuse_carried_back(carried, new_lib, target, f'Lastbook could not move the old library aside ({type(e).__name__}). Close anything using it, then try again.', key='setup.err.couldNotMoveOldAside', key_stuck='setup.err.couldNotMoveOldAsideStuck', params={'error': type(e).__name__})
     try:
         os.replace(new_lib, target)
     except OSError as e:
@@ -422,14 +423,16 @@ def switch(new_lib, target):
                 os.replace(old, target)
             except OSError:
                 still = [str(moved) for moved in carried if moved.is_file()]
+                files = ' These files of yours are still in the new library: ' + ', '.join(still) if still else ''
                 raise Refused('activate', f'Lastbook could not put the new library in place ({type(e).__name__}), nor the old one back. '
-                                          f'The old library is in {old}.'
-                                          + (' These files of yours are still in the new library: ' + ', '.join(still) if still else ''))
-        _refuse_carried_back(carried, new_lib, target, f'Lastbook could not put the new library in place ({type(e).__name__}).')
+                                          f'The old library is in {old}.' + files,
+                              key='setup.err.cannotPlaceLibraryNorRestoreFiles' if still else 'setup.err.cannotPlaceLibraryNorRestore',
+                              params={'error': type(e).__name__, 'old': str(old), **({'files': ', '.join(still)} if still else {})})
+        _refuse_carried_back(carried, new_lib, target, f'Lastbook could not put the new library in place ({type(e).__name__}).', key='setup.err.cannotPlaceLibrary', key_stuck='setup.err.cannotPlaceLibraryStuck', params={'error': type(e).__name__})
     return old
 
 
-def _refuse_carried_back(carried, new_lib, target, message):
+def _refuse_carried_back(carried, new_lib, target, message, key=None, key_stuck=None, params=None):
     """Undo carry_over after a failed step, so the library that stays in place keeps its model and address indexes.
     A file that cannot go back stays where it is, and the message says where."""
     stuck = []
@@ -440,9 +443,12 @@ def _refuse_carried_back(carried, new_lib, target, message):
                 os.replace(moved, back)
         except OSError:
             stuck.append(str(moved))
+    params = dict(params or {})
     if stuck:
         message += ' These files could not be moved back and are still here: ' + ', '.join(stuck)
-    raise Refused('activate', message)
+        params['files'] = ', '.join(stuck)
+        raise Refused('activate', message, key=key_stuck or key, params=params)
+    raise Refused('activate', message, key=key, params=params or None)
 
 
 # ----------------------------------------------------------------------------------------------------------- state maps --
@@ -491,13 +497,13 @@ def check_map(lib):
     """Every file map-set.json lists is there at its size, and each is a map file."""
     d = map_set(lib)
     if not d:
-        raise Refused('unpack', 'The map has no map-set.json in it.')
+        raise Refused('unpack', 'The map has no map-set.json in it.', key='setup.err.mapNoMapSet')
     for rel, size in d['files'].items():
         if not map_member(rel) or '..' in Path(rel).parts:
-            raise Refused('unpack', f'The map lists a file that is not part of a map ({rel[:80]!r}).')
+            raise Refused('unpack', f'The map lists a file that is not part of a map ({rel[:80]!r}).', key='setup.err.mapListsNonMap', params={'name': repr(rel[:80])})
         p = Path(lib) / rel
         if not p.is_file() or p.stat().st_size != size:
-            raise Refused('unpack', f'The map’s {rel} is missing or the wrong size.')
+            raise Refused('unpack', f'The map’s {rel} is missing or the wrong size.', key='setup.err.mapFileMissingOrWrongSize', params={'name': rel})
     return d
 
 
@@ -562,7 +568,7 @@ def swap_map(lib, new, old_dir):
             os.replace(lib / rel, new / rel)
         for rel in moved_out:
             os.replace(old_dir / rel, lib / rel)
-        raise Refused('activate', f'Lastbook could not put the new map in place ({type(e).__name__}).')
+        raise Refused('activate', f'Lastbook could not put the new map in place ({type(e).__name__}).', key='setup.err.cannotPlaceMap', params={'error': type(e).__name__})
 
 
 def replace_map_in(staged, new):
@@ -678,6 +684,7 @@ def apply_pending(pend, work):
         os.replace(d['old'], target)
         carry_over(broken, target)      # the model file, moved into the new one, goes back too
         note['error'] = 'The new library did not open, so Lastbook put the old one back.'
+        note['key'] = 'setup.err.putOldLibraryBack'
         note['old'] = None
     return target if is_library(target) else None, note
 

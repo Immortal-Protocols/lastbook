@@ -7,7 +7,7 @@ import sys
 import threading
 from pathlib import Path
 
-from . import download
+from . import download, hardware
 
 REMOTE = 'https://downloads.lastbook.org/manifest-v1.json'
 SHA = re.compile(r'^[0-9a-f]{64}$')
@@ -159,7 +159,12 @@ class Manifest:
         return next((x for x in self.current.get('address_indexes', []) if x['id'] == state), None)
 
     def model(self, mid=None):
+        """The model with this id. With none: the one hardware.choose_model picks for this computer (the models are listed
+        largest first)."""
         ms = [m for m in self.current['models'] if m['available']]
+        if mid is None and len(ms) > 1:
+            ai = hardware.ai_machine()
+            return hardware.choose_model(ms, ai['ram_bytes'], ai['gpu_bytes'])
         return next((m for m in ms if mid in (None, m['id'])), None)
 
     def public(self):

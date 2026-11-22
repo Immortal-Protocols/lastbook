@@ -49,7 +49,7 @@ The full-disk case uses a 3 MB disk image (`hdiutil`, macOS):
 LASTBOOK_FULL_DISK=1 derived/app-build/mac-venv/bin/python -W ignore -B app/tests/test_setup.py FullDisk
 ```
 
-The bundled manifest is built from `derived/release/manifest-v1.json` (publish-packs), plus the model constants in `llm_local.py`:
+The bundled manifest is built from `derived/release/manifest-v1.json` (publish-packs), plus the models in `llm_local.MODELS` (largest first; setup offers the largest one whose `memory_bytes` plus the reserve fits this computer's memory):
 
 ```bash
 derived/app-build/mac-venv/bin/python -I -B packaging/release_manifest.py --small-from derived/release/1.0.0-20261104-1507

@@ -667,6 +667,17 @@ def _strip_thinking(text):
     return re.sub(r'<\|channel>.*?<channel\|>', '', text, flags=re.S).strip()
 
 
+def hide_thinking(text):
+    """What of a model turn is answer, not thought. Closed thought blocks go; an unfinished one hides what follows it until
+    it closes. Smaller Gemma 4 models (E2B, E4B) often think in plain text after a tool response and only then close a
+    channel they never opened ("The user asks... <channel|>The answer"): all before that stray close is thought too."""
+    t = re.sub(r'<\|channel>.*?<channel\|>', '', text, flags=re.S)
+    if '<|channel>' in t:
+        t = t.split('<|channel>', 1)[0]
+    if '<channel|>' in t:
+        t = t.rsplit('<channel|>', 1)[1]
+    return t
+
 def size_of(segments):
     """A rough count of tokens, on the high side: about 3.2 characters a token for English text."""
     return sum(len(s) for s, _ in segments) / 3.2 + 8 * len(segments)

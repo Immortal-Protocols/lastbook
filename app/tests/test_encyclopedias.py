@@ -403,6 +403,46 @@ class ChatTools(unittest.TestCase):
         with mock.patch.object(encyclopedias, 'search', side_effect=RuntimeError('no collection could be searched')):
             self.assertEqual(assistant.encyclopedia_hits('cholera'), [])
 
+    def test_first_wiki_uses_the_best_section_pick(self):
+        picked = [{'title': 'Burns', 'zim': ZIM, 'article': 'Burns', 'excerpt': 'Cool the burn.'}]
+        with mock.patch.object(assistant.wiki_pick, 'pick', return_value=picked) as pick,                 mock.patch.object(assistant.typos, 'correct', return_value='burned my hand'),                 mock.patch.object(assistant, 'encyclopedia_hits', side_effect=AssertionError('no fallback needed')):
+            self.assertEqual(assistant.first_wiki('burnd my hand'), picked)
+        self.assertEqual(pick.call_args.args[0], 'burned my hand')    # the question as typos.correct puts it right
+
+    def test_first_wiki_falls_back_when_the_pick_fails_or_is_switched_off(self):
+        plain = [{'title': 'Cholera', 'zim': ZIM, 'article': 'Cholera', 'excerpt': 'ORS.'}]
+        with mock.patch.object(assistant.wiki_pick, 'pick', side_effect=RuntimeError('boom')),                 mock.patch.object(assistant, 'encyclopedia_hits', return_value=plain) as hits:
+            self.assertEqual(assistant.first_wiki('cholera'), plain)
+            hits.assert_called_once()
+        with mock.patch.object(assistant.wiki_pick, 'pick', side_effect=AssertionError('switched off')),                 mock.patch.object(assistant, 'encyclopedia_hits', return_value=plain),                 mock.patch.dict(os.environ, {'LASTBOOK_WIKI_PICK': '0'}):
+            self.assertEqual(assistant.first_wiki('cholera'), plain)
+
+    def test_initial_results_go_out_as_two_messages(self):
+        lib = [{'doc_id': 'fema-water', 'kind': 'html', 'title': 'Water', 'excerpt': 'Boil water.', 'page': None, 'trust': 'official'}]
+        wiki = encyclopedias.search('cholera', archives=self.archives, search_paths=search_paths)
+        msgs = assistant.initial_messages(self.sess, lib, wiki)
+        self.assertEqual(len(msgs), 2)
+        self.assertTrue(msgs[0]['content'].startswith('Initial library search results'))
+        self.assertIn('Boil water.', msgs[0]['content'])
+        self.assertNotIn('Cholera', msgs[0]['content'])
+        self.assertTrue(msgs[1]['content'].startswith('Encyclopedia articles for the latest question'))
+        self.assertIn('Cholera', msgs[1]['content'])
+        self.assertNotIn('Boil water.', msgs[1]['content'])
+        self.assertEqual(list(self.sess.sources), ['S1', 'S2'])
+
+    def test_when_only_one_search_finds_something(self):
+        lib = [{'doc_id': 'fema-water', 'kind': 'html', 'title': 'Water', 'excerpt': 'Boil water.', 'page': None, 'trust': 'official'}]
+        wiki = encyclopedias.search('cholera', archives=self.archives, search_paths=search_paths)
+        only_lib = assistant.initial_messages(assistant.Session(), lib, [])
+        self.assertEqual(len(only_lib), 1)
+        self.assertTrue(only_lib[0]['content'].startswith('Initial library search results'))
+        only_wiki = assistant.initial_messages(assistant.Session(), [], wiki)
+        self.assertEqual(len(only_wiki), 1)
+        self.assertTrue(only_wiki[0]['content'].startswith('The library search found nothing'))
+        none = assistant.initial_messages(assistant.Session(), [], [])
+        self.assertEqual(len(none), 1)
+        self.assertTrue(none[0]['content'].startswith('An initial library search for the latest question found nothing'))
+
     def test_tools_are_registered(self):
         names = [t['function']['name'] for t in assistant.TOOLS]
         self.assertIn('search_encyclopedia', names)

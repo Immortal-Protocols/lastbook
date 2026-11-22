@@ -98,6 +98,12 @@ Code: `engine/wiki_pick.py` (`words_of`, `_pattern`, `best_section`, `score_text
 (`search`, `entry_text`, `pick_section`; `INITIAL_LIMIT` = 3, `INITIAL_CHARS` = 2,000, `SEARCH_LIMIT` = 24), caller
 `assistant.first_wiki`. Off with `LASTBOOK_WIKI_PICK=0`.
 
+In pull request 4, `assistant.first_wiki` runs `wiki_pick.pick` on the question after `typos.correct`, and Chat sends
+the library's results and the encyclopedia articles to the model as two messages (`assistant.initial_messages`) and
+shows them apart (`web/chat.js`, "From the encyclopedias"). Skipping the articles for urgent questions (`is_danger`)
+comes in pull request 7. The vector index of the encyclopedias tried on the author's fork (about 690 MB of memory for
+three files, and a GPU build for each file) is not proposed.
+
 Constants: `PER_FILE` = 6 candidates per encyclopedia file, `SECTION` = 5,000 (= `sections.SECTION`), `MAX_BYTES` =
 800,000, `STEM` = 5, `TITLE_WEIGHT` = 0.25.
 

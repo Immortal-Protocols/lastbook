@@ -60,10 +60,11 @@ derived/buildenv/bin/python tools/build_region_map.py thailand-latest.osm.pbf \
     --id TH-20 --name "Chon Buri" --bbox 100.51,12.35,101.87,13.75 --out derived/regions
 
 # 4. Check the files, then check that the engine can use them with every connection blocked.
+#    These are the exact commands behind "What was checked" and "Searches" below.
 python3 tools/check_region_map.py derived/regions/TH-20
 python3 tools/check_region_map.py derived/regions/TH-20 --engine \
-    --find พัทยา --find "Bang Saen" --find "Si Racha" --find "Chonburi Hospital" --find "Laem Chabang" \
-    --near 12.9276,100.8771
+    --find พัทยา --find Pattaya --find "Bang Saen" --find "Si Racha" --find "Sri Racha" --find "Laem Chabang" \
+    --find Sattahip --find Jomtien --find "Chonburi Hospital" --find "Bangkok Hospital Pattaya" --near 12.9276,100.8771
 ```
 
 On Windows the same steps work in Git Bash, with `derived/buildenv/Scripts/python` in place of
@@ -153,17 +154,36 @@ OpenStreetMap has it.
 
 ## What was checked, and how
 
-`tools/check_region_map.py` passed all 37 file checks and all 16 engine checks on the build above. With `--engine`,
-every connection blocked and an empty library:
+The first command passed all 37 file checks. The second runs those 37 again, then 7 engine checks and one per search: 54
+in all, and all passed. A search passes the checker when it returns any row, so "Searches" below says which ones find
+the place they are meant to. With `--engine`, every connection blocked and an empty library:
 
 - **Map display.** Tiles at zoom 10, 13 and 16 around central Pattaya: roads, water, land, railways, beaches and place
   labels at the wider zooms, 262 building outlines in one zoom-16 tile.
 - **Pins.** 34 pin groups around central Pattaya.
 - **Nearest help.** Pharmacies at 0.04, 0.05 and 0.11 km, a police box at 0.24 km.
-- **Place search, in both scripts.** พัทยา finds the city of Pattaya; "Bang Saen", "Si Racha" and "Laem Chabang" find
-  the towns by their English names (บางแสน, ศรีราชา, แหลมฉบัง); "Chonburi Hospital" finds โรงพยาบาลชลบุรี, and
-  "Bangkok Hospital Pattaya" finds โรงพยาบาลกรุงเทพพัทยา.
+- **Place search.** Every search in the command above, with what it finds, is under "Searches" below.
 - **What the app is told.** 39 kinds, within 100.51, 12.52, 101.87, 13.75, the extent of the data inside the box.
+
+### Searches
+
+A search passes the checker as soon as it returns any row, so this table says, for each search in the command above,
+whether it finds the place it is meant to. "First rows" is what the checker prints (up to three). Where the place comes
+lower, its rank is from the app's own place search, with the server running as under "Build it", for example `curl
+"http://127.0.0.1:8890/api/places?q=Karon"`: the same `places()` the checker calls, with no location.
+
+| Search | Meant to find | First rows | Result |
+|---|---|---|---|
+| `พัทยา` | the city of Pattaya | พัทยา (city); พัทยาแพทย์เฉพาะทาง (clinic); พัทยาเหนือฟาร์มาซี (pharmacy) | Finds it first |
+| `Pattaya` | the city of Pattaya | Pattaya Garage (car repair); Pattaya Dentist (dentist); Pattaya Garden (garden centre) | Finds it, 19 of 20 |
+| `Bang Saen` | the town | บางแสน (town); The Pine Cone Bang Saen (neighbourhood); หาดบางแสน (beach) | Finds it first |
+| `Si Racha` | the town | ศรีราชา (town); ที่ว่าการอำเภอศรีราชา (town hall); เวิลด์ ไบค์ ศรีราชา (bicycle shop) | Finds it first |
+| `Sri Racha` | the town Si Racha | สถานีวิจัยประมงศรีราชา (university) | Rows, but not the intended place |
+| `Laem Chabang` | the city | แหลมฉบัง (city); โรงเรียนเทศบาลแหลมฉบัง 1 (school); หอบังคับการพัฒนาแหลมฉบัง (park) | Finds it first |
+| `Sattahip` | the town | Sattahip market (supermarket); Sattahip Police Station (police); สัตหีบ (town) | Finds it, 3 of 4 |
+| `Jomtien` | the neighbourhood (OSM: Chom Thian) | Jomtien Dental Clinic (dentist); Jomtien Medical Clinic (doctors); Pattaya Dental Care (Jomtien) (dentist) | Rows, but not the intended place |
+| `Chonburi Hospital` | the hospital | โรงพยาบาลชลบุรี (hospital) | Finds it first |
+| `Bangkok Hospital Pattaya` | the hospital | โรงพยาบาลกรุงเทพพัทยา (hospital) | Finds it first |
 
 `tools/test_build_region_map.py`: 9 tests pass with pyosmium.
 

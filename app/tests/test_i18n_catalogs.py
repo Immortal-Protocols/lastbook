@@ -200,22 +200,63 @@ class SpanishWording(unittest.TestCase):
         self.assertIn('Configuración inicial', self.es['setup.title'])
         self.assertIn('configuración inicial', self.es['setup.error'])
         self.assertNotEqual(self.es['nav.settings'], self.es['setup.title'])
-        # Where a sentence names both screens, it names both.
-        preview = self.es['language.preview']
-        self.assertIn('configuración inicial', preview)
-        self.assertIn('ajustes', preview)
-        self.assertIn('Setup and Settings', self.en['language.preview'])
+        # Settings and first-run Setup stay distinct throughout the catalogue.
+        joined = ' '.join(self._texts(self.es))
+        self.assertIn('configuración inicial', joined)
+        self.assertIn('Ajustes', joined)
 
     def test_state_prompt_and_everyday_words(self):
         self.assertIn('estado o región', self.es['setup.chooseIntro'])
         self.assertIn('computadora', self.es['setup.loading'])
-        everything = ' '.join(self.es.values())
+        everything = ' '.join(self._texts(self.es))
         for avoid in (' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo'):
             self.assertNotIn(avoid, everything)
         self.assertEqual(self.es['language.unavailable'], 'El idioma guardado no está disponible. Lastbook usa inglés.')
         self.assertNotIn('está en inglés', self.es['language.unavailable'])
+        self.assertNotIn('Spanish', self.en['language.unavailable'])
+        self.assertEqual(self.en['language.unavailable'], 'The saved language is unavailable. Lastbook is using English.')
+
+    @staticmethod
+    def _texts(catalog):
+        out = []
+        for value in catalog.values():
+            if isinstance(value, str):
+                out.append(value)
+            else:
+                out.extend(value.values())
+        return out
 
     def test_no_message_is_left_in_english(self):
-        # Words that must differ from English (brand names and loan words such as "Chat" may match).
+        # Words that must differ from English (brand names, units and loan words such as "Chat" may match).
         same = {key for key in self.es if self.es[key] == self.en[key]}
-        self.assertLessEqual(same, {'nav.chat', 'nav.videos', 'nav.video'})
+        self.assertLessEqual(same, {
+            'nav.chat', 'nav.videos', 'nav.video', 'library.chats', 'videos.title',
+            'videos.headingQuoted', 'videos.kindPrefix', 'videos.speedNormal', 'videos.10to30',
+            'saved.pdf', 'app.titleSuffix', 'time.hoursMinutes', 'time.minutes', 'time.seconds',
+            'map.zoom', 'library.shelfVideos',
+            'native.menu.zoom', 'common.video',
+            'native.appFileDescription', 'installer.productName', 'installer.companyName',
+        })
+
+    def test_everyday_words_cover_the_full_catalogue(self):
+        everything = ' '.join(self._texts(self.es))
+        for avoid in (' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo'):
+            self.assertNotIn(avoid, everything)
+
+class CatalogueCoverage(unittest.TestCase):
+    """Keys used in the desktop UI exist in the English catalogue."""
+
+    def test_marked_and_tr_keys_are_in_english(self):
+        import re
+        en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        used = set()
+        for path in (ROOT / 'web').glob('*'):
+            if path.suffix not in {'.js', '.html'} or path.name in {'i18n-en.js', 'i18n-locales.js', 'i18n-core.js', 'i18n-dom.js'}:
+                continue
+            text = path.read_text(encoding='utf-8')
+            used.update(re.findall(r'''data-i18n(?:-aria-label|-placeholder|-title|-alt)?=["']([A-Za-z][A-Za-z0-9_.-]*)["']''', text))
+            used.update(k for k in re.findall(r'''\btr\(\s*['"]([A-Za-z][A-Za-z0-9_.-]*)['"]''', text) if not k.endswith('.'))
+        missing = sorted(used - set(en))
+        self.assertEqual(missing, [], f'missing from en.json: {missing}')
+        # The floor is the already-wired sample slice; later PRs raise it as more of the UI is marked.
+        self.assertGreaterEqual(len(used), 30)

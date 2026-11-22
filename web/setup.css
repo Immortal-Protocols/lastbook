@@ -13,7 +13,13 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-back svg{width:20px;height:20px}
 
 .s-main{max-width:760px;padding:8px 16px 56px;min-height:0}
-@media (min-width:640px){.s-main{padding:8px 28px 64px}.s-top{padding-left:28px;padding-right:28px}}
+.s-language{max-width:760px;margin:12px auto 0;padding:0 16px;color:var(--ink2);font-size:14px}
+.s-language-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.s-language select{max-width:100%;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:var(--r-ctl);padding:7px}
+.s-language button[aria-disabled="true"]{opacity:.6}
+.s-language p{margin:4px 0 0}
+.s-language p:empty{margin:0}
+@media (min-width:640px){.s-main{padding:8px 28px 64px}.s-top,.s-language{padding-left:28px;padding-right:28px}}
 .s-main h1{margin-top:14px}
 .s-main h2{font-size:19px;margin:26px 0 10px}
 .s-main .lead{margin-bottom:6px}
@@ -133,6 +139,9 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 
 .s-done{text-align:center;padding:40px 0 0}
 .s-done .lead{margin:0 auto 22px}
+.s-two{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.s-done .s-two{justify-content:center}
+.s-done .s-note{margin:0 auto 20px}
 .s-big{width:72px;height:72px;color:var(--accent);stroke-width:1.6}
 .s-rec.bad{background:var(--warn-bg);border:1px solid var(--warn-line)}
 .s-rec.bad svg{color:var(--warn)}

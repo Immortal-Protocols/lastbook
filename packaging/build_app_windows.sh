@@ -101,7 +101,7 @@ VERSIONINFO
   --add-data "$WEBVIEW2\\Microsoft.Web.WebView2.WinForms.dll;webview2" \
   --add-data "$WEBVIEW2\\WebView2Loader.dll;webview2" \
   --add-data "$LLM;llm" --add-data "$OUT\\ship\\setup\\manifest-v1.json;setup" --add-data "$ROOTW\\engine\\setup\\roots.pem;engine\\setup" --collect-submodules engine.setup \
-  --hidden-import server --hidden-import retrieval --hidden-import assistant --hidden-import llm_local --hidden-import engine.update \
+  --hidden-import server --hidden-import retrieval --hidden-import assistant --hidden-import llm_local --hidden-import engine.update --hidden-import engine.notes \
   --hidden-import engine.paths --hidden-import engine.library --hidden-import engine.saved_pages --hidden-import engine.quiet_onnx \
   --hidden-import bridge --hidden-import shell_windows --hidden-import clr --hidden-import _cffi_backend \
   --exclude-module shell_macos --exclude-module remote_storage --exclude-module tests \
@@ -117,6 +117,7 @@ VERSIONINFO
 
 DIST="$OUT\\dist\\Lastbook"
 cp "$HERE/Lastbook.exe.config" "$(cygpath -u "$DIST")/Lastbook.exe.config"    # without it, a downloaded copy cannot open its window
+"$PY" -I -B "$ROOTW\\packaging\\i18n_catalogs.py" --check --web-dir "$DIST\\_internal\\web"
 "$PY" -I -B "$ROOTW\\packaging\\scan_app_package.py" "$DIST" ${SCAN_TERMS:+--terms "$SCAN_TERMS"} --report "$OUT\\package-scan.json"
 du -sh "$(cygpath -u "$DIST")"
 sha256sum "$(cygpath -u "$DIST")/Lastbook.exe"

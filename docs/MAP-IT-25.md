@@ -7,8 +7,15 @@ unchanged. It is the first map from Italy and the first from a region with no se
 
 The tool, its checker and the Bangkok page come from pull request #80, and the Paraguay and Copenhagen pages from #152
 and #180; none of them is in this repository until they are merged. REGIONS-IT.md is proposed in its own pull request.
-This map was built and checked with the tool as it was at commit `a453274`, the same commit #152 and #180 used. If the
-tool changes before then, the build and the checks here need to be run again.
+This map was built and checked with the tool as it was at commit `a453274` (#80's head when this was written), the
+same commit #152 and #180 used. The files at that commit:
+
+- [`tools/build_region_map.py`](https://github.com/Immortal-Protocols/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/build_region_map.py)
+- [`tools/check_region_map.py`](https://github.com/Immortal-Protocols/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/check_region_map.py)
+- [`tools/test_build_region_map.py`](https://github.com/Immortal-Protocols/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/test_build_region_map.py)
+- [`docs/MAP-TH-10.md`](https://github.com/Immortal-Protocols/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/docs/MAP-TH-10.md)
+
+If the tool changes before #80 is merged, the build and the checks here need to be run again.
 
 It adds no code and no app change. The map is not downloaded by setup and is not in any pack.
 
@@ -34,9 +41,13 @@ Nothing else is installed, and the tool downloads nothing.
 
 ```bash
 # 1. The source: Geofabrik's Nord-Ovest extract of Italy (OpenStreetMap, ODbL 1.0), which holds Lombardia,
-#    Piemonte and the rest of the north-west. About 600 MB.
-curl -LO https://download.geofabrik.de/europe/italy/nord-ovest-latest.osm.pbf
-curl -LO https://download.geofabrik.de/europe/italy/nord-ovest-latest.osm.pbf.md5 && md5sum -c nord-ovest-latest.osm.pbf.md5
+#    Piemonte and the rest of the north-west. About 600 MB. This is the dated file with the data this map was built
+#    from (see "The input, and how far it can be repeated"); the build saw it as nord-ovest-latest.osm.pbf, and that
+#    name is written into the map's meta, so it is renamed after the check.
+curl -LO https://download.geofabrik.de/europe/italy/nord-ovest/nord-ovest-261117.osm.pbf
+curl -LO https://download.geofabrik.de/europe/italy/nord-ovest/nord-ovest-261117.osm.pbf.md5 && md5sum -c nord-ovest-261117.osm.pbf.md5
+mv nord-ovest-261117.osm.pbf nord-ovest-latest.osm.pbf
+#    For newer data, take https://download.geofabrik.de/europe/italy/nord-ovest/nord-ovest-latest.osm.pbf instead.
 
 # 2. A build environment with pyosmium.
 python3 -m venv derived/buildenv && derived/buildenv/bin/pip install osmium
@@ -99,8 +110,35 @@ build of only the box of the Città metropolitana di Milano (8.55, 45.01, 9.71, 
 | `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
 
 The map set is 881,926,206 bytes. The map was built once; whether a second build gives the same bytes was not tested.
-Geofabrik replaces `nord-ovest-latest` every day, so a later download gives a different source checksum and slightly
-different counts.
+
+## The input, and how far it can be repeated
+
+The build read `nord-ovest-latest.osm.pbf`, which Geofabrik replaces every day; a download of it today gives newer data,
+a different checksum and slightly different counts. The same data is in a dated file:
+[`nord-ovest-261117.osm.pbf`](https://download.geofabrik.de/europe/italy/nord-ovest/nord-ovest-261117.osm.pbf)
+([`.md5`](https://download.geofabrik.de/europe/italy/nord-ovest/nord-ovest-261117.osm.pbf.md5)), downloaded again on
+22 November 2026 and compared with the file the build used:
+
+| | File the build used | Dated file, 22 November |
+|---|---|---|
+| Bytes | 595,652,765 | 595,652,765 |
+| OpenStreetMap data up to (header) | 2026-11-17T21:24:30Z | 2026-11-17T21:24:30Z |
+| Replication sequence (header) | 4032 | 4032 |
+| Updates address (header) | `.../europe/italy/nord-ovest-updates` | `.../europe/italy/nord-ovest/updates` |
+| MD5 | `e8952c3c63ffe644f1b497a95cc6df85` | `ee4424746ea76c6b1b00c3ad5b096433` |
+| SHA-256 | `823c1fdc...19e3e50b8` | `374846d5...161a8521209` |
+
+The two files differ in 3 bytes, all in the file header, where Geofabrik has since moved the Nord-Ovest files into a
+`nord-ovest/` folder; every data block is the same. The tool reads only the date from the header, so a build from the
+dated file should give the same map, but that build was not run. The full SHA-256 of the file the build used is
+`823c1fdc12aca0d2d87290026c5cad9d82c06dcba1c76de0ac7e10d19e3e50b8`, and of the dated file
+`374846d5bc0857324bd17b529ff4ed5551bd3dbea444f36ab0786161a8521209`.
+
+The limit: Geofabrik's index on 22 November 2026 listed daily Nord-Ovest files for 12 to 21 November, and older ones
+only for the first of September, October and November 2026 and the first of January of each year since 2016. No stated
+period for keeping the daily files was found, so the 17 November file may go when it ages out. After that the exact
+input cannot be downloaded again; the checksums above let anyone with a copy confirm it is the same file, and a build
+from a later file gives a map of a later date, not this one.
 
 ## What the map holds
 
@@ -127,19 +165,55 @@ The place finder has 58,691 rows: 25,911 places (15 cities, 223 towns, 439 subur
 
 ## What was checked, and how
 
-`tools/check_region_map.py` passed all 37 file checks, and all 20 engine checks with the Milan point and all 9 with the
-Bergamo point. With `--engine`, every connection blocked and an empty library:
+`tools/check_region_map.py` ended with "all checks passed" for the 37 file checks, for the 20 engine checks with the
+Milan point and for the 9 with the Bergamo point. Apart from the first, which checks that the engine reads a copy of
+the map, each engine check passes when the answer is not empty: a place search passes when it returns any row, whatever
+the row is. So the pass count shows that the engine answered every call from the map with no network; it does not show that every search found the place that was meant. The file checks compare
+the files with the build record and with docs/MAPS.md (sizes, SHA-256, tables, classes, the box); the one search among
+them, for "Milano", also counts rows only (272).
+
+Of the 29 engine checks:
+
+- 15 are place searches, each meant to find one place (for "Citta", a place with an accent). 11 found it as the
+  first row. 4 returned rows that are not the place meant: "Duomo di Milano", "Navigli", "Lago di Como" and "Citta". None returned no rows.
+- 14 have no single right answer (counted over both runs): the engine reading the copy, three tiles (each must hold roads), the
+  pins, the nearest help and what the app is told. For nearest help, a separate distance count over the
+  map's help points gave the same first rows.
+
+The place searches, with the first row the engine returned. "The place meant" was judged by hand from the name, the
+kind and the position of that row. Rows are counted to 20, the most the engine returns.
+
+| Run | Search | Rows | First row | The place meant? |
+|---|---|---|---|---|
+| Milan | Duomo di Milano | 20 | Muzza di Milano (locality) | No. The cathedral is not in the place finder |
+| Milan | Niguarda | 7 | Niguarda (suburb) | Yes |
+| Milan | Monza | 20 | Monza (city) | Yes |
+| Milan | Navigli | 20 | Cernusco sul Naviglio (town) | No. Milan's Navigli district has no row of that name |
+| Milan | Città Studi | 7 | Città Studi (suburb) | Yes |
+| Milan | Citta | 20 | Cittadella (suburb) | No. Meant to find a Città name typed without the accent; Cittadella has no accent |
+| Milan | Milan | 20 | Milano (city) | Yes, from the English name |
+| Milan | Bergamo | 20 | Bergamo (city) | Yes |
+| Milan | Brescia | 20 | Brescia (city) | Yes |
+| Milan | Mantova | 20 | Mantova (city) | Yes |
+| Milan | Sirmione | 7 | Sirmione (town) | Yes |
+| Milan | Bormio | 9 | Bormio (town) | Yes |
+| Milan | Lago di Como | 2 | spartiacque lago di Como/fiume Seveso (275m) (locality) | No. The lake is a water area, not a place |
+| Bergamo | Città Alta | 4 | Città Alta (suburb) | Yes |
+| Bergamo | Bergamo | 20 | Bergamo (city) | Yes |
+
+The checks without one right answer. With `--engine`, every connection blocked and an empty library:
 
 - **Map display.** Tiles at zoom 10, 13 and 16 around Piazza del Duomo and around Bergamo's upper town: roads, water,
   land, railways, waterways and place labels at the wider zooms, 142 building outlines in one zoom-16 tile in each.
 - **Pins.** 165 pin groups around Piazza del Duomo, 75 around Bergamo's upper town.
 - **Nearest help.** In Milan, pharmacies at 0.19, 0.23 and 0.24 km and the local police headquarters at 0.27 km; in
   Bergamo, a pharmacy and the municipal police at 0.08 km.
-- **Place search, with Italian accents.** "Bergamo", "Brescia", "Mantova", "Monza" and "Milan" find the city first;
-  "Sirmione" and "Bormio" find the town; "Città Alta" and "Città Studi" find the district; "Citta", typed without the
-  accent, finds Cittadella, so accents are folded; "Niguarda" finds the district, then a pharmacy and a library of that
-  name; "Navigli" finds towns named "sul Naviglio".
 - **What the app is told.** 40 kinds, within 8.34, 44.52, 11.43, 46.62.
+
+The rows, the counts and the distances above are from the logs of the checker's runs and from the same calls made again
+on 22 November 2026 on another machine (Linux on ARM, Python 3.13.5) with the tool at `a453274`, which gave the same
+checker output. Accents are folded: asked of the engine in that second run, outside the checker, "Citta Alta" and
+"Citta Studi" typed without the accent find Città Alta and Città Studi first.
 
 `tools/test_build_region_map.py`: 9 tests pass with pyosmium.
 
@@ -183,7 +257,8 @@ names at closer zooms.
   says "Lombardia", the `--name` given, including places in Piemonte, Liguria and Switzerland.
 - **Landmarks and lakes are not in the place finder.** "Duomo di Milano" does not find the cathedral and "Lago di
   Como" does not find the lake: places of worship and water are not help-point classes or places, so the search
-  returns other rows with those words in their names.
+  returns other rows with those words in their names. "Navigli" does not find Milan's Navigli district, which has no
+  place row of that name in this map.
 - **Completeness follows OpenStreetMap.** 35,354 help points have no name. Nothing was compared against an official
   count.
 - **The page header, the units and the credits are the US map's.** The header says "what was mapped by 25 Oct 2026",

@@ -160,6 +160,7 @@ class Index:
         self.vec_path = IDX / 'vectors.f16'
         self._tls = threading.local()
         self._excl = {'mtime': None, 'ids': set()}
+        self.paused = False   # engine/power.py: no new embedding while saving power; search itself works as before
         db = self._db()
         db.execute('PRAGMA journal_mode=WAL')
         db.executescript('''CREATE TABLE IF NOT EXISTS chunk(id INTEGER PRIMARY KEY, doc_id TEXT, page INTEGER, t REAL, text TEXT, active INTEGER DEFAULT 1);
@@ -372,6 +373,8 @@ class Index:
         self.status.update(state='indexing' if todo else 'up to date', pending=len(todo), pruned_last=pruned)
         t0, done, nchunks = time.time(), 0, 0
         for doc_id, sig, _, how in todo:
+            if self.paused:
+                break
             if budget_s and time.time() - t0 > budget_s:
                 break
             gap = None
@@ -423,6 +426,10 @@ class Index:
 
     def run_forever(self, every=300):
         while True:
+            if self.paused:
+                self.status['state'] = 'paused to save power'
+                time.sleep(15)
+                continue
             try:
                 n = self.update(budget_s=None)
                 if n >= 0:  # a successful pass clears any earlier error
@@ -431,7 +438,7 @@ class Index:
             except Exception as e:
                 print(f'semantic index: {e}', file=sys.stderr, flush=True)
                 self.status.update(state='error', error=type(e).__name__, error_at=time.strftime('%Y-%m-%dT%H:%M:%S'))  # shown to clients: no paths
-            time.sleep(every)
+            time.sleep(15 if self.paused else every)     # a pass Save power cut short goes on soon after it is switched off
 
 
     # ------------------------------------------------------------- search --

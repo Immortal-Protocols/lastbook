@@ -1906,6 +1906,9 @@ class Handler(library.Handler):
         if rpath == '/api/not-found' or rpath.startswith('/api/not-found/'):  # Things I couldn't find: engine/notes.py, this computer only
             from engine import notes
             return notes.handle(self, 'POST', rpath, [t.get('id') for t in topics()])
+        if rpath == '/api/power':  # Save power: engine/power.py, this computer only
+            from engine import power
+            return power.handle(self, 'POST')
         if rpath.startswith('/api/tool/'):  # the assistant's read-only tools, for other local DeepSeek clients
             name = rpath[10:]
             if name not in {t['function']['name'] for t in assistant.TOOLS}:
@@ -2003,6 +2006,9 @@ class Handler(library.Handler):
             if path == '/api/not-found':   # Things I couldn't find: engine/notes.py, this computer only
                 from engine import notes
                 return notes.handle(self, 'GET', path)
+            if path == '/api/power':   # Save power: engine/power.py, this computer only
+                from engine import power
+                return power.handle(self, 'GET')
             if path in ('/', '/index.html'):
                 return self.send_static(WEB / 'index.html')
             if path.startswith('/ui/'):
@@ -2140,6 +2146,8 @@ def init(no_index=False):
     print(f'onnxruntime telemetry: {retrieval.TELEMETRY}', flush=True)
     INDEX = retrieval.Index(catalog, trust, library.DB)
     assistant.init(sys.modules[__name__], INDEX)
+    from engine import power
+    power.attach(assistant.LOCAL, INDEX)   # Save power, if it was left on
     if not no_index:
         threading.Thread(target=INDEX.run_forever, daemon=True).start()
     threading.Thread(target=prewarm_previews, daemon=True).start()

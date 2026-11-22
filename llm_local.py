@@ -9,6 +9,7 @@ assistant.py calls round() for each model turn, with OpenAI-shaped messages. Thi
 format, sends that as segments (template markup, where special tokens count, or plain text, where they never do: a document
 cannot start a turn of its own), and turns Gemma's tool calls back into the shape assistant.py already handles.
 """
+import contextlib
 import hashlib
 import json
 import os
@@ -116,6 +117,8 @@ class Local:
         self.saved = _load()
         self.runner = runner_path()
         self._started = False
+        self.idle_stop = IDLE_STOP   # engine/power.py shortens it while saving power
+        self.asking = 0              # questions under way (question()): from starting the model to their last round
 
     # -- what the app shows -----------------------------------------------------------------------------------------------
     def status(self):
@@ -368,11 +371,37 @@ class Local:
 
     def _idle_watch(self):
         while True:
-            time.sleep(min(30, IDLE_STOP / 4))
+            time.sleep(min(30, self.idle_stop / 4))
+            self.stop_if_idle(self.idle_stop)
+
+    @contextlib.contextmanager
+    def question(self):
+        """Held by assistant.chat for one question, from ensure_running to its last round. While any is held the model is in use,
+        also between ensure_running and generate, and between rounds while tools run: Save power and the idle stop wait."""
+        with self.lock:
+            self.asking += 1
+        try:
+            yield self
+        finally:
             with self.lock:
-                idle = self.state == 'ready' and not self.gen_lock.locked() and time.time() - self.last_used > IDLE_STOP
-            if idle:
-                self.stop(f'not used for {IDLE_STOP} s')
+                self.asking -= 1
+                self.last_used = time.time()     # the idle wait counts from the end of the question
+
+    def stop_if_idle(self, after_s):
+        """Stops the model when it is loaded, no question is under way or being answered, and it has not been used for after_s
+        seconds. True if it stopped."""
+        with self.lock:
+            idle = (self.state == 'ready' and not self.asking and not self.gen_lock.locked()
+                    and time.time() - self.last_used >= after_s)
+        if idle:
+            self.stop(f'not used for {after_s} s')
+        return idle
+
+    def save_power(self, idle_s):
+        """engine/power.py: idle_s seconds after each answer the model stops (None: back to IDLE_STOP). Stops it now if it is idle."""
+        self.idle_stop = idle_s or IDLE_STOP
+        if idle_s:
+            self.stop_if_idle(0)
 
     # -- one model turn ---------------------------------------------------------------------------------------------------
     def generate(self, segments, max_tokens, cancelled, on_text):

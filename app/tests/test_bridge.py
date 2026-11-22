@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
+import faulthandler, hashlib, json, os, shutil, socket, sqlite3, statistics, subprocess, sys, tempfile, threading, time, types, unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -1127,6 +1127,844 @@ class NothingGoesOut(unittest.TestCase):
             src = (ROOT / 'app' / name).read_text(encoding='utf-8')
             for word in ('open_in_browser', 'open_external', 'startfile', 'NSWorkspace', 'openURL', "'browser'", 'webbrowser', 'Process.Start', 'ShellExecute'):
                 self.assertNotIn(word, src, name)
+
+
+# A stand-in for lastbook-llm --embed: the same lines on its pipes, and a way to misbehave. Run with this Python.
+FAKE_EMBED = r'''
+import json, math, os, sys, time
+mode, mark = sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else ''
+DIM = 384
+print(f'stand-in runner {os.getpid()} starting', file=sys.stderr, flush=True)
+if mode == 'nostart' or (mode == 'failstart' and not os.path.exists(mark)):
+    if mark:
+        open(mark, 'w').close()
+    print(json.dumps({'ev': 'error', 'code': 'usage', 'msg': 'cannot read /Users/someone/private/model.gguf'}), flush=True)
+    sys.exit(2)
+if mode == 'slowstart':
+    time.sleep(30)
+print(json.dumps({'ev': 'fit', 'status': 'fits'}), flush=True)
+pooling, dim = ('mean', DIM) if mode == 'meanpool' else ('cls', 2 * DIM) if mode == 'widemodel' else ('cls', DIM)
+ready = {'ev': 'ready', 'n_ctx': 2048, 'pooling': pooling, 'dim': dim}
+if mode == 'oldready':        # a build from before the runner said how it pools
+    ready = {'ev': 'ready', 'n_ctx': 512}
+print(json.dumps(ready), flush=True)
+if mode == 'noread':          # alive, but never reads what it is sent
+    time.sleep(60)
+seen = 0
+for line in sys.stdin:
+    req = json.loads(line)
+    if req.get('op') == 'quit':
+        break
+    seen += 1
+    rid, texts = req.get('id'), req.get('texts', [])
+    if any(0xD800 <= ord(c) <= 0xDFFF for t in texts for c in t):   # the real program cannot read these either
+        print(json.dumps({'ev': 'error', 'code': 'bad_request', 'msg': 'not a JSON object'}), flush=True)
+        continue
+    if mode == 'hang' or (mode == 'hangafter' and seen > 1):
+        time.sleep(60)
+    if mode == 'slow':
+        time.sleep(0.6)
+    if mode == 'crashbad' and any('BAD' in t for t in texts):
+        os._exit(1)
+    if mode == 'dieonce' and seen == 2 and not os.path.exists(mark):
+        open(mark, 'w').close()
+        sys.exit(1)
+    if mode == 'cancel':
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'cancel', 'msg': 'stopped'}), flush=True)
+        continue
+    bad = any('BAD' in t for t in texts)
+    if mode == 'reject' or (mode == 'rejectbad' and bad) or (mode == 'rejectonce' and bad and not os.path.exists(mark)):
+        if mark:
+            open(mark, 'w').close()
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'decode', 'msg': 'the model could not read a text'}), flush=True)
+        continue
+    if mode == 'refusebad' and bad:   # a refusal of these texts, with the request's id: the program stays
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'bad_request', 'msg': 'texts are strings'}), flush=True)
+        continue
+    if mode == 'refusenoid':          # the same code without an id is about the program, not this request
+        print(json.dumps({'ev': 'error', 'code': 'bad_request', 'msg': 'not a JSON object'}), flush=True)
+        continue
+    if mode == 'oldencode':      # what a build from before batching said instead
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'encode', 'msg': 'the model could not read a text'}), flush=True)
+        continue
+    if mode == 'badreq':
+        print(json.dumps({'ev': 'error', 'id': rid, 'code': 'bad_request', 'msg': 'texts are strings'}), flush=True)
+        continue
+    n = 2 * DIM if mode == 'wide' or (mode == 'wideafter' and seen > 1) else DIM
+    vecs = [[1 / math.sqrt(n)] * n for _ in texts]
+    if mode == 'short':
+        vecs = vecs[:-1]
+    if mode == 'nan':
+        vecs[0][0] = None
+    if mode == 'wrongid':
+        rid = (rid or 0) + 1000
+    print(json.dumps({'ev': 'embedding', 'id': rid, 'dim': n, 'vectors': vecs, 'n_tokens': [3] * len(texts)}), flush=True)
+'''
+
+
+def fake_runner(mode, *extra):
+    script = TMP / 'fake_embed.py'
+    if not script.exists() or script.read_text(encoding='utf-8') != FAKE_EMBED:   # always this version, never one left from an older run
+        TMP.mkdir(parents=True, exist_ok=True)
+        part = TMP / f'fake_embed.{os.getpid()}.tmp'
+        part.write_text(FAKE_EMBED, encoding='utf-8')
+        os.replace(part, script)
+    emb = retrieval.RunnerEmbedder([sys.executable, '-I', str(script), mode, *map(str, extra)])
+    emb.START_S, emb.BASE_S, emb.PER_TEXT_S, emb.SEARCH_S = 10, 10, 0, 10   # generous: a busy machine must not fail them
+    return emb
+
+
+def a_mark(test):
+    # a file the stand-in leaves behind to remember something across its restarts
+    mark = TMP / f'mark-{os.getpid()}-{time.time_ns()}'
+    test.addCleanup(lambda: mark.unlink(missing_ok=True))
+    return mark
+
+
+def quiet():
+    # the code prints a line on each failure; the tests cause them on purpose
+    import io
+    return mock.patch('sys.stderr', new=io.StringIO())
+
+
+class RunnerEmbed(unittest.TestCase):
+    # retrieval.RunnerEmbedder: the Mac's meaning search through lastbook-llm --embed, against a stand-in program.
+
+    def make(self, mode, *extra):
+        emb = fake_runner(mode, *extra)
+        self.addCleanup(emb.close)
+        return emb
+
+    def test_vectors_come_back_one_per_text_and_the_program_stays(self):
+        emb = self.make('ok')
+        v = emb.embed(['a', 'b', 'c'])
+        self.assertEqual(v.shape, (3, retrieval.DIM))
+        pid = emb.proc.pid
+        self.assertEqual(emb.embed(['d\ud800e']).shape, (1, retrieval.DIM))   # a lone surrogate is replaced, not sent
+        self.assertEqual(emb.proc.pid, pid)
+        self.assertEqual(emb.starts, 1)
+        self.assertEqual(emb.embed([]).shape, (0, retrieval.DIM))   # nothing to ask: the program is not even asked
+
+    def test_the_deadline_ends_with_the_answer(self):
+        emb = self.make('ok')
+        emb.BASE_S = 0.5
+        emb.embed(['a'])
+        time.sleep(1)                     # a timer still running would have killed it by now
+        self.assertIsNone(emb.proc.poll())
+        emb.embed(['b'])
+        self.assertEqual(emb.starts, 1)
+
+    def test_the_wait_grows_with_the_number_of_texts(self):
+        emb = self.make('slow')           # answers after 0.6 s
+        emb.BASE_S, emb.PER_TEXT_S = 0.2, 0.5
+        self.assertEqual(emb.embed(['a', 'b']).shape, (2, retrieval.DIM))   # 0.2 + 2 x 0.5 s is long enough
+
+    def test_what_the_program_says_goes_to_a_log(self):
+        log = DATA / 'derived' / 'logs' / 'embed.log'
+        emb = self.make('ok')
+        emb.embed(['a'])
+        self.assertIn(f'stand-in runner {emb.proc.pid} starting'.encode(), log.read_bytes())
+
+    def test_a_program_that_cannot_start_is_left_alone_for_a_while(self):
+        emb = self.make('nostart')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertIsNone(emb.proc)
+        self.assertTrue(4 < emb.retry_at - time.monotonic() <= 5)   # the first wait is 5 s
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'])
+        self.assertTrue(cm.exception.resting)
+        self.assertLess(time.monotonic() - t0, 1)
+        self.assertEqual(emb.starts, 1)   # the second search did not start it again
+        emb.retry_at = 0                  # once the wait is over, it is tried again
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertEqual(emb.starts, 2)
+        self.assertGreater(emb.retry_at - time.monotonic(), 7)   # and the next wait is longer: 10 s, not 5
+        emb.retry_at, emb.failures = 0, 7
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertLessEqual(emb.retry_at - time.monotonic(), 300)   # never more than 5 minutes
+        self.assertGreater(emb.retry_at - time.monotonic(), 290)
+
+    def test_success_clears_the_count_of_failures(self):
+        emb = self.make('ok')
+        emb.failures = 3
+        emb.embed(['a'])
+        self.assertEqual(emb.failures, 0)
+
+    def test_a_forced_check_counts_no_failure(self):
+        emb = self.make('nostart')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'], force=True)
+        self.assertEqual(emb.failures, 0)
+
+    def test_a_program_that_hangs_is_stopped(self):
+        emb = self.make('hang')
+        emb.BASE_S = 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'])
+        self.assertLess(time.monotonic() - t0, 5)
+        self.assertIn('in time', str(cm.exception))
+        self.assertIsNone(emb.proc)
+
+    def test_a_hang_is_not_waited_out_twice(self):
+        emb = self.make('hangafter')
+        emb.embed(['a'])
+        proc = emb.proc
+        emb.BASE_S = 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'])
+        self.assertLess(time.monotonic() - t0, 5)     # one deadline: no restart and second wait (starts below)
+        self.assertEqual(emb.starts, 1)
+        self.assertEqual(emb.failures, 1)
+        self.assertIsNotNone(proc.poll())             # the hung program was ended, not left behind
+
+    def test_a_search_waits_only_the_search_limit(self):
+        emb = self.make('hangafter')
+        emb.embed(['a'])
+        emb.BASE_S, emb.SEARCH_S = 30, 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'], search=True)
+        self.assertLess(time.monotonic() - t0, 3)
+
+    def test_a_program_that_stops_reading_cannot_block(self):
+        emb = self.make('noread')
+        emb.BASE_S = 1
+        t0 = time.monotonic()
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['x' * 2000] * 100)   # far more than a pipe holds: the write itself would block
+        self.assertLess(time.monotonic() - t0, 5)
+        self.assertIn('in time', str(cm.exception))
+        self.assertEqual(emb.starts, 1)     # a deadline is not a death: no second start
+        self.assertIsNone(emb.proc)
+
+    def test_a_slow_start_is_given_up(self):
+        emb = self.make('slowstart')
+        emb.START_S = 0.5
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertIsNone(emb.proc)
+
+    def test_a_program_that_died_between_searches_is_started_again(self):
+        emb = self.make('ok')
+        emb.embed(['a'])
+        emb.proc.kill()
+        emb.proc.wait()
+        self.assertEqual(emb.embed(['b']).shape, (1, retrieval.DIM))
+        self.assertEqual(emb.starts, 2)
+
+    def test_a_program_that_dies_during_a_request_is_started_once_more(self):
+        emb = self.make('dieonce', a_mark(self))
+        emb.embed(['a'])                                         # the first program answers this one, then dies on the next
+        self.assertEqual(emb.embed(['b']).shape, (1, retrieval.DIM))
+        self.assertEqual(emb.starts, 2)
+        self.assertEqual(emb.failures, 0)
+
+    def test_wrong_vectors_never_come_back(self):
+        for mode in ('wide', 'short', 'nan'):
+            emb = self.make(mode)
+            with self.assertRaises(retrieval.RunnerFailed, msg=mode):
+                emb.embed(['a', 'b'])
+            self.assertIsNone(emb.proc, mode)
+
+    def test_a_wrong_answer_is_not_asked_again(self):
+        emb = self.make('wideafter')
+        emb.embed(['a'])
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'])
+        self.assertEqual(emb.starts, 1)   # only a program that died is started again within the request
+
+    def test_an_answer_to_another_request_is_not_taken(self):
+        emb = self.make('wrongid')
+        emb.BASE_S = 1
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+
+    def test_refused_texts_leave_the_program_running(self):
+        emb = self.make('badreq')
+        emb.failures = 3                      # it answered, so it works: earlier failures no longer count
+        with self.assertRaises(retrieval.TextRejected):
+            emb.embed(['a'])
+        self.assertIsNotNone(emb.proc)
+        self.assertIsNone(emb.proc.poll())
+        self.assertEqual(emb.failures, 0)
+
+    def test_an_error_for_no_request_is_not_a_refusal(self):
+        emb = self.make('refusenoid')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+        self.assertIsNone(emb.proc)
+
+    def test_a_failed_pass_restarts_the_program(self):
+        for mode in ('reject', 'oldencode'):  # decode, or encode from an older build: the program or the machine, not the text
+            emb = self.make(mode)
+            with self.assertRaises(retrieval.RunnerFailed, msg=mode):
+                emb.embed(['a'])
+            self.assertIsNone(emb.proc, mode)
+            self.assertEqual(emb.failures, 1, mode)
+
+    def test_a_model_that_pools_otherwise_is_refused(self):
+        for mode in ('meanpool', 'widemodel'):
+            emb = self.make(mode)
+            with self.assertRaises(retrieval.RunnerFailed, msg=mode) as cm:
+                emb.embed(['a'])
+            self.assertIn('this index needs cls', str(cm.exception))
+            self.assertIsNone(emb.proc, mode)
+
+    def test_an_older_build_that_does_not_say_is_still_used(self):
+        self.assertEqual(self.make('oldready').embed(['a']).shape, (1, retrieval.DIM))
+
+    def test_a_stopped_request_is_not_a_refused_text(self):
+        emb = self.make('cancel')   # what the real program answers when it is told to quit during a request
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])
+
+    def test_closing_during_a_request_ends_it_and_starts_nothing(self):
+        emb = self.make('hang')
+        got = []
+        t = threading.Thread(target=lambda: got.append(self._catch(emb.embed, ['a'])), daemon=True)
+        t.start()
+        self.assertTrue(wait_until(lambda: emb.proc is not None and emb.starts == 1))
+        proc = emb.proc
+        time.sleep(0.3)
+        emb.close()
+        t.join(5)
+        self.assertFalse(t.is_alive())
+        self.assertIsInstance(got[0], retrieval.RunnerFailed)
+        self.assertTrue(got[0].resting)
+        self.assertIsNone(emb.proc)
+        self.assertIsNotNone(proc.poll())
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'])
+        self.assertEqual(emb.starts, 1)
+
+    def test_closing_an_idle_program_ends_it(self):
+        emb = self.make('ok')
+        emb.embed(['a'])
+        proc = emb.proc
+        emb.close()
+        self.assertIsNotNone(proc.poll())
+        self.assertIsNone(emb.proc)
+
+    def test_the_start_deadline_ends_with_the_start(self):
+        emb = self.make('ok')
+        emb.START_S = 1
+        emb.embed(['a'])
+        time.sleep(1.5)                   # a start timer still running would have killed it by now
+        self.assertIsNone(emb.proc.poll())
+        self.assertEqual(emb.starts, 1)
+
+    def test_each_request_has_its_own_deadline(self):
+        mark = a_mark(self)
+        emb = self.make('hang')
+        emb.BASE_S = 0.5
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['a'])                  # this one runs out of time
+        emb.argv[3:] = ['dieonce', str(mark)]
+        emb.retry_at, emb.BASE_S = 0, 10
+        emb.embed(['b'])
+        self.assertEqual(emb.embed(['c']).shape, (1, retrieval.DIM))   # a death, not a timeout: started once more
+        self.assertEqual(emb.starts, 3)
+
+    def test_a_program_this_request_started_is_not_started_twice(self):
+        emb = self.make('crashbad')
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['BAD'])
+        self.assertEqual(emb.starts, 1)
+
+    def test_a_search_is_not_retried_after_a_death(self):
+        emb = self.make('dieonce', a_mark(self))
+        emb.embed(['a'])
+        with self.assertRaises(retrieval.RunnerFailed):
+            emb.embed(['b'], search=True)     # a person is waiting: keyword results now, not a restart
+        self.assertEqual(emb.starts, 1)
+
+    def test_busy_only_stops_searches(self):
+        emb = self.make('ok')
+        emb.busy_until = time.monotonic() + 60
+        self.assertEqual(emb.embed(['a']).shape, (1, retrieval.DIM))   # building the index ignores it
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'], search=True)
+        self.assertTrue(cm.exception.resting)
+
+    def test_an_endless_line_is_not_read_forever(self):
+        emb = self.make('ok')
+        emb.LINE_MAX = 200                    # an answer is far longer: it stands in for an endless one
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            emb.embed(['a'])
+        self.assertIn('too long', str(cm.exception))
+        self.assertIsNone(emb.proc)
+
+    @staticmethod
+    def _catch(fn, *a):
+        try:
+            return fn(*a)
+        except Exception as e:
+            return e
+
+
+class MeaningSearchFails(unittest.TestCase):
+    # When the program for meaning search fails, keyword search and Chat keep working.
+
+    def setUp(self):
+        idx = server.INDEX
+        saved = (idx.emb, idx.mat, idx.active)
+        self.addCleanup(lambda: (setattr(idx, 'emb', saved[0]), setattr(idx, 'mat', saved[1]), setattr(idx, 'active', saved[2]),
+                                 idx.status.pop('search_error', None)))
+        self.keyword_only = assistant.hybrid('boil water', 5)
+        self.assertTrue(self.keyword_only, 'the made-up library should have a keyword hit')
+        idx.mat = retrieval.np.zeros((1, retrieval.DIM), dtype=retrieval.np.float16)   # one passage, so meaning search runs
+        idx.active = retrieval.np.ones(1, dtype=bool)
+        self.idx = idx
+        self.use('nostart')
+
+    def use(self, mode):
+        self.idx.emb = fake_runner(mode)
+        self.addCleanup(self.idx.emb.close)
+        return self.idx.emb
+
+    def test_search_falls_back_to_keyword_results(self):
+        with quiet() as err:
+            self.assertEqual(self.idx.semantic('boil water'), [])
+            self.assertEqual(set(self.idx.status['search_error']), {'at', 'kind'})   # no message, so no folder, reaches a page
+            self.assertEqual(assistant.hybrid('boil water', 5), self.keyword_only)
+        printed = err.getvalue()
+        self.assertEqual(printed.count('semantic search failed'), 1)   # once for a run of failures, not once a search
+        self.assertNotIn('Traceback', printed)                         # the program failing is expected, not a bug
+
+    def test_an_unexpected_error_is_printed_in_full(self):
+        self.idx.emb.embed = mock.Mock(side_effect=ZeroDivisionError('a bug'))
+        with quiet() as err:
+            self.assertEqual(self.idx.semantic('boil water'), [])
+        self.assertIn('Traceback', err.getvalue())
+
+    def test_the_search_page_still_answers_and_says_so(self):
+        b = B.Bridge(MOD, 'stream', OR['stream'], tmpdir=str(TMP))
+        with quiet():
+            r = call(b, 'GET', '/api/retrieve?q=boil+water&k=5', {'X-Lastbook-Key': b.key})
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body)
+        self.assertTrue(d['results'])
+        self.assertIn('search_error', d['semantic'])   # the page then says "Matched by your words"
+        self.assertNotIn(b'/Users/someone', r.body)   # the program's own message names a folder; it never reaches the page
+
+    def test_a_search_does_not_wait_long_for_a_busy_program(self):
+        emb = self.use('ok')
+        emb.SEARCH_S = 0.5
+        with emb.lock:   # as if a long piece of indexing held it
+            t0 = time.monotonic()
+            with quiet():
+                for _ in range(4):   # one question makes several searches: only the first one waits
+                    self.assertEqual(self.idx.semantic('boil water'), [])
+            self.assertLess(time.monotonic() - t0, 1.5)
+        self.assertEqual(emb.starts, 0)
+
+    def test_the_error_is_cleared_when_search_works_again(self):
+        with quiet():
+            self.idx.semantic('boil water')
+        self.assertIn('search_error', self.idx.status)
+        self.use('ok')
+        self.idx.semantic('boil water')
+        self.assertNotIn('search_error', self.idx.status)
+
+
+class IndexCase(unittest.TestCase):
+    # An index in a folder of its own. What the code prints on a failure is kept off the screen: the tests cause them on purpose.
+
+    def setUp(self, **names):
+        self.dir = TMP / f'index-{os.getpid()}-{time.time_ns()}'
+        self.dir.mkdir(parents=True)
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        for p in [mock.patch.object(retrieval, k, v) for k, v in dict(IDX=self.dir, AVAILABLE=True, **names).items()] + [quiet()]:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def open(self):
+        return retrieval.Index(lambda: {'by_id': {}}, lambda r: (0, 0), None)
+
+    def rows(self, sql):
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        try:
+            return con.execute(sql).fetchall()
+        finally:
+            con.close()
+
+
+class IndexThroughRunner(IndexCase):
+    # Building the index through the program. A document that fails (its pass fails, or its texts are refused) is tried
+    # once more after the program has embedded a
+    # check text; if it fails again it is passed over for this pass, with nothing written, so the next pass tries it again.
+    # Three passed over in a row end the pass. A program that fails everything, cannot start or is resting writes nothing.
+
+    def setUp(self):
+        super().setUp(ENGINE='llama', model_in_use=lambda: retrieval.made_by(retrieval.MODEL_ID))   # no model file here
+        self.idx = self.open()
+        self.docs, self.bad = ['d1', 'd2', 'd3'], {'d2'}
+        self.idx.sources = lambda: [(d, 's-' + d, 0, ('fake', None)) for d in self.docs]
+        self.idx.excluded = lambda: set()
+        # d2 has 5 passages, so with batches of 2 its trouble comes after a first batch went through
+        def texts(d, how):   # the last passage of a bad document is the one that fails
+            n = 5 if d == 'd2' else 3
+            return [(1, None, f'{"BAD " if d in self.bad and i == n - 1 else ""}text of {d} {i}') for i in range(n)]
+        self.idx._texts = texts
+
+    def use(self, mode, *extra):
+        self.idx.emb.close()
+        self.idx.emb = fake_runner(mode, *extra)
+        self.addCleanup(self.idx.emb.close)
+        return self.idx.emb
+
+    def nothing_written(self):
+        self.assertEqual(self.rows('SELECT count(*) FROM docstate'), [(0,)])
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])
+        self.assertEqual(self.rows('SELECT count(*) FROM chunk'), [(0,)])
+        self.assertFalse((self.dir / 'vectors.f16').exists())
+
+    def indexed_without_d2(self):
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])   # nothing says d2 is bad: it is only passed over
+        self.assertEqual(self.rows('SELECT doc_id, nchunks FROM docstate ORDER BY doc_id'), [('d1', 3), ('d3', 3)])
+        self.assertEqual(self.rows('SELECT count(*) FROM chunk WHERE active=1'), [(6,)])
+        self.assertEqual((self.dir / 'vectors.f16').stat().st_size, 6 * retrieval.DIM * 2)
+
+    def indexed_all(self):
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])
+        self.assertEqual(self.rows('SELECT doc_id, nchunks FROM docstate ORDER BY doc_id'), [('d1', 3), ('d2', 5), ('d3', 3)])
+        self.assertEqual((self.dir / 'vectors.f16').stat().st_size, 11 * retrieval.DIM * 2)
+
+    def test_a_failing_document_is_passed_over_and_tried_again_next_time(self):
+        self.use('rejectbad')
+        self.assertEqual(self.idx.update(batch=2), 2)
+        self.indexed_without_d2()
+        self.use('ok')                                  # whatever the trouble was, it has gone by the next pass
+        self.assertEqual(self.idx.update(batch=2), 1)   # only d2 is done again
+        self.indexed_all()
+
+    def test_a_document_the_program_dies_on_is_passed_over_in_the_same_pass(self):
+        self.use('crashbad')
+        self.assertEqual(self.idx.update(batch=2), 2)
+        self.indexed_without_d2()
+
+    def test_a_passing_failure_goes_through_at_once(self):
+        self.use('rejectonce', a_mark(self))
+        self.assertEqual(self.idx.update(batch=2), 3)
+        self.indexed_all()
+
+    def test_a_program_that_failed_to_start_once_passes_over_nothing(self):
+        self.use('failstart', a_mark(self))   # its first start fails, its second works
+        self.assertEqual(self.idx.update(batch=2), 3)
+        self.indexed_all()
+
+    def test_three_passed_over_in_a_row_end_the_pass(self):
+        self.docs, self.bad = ['d1', 'd2', 'd3', 'd4', 'd5'], {'d2', 'd3', 'd4'}
+        emb = self.use('rejectbad')
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            self.idx.update(batch=2)
+        self.assertIn('3 documents in a row', str(cm.exception))
+        self.assertEqual(self.rows('SELECT doc_id FROM docstate'), [('d1',)])   # d5 was not reached
+        self.assertEqual(self.rows('SELECT count(*) FROM gaps'), [(0,)])
+        self.bad = {'d3'}                               # the next pass: one bad document no longer ends it
+        self.assertEqual(self.idx.update(batch=2), 3)
+        self.assertEqual(self.rows('SELECT doc_id FROM docstate ORDER BY doc_id'), [('d1',), ('d2',), ('d4',), ('d5',)])
+
+    def test_a_refused_document_is_passed_over_and_the_program_kept(self):
+        emb = self.use('refusebad')
+        self.assertEqual(self.idx.update(batch=2), 2)
+        self.indexed_without_d2()
+        self.assertEqual(emb.starts, 1)                 # a refusal is about the texts: the program was never restarted
+
+    def test_a_program_that_fails_everything_marks_nothing(self):
+        self.use('reject')
+        with self.assertRaises(retrieval.RunnerFailed):
+            self.idx.update(batch=2)
+        self.nothing_written()
+
+    def test_a_program_that_cannot_start_writes_nothing(self):
+        self.use('nostart')
+        for _ in range(3):   # nor on later passes: it is the program, not the documents
+            self.idx.emb.retry_at = 0
+            with self.assertRaises(retrieval.RunnerFailed):
+                self.idx.update(batch=2)
+        self.nothing_written()
+
+    def test_a_resting_program_is_not_even_checked(self):
+        emb = self.use('ok')
+        emb.retry_at = time.monotonic() + 60   # as just after a failure
+        with self.assertRaises(retrieval.RunnerFailed) as cm:
+            self.idx.update(batch=2)
+        self.assertTrue(cm.exception.resting)
+        self.assertEqual(emb.starts, 0)
+        self.nothing_written()
+
+    def test_wrong_vectors_never_reach_the_index(self):
+        self.use('wide')
+        with self.assertRaises(retrieval.RunnerFailed):
+            self.idx.update(batch=2)
+        self.nothing_written()
+
+
+class IndexMadeBy(IndexCase):
+    # The index records what made its vectors (model and settings). With any other, meaning search stays off and nothing is
+    # deleted. An index from before the record is adopted only when three of its passages, embedded again, give back their vectors.
+    real_model_in_use, real_embedder = staticmethod(retrieval.model_in_use), retrieval.Embedder
+
+    class Emb:   # the same text always gives the same vector; another `seed` is another model
+        def __init__(self, seed=0):
+            self.seed, self.texts, self.closed = seed, [], False
+
+        def embed(self, texts, search=False, force=False):
+            self.texts += texts
+            np = retrieval.np
+            out = [np.random.default_rng([self.seed, int(hashlib.sha256(t.encode()).hexdigest()[:8], 16)]).standard_normal(retrieval.DIM) for t in texts]
+            return np.array([v / np.linalg.norm(v) for v in out], dtype=np.float32)
+
+        def close(self):
+            self.closed = True
+
+    def setUp(self):
+        self.emb, self.now = self.Emb(), retrieval.made_by(retrieval.MODEL_ID)
+        super().setUp(ENGINE='onnx', Embedder=lambda: self.emb, model_in_use=self.model)
+
+    def model(self):   # model_in_use(): self.now, or the error that reading the model file gives
+        if isinstance(self.now, Exception):
+            raise self.now
+        return self.now
+
+    def write(self, sql, *args):   # as another process would
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        con.execute(sql, args)
+        con.commit()
+        con.close()
+
+    def record(self):
+        rows = self.rows("SELECT v FROM meta WHERE k='made_by'")
+        return json.loads(rows[0][0]) if rows else None
+
+    def old_index(self, emb=None):
+        """An index as it was before the record: ten passages and their vectors, and no meta table."""
+        texts = [f'passage {i} about boiling water' for i in range(10)]
+        con = sqlite3.connect(self.dir / 'semantic.sqlite')
+        con.executescript('''CREATE TABLE chunk(id INTEGER PRIMARY KEY, doc_id TEXT, page INTEGER, t REAL, text TEXT, active INTEGER DEFAULT 1);
+          CREATE INDEX chunk_doc ON chunk(doc_id);
+          CREATE TABLE docstate(doc_id TEXT PRIMARY KEY, sig TEXT, nchunks INTEGER, at REAL);
+          CREATE TABLE gaps(doc_id TEXT PRIMARY KEY, reason TEXT);''')
+        con.executemany('INSERT INTO chunk(id,doc_id,page,t,text) VALUES (?,?,1,NULL,?)', [(i, 'd', t) for i, t in enumerate(texts, 1)])
+        con.commit()
+        con.close()
+        (emb or self.Emb()).embed(texts).astype(retrieval.np.float16).tofile(self.dir / 'vectors.f16')
+
+    def assert_off(self, why):
+        """Opening the index leaves meaning search off for this reason, and every passage and vector as it was."""
+        before = self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()
+        self.emb.closed = False
+        idx = self.open()
+        self.assertEqual((idx.emb, idx.status['state'], idx.status['chunks'], len(idx.mat), self.emb.closed), (None, 'off', 0, 0, True))
+        self.assertIn(why, idx.status['note'])
+        self.assertEqual(idx.semantic('boil water'), [])
+        self.assertEqual((self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()), before)
+
+    def test_an_index_with_no_passage_yet_takes_the_model_in_use(self):
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), {'model': 'bge-small-en-v1.5', 'dim': 384, 'pooling': 'cls', 'max_tokens': 320, 'passage_prefix': '',
+                                         'query_prefix': 'Represent this sentence for searching relevant passages: '})
+        self.now = retrieval.made_by('sha256:' + '1' * 64)     # e.g. the first start saw a model file that was still being copied
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+
+    def test_another_process_recording_meanwhile(self):
+        # the app and `python retrieval.py` adopt the same older index at once: the same model is fine, another one is not
+        self.old_index()
+        real = retrieval.Index._same_vectors
+
+        def recording(theirs):
+            def meanwhile(idx, db, ids):
+                self.write("INSERT INTO meta VALUES ('made_by', ?)", json.dumps(theirs, sort_keys=True))
+                return real(idx, db, ids)
+            return mock.patch.object(retrieval.Index, '_same_vectors', meanwhile)
+        with recording(self.now):
+            self.assertIs(self.open().emb, self.emb)
+        self.write('DELETE FROM meta')
+        with recording(retrieval.made_by('sha256:' + '2' * 64)):
+            self.assert_off('made with another search model, or with other settings')
+
+    def test_onnxruntime_with_another_vector_size_gives_no_vectors(self):
+        e = self.real_embedder.__new__(self.real_embedder)   # no onnxruntime: a stand-in session that gives 768 numbers
+        e.tok = types.SimpleNamespace(encode_batch=lambda texts: [types.SimpleNamespace(ids=[1, 2], attention_mask=[1, 1])] * len(texts))
+        e.sess = types.SimpleNamespace(run=lambda _, feed: [retrieval.np.ones((len(feed['input_ids']), 2, 768), dtype=retrieval.np.float32)])
+        e.inputs, e.lock = set(), threading.Lock()
+        with self.assertRaises(retrieval.WrongModel):
+            e.embed(['a passage'])
+
+    def test_an_older_index_whose_vectors_come_back_is_adopted(self):
+        self.old_index()
+        idx = self.open()
+        self.assertIs(idx.emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+        self.assertEqual(len(idx.mat), 10)
+        self.assertEqual(self.emb.texts, [f'passage {i} about boiling water' for i in (0, 5, 9)])   # first, middle, last
+        self.emb.texts.clear()
+        self.assertIs(self.open().emb, self.emb)     # from then on the record decides: nothing is embedded again
+        self.assertEqual(self.emb.texts, [])
+
+    def test_another_model_or_other_settings_keep_meaning_search_off(self):
+        self.old_index()
+        self.open()
+        made = self.record()
+        self.emb.texts.clear()
+        for other in (retrieval.made_by('sha256:' + '0' * 64), dict(made, max_tokens=512), dict(made, query_prefix='')):
+            self.now = other
+            self.assert_off('made with another search model, or with other settings')
+        self.assertEqual((self.record(), self.emb.texts), (made, []))     # the record decides: nothing is embedded again
+        self.now = made
+        self.write("UPDATE meta SET v='not json'")
+        self.assert_off('made with another search model, or with other settings')
+
+    def test_passages_no_longer_in_use_do_not_count(self):
+        self.old_index()
+        self.open()
+        self.write('UPDATE chunk SET active=0')
+        self.now = retrieval.made_by('sha256:' + '1' * 64)
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+
+    def test_an_older_index_from_another_model_is_left_alone(self):
+        self.old_index(emb=self.Emb(seed=1))
+        self.assert_off('made with another search model, or with other settings')
+        for answer in ({'return_value': retrieval.np.ones((3, 768), dtype=retrieval.np.float32)},
+                       {'side_effect': retrieval.WrongModel('768 numbers per vector')}):   # another vector size, as both engines say it
+            with mock.patch.object(self.emb, 'embed', **answer):
+                self.assert_off('made with another search model, or with other settings')
+        self.assertIsNone(self.record())
+
+    def test_an_older_index_that_cannot_be_checked_is_checked_at_the_next_start(self):
+        self.old_index()
+        for broken in (OSError('lastbook-llm could not start'), [retrieval.np.full((3, retrieval.DIM), retrieval.np.nan)]):
+            with mock.patch.object(self.emb, 'embed', side_effect=broken):
+                self.assert_off('could not check')
+        self.assertIsNone(self.record())
+        self.assertIs(self.open().emb, self.emb)
+        self.assertEqual(self.record(), self.now)
+
+    def test_an_older_index_from_an_interrupted_run_is_checked_by_the_passages_that_have_vectors(self):
+        self.old_index()
+        with open(self.dir / 'vectors.f16', 'r+b') as f:
+            f.truncate(7 * retrieval.DIM * 2 + 3)      # passages 8 to 10 have no vectors, and part of a row is left
+        self.assertEqual(len(self.open().mat), 7)
+        self.assertEqual(self.emb.texts, [f'passage {i} about boiling water' for i in (0, 3, 6)])
+
+    def test_an_older_index_is_left_alone_when_one_passage_differs(self):
+        # the two forms of bge-small agree to 0.998 or more (#168): 0.995 is the same model, 0.98 is not
+        self.old_index()
+        np, v = retrieval.np, self.Emb().embed(['passage 5 about boiling water'])[0]
+        u = np.roll(v, 1) - (np.roll(v, 1) @ v) * v      # at a right angle to v
+        for cos in (0.98, 0.995):
+            with open(self.dir / 'vectors.f16', 'r+b') as f:
+                f.seek(5 * retrieval.DIM * 2)
+                f.write((cos * v + (1 - cos * cos) ** 0.5 * u / np.linalg.norm(u)).astype(np.float16).tobytes())
+            if cos < 0.99:
+                self.assert_off('made with another search model, or with other settings')
+        self.assertIs(self.open().emb, self.emb)
+
+    def test_a_change_while_lastbook_runs_stops_indexing(self):
+        # checked before each pass and in each document's write: on a Mac lastbook-llm reads the model file again at each of its
+        # starts, and while no passage has a vector, a second process with another model takes the index
+        made, other, top, real = self.now, retrieval.made_by('sha256:' + '3' * 64), self.dir, self.emb.embed
+
+        def another_process():
+            self.now = other
+            self.assertIs(self.open().emb, self.emb)
+            self.now = made
+        new_file, unreadable = lambda: setattr(self, 'now', other), lambda: setattr(self, 'now', OSError('gone'))
+        for during, record in ((False, lambda: self.write("UPDATE meta SET v=?", json.dumps(other, sort_keys=True))), (True, another_process)):
+            for change, make in {'file': new_file, 'record': record, 'unreadable': unreadable}.items():
+                self.dir, self.now = top / f'{during}-{change}', made
+                with self.subTest(during=during, change=change), mock.patch.object(retrieval, 'IDX', self.dir):
+                    if not during:
+                        self.dir.mkdir()
+                        self.old_index()
+                    idx = self.open()
+                    idx.sources = lambda: [(d, 's', 0, None) for d in ('d1', 'd2') if during]
+                    idx._texts = lambda d, how: [(1, None, f'text of {d}')]
+                    if during:
+                        (self.dir / 'vectors.f16').touch()
+                    else:   # a pass would write nothing, but drop passage 11, which has no vector, and cut part of a row
+                        self.write("INSERT INTO chunk(id,doc_id,page,text) VALUES (11,'d',1,'no vector yet')")
+                        with open(self.dir / 'vectors.f16', 'ab') as f:
+                            f.write(b'abc')
+                        make()
+                    before = self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()
+                    with mock.patch.object(self.emb, 'embed', side_effect=lambda texts, **kw: (make(), real(texts))[1]):   # during: as d1 is embedded
+                        self.assertEqual(idx.update(), 0)
+                    self.assertEqual((idx.emb, idx.status['chunks']), (None, 0))
+                    self.assertIn('changed while Lastbook was open', idx.status['note'])
+                    self.assertEqual((self.rows('SELECT * FROM chunk'), (self.dir / 'vectors.f16').read_bytes()), before)
+
+    def test_an_older_index_that_cannot_be_written_keeps_it_off(self):
+        self.old_index()
+        self.rows('PRAGMA journal_mode=WAL')               # as the app leaves every index
+        os.chmod(self.dir / 'semantic.sqlite', 0o444)      # e.g. copied from read-only media
+        self.addCleanup(os.chmod, self.dir / 'semantic.sqlite', 0o644)
+        if os.access(self.dir / 'semantic.sqlite', os.W_OK):
+            self.skipTest('this user can write to read-only files (root)')
+        self.assert_off('could not open or write to the search index')
+
+    def test_an_empty_index_is_looked_at_and_taken_in_one_transaction(self):
+        # no other process may write vectors between the look and the record
+        real, locked = retrieval.Index._with_vectors, []
+
+        def look(idx, db):
+            other = sqlite3.connect(self.dir / 'semantic.sqlite', timeout=0, isolation_level=None)
+            try:
+                other.execute('BEGIN IMMEDIATE')
+                other.execute('ROLLBACK')
+                locked.append(False)
+            except sqlite3.OperationalError:
+                locked.append(True)
+            finally:
+                other.close()
+            return real(idx, db)
+        with mock.patch.object(retrieval.Index, '_with_vectors', look):
+            self.assertIs(self.open().emb, self.emb)
+        self.assertEqual((locked[-1], self.record()), (True, self.now))
+
+    def test_following_another_process_that_writes_for_another_model_turns_it_off(self):
+        idx = self.open()
+        self.write("UPDATE meta SET v=?", json.dumps(retrieval.made_by('sha256:' + '7' * 64), sort_keys=True))   # it took the index while empty
+        with open(self.dir / 'indexer.lock', 'w') as theirs:      # and is in its pass
+            retrieval.lastbook_paths.try_lock(theirs)
+            self.assertEqual(idx.update(), 0)                     # its vectors are not loaded
+        self.assertEqual((idx.emb, idx.status['chunks'], len(idx.mat)), (None, 0, 0))
+        self.assertIn('changed while Lastbook was open', idx.status['note'])
+
+    def test_a_model_file_that_cannot_be_read_keeps_it_off(self):
+        self.old_index()
+        self.now = PermissionError('denied')
+        self.assert_off('could not read the search model file')
+
+    def test_the_model_file_is_known_by_its_fingerprint(self):
+        self.assertEqual(set(retrieval.KNOWN_MODELS.values()), {retrieval.MODEL_ID})   # the onnxruntime and llama.cpp forms of one model
+        model = self.dir / 'models'
+        model.mkdir()
+        (model / 'model.onnx').write_bytes(b'a model file')
+        sha = hashlib.sha256(b'a model file').hexdigest()
+        with mock.patch.object(retrieval, 'MODEL', model), mock.patch.dict(retrieval.MODEL_SHA, clear=True):
+            self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + sha)      # unknown: named by itself
+            with mock.patch.dict(retrieval.KNOWN_MODELS, {sha: retrieval.MODEL_ID}):
+                self.assertEqual(self.real_model_in_use(), retrieval.made_by(retrieval.MODEL_ID))
+                with mock.patch.object(retrieval.hashlib, 'file_digest', side_effect=AssertionError('read again')):
+                    self.real_model_in_use()                                           # read once while size and time stay
+            (model / 'm.gguf').write_bytes(b'the other form')
+            with mock.patch.object(retrieval, 'ENGINE', 'llama'), mock.patch.object(retrieval, 'GGUF', model / 'm.gguf'):
+                self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + hashlib.sha256(b'the other form').hexdigest())
+            (model / 'model.onnx').write_bytes(b'a model filf')                             # same size, written later
+            os.utime(model / 'model.onnx', ns=(time.time_ns() + 2 * 10**9,) * 2)
+            self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + hashlib.sha256(b'a model filf').hexdigest())
+            (model / 'model.onnx').write_bytes(b'another model file')
+            self.assertEqual(self.real_model_in_use()['model'], 'sha256:' + hashlib.sha256(b'another model file').hexdigest())
 
 
 class StreamTests(Both, unittest.TestCase):

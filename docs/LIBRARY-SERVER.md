@@ -62,6 +62,8 @@ Keyword search = the library's own FTS5/BM25 `search.sqlite` (read only). Meanin
 BAAI bge-small-en-v1.5 (ONNX, from the official BAAI Hugging Face repo) run locally with onnxruntime.
 Results are fused with reciprocal-rank fusion, lightly weighted by source type, with an exact
 equipment-model boost. Index files: `derived/index/semantic.sqlite` + `vectors.f16` (append-only).
+`semantic.sqlite` records the model and settings that made the vectors; with any other, meaning-based search stays off and
+nothing is deleted (delete `derived/index` to build it again).
 It updates incrementally: the server re-checks the catalog every 5 minutes and embeds only new or
 changed documents and transcripts (single writer, file lock). Build/refresh by hand:
 

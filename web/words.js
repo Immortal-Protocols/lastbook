@@ -105,7 +105,8 @@
       const hay = [t.title, t.short, ...(t.keywords || [])].join(' '), text = c => c.label + ' ' + (c.hint || '');
       m = { hay: matcher(hay), hayForm: formMatcher(hay),
             choices: shown.map(c => ({ c, has: matcher(text(c)), hasForm: formMatcher(text(c)) })),
-            urgent: shown.filter(c => c.urgent).map(c => ({ c, phrases: c.urgent.map(splitWords).filter(p => p.length) })),
+            urgent: shown.filter(c => c.urgent || c.weakUrgent).map(c => ({ c, phrases: wordLists(c.urgent),
+              weak: wordLists(c.weakUrgent), own: new Set(splitWords(text(c))) })),
             phrases: shown.filter(c => c.phrases || c.weak).map(c => ({ c,
               phrases: wordLists(c.phrases), weak: wordLists(c.weak), who: wordLists(c.who),
               own: new Set(splitWords(text(c))),
@@ -171,10 +172,43 @@
     const hit = [...strong.found, ...loose.found, ...near.found], kept = strong.at.size ? hit : near.found;
     return { hit, also: words.filter(w => !kept.includes(w) && !plain(w)) };
   }
+  // Words that start an object after "pass out" ("pass out the cots", "passing out to neighbors"), though they are
+  // stop words or everyday words; and words that never do, though they are neither ("passing out after giving blood").
+  const OBJECT_START = new Set('a an the this that these those them some any all each every both extra our their your its to for of'.split(' '));
+  const NO_OBJECT = new Set('after before during until since because'.split(' '));
+  // Does the search name one of a choice's urgent phrases? An "urgent" phrase always counts (true). A "weakUrgent"
+  // phrase also means something else ("pass out food"), so it counts only when no object can follow it: it ends the
+  // search, or the next word is everyday (PLAIN or a stop word, but not one of OBJECT_START), one of NO_OBJECT, or a
+  // number with a unit ("passing out", "passing out when i stand", "keeps passing out what do i do", "passing out
+  // 5mins"). Followed by anything else ("pass out food", "pass out 50 meals"), it returns 'maybe', and rankTopics
+  // lists the choice second instead of first.
+  function urgentNamed(all, { phrases, weak }, stop) {
+    if (phrases.some(p => names(all, p))) return true;
+    // A number is an amount ("pass out 50 meals") unless it has a unit, in the word or right after it ("5 minutes ago").
+    const time = i => NUMBER.test(all[i]) && (!/^\d+$/.test(all[i]) || NUMBER.test(all[i] + (all[i + 1] || '')));
+    const none = i => i >= all.length || NO_OBJECT.has(all[i]) || time(i) ||
+      ((PLAIN.has(all[i]) || !!(stop && stop.has(all[i]))) && !OBJECT_START.has(all[i]));
+    const ends = weak.flatMap(p => all.map((_, i) => i).filter(i => p.every((w, j) => all[i + j] === w)).map(i => i + p.length));
+    return ends.some(none) || (ends.length ? 'maybe' : false);
+  }
+  // Words of the urgent phrases a search names that their choice's own label and hint don't use, where they appear
+  // nowhere else in the search: "out" in "passing out" is not the "out" of a power outage. They pick the choice; they
+  // don't score. "breathing" in "not breathing" is the choice's own word and scores as before.
+  function urgentWords(all, topics) {
+    const at = new Set();
+    for (const t of topics) {
+      for (const x of topicMatchers(t).urgent) for (const p of [...x.phrases, ...x.weak])
+        for (let i = 0; i + p.length <= all.length; i++)
+          if (p.every((w, j) => all[i + j] === w)) p.forEach((w, j) => { if (!x.own.has(w)) at.add(i + j) });
+    }
+    return new Set(all.filter((w, i) => at.has(i) && all.every((v, k) => v !== w || at.has(k))));
+  }
   function rankTopics(q, topics, stop) {
-    const words = queryWords(q, stop);
-    if (!words.length || !topics) return [];
-    const all = splitWords(q);
+    if (!topics) return [];
+    const all = splitWords(q), every = queryWords(q, stop);
+    if (!every.length) return [];
+    const named = urgentWords(all, topics);
+    let words = every.filter(w => !named.has(w));
     const score = byForm => {
       const out = [], also = new Set(), found = new Map(), phrased = new Set();
       for (const t of topics) {
@@ -194,14 +228,23 @@
           if (f.length > bs || (ws.length && f.length === bs)) { bs = f.length; best = c; bf = f }
         }
         found.set(t, bf);
-        const u = m.urgent.find(x => x.phrases.some(p => names(all, p)));
+        const said = m.urgent.map(x => [x, urgentNamed(all, x, stop)]);
+        const u = said.find(([, v]) => v === true)?.[0], maybe = !u && said.find(([, v]) => v === 'maybe')?.[0];
         if (u) best = u.c;
-        if (s || bs || u) out.push({ t, c: best, s: s + bs * 1.5, u: !!u });   // a named phrase counts even if no single word does
+        // a named phrase counts even if no single word does
+        if (s || bs || u || maybe) out.push({ t, c: best, s: s + bs * 1.5, u: !!u, maybe: maybe && maybe.c });
       }
       return { out, also, found, phrased };
     };
+    // A search that finds no guide by its words is tried again by word form ("tourniquets"). If it still finds none and
+    // names a weak urgent phrase that may mean something else ("pass out rice"), it is ranked with the phrase's words,
+    // as without the field, and the urgent choice is listed second.
     let { out, also, found, phrased } = score(false);
-    if (!out.length) ({ out, also, found, phrased } = score(true));
+    if (!out.some(o => o.s)) ({ out, also, found, phrased } = score(true));
+    if (!out.some(o => o.s) && out.some(o => o.maybe) && words.length < every.length) {
+      words = every;
+      ({ out, also, found, phrased } = score(false));
+    }
     out.sort((a, b) => phrased.has(b.t) - phrased.has(a.t) || b.s - a.s);
     const kept = o => phrased.has(out[0]?.t) && o !== out[0] && !o.u && found.get(o.t).some(w => also.has(w));
     const shown = [out[0], ...out.filter(kept), ...out.filter(o => o !== out[0] && !kept(o) && o.s >= out[0].s * 0.6)]
@@ -209,7 +252,15 @@
     // A guide whose urgent phrase the search names comes first, even below the cut ("unconscious in the flood water").
     // Without one, the list is exactly as before.
     const urgent = out.filter(o => o.u);
-    return [...urgent, ...shown.filter(o => !o.u)].slice(0, 3).map(({ t, c, s }) => ({ t, c, s }));
+    let list = [...urgent, ...shown.filter(o => !o.u)];
+    // A weak urgent phrase that may mean something else ("pass out food") doesn't put its choice first, but the choice
+    // is always listed, second at the latest. When its guide comes first anyway with another choice its words found
+    // ("passing out chest pain": Sudden illness), the urgent choice follows it as a row of its own.
+    const maybe = out.find(o => o.maybe), row = maybe && { ...maybe, c: maybe.maybe };
+    if (maybe && list[0] !== maybe) list = [list[0], row, ...list.slice(1).filter(o => o !== maybe)];
+    else if (maybe && !maybe.c) list = [row, ...list.slice(1)];
+    else if (maybe && maybe.c !== maybe.maybe) list = [list[0], row, ...list.slice(1)];
+    return list.slice(0, 3).map(({ t, c, s }) => ({ t, c, s }));
   }
 
   root.SearchWords = Object.freeze({ fold, splitWords, queryWords, matcher, rankTopics, hasSegmenter: () => !!segmenter() });

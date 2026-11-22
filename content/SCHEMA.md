@@ -25,6 +25,7 @@ automatically from `catalog.json` — do not copy them into the topic file.
       "label": "Tap water is off or might be unsafe",
       "hint": "Boil-water notice, earthquake, flood, broken main",
       "urgent": ["not breathing"],     // optional: a search that names one of these phrases shows this guide and choice first
+      "weakUrgent": ["pass out"],      // optional: like urgent when only everyday words follow; otherwise listed second
       "phrases": ["in labor"],         // optional: a search that names one of these phrases counts its words for this choice
       "context": ["minutes"],          // optional, with phrases: other words a search may hold for a phrase to count
       "weak": ["water broke"],         // optional: like phrases, but never next to alongside words
@@ -69,6 +70,22 @@ Rules
   pass the cut follow in their usual order, at most three rows in all. A search that names no `urgent` phrase is ranked
   exactly as without the field. Each phrase is matched as whole words in order, so "not breathing" does not catch
   "trouble breathing".
+- `weakUrgent` is for an urgent phrase that also means something else: "pass out" is fainting, or handing out food.
+  It counts like `urgent` when no object can follow it: it ends the search, or the next word is an everyday word (the
+  search's stop words and `PLAIN` in `web/words.js`, except `OBJECT_START`: a, an, the, this, that, these, those,
+  them, some, any, all, each, every, both, extra, our, their, your, its, to, for, of), "after", "before", "during",
+  "until", "since", "because" (`NO_OBJECT`), or a number with a unit ("passing out", "passing out when i stand", "she
+  passes out during contractions", "passing out 5 minutes ago"). With anything else
+  next ("pass out food", "pass out 50 meals", "passing out the blankets"), the search is ranked as usual and the
+  choice is listed second, after whatever comes first; when its own guide comes first with another choice ("passing
+  out chest pain"), the choice is a second row of that guide. A search that finds nothing else ("pass out ballots") is
+  ranked as without the field, with the choice second.
+  The words of an urgent or weak urgent phrase that its choice's label and hint don't use ("out", "pass") don't score,
+  so "out" does not find the power-outage guide. Put a phrase in `weakUrgent` when its other meaning takes an object,
+  and in `urgent` when it is mostly typed as a run-on where any word can follow ("passed out phone dead"); "we passed
+  out flyers" then also shows first aid first. Searches that hand out without naming the object ("pass out at the
+  shelter", "what to pass out") show it first too. The tests check every weak phrase alone, with everyday words, and
+  next to each life threat.
 - Favour fewer, better items: 1–4 readings per choice, 3–8 in prepare, 4–10 in learn.
 - `phrases` is for a wording whose single words point somewhere else ("my water broke" is labor, not tap water). A
   phrase counts only in context: the search names it as whole words in order, names no `unless` entry ("our water",

@@ -136,7 +136,7 @@ def promote_emergency_first_aid(out, q, k, cat):
     emergency = S.emergency_fts_expr(q)
     if emergency and k > 0:
         matched_anchors = [rx for rx, _ in S.EMERGENCY_ANCHORS
-                           if re.search(rx, re.sub(r'\\bdrown(?:s|ed|ing)?\\s+out\\b', '', q, flags=re.I), re.I)]
+                           if re.search(rx, re.sub(r'\bdrown(?:s|ed|ing)?\s+out\b', '', q, flags=re.I), re.I)]
         def first_aid_candidate(item):
             d, _, _ = item[1]
             r = cat['by_id'][d]

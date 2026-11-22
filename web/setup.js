@@ -71,7 +71,7 @@
   /* ------------------------------------------------------------ state */
   let S = null;           // GET state
   let view = 'choose';
-  let choice = { pack: null, ai: false, map: null, country: null };   // map: the selected state or region id; country: its country
+  let choice = { pack: null, ai: false, map: null, country: null, model: null };   // map: the selected state or region id; country: its country
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
@@ -80,8 +80,19 @@
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something; {sure}: this page saw it from the start
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
-  const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
+  // The model that matters here: the one this library has, else the one setup chose for this computer (the best that fits), else the first offered.
+  const model = () => { const ms = (S.manifest && S.manifest.models) || [], c = cur(), want = (c && c.model) || choice.model || (S.hardware && S.hardware.ai && S.hardware.ai.model);
+    return ms.find(x => x.id === want) || ms[0] || null };
   const cur = () => S.current || null;
+  /* Every model that fits this computer (setup's ai_fit options, best first): the person may pick a smaller, faster one. */
+  const fitting = () => (((S.hardware || {}).ai || {}).options || []).filter(o => o.fits);
+  function modelPicker(has) {
+    const fits = fitting(), m = model();
+    if (has || fits.length < 2 || !m) return '';
+    return `<div class="s-modelpick"><label class="s-maplabel" for="modelSel">Model</label>
+      <select id="modelSel" class="s-select">${fits.map(o => `<option value="${esc(o.model)}"${o.model === m.id ? ' selected' : ''}>${esc(o.title)}${o.recommended ? ' (recommended)' : ''} — ${size(o.size)} download, needs about ${size(o.needs_bytes)} of memory</option>`).join('')}</select>
+      <p class="s-hint">The recommended model leaves memory for the rest of this computer. Larger ones answer better but are slower; smaller ones are faster.</p></div>`;
+  }
   const packById = id => packs().find(p => p.id === id);
   function packNeedsInstall(pack) {
     if (!pack) return false;
@@ -229,9 +240,9 @@
       const has = c && c.model;
       ai = aiFits() || has
         ? `<label class="s-opt s-ai"><input type="checkbox" id="aiBox"${choice.ai || has ? ' checked' : ''}${has ? ' disabled' : ''}>
-            <span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b>${has ? '<span class="s-badge here">Installed</span>' : (S.recommend || {}).ai && !c ? '<span class="s-badge rec">Suggested</span>' : '<span class="s-badge">Optional</span>'}</span>
+            <span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b> <span class="muted">${esc(m.title)}</span>${has ? '<span class="s-badge here">Installed</span>' : (S.recommend || {}).ai && !c ? '<span class="s-badge rec">Suggested</span>' : '<span class="s-badge">Optional</span>'}</span>
             <small>Answers questions from the library, in plain words. Works offline.</small>
-            <span class="s-sizes">${has ? 'On this computer' : foundFor('model') ? '<span>Already downloaded</span>' : `<span>About ${size(m.size)} download</span>`}</span></span></label>`
+            <span class="s-sizes">${has ? 'On this computer' : foundFor('model') ? '<span>Already downloaded</span>' : `<span>About ${size(m.size)} download</span>`}</span></span></label>${modelPicker(has)}`
         : `<div class="s-opt s-ai off" role="group" aria-label="Local AI"><span class="s-opt-in"><span class="s-opt-h"><b>Local AI</b><span class="s-badge later">Not for this computer</span></span>
             <small>${esc((S.hardware.ai && S.hardware.ai.why) || 'This computer does not have enough memory for it.')}</small></span></div>`;
     }
@@ -258,6 +269,7 @@
       <p class="s-note" id="haveNote" hidden></p>`;
     main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { choice.pack = r.value; shortfall = null; mapSection(); summary() });
     const box = $('#aiBox'); if (box && !box.disabled) box.onchange = () => { choice.ai = box.checked; shortfall = null; summary() };
+    const ms = $('#modelSel'); if (ms) ms.onchange = e => { choice.model = e.target.value; choice.ai = true; shortfall = null; chooseView() };
     main.querySelectorAll('[data-use]').forEach(b => b.onclick = () => useFile((S.found || [])[+b.dataset.use].path, b));
     $('#start').onclick = start;
     if ($('#toManage')) $('#toManage').onclick = () => go('manage');
@@ -362,7 +374,7 @@
   async function start() {
     if (mapMissing()) { $('#mapSel')?.focus(); return }
     const b = $('#start'); b.disabled = true;
-    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
+    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, model: choice.ai && model() ? model().id : null, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
     if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || 'Setup could not start.'; return }
     S.job = r; go('job'); poll();
@@ -379,7 +391,7 @@
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
-        ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
+        ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? esc(m.title) + ' · on this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
           return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : `None yet. Add one for your ${area()}.`}</small></span>

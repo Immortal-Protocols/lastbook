@@ -47,9 +47,10 @@ describe, install and publish regions is still being worked out, and this gives 
 The build machine needs Python 3.11 or later and pyosmium. Nothing else is installed, and the tool downloads nothing.
 
 ```bash
-# 1. The source: Geofabrik's Thailand extract (OpenStreetMap, ODbL 1.0). About 330 MB.
-curl -LO https://download.geofabrik.de/asia/thailand-latest.osm.pbf
-curl -LO https://download.geofabrik.de/asia/thailand-latest.osm.pbf.md5 && md5sum -c thailand-latest.osm.pbf.md5
+# 1. The source: Geofabrik's Thailand extract of 17 November 2026 (OpenStreetMap, ODbL 1.0), 330,447,194 bytes.
+#    Save it under the name the build used: the tool writes the file name into the map's meta table.
+curl -L -o thailand-latest.osm.pbf https://download.geofabrik.de/asia/thailand/thailand-261117.osm.pbf
+sha256sum thailand-latest.osm.pbf     # see "Reproducing this build" for the two hashes this can give
 
 # 2. A build environment with pyosmium.
 python3 -m venv derived/buildenv && derived/buildenv/bin/pip install osmium
@@ -78,6 +79,33 @@ python3 server.py --data /path/to/ChonBuriData --port 8890
 # then open the address it prints, choose Map, and go to:  #/map?lat=12.9276&lon=100.8771&z=14   (Pattaya)
 # the province:  #/map?lat=13.05&lon=101.15&z=9.2
 ```
+
+## Reproducing this build
+
+**The tool.** `tools/build_region_map.py` and `tools/check_region_map.py` from #80 at commit
+[`a453274`](https://github.com/Immortal-Protocols/lastbook/commit/a453274353b2816b4ccb0114310024ea54c970b2), #80's head
+when this was checked (22 November 2026). The checks load `server.py` from the same commit.
+
+| File at `a453274` | SHA-256 |
+|---|---|
+| `tools/build_region_map.py` | `552d6745a177052e16e7ed67adc0333fa22fbbd7e956bfde92fc8ef86924ecac` |
+| `tools/check_region_map.py` | `7117cb462930fb17567290cc63d3a15dca996767ab2f5fed17f4ddf29dfd908d` |
+| `tools/test_build_region_map.py` | `9968a5481e84201264f588b6eee70cfd130d13ffd3a8f14a8ff280df40e05c0b` |
+
+**The input.** Geofabrik's Thailand extract of 17 November 2026, downloaded on 18 November as `thailand-latest.osm.pbf`:
+330,447,194 bytes, OpenStreetMap data up to 2026-11-17T21:24:30Z, replication sequence 4955.
+
+| | SHA-256 | MD5 |
+|---|---|---|
+| The file this map was built from | `6a2908238debf96dd36e5c66bbaff19da7ab1f77b08bc8e106fd78b9fa3a6759` | `de5d72d732c387d2edda85ab571230bb` |
+| The dated file served today, `https://download.geofabrik.de/asia/thailand/thailand-261117.osm.pbf` | `bee5a964008e20579c55e25eef732fe99cc4022040e6f931e83bf32d53f0f406` | `e890288cabbef296f4197139726a78b4` |
+
+**The original bytes can no longer be downloaded.** Geofabrik has since moved its dated files into a folder per country,
+and the file served today differs from the original in 3 bytes, all in the file header: the replication URL changed from
+`https://download.geofabrik.de/asia/thailand-updates` to `https://download.geofabrik.de/asia/thailand/updates`. Size,
+replication timestamp and sequence are the same, and every OpenStreetMap data block is byte for byte the same (`cmp -l`
+lists only those 3 bytes). This map was not rebuilt from today's file. `TH-83`, built from the same input with the same
+tool, was, and gave the same SHA-256 for all five of its files. How long Geofabrik keeps dated files was not checked.
 
 ## The build this was checked with
 

@@ -147,6 +147,16 @@ useful words inside the first 2,000 characters for 259 of the 622 articles that 
 Code: `engine/typos.py`. Entry points `correct(q)` (memoised, 2,000 entries), `correct_with(q, words)`, `fix_word`,
 `split_word`, `body_fix`. Switches: `LASTBOOK_TYPO_FIX=0` (all), `LASTBOOK_TYPO_SPLIT=0`, `LASTBOOK_TYPO_ENGLISH=0`,
 `LASTBOOK_BODY_FIX=0`. Called first in `assistant.hybrid`, `server.query_groups` and `assistant.is_danger`.
+`/api/find` and `/api/retrieve` add `corrected` (what was searched) when it differs from the question.
+
+In pull request 3, `body_fix` and `LASTBOOK_BODY_FIX` are not there yet: they need the body words of
+`engine/confidence.py` and come with it in pull request 5. `assistant.is_danger` comes in pull request 7.
+
+**Word forms.** The corrector does not change word endings: an English word is never changed, so "tourniquets",
+"fainting" and "choked" are searched as typed. The library search's own form rule is older than this module: a word of
+5+ letters ending in -s is also searched without it (`server.query_groups`). The guide search (`web/words.js`, #287)
+has a wider rule (-s, -es, -ies, -ed, -ing, with a dropped e or a doubled letter undone), used only when a guide search
+finds nothing. The two searches are separate: the corrector runs on the server, the guide search in the page.
 
 **The library's words** (`Words.from_db`, read once per search database, kept until its size or time changes):
 

@@ -1210,6 +1210,40 @@ class CatalogWrite(unittest.TestCase):
         self.assertEqual((root / 'catalog.json').read_text(encoding='utf-8'), old)
 
 
+class TypoCorrection(unittest.TestCase):
+    """engine/typos.py in the searches; app/tests/test_typos.py covers its rules."""
+
+    def test_misspellings_put_right_for_both_searches(self):
+        """engine/typos.py runs at the top of query_groups (Guides search and the assistant's keyword search) and of
+        assistant.hybrid (meaning-based search), and /api/find and /api/retrieve say what was searched. The made-up library
+        is too small to correct anything by itself, so a vocabulary is given."""
+        from engine import typos
+        real = typos.words_for
+        typos.words_for = lambda path=None: typos.Words({'boil': 600, 'water': 900}, {'boil': 40, 'water': 300})
+        typos._state['memo'] = {}
+        try:
+            self.assertEqual(server.query_groups('how to boill watter')[0], ['boil', 'water'])
+            b = B.Bridge(MOD, 'buffer', OR['buffer'], tmpdir=str(TMP), log=lambda *a: None)
+            found = json.loads(call(b, 'GET', '/api/find?q=boill%20watter%20typo').body)
+            self.assertEqual((found['q'], found['corrected']), ('boill watter typo', 'boil water typo'))
+            got = json.loads(call(b, 'GET', '/api/retrieve?q=boill%20watter').body)
+            self.assertEqual(got['corrected'], 'boil water')
+            self.assertNotIn('corrected', json.loads(call(b, 'GET', '/api/retrieve?q=boil%20water').body))
+            os.environ['LASTBOOK_TYPO_FIX'] = '0'
+            self.assertEqual(server.query_groups('boill')[0], ['boill'])
+        finally:
+            os.environ.pop('LASTBOOK_TYPO_FIX', None)
+            typos.words_for = real
+            typos._state['memo'] = {}
+
+    def test_pronoun_contractions_are_not_searched(self):
+        # "i'm", "he's", "there's" say nothing to search for; the negations stay
+        for q, want in [("i'm bleeding", ['bleeding']), ("he's not breathing and there's blood", ['breathing', 'blood']),
+                        ("what's a normal heart rate", ['normal', 'heart', 'rate'])]:
+            self.assertEqual(server.query_groups(q)[0], want, q)
+        self.assertIn("hasn't", server.query_groups("baby hasn't moved")[0])
+
+
 class NothingGoesOut(unittest.TestCase):
     """The shells cannot run here on both systems, so what must be gone from them is checked in their source."""
 

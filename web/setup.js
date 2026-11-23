@@ -522,8 +522,8 @@
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       <div class="s-have">
-        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? tr('setup.updatedEdition', { detail: '' }, 'Updated edition available · {detail}') : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
-          ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
+        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} ${tr('library.itemTypeLibrary', null, 'library')}</b><small>${libraryUpdate ? tr('setup.updatedEdition', { detail: '' }, 'Updated edition available · {detail}') : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
+          ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : `<span class="s-badge here">${tr('library.largest', null, 'The largest')}</span>`}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>${tr('setup.localAi', null, 'Local AI')}</b><small>${c.model ? tr('setup.onThisComputerSize', { detail: size(m.size) }, 'On this computer · {detail}') : aiFits() ? tr('setup.notInstalledAbout', { size: size(m.size) }, 'Not installed · about {size}') : esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notForComputer', null, 'Not for this computer.'))}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
@@ -535,12 +535,9 @@
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small data-i18n="setup.copyIntro">Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut" data-i18n="setup.copyToDrive">Copy to a drive…</button></div></div>
-      <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}Check and repair</button>` : ''}
-        <button class="s-link" id="otherLib">${ico('folder')}Open another library folder</button></div>
-      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>
-      ${U && U.supported ? `<h2>App updates</h2>${updatesBox()}` : ''}`;
-    wireUpdates();
-    cloudPoll(c);
+      <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}${tr('setup.checkRepair', null, 'Check and repair')}</button>` : ''}
+        <button class="s-link" id="otherLib">${ico('folder')}${tr('setup.openAnotherLibraryFolder', null, 'Open another library folder')}</button></div>
+      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };

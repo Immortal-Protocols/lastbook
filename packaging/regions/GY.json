@@ -12,7 +12,7 @@
   "checked": "2026-11-16",
   "method": "Shapefile header of guy_admbnd_adm0_2021 (WGS 84). regions.box() adds the 0.15 degree margin the US state maps use."
  },
- "includes": "Streets, buildings, terrain, land cover, water, help points and postcode areas for Guyana. Address search is not included: there is no open list of addresses for Guyana yet, and the postcode directory has no coordinates.",
+ "includes": "Streets, buildings, terrain, land cover, water, help points, place names, postcode areas and the house addresses mapped in OpenStreetMap (about 1,200, mostly in Georgetown, Rosignol and Belle West) for Guyana. Address search covers only those: there is no complete open list of addresses for Guyana yet.",
  "builder": "tools/build_region_guyana.py",
  "sources": {
   "streets": [
@@ -97,6 +97,23 @@
     "attribution": "Administrative regions: OCHA, Guyana COD-AB (source: DEVInfo LAC project), CC BY-IGO."
    },
    {
+    "file": "places.sqlite",
+    "dataset": "GeoNames GY.zip, populated places (feature class P) that OpenStreetMap lacks, e.g. Georgetown neighbourhoods (PPLX)",
+    "publisher": "GeoNames",
+    "url": "https://download.geonames.org/export/dump/",
+    "licence": "CC BY 4.0",
+    "attribution": "Place names: GeoNames (geonames.org), CC BY 4.0."
+   },
+   {
+    "file": "places.sqlite",
+    "dataset": "GuyNode Guyana Place Name Registry: its 'Gazetteer' and 'GuyNode POI seed' rows (packaging/regions/GY-guynode-places.csv, taken 2026-11-23), only where OpenStreetMap and GeoNames have no place of that name within 5 km",
+    "publisher": "GuyNode",
+    "url": "https://guynode.com/places.html",
+    "licence": "No known licence",
+    "note": "guynode.com states no licence for the registry; its data policy offers GuyNode's own layers 'for educational and research use'. Positions are rounded to the nearest minute (about 1.8 km). Kept in its own file so it can be dropped.",
+    "attribution": "Place names: GuyNode Guyana Place Name Registry (guynode.com), no known licence."
+   },
+   {
     "file": "places.sqlite (kind 'postcode')",
     "dataset": "Guyana postcode directory (region, sub-region, area, street, post office, 7-digit postcode), copied to packaging/regions/GY-postcodes.csv on 2026-11-23: 2,201 rows, 227 postcodes",
     "publisher": "Guyana Post Office Corporation (GPOC)",
@@ -105,6 +122,17 @@
     "attribution": "Postcodes: Guyana Post Office Corporation, https://guypost.gy/search-postcode/.",
     "note": "Not open data: this is government-provided information published by the Guyana Post Office Corporation, with no licence or reuse terms on guypost.gy (footer: \"Guyana Post Office Corporation © 2020\"). It is kept in its own file and rows (source 'Guyana Post Office Corporation') so it can be dropped if reuse is not allowed.",
     "method": "The directory has no coordinates. Each area and postcode is put at an OpenStreetMap place with the area's name within 25 km of its post office, else at the post office (an OSM post office or a place with the office's name). Areas whose office and name can't be found are left out."
+   }
+  ],
+  "addresses": [
+   {
+    "file": "addresses/GY.sqlite",
+    "dataset": "OpenStreetMap house addresses (addr:housenumber and addr:street), Geofabrik Guyana full extract (guyana-latest.osm.pbf)",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://download.geofabrik.de/south-america/guyana.html",
+    "licence": "ODbL 1.0",
+    "attribution": "© OpenStreetMap contributors. Data available under the Open Database License (ODbL).",
+    "method": "Every OSM node or way with addr:housenumber and addr:street, written in tools/build_addresses.py's addr table (state 'GY'). An address without addr:city takes the nearest town, village or neighbourhood within 5 km."
    }
   ]
  },
@@ -115,11 +143,15 @@
   "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0).",
   "Building footprints © Microsoft, Global ML Building Footprints, under the Community Data License Agreement - Permissive 2.0.",
   "Administrative regions: OCHA, Guyana COD-AB (source: DEVInfo LAC project), CC BY-IGO.",
+  "Place names: GeoNames (geonames.org), CC BY 4.0.",
+  "Place names: GuyNode Guyana Place Name Registry (guynode.com), no known licence.",
   "Postcodes: Guyana Post Office Corporation, https://guypost.gy/search-postcode/ (government-provided, not openly licensed)."
  ],
  "address": {
-  "search": false,
+  "search": true,
   "postcode": "Guyana has 7-digit postcodes (region, locality, district, post office, sub-locality; Guyana Post Office Corporation and the UPU addressing sheet of August 2025). GPOC's directory is included as places (kind 'postcode', e.g. 'Danielstown 2210201'), found by area name or code and placed at the area or its post office. It is government-provided, not open data: see sources.places.",
-  "postcode_note": "Not open data: this is government-provided information published by the Guyana Post Office Corporation, with no licence or reuse terms on guypost.gy (footer: \"Guyana Post Office Corporation © 2020\"). It is kept in its own file and rows (source 'Guyana Post Office Corporation') so it can be dropped if reuse is not allowed."
+  "postcode_note": "Not open data: this is government-provided information published by the Guyana Post Office Corporation, with no licence or reuse terms on guypost.gy (footer: \"Guyana Post Office Corporation © 2020\"). It is kept in its own file and rows (source 'Guyana Post Office Corporation') so it can be dropped if reuse is not allowed.",
+  "coverage": "OpenStreetMap addresses only (about 1,200 on 2026-11-23). GLSC holds the authoritative address and parcel data, which is not open; GuyNode's place registry and geocoder state no licence, and Google, GeoPostcodes and similar are paid or forbid storing results, so none of those are used.",
+  "engine_note": "engine/address_search.py labels every address result 'Overture Maps'; GY addresses come from OpenStreetMap, so the label needs to come from the index's meta 'source'."
  }
 }

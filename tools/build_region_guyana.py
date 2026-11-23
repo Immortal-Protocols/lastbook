@@ -4,7 +4,7 @@
   python3 tools/build_region_guyana.py all                      # fetch, build every layer, merge
   python3 tools/build_region_guyana.py fetch [LAYER ...]        # downloads only
   python3 tools/build_region_guyana.py build [LAYER ...]        # fetch what is missing, then build these layers:
-                                                                #   streets places water terrain crops buildings
+                                                                #   streets places water terrain crops buildings addresses
   python3 tools/build_region_guyana.py merge                    # copy the built rows into derived/geo/*.sqlite
   ... --box=W,S,E,N    limit everything to a smaller box (a test build); default is regions.box('GY')
   ... --workers N      terrain worker processes (default 4)
@@ -25,6 +25,12 @@ Reads (licence, what to credit):
   Microsoft Global ML Building Footprints, the Guyana rows of dataset-links.csv   CDLA Permissive 2.0 per Microsoft's
       README (Overture lists it under ODbL; confirm before publishing)
   OCHA Guyana COD-AB admin levels 1 and 2 (shapefiles)                     CC BY-IGO, credit OCHA and DEVInfo LAC
+  OpenStreetMap, Geofabrik Guyana full extract (guyana-latest.osm.pbf)   ODbL 1.0; only for addr:* tags (addresses layer,
+      needs pip install osmium)
+  GeoNames GY.zip, populated places                                        CC BY 4.0, "GeoNames (geonames.org)"
+  GuyNode Guyana Place Name Registry, its 'Gazetteer' and 'GuyNode POI seed' rows (packaging/regions/GY-guynode-places.csv,
+      from https://guynode.com/Guyana_Places_Registry.csv taken 2026-11-23)   NO KNOWN LICENCE: guynode.com states none and
+      offers its own layers "for educational and research use"; kept apart so it can be dropped
   Guyana Post Office Corporation postcode directory (packaging/regions/GY-postcodes.csv, a copy of the table behind
       https://guypost.gy/search-postcode/ taken 2026-11-23)                  NOT openly licensed: government-provided data
       published by GPOC with no reuse terms ("Guyana Post Office Corporation © 2020"); kept apart so it can be dropped
@@ -45,11 +51,15 @@ Writes derived/geo/regions/GY/<name>.sqlite, one file per US map file, with the 
                                                      'postcode', source 'Guyana Post Office Corporation'), each put at
                                                      an OSM place with the area's name near its post office, else at
                                                      the post office; searchable by area name or by the 7-digit code
-There is no address index: no open address data for Guyana was found, and the postcode directory has no coordinates. `merge` adds these rows to derived/geo/*.sqlite,
+  addresses.sqlite  addr, meta                       OSM house addresses in tools/build_addresses.py's table (state 'GY');
+                                                     merge copies it to derived/geo/addresses/GY.sqlite
+GeoNames places go into places.sqlite (source 'GeoNames') where OSM has no place of that name within 2 km, then GuyNode
+registry places (source 'GuyNode') where neither has one within 5 km. The only open
+addresses are the ~1,200 OSM ones; the postcode directory has no coordinates. `merge` adds these rows to derived/geo/*.sqlite,
 replacing only rows an earlier merge of GY added. Rebuilding a US file that starts from empty (build_crops.py) drops
 them, so merge again after that.
 """
-import argparse, csv, json, math, os, re, sqlite3, struct, sys, time, urllib.error, urllib.request, zipfile, zlib
+import argparse, csv, io, json, math, os, re, shutil, sqlite3, struct, sys, time, urllib.error, urllib.request, zipfile, zlib
 from array import array
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -63,10 +73,23 @@ CODE = 'GY'
 GEO = HERE / 'derived/geo'
 SRC = GEO / 'sources/regions' / CODE
 OUT = GEO / 'regions' / CODE
-LAYERS = ('streets', 'places', 'water', 'terrain', 'crops', 'buildings')
-FILES = {'streets': 'national', 'places': 'places', 'water': 'water', 'terrain': 'terrain', 'crops': 'crops', 'buildings': 'buildings'}
+LAYERS = ('streets', 'places', 'water', 'terrain', 'crops', 'buildings', 'addresses')
+FILES = {'streets': 'national', 'places': 'places', 'water': 'water', 'terrain': 'terrain', 'crops': 'crops', 'buildings': 'buildings',
+         'addresses': 'addresses'}
 
 OSM_URL = 'https://download.geofabrik.de/south-america/guyana-latest-free.gpkg.zip'
+OSM_PBF_URL = 'https://download.geofabrik.de/south-america/guyana-latest.osm.pbf'   # full tags: addr:* is not in the free extract
+GEONAMES_URL = 'https://download.geonames.org/export/dump/GY.zip'
+GEONAMES_SOURCE = 'GeoNames'
+GUYNODE_CSV = HERE / 'packaging/regions/GY-guynode-places.csv'
+GUYNODE_SOURCE = 'GuyNode'
+GUYNODE_KM = 5               # GuyNode's gazetteer points are rounded to the minute (~1.8 km), so 'same place' is looser
+GEONAMES_RADIUS_KM = 2       # a GeoNames place this close to an OSM place of the same name is the same place
+ADDR_CITY_KM = 5             # an OSM address with no addr:city takes the nearest town, village or neighbourhood this close
+# The same street words as tools/build_addresses.py and engine/address_search.py (a test keeps them equal).
+ADDR_WORDS = {'boulevard': 'blvd', 'avenue': 'ave', 'av': 'ave', 'street': 'st', 'drive': 'dr', 'road': 'rd', 'place': 'pl', 'court': 'ct',
+              'lane': 'ln', 'terrace': 'ter', 'circle': 'cir', 'highway': 'hwy', 'parkway': 'pkwy', 'square': 'sq', 'north': 'n', 'south': 's',
+              'east': 'e', 'west': 'w', 'mount': 'mt', 'saint': 'st'}
 OCHA_URL = ('https://data.humdata.org/dataset/9647d5cc-9de9-4974-a8be-62fb12c19ffe/resource/'
             '483dd6a3-dbb8-49ac-b248-4fe13acf6acf/download/guy_admbnd_2021_shp.zip')
 COPDEM_URL = 'https://copernicus-dem-30m.s3.amazonaws.com/{name}/{name}.tif'
@@ -320,6 +343,9 @@ def fetch_layers(layers, box):
         osm_gpkg()
     if 'places' in layers:
         ocha_dir()
+        fetch(GEONAMES_URL, SRC / 'geonames/GY.zip')
+    if 'addresses' in layers:
+        fetch(OSM_PBF_URL, SRC / 'osm/guyana-latest.osm.pbf')
     if 'terrain' in layers:
         for name in copdem_tiles(box):
             fetch(COPDEM_URL.format(name=name), SRC / f'copdem/{name}.tif')
@@ -647,10 +673,97 @@ def build_places(box):
             detail = DETAIL if level == 1 else f"{rec['ADM1_EN']}, {DETAIL}"
             db.execute(ins, (rec[name_key], kind, detail, y, x, 2, 'OCHA'))
             n += 1
+    gn = add_geonames(db, src, inside)
+    gy = add_guynode(db, inside)
     pc = add_postcodes(db, src, inside)
     db.execute("INSERT INTO place_fts(place_fts) VALUES ('rebuild')")
     db.commit()
-    print(f'places: {n:,}, postcode areas: {pc:,}', flush=True)
+    print(f'places: {n:,}, GeoNames places: {gn:,}, GuyNode places: {gy:,}, postcode areas: {pc:,}', flush=True)
+
+
+def km_between(a, b):
+    """Rough distance in km between (lat, lon) points; enough to tell 'same place' from 'another place'."""
+    return math.hypot(a[0] - b[0], (a[1] - b[1]) * math.cos(math.radians(a[0]))) * 111.2
+
+
+def geonames_rows(path=None):
+    """Populated places (feature class P) from GeoNames GY.zip: (name, alternate names, code, lat, lon)."""
+    path = path or SRC / 'geonames/GY.zip'
+    with zipfile.ZipFile(path) as zf, zf.open('GY.txt') as f:
+        for line in io.TextIOWrapper(f, encoding='utf-8'):
+            c = line.rstrip('\n').split('\t')
+            if len(c) > 7 and c[6] == 'P' and c[1]:
+                yield c[1], c[3], c[7], float(c[4]), float(c[5])
+
+
+GEONAMES_KINDS = {'PPLX': 'neighbourhood', 'PPLL': 'locality', 'PPLC': 'national capital', 'PPLA': 'regional capital'}
+
+
+def new_geonames(rows, osm):
+    """GeoNames places not already in OSM (no OSM place of the same squashed name within GEONAMES_RADIUS_KM)."""
+    out = []
+    for name, alt, code, lat, lon in rows:
+        if any(km_between((lat, lon), p) <= GEONAMES_RADIUS_KM for p in osm.get(squash(name), [])):
+            continue
+        out.append((name, GEONAMES_KINDS.get(code, 'populated place'), lat, lon))
+    return out
+
+
+def add_geonames(db, src, inside):
+    """GeoNames populated places (CC BY 4.0) that OSM lacks, such as Georgetown's neighbourhoods."""
+    osm = {}
+    for table in ('gis_osm_places_free', 'gis_osm_places_a_free'):
+        for parts, (cls, name) in each(src, table):
+            if name:
+                minx, maxx, miny, maxy = flat_bbox(parts)
+                osm.setdefault(squash(name), []).append(((miny + maxy) / 2, (minx + maxx) / 2))
+    n = 0
+    for name, kind, lat, lon in new_geonames(geonames_rows(), osm):
+        if inside(lon, lat):
+            db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) VALUES (?,?,?,?,?,?,?)',
+                       (name, kind, f'{DETAIL} (GeoNames)', lat, lon, 1, GEONAMES_SOURCE))
+            n += 1
+    return n
+
+
+def base_name(name):
+    """'Albion (Number 5 Village)' -> 'Albion'; 'Albertown, Georgetown' -> 'Albertown': GuyNode adds the other name or the town."""
+    return re.split(r'[(,]', name)[0].strip() or name
+
+
+def guynode_rows(path=None):
+    """(name, category, region, lat, lon) of packaging/regions/GY-guynode-places.csv."""
+    with open(path or GUYNODE_CSV, encoding='utf-8', newline='') as f:
+        for r in csv.DictReader(f):
+            try:
+                yield r['place_name'].strip(), r['category'], r['region'], float(r['latitude']), float(r['longitude'])
+            except ValueError:
+                continue
+
+
+def new_guynode(rows, have):
+    """GuyNode rows whose name (or its first part) has no place within GUYNODE_KM in have {squashed name: [(lat, lon)]}."""
+    out = []
+    for name, cat, region, lat, lon in rows:
+        near = have.get(squash(name), []) + have.get(squash(base_name(name)), [])
+        if name and not any(km_between((lat, lon), p) <= GUYNODE_KM for p in near):
+            out.append((name, 'gazetteer place' if cat == 'gazetteer place' else cat, region, lat, lon))
+    return out
+
+
+def add_guynode(db, inside):
+    """GuyNode registry places that OSM and GeoNames lack. No known licence; see the module notes."""
+    have = {}
+    for name, lat, lon in db.execute('SELECT name,lat,lon FROM place'):
+        have.setdefault(squash(name), []).append((lat, lon))
+    n = 0
+    for name, kind, region, lat, lon in new_guynode(guynode_rows(), have):
+        if inside(lon, lat):
+            db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) VALUES (?,?,?,?,?,?,?)',
+                       (name, kind, f'{region} · {DETAIL} (GuyNode, position to the nearest minute, no known licence)', lat, lon, 0,
+                        GUYNODE_SOURCE))
+            n += 1
+    return n
 
 
 def squash(name):
@@ -678,8 +791,7 @@ def place_postcodes(rows, places, offices, radius_km=POSTCODE_RADIUS_KM):
     name matches, else an OSM place with the office's name), then moved to an OSM place with the area's own name when
     one lies within radius_km of that office. An area whose office can't be found and whose name matches no single
     place is left out. places and offices map squash(name) -> [(lat, lon)]."""
-    def km(a, b):
-        return math.hypot(a[0] - b[0], (a[1] - b[1]) * math.cos(math.radians(a[0]))) * 111.2
+    km = km_between
     out, streets = [], {}
     for r in rows:
         streets.setdefault((squash(r['area']), r['postcode']), []).append(r['street'])
@@ -717,6 +829,8 @@ def add_postcodes(db, src, inside):
             if name and cls == 'post_office':
                 minx, maxx, miny, maxy = flat_bbox(parts)
                 offices.setdefault(office_key(name.replace('Guyana Post Office-', '')), []).append(((miny + maxy) / 2, (minx + maxx) / 2))
+    for name, lat, lon in db.execute("SELECT name,lat,lon FROM place WHERE source IN (?,?)", (GEONAMES_SOURCE, GUYNODE_SOURCE)):
+        places.setdefault(squash(name), []).append((lat, lon))
     n = 0
     for area, code, sub, office, lat, lon, how, sts in place_postcodes(postcode_rows(), places, offices):
         if not inside(lon, lat):
@@ -729,6 +843,86 @@ def add_postcodes(db, src, inside):
                    (f'{area} {code}', 'postcode', detail, lat, lon, 5, POSTCODE_SOURCE))
         n += 1
     return n
+
+
+# ----------------------------------------------------------- addresses ----
+ADDR_SQL = """CREATE TABLE IF NOT EXISTS addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL);
+  CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);"""
+
+
+def addr_norm(street):
+    """'Saint Mary Boulevard' -> 'st mary blvd', as tools/build_addresses.py writes the norm column."""
+    return ' '.join(ADDR_WORDS.get(w, w) for w in re.sub(r'[^a-z0-9 ]+', ' ', street.lower()).split())
+
+
+def osm_addresses(pbf):
+    """(housenumber, street, city, postcode, lat, lon) of every OSM node and way with addr:housenumber and addr:street."""
+    import osmium     # pip install osmium; only this layer needs it
+
+    class H(osmium.SimpleHandler):
+        def __init__(self):
+            super().__init__()
+            self.rows = []
+
+        def add(self, t, lat, lon):
+            if 'addr:housenumber' in t and 'addr:street' in t:
+                self.rows.append((t['addr:housenumber'], t['addr:street'], t.get('addr:city', ''), t.get('addr:postcode', ''), lat, lon))
+
+        def node(self, n):
+            if n.location.valid():
+                self.add(n.tags, n.location.lat, n.location.lon)
+
+        def way(self, w):
+            if 'addr:housenumber' not in w.tags:
+                return
+            try:
+                pts = [(nd.lat, nd.lon) for nd in w.nodes]
+            except osmium.InvalidLocationError:
+                return
+            if pts:
+                self.add(w.tags, sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+    h = H()
+    h.apply_file(str(pbf), locations=True)
+    return h.rows
+
+
+def nearest_city(lat, lon, towns):
+    """The nearest of towns [(name, lat, lon)] within ADDR_CITY_KM, else ''."""
+    best = min(towns, key=lambda t: km_between((lat, lon), t[1:]), default=None)
+    return best[0] if best and km_between((lat, lon), best[1:]) <= ADDR_CITY_KM else ''
+
+
+def build_addresses(box):
+    """addresses.sqlite: OSM house addresses (addr:housenumber + addr:street) in tools/build_addresses.py's table, for
+    engine/address_search.py. Few streets in Guyana carry them yet, mostly in Georgetown and Rosignol."""
+    rows = osm_addresses(fetch(OSM_PBF_URL, SRC / 'osm/guyana-latest.osm.pbf'))
+    places = OUT / 'places.sqlite'
+    towns = []
+    if places.exists():
+        p = sqlite3.connect(places)
+        towns = p.execute("SELECT name,lat,lon FROM place WHERE kind IN ('city','town','village','suburb','national capital',"
+                          "'neighbourhood','regional capital','populated place')").fetchall()
+        p.close()
+    OUT.mkdir(parents=True, exist_ok=True)
+    path = OUT / 'addresses.sqlite'
+    path.unlink(missing_ok=True)
+    db = sqlite3.connect(path)
+    db.executescript(ADDR_SQL)
+    n = 0
+    for num, street, city, postcode, lat, lon in rows:
+        if not (box[0] <= lon <= box[2] and box[1] <= lat <= box[3]):
+            continue
+        city = city if city and not city.startswith('#') else nearest_city(lat, lon, towns)
+        db.execute('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?)', (num.strip(), street.strip(), addr_norm(street), city.strip(), CODE,
+                                                                 postcode.strip(), round(lat, 6), round(lon, 6)))
+        n += 1
+    db.execute('CREATE INDEX addr_norm ON addr(norm, num)')
+    stamp(db, 'count', str(n))
+    stamp(db, 'built', time.strftime('%Y-%m-%dT%H:%M:%S'))
+    stamp(db, 'source', f'{OSM_SOURCE.replace("guyana-latest-free.gpkg.zip", "guyana-latest.osm.pbf")}, addr:* tags')
+    db.commit()
+    db.close()
+    print(f'addresses: {n:,}', flush=True)
 
 
 # --------------------------------------------------------------- water ----
@@ -1118,12 +1312,20 @@ def merge(box):
             done.append('buildings: %s' % format(db.execute('SELECT coalesce(sum(n),0) FROM r.bldg').fetchone()[0], ','))
         elif name == 'places':
             w, s, e, n = box
-            db.execute("DELETE FROM place WHERE source IN ('OpenStreetMap','OCHA',?) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?", (POSTCODE_SOURCE, w, e, s, n))
+            db.execute("DELETE FROM place WHERE source IN ('OpenStreetMap','OCHA',?,?,?) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?",
+                       (POSTCODE_SOURCE, GEONAMES_SOURCE, GUYNODE_SOURCE, w, e, s, n))
             db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) SELECT name,kind,detail,lat,lon,rank,source FROM r.place')
             db.execute("INSERT INTO place_fts(place_fts) VALUES ('rebuild')")
             done.append('places: %s' % format(db.execute('SELECT count(*) FROM r.place').fetchone()[0], ','))
         db.commit()
         db.execute('DETACH DATABASE r')
+        db.close()
+    src = OUT / 'addresses.sqlite'
+    if src.exists():        # engine/address_search.py reads every derived/geo/addresses/*.sqlite; the file name is the code
+        (GEO / 'addresses').mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, GEO / 'addresses' / f'{CODE}.sqlite')
+        db = sqlite3.connect(src)
+        done.append('addresses: %s' % format(db.execute('SELECT count(*) FROM addr').fetchone()[0], ','))
         db.close()
     for line in done:
         print('merged', line, flush=True)
@@ -1132,7 +1334,8 @@ def merge(box):
 
 
 # ---------------------------------------------------------------- main ----
-BUILD = {'streets': build_streets, 'places': build_places, 'water': build_water, 'crops': build_crops, 'buildings': build_buildings}
+BUILD = {'streets': build_streets, 'places': build_places, 'water': build_water, 'crops': build_crops, 'buildings': build_buildings,
+         'addresses': build_addresses}
 
 
 def main(argv=None):

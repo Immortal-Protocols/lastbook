@@ -15,7 +15,7 @@ import regions                      # noqa: E402
 import build_region_guyana as G     # noqa: E402
 
 GY = ROOT / 'packaging/regions/GY.json'
-LAYERS = ('streets', 'pois', 'water', 'terrain', 'crops', 'buildings', 'places')
+LAYERS = ('streets', 'pois', 'water', 'terrain', 'crops', 'buildings', 'places', 'addresses')
 
 
 def us_constant(tool, name):
@@ -65,9 +65,10 @@ class RegionFile(unittest.TestCase):
         r = json.loads(GY.read_text(encoding='utf-8'))
         for k in regions.REQUIRED + ('address', 'attribution'):
             self.assertIn(k, r)
-        self.assertIs(r['address']['search'], False)
+        self.assertIs(r['address']['search'], True)
+        self.assertIn('OpenStreetMap addresses only', r['address']['coverage'])
         self.assertIn('7-digit', r['address']['postcode'])
-        self.assertIn('Address search is not included', r['includes'])
+        self.assertIn('Address search covers only those', r['includes'])
         self.assertEqual(set(r['sources']), set(LAYERS))
         for layer, items in r['sources'].items():
             self.assertTrue(items, layer)
@@ -77,7 +78,7 @@ class RegionFile(unittest.TestCase):
                 self.assertTrue(s['url'].startswith('https://'), s['url'])
         text = ' '.join(r['attribution'])
         for line in ('© OpenStreetMap contributors', 'Copernicus WorldDEM-30 © DLR e.V. 2010-2014', 'do not incur any liability',
-                     '© ESA WorldCover project 2021', 'OCHA', 'CC BY-IGO', 'Microsoft'):
+                     '© ESA WorldCover project 2021', 'OCHA', 'CC BY-IGO', 'Microsoft', 'GeoNames'):
             self.assertIn(line, text)
         self.assertEqual(r['builder'], 'tools/build_region_guyana.py')
         self.assertTrue((ROOT / r['builder']).is_file())
@@ -344,3 +345,42 @@ class Postcodes(unittest.TestCase):
         self.assertEqual((out[0][4], out[0][5]), (6.82, -58.14))      # the Kitty near its office, not the far one
         self.assertEqual(out[0][7], ['A Street', 'B Street'])
         self.assertEqual((out[2][4], out[2][5]), (6.83, -58.15))      # 'Far' is over 25 km away: at the office
+
+
+class AddressesAndGeoNames(unittest.TestCase):
+    def test_street_words_match_the_us_builder_and_the_engine(self):
+        self.assertEqual(G.ADDR_WORDS, us_constant('build_addresses.py', 'WORDS'))
+        sys.path.insert(0, str(ROOT))
+        from engine import address_search
+        self.assertEqual(G.ADDR_WORDS, address_search.WORDS)
+        self.assertEqual(G.addr_norm('Saint Mary Boulevard'), address_search.normalize('Saint Mary Boulevard'))
+
+    def test_address_table_is_the_us_one(self):
+        self.assertEqual(columns(G.ADDR_SQL, 'addr'), us_columns('build_addresses.py', 'addr'))
+
+    def test_nearest_city(self):
+        towns = [('Georgetown', 6.80, -58.15), ('Linden', 6.00, -58.30)]
+        self.assertEqual(G.nearest_city(6.81, -58.16, towns), 'Georgetown')
+        self.assertEqual(G.nearest_city(7.50, -59.00, towns), '')      # nothing within 5 km
+        self.assertEqual(G.nearest_city(6.81, -58.16, []), '')
+
+    def test_geonames_skips_places_osm_has(self):
+        rows = [('Kingston', '', 'PPLX', 6.8227, -58.1632), ('Leguan', '', 'PPL', 6.91, -58.40), ('Leguan', '', 'PPL', 6.60, -58.00)]
+        osm = {'leguan': [(6.9142, -58.4047)]}
+        out = G.new_geonames(rows, osm)
+        self.assertEqual([(n, k) for n, k, *_ in out], [('Kingston', 'neighbourhood'), ('Leguan', 'populated place')])
+        self.assertEqual(out[1][2:], (6.60, -58.00))                  # the Leguan far from OSM's is kept
+
+    def test_guynode_skips_places_already_there(self):
+        rows = [('Albion (Number 5 Village)', 'gazetteer place', 'East Berbice-Corentyne', 6.2667, -57.3833),
+                ('Aishalton', 'gazetteer place', 'Upper Takutu-Upper Essequibo', 2.4833, -59.3167)]
+        have = {'albion': [(6.27, -57.39)]}
+        self.assertEqual([r[0] for r in G.new_guynode(rows, have)], ['Aishalton'])
+        self.assertEqual(G.base_name('Albertown, Georgetown'), 'Albertown')
+
+    def test_guynode_is_marked_unlicensed(self):
+        r = json.loads((ROOT / 'packaging/regions/GY.json').read_text(encoding='utf-8'))
+        gn = [s for s in r['sources']['places'] if s.get('publisher') == 'GuyNode']
+        self.assertEqual(gn[0]['licence'], 'No known licence')
+        self.assertTrue(any('no known licence' in a for a in r['attribution']))
+        self.assertGreater(sum(1 for _ in G.guynode_rows()), 1000)

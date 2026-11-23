@@ -22,7 +22,7 @@ const Chat = (() => {
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
   const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
   function progress(m) {
-    const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
+    const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
     const stages = STAGES.map((t, i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${t}</li>`).join('');
     return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
   }
@@ -115,8 +115,8 @@ const Chat = (() => {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
     return ({
       ready: [true, 'Local AI ready'],
-      stopped: [true, 'Local AI ready · it starts when you ask'],
-      loading: [true, `Starting the local AI${l.pct ? ' ' + l.pct + '%' : '…'}`],
+      stopped: [true, 'Local AI available · your first question loads it and may take a while'],
+      loading: [true, `Starting the local AI${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       checking: [false, `Checking the local AI file${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       measuring: [false, 'Checking this computer’s memory…'],
       absent: [false, 'No local AI added'],
@@ -135,8 +135,9 @@ const Chat = (() => {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
-        : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
+      const srv = s.server;   // a model server the person chose in Settings (#78)
+      el.innerHTML = s.online ? `<span class="dotok"></span>${srv ? esc(srv.model) + ' ready' : 'Local assistant ready'}${still}`
+        : `<span class="dotoff"></span><span>${srv ? `The model server at ${esc(srv.address)} is not answering` : 'Assistant offline'}<span class="long"> — search and browsing still work</span></span>`;
     }
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
     setupCard(s);
@@ -249,7 +250,7 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
@@ -434,7 +435,7 @@ const Chat = (() => {
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
       const st = await getStatus();
-      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local && localLine(st.local)[1] });
+      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();

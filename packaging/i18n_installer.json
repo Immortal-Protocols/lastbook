@@ -48,6 +48,7 @@
       "installer.setupTitle": "Instalación de Lastbook",
       "installer.uninstallFileDescription": "Desinstalar Lastbook",
       "installer.version": "Versión {version}"
-    }
+    },
+    "zh-Hans": {}
   }
 }

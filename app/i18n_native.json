@@ -540,6 +540,10 @@
     "map.zoomHere": "Zoom here",
     "map.zoomIn": "Zoom in",
     "map.zoomOut": "Zoom out",
+    "map3d.buildingHeightSummary": {
+      "one": "{count} building: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}",
+      "other": "{count} buildings: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}"
+    },
     "map3d.buildings": {
       "one": "{count} building{extra}",
       "other": "{count} buildings{extra}"
@@ -551,15 +555,12 @@
     "map3d.exit": "Exit 3D",
     "map3d.heightTimes": "Height ×",
     "map3d.heightTitle": "Exaggerate heights",
-    "map3d.heightsAre": "heights are ",
     "map3d.loadingBuildings": "· loading buildings…",
     "map3d.loadingElevation": "Loading elevation…",
     "map3d.loadingElevationProgress": "Loading elevation… {done}/{total}",
-    "map3d.mappedHeights": "{count} with mapped heights (OpenStreetMap), the rest ",
     "map3d.nearestShown": "(nearest shown)",
     "map3d.needsWebgl": "3D needs WebGL, which this browser has turned off.",
     "map3d.noElevation": "No elevation data here (ocean or outside the US).",
-    "map3d.oneStoreyShown": "; {count} without one shown one storey tall",
     "map3d.resetView": "Reset view",
     "map3d.satelliteEstimates": "satellite estimates",
     "map3d.zoomForBuildings": "Zoom in to a town to see 3D buildings.",
@@ -1833,6 +1834,10 @@
       "map.zoomHere": "Acercar aquí",
       "map.zoomIn": "Acercar",
       "map.zoomOut": "Alejar",
+      "map3d.buildingHeightSummary": {
+        "one": "{count} edificio: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}",
+        "other": "{count} edificios: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}"
+      },
       "map3d.buildings": {
         "one": "{count} edificio{extra}",
         "other": "{count} edificios{extra}"
@@ -1844,15 +1849,12 @@
       "map3d.exit": "Salir de 3D",
       "map3d.heightTimes": "Altura ×",
       "map3d.heightTitle": "Exagerar la altura",
-      "map3d.heightsAre": "las alturas son ",
       "map3d.loadingBuildings": "· cargando edificios…",
       "map3d.loadingElevation": "Cargando la elevación…",
       "map3d.loadingElevationProgress": "Cargando la elevación… {done}/{total}",
-      "map3d.mappedHeights": "{count} con alturas mapeadas (OpenStreetMap); el resto, ",
       "map3d.nearestShown": "(se muestra el más cercano)",
       "map3d.needsWebgl": "La vista 3D necesita WebGL, y este navegador lo tiene desactivado.",
       "map3d.noElevation": "No hay datos de elevación aquí (océano o fuera de EE. UU.).",
-      "map3d.oneStoreyShown": "; {count} sin altura se muestran con un piso de altura",
       "map3d.resetView": "Restablecer la vista",
       "map3d.satelliteEstimates": "estimaciones por satélite",
       "map3d.zoomForBuildings": "Acerca el mapa a un pueblo para ver los edificios en 3D.",

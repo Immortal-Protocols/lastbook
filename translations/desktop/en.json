@@ -567,7 +567,6 @@
     "one": "{count} building{extra}",
     "other": "{count} buildings{extra}"
   },
-  "map3d.heightsAre": "heights are ",
   "update.noVersion": "This copy has no version number (it was not built as an app).",
   "update.version": "Version {version}.",
   "update.checking": "Checking for updates…",
@@ -1220,9 +1219,7 @@
   "map.mineTailingsDam": "Mine-tailings dam:",
   "map.mineTailingsDetail": "it holds mine waste, not usable water. Do not drink, swim or fish here.",
   "map3d.buildingsCount": "{count} buildings",
-  "map3d.mappedHeights": "{count} with mapped heights (OpenStreetMap), the rest ",
   "map3d.satelliteEstimates": "satellite estimates",
-  "map3d.oneStoreyShown": "; {count} without one shown one storey tall",
   "guide.stopAndGetHelp": "Stop and get help when…",
   "guide.showAllWarnings": "Show all {count} warnings",
   "guide.routeTicksNote": "Ticks are your own notes on this device. Reading or watching is not the same as practising safely.",
@@ -1250,5 +1247,9 @@
   "setup.downloadAndDisk": "{download} download · {disk} on disk",
   "setup.mapAndIndexIncluded": "Your state map and available address index are already included.",
   "map.cappedPlacesInView": " (busiest shown — zoom in for all)",
-  "setup.mapItemName": "{name} map"
+  "setup.mapItemName": "{name} map",
+  "map3d.buildingHeightSummary": {
+    "one": "{count} building: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}",
+    "other": "{count} buildings: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}"
+  }
 }

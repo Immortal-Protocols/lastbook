@@ -7,12 +7,17 @@
   if (typeof window.createI18n !== 'function' || typeof window.applyI18n !== 'function' || !window.lastbookI18nEnglish) return;
 
   const english = window.lastbookI18nEnglish;
-  const regional = window.lastbookI18nLocales?.['es-419'];
+  // The languages a person can choose, besides English. Each needs its catalogue, an <option> in setup.html and app/ui_language.py.
+  const LOCALES = ['es-419', 'zh-Hans'];
+  const LANGUAGES = ['en', ...LOCALES];
   const fallbacks = { 'es-AR': ['es-419'], 'es-CL': ['es-419'], 'es-UY': ['es-419'] };
   let engine;
   try { engine = createI18n({ catalogs: { en: english } }); } catch { return; }
-  if (regional && Object.keys(regional).length) {
-    try { engine = createI18n({ catalogs: { en: english, 'es-419': regional }, fallbacks }); } catch { /* Keep English. */ }
+  const catalogs = { en: english };
+  for (const locale of LOCALES) {
+    const messages = window.lastbookI18nLocales?.[locale];
+    if (!messages || !Object.keys(messages).length) continue;
+    try { engine = createI18n({ catalogs: { ...catalogs, [locale]: messages }, fallbacks }); catalogs[locale] = messages; } catch { /* Leave that one out. */ }
   }
 
   const form = desktop && document.getElementById('languageSettings');
@@ -30,7 +35,7 @@
   // next page can start in the right language instead of flashing English until the bridge replies.
   const HINT = 'lastbook.ui-language';
   function readHint() {
-    try { const hint = localStorage.getItem(HINT); return ['en', 'es-419'].includes(hint) ? hint : null; } catch { return null; }
+    try { const hint = localStorage.getItem(HINT); return LANGUAGES.includes(hint) ? hint : null; } catch { return null; }
   }
   function writeHint(saved) {
     try { saved ? localStorage.setItem(HINT, saved) : localStorage.removeItem(HINT); } catch { /* storage is optional */ }
@@ -73,7 +78,7 @@
       if (!response.ok) throw new Error('Could not access the desktop language preference');
       saved = (await response.json()).language;
     } finally { clearTimeout(timer); }
-    if (![null, 'en', 'es-419'].includes(saved) || (language !== undefined && language !== saved)) {
+    if (!(saved === null || LANGUAGES.includes(saved)) || (language !== undefined && language !== saved)) {
       throw new Error('Unexpected desktop language preference');
     }
     return saved;
@@ -99,7 +104,10 @@
   }
 
   if (form) {
-    select.querySelector('[value="es-419"]').disabled = !engine.supportedLocales.includes('es-419');
+    for (const locale of LOCALES) {
+      const option = select.querySelector(`[value="${locale}"]`);
+      if (option) option.disabled = !engine.supportedLocales.includes(locale);
+    }
     form.addEventListener('submit', async event => {
       event.preventDefault();
       const next = select.value;

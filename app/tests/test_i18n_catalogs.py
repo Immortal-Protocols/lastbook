@@ -110,6 +110,57 @@ class Catalogues(unittest.TestCase):
             catalogues.check_assets(web, generated)
 
 
+class FallbackWording(unittest.TestCase):
+    """language.unavailable is shown in English when the saved language's catalogue cannot load (web/i18n-app.js), whichever
+    language that is. The selector offers more than one translated language, so the message must not name one."""
+
+    def test_english_fallback_names_no_language(self):
+        en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        text = en['language.unavailable']
+        self.assertEqual(text, 'The saved language is unavailable. Lastbook is using English.')
+        for name in ('Spanish', 'German', 'Chinese', 'español', 'Deutsch', '中文'):
+            self.assertNotIn(name, text)
+
+
+class SimplifiedChineseWording(unittest.TestCase):
+    """The zh-Hans catalogue keeps the conventions in docs/i18n.md#simplified-chinese-zh-hans."""
+
+    @classmethod
+    def setUpClass(cls):
+        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
+        cls.en, cls.zh = load('en.json'), load('zh-Hans.json')
+
+    def test_setup_and_settings_are_different_words(self):
+        self.assertEqual(self.zh['nav.settings'], '设置')
+        self.assertIn('初始设置', self.zh['setup.title'])
+        # "初始设置" contains "设置"; the rest of the heading must not say it again.
+        self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
+        # Where a sentence names both screens, it names both.
+        self.assertIn('初始设置', self.zh['language.preview'])
+        self.assertIn('设置', self.zh['language.preview'])
+
+    def test_simplified_characters_only(self):
+        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網路線說檔電腦檢區換'
+        everything = ' '.join(self.zh.values())
+        self.assertEqual([character for character in traditional if character in everything], [])
+
+    def test_everyday_words_and_formatting(self):
+        self.assertIn('这台电脑', self.zh['setup.loading'])
+        self.assertIn('州或地区', self.zh['setup.chooseIntro'])
+        # A space separates Chinese from Latin words, and names stay as they are.
+        self.assertIn('Lastbook 会', self.zh['setup.chooseIntro'])
+        self.assertEqual(self.zh['setup.settingsTitle'], '资料库与本地 AI')
+        # Full-width punctuation, no space before it, no ideographic space.
+        everything = ' '.join(self.zh.values())
+        for bad in (' ,', ' 。', ' ，', ' ；', ' …', '\u3000', '..'):
+            self.assertNotIn(bad, everything)
+        self.assertTrue(self.zh['language.saving'].endswith('…'))
+
+    def test_no_message_is_left_in_english(self):
+        same = {key for key in self.zh if self.zh[key] == self.en[key]}
+        self.assertEqual(same, set())
+
+
 class SpanishWording(unittest.TestCase):
     """The shipped es-419 catalogue keeps the terms docs/i18n.md#sample-locale-wording-es-419 asks for."""
 
@@ -135,7 +186,7 @@ class SpanishWording(unittest.TestCase):
         everything = ' '.join(self.es.values())
         for avoid in (' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo'):
             self.assertNotIn(avoid, everything)
-        self.assertEqual(self.es['language.unavailable'], 'El español no está disponible. Lastbook usa inglés.')
+        self.assertEqual(self.es['language.unavailable'], 'El idioma guardado no está disponible. Lastbook usa inglés.')
         self.assertNotIn('está en inglés', self.es['language.unavailable'])
 
     def test_no_message_is_left_in_english(self):

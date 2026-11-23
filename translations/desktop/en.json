@@ -42,11 +42,11 @@
   "setup.tryAgain": "Try again",
   "setup.copyTitle": "Copy for someone else",
   "language.label": "Interface language",
-  "language.preview": "The Latin American Spanish preview covers navigation and parts of Setup and Settings. The rest of the interface is in English.",
+  "language.preview": "The translated preview covers navigation and parts of Setup and Settings. The rest of the interface stays in English.",
   "language.save": "Save language",
   "language.saving": "Saving language…",
   "language.saved": "Language saved.",
   "language.saveFailed": "Could not save the language. Try again.",
   "language.loadFailed": "Could not load the saved language.",
-  "language.unavailable": "Spanish is unavailable. Lastbook is using English."
+  "language.unavailable": "The saved language is unavailable. Lastbook is using English."
 }

@@ -4,7 +4,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fileUrl = p => '/' + String(p || '').split('/').map(encodeURIComponent).join('/');
-const main = $('#main');
+const main = $('#main'), pageTop = $('#pageTop');
 const i18n = globalThis.LastbookI18n;
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
@@ -36,7 +36,7 @@ const I = {
   warn: '<path d="M12 3 2 20h20zM12 10v4M12 17h.01"/>', save: '<path d="M6 3h12v18l-6-4-6 4z"/>',
   ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>', prep: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
   shelf: '<path d="M4 4v16M9 4v16M14 5l4 15M3 20h18"/>', search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
-  play: '<path d="M7 4v16l13-8z"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  play: '<path d="M7 4v16l13-8z"/>', speak: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6M18.5 6.5a7 7 0 0 1 0 11"/>', stopsq: '<rect x="6.5" y="6.5" width="11" height="11" rx="2"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   insp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M15 5v14"/>',
   ask: '<path d="M4 5h16v11H9l-5 4z"/><path d="M9 9.5h6M9 12.5h4"/>', spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
 };
@@ -285,7 +285,7 @@ async function route() {
   railTitles();
   $('#tbActs').replaceChildren(); $('#tbTitle').textContent = $('#tbSub').textContent = ''; $('#tbTitle').title = $('#tbSub').title = ''; searchLive = null; main.classList.remove('own-title');
   if (leaving) { try { leaving() } catch { } leaving = null }
-  window.onresize = null; main.onkeydown = null;
+  window.onresize = null; main.onkeydown = pageTop.onkeydown = null;
   try {
     if (v !== 'map') MapView.stop();
     await topics().catch(() => { });
@@ -344,11 +344,14 @@ addEventListener('resize', alignTitle);
 // After a new page: a person moving through the sidebar stays there, as in Finder or Settings, and Tab goes on to the toolbar and the page.
 // Otherwise the next Tab starts at the top of the window (skip link, sidebar, toolbar, page), as after a full load. The marker it starts from
 // is not a control; it carries the page's name, which a screen reader reads when focus lands on it.
+let focusAfterRoute = null;   // a control the page asks to keep focus on when it has settled (Read aloud's Stop, after a page turn)
 function startHere(fromSide) {
+  const keep = focusAfterRoute; focusAfterRoute = null;
+  if (keep && keep.isConnected && !keep.hidden) { keep.focus({ preventScroll: true }); return }
   if (fromSide && !(MAC && !wide.matches) && document.activeElement && document.activeElement.closest('.side,.tabbar')) return;
-  const t = $('#pageTop'), h1 = $('h1', main);
-  t.textContent = (h1 && h1.textContent.trim()) || document.title;
-  t.focus({ preventScroll: true });
+  const h1 = $('h1', main);
+  pageTop.textContent = (h1 && h1.textContent.trim()) || document.title;
+  pageTop.focus({ preventScroll: true });
 }
 window.addEventListener('hashchange', route);
 let searchLive = null;   // on the search page, where the pane's field is the page's own (Windows), typing there updates the results
@@ -836,7 +839,7 @@ async function reader(id, page, from, view) {
     <div class="rtop">${backButton(from)}</div>
     <h1 class="rtitle">${esc(d.title)}</h1>
     <div class="rsrc"><b>${esc(d.publisher || '')}</b>${d.year ? ' · ' + esc(d.year) : ''} · ${esc(d.trust)}</div>
-    <div class="rmodes">${views.length ? `<div class="seg dock" role="group" aria-label="How to show it">${views.map(([v, l]) => `<button data-view="${v}" aria-pressed="${v === view}">${l}</button>`).join('')}</div>` : ''}<span class="vactions dock">${askLink('doc:' + id + ':' + (isPdf ? page : 1), 'Ask')}${saveButton({ key, title: d.title + (isPdf ? ' — page ' + page : ''), href: selfHref, sub: d.publisher || d.kindLabel })}<button class="tb-btn insp-btn" data-insp aria-label="Show or hide the source details" title="Details">${ico('insp')}</button></span></div>
+    <div class="rmodes">${views.length ? `<div class="seg dock" role="group" aria-label="How to show it">${views.map(([v, l]) => `<button data-view="${v}" aria-pressed="${v === view}">${l}</button>`).join('')}</div>` : ''}<span class="vactions dock">${askLink('doc:' + id + ':' + (isPdf ? page : 1), 'Ask')}<button class="btn plain" data-speak hidden title="Read aloud" aria-label="Read aloud">${ico('speak', 'i-speak')}${ico('stopsq', 'i-stop')}<span>Read aloud</span></button>${saveButton({ key, title: d.title + (isPdf ? ' — page ' + page : ''), href: selfHref, sub: d.publisher || d.kindLabel })}<button class="tb-btn insp-btn" data-insp aria-label="Show or hide the source details" title="Details">${ico('insp')}</button></span></div>
     <div id="docbody"></div>
     ${d.imageOnly ? '<div class="notice">This is a scanned document without searchable text, so search and the assistant can’t read it. Use the Page view.</div>' : ''}
     ${isPdf && view !== 'pdf' ? `<div class="rbar"><a class="btn plain nav" href="${go(page - 1)}" ${page <= 1 ? 'aria-disabled="true" style="opacity:.35;pointer-events:none"' : ''} aria-label="Previous page" data-i18n-aria-label="nav.previousPage" data-i18n-lang>${ico('back')}<span data-i18n="nav.previous">Previous</span></a>
@@ -851,6 +854,31 @@ async function reader(id, page, from, view) {
       <p class="small muted">A reference copy, not advice checked for your situation. Check the date; older material can conflict with current guidance.</p>
       ${isPdf || isWeb || !IN_WINDOW ? `<p><a class="btn ghost" href="${fileUrl(d.path)}${isPdf ? '#page=' + page : ''}" target="_blank" rel="noopener">${ico('ext')}Open the original file</a></p>` : ''}</div></details>`;
   $$('[data-view]', main).forEach(b => b.addEventListener('click', () => swap(go(page, b.dataset.view))));
+  // Read aloud (web/speak.js): this page's text, then on to the next page by itself, so a person whose hands are busy can keep listening.
+  const sb = $('[data-speak]', main);
+  if (sb) {
+    let hadText = false;
+    leaving = Speak.attach(sb, async () => {
+      let t;
+      try { t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`) }
+      catch { toast('This page could not be read aloud. Try again.'); return '' }   // shown, not only spoken: the sound may be off
+      hadText = !!(t.text || '').trim();
+      if (!hadText) toast('This page has no text that can be read aloud.');
+      return hadText ? (isPdf ? `Page ${page}. ` : '') + t.text : 'This page has no text that can be read aloud.';
+    }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null);
+    let goingOn = null;
+    try { goingOn = sessionStorage.getItem('sg.speakOn'); sessionStorage.removeItem('sg.speakOn') } catch { }
+    // Reading went on to this page by itself: keyboard focus goes back to Stop when route() has finished and put it on the page's
+    // start (startHere), so stopping is one key away, not a walk through the sidebar and toolbar while the voice goes on.
+    if (goingOn === id) {
+      focusAfterRoute = sb;
+      Speak.ready().then(ok => {
+        if (!ok || !sb.isConnected) return;
+        sb.click();
+        if (document.activeElement === $('#pageTop')) sb.focus({ preventScroll: true });   // the voices were listed after the page settled
+      });
+    }
+  }
   if (innerWidth >= 1060 && !html.classList.contains('insp-off')) $('.about-src', main).open = true;
   const pg = $('#pg'); if (pg) pg.addEventListener('change', () => { const n = parseInt(pg.value, 10); if (n >= 1 && n <= total) location.hash = go(n) });
   const body = $('#docbody');
@@ -877,7 +905,18 @@ async function reader(id, page, from, view) {
       body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, 'Couldn’t load the text.') }
   }
-  main.onkeydown = e => { if (!isPdf || /INPUT/.test(e.target.tagName) || e.altKey || e.metaKey || e.ctrlKey) return; if (e.key === 'ArrowRight' && page < total) location.hash = go(page + 1); if (e.key === 'ArrowLeft' && page > 1) location.hash = go(page - 1) };
+  if (!isPdf) return;
+  main.onkeydown = e => {
+    if (e.target.tagName === 'INPUT' || e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;   // Shift+Arrow selects text
+    let next = page;
+    if (e.key === 'ArrowRight') next++;
+    if (e.key === 'ArrowLeft') next--;
+    if (next === page || next < 1 || next > total) return;
+    e.preventDefault();
+    location.hash = go(next);
+  };
+  // The router puts focus on this marker before the first Tab.
+  if (view !== 'pdf') pageTop.onkeydown = main.onkeydown;
 }
 
 /* --------------------------------------------------------------- wiki -- */
@@ -1340,7 +1379,7 @@ async function about() {
   <div class="cards2" style="margin-top:16px">
    <div class="card"><b>What’s in it</b><small>${(s.pdfs || 0).toLocaleString()} PDF manuals (${(s.pdf_pages || 0).toLocaleString()} pages), ${(s.web_pages || 0).toLocaleString()} saved web pages, ${(s.videos || 0).toLocaleString()} downloaded videos and ${s.collections || 0} complete encyclopedias.</small></div>
    ${ch ? `<div class="card"><b>Still arriving</b><small>${ch.pending.toLocaleString()} more videos are queued and ${ch.downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.</small></div>` : ''}
-   <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
+   <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.server ? `Model server on this computer: ${esc(st.server.model)} at ${esc(st.server.address)}, ${st.online ? 'available' : 'not answering'}. Change it in Library and local AI.` : st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
    <div class="card"><b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small></div>
    ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
   </div>

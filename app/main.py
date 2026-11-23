@@ -406,6 +406,8 @@ def main():
     if not given or note:
         setup_api.opened(app_folders()[0], data, note)
     setup_api.configure(mode='manage', current=data, **setup_options())
+    import assistant
+    setup_api.follow_model_server(assistant.use_server)   # a model server chosen in Setup (#78)
     import bridge as B
     if sys.platform == 'darwin':
         import shell_macos

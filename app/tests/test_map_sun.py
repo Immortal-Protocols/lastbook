@@ -71,6 +71,28 @@ class Sun(unittest.TestCase):
         self.assertTrue(0 < got[3] < got[4] < got[5], got)
         self.assertEqual(got[5:], [1, 1, 1])
 
+PREF = r"""
+const src = require('fs').readFileSync(process.argv[1], 'utf8');
+const i = src.indexOf('// daynight-pref:start'), j = src.indexOf('// daynight-pref:end');
+if (i < 0 || j < i) throw new Error('map.js has no daynight-pref block');
+const { dayNightOn } = new Function(src.slice(i, j) + '\nreturn { dayNightOn };')();
+const out = JSON.parse(process.argv[2]).map(style => dayNightOn(style));
+process.stdout.write(JSON.stringify(out));
+"""
+
+
+@unittest.skipUnless(NODE, 'needs Node')
+class DayNightPreference(unittest.TestCase):
+    def ask(self, *styles):
+        r = subprocess.run([NODE, '-e', PREF, str(ROOT / 'web/map.js'), json.dumps(list(styles))],
+                           capture_output=True, text=True, check=True, encoding='utf-8')
+        return json.loads(r.stdout)
+
+    def test_off_on_a_fresh_install_and_kept_once_saved(self):
+        # A fresh mapStyle has no daynight key (see load('mapStyle', { relief: true, contours: true })).
+        got = self.ask({}, {'relief': True, 'contours': True}, {'daynight': False}, {'daynight': True, 'relief': True})
+        self.assertEqual(got, [False, False, False, True])
+
 
 if __name__ == '__main__':
     unittest.main()

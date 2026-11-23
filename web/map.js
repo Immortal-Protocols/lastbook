@@ -187,7 +187,7 @@ const MapView = (() => {
         if (info.aerial_rev !== st.aerialRev) { st.aerialRev = info.aerial_rev; st.aerialDetail = info.aerial_detail; for (const v of st.aerial?.values() || []) v.close?.(); st.aerial = new Map(); draw() }  // new sharp photos: new URLs
         if (info.version !== st.ver) { st.ver = info.version; st.gen++; st.pinBox = null; draw(); loadPins() } } catch { }
     }, 60000);
-    st.sunTimer = setInterval(() => { if (st && st.style.daynight !== false && st.z < NIGHT_UNTIL) draw() }, 60000);   // the shade moves 15° an hour
+    st.sunTimer = setInterval(() => { if (st && dayNightOn(st.style) && st.z < NIGHT_UNTIL) draw() }, 60000);   // the shade moves 15° an hour
     if (!openWhole) { draw(); settle() }
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
@@ -248,7 +248,7 @@ const MapView = (() => {
       ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${n}</button>`).join('')}<button data-p="">None</button></div>`}
       <fieldset class="style"><legend>Map style</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>Aerial photos (USGS / USDA)</span></label>`}
-        <label><input type="checkbox" data-style="daynight"${st.style.daynight !== false ? ' checked' : ''}><i class="msym style-ico">◐</i><span>Day and night now (zoomed out)</span></label>
+        <label><input type="checkbox" data-style="daynight"${dayNightOn(st.style) ? ' checked' : ''}><i class="msym style-ico">◐</i><span>Day and night now (zoomed out)</span></label>
         <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>Contour lines (from zoom 11)</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
@@ -750,9 +750,13 @@ const MapView = (() => {
   // deepening through twilight, and full from 18° below, when the sky is fully dark.
   const nightShade = h => Math.max(0, Math.min(1, (-0.833 - h) / (18 - 0.833)));
   // sun:end
+  // daynight-pref:start (app/tests/test_map_sun.py)
+  // Off until the user turns it on. A saved true or false in sg.mapStyle is kept.
+  const dayNightOn = style => !!style.daynight;
+  // daynight-pref:end
   const NIGHT_UNTIL = 8;   // from this zoom in, one place fills the view: no line to show, so no shade
   function nightLayer(g, V) {
-    const legend = $('mnight'), fade = st.style.daynight === false ? 0 : Math.max(0, Math.min(1, (NIGHT_UNTIL - st.z) / 2.5));
+    const legend = $('mnight'), fade = dayNightOn(st.style) ? Math.max(0, Math.min(1, (NIGHT_UNTIL - st.z) / 2.5)) : 0;
     if (legend) legend.hidden = !fade;
     if (!fade) return;
     const now = new Date(), sun = sunAt(now), step = 6, cw = Math.ceil(V.w / step), ch = Math.ceil(V.h / step);

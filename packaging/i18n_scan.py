@@ -133,9 +133,14 @@ def already_wired(pre: str) -> bool:
 
 def _has_i18n_marker_in_tag(pre: str, post: str) -> bool:
     """Recognize a bound HTML attribute only when its marker shares the tag."""
-    source = pre[-1200:] + post[:1200]
-    before, after = source.rsplit('<', 1) if '<' in source else ('', source)
-    tag = '<' + after.split('>', 1)[0] if '>' in after else ''
+    # `pre` ends before the current string literal and `post` starts there.
+    # Anchor the tag boundary around that exact point; later nested tags must
+    # not replace the current element's marker.
+    before = pre[-4000:]
+    after = post[:4000]
+    start = before.rfind('<')
+    end = after.find('>')
+    tag = before[start:] + after[:end] if start >= 0 and end >= 0 else ''
     return bool(tag and re.search(r'\bdata-i18n(?:-[a-z-]+)?\s*=', tag))
 
 
@@ -163,6 +168,21 @@ def _inside_translation_call(pre: str) -> bool:
     return any(name in {'tr', 'native_t', 'installer_t', 'user_error', 't'} for name in stack)
 
 
+def _inside_keyed_error_call(pre: str, post: str) -> bool:
+    """Recognize literal fallback text inside the keyed setup error helpers."""
+    source = pre[-2000:] + post[:1000]
+    # why_part takes its catalogue key as the first argument.
+    if re.search(r"why_part\s*\(\s*['\"]setup\.", source):
+        return True
+    # Failed stores the key after its fallback text. Keep the lookahead local
+    # to the current call and require a setup key to avoid hiding raw errors.
+    if re.search(r"(?:Failed|Refused|_fail)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"]setup\.", source):
+        return True
+    # Some errors are stored as adjacent `error` / `key` fields and translated
+    # by the UI consumer. Treat only that explicit keyed record as a fallback.
+    return bool(re.search(r"note\[['\"]error['\"]\]\s*=\s*['\"][\s\S]{0,600}?note\[['\"]key['\"]\]\s*=\s*['\"]setup\.", source))
+
+
 def looks_technical(s: str) -> bool:
     if s in TECHNICAL_EXACT:
         return True
@@ -174,13 +194,39 @@ def looks_technical(s: str) -> bool:
         return True
     if re.match(r'^(?:#[\w-]+(?:,\s*[^;]+)?|\.[\w-]+(?:,\s*[^;]+)?)$', s):
         return True
+    if re.fullmatch(r'\[value="\{…\}"\]', s):
+        return True
+    if re.fullmatch(r'#[\w-]+\s+[a-zA-Z][\w-]*', s):
+        return True
     if 'style="' in s or 'style=\\"' in s or s.startswith('/ui/'):
+        return True
+    if s.startswith('html{') or re.search(r'\b(?:margin|padding|background|font-family|border|pointer-events):[^ ]', s):
+        return True
+    if re.fullmatch(r'(?:bytes=)?[0-9{}…-]+(?:px)?(?: 0px 0px 0px)?', s):
+        return True
+    if re.fullmatch(r'min\(100%,\s*\{…\}px\)', s):
+        return True
+    if re.fullmatch(r'survival-chat-\{…\}\.md', s):
+        return True
+    if re.fullmatch(r'\d{3}\s+\{…\}px\s+-apple-system,Segoe UI(?:,Roboto)?(?:,sans-serif)?', s):
+        return True
+    if re.fullmatch(r'\{…\}(?:\s+\{…\})?px\s+-apple-system,Segoe UI(?:,Roboto)?(?:,sans-serif)?', s):
+        return True
+    if re.fullmatch(r'\{…\}\s+0\s+\{…\}', s):
+        return True
+    if s in {'{…} · {…}', '{…} · {…}{…}{…}', '· {…}'}:
+        return True
+    if re.fullmatch(r'\{…\} sources · \{…\}', s):
         return True
     if re.fullmatch(r'\{…\}(?:\s+\d+)?\s*(?:ft|mi|m|km|px)(?:\s*\([^)]*\))?', s, re.I):
         return True
     if '${' in s or looks_like_markup(s):
         return True
     if s.startswith('<') and ' ' not in s[:6] and len(s) < 40:
+        return True
+    if s.startswith('<') and '>' not in s:
+        return True
+    if s == 'indexing (other process)':
         return True
     if s.strip() in {'{…}', ''} or set(s) <= set('{…} \t\n'):
         return True
@@ -223,8 +269,15 @@ def classify(s: str, pre: str, post: str = '') -> str:
     # technical classification can use both sides to recognize a DOM sink.
     context = pre + post
     prefix = pre.rsplit(';', 1)[-1][-1600:]
+    # A flattened template made only from translated expressions plus
+    # punctuation is not a hard-coded message of its own.
+    literal_remainder = re.sub(r'\{…\}', '', s)
+    if ('tr(' in post[:4000] and not re.search(r'[A-Za-z]{2,}', literal_remainder)
+            and '{…}' in s):
+        return 'wired'
     mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
-    if (_inside_translation_call(pre) or mapped_error or already_wired(prefix)
+    if (_inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
+            or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
@@ -431,7 +484,10 @@ def scan_web():
         for pos, s, pre in it:
             if not s or len(s) > 2000:
                 continue
-            post = text[pos:pos + 180]
+            end = _skip_template(text, pos) if text[pos] == '`' else _skip_string(text, pos)
+            # Keep lookahead within this literal; same-tag HTML checks can
+            # inspect the remainder of the current attribute/tag from here.
+            post = text[pos:min(len(text), end + 600)]
             line = text[:pos].count('\n') + 1
             hits.append({'surface': f'web/{name}', 'line': line, 'text': s,
                          'class': classify(s, pre, post)})
@@ -449,7 +505,8 @@ def scan_python():
             for pos, s, pre, body in iter_py_strings(text):
                 if not s or len(s) > 300:
                     continue
-                post = body[pos:pos + 220]
+                end = _skip_string(body, pos)
+                post = body[pos:min(len(body), end + 600)]
                 line = body[:pos].count('\n') + 1
                 hits.append({'surface': surface, 'file': rel, 'line': line,
                              'text': s, 'class': classify(s, pre, post)})

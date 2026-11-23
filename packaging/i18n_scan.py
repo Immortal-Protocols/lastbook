@@ -116,7 +116,10 @@ def unescape(s, quote):
 
 
 def already_wired(pre: str) -> bool:
-    tail = pre[-300:]
+    # Only inspect the current statement. A translation call earlier in the
+    # same function must not hide a later hard-coded label (the old 300-char
+    # window caused this false positive, especially in compact JS).
+    tail = pre.rsplit(';', 1)[-1][-300:]
     if re.search(r"(?:tr|native_t|installer_t|user_error|t)\s*\(", tail):
         return True
     if 'data-i18n' in tail:
@@ -180,7 +183,11 @@ def display_context(pre: str) -> bool:
 
 
 def classify(s: str, pre: str) -> str:
-    if already_wired(pre) or 'data-i18n' in s:
+    # Callers may pass following source for display-context detection. Wiring
+    # must be established from the prefix only; otherwise a later tr() call
+    # can mask a preceding literal.
+    prefix = pre.split('\n', 1)[0]
+    if already_wired(prefix) or 'data-i18n' in s:
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
@@ -389,7 +396,7 @@ def scan_web():
             post = text[pos:pos + 180]
             line = text[:pos].count('\n') + 1
             hits.append({'surface': f'web/{name}', 'line': line, 'text': s,
-                         'class': classify(s, pre + post)})
+                         'class': classify(s, pre)})
     return hits
 
 
@@ -407,7 +414,7 @@ def scan_python():
                 post = body[pos:pos + 220]
                 line = body[:pos].count('\n') + 1
                 hits.append({'surface': surface, 'file': rel, 'line': line,
-                             'text': s, 'class': classify(s, pre + post)})
+                             'text': s, 'class': classify(s, pre)})
     return hits
 
 

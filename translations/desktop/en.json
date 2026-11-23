@@ -1220,5 +1220,9 @@
   "map3d.oneStoreyShown": "; {count} without one shown one storey tall",
   "guide.stopAndGetHelp": "Stop and get help when…",
   "guide.showAllWarnings": "Show all {count} warnings",
-  "guide.routeTicksNote": "Ticks are your own notes on this device. Reading or watching is not the same as practising safely."
+  "guide.routeTicksNote": "Ticks are your own notes on this device. Reading or watching is not the same as practising safely.",
+  "library.itemTypeLibrary": "library",
+  "library.largest": "The largest",
+  "setup.checkRepair": "Check and repair",
+  "setup.openAnotherLibraryFolder": "Open another library folder"
 }

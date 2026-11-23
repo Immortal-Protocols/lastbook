@@ -286,6 +286,11 @@ LABOR_EVERYDAY = [
 # Every phrase of the pregnancy choice opens it on its own. Next to a life threat, the first guide is the one the search
 # gets with the choice's phrase fields taken out: a phrase never changes what comes first (Breathing, Bleeding, or
 # whatever main shows, even when that is not first aid).
+# Everyday words that an urgent phrase holds and the labor "context" also uses, each with the search where the urgent
+# phrase meets a labor phrase and the ordinary labor search with the same word. See the two tests that read this.
+EVERYDAY_IN_URGENT = {
+    'live': ("her water broke and i don't want to live", 'her water broke and we live far from the hospital'),
+}
 PREGNANT_CHOICE = next(c for t in TOPICS if t['id'] == 'health' for c in t['choices'] if c['id'] == 'pregnant')
 PHRASES_ALONE = [*PREGNANT_CHOICE['phrases'], *PREGNANT_CHOICE.get('weak', []),
                  *(f'my {p}' for p in PREGNANT_CHOICE.get('weak', []) if p.startswith('water'))]
@@ -314,6 +319,10 @@ GUIDE_URGENT = {
     'my son says he wants to die': (['health', 'mind'], None), 'end my life': (['health', 'mind'], None),
     "i don't want to live anymore": (['health', 'mind'], None), 'dont want to live': (['health', 'mind'], None),
     'not breathing want to die': (['hurt', 'breathing'], ['health', 'mind']),
+    # A crisis phrase next to a labor phrase: the urgent crisis choice leads. "live" is also an everyday word in the
+    # labor context ("we live far from the hospital"), which keeps opening the pregnancy choice (PREGNANT_FIRST).
+    "her water broke and i don't want to live": (['health', 'mind'], None),
+    'my water broke and i want to die': (['health', 'mind'], None),
     'child unconscious after pet food': (['hurt', 'breathing'], None), 'pet food unconscious': (['hurt', 'breathing'], None),
 }
 # Searches without an urgent phrase keep their guide order: [guide, choice] that comes first.
@@ -635,11 +644,27 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(field=field, phrase=p):
                     self.assertIn(twin, entries)
 
+    def test_everyday_words_in_urgent_phrases_are_proven(self):
+        # Each word excused in EVERYDAY_IN_URGENT names the search where its urgent phrase meets a labor phrase and the
+        # ordinary labor search that uses the same word. The first must open the urgent choice, the second pregnancy.
+        for word, (urgent_q, ordinary_q) in EVERYDAY_IN_URGENT.items():
+            self.assertIn(word, urgent_q.split()); self.assertIn(word, ordinary_q.split())
+            self.assertIn(urgent_q, GUIDE_URGENT)
+            for r in self.modes:
+                top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+                with self.subTest(word=word, segmenter=r['segmenter']):
+                    self.assertEqual(top[urgent_q][:1], [GUIDE_URGENT[urgent_q][0]])
+                    self.assertEqual(top[ordinary_q][:1], [PREGNANT])
+
     def test_context_never_holds_a_life_threat(self):
         # A word in "context" lets a phrase count next to it, so a life threat there would put the pregnancy choice
         # ahead of first aid. The main words of every urgent phrase ("breathing", not "out"), and these, stay out.
         threats = {w for t in TOPICS for c in t.get('choices', []) for u in c.get('urgent', []) for w in u.split()
                    if len(w) > 3 and w not in ("isn't", 'isnt')}
+        # An urgent phrase can hold an everyday word that is no threat on its own: "live" in "don't want to live".
+        # The phrase is the threat, and it leads whenever the search names it (GUIDE_URGENT has the search that
+        # proves it next to a labor phrase). Such a word may stay in "context" only if it is listed here.
+        threats -= set(EVERYDAY_IN_URGENT)
         threats |= {'bleeding', 'blood', 'loss', 'weak', 'moving', 'limp', 'heavily', 'heavy', 'hemorrhage',
                     'haemorrhage', 'seizure', 'fitting', 'convulsing', 'choking', 'breathe', 'pulse', 'chest',
                     'overdose', 'poison', 'poisoned', 'shock', 'faint', 'fainted', 'blue', 'pale', 'stroke'}

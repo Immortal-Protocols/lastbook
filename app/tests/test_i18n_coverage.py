@@ -84,3 +84,18 @@ class Coverage(unittest.TestCase):
         self.assertIsNotNone(choose)
         self.assertFalse(scan.already_wired(choose))
         self.assertEqual(scan.classify('Choose', choose), 'chrome')
+
+    def test_html_marker_only_wires_its_own_tag(self):
+        bound = '<button aria-label="Show or hide the sidebar" data-i18n-aria-label="nav.sidebarToggle">'
+        _pos, _text, pre = next(item for item in scan.iter_js_strings(bound)
+                                 if item[1] == 'Show or hide the sidebar')
+        self.assertEqual(scan.classify('Show or hide the sidebar', pre, bound[_pos:]), 'wired')
+        adjacent = '"trailing marker"; <button title="Choose">'
+        _pos, _text, pre = next(item for item in scan.iter_js_strings(adjacent) if item[1] == 'Choose')
+        self.assertFalse(scan._has_i18n_marker_in_tag(pre, adjacent[_pos:]))
+
+    def test_translation_fallback_inside_open_tr_call_is_wired(self):
+        sample = "return tr('chat.step.readPage', {title, pages}, 'Read {title}, page {pages}');"
+        _pos, text, pre = next(item for item in scan.iter_js_strings(sample)
+                               if item[1] == 'Read {title}, page {pages}')
+        self.assertEqual(scan.classify(text, pre), 'wired')

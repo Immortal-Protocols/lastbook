@@ -131,6 +131,38 @@ def already_wired(pre: str) -> bool:
     return False
 
 
+def _has_i18n_marker_in_tag(pre: str, post: str) -> bool:
+    """Recognize a bound HTML attribute only when its marker shares the tag."""
+    source = pre[-1200:] + post[:1200]
+    before, after = source.rsplit('<', 1) if '<' in source else ('', source)
+    tag = '<' + after.split('>', 1)[0] if '>' in after else ''
+    return bool(tag and re.search(r'\bdata-i18n(?:-[a-z-]+)?\s*=', tag))
+
+
+def _inside_translation_call(pre: str) -> bool:
+    """True when the string is an argument to an open translation call."""
+    # The scanner supplies a prefix ending immediately before the literal.
+    # Track call parentheses while skipping quoted/template strings so a
+    # completed neighboring tr() cannot mark the next literal as translated.
+    stack = []
+    i = 0
+    while i < len(pre):
+        c = pre[i]
+        if c in "'\"":
+            i = _skip_string(pre, i)
+            continue
+        if c == '`':
+            i = _skip_template(pre, i)
+            continue
+        if c == '(':
+            m = re.search(r'([A-Za-z_$][\w$]*)\s*$', pre[:i])
+            stack.append(m.group(1) if m else '')
+        elif c == ')' and stack:
+            stack.pop()
+        i += 1
+    return any(name in {'tr', 'native_t', 'installer_t', 'user_error', 't'} for name in stack)
+
+
 def looks_technical(s: str) -> bool:
     if s in TECHNICAL_EXACT:
         return True
@@ -139,6 +171,12 @@ def looks_technical(s: str) -> bool:
     if re.match(r'^(?:m[\d-]|M[\d-]|0 0 \d)', s):
         return True
     if re.match(r'^(?:margin|padding|border|display|width|height|vertical-align|overflow-wrap)', s):
+        return True
+    if re.match(r'^(?:#[\w-]+(?:,\s*[^;]+)?|\.[\w-]+(?:,\s*[^;]+)?)$', s):
+        return True
+    if 'style="' in s or 'style=\\"' in s or s.startswith('/ui/'):
+        return True
+    if re.fullmatch(r'\{…\}(?:\s+\d+)?\s*(?:ft|mi|m|km|px)(?:\s*\([^)]*\))?', s, re.I):
         return True
     if '${' in s or looks_like_markup(s):
         return True
@@ -186,8 +224,10 @@ def classify(s: str, pre: str, post: str = '') -> str:
     # Wiring comes only from the source before this literal. Display and
     # technical classification can use both sides to recognize a DOM sink.
     context = pre + post
-    prefix = pre.rsplit(';', 1)[-1][-300:]
-    if already_wired(prefix) or 'data-i18n' in s:
+    prefix = pre.rsplit(';', 1)[-1][-1600:]
+    mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
+    if (_inside_translation_call(pre) or mapped_error or already_wired(prefix)
+            or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
@@ -334,7 +374,7 @@ def iter_js_strings(text):
     for m in STR_RE.finditer(text):
         raw, q = m.group(2), m.group(1)
         s = unescape(raw, q)
-        yield m.start(), s, text[max(0, m.start() - 180):m.start()]
+        yield m.start(), s, text[max(0, m.start() - 2000):m.start()]
     i, n = 0, len(text)
     while i < n:
         c = text[i]
@@ -344,7 +384,7 @@ def iter_js_strings(text):
         if c == '`':
             start = i
             end, parts = _template_parts(text, start)
-            pre = text[max(0, start - 180):start]
+            pre = text[max(0, start - 2000):start]
             if any(kind == 'expr' for kind, _ in parts):
                 flat = ''.join(lit if kind == 'lit' else '{…}' for kind, lit in parts)
                 if flat.strip() and flat.strip() != '{…}':

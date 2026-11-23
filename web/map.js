@@ -151,7 +151,7 @@ const MapView = (() => {
       <div class="map-pop" id="pres" hidden></div>
       <div class="map-pop layers" id="layers" hidden></div>
       <div class="mapctl"><span class="zgrp" role="group" aria-label="${tr('map.zoom', null, "Zoom")}"><button id="zin" aria-label="${tr('map.zoomIn', null, "Zoom in")}" title="${tr('map.zoomIn', null, "Zoom in")}">+</button><button id="zout" aria-label="${tr('map.zoomOut', null, "Zoom out")}" title="${tr('map.zoomOut', null, "Zoom out")}">−</button></span>
-        <button id="zhome" aria-label="${tr('map.goMyArea', null, "Go to my area")}" title="My area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button><button id="map-us" aria-label="${tr('map.wholeUS', null, "Whole United States")}" title="${tr('map.wholeUSShort', null, "Whole US")}">US</button>
+        <button id="zhome" aria-label="${tr('map.goMyArea', null, "Go to my area")}" title="${tr('map.myArea', null, "My area")}" data-i18n-title="map.myArea"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button><button id="map-us" aria-label="${tr('map.wholeUS', null, "Whole United States")}" title="${tr('map.wholeUSShort', null, "Whole US")}">US</button>
         <button id="map-full" aria-label="${tr('map.fullScreen', null, "Full screen")}" title="${tr('map.fullScreen', null, "Full screen")}">${FULL[0]}</button><button id="map-3d" aria-label="${tr('map.terrain3d', null, "3D terrain view")}" title="${tr('map.view3d', null, "3D view")}">3D</button><button id="map-photo" aria-label="${tr('map.aerial', null, "Aerial photos")}" aria-pressed="false" title="${tr('map.aerial', null, "Aerial photos")}">🛰</button></div>
       <div class="map-card" id="card" hidden></div>
       <div class="map-tip" id="tip" hidden></div>
@@ -813,7 +813,7 @@ const MapView = (() => {
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
     const id = 'el' + Math.random().toString(36).slice(2, 8);
-    elevation(p.lat, p.lon).then(m => { const el = document.getElementById(id); if (el) el.textContent = m == null ? '' : 'Elevation ' + fmtElev(m) });
+    elevation(p.lat, p.lon).then(m => { const el = document.getElementById(id); if (el) el.textContent = m == null ? '' : tr('map.elevationValue', { value: fmtElev(m) }, 'Elevation {value}') });
     return `<p class="coords">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}<br>${home ? `<span class="muted">${dist(km)} from your area</span><br>` : ''}<span class="muted" id="${id}">Elevation…</span></p>`;
   }
   function wireCoords(p) {

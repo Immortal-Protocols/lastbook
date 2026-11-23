@@ -28,12 +28,6 @@ Reads (licence, what to credit):
   OpenStreetMap, Geofabrik Guyana full extract (guyana-latest.osm.pbf)   ODbL 1.0; only for addr:* tags (addresses layer,
       needs pip install osmium)
   GeoNames GY.zip, populated places                                        CC BY 4.0, "GeoNames (geonames.org)"
-  GuyNode Guyana Place Name Registry, its 'Gazetteer' and 'GuyNode POI seed' rows (packaging/regions/GY-guynode-places.csv,
-      from https://guynode.com/Guyana_Places_Registry.csv taken 2026-11-23)   NO KNOWN LICENCE: guynode.com states none and
-      offers its own layers "for educational and research use"; kept apart so it can be dropped
-  Guyana Post Office Corporation postcode directory (packaging/regions/GY-postcodes.csv, a copy of the table behind
-      https://guypost.gy/search-postcode/ taken 2026-11-23)                  NOT openly licensed: government-provided data
-      published by GPOC with no reuse terms ("Guyana Post Office Corporation © 2020"); kept apart so it can be dropped
 The same sources and lines are in packaging/regions/GY.json ("sources", "attribution").
 
 Writes derived/geo/regions/GY/<name>.sqlite, one file per US map file, with the US tables:
@@ -47,19 +41,17 @@ Writes derived/geo/regions/GY/<name>.sqlite, one file per US map file, with the 
   buildings.sqlite  bldg, bldg_socal, bldg_osm, meta footprints in z14 buckets (tools/build_buildings.py's format;
                                                      part numbers from PART_BASE so they never meet the US ones)
   places.sqlite     place, place_fts                 OSM places and named points (source 'OpenStreetMap'), OCHA regions
-                                                     and sub-regions (source 'OCHA'), and GPOC postcode areas (kind
-                                                     'postcode', source 'Guyana Post Office Corporation'), each put at
-                                                     an OSM place with the area's name near its post office, else at
-                                                     the post office; searchable by area name or by the 7-digit code
+                                                     and sub-regions (source 'OCHA'), and GeoNames populated places
+                                                     OSM lacks (source 'GeoNames')
   addresses.sqlite  addr, meta                       OSM house addresses in tools/build_addresses.py's table (state 'GY');
                                                      merge copies it to derived/geo/addresses/GY.sqlite
-GeoNames places go into places.sqlite (source 'GeoNames') where OSM has no place of that name within 2 km, then GuyNode
-registry places (source 'GuyNode') where neither has one within 5 km. The only open
-addresses are the ~1,200 OSM ones; the postcode directory has no coordinates. `merge` adds these rows to derived/geo/*.sqlite,
+GeoNames places go into places.sqlite where OSM has no place of that name within 2 km. Only sources with terms that allow
+redistribution are used: no postcode directory, gazetteer or registry without a licence. The only open addresses are the
+~1,200 OSM ones. `merge` adds these rows to derived/geo/*.sqlite,
 replacing only rows an earlier merge of GY added. Rebuilding a US file that starts from empty (build_crops.py) drops
 them, so merge again after that.
 """
-import argparse, csv, io, json, math, os, re, shutil, sqlite3, struct, sys, time, urllib.error, urllib.request, zipfile, zlib
+import argparse, io, json, math, os, re, shutil, sqlite3, struct, sys, time, urllib.error, urllib.request, zipfile, zlib
 from array import array
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -81,9 +73,6 @@ OSM_URL = 'https://download.geofabrik.de/south-america/guyana-latest-free.gpkg.z
 OSM_PBF_URL = 'https://download.geofabrik.de/south-america/guyana-latest.osm.pbf'   # full tags: addr:* is not in the free extract
 GEONAMES_URL = 'https://download.geonames.org/export/dump/GY.zip'
 GEONAMES_SOURCE = 'GeoNames'
-GUYNODE_CSV = HERE / 'packaging/regions/GY-guynode-places.csv'
-GUYNODE_SOURCE = 'GuyNode'
-GUYNODE_KM = 5               # GuyNode's gazetteer points are rounded to the minute (~1.8 km), so 'same place' is looser
 GEONAMES_RADIUS_KM = 2       # a GeoNames place this close to an OSM place of the same name is the same place
 ADDR_CITY_KM = 5             # an OSM address with no addr:city takes the nearest town, village or neighbourhood this close
 # The same street words as tools/build_addresses.py and engine/address_search.py (a test keeps them equal).
@@ -100,12 +89,6 @@ OSM_SOURCE = 'OpenStreetMap contributors, via Geofabrik guyana-latest-free.gpkg.
 DEM_SOURCE = 'Copernicus DEM GLO-30 (Copernicus WorldDEM-30, ESA and Airbus)'
 WC_SOURCE = 'ESA WorldCover 10 m 2021 v200 (CC BY 4.0)'
 MSB_SOURCE = 'Microsoft Global ML Building Footprints, release 2026-02-03'
-POSTCODES = HERE / 'packaging/regions/GY-postcodes.csv'   # snapshot of the GPOC directory (see the docstring)
-POSTCODE_SOURCE = 'Guyana Post Office Corporation'
-POSTCODE_RADIUS_KM = 25
-# GPOC office names whose OSM spelling differs (office_key of each side); offices not here or in OSM are not placed.
-OFFICE_ALIASES = {'lettercarriersectiongpohq': 'guyanacorporationheadquarters', 'mckenzie': 'mackenzie',
-                  'eveversham': 'eversham', 'timerhi': 'timehri', 'rosehalltown': 'rosehall'}
 PART_BASE = 900000          # buildings.sqlite part numbers for this region: PART_BASE + file number
 DETAIL = 'Guyana'
 
@@ -674,11 +657,9 @@ def build_places(box):
             db.execute(ins, (rec[name_key], kind, detail, y, x, 2, 'OCHA'))
             n += 1
     gn = add_geonames(db, src, inside)
-    gy = add_guynode(db, inside)
-    pc = add_postcodes(db, src, inside)
     db.execute("INSERT INTO place_fts(place_fts) VALUES ('rebuild')")
     db.commit()
-    print(f'places: {n:,}, GeoNames places: {gn:,}, GuyNode places: {gy:,}, postcode areas: {pc:,}', flush=True)
+    print(f'places: {n:,}, GeoNames places: {gn:,}', flush=True)
 
 
 def km_between(a, b):
@@ -726,123 +707,9 @@ def add_geonames(db, src, inside):
     return n
 
 
-def base_name(name):
-    """'Albion (Number 5 Village)' -> 'Albion'; 'Albertown, Georgetown' -> 'Albertown': GuyNode adds the other name or the town."""
-    return re.split(r'[(,]', name)[0].strip() or name
-
-
-def guynode_rows(path=None):
-    """(name, category, region, lat, lon) of packaging/regions/GY-guynode-places.csv."""
-    with open(path or GUYNODE_CSV, encoding='utf-8', newline='') as f:
-        for r in csv.DictReader(f):
-            try:
-                yield r['place_name'].strip(), r['category'], r['region'], float(r['latitude']), float(r['longitude'])
-            except ValueError:
-                continue
-
-
-def new_guynode(rows, have):
-    """GuyNode rows whose name (or its first part) has no place within GUYNODE_KM in have {squashed name: [(lat, lon)]}."""
-    out = []
-    for name, cat, region, lat, lon in rows:
-        near = have.get(squash(name), []) + have.get(squash(base_name(name)), [])
-        if name and not any(km_between((lat, lon), p) <= GUYNODE_KM for p in near):
-            out.append((name, 'gazetteer place' if cat == 'gazetteer place' else cat, region, lat, lon))
-    return out
-
-
-def add_guynode(db, inside):
-    """GuyNode registry places that OSM and GeoNames lack. No known licence; see the module notes."""
-    have = {}
-    for name, lat, lon in db.execute('SELECT name,lat,lon FROM place'):
-        have.setdefault(squash(name), []).append((lat, lon))
-    n = 0
-    for name, kind, region, lat, lon in new_guynode(guynode_rows(), have):
-        if inside(lon, lat):
-            db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) VALUES (?,?,?,?,?,?,?)',
-                       (name, kind, f'{region} · {DETAIL} (GuyNode, position to the nearest minute, no known licence)', lat, lon, 0,
-                        GUYNODE_SOURCE))
-            n += 1
-    return n
-
-
 def squash(name):
     """'Fort Wellington' and 'Fortwellington' -> 'fortwellington'; 'Werk-en-Rust' -> 'werkenrust'."""
     return re.sub(r'[^a-z0-9]+', '', name.lower().replace('&', ' and '))
-
-
-def office_key(office):
-    """'Nigg PO', 'Ituni Postal Agency', 'Annai Postal Agent' -> the place name ('nigg', 'ituni', 'annai')."""
-    key = squash(re.sub(r'\b(post office|postal agen(t|cy)|po)\b', ' ', office.lower()))
-    return OFFICE_ALIASES.get(key, key)
-
-
-def postcode_rows(path=POSTCODES):
-    """The GPOC directory snapshot: one dict per row, every postcode 7 digits."""
-    with open(path, newline='', encoding='utf-8') as f:
-        rows = [{k: ' '.join(v.split()) for k, v in r.items()} for r in csv.DictReader(f)]
-    return [r for r in rows if re.fullmatch(r'\d{7}', r['postcode'])]
-
-
-def place_postcodes(rows, places, offices, radius_km=POSTCODE_RADIUS_KM):
-    """One (area, postcode, subregion, office, lat, lon, how, streets) per area and postcode in the directory.
-
-    The directory has no coordinates. An area is put on the map where its post office is (an OSM post office whose
-    name matches, else an OSM place with the office's name), then moved to an OSM place with the area's own name when
-    one lies within radius_km of that office. An area whose office can't be found and whose name matches no single
-    place is left out. places and offices map squash(name) -> [(lat, lon)]."""
-    km = km_between
-    out, streets = [], {}
-    for r in rows:
-        streets.setdefault((squash(r['area']), r['postcode']), []).append(r['street'])
-    seen = set()
-    for r in rows:
-        key = (squash(r['area']), r['postcode'])
-        if key in seen:
-            continue
-        seen.add(key)
-        ok = office_key(r['office'])
-        anchor = (offices.get(ok) or places.get(ok) or [None])[0]
-        here = places.get(key[0], [])
-        if anchor:
-            near = [p for p in here if km(p, anchor) <= radius_km]
-            pt, how = (min(near, key=lambda p: km(p, anchor)), 'area') if near else (anchor, 'office')
-        elif len(here) == 1:
-            pt, how = here[0], 'area'
-        else:
-            continue
-        out.append((r['area'], r['postcode'], r['subregion'], r['office'], pt[0], pt[1], how,
-                    [st for st in dict.fromkeys(streets[key]) if st]))
-    return out
-
-
-def add_postcodes(db, src, inside):
-    """Guyana Post Office Corporation postcodes as places (kind 'postcode'), found by area name or by the code."""
-    places, offices = {}, {}
-    for table in ('gis_osm_places_free', 'gis_osm_places_a_free'):
-        for parts, (cls, name) in each(src, table):
-            if name:
-                minx, maxx, miny, maxy = flat_bbox(parts)
-                places.setdefault(squash(name), []).append(((miny + maxy) / 2, (minx + maxx) / 2))
-    for table in ('gis_osm_pois_free', 'gis_osm_pois_a_free'):
-        for parts, (cls, name) in each(src, table):
-            if name and cls == 'post_office':
-                minx, maxx, miny, maxy = flat_bbox(parts)
-                offices.setdefault(office_key(name.replace('Guyana Post Office-', '')), []).append(((miny + maxy) / 2, (minx + maxx) / 2))
-    for name, lat, lon in db.execute("SELECT name,lat,lon FROM place WHERE source IN (?,?)", (GEONAMES_SOURCE, GUYNODE_SOURCE)):
-        places.setdefault(squash(name), []).append((lat, lon))
-    n = 0
-    for area, code, sub, office, lat, lon, how, sts in place_postcodes(postcode_rows(), places, offices):
-        if not inside(lon, lat):
-            continue
-        where = '' if how == 'area' else ' (placed at its post office)'
-        st = ', '.join(sts[:3]) + (f' and {len(sts) - 3} more' if len(sts) > 3 else '')
-        detail = ' · '.join(x for x in (st, sub, office + where, f'{DETAIL} ({POSTCODE_SOURCE})') if x)
-        # The code is in the name: the place finder keeps one result per name and point, and an area can have many codes.
-        db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) VALUES (?,?,?,?,?,?,?)',
-                   (f'{area} {code}', 'postcode', detail, lat, lon, 5, POSTCODE_SOURCE))
-        n += 1
-    return n
 
 
 # ----------------------------------------------------------- addresses ----
@@ -1312,8 +1179,8 @@ def merge(box):
             done.append('buildings: %s' % format(db.execute('SELECT coalesce(sum(n),0) FROM r.bldg').fetchone()[0], ','))
         elif name == 'places':
             w, s, e, n = box
-            db.execute("DELETE FROM place WHERE source IN ('OpenStreetMap','OCHA',?,?,?) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?",
-                       (POSTCODE_SOURCE, GEONAMES_SOURCE, GUYNODE_SOURCE, w, e, s, n))
+            db.execute("DELETE FROM place WHERE source IN ('OpenStreetMap','OCHA',?) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?",
+                       (GEONAMES_SOURCE, w, e, s, n))
             db.execute('INSERT INTO place(name,kind,detail,lat,lon,rank,source) SELECT name,kind,detail,lat,lon,rank,source FROM r.place')
             db.execute("INSERT INTO place_fts(place_fts) VALUES ('rebuild')")
             done.append('places: %s' % format(db.execute('SELECT count(*) FROM r.place').fetchone()[0], ','))

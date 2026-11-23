@@ -65,10 +65,10 @@ class RegionFile(unittest.TestCase):
         r = json.loads(GY.read_text(encoding='utf-8'))
         for k in regions.REQUIRED + ('address', 'attribution'):
             self.assertIn(k, r)
-        self.assertIs(r['address']['search'], True)
+        self.assertIs(r['address']['search'], False)
         self.assertIn('OpenStreetMap addresses only', r['address']['coverage'])
         self.assertIn('7-digit', r['address']['postcode'])
-        self.assertIn('Address search covers only those', r['includes'])
+        self.assertIn('Address search stays off', r['includes'])
         self.assertEqual(set(r['sources']), set(LAYERS))
         for layer, items in r['sources'].items():
             self.assertTrue(items, layer)
@@ -303,50 +303,6 @@ class Schemas(unittest.TestCase):
             G.main(['build', 'roads'])
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
-class Postcodes(unittest.TestCase):
-    """GPOC postcode directory: government-provided, not openly licensed (packaging/regions/GY.json, sources.places)."""
-
-    def test_snapshot_is_the_whole_directory(self):
-        rows = G.postcode_rows()
-        self.assertEqual(len(rows), 2201)
-        self.assertEqual(len({r['postcode'] for r in rows}), 227)
-        self.assertTrue(all(re.fullmatch(r'\d{7}', r['postcode']) for r in rows))
-        self.assertIn('2210201', {r['postcode'] for r in rows})        # GPOC's own example
-
-    def test_json_says_it_is_not_open_data(self):
-        r = regions.get('GY')
-        gpoc = [s for s in r['sources']['places'] if 'Guyana Post Office' in s['publisher']]
-        self.assertEqual(len(gpoc), 1)
-        self.assertIn('not openly licensed', gpoc[0]['licence'])
-        self.assertIn('government-provided', gpoc[0]['note'])
-        self.assertIn('Guyana Post Office Corporation', ' '.join(r['attribution']))
-
-    def test_names_and_offices(self):
-        self.assertEqual(G.squash('Werk-en-Rust & Wortmanville'), 'werkenrustandwortmanville')
-        self.assertEqual(G.squash('Fort Wellington'), G.squash('Fortwellington'))
-        self.assertEqual(G.office_key('Nigg PO'), G.office_key('Nigg Post Office'))
-        self.assertEqual(G.office_key('Ituni Postal Agency'), 'ituni')
-        self.assertEqual(G.office_key('McKenzie PO'), G.office_key('MacKenzie Post Office'))
-
-    def test_area_near_its_office_else_the_office(self):
-        rows = [{'area': 'Kitty', 'postcode': '4130201', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': 'A Street'},
-                {'area': 'Kitty', 'postcode': '4130201', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': 'B Street'},
-                {'area': 'Nowhere', 'postcode': '4130202', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': ''},
-                {'area': 'Far', 'postcode': '4130203', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': ''},
-                {'area': 'Lost', 'postcode': '9999999', 'subregion': 'X', 'office': 'Unknown PO', 'street': ''}]
-        places = {'kitty': [(6.82, -58.14), (8.0, -59.5)], 'far': [(3.0, -59.0)]}
-        offices = {'kitty': [(6.83, -58.15)]}
-        out = G.place_postcodes(rows, places, offices)
-        self.assertEqual([(o[0], o[6]) for o in out], [('Kitty', 'area'), ('Nowhere', 'office'), ('Far', 'office')])
-        self.assertEqual((out[0][4], out[0][5]), (6.82, -58.14))      # the Kitty near its office, not the far one
-        self.assertEqual(out[0][7], ['A Street', 'B Street'])
-        self.assertEqual((out[2][4], out[2][5]), (6.83, -58.15))      # 'Far' is over 25 km away: at the office
-
-
 class AddressesAndGeoNames(unittest.TestCase):
     def test_street_words_match_the_us_builder_and_the_engine(self):
         self.assertEqual(G.ADDR_WORDS, us_constant('build_addresses.py', 'WORDS'))
@@ -371,16 +327,12 @@ class AddressesAndGeoNames(unittest.TestCase):
         self.assertEqual([(n, k) for n, k, *_ in out], [('Kingston', 'neighbourhood'), ('Leguan', 'populated place')])
         self.assertEqual(out[1][2:], (6.60, -58.00))                  # the Leguan far from OSM's is kept
 
-    def test_guynode_skips_places_already_there(self):
-        rows = [('Albion (Number 5 Village)', 'gazetteer place', 'East Berbice-Corentyne', 6.2667, -57.3833),
-                ('Aishalton', 'gazetteer place', 'Upper Takutu-Upper Essequibo', 2.4833, -59.3167)]
-        have = {'albion': [(6.27, -57.39)]}
-        self.assertEqual([r[0] for r in G.new_guynode(rows, have)], ['Aishalton'])
-        self.assertEqual(G.base_name('Albertown, Georgetown'), 'Albertown')
+    def test_only_redistributable_place_sources(self):
+        r = regions.get('GY')
+        self.assertEqual({x['licence'] for x in r['sources']['places']}, {'ODbL 1.0', 'CC BY-IGO', 'CC BY 4.0'})
+        self.assertFalse((ROOT / 'packaging/regions/GY-postcodes.csv').exists())
+        self.assertFalse((ROOT / 'packaging/regions/GY-guynode-places.csv').exists())
 
-    def test_guynode_is_marked_unlicensed(self):
-        r = json.loads((ROOT / 'packaging/regions/GY.json').read_text(encoding='utf-8'))
-        gn = [s for s in r['sources']['places'] if s.get('publisher') == 'GuyNode']
-        self.assertEqual(gn[0]['licence'], 'No known licence')
-        self.assertTrue(any('no known licence' in a for a in r['attribution']))
-        self.assertGreater(sum(1 for _ in G.guynode_rows()), 1000)
+
+if __name__ == '__main__':
+    unittest.main()

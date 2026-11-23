@@ -1365,6 +1365,7 @@
   "setup.copyLead": "Copia la biblioteca {library}{size} en {disk}, junto con un archivo START-HERE.txt con instrucciones para configurar Lastbook en otra computadora.",
   "setup.copyNotCopied": "No se copian tus ajustes, elementos guardados, chats, notas, búsqueda de direcciones ni la IA local. Solo se copian los archivos propios de la biblioteca y se lee cada uno desde la unidad para comprobar que todos llegaron completos.",
   "chat.fallbackNothing": " La búsqueda en la biblioteca tampoco encontró información para responder esta pregunta.",
+  "map.locationOffline": "Lastbook permanece sin conexión y no solicita tu ubicación.",
   "update.networkError": "No se pudieron comprobar las actualizaciones por un problema de red. Vuelve a intentarlo más tarde.",
   "update.offline": "Lastbook no pudo conectarse a internet. El resto de Lastbook sigue funcionando sin conexión; vuelve a intentarlo cuando tengas conexión.",
   "update.refusedAddress": "Lastbook rechazó la dirección utilizada para comprobar actualizaciones.",

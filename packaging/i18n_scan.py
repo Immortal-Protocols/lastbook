@@ -44,6 +44,7 @@ PYTHON_SURFACES = {
     ],
     'engine/update': [ROOT / 'engine' / 'update.py'],
     'app/main': [ROOT / 'app' / 'main.py'],
+    'app/bridge': [ROOT / 'app' / 'bridge.py'],
     'native/macos': [ROOT / 'app' / 'shell_macos.py'],
     'native/windows': [ROOT / 'app' / 'shell_windows.py'],
     'native/linux': [ROOT / 'app' / 'shell_linux.py'],
@@ -102,7 +103,7 @@ DISPLAY_PRE = re.compile(
     r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|'
     r'setUiTitle|aria-label|placeholder|confirm\(|alert\(|toast\(|show_error|'
     r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|setPrompt_|GenericName|'
-    r'Comment=|Name=|\.Text\s*=|why\s*=|message\s*=|[\'"]error[\'"]\s*:|Failed\(|_fail\(|live\.textContent|'
+    r'Comment=|Name=|\.Text\s*=|why\s*=|message\s*[:=]|[\'"]error[\'"]\s*:|Failed\(|_fail\(|live\.textContent|'
     r'set_tooltip|tooltip_text|add_buttons\(|initWithTitle_|ASK_TITLE|ASK\s*=|'
     r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|setWindowTitle|title\s*[:=]|menu\.append|view\.append|'
     r'helps\.append|_menu\('
@@ -131,7 +132,7 @@ def already_wired(pre: str) -> bool:
     # same function must not hide a later hard-coded label (the old 300-char
     # window caused this false positive, especially in compact JS).
     tail = pre.rsplit(';', 1)[-1][-300:]
-    if re.search(r"\b(?:tr|native_t|installer_t|user_error|t)\s*\(", tail):
+    if re.search(r"\b(?:tr|lastbookTr|native_t|installer_t|user_error|t)\s*\(", tail):
         return True
     if 'data-i18n' in tail:
         return True
@@ -179,7 +180,7 @@ def _inside_named_call(pre: str, names) -> bool:
 def _inside_translation_call(pre: str) -> bool:
     """True when the string is an argument to an open translation call."""
     # A completed neighboring tr() cannot mark the next literal as translated.
-    return _inside_named_call(pre, {'tr', 'native_t', 'installer_t', 'user_error', 't'})
+    return _inside_named_call(pre, {'tr', 'lastbookTr', 'native_t', 'installer_t', 'user_error', 't'})
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
@@ -620,6 +621,17 @@ def scan_python():
                 kind = 'wired' if s in go_values else classify(s, pre, post)
                 hits.append({'surface': surface, 'file': rel, 'line': line,
                              'text': s, 'class': kind})
+            if rel == 'app/bridge.py':
+                embedded = re.search(r'(?m)^TOP_SCRIPT\s*=\s*r"""([\s\S]*?)"""', text)
+                if embedded:
+                    script = embedded.group(1)
+                    line_offset = text[:embedded.start(1)].count('\n')
+                    for pos, s, pre in iter_js_strings(script):
+                        if not s or len(s) > 2000:
+                            continue
+                        line = line_offset + script[:pos].count('\n') + 1
+                        hits.append({'surface': surface, 'file': rel, 'line': line,
+                                     'text': s, 'class': classify(s, pre)})
     return hits
 
 

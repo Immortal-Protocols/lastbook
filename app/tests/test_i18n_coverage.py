@@ -175,6 +175,12 @@ class Coverage(unittest.TestCase):
         self.assertEqual(scan.classify(*message), 'chrome')
         self.assertEqual(scan.classify('Could not access the desktop language preference', 'new Error('), 'technical')
 
+    def test_embedded_bridge_script_is_in_the_scan_inventory(self):
+        hits = [hit for hit in scan.scan_python()
+                if hit['file'] == 'app/bridge.py' and 'Lastbook stays offline' in hit['text']]
+        self.assertEqual(len(hits), 1, hits)
+        self.assertEqual(hits[0]['class'], 'wired', hits)
+
     def test_quoted_markup_is_scanned_per_visible_node(self):
         sample = 'el.innerHTML = "<p data-i18n=\\"about.title\\">About</p><p>Raw text</p>";'
         hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]

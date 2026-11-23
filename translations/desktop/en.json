@@ -1365,6 +1365,7 @@
   "setup.copyLead": "Copy the {library} library{size} to {disk}, with a START-HERE.txt that says how to set it up on another computer.",
   "setup.copyNotCopied": "Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.",
   "chat.fallbackNothing": " The library search also found nothing for this question.",
+  "map.locationOffline": "Lastbook stays offline and does not ask where you are.",
   "update.networkError": "Lastbook could not check for updates because of a network problem. Try again later.",
   "update.offline": "Lastbook could not reach the internet. Everything else in Lastbook still works without it; try again when you are online.",
   "update.refusedAddress": "Lastbook refused to check an address it does not know.",

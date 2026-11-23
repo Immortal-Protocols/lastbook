@@ -206,7 +206,7 @@ const MapView = (() => {
     document.addEventListener('fullscreenchange', st.onFull = () => { const f = document.fullscreenElement === $('mapwrap'); if (!f) $('mapwrap')?.classList.remove('max'); syncFull() });
     $('sethome').onclick = () => { save('mapHome', { lat: st.lat, lon: st.lon, z: Math.round(st.z) }); toastMap(tr('map.savedAsArea', null, 'Saved as your area on this device')); draw() };
     const gps = $('gps');
-    if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, name: tr('map.youAreHere', null, 'You are here (approx.)') }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap('Location unavailable: ' + e.message), { timeout: 15000 });
+    if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, name: tr('map.youAreHere', null, 'You are here (approx.)') }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap(tr('map.locationUnavailable', { reason: e.message })), { timeout: 15000 });
     $('pf').onsubmit = e => { e.preventDefault(); findPlace($('pq').value.trim()) };
     $('pq').addEventListener('input', () => { if (!$('pq').value) $('pres').hidden = true });
     $('layers-btn').onclick = () => { const p = $('layers'), open = p.hidden; p.hidden = !open; $('layers-btn').setAttribute('aria-expanded', open); $('pres').hidden = true; if (open) { $('card').hidden = true; renderLayers() } };

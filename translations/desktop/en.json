@@ -1251,5 +1251,19 @@
   "map3d.buildingHeightSummary": {
     "one": "{count} building: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}",
     "other": "{count} buildings: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}"
-  }
+  },
+  "topic.short.shelter": "Heat, cold, smoke, carbon monoxide, damaged homes and outdoor shelter",
+  "topic.short.energy": "Electricity basics, batteries, solar, generators",
+  "topic.short.repair": "Hand tools, sharpening, home fixes, woodworking, engines, welding, simple structures",
+  "topic.short.grow": "Containers, beds, soil, water, staple crops and seed saving",
+  "topic.short.power": "Outages, generators, batteries and gas safety",
+  "topic.short.food": "Fridge and freezer in an outage, safe cooking, emergency food",
+  "topic.short.health": "Examining the sick, medicines, chronic illness, teeth, pregnancy, mental health, disability",
+  "topic.short.disaster": "Earthquake, tsunami, hurricane, tornado, thunderstorm, wildfire, home and high-rise fire, flood, nuclear explosion, bombing, shelter-in-place",
+  "topic.short.water": "Treat, find and store water",
+  "topic.short.sanitation": "Emergency toilets, handwashing, garbage, diarrhea",
+  "topic.short.comms": "Family contact, emergency radio, ham radio, map and compass",
+  "topic.short.hurt": "First aid for bleeding, burns, breathing, injuries and sudden illness",
+  "topic.short.preserve": "Canning, drying, freezing, pickling and fermenting safely",
+  "topic.short.land": "Local hazards, soil, water sources, wild plants and finding your way"
 }

@@ -1251,5 +1251,19 @@
   "map3d.buildingHeightSummary": {
     "one": "{count} edificio: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}",
     "other": "{count} edificios: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}"
-  }
+  },
+  "topic.short.shelter": "Calor, frío, humo, monóxido de carbono, viviendas dañadas y refugio al aire libre",
+  "topic.short.energy": "Conceptos básicos de electricidad, baterías, energía solar y generadores",
+  "topic.short.repair": "Herramientas manuales, afilado, reparaciones del hogar, carpintería, motores, soldadura y estructuras sencillas",
+  "topic.short.grow": "Macetas, huertos, suelo, agua, cultivos básicos y conservación de semillas",
+  "topic.short.power": "Cortes de luz, generadores, baterías y seguridad con el gas",
+  "topic.short.food": "Refrigerador y congelador durante un corte de luz, cocina segura y alimentos de emergencia",
+  "topic.short.health": "Evaluación de personas enfermas, medicamentos, enfermedades crónicas, dientes, embarazo, salud mental y discapacidad",
+  "topic.short.disaster": "Terremotos, tsunamis, huracanes, tornados, tormentas eléctricas, incendios forestales y de edificios, inundaciones, explosiones nucleares, bombardeos y refugio en interiores",
+  "topic.short.water": "Tratar, encontrar y almacenar agua",
+  "topic.short.sanitation": "Baños de emergencia, lavado de manos, basura y diarrea",
+  "topic.short.comms": "Contacto familiar, radio de emergencia, radioafición, mapas y brújula",
+  "topic.short.hurt": "Primeros auxilios para hemorragias, quemaduras, problemas respiratorios, lesiones y enfermedades repentinas",
+  "topic.short.preserve": "Conservas, secado, congelación, encurtido y fermentación seguros",
+  "topic.short.land": "Peligros locales, suelo, fuentes de agua, plantas silvestres y orientación"
 }

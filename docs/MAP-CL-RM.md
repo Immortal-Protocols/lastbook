@@ -1,12 +1,19 @@
 # A detailed map of the Santiago Metropolitan Region (`CL-RM`): how it is built and what it holds
 
-A worked example for `tools/build_region_map.py` in Chile, after Bangkok ([MAP-TH-10.md](MAP-TH-10.md)), built with
-that tool unchanged. It maps the Región Metropolitana de Santiago with the box from the DPA 2023 study
+A worked example in Chile for the region map builder proposed in pull request #80, after its Bangkok example, built
+with that tool unchanged. It maps the Región Metropolitana de Santiago with the box from the DPA 2023 study
 ([REGIONS-CL-DPA2023.md](REGIONS-CL-DPA2023.md)), to test that box against a real build.
 
-The tool, its checker and the Bangkok page come from pull request #80 and are not in this repository until it is
-merged. This map was built and checked with them as they were at commit `a453274`. If the tool changes before then,
-the build and the checks here need to be run again.
+**A prototype dependency.** The builder is a prototype from pull request #80, which is still open. It is not in the
+main branch. This map was built and checked with #80 at commit
+[`a453274`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2) (AngryAnt3201/lastbook, branch `map/bangkok-th-10`). The files used, at that commit:
+
+- [`tools/build_region_map.py`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/build_region_map.py), the builder
+- [`tools/check_region_map.py`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/check_region_map.py), the checker
+- [`tools/test_build_region_map.py`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/test_build_region_map.py), its tests
+- [`docs/MAP-TH-10.md`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/docs/MAP-TH-10.md), the Bangkok example and the builder's notes
+
+If #80 changes, or is merged in another form, the build and the checks here need to be run again.
 
 It adds no code and no app change. The map is not downloaded by setup and is not in any pack.
 
@@ -34,10 +41,18 @@ It adds no code and no app change. The map is not downloaded by setup and is not
 ## Build it
 
 The build machine needs Python 3.11 or later and pyosmium. Nothing else is installed, and the tool downloads nothing.
-Geofabrik offers Chile only as one country file (about 350 MB), so the region is cut from it by the box.
+Geofabrik offers Chile only as one country file (about 352 MB), so the region is cut from it by the box. Sizes on
+this page are in MB, where 1 MB is 1,000,000 bytes.
+
+The builder and checker are not in the main branch. Step 0 takes them from #80 at the exact commit this map was built
+with, into a checkout of this repository, without merging #80.
 
 ```bash
-# 1. The source: Geofabrik's Chile extract (OpenStreetMap, ODbL 1.0). About 350 MB.
+# 0. The prototype builder and checker from pull request #80 (still open), at commit a453274.
+git fetch https://github.com/AngryAnt3201/lastbook.git a453274353b2816b4ccb0114310024ea54c970b2
+git checkout FETCH_HEAD -- tools/build_region_map.py tools/check_region_map.py tools/test_build_region_map.py
+
+# 1. The source: Geofabrik's Chile extract (OpenStreetMap, ODbL 1.0). About 352 MB.
 curl -LO https://download.geofabrik.de/south-america/chile/chile-latest.osm.pbf
 curl -LO https://download.geofabrik.de/south-america/chile/chile-latest.osm.pbf.md5 && md5sum -c chile-latest.osm.pbf.md5
 
@@ -72,7 +87,7 @@ redirects there. `chile-latest` is replaced every day; the dated file used here 
 
 | | |
 |---|---|
-| Source file | `chile-261120.osm.pbf` (from `https://download.geofabrik.de/south-america/chile/chile-261120.osm.pbf`), 352,392,606 bytes, `Last-Modified` 21 Nov 2026 01:11:15 GMT |
+| Source file | `chile-261120.osm.pbf` (from `https://download.geofabrik.de/south-america/chile/chile-261120.osm.pbf`), 352,392,606 bytes (352.4 MB), `Last-Modified` 21 Nov 2026 01:11:15 GMT |
 | Source SHA-256 | `3b169b7a146f6f28c1a78a3a887d5246896f906ee09820240a3fe18c434df8d8` |
 | Source MD5 (matches Geofabrik's `.md5`) | `fef09ad7ee6f28c7afc925ef68c737a4` |
 | OpenStreetMap data up to | 2026-11-20T21:21:21Z (from the file's header) |
@@ -88,7 +103,7 @@ redirects there. `chile-latest` is replaced every day; the dated file used here 
 | `derived/geo/national-status.json` | 59 | `1e3b42cd9a61c002837d73f22c8c1924951fca53ca13eec0cfad856847b0d364` |
 | `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
 
-The map set is 192,221,245 bytes in all (about 184 MB). The files hold no build time, so the same extract and
+The map set is 192,221,245 bytes in all (192.2 MB). The files hold no build time, so the same extract and
 options give the same bytes: a second build on the same machine (194 seconds) gave identical checksums for all five
 files. Whether another SQLite version or platform gives the same bytes was not tested.
 
@@ -116,8 +131,8 @@ neighbourhoods, 2,403 hamlets, 80 localities) and 22,945 named help points. 132 
 
 ## What was checked, and how
 
-`tools/check_region_map.py` passed all 37 file checks and all 13 engine checks on the build above. With `--engine`,
-every connection blocked and an empty library:
+The checker, `tools/check_region_map.py` from #80 at `a453274`, passed all 37 file checks and all 13 engine checks
+on the build above. With `--engine`, every connection blocked and an empty library:
 
 - **Map display.** Tiles at zoom 10, 13 and 16 around the Plaza de Armas: 4,999 roads in the zoom-10 tile, 257
   building outlines in the zoom-16 tile.
@@ -128,7 +143,7 @@ every connection blocked and an empty library:
   finder's index folds accents.
 - **What the app is told.** 40 kinds, within -71.87, -34.45, -69.78, -32.76.
 
-`tools/test_build_region_map.py`: 9 tests pass with pyosmium.
+`tools/test_build_region_map.py` (from #80 at `a453274`): 9 tests pass with pyosmium.
 
 **The sea.** The tool cut the coastline to the box and closed it into 2 sea polygons: one from the north edge near
 Quintero down to the west edge at -33.95 (Valparaíso, Viña del Mar, San Antonio), and a small one in Quintero bay.
@@ -194,7 +209,7 @@ entry is part of this).
   here is from OpenStreetMap.
 - **Miles.** The "Nearest" list gives longer distances in miles (for example "7.9 mi"), and the scale bar shows miles
   beside kilometres, as for the US maps.
-- **Tile size.** A zoom-10 tile over central Santiago is about 0.73 MB, with 4,999 roads.
+- **Tile size.** A zoom-10 tile over central Santiago (10/311/613) is 731,230 bytes (0.73 MB), with 4,999 roads.
 
 ## Licence and attribution
 

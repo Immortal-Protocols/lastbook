@@ -30,7 +30,7 @@ SOURCE = 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a9
 CTX = 16384               # tokens the model holds: the system prompt, sources, the conversation and the answer
 RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook beyond what llama.cpp measures for the model
 IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds without a question before the model is stopped, to give its memory back
-START_WAIT = 600          # longest a question waits for the model to load
+START_WAIT = 600          # longest a question waits for a load that has stopped getting further; each step forward starts the wait again
 
 STATE_FILE = paths.DATA / 'derived' / 'llm' / 'state.json'   # where the file was found, its check, the on/off setting
 
@@ -111,6 +111,8 @@ class Local:
         self.state, self.pct, self.message = 'absent', None, ''
         self.path, self.fit, self.ready_info = None, None, None
         self.proc, self.events, self.last_used = None, None, 0
+        self.t_progress = 0       # when the load last got further (it started, or its percentage passed the furthest so far)
+        self.furthest = 0         # the highest percentage this load has reported
         self.next_id = 0
         self.failed_loads = 0     # loads in a row that ended before the model was ready
         self.saved = _load()
@@ -264,7 +266,9 @@ class Local:
             if self.state != 'loading':
                 self._spawn()
         t0 = time.time()
-        while time.time() - t0 < START_WAIT:
+        # A slow load that is still getting further is left to finish: only START_WAIT seconds with no step forward end it.
+        # Stopping it would not help, because the next question would start again from nothing and stop at the same place.
+        while time.time() - max(t0, self.t_progress) < START_WAIT:
             with self.lock:
                 if self.state == 'ready':
                     self.last_used = time.time()
@@ -281,7 +285,7 @@ class Local:
 
     def _spawn(self):
         import queue
-        self.state, self.pct, self.message = 'loading', 0, ''
+        self.state, self.pct, self.message = 'loading', None, ''
         logs = paths.DATA / 'derived' / 'logs'
         logs.mkdir(parents=True, exist_ok=True)
         err = open(logs / 'local-ai.log', 'ab')
@@ -291,7 +295,8 @@ class Local:
         _tie_to_this_process(self.proc)
         err.close()
         self.events = queue.Queue()
-        self.t_spawn = time.time()
+        self.t_spawn = self.t_progress = time.time()
+        self.furthest = 0
         threading.Thread(target=self._read, args=(self.proc, self.events), daemon=True, name='local-ai-read').start()
 
     def _read(self, proc, events):
@@ -304,7 +309,12 @@ class Local:
             if kind == 'progress':
                 with self.lock:
                     if self.proc is proc:
-                        self.pct = ev.get('p')
+                        p = ev.get('p')
+                        # Only a figure past the furthest so far counts, so the wait has an end: the same figure again,
+                        # or a lower one and then the old one (20, 19, 20), is not a step forward.
+                        if isinstance(p, (int, float)) and not isinstance(p, bool) and p > self.furthest:
+                            self.furthest, self.t_progress = p, time.time()
+                        self.pct = p
             elif kind == 'ready':
                 with self.lock:
                     if self.proc is proc:

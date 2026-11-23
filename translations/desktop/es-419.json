@@ -42,11 +42,11 @@
   "setup.tryAgain": "Intentar de nuevo",
   "setup.copyTitle": "Copiar para otra persona",
   "language.label": "Idioma de la interfaz",
-  "language.preview": "La vista previa en español de Latinoamérica incluye la navegación y partes de la configuración inicial y de los ajustes. El resto de la interfaz está en inglés.",
+  "language.preview": "La vista previa traducida incluye la navegación y partes de la configuración inicial y de los ajustes. El resto de la interfaz está en inglés.",
   "language.save": "Guardar idioma",
   "language.saving": "Guardando el idioma…",
   "language.saved": "Idioma guardado.",
   "language.saveFailed": "No se pudo guardar el idioma. Intenta de nuevo.",
   "language.loadFailed": "No se pudo cargar el idioma guardado.",
-  "language.unavailable": "El español no está disponible. Lastbook usa inglés."
+  "language.unavailable": "El idioma guardado no está disponible. Lastbook usa inglés."
 }

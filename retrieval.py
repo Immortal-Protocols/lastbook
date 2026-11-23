@@ -160,8 +160,7 @@ class Index:
         self.vec_path = IDX / 'vectors.f16'
         self._tls = threading.local()
         self._excl = {'mtime': None, 'ids': set()}
-        db = self._db()
-        db.execute('PRAGMA journal_mode=WAL')
+        db = self._journaled()
         db.executescript('''CREATE TABLE IF NOT EXISTS chunk(id INTEGER PRIMARY KEY, doc_id TEXT, page INTEGER, t REAL, text TEXT, active INTEGER DEFAULT 1);
           CREATE INDEX IF NOT EXISTS chunk_doc ON chunk(doc_id);
           CREATE TABLE IF NOT EXISTS docstate(doc_id TEXT PRIMARY KEY, sig TEXT, nchunks INTEGER, at REAL);
@@ -175,6 +174,25 @@ class Index:
         if not AVAILABLE:
             self.status['note'] = 'Meaning-based search is off: no model in this library. Keyword search still works.'
         self._load()
+
+    def _journaled(self):
+        """A writer connection, with the index in WAL where its folder can hold it. WAL needs shared memory beside the file, which
+        some file systems cannot give: the Flatpak document portal (a library the person chose outside the app's folder) and
+        network shares. There SQLite accepts the switch, then fails at the first read, so a read decides. The index then uses
+        SQLite's own rollback journal, switched to in exclusive locking mode: the one way SQLite opens a WAL file (an index made
+        before the library moved) without shared memory."""
+        db = self._db()
+        try:
+            db.execute('PRAGMA journal_mode=WAL')
+            db.execute('SELECT count(*) FROM sqlite_master').fetchone()
+            return db
+        except sqlite3.OperationalError:
+            db.close()
+        db = self._db()
+        db.execute('PRAGMA locking_mode=EXCLUSIVE')
+        db.execute('PRAGMA journal_mode=DELETE')
+        db.close()
+        return self._db()
 
     def _db(self):
         """Writer connection: autocommit, so no transaction is ever left open by accident; writes use tx()."""

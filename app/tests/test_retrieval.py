@@ -1,6 +1,6 @@
 """Meaning-based search (retrieval.Index.semantic): per-document filtering. Small made-up index, no real library, no model.
-Never packaged."""
-import os, sys, tempfile, unittest
+And the index's journal where the library's folder cannot hold WAL (retrieval.Index._journaled). Never packaged."""
+import os, shutil, sqlite3, sys, tempfile, unittest
 from pathlib import Path
 from unittest import mock
 
@@ -74,6 +74,76 @@ class Semantic(unittest.TestCase):
         self.assertEqual(len(got), 2)
         self.assertLessEqual(len(fetched), 4)
 
+
+class NoSharedMemory(sqlite3.Connection):
+    """A connection as on the Flatpak document portal or a network share: a file in WAL format cannot be used, because its
+    wal-index needs shared memory, except by a connection in exclusive locking mode, which keeps that index in its own memory."""
+    exclusive = False
+
+    def execute(self, sql, *args):
+        statement = sql.replace(' ', '').upper()
+        if statement == 'PRAGMALOCKING_MODE=EXCLUSIVE':
+            self.exclusive = True
+        settings_only = statement.startswith(('PRAGMABUSY_TIMEOUT', 'PRAGMALOCKING_MODE'))    # these never read the file
+        if not settings_only and not self.exclusive and self.wal_file():
+            raise sqlite3.OperationalError('disk I/O error')
+        return super().execute(sql, *args)
+
+    def executescript(self, script):
+        if not self.exclusive and self.wal_file():
+            raise sqlite3.OperationalError('disk I/O error')
+        return super().executescript(script)
+
+    def wal_file(self):
+        path = self.execute_path
+        return path.is_file() and path.read_bytes()[18:20] == b'\x02\x02'     # the header's read and write versions: 2 is WAL
+
+
+class Journal(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix='lastbook-journal-'))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.idx = retrieval.Index.__new__(retrieval.Index)
+        self.idx.db_path = self.tmp / 'semantic.sqlite'
+
+    def no_shared_memory(self):
+        real = sqlite3.connect
+
+        def connect(path, *a, **k):
+            con = real(path, *a, factory=NoSharedMemory, **k)
+            con.execute_path = Path(path)
+            return con
+        return mock.patch.object(retrieval.sqlite3, 'connect', connect)
+
+    def mode(self):
+        con = sqlite3.connect(self.idx.db_path)
+        try:
+            return con.execute('PRAGMA journal_mode').fetchone()[0]
+        finally:
+            con.close()
+
+    def test_wal_where_the_folder_holds_it(self):
+        self.idx._journaled().close()
+        self.assertEqual(self.mode(), 'wal')
+
+    def test_rollback_journal_where_it_cannot(self):
+        with self.no_shared_memory():
+            db = self.idx._journaled()
+            db.executescript('CREATE TABLE t(x); INSERT INTO t VALUES (1);')
+            self.assertEqual(db.execute('SELECT x FROM t').fetchone(), (1,))
+            db.close()
+        self.assertEqual(self.mode(), 'delete')
+
+    def test_an_index_already_in_wal_is_switched_and_kept(self):
+        db = self.idx._journaled()
+        db.executescript('CREATE TABLE t(x); INSERT INTO t VALUES (7);')
+        db.close()
+        self.assertEqual(self.mode(), 'wal')
+        with self.no_shared_memory():
+            db = self.idx._journaled()
+            self.assertEqual(db.execute('SELECT x FROM t').fetchone(), (7,))
+            db.close()
+        self.assertEqual(self.mode(), 'delete')
 
 if __name__ == '__main__':
     unittest.main()

@@ -285,7 +285,7 @@ class Local:
 
     def _spawn(self):
         import queue
-        self.state, self.pct, self.message = 'loading', 0, ''
+        self.state, self.pct, self.message = 'loading', None, ''
         logs = paths.DATA / 'derived' / 'logs'
         logs.mkdir(parents=True, exist_ok=True)
         err = open(logs / 'local-ai.log', 'ab')

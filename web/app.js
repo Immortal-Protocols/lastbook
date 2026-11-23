@@ -4,7 +4,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fileUrl = p => '/' + String(p || '').split('/').map(encodeURIComponent).join('/');
-const main = $('#main');
+const main = $('#main'), pageTop = $('#pageTop');
 const i18n = globalThis.LastbookI18n;
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
@@ -285,7 +285,7 @@ async function route() {
   railTitles();
   $('#tbActs').replaceChildren(); $('#tbTitle').textContent = $('#tbSub').textContent = ''; $('#tbTitle').title = $('#tbSub').title = ''; searchLive = null; main.classList.remove('own-title');
   if (leaving) { try { leaving() } catch { } leaving = null }
-  window.onresize = null; main.onkeydown = null;
+  window.onresize = null; main.onkeydown = pageTop.onkeydown = null;
   try {
     if (v !== 'map') MapView.stop();
     await topics().catch(() => { });
@@ -349,9 +349,9 @@ function startHere(fromSide) {
   const keep = focusAfterRoute; focusAfterRoute = null;
   if (keep && keep.isConnected && !keep.hidden) { keep.focus({ preventScroll: true }); return }
   if (fromSide && !(MAC && !wide.matches) && document.activeElement && document.activeElement.closest('.side,.tabbar')) return;
-  const t = $('#pageTop'), h1 = $('h1', main);
-  t.textContent = (h1 && h1.textContent.trim()) || document.title;
-  t.focus({ preventScroll: true });
+  const h1 = $('h1', main);
+  pageTop.textContent = (h1 && h1.textContent.trim()) || document.title;
+  pageTop.focus({ preventScroll: true });
 }
 window.addEventListener('hashchange', route);
 let searchLive = null;   // on the search page, where the pane's field is the page's own (Windows), typing there updates the results
@@ -905,7 +905,18 @@ async function reader(id, page, from, view) {
       body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, 'Couldn’t load the text.') }
   }
-  main.onkeydown = e => { if (!isPdf || /INPUT/.test(e.target.tagName) || e.altKey || e.metaKey || e.ctrlKey) return; if (e.key === 'ArrowRight' && page < total) location.hash = go(page + 1); if (e.key === 'ArrowLeft' && page > 1) location.hash = go(page - 1) };
+  if (!isPdf) return;
+  main.onkeydown = e => {
+    if (e.target.tagName === 'INPUT' || e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;   // Shift+Arrow selects text
+    let next = page;
+    if (e.key === 'ArrowRight') next++;
+    if (e.key === 'ArrowLeft') next--;
+    if (next === page || next < 1 || next > total) return;
+    e.preventDefault();
+    location.hash = go(next);
+  };
+  // The router puts focus on this marker before the first Tab.
+  if (view !== 'pdf') pageTop.onkeydown = main.onkeydown;
 }
 
 /* --------------------------------------------------------------- wiki -- */
@@ -1368,7 +1379,7 @@ async function about() {
   <div class="cards2" style="margin-top:16px">
    <div class="card"><b>What’s in it</b><small>${(s.pdfs || 0).toLocaleString()} PDF manuals (${(s.pdf_pages || 0).toLocaleString()} pages), ${(s.web_pages || 0).toLocaleString()} saved web pages, ${(s.videos || 0).toLocaleString()} downloaded videos and ${s.collections || 0} complete encyclopedias.</small></div>
    ${ch ? `<div class="card"><b>Still arriving</b><small>${ch.pending.toLocaleString()} more videos are queued and ${ch.downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.</small></div>` : ''}
-   <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
+   <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.server ? `Model server on this computer: ${esc(st.server.model)} at ${esc(st.server.address)}, ${st.online ? 'available' : 'not answering'}. Change it in Library and local AI.` : st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
    <div class="card"><b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small></div>
    ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
   </div>

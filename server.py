@@ -2282,6 +2282,7 @@ def main():
     ap.add_argument('--data', help='data folder holding library-data/ and derived/ (or set LASTBOOK_DATA); default: beside this program')
     a = ap.parse_args()
     init(a.no_index)
+    setup_api.follow_model_server(assistant.use_server)   # a model server chosen in Setup (#78)
     serve(a.port, a.lan)
 
 

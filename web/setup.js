@@ -71,6 +71,8 @@
   /* ------------------------------------------------------------ state */
   let S = null;           // GET state
   let view = 'choose';
+  const CLOUD_POLL_MS = 3000, CLOUD_POLLS = 20;   // the iCloud count runs in the engine's background: ask again for about a minute
+  let cloudPolls = 0, cloudT = null, cloudFor = '';   // one timer for the open library (cloudFor), at most CLOUD_POLLS asks
   let choice = { pack: null, ai: false, map: null };   // map: the selected state code
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
@@ -185,7 +187,7 @@
     else if (view === 'copy') copyView();
     if (focus && !languageHasFocus()) { const h = main.querySelector('h1'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }) } scrollTo(0, 0) }
   }
-  function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
+  function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = ''; srv.open = false; srv.note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
 
   /* ---- this computer */
   function computer() {
@@ -243,6 +245,7 @@
       <h2 id="packH" data-i18n="nav.library">Library</h2>
       <div class="s-opts" role="radiogroup" aria-labelledby="packH">${packCards}</div>
       ${ai ? `<h2>Local AI</h2>${ai}` : ''}
+      ${c ? '' : '<div id="srvSlot"></div>'}
       <section class="s-sum" id="sum" aria-live="polite"></section>
       <div class="s-go">
         <button class="btn big" id="start"></button>
@@ -259,6 +262,8 @@
     $('#haveFile').onclick = () => haveLibrary(true);
     mapSection();
     summary();
+    srv.heading = !ai;   // no Local AI section above: the full row brings its own heading
+    renderServer();
     globalThis.LastbookI18n?.apply(main);
   }
   /* Map geometry and address indexes are separate downloads, chosen by state. */
@@ -357,7 +362,97 @@
     S.job = r; go('job'); poll();
   }
 
+  /* ---- a model server on this computer (#78): Ollama, llama.cpp. Asked only when the person presses List models. */
+  const srv = { open: false, address: '', models: null, note: '', ok: false, heading: false };
+  function serverBox() {
+    const ms = S.model_server, firstRun = !cur();
+    const after = firstRun ? ' Used once setup is done.' : '';
+    const note = srv.note ? `<p class="s-note${srv.ok ? ' ok' : ''}" id="srvNote" role="status">${esc(srv.note)}</p>` : '';
+    const head = small => `<div class="s-row">${ico('ai', 's-ri')}<span><b>Model server on this computer</b><small>${small}</small></span>`;
+    // First-run Setup shows only a link until the person opens the chooser or has chosen a server.
+    if (firstRun && !ms && !srv.open) return `<button class="s-link" id="srvOpen">${ico('ai')}Use a model server on this computer</button>${note}`;
+    const h2 = firstRun && srv.heading ? '<h2>Local AI</h2>' : '';
+    return h2 + serverRow(ms, head, after, note);
+  }
+  function serverRow(ms, head, after, note) {
+    if (!srv.open) return ms
+      ? `<div class="s-have">${head(`${esc(ms.model)} at ${esc(ms.address)} · answers instead of the local AI.${after}`)}
+          <span class="s-confirm"><button class="btn plain" id="srvOpen">Change</button><button class="btn plain" id="srvStop">Stop using</button></span></div></div>${note}`
+      : `<div class="s-have">${head('Use a model you already run with Ollama or llama.cpp, instead of the local AI.')}
+          <button class="btn plain" id="srvOpen">Choose…</button></div></div>${note}`;
+    const opts = (srv.models || []).map(m => `<option${ms && ms.model === m ? ' selected' : ''}>${esc(m)}</option>`).join('');
+    return `<div class="s-have s-srv">${head(`Lastbook asks only this computer, and only when you press List models.${after}`)}</div>
+        <div class="s-srv-in">
+          <label class="s-maplabel" for="srvAddr">Address</label>
+          <input id="srvAddr" class="s-select" inputmode="url" autocomplete="off" spellcheck="false" placeholder="127.0.0.1:11434" value="${esc(srv.address)}" aria-describedby="srvHint">
+          <p class="s-hint" id="srvHint">Ollama uses port 11434, llama.cpp port 8080. A server that needs a key does not work yet.</p>
+          ${opts ? `<label class="s-maplabel" for="srvModel">Model</label><select id="srvModel" class="s-select">${opts}</select>` : ''}
+          <div class="s-go left">${opts ? '<button class="btn" id="srvUse">Use this model</button><button class="btn plain" id="srvList">List again</button>' : '<button class="btn" id="srvList">List models</button>'}
+            <button class="s-link" id="srvCancel">Cancel</button></div>
+        </div></div>${note}`;
+  }
+  function renderServer(focus) {
+    const slot = $('#srvSlot'); if (!slot) return;
+    slot.innerHTML = serverBox();
+    const say = (text, ok) => { srv.note = text; srv.ok = !!ok };
+    const addr = () => { srv.address = ($('#srvAddr') || {}).value || srv.address; return srv.address };
+    if ($('#srvOpen')) $('#srvOpen').onclick = () => { srv.open = true; srv.models = null; say(''); srv.address = srv.address || (S.model_server || {}).address || ''; renderServer('#srvAddr') };
+    if ($('#srvCancel')) $('#srvCancel').onclick = () => { srv.open = false; say(''); renderServer('#srvOpen') };
+    if ($('#srvAddr')) $('#srvAddr').onkeydown = e => { if (e.key === 'Enter') $('#srvList').click() };
+    if ($('#srvList')) $('#srvList').onclick = async () => {
+      $('#srvList').disabled = true;
+      const r = await call('server-models', { address: addr() }).catch(e => ({ error: e.message }));
+      srv.models = r && r.models || null;
+      say(r && r.error ? r.error : `${r.models.length === 1 ? 'One model' : r.models.length + ' models'} at ${r.address}.`, !(r && r.error));
+      renderServer(srv.models ? '#srvModel' : '#srvAddr');
+    };
+    if ($('#srvUse')) $('#srvUse').onclick = async () => {
+      $('#srvUse').disabled = true;
+      const model = $('#srvModel').value;
+      const r = await call('use-server', { address: addr(), model }).catch(e => ({ error: e.message }));
+      if (r && r.error) { say(r.error); renderServer('#srvAddr'); return }
+      S.model_server = r.model_server; srv.open = false; srv.models = null;
+      say(cur() ? `Chat now answers with ${model}.` : `Chat will answer with ${model} once setup is done.`, true);
+      renderServer('#srvNote');
+    };
+    if ($('#srvStop')) $('#srvStop').onclick = async () => {
+      const r = await call('stop-server', {}).catch(e => ({ error: e.message }));
+      if (r && r.error) { say(r.error); renderServer('#srvNote'); return }
+      S.model_server = null;
+      say(cur() && model() && cur().model ? 'Chat answers with the local AI again.' : 'The model server is no longer used.', true);
+      renderServer('#srvNote');
+    };
+    const f = focus && $(focus); if (f) { if (focus === '#srvNote') f.tabIndex = -1; f.focus() }
+  }
+
   /* ---- manage */
+  // #362: files of this library whose contents are only in iCloud do not open offline. The engine counts them from metadata alone.
+  function cloudNote(c) {
+    const k = c.cloud_only;
+    if (!k || !(k.files || k.folders)) return '';
+    const n = (count, one) => `${count.toLocaleString()} ${one}${count === 1 ? '' : 's'}`;
+    const what = [k.files ? n(k.files, 'file') : '', k.folders ? n(k.folders, 'folder') : ''].filter(Boolean).join(' and ');
+    const one = k.files + k.folders === 1;
+    return `<p class="s-note" role="status"><b>${what} of this library ${one ? 'is' : 'are'} only in iCloud${k.bytes ? ` (${size(k.bytes)})` : ''}.</b>
+      ${one ? 'It' : 'They'} will not open without internet. Move the LastbookData folder out of iCloud Drive, or in Finder choose Keep Downloaded for it (macOS 15 or later).
+      <br><small>For example: ${k.examples.map(esc).join(', ')}</small></p>`;
+  }
+
+  // Ask again only while the engine is still counting. Windows and Linux never count (cloud_counting false), so no timer starts
+  // there. Every redraw of Manage calls this; a timer already waiting is not doubled.
+  function cloudPoll(c) {
+    if (c.folder !== cloudFor) { cloudFor = c.folder; cloudPolls = 0 }
+    if (!c.cloud_counting || cloudT || cloudPolls >= CLOUD_POLLS) return;
+    cloudPolls++;
+    cloudT = setTimeout(async () => {
+      cloudT = null;
+      if (view !== 'manage') return;
+      S = await call('state').catch(() => S);
+      const k = cur() || {}, n = k.cloud_only;
+      if (view === 'manage' && (k.cloud_counting || (n && (n.files || n.folders)))) manageView();   // redrawn only to show the note, or to ask again
+    }, CLOUD_POLL_MS);
+  }
+
   function manageView() {
     const c = cur(), p = packById(c.pack), m = model();
     const libraryUpdate = p && p.available !== false && packNeedsInstall(p);
@@ -374,6 +469,8 @@
           return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
           <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
       </div>
+      ${cloudNote(c)}
+      <div id="srvSlot"></div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
       ${CAN.repair ? `<div class="s-have"><div class="s-row">${ico('ok', 's-ri')}<span><b>Library check</b><small id="lastCheck">${checkLine(c.checked)}</small></span><button class="btn plain" id="checkNow">Check now</button></div></div>` : ''}
@@ -381,6 +478,7 @@
       <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}Check and repair</button>` : ''}
         <button class="s-link" id="otherLib">${ico('folder')}Open another library folder</button></div>
       <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
+    cloudPoll(c);
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
@@ -407,6 +505,7 @@
       if (!r || r.error) { note = (r && r.error) || 'Repair could not start.'; manageView(); return }
       repair = { fixed: false, sure: true }; S.job = r; go('job'); poll();
     };
+    renderServer();
     globalThis.LastbookI18n?.apply(main);
   }
   /* ---- copy for someone else (#114): what goes onto the drive, and what does not */

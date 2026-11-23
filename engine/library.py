@@ -107,7 +107,7 @@ def catalog():
    winner.setdefault('also_in',[]).append(r['collection'])
    winner.setdefault('alternate_paths',[]).append(r['path'])
  records=sorted(unique.values(),key=lambda r:(r['category'],r['collection'],r['title']))
- (ROOT/'catalog.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
+ atomic_write(ROOT/'catalog.json',json.dumps(records,indent=2))   # the app knows a library by this file: never half of it
  return records,bad
 
 def extract(r):
@@ -203,9 +203,9 @@ def build():
    totalpages+=len(pages)
    if i%100==0:print(f'Indexed {i+1}/{len(records)} resources',flush=True)
  con.commit();con.close();building.replace(DB)
- (ROOT/'catalog.json').write_text(json.dumps(built,indent=2),encoding='utf-8')
+ atomic_write(ROOT/'catalog.json',json.dumps(built,indent=2))
  summary={'resources':len(built),'pdfs':sum(r['kind']=='pdf' for r in built),'pdf_pages':sum(r.get('pages') or 0 for r in built),'web_pages':sum(r['kind'] in ['html','htm'] for r in built),'videos':sum(r['kind'] in ['video','mp4','webm','mkv'] for r in built),'collections':sum(r['kind']=='zim' for r in built),'document_bytes':sum(r['bytes'] for r in built),'indexed_units':totalpages,'categories':dict(collections.Counter(r['category'] for r in built)),'extraction_errors':errors,'missing_files':bad,'image_only_pdfs':[r['path'] for r in built if (r.get('searchability') or '').startswith('image-only')]}
- (ROOT/'summary.json').write_text(json.dumps(summary,indent=2),encoding='utf-8');(ROOT/'reader.css').write_text(STYLE,encoding='utf-8')
+ atomic_write(ROOT/'summary.json',json.dumps(summary,indent=2));(ROOT/'reader.css').write_text(STYLE,encoding='utf-8')
  write_index(built,summary)
  print(json.dumps({k:v for k,v in summary.items() if k not in ['extraction_errors','missing_files','image_only_pdfs']},indent=2))
 
@@ -279,6 +279,13 @@ def atomic_write(path,text):
  tmp=path.with_name('.'+path.name+'.tmp');tmp.write_text(text,encoding='utf-8');os.replace(tmp,path)
 
 ZIMS={};ZIM_LOCK=threading.Lock()
+# Connections that may wait to be accepted. A page or the map asks for 20 or more files at once; with Python's default of 5,
+# macOS reset the rest. server.py serves with a subclass of this.
+LISTEN_QUEUE=128
+
+class HTTPServer(http.server.ThreadingHTTPServer):
+ request_queue_size=LISTEN_QUEUE
+
 class Handler(http.server.SimpleHTTPRequestHandler):
  timeout=30  # a client that sends half a request gives its thread back; do_GET allows longer for sending
  SEND_TIMEOUT=600  # a paused video stops reading for minutes at a time; the player asks again with a Range when it resumes
@@ -424,6 +431,6 @@ if __name__=='__main__':
    build()
  elif args.command=='search':print(json.dumps(search(args.query,args.limit),indent=2,ensure_ascii=False))
  else:
-  server=http.server.ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
+  server=HTTPServer(('127.0.0.1',args.port),Handler)
   if os.environ.get('SURVIVAL_DISABLE_INDEX_WATCH')!='1':threading.Thread(target=watch_index,daemon=True).start()
   print(f'Offline library: http://127.0.0.1:{server.server_port}',flush=True);server.serve_forever()

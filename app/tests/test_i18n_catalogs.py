@@ -243,6 +243,18 @@ class SpanishWording(unittest.TestCase):
         for avoid in (' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo'):
             self.assertNotIn(avoid, everything)
 
+    def test_3d_building_height_summary_is_a_complete_plural_message(self):
+        key = 'map3d.buildingHeightSummary'
+        self.assertEqual(set(self.en[key]), {'one', 'other'})
+        self.assertEqual(set(self.es[key]), {'one', 'other'})
+        for catalog in (self.en, self.es):
+            for fragment in ('map3d.heightsAre', 'map3d.mappedHeights', 'map3d.oneStoreyShown'):
+                self.assertNotIn(fragment, catalog)
+            for selector in ('one', 'other'):
+                self.assertIn('{count}', catalog[key][selector])
+                for param in ('mapped', 'satellite', 'guessed', 'nearest'):
+                    self.assertIn('{' + param + '}', catalog[key][selector])
+
 class CatalogueCoverage(unittest.TestCase):
     """Keys used in the desktop UI exist in the English catalogue."""
 

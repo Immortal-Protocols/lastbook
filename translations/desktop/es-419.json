@@ -567,7 +567,6 @@
     "one": "{count} edificio{extra}",
     "other": "{count} edificios{extra}"
   },
-  "map3d.heightsAre": "las alturas son ",
   "update.noVersion": "Esta copia no tiene número de versión (no se compiló como aplicación).",
   "update.version": "Versión {version}.",
   "update.checking": "Buscando actualizaciones…",
@@ -1215,9 +1214,7 @@
   "map.mineTailingsDam": "Presa de relaves:",
   "map.mineTailingsDetail": "contiene desechos de mina, no agua utilizable. No bebas, nades ni pesques aquí.",
   "map3d.buildingsCount": "{count} edificios",
-  "map3d.mappedHeights": "{count} con alturas mapeadas (OpenStreetMap); el resto, ",
   "map3d.satelliteEstimates": "estimaciones por satélite",
-  "map3d.oneStoreyShown": "; {count} sin altura se muestran con un piso de altura",
   "guide.stopAndGetHelp": "Detente y pide ayuda cuando…",
   "guide.showAllWarnings": "Mostrar las {count} advertencias",
   "guide.routeTicksNote": "Las marcas son notas tuyas en este dispositivo. Leer o mirar no es lo mismo que practicar con seguridad.",
@@ -1245,5 +1242,9 @@
   "setup.downloadAndDisk": "{download} de descarga · {disk} en el disco",
   "setup.mapAndIndexIncluded": "El mapa de tu estado y el índice de direcciones disponible ya están incluidos.",
   "map.cappedPlacesInView": " (se muestran los más concurridos; acerca el mapa para ver todos)",
-  "setup.mapItemName": "Mapa de {name}"
+  "setup.mapItemName": "Mapa de {name}",
+  "map3d.buildingHeightSummary": {
+    "one": "{count} edificio: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}",
+    "other": "{count} edificios: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}"
+  }
 }

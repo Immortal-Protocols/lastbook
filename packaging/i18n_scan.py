@@ -186,6 +186,8 @@ def _inside_keyed_error_call(pre: str, post: str) -> bool:
 def looks_technical(s: str) -> bool:
     if s in TECHNICAL_EXACT:
         return True
+    if re.fullmatch(r'[A-Z][A-Za-z0-9]*(?:Enabled|Preconnect|Prefetch)', s):
+        return True
     if s.startswith(TECHNICAL_PREFIX) or SVG_RE.match(s):
         return True
     if re.match(r'^(?:m[\d-]|M[\d-]|0 0 \d)', s):
@@ -504,14 +506,25 @@ def scan_python():
                 continue
             text = path.read_text(encoding='utf-8')
             rel = str(path.relative_to(ROOT))
+            # These short labels are values in the Linux navigation table;
+            # the corresponding key map sends them through native_t later.
+            go_values = set()
+            if rel == 'app/shell_linux.py':
+                go_match = re.search(r'\bGO\s*=\s*\[(.*?)\]', text, re.S)
+                key_match = re.search(r'go_names\s*=\s*\{(.*?)\}', text, re.S)
+                if go_match and key_match and 'native_t(go_names.get(name' in text:
+                    go_values = set(re.findall(r"['\"]([^'\"]+)['\"]\s*,", go_match.group(1)))
+                    translated_names = set(re.findall(r"['\"]([^'\"]+)['\"]\s*:\s*['\"]nav\.", key_match.group(1)))
+                    go_values &= translated_names
             for pos, s, pre, body in iter_py_strings(text):
                 if not s or len(s) > 300:
                     continue
                 end = _skip_string(body, pos)
                 post = body[pos:min(len(body), end + 600)]
                 line = body[:pos].count('\n') + 1
+                kind = 'wired' if s in go_values else classify(s, pre, post)
                 hits.append({'surface': surface, 'file': rel, 'line': line,
-                             'text': s, 'class': classify(s, pre, post)})
+                             'text': s, 'class': kind})
     return hits
 
 

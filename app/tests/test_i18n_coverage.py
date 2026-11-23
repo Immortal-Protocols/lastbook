@@ -1,5 +1,6 @@
 """Hard-coded UI chrome should not regress: every user-visible string is catalogued."""
 import sys
+import re
 import unittest
 from pathlib import Path
 
@@ -88,3 +89,18 @@ class Coverage(unittest.TestCase):
         _pos, text, pre = next(item for item in scan.iter_js_strings(sample)
                                if item[1] == 'Read {title}, page {pages}')
         self.assertEqual(scan.classify(text, pre), 'wired')
+
+    def test_webkit_feature_switch_names_are_technical(self):
+        for name in ('PeerConnectionEnabled', 'LinkPreconnect', 'WebTransportEnabled'):
+            with self.subTest(name=name):
+                self.assertEqual(scan.classify(name, ''), 'technical')
+
+    def test_linux_navigation_values_are_wired_via_native_key_map(self):
+        source = "GO = [('Videos', '#/videos'), ('Map', '#/map'), ('Chat', '#/ask')]\ngo_names = {'Videos': 'nav.videos', 'Map': 'nav.map', 'Chat': 'nav.chat'}\ngo.append(native_t(go_names.get(name, ''), name))"
+        go = re.search(r'\bGO\s*=\s*\[(.*?)\]', source, re.S)
+        keys = re.search(r'go_names\s*=\s*\{(.*?)\}', source, re.S)
+        values = set(re.findall(r"['\"]([^'\"]+)['\"]\s*,", go.group(1)))
+        names = set(re.findall(r"['\"]([^'\"]+)['\"]\s*:\s*['\"]nav\.", keys.group(1)))
+        values &= names
+        self.assertEqual(values, {'Videos', 'Map', 'Chat'})
+        self.assertEqual(scan.classify('Choose', 'dialog.setWindowTitle('), 'chrome')

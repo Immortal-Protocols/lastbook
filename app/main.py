@@ -103,7 +103,11 @@ def check(folder):
         if writable(f):
             return f, None
         return None, f'Lastbook cannot save in “{shown(f)}”. Move the LastbookData folder somewhere you can save to, then choose it there.'
-    return None, f'“{shown(folder)}” is not a Lastbook library. Choose the folder called LastbookData, inside the library you unzipped.'
+    return None, native_t(
+        'setup.err.notALibrary',
+        '“{name}” is not a Lastbook library. Choose the folder called {folder}.',
+        name=shown(folder), folder=DATA_NAME,
+    )
 
 
 def data_folder(arg):

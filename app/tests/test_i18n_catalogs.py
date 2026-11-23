@@ -302,3 +302,14 @@ class NativeInterpolation(unittest.TestCase):
         self.assertEqual(en['installer.version'], 'Version {version}')
         self.assertEqual(es['installer.version'], 'Versión {version}')
         self.assertEqual((en['native.choose'], es['native.choose']), ('Choose', 'Elegir'))
+
+    def test_native_invalid_library_error_uses_catalogue(self):
+        sys.path.insert(0, str(ROOT / 'app'))
+        import i18n_native
+        import main
+        old_locale = i18n_native.current_locale()
+        self.addCleanup(i18n_native.set_locale, old_locale)
+        i18n_native.set_locale('es-419')
+        _, message = main.check(ROOT / 'does-not-exist')
+        self.assertIn('no es una biblioteca de Lastbook', message)
+        self.assertIn('LastbookData', message)

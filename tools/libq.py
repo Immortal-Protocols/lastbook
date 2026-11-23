@@ -12,7 +12,7 @@ same data folder the app takes: the folder that holds library-data/. Nothing is 
 
   libq.py --data /path/to/LastbookData search "boil water"
 """
-import json, os, re, sqlite3, sys
+import json, os, re, sqlite3, sys, unicodedata
 from pathlib import Path
 HERE = Path(__file__).resolve().parents[1]
 LIB = DB = None
@@ -29,6 +29,16 @@ def use(args):
     if not (LIB / 'catalog.json').is_file():
         sys.exit(f'No library at {LIB} (no catalog.json). Pass --data or set LASTBOOK_DATA to the folder that holds library-data/.')
     return args
+def query_terms(text):
+    """engine/library.py's query_terms: letters, numbers, combining marks, '_' and '-'. Copied rather than imported, since
+    importing engine/library.py runs its loader for the library's own tools; app/tests/test_library_search.py keeps the
+    two the same."""
+    words, word = [], []
+    for c in text:
+        if c.isalnum() or c in '_-' or unicodedata.category(c)[0] == 'M': word.append(c)
+        elif word: words.append(''.join(word)); word = []
+    if word: words.append(''.join(word))
+    return [w for w in words if not all(unicodedata.category(c)[0] == 'M' for c in w)]
 _cat = None
 def cat():
     global _cat
@@ -39,7 +49,7 @@ def pages(id):
     return t.split('\n\f\n') if r['kind'] != 'pdf' or '\n\f\n' in t else t.split('\f')
 def main(a):
     if a[0] == 'search':
-        terms = re.findall(r'[\w-]+', a[1])
+        terms = query_terms(a[1])
         expr = ' AND '.join('"%s"' % t for t in terms)
         con = sqlite3.connect(DB.resolve().as_uri() + '?mode=ro', uri=True)   # a plain f'file:{DB}' breaks on '#', '%' and '?' in a folder name
         rows = con.execute("SELECT doc_id,title,collection,page,snippet(pages,6,'[',']','…',20),bm25(pages,0,5,2,1,0,0,1) s FROM pages WHERE pages MATCH ? ORDER BY s LIMIT 300", (expr,)).fetchall()

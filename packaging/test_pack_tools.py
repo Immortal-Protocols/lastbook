@@ -535,6 +535,7 @@ def plant_each(work):
         ('search row not in the catalog', search_sql("INSERT INTO pages VALUES('no-such-doc','t','c','k','p',1,'b')"), 'search.row_not_in_catalog'),
         ('search with free pages left', search_sql('CREATE TABLE junk(x)', "INSERT INTO junk SELECT randomblob(100000) FROM pages LIMIT 200", 'DROP TABLE junk'), 'search.free_pages'),
         ('search left in WAL mode', search_sql('PRAGMA journal_mode=WAL'), 'search.not_journal_delete'),
+        ('search index made with the tokenizer from before the spec kept combining marks', search_sql('CREATE TABLE keep AS SELECT doc_id,title,collection,category,path,page,body FROM pages', 'DROP TABLE pages', 'CREATE VIRTUAL TABLE pages USING fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="unicode61")', 'INSERT INTO pages SELECT * FROM keep', 'DROP TABLE keep'), 'search.schema_differs'),
         ('map left in WAL mode', small_map(['PRAGMA journal_mode=WAL']), 'map.not_journal_delete'),
         ('map meta with a private word', small_map([f"INSERT INTO meta VALUES('source','{WORD}')"]), 'term.map'),
         ('map row replaced, its old path left in free space', small_map(['PRAGMA secure_delete=OFF', f"INSERT INTO meta VALUES('old','/Users/someone/{WORD}/survival')", "DELETE FROM meta WHERE key='old'"]), 'map.private_path_in_raw_bytes'),

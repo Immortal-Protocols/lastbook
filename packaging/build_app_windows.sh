@@ -119,5 +119,7 @@ DIST="$OUT\\dist\\Lastbook"
 cp "$HERE/Lastbook.exe.config" "$(cygpath -u "$DIST")/Lastbook.exe.config"    # without it, a downloaded copy cannot open its window
 "$PY" -I -B "$ROOTW\\packaging\\i18n_catalogs.py" --check --web-dir "$DIST\\_internal\\web"
 "$PY" -I -B "$ROOTW\\packaging\\scan_app_package.py" "$DIST" ${SCAN_TERMS:+--terms "$SCAN_TERMS"} --report "$OUT\\package-scan.json"
+# The built app makes and searches the library's search index with its own SQLite (Lastbook.exe --self-test): the build fails if it cannot
+"$(cygpath -u "$DIST")/Lastbook.exe" --self-test | tee "$(cygpath -u "$OUT")/self-test.json"
 du -sh "$(cygpath -u "$DIST")"
 sha256sum "$(cygpath -u "$DIST")/Lastbook.exe"

@@ -26,6 +26,8 @@ export PYTHONDONTWRITEBYTECODE=1 PYTHONNOUSERSITE=1 PYTHONHASHSEED=0
 unset PYTHONHOME PYTHONPATH
 test -f "$(cygpath -u "$DIST")/Lastbook.exe"
 "$PY" -I -B "$HEREW\\i18n_catalogs.py" --check --web-dir "$DIST\\_internal\\web"
+# The app folder this installer packs makes and searches the library's search index (Lastbook.exe --self-test), whoever built it
+"$(cygpath -u "$DIST")/Lastbook.exe" --self-test | tee "$OUTU/self-test.json"
 
 sign_target() {
   if [ -z "${SIGNTOOL:-}${SIGNING_DLIB:-}${SIGNING_METADATA:-}" ]; then

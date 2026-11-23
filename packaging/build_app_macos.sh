@@ -34,6 +34,8 @@ export LASTBOOK_SHIP="$OUT/ship"
 BUNDLE="$OUT/dist/Lastbook.app"
 "$VENV/bin/python" -I -B "$HERE/i18n_catalogs.py" --check --web-dir "$BUNDLE/Contents/Resources/web"
 "$VENV/bin/python" "$HERE/scan_package_macos.py" "$BUNDLE" --terms-file "$BUILD/scan-terms.txt" | tee "$OUT/scan.txt"
+# The built app makes and searches the library's search index with its own SQLite (Lastbook --self-test): the build fails if it cannot
+"$BUNDLE/Contents/MacOS/Lastbook" --self-test | tee "$OUT/self-test.json"
 codesign --verify --deep --strict "$BUNDLE"
 ln -sfn "$BUNDLE" "$BUILD/mac/Lastbook.app"
 du -sh "$BUNDLE"

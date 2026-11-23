@@ -129,6 +129,8 @@ Description: Offline survival library
  you ask it to check for a newer version. The person's library and settings stay
  in their home folder and are never removed with the package.
 CTRL
+# The staged app, run as /usr/bin/lastbook runs it, makes and searches the library's search index (--self-test): the build fails if it cannot
+/usr/bin/python3 -I -B "$OPT/lastbook.py" --self-test | tee "$OUT/self-test.json"
 dpkg-deb --root-owner-group -Zxz --build "$STAGE" "$DEB" >/dev/null
 python3 -I -B "$HERE/scan_package_linux.py" "$DEB" --terms-file "$ROOT/derived/app-build/scan-terms.txt" | tee "$OUT/scan.txt"
 ln -sfn "$(basename "$OUT")/$(basename "$DEB")" "$BUILD/latest.deb"

@@ -328,7 +328,7 @@ def query_groups(q):
         if re.search(rx, q):
             phrase_groups += g if isinstance(g[0], list) else [g]
             q = re.sub(rx, ' ', q)
-    words = [w.lower() for w in re.findall(r"[\w'-]+", q)]
+    words = [w.lower() for w in library.query_terms(q, keep="'-")]   # combining marks stay in the word, as in the index
     words = [w.strip("'") for w in words if w.strip("'")]
     content = [w for w in words if w not in STOP] or ([] if phrase_groups else words)
     groups = []

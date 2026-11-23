@@ -82,7 +82,7 @@ def ensure():
     (LIB / 'catalog.json').write_text(json.dumps(recs))
     (LIB / 'summary.json').write_text('{"resources": 5}')
     con = sqlite3.connect(LIB / 'search.sqlite')
-    con.execute('CREATE VIRTUAL TABLE pages USING fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="unicode61")')
+    con.execute('''CREATE VIRTUAL TABLE pages USING fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="unicode61 categories 'L* N* Co M*'")''')   # as engine/library.py builds it
     con.execute('INSERT INTO pages VALUES (?,?,?,?,?,?,?)', ('pdfsmall', 'pdfsmall', 'Test', 'test', 'documents/s.pdf', 1, 'boil water for one minute'))
     con.commit()
     con.close()

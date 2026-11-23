@@ -290,7 +290,7 @@
             <small>${esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notEnoughMemory', null, 'This computer does not have enough memory for it.'))}</small></span></div>`;
     }
     const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · ${tr('setup.doesntMatch', null, 'doesn’t match the published file, so it is not used')}</small></span></div>`
-      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? packById(f.id).title + ' library' : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
+      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? packById(f.id).title + ' ' + tr('library.itemTypeLibrary', null, 'library') : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
         <button class="btn plain" data-use="${i}">${tr('setup.useFileYouHave', null, 'Use the file you already have')}</button></div>`).join('');
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span data-i18n="setup.settingsTitle">Library and local AI</span></button>` : ''}
@@ -665,7 +665,7 @@
       <ol class="s-steps" aria-label="${tr('setup.steps', null, "Steps")}">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
+  const itemTitle = it => it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? tr('setup.mapItemName', { name: (mapById(it.id) || it).title || it.id }, '{name} map') : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' ' + tr('library.itemTypeLibrary', null, 'library');
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);

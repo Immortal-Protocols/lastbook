@@ -142,12 +142,12 @@ const Chat = (() => {
   async function statusLine() {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
-    const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
+    const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">${esc(tr('chat.stillIndexing', { count: (ix.chunks || 0).toLocaleString() }, 'still indexing ({count} passages so far)'))}</span>` : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : tr('chat.searchReadingStill', null, ' — search and reading still work')}</span>`;
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
+      el.innerHTML = s.online ? `<span class="dotok"></span>${tr('chat.ready', null, 'Local AI ready')}${still}`
         : `<span class="dotoff"></span><span>${esc(tr('chat.assistantOffline', null, 'Assistant offline'))}<span class="long">${esc(tr('chat.searchBrowsingStill', null, ' — search and browsing still work'))}</span></span>`;
     }
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? tr('chat.send', null, 'Send') : tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
@@ -353,14 +353,14 @@ const Chat = (() => {
     const found = m.sources || [];
     let h = '';
     if (running) h += `<div class="working"><b>${esc(tr('chat.state.' + m.state, null, STATES[m.state] || tr('chat.working', null, 'Working…')))}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
-    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
+    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcCards(m.fallback, true);
     if (!running && m.content) {
       const cited = m.cited || [];
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">${esc(tr('chat.invalidSources', { list: m.invalid.join(', ') }, 'The model referred to sources that don’t exist ({list}); those markers were removed.'))}</p>`;
-      h += `<div class="legend small"><span><span class="lg-c">1</span> ${esc(tr('chat.linkedToPageOrVideo', null, 'linked to a page or video'))}</span><span><span class="lg-u">dotted</span> ${esc(tr('chat.modelsOwnWording', null, 'the model’s own wording, not linked to a source'))}</span></div>`;
+      h += `<div class="legend small"><span><span class="lg-c">1</span> ${esc(tr('chat.linkedToPageOrVideo', null, 'linked to a page or video'))}</span><span><span class="lg-u">${esc(tr('chat.dottedLine', null, 'dotted'))}</span> ${esc(tr('chat.modelsOwnWording', null, 'the model’s own wording, not linked to a source'))}</span></div>`;
       if (cited.length) h += `<h3 class="srch">${esc(tr('chat.sourcesCount', { count: cited.length }, 'Sources ({count})'))}</h3>${srcCards(cited, false)}`;
       else h += `<p class="notice small">${esc(tr('chat.noLinkedSources', null, 'This answer has no linked sources. Treat it as unverified.'))}</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');

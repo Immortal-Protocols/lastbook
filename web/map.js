@@ -809,12 +809,12 @@ const MapView = (() => {
     pan(tx - x, ty - y); st.listAt = 1; settle(true);  // the nearby list stays put while the map makes room
   }
   function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
-  function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || tr('map.place', null, 'Place'))}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">Remove marker</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
+  function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || tr('map.place', null, 'Place'))}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">${escH(tr('map.removeMarker', null, 'Remove marker'))}</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
     const id = 'el' + Math.random().toString(36).slice(2, 8);
     elevation(p.lat, p.lon).then(m => { const el = document.getElementById(id); if (el) el.textContent = m == null ? '' : tr('map.elevationValue', { value: fmtElev(m) }, 'Elevation {value}') });
-    return `<p class="coords">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}<br>${home ? `<span class="muted">${dist(km)} from your area</span><br>` : ''}<span class="muted" id="${id}">Elevation…</span></p>`;
+    return `<p class="coords">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}<br>${home ? `<span class="muted">${tr('map.distFromArea', { distance: dist(km) }, '{distance} from your area')}</span><br>` : ''}<span class="muted" id="${id}">${tr('map.elevationLoading', null, 'Elevation…')}</span></p>`;
   }
   function wireCoords(p) {
     const el = $('card');
@@ -847,12 +847,12 @@ const MapView = (() => {
       if (items.length === 1) return showDetail(items[0]);
       const head = p.spot && names.size === 1 && items[0]?.name ? items[0].name : title;
       const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(head)}</h3>${breakdown(p)}
-        <p class="muted small">${r.total > items.length ? `Showing the ${items.length} nearest of ${r.total.toLocaleString()}${r.capped ? '+' : ''}. Zoom in to see the rest.` : `${items.length} record${items.length === 1 ? '' : 's'}`}</p>
+        <p class="muted small">${r.total > items.length ? tr('map.recordsNearest', { shown: items.length, total: r.total.toLocaleString(), plus: r.capped ? '+' : '' }, 'Showing the {shown} nearest of {total}{plus}. Zoom in to see the rest.') : tr('map.recordsCount', { count: items.length }, '{count} records')}</p>
         <div class="members">${items.map((m, i) => `<button data-i="${i}">${sym(layerOf(m.cls), 20)}<span><b>${escH(unnamed(m))}</b><small>${escH([m.summary || layerOf(m.cls).label, m.detail?.WeekOfPlantStart ? 'stocked ' + m.detail.WeekOfPlantStart : ''].filter(Boolean).join(' · '))}</small></span></button>`).join('')}</div>
-        <div class="acts"><button data-a="zoom">Zoom here</button></div>`);
+        <div class="acts"><button data-a="zoom">${tr('map.zoomHere', null, 'Zoom here')}</button></div>`);
       el.querySelectorAll('.members button').forEach(bt => bt.onclick = () => showDetail(items[+bt.dataset.i], { title, p }));
       el.querySelector('[data-a=zoom]').onclick = () => fit(b);
-    } catch { if (st === state) openCard(`<h3>${escH(title)}</h3><p>Couldn’t load the list. Zoom in to see individual places.</p>`) }
+    } catch { if (st === state) openCard(`<h3>${escH(title)}</h3><p>${escH(tr('map.listFailed', null, 'Couldn’t load the list. Zoom in to see individual places.'))}</p>`) }
   }
 
   // ------------------------------------------------------------------ data ----

@@ -304,3 +304,43 @@ class Schemas(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Postcodes(unittest.TestCase):
+    """GPOC postcode directory: government-provided, not openly licensed (packaging/regions/GY.json, sources.places)."""
+
+    def test_snapshot_is_the_whole_directory(self):
+        rows = G.postcode_rows()
+        self.assertEqual(len(rows), 2201)
+        self.assertEqual(len({r['postcode'] for r in rows}), 227)
+        self.assertTrue(all(re.fullmatch(r'\d{7}', r['postcode']) for r in rows))
+        self.assertIn('2210201', {r['postcode'] for r in rows})        # GPOC's own example
+
+    def test_json_says_it_is_not_open_data(self):
+        r = regions.get('GY')
+        gpoc = [s for s in r['sources']['places'] if 'Guyana Post Office' in s['publisher']]
+        self.assertEqual(len(gpoc), 1)
+        self.assertIn('not openly licensed', gpoc[0]['licence'])
+        self.assertIn('government-provided', gpoc[0]['note'])
+        self.assertIn('Guyana Post Office Corporation', ' '.join(r['attribution']))
+
+    def test_names_and_offices(self):
+        self.assertEqual(G.squash('Werk-en-Rust & Wortmanville'), 'werkenrustandwortmanville')
+        self.assertEqual(G.squash('Fort Wellington'), G.squash('Fortwellington'))
+        self.assertEqual(G.office_key('Nigg PO'), G.office_key('Nigg Post Office'))
+        self.assertEqual(G.office_key('Ituni Postal Agency'), 'ituni')
+        self.assertEqual(G.office_key('McKenzie PO'), G.office_key('MacKenzie Post Office'))
+
+    def test_area_near_its_office_else_the_office(self):
+        rows = [{'area': 'Kitty', 'postcode': '4130201', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': 'A Street'},
+                {'area': 'Kitty', 'postcode': '4130201', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': 'B Street'},
+                {'area': 'Nowhere', 'postcode': '4130202', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': ''},
+                {'area': 'Far', 'postcode': '4130203', 'subregion': 'Georgetown', 'office': 'Kitty PO', 'street': ''},
+                {'area': 'Lost', 'postcode': '9999999', 'subregion': 'X', 'office': 'Unknown PO', 'street': ''}]
+        places = {'kitty': [(6.82, -58.14), (8.0, -59.5)], 'far': [(3.0, -59.0)]}
+        offices = {'kitty': [(6.83, -58.15)]}
+        out = G.place_postcodes(rows, places, offices)
+        self.assertEqual([(o[0], o[6]) for o in out], [('Kitty', 'area'), ('Nowhere', 'office'), ('Far', 'office')])
+        self.assertEqual((out[0][4], out[0][5]), (6.82, -58.14))      # the Kitty near its office, not the far one
+        self.assertEqual(out[0][7], ['A Street', 'B Street'])
+        self.assertEqual((out[2][4], out[2][5]), (6.83, -58.15))      # 'Far' is over 25 km away: at the office

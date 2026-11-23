@@ -176,7 +176,7 @@ const Chat = (() => {
   async function describe(about) {
     const [kind, id, n] = about.split(':');
     try {
-      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: 'Guide', kind } }
+      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: tr('guide.topicKind', null, 'Guide'), kind } }
       const d = await api('/api/doc/' + encodeURIComponent(id));
       return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : tr('nav.video', null, 'Video')) : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
     } catch { return null }

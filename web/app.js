@@ -553,7 +553,7 @@ async function topicPage(id, open) {
     ? `<div class="sit"><a href="#/t/${esc(c.goto)}"><span class="dot"></span><span class="tx"><b>${esc(c.label)}</b>${c.hint ? `<span>${esc(c.hint)}</span>` : ''}</span><span class="chev">${ico('right')}</span></a></div>`
     : `<div class="sit${open === c.id ? ' open' : ''}" id="c-${esc(c.id)}">
       <button aria-expanded="${open === c.id}" aria-controls="cb-${esc(c.id)}" data-choice="${esc(c.id)}"><span class="dot"></span><span class="tx"><b>${esc(c.label)}</b>${c.hint ? `<span>${esc(c.hint)}</span>` : ''}</span><span class="chev">${ico('down')}</span></button>
-      <div class="body" id="cb-${esc(c.id)}"><div class="rcards">${(c.read || []).map(rcard).join('') || '<p class="muted">Nothing picked for this yet — try searching.</p>'}</div></div></div>`).join('');
+      <div class="body" id="cb-${esc(c.id)}"><div class="rcards">${(c.read || []).map(rcard).join('') || `<p class="muted">${esc(tr('guide.nothingPicked', null, 'Nothing picked for this yet — try searching.'))}</p>`}</div></div></div>`).join('');
   const limLi = l => `<li>${esc(l.text)}${l.src ? ` <span class="lim-src">— <a href="${hrefFor(l)}">${esc(l.src.publisher || l.src.title)}${l.page ? ', p. ' + l.page : ''}</a></span>` : l.zim ? ` <span class="lim-src">— <a href="${hrefFor(l)}">encyclopedia</a></span>` : ''}</li>`;
   const LIM = 4, lims = t.limits || [];
   const limits = lims.length ? `<section class="limits" aria-labelledby="lim"><h2 id="lim">${ico('warn')}${esc(tr('guide.stopAndGetHelp', null, 'Stop and get help when…'))}</h2><ul>${lims.slice(0, LIM).map(limLi).join('')}</ul>${lims.length > LIM ? `<details><summary>${esc(tr('guide.showAllWarnings', { count: lims.length }, 'Show all {count} warnings'))}</summary><ul>${lims.slice(LIM).map(limLi).join('')}</ul></details>` : ''}</section>` : '';
@@ -922,7 +922,7 @@ function wireMoments({ video = null, player = null, available = null, start = nu
         draw(); savedCount();
         const next = $('[data-moment-edit]', root);
         if (next) next.focus(); else if (add) add.focus(); else $('#momentsTitle').focus();
-        say('Moment removed.');
+        say(tr('moment.removed', null, 'Moment removed.'));
       }
     } catch (e) { say(e.message, true) }
   };

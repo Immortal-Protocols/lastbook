@@ -255,6 +255,21 @@ class SpanishWording(unittest.TestCase):
                 for param in ('mapped', 'satellite', 'guessed', 'nearest'):
                     self.assertIn('{' + param + '}', catalog[key][selector])
 
+    def test_topic_short_catalogue_entries_match_topic_data(self):
+        topics = [json.loads(path.read_text(encoding='utf-8'))
+                  for path in sorted((ROOT / 'content' / 'topics').glob('*.json'))]
+        self.assertEqual(len(topics), 14)
+        expected = {f"topic.short.{topic['id']}" for topic in topics}
+        self.assertTrue(expected <= set(self.en))
+        self.assertTrue(expected <= set(self.es))
+        for topic in topics:
+            key = f"topic.short.{topic['id']}"
+            with self.subTest(topic=topic['id']):
+                self.assertEqual(self.en[key], topic['short'])
+                self.assertNotEqual(self.es[key], self.en[key])
+                self.assertEqual(catalogues.placeholders(self.es[key]),
+                                 catalogues.placeholders(self.en[key]))
+
 class CatalogueCoverage(unittest.TestCase):
     """Keys used in the desktop UI exist in the English catalogue."""
 

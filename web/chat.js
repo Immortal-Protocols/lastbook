@@ -340,7 +340,7 @@ const Chat = (() => {
     }
 
     const found = m.sources || [];
-    region(el, 'div', 'prefound', found.length ? `<p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}` : '', n => el.append(n));
+    region(el, 'div', 'prefound', found.length ? `<p class="small muted">${tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:')}</p>${srcCards(found.slice(0, 6), true)}` : '', n => el.append(n));
   }
   // sources-finish:start (app/tests/test_chat_steps.py)
   // After a normal `done` event, `cited` is the final list. If the user stops mid-stream,
@@ -562,7 +562,7 @@ const Chat = (() => {
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
       const st = await getStatus();
-      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
+      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && tr('chat.modelServerNotAnswering', { address: esc(st.server.address) }, 'The model server at {address} is not answering. Check that it is running.') });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();

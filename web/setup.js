@@ -427,29 +427,29 @@
   const srv = { open: false, address: '', models: null, note: '', ok: false, heading: false };
   function serverBox() {
     const ms = S.model_server, firstRun = !cur();
-    const after = firstRun ? ' Used once setup is done.' : '';
+    const after = firstRun ? ' ' + tr('setup.server.afterSetup', null, 'Used once setup is done.') : '';
     const note = srv.note ? `<p class="s-note${srv.ok ? ' ok' : ''}" id="srvNote" role="status">${esc(srv.note)}</p>` : '';
-    const head = small => `<div class="s-row">${ico('ai', 's-ri')}<span><b>Model server on this computer</b><small>${small}</small></span>`;
+    const head = small => `<div class="s-row">${ico('ai', 's-ri')}<span><b>${tr('setup.server.title', null, 'Model server on this computer')}</b><small>${small}</small></span>`;
     // First-run Setup shows only a link until the person opens the chooser or has chosen a server.
-    if (firstRun && !ms && !srv.open) return `<button class="s-link" id="srvOpen">${ico('ai')}Use a model server on this computer</button>${note}`;
-    const h2 = firstRun && srv.heading ? '<h2>Local AI</h2>' : '';
+    if (firstRun && !ms && !srv.open) return `<button class="s-link" id="srvOpen">${ico('ai')}${tr('setup.server.open', null, 'Use a model server on this computer')}</button>${note}`;
+    const h2 = firstRun && srv.heading ? `<h2>${tr('about.localAi', null, 'Local AI')}</h2>` : '';
     return h2 + serverRow(ms, head, after, note);
   }
   function serverRow(ms, head, after, note) {
     if (!srv.open) return ms
-      ? `<div class="s-have">${head(`${esc(ms.model)} at ${esc(ms.address)} · answers instead of the local AI.${after}`)}
-          <span class="s-confirm"><button class="btn plain" id="srvOpen">Change</button><button class="btn plain" id="srvStop">Stop using</button></span></div></div>${note}`
-      : `<div class="s-have">${head('Use a model you already run with Ollama or llama.cpp, instead of the local AI.')}
-          <button class="btn plain" id="srvOpen">Choose…</button></div></div>${note}`;
+      ? `<div class="s-have">${head(tr('setup.server.answersInstead', { model: esc(ms.model), address: esc(ms.address), after }, '{model} at {address} · answers instead of the local AI.{after}'))}
+          <span class="s-confirm"><button class="btn plain" id="srvOpen">${tr('setup.server.change', null, 'Change')}</button><button class="btn plain" id="srvStop">${tr('setup.server.stop', null, 'Stop using')}</button></span></div></div>${note}`
+      : `<div class="s-have">${head(tr('setup.server.alreadyRunning', null, 'Use a model you already run with Ollama or llama.cpp, instead of the local AI.'))}
+          <button class="btn plain" id="srvOpen">${tr('setup.server.choose', null, 'Choose…')}</button></div></div>${note}`;
     const opts = (srv.models || []).map(m => `<option${ms && ms.model === m ? ' selected' : ''}>${esc(m)}</option>`).join('');
-    return `<div class="s-have s-srv">${head(`Lastbook asks only this computer, and only when you press List models.${after}`)}</div>
+    return `<div class="s-have s-srv">${head(tr('setup.server.asksOnly', { after }, 'Lastbook asks only this computer, and only when you press List models.{after}'))}</div>
         <div class="s-srv-in">
-          <label class="s-maplabel" for="srvAddr">Address</label>
+          <label class="s-maplabel" for="srvAddr">${tr('setup.server.address', null, 'Address')}</label>
           <input id="srvAddr" class="s-select" inputmode="url" autocomplete="off" spellcheck="false" placeholder="127.0.0.1:11434" value="${esc(srv.address)}" aria-describedby="srvHint">
-          <p class="s-hint" id="srvHint">Ollama uses port 11434, llama.cpp port 8080. A server that needs a key does not work yet.</p>
+          <p class="s-hint" id="srvHint">${tr('setup.server.portHint', null, 'Ollama uses port 11434, llama.cpp port 8080. A server that needs a key does not work yet.')}</p>
           ${opts ? `<label class="s-maplabel" for="srvModel">Model</label><select id="srvModel" class="s-select">${opts}</select>` : ''}
-          <div class="s-go left">${opts ? '<button class="btn" id="srvUse">Use this model</button><button class="btn plain" id="srvList">List again</button>' : '<button class="btn" id="srvList">List models</button>'}
-            <button class="s-link" id="srvCancel">Cancel</button></div>
+          <div class="s-go left">${opts ? `<button class="btn" id="srvUse">${tr('setup.server.useModel', null, 'Use this model')}</button><button class="btn plain" id="srvList">${tr('setup.server.listAgain', null, 'List again')}</button>` : `<button class="btn" id="srvList">${tr('setup.server.listModels', null, 'List models')}</button>`}
+            <button class="s-link" id="srvCancel">${tr('common.cancel', null, 'Cancel')}</button></div>
         </div></div>${note}`;
   }
   function renderServer(focus) {
@@ -464,7 +464,9 @@
       $('#srvList').disabled = true;
       const r = await call('server-models', { address: addr() }).catch(e => ({ error: e.message }));
       srv.models = r && r.models || null;
-      say(r && r.error ? r.error : `${r.models.length === 1 ? 'One model' : r.models.length + ' models'} at ${r.address}.`, !(r && r.error));
+      say(r && r.error ? r.error : r.models.length === 1
+        ? tr('setup.server.oneModelAt', { address: esc(r.address) }, 'One model at {address}.')
+        : tr('setup.server.modelsAt', { count: r.models.length, address: esc(r.address) }, '{count} models at {address}.'), !(r && r.error));
       renderServer(srv.models ? '#srvModel' : '#srvAddr');
     };
     if ($('#srvUse')) $('#srvUse').onclick = async () => {
@@ -473,14 +475,18 @@
       const r = await call('use-server', { address: addr(), model }).catch(e => ({ error: e.message }));
       if (r && r.error) { say(r.error); renderServer('#srvAddr'); return }
       S.model_server = r.model_server; srv.open = false; srv.models = null;
-      say(cur() ? `Chat now answers with ${model}.` : `Chat will answer with ${model} once setup is done.`, true);
+      say(cur()
+        ? tr('setup.server.chatNowAnswers', { model: esc(model) }, 'Chat now answers with {model}.')
+        : tr('setup.server.chatAnswersAfterSetup', { model: esc(model) }, 'Chat will answer with {model} once setup is done.'), true);
       renderServer('#srvNote');
     };
     if ($('#srvStop')) $('#srvStop').onclick = async () => {
       const r = await call('stop-server', {}).catch(e => ({ error: e.message }));
       if (r && r.error) { say(r.error); renderServer('#srvNote'); return }
       S.model_server = null;
-      say(cur() && model() && cur().model ? 'Chat answers with the local AI again.' : 'The model server is no longer used.', true);
+      say(cur() && model() && cur().model
+        ? tr('setup.server.chatLocalAiAgain', null, 'Chat answers with the local AI again.')
+        : tr('setup.server.noLongerUsed', null, 'The model server is no longer used.'), true);
       renderServer('#srvNote');
     };
     const f = focus && $(focus); if (f) { if (focus === '#srvNote') f.tabIndex = -1; f.focus() }
@@ -491,12 +497,12 @@
   function cloudNote(c) {
     const k = c.cloud_only;
     if (!k || !(k.files || k.folders)) return '';
-    const n = (count, one) => `${count.toLocaleString()} ${one}${count === 1 ? '' : 's'}`;
-    const what = [k.files ? n(k.files, 'file') : '', k.folders ? n(k.folders, 'folder') : ''].filter(Boolean).join(' and ');
-    const one = k.files + k.folders === 1;
-    return `<p class="s-note" role="status"><b>${what} of this library ${one ? 'is' : 'are'} only in iCloud${k.bytes ? ` (${size(k.bytes)})` : ''}.</b>
-      ${one ? 'It' : 'They'} will not open without internet. Move the LastbookData folder out of iCloud Drive, or in Finder choose Keep Downloaded for it (macOS 15 or later).
-      <br><small>For example: ${k.examples.map(esc).join(', ')}</small></p>`;
+    const n = (count, key, fallback) => tr(key, { count }, fallback);
+    const items = [k.files ? n(k.files, 'setup.icloud.files', '{count} file(s)') : '', k.folders ? n(k.folders, 'setup.icloud.folders', '{count} folder(s)') : ''].filter(Boolean).join(', ');
+    const count = k.files + k.folders, sizeText = k.bytes ? ` (${size(k.bytes)})` : '';
+    return `<p class="s-note" role="status"><b>${tr('setup.icloud.summary', { count, items: esc(items), size: esc(sizeText) }, '{items} of this library are only in iCloud{size}.')}</b>
+      ${tr('setup.icloud.action', null, 'These items will not open without internet. Move the LastbookData folder out of iCloud Drive, or in Finder choose the option to keep the files downloaded (macOS 15 or later).')}
+      <br><small>${tr('setup.icloud.examples', { examples: k.examples.map(esc).join(', ') }, 'For example: {examples}')}</small></p>`;
   }
 
   // Ask again only while the engine is still counting. Windows and Linux never count (cloud_counting false), so no timer starts
@@ -594,12 +600,12 @@
   }
   // "Last checked 17 November 2026 · every file as published", from current.checked (Check now, or Repair's own check)
   function checkLine(ck) {
-    if (!ck || !ck.at) return 'Not checked on this computer yet. Checking reads every file and downloads nothing.';
+    if (!ck || !ck.at) return tr('setup.check.notChecked', null, 'Not checked on this computer yet. Checking reads every file and downloads nothing.');
     const when = new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
     const ai = ck.model_ok === false, map = ck.map_ok === false, files = (ck.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // 'damaged' counts the AI file and the map too
-    const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired`
-      : [files ? `${files} damaged or missing` : '', ai ? 'the local AI file did not match' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(' · ') || 'every file as published';
-    return `Last checked ${esc(when)} · ${what}`;
+    const what = ck.repaired ? tr('setup.check.filesRepaired', { count: ck.damaged }, '{count} damaged or missing, repaired')
+      : [files ? tr('setup.check.filesDamaged', { count: files }, '{count} damaged or missing') : '', ai ? tr('setup.check.aiMismatch', null, 'the local AI file did not match') : '', map ? tr('setup.check.mapDamaged', null, 'the detailed map is damaged') : ''].filter(Boolean).join(' · ') || tr('setup.check.everyFile', null, 'every file as published');
+    return tr('setup.check.lastChecked', { when: esc(when), what: esc(what) }, 'Last checked {when} · {what}');
   }
   async function act(path, done, body) {
     const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? tr('setup.cannotDoThat', null, 'This Lastbook cannot do that yet.') : e.message }));
@@ -818,20 +824,20 @@
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   /* what Repair would do for what the check found: a damaged library file means the whole library again; the AI file is replaced in place */
   function repairOffer(bad, ai, map) {
-    const does = [bad ? 'downloads the whole library again and keeps the damaged copy aside' : '', ai ? 'downloads the local AI file again and puts it in place of this one' : '',
-                  map ? 'downloads the detailed map again' : ''].filter(Boolean);
-    return does.length ? `Repair ${does.join(', and ').replace(/, and ([^,]*), and /, ', $1, and ')}.` : '';
+    const does = [bad ? tr('setup.check.repairLibraryAction', null, 'download the whole library again and keep the damaged copy aside') : '', ai ? tr('setup.check.repairAiAction', null, 'download the local AI file again and put it in place of this one') : '',
+                  map ? tr('setup.check.repairMapAction', null, 'download the detailed map again') : ''].filter(Boolean);
+    return does.length ? tr('setup.check.repairOffer', { actions: does.join('; ') }, 'Repair: {actions}.') : '';
   }
   function checkedView() {
     const r = (S.job && S.job.result) || {}, ai = r.model_ok === false, map = r.map_ok === false, bad = (r.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // library files; the AI file and the map apart
-    const what = [bad ? `${bad} ${bad === 1 ? 'file is' : 'files are'} damaged or missing` : '', ai ? 'the local AI file does not match its published copy' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(', and ');
+    const what = [bad ? tr(bad === 1 ? 'setup.check.oneFileDamaged' : 'setup.check.manyFilesDamaged', { count: bad }, bad === 1 ? '{count} file is damaged or missing' : '{count} files are damaged or missing') : '', ai ? tr('setup.check.aiPublishedMismatch', null, 'the local AI file does not match its published copy') : '', map ? tr('setup.check.mapDamaged', null, 'the detailed map is damaged') : ''].filter(Boolean).join(' · ');
     main.innerHTML = bad || ai || map
-      ? `<div class="s-done">${ico('warn', 's-big')}<h1>Something needs repair</h1>
-        <p class="lead">${esc(what[0].toUpperCase() + what.slice(1))}. Nothing was changed or downloaded. ${repairOffer(bad, ai, map)}</p>
-        <p class="s-two"><button class="btn big" id="doRepair">${ico('repair')}Repair</button> <button class="btn big plain" id="back">Not now</button></p></div>`
-      : `<div class="s-done">${ico('ok', 's-big')}<h1>All good</h1><p class="lead">Every file matches the published library. Nothing was downloaded.</p>
-        <button class="btn big" id="back">Back to Library and local AI</button></div>`;
-    live.textContent = bad || ai || map ? 'The check found damage.' : 'The library was checked. All good.';
+      ? `<div class="s-done">${ico('warn', 's-big')}<h1>${tr('setup.check.needsRepair', null, 'Something needs repair')}</h1>
+        <p class="lead">${tr('setup.check.problemSummary', { what: esc(what), repair: esc(repairOffer(bad, ai, map)) }, '{what}. Nothing was changed or downloaded. {repair}')}</p>
+        <p class="s-two"><button class="btn big" id="doRepair">${ico('repair')}${tr('setup.check.repair', null, 'Repair')}</button> <button class="btn big plain" id="back">${tr('common.notNow', null, 'Not now')}</button></p></div>`
+      : `<div class="s-done">${ico('ok', 's-big')}<h1>${tr('setup.check.allGood', null, 'All good')}</h1><p class="lead">${tr('setup.check.allFilesMatch', null, 'Every file matches the published library. Nothing was downloaded.')}</p>
+        <button class="btn big" id="back">${tr('setup.backToLibraryAi', null, 'Back to Library and local AI')}</button></div>`;
+    live.textContent = bad || ai || map ? tr('setup.check.foundDamage', null, 'The check found damage.') : tr('setup.check.checkedAllGood', null, 'The library was checked. All good.');
     repair = null;
     S.job = null;
     call('state').then(x => { S = x }).catch(() => { });   // the new "Last checked" date

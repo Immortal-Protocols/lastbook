@@ -1265,5 +1265,72 @@
   "topic.short.comms": "Family contact, emergency radio, ham radio, map and compass",
   "topic.short.hurt": "First aid for bleeding, burns, breathing, injuries and sudden illness",
   "topic.short.preserve": "Canning, drying, freezing, pickling and fermenting safely",
-  "topic.short.land": "Local hazards, soil, water sources, wild plants and finding your way"
+  "topic.short.land": "Local hazards, soil, water sources, wild plants and finding your way",
+  "about.localAi": "Local AI",
+  "common.notNow": "Not now",
+  "setup.server.title": "Model server on this computer",
+  "setup.server.open": "Use a model server on this computer",
+  "setup.server.alreadyRunning": "Use a model you already run with Ollama or llama.cpp, instead of the local AI.",
+  "setup.server.answersInstead": "{model} at {address} · answers instead of the local AI.{after}",
+  "setup.server.change": "Change",
+  "setup.server.stop": "Stop using",
+  "setup.server.choose": "Choose…",
+  "setup.server.asksOnly": "Lastbook asks only this computer, and only when you press List models.{after}",
+  "setup.server.afterSetup": "Used once setup is done.",
+  "setup.server.address": "Address",
+  "setup.server.portHint": "Ollama uses port 11434, llama.cpp port 8080. A server that needs a key does not work yet.",
+  "setup.server.useModel": "Use this model",
+  "setup.server.listAgain": "List again",
+  "setup.server.listModels": "List models",
+  "setup.server.oneModelAt": "One model at {address}.",
+  "setup.server.modelsAt": {
+    "one": "{count} model at {address}.",
+    "other": "{count} models at {address}."
+  },
+  "setup.server.chatNowAnswers": "Chat now answers with {model}.",
+  "setup.server.chatAnswersAfterSetup": "Chat will answer with {model} once setup is done.",
+  "setup.server.chatLocalAiAgain": "Chat answers with the local AI again.",
+  "setup.server.noLongerUsed": "The model server is no longer used.",
+  "setup.check.notChecked": "Not checked on this computer yet. Checking reads every file and downloads nothing.",
+  "setup.check.filesRepaired": {
+    "one": "One file was repaired.",
+    "other": "{count} files were repaired."
+  },
+  "setup.check.filesDamaged": {
+    "one": "{count} damaged or missing file",
+    "other": "{count} damaged or missing files"
+  },
+  "setup.check.aiMismatch": "the local AI file did not match",
+  "setup.check.mapDamaged": "the detailed map is damaged",
+  "setup.check.everyFile": "every file as published",
+  "setup.check.lastChecked": "Last checked {when} · {what}",
+  "setup.check.repairLibraryAction": "download the whole library again and keep the damaged copy aside",
+  "setup.check.repairAiAction": "download the local AI file again and put it in place of this one",
+  "setup.check.repairMapAction": "download the detailed map again",
+  "setup.check.repairOffer": "Repair: {actions}.",
+  "setup.check.oneFileDamaged": "{count} file is damaged or missing",
+  "setup.check.manyFilesDamaged": "{count} files are damaged or missing",
+  "setup.check.aiPublishedMismatch": "the local AI file does not match its published copy",
+  "setup.check.needsRepair": "Something needs repair",
+  "setup.check.problemSummary": "{what}. Nothing was changed or downloaded. {repair}",
+  "setup.check.repair": "Repair",
+  "setup.check.allGood": "All good",
+  "setup.check.allFilesMatch": "Every file matches the published library. Nothing was downloaded.",
+  "setup.check.foundDamage": "The check found damage.",
+  "setup.check.checkedAllGood": "The library was checked. All good.",
+  "chat.modelServerNotAnswering": "The model server at {address} is not answering. Check that it is running.",
+  "setup.icloud.files": {
+    "one": "{count} file",
+    "other": "{count} files"
+  },
+  "setup.icloud.folders": {
+    "one": "{count} folder",
+    "other": "{count} folders"
+  },
+  "setup.icloud.summary": {
+    "one": "{items} of this library is only in iCloud{size}.",
+    "other": "{items} of this library are only in iCloud{size}."
+  },
+  "setup.icloud.action": "These items will not open without internet. Move the LastbookData folder out of iCloud Drive, or in Finder choose the option to keep the files downloaded (macOS 15 or later).",
+  "setup.icloud.examples": "For example: {examples}"
 }

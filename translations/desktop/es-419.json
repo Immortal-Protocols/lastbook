@@ -1265,5 +1265,72 @@
   "topic.short.comms": "Contacto familiar, radio de emergencia, radioafición, mapas y brújula",
   "topic.short.hurt": "Primeros auxilios para hemorragias, quemaduras, problemas respiratorios, lesiones y enfermedades repentinas",
   "topic.short.preserve": "Conservas, secado, congelación, encurtido y fermentación seguros",
-  "topic.short.land": "Peligros locales, suelo, fuentes de agua, plantas silvestres y orientación"
+  "topic.short.land": "Peligros locales, suelo, fuentes de agua, plantas silvestres y orientación",
+  "about.localAi": "IA local",
+  "common.notNow": "Ahora no",
+  "setup.server.title": "Servidor de modelos en esta computadora",
+  "setup.server.open": "Usar un servidor de modelos en esta computadora",
+  "setup.server.alreadyRunning": "Usa un modelo que ya esté en ejecución en Ollama o llama.cpp, en lugar de la IA local.",
+  "setup.server.answersInstead": "El chat responde con {model} en {address} en lugar de usar la IA local.{after}",
+  "setup.server.change": "Cambiar",
+  "setup.server.stop": "Dejar de usar",
+  "setup.server.choose": "Elegir…",
+  "setup.server.asksOnly": "Lastbook solo consulta esta computadora y solo cuando eliges Listar modelos.{after}",
+  "setup.server.afterSetup": "Se usa cuando termina la configuración inicial.",
+  "setup.server.address": "Dirección",
+  "setup.server.portHint": "Ollama usa el puerto 11434 y llama.cpp, el puerto 8080. Por ahora no se admiten servidores que requieren una clave.",
+  "setup.server.useModel": "Usar este modelo",
+  "setup.server.listAgain": "Listar de nuevo",
+  "setup.server.listModels": "Listar modelos",
+  "setup.server.oneModelAt": "Un modelo en {address}.",
+  "setup.server.modelsAt": {
+    "one": "{count} modelo en {address}.",
+    "other": "{count} modelos en {address}."
+  },
+  "setup.server.chatNowAnswers": "El chat ahora responde con {model}.",
+  "setup.server.chatAnswersAfterSetup": "El chat responderá con {model} cuando termine la configuración inicial.",
+  "setup.server.chatLocalAiAgain": "El chat vuelve a responder con la IA local.",
+  "setup.server.noLongerUsed": "El servidor de modelos dejó de usarse.",
+  "setup.check.notChecked": "Todavía no se ha comprobado esta computadora. La comprobación lee todos los archivos y no descarga nada.",
+  "setup.check.filesRepaired": {
+    "one": "Se reparó un archivo.",
+    "other": "Se repararon {count} archivos."
+  },
+  "setup.check.filesDamaged": {
+    "one": "{count} archivo dañado o faltante",
+    "other": "{count} archivos dañados o faltantes"
+  },
+  "setup.check.aiMismatch": "el archivo de IA local no coincidió",
+  "setup.check.mapDamaged": "el mapa detallado está dañado",
+  "setup.check.everyFile": "todos los archivos coinciden con los publicados",
+  "setup.check.lastChecked": "Última comprobación: {when} · {what}",
+  "setup.check.repairLibraryAction": "volver a descargar toda la biblioteca y conservar aparte la copia dañada",
+  "setup.check.repairAiAction": "volver a descargar el archivo de IA local y reemplazar este",
+  "setup.check.repairMapAction": "volver a descargar el mapa detallado",
+  "setup.check.repairOffer": "Acciones de reparación: {actions}.",
+  "setup.check.oneFileDamaged": "{count} archivo está dañado o falta",
+  "setup.check.manyFilesDamaged": "{count} archivos están dañados o faltan",
+  "setup.check.aiPublishedMismatch": "el archivo de IA local no coincide con la copia publicada",
+  "setup.check.needsRepair": "Se necesita reparar la biblioteca",
+  "setup.check.problemSummary": "{what}. No se cambió ni descargó nada. {repair}",
+  "setup.check.repair": "Reparar",
+  "setup.check.allGood": "Todo está bien",
+  "setup.check.allFilesMatch": "Todos los archivos coinciden con la versión publicada. No se descargó nada.",
+  "setup.check.foundDamage": "La comprobación encontró archivos dañados.",
+  "setup.check.checkedAllGood": "Se comprobó la biblioteca. Todo está bien.",
+  "chat.modelServerNotAnswering": "El servidor de modelos en {address} no responde. Asegúrate de que esté funcionando.",
+  "setup.icloud.files": {
+    "one": "{count} archivo",
+    "other": "{count} archivos"
+  },
+  "setup.icloud.folders": {
+    "one": "{count} carpeta",
+    "other": "{count} carpetas"
+  },
+  "setup.icloud.summary": {
+    "one": "Solo hay {items} de esta biblioteca en iCloud{size}.",
+    "other": "Solo hay {items} de esta biblioteca en iCloud{size}."
+  },
+  "setup.icloud.action": "Estos elementos no se pueden abrir sin conexión a internet. Mueve la carpeta LastbookData fuera de iCloud Drive o usa en Finder la opción para mantenerlos descargados (macOS 15 o posterior).",
+  "setup.icloud.examples": "Por ejemplo: {examples}"
 }

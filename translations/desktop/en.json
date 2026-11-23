@@ -1224,5 +1224,17 @@
   "library.itemTypeLibrary": "library",
   "library.largest": "The largest",
   "setup.checkRepair": "Check and repair",
-  "setup.openAnotherLibraryFolder": "Open another library folder"
+  "setup.openAnotherLibraryFolder": "Open another library folder",
+  "moment.optional": "(optional)",
+  "setup.chooseAgain": "Choose again",
+  "setup.chooseAiModelFile": "Choose an AI model file",
+  "setup.downloadIt": "Download it instead?",
+  "map3d.heightTitle": "Exaggerate heights",
+  "chat.stillIndexing": "still indexing ({count} passages so far)",
+  "map.recordsNearest": "Showing the {shown} nearest of {total}{plus}. Zoom in to see the rest.",
+  "map.recordsCount": {
+    "one": "{count} record",
+    "other": "{count} records"
+  },
+  "map.distFromArea": "{distance} from your area"
 }

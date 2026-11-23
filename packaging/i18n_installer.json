@@ -20,7 +20,8 @@
     "installer.removeConfirm": "Remove Lastbook from this computer?\n\nYour library (LastbookData) and settings stay.",
     "installer.removed": "Lastbook is removed.",
     "installer.setupTitle": "Lastbook Setup",
-    "installer.uninstallFileDescription": "Uninstall Lastbook"
+    "installer.uninstallFileDescription": "Uninstall Lastbook",
+    "installer.version": "Version {version}"
   },
   "locales": {
     "de": {},
@@ -45,7 +46,8 @@
       "installer.removeConfirm": "¿Quieres quitar Lastbook de esta computadora?\n\nTu biblioteca (LastbookData) y tus ajustes se quedan.",
       "installer.removed": "Lastbook se quitó.",
       "installer.setupTitle": "Instalación de Lastbook",
-      "installer.uninstallFileDescription": "Desinstalar Lastbook"
+      "installer.uninstallFileDescription": "Desinstalar Lastbook",
+      "installer.version": "Versión {version}"
     }
   }
 }

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -55,9 +56,11 @@ def current_locale():
 def interpolate(text, params):
     if not params or not text:
         return text
-    for name, value in params.items():
-        text = text.replace('{' + name + '}', str(value))
-    return text
+    # Substitute from the original message in one pass. Sequential replace calls
+    # can accidentally expand placeholder-shaped text inside a parameter value.
+    values = {str(name): str(value) for name, value in params.items()}
+    return re.sub(r'\{([A-Za-z_][A-Za-z0-9_]*)\}',
+                  lambda match: values.get(match.group(1), match.group(0)), text)
 
 
 def lookup(key, locale=None):

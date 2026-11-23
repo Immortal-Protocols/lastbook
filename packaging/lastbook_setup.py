@@ -383,7 +383,7 @@ def run_window():
         mark.Image, mark.SizeMode = form.Icon.ToBitmap(), F.PictureBoxSizeMode.Zoom
         add(mark, 28, 28, 48, 48)
         title = label(installer_t('installer.installLastbook', 'Install Lastbook'), 92, 26, 380, 32, 15.0, True)
-        sub = label(f'Version {VERSION}', 94, 58, 380, 20, colour=quiet)
+        sub = label(installer_t('installer.version', 'Version {version}', version=VERSION), 94, 58, 380, 20, colour=quiet)
         where_head = label(installer_t('installer.installFolder', 'Install folder'), 28, 100, 444, 18, colour=quiet)
         where = label(str(install_dir()), 28, 120, 444, 20)
         desk = F.CheckBox()

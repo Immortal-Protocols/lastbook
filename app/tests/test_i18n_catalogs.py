@@ -286,3 +286,19 @@ class WindowsVersionInfo(unittest.TestCase):
         self.assertIn('Desinstalar Lastbook', uninstall)
         app = self.versioninfo.render_pyinstaller('app', '1.2.3', 'stamp', self.english, self.locales)
         self.assertIn("StringStruct('FileDescription', 'Lastbook')", app)
+
+
+class NativeInterpolation(unittest.TestCase):
+    def test_parameter_values_are_not_recursively_interpolated(self):
+        sys.path.insert(0, str(ROOT / 'app'))
+        from i18n_native import interpolate
+        self.assertEqual(interpolate('{name} / {other}', {
+            'name': 'literal {other}', 'other': 'expanded',
+        }), 'literal {other} / expanded')
+
+    def test_native_visible_strings_have_localized_templates(self):
+        en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        es = json.loads((ROOT / 'translations' / 'desktop' / 'es-419.json').read_text(encoding='utf-8'))
+        self.assertEqual(en['installer.version'], 'Version {version}')
+        self.assertEqual(es['installer.version'], 'Versión {version}')
+        self.assertEqual((en['native.choose'], es['native.choose']), ('Choose', 'Elegir'))

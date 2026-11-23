@@ -111,7 +111,7 @@ def choose_folder(title, message):
     panel.setCanChooseFiles_(False)
     panel.setAllowsMultipleSelection_(False)
     panel.setMessage_(native_t('native.chooseLastbookData', 'Choose the folder called LastbookData.'))
-    panel.setPrompt_('Choose')
+    panel.setPrompt_(native_t('native.choose', 'Choose'))
     panel.setDirectoryURL_(Foundation.NSURL.fileURLWithPath_(os.path.expanduser('~/Downloads')))
     if panel.runModal() == AppKit.NSModalResponseOK:
         return str(panel.URL().path())
@@ -673,7 +673,10 @@ class _Go(Foundation.NSObject):
         self.side_item = None
 
     def go_(self, item):
-        self.view.evaluateJavaScript_completionHandler_('location.hash=' + json.dumps(dict(GO)[str(item.title())]), None)
+        # Menu labels are localized; routing must use stable metadata, never text.
+        index = int(item.tag()) - 1
+        if 0 <= index < len(GO):
+            self.view.evaluateJavaScript_completionHandler_('location.hash=' + json.dumps(GO[index][1]), None)
 
     def help_(self, item):
         self.view.evaluateJavaScript_completionHandler_("location.hash='#/about'", None)
@@ -683,6 +686,7 @@ class _Go(Foundation.NSObject):
 
     @objc.python_method
     def _side_title(self, shown):
+        self.sidebar_shown = shown
         if self.side_item is not None:
             self.side_item.setTitle_(native_t('native.menu.hideSidebar', 'Hide Sidebar') if shown else native_t('native.menu.showSidebar', 'Show Sidebar'))
 
@@ -701,7 +705,7 @@ class _Go(Foundation.NSObject):
     def toggleSidebar_(self, item):
         self.view.evaluateJavaScript_completionHandler_("document.getElementById('sideBtn').click()", None)
         if self.side_item is not None:
-            self._side_title(str(self.side_item.title()) != 'Hide Sidebar')
+            self._side_title(not getattr(self, 'sidebar_shown', True))
 
     def find_(self, item):
         self.view.evaluateJavaScript_completionHandler_("document.dispatchEvent(new KeyboardEvent('keydown',{key:'f',code:'KeyF',metaKey:true}))", None)
@@ -720,7 +724,10 @@ def _menu(title, items, target=None):
             continue
         item = menu.addItemWithTitle_action_keyEquivalent_(name, action, key)
         if mods:
-            item.setKeyEquivalentModifierMask_(mods[0])
+            if isinstance(mods[0], int):
+                item.setKeyEquivalentModifierMask_(mods[0])
+            if len(mods) > 1 and mods[1] is not None:
+                item.setTag_(mods[1])
         if target is not None and action in ('go:', 'toggleSidebar:', 'find:', 'help:', 'checkUpdates:'):
             item.setTarget_(target)
     holder = AppKit.NSMenuItem.alloc().init()
@@ -770,7 +777,7 @@ def install_menu(app, go=None):
                                       (None, None, None), (native_t('native.menu.quitLastbook', 'Quit Lastbook'), 'terminate:', 'q')], go),
                    edit,
                    view,
-                   _menu(native_t('native.menu.go', 'Go'), [(native_t('native.menu.back', 'Back'), 'goBack:', '['), (native_t('native.menu.forward', 'Forward'), 'goForward:', ']'), (None, None, None)] + [(native_t(go_names.get(name, ''), name), 'go:', str(i + 1)) for i, (name, _) in enumerate(GO)], go),
+                   _menu(native_t('native.menu.go', 'Go'), [(native_t('native.menu.back', 'Back'), 'goBack:', '['), (native_t('native.menu.forward', 'Forward'), 'goForward:', ']'), (None, None, None)] + [(native_t(go_names.get(name, ''), name), 'go:', str(i + 1), None, i + 1) for i, (name, _) in enumerate(GO)], go),
                    window, helps):
         bar.addItem_(holder)
     if go is not None:

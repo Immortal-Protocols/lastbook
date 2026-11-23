@@ -863,9 +863,9 @@ function wireMoments({ video = null, player = null, available = null, start = nu
     const time = item ? item.time : Math.floor(seconds);
     editing = { key: item ? item.key : null, time };
     editor.innerHTML = `<form class="moment-form"><p class="moment-form-title">${item ? tr('moment.renameTitle', null, 'Rename moment') : tr('moment.saveTitle', null, 'Save moment')} <span class="moment-time">${clock(time)}</span></p>
-      <label for="momentName">Name <span class="muted">(optional)</span></label>
+      <label for="momentName">${tr('moment.name', null, 'Name')} <span class="muted">${tr('moment.optional', null, '(optional)')}</span></label>
       <input id="momentName" type="text" maxlength="120" autocomplete="off" placeholder="${tr('moment.placeholder', null, "For example, tools needed")}" value="${esc(item ? item.title : '')}">
-      <div class="moment-form-actions"><button class="btn" type="submit">${item ? tr('moment.saveChanges', null, 'Save changes') : tr('moment.saveTitle', null, 'Save moment')}</button><button class="btn plain" type="button" id="cancelMoment">Cancel</button></div></form>`;
+      <div class="moment-form-actions"><button class="btn" type="submit">${item ? tr('moment.saveChanges', null, 'Save changes') : tr('moment.saveTitle', null, 'Save moment')}</button><button class="btn plain" type="button" id="cancelMoment">${tr('common.cancel', null, 'Cancel')}</button></div></form>`;
     say('');
     $('#cancelMoment', editor).onclick = close;
     $('form', editor).onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); close() } };
@@ -875,7 +875,7 @@ function wireMoments({ video = null, player = null, available = null, start = nu
       try {
         const item = editing.key ? VideoMoments.rename(editing.key, title) : VideoMoments.save(video, editing.time, title);
         editing = null; editor.replaceChildren(); draw(); savedCount(); focusRow(item.key);
-        say('Moment saved on this device.');
+        say(tr('moment.savedToast', null, 'Moment saved on this device.'));
       } catch (e) { say(e.message, true) }
     };
     $('#momentName', editor).focus();
@@ -1011,7 +1011,7 @@ async function reader(id, page, from, view) {
     try {
       const t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`);
       const txt = (t.text || '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-      body.innerHTML = `${isPdf || isWeb ? `<div class="notice small">${esc(tr('reader.extractedNote', null, 'Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.'))}</div>` : ''}<div class="pagetext">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
+      body.innerHTML = `${isPdf || isWeb ? `<div class="notice small">${esc(tr('reader.extractedNote', null, 'Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.'))}</div>` : ''}<div class="pagetext">${esc(txt) || `<span class="muted">${esc(tr('reader.noText', null, 'No text on this page (it may be a picture or blank).'))}</span>`}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, tr('reader.loadTextFailed', null, 'Couldn’t load the text.')) }
   }
   if (!isPdf) return;
@@ -1041,7 +1041,7 @@ async function wiki(path, from, y) {
   const selfHref = '#/wiki/' + path.split('/').map(encodeURIComponent).join('/');
   const mainPage = zimMain(zim);
   main.innerHTML = `<div class="rtop">${backButton(from || '#/encyclopedias')}<span id="wsave" class="dock">${saveButton({ key: 'w:' + path, title, href: selfHref, sub: zimLabel(zim) })}</span></div>
-    <h1 class="rtitle" id="wtitle">${esc(title)}</h1><div class="rsrc"><span class="zn">${esc(zimLabel(zim))} · </span>Community-written; check safety-critical steps against a manual${IN_WINDOW ? '' : ` · <a id="wopen" href="${src}" target="_blank" rel="noopener">open on its own</a>`}</div>
+    <h1 class="rtitle" id="wtitle">${esc(title)}</h1><div class="rsrc"><span class="zn">${esc(zimLabel(zim))} · </span>${tr('wiki.communityWrittenReview', null, 'Community-written; check safety-critical steps against a manual')}${IN_WINDOW ? '' : ` · <a id="wopen" href="${src}" target="_blank" rel="noopener">${tr('wiki.openOnItsOwn', null, 'open on its own')}</a>`}</div>
     <iframe class="frame" id="wframe" title="${esc(title)}" src="${src}"></iframe>`;
   const f = $('#wframe');
   // The toolbar names the encyclopedia, and the article once the article's own title has scrolled up out of the frame, as a large title does
@@ -1198,8 +1198,8 @@ const zimsHere = async () => { const here = (await libInfo()).zims; return here 
 async function encyclopedias(q) {
   setUiTitle('wiki.title', tr('wiki.title', null, 'Encyclopedias'));
   const zims = await zimsHere();
-  if (!zims.length) { main.innerHTML = `<h1>Encyclopedias</h1><p class="lead">This download has no encyclopedias.</p>`; return }
-  main.innerHTML = `<h1>Encyclopedias</h1><p class="lead">${['', tr('wiki.one', null, 'One complete encyclopedia'), tr('wiki.two', null, 'Two complete encyclopedias'), tr('wiki.three', null, 'Three complete encyclopedias'), tr('wiki.four', null, 'Four complete encyclopedias')][zims.length]}. Community-written: good for background — use the guides’ manuals for safety-critical steps.</p>
+  if (!zims.length) { main.innerHTML = `<h1>${tr('wiki.title', null, 'Encyclopedias')}</h1><p class="lead">${tr('wiki.noneHere', null, 'This download has no encyclopedias.')}</p>`; return }
+  main.innerHTML = `<h1>${tr('wiki.title', null, 'Encyclopedias')}</h1><p class="lead">${['', tr('wiki.one', null, 'One complete encyclopedia'), tr('wiki.two', null, 'Two complete encyclopedias'), tr('wiki.three', null, 'Three complete encyclopedias'), tr('wiki.four', null, 'Four complete encyclopedias')][zims.length]}. ${tr('wiki.communitySafetyNotice', null, 'Community-written: good for background — use the guides’ manuals for safety-critical steps.')}</p>
   <div style="margin:16px 0">${searchBox('zq', q, 'e.g. tetanus, solar panel, sourdough')}</div><div id="zres"></div>
   ${secHead(tr('wiki.openOne', null, 'Open one'))}<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/encyclopedias')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>`;
   $('#zqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/encyclopedias?q=' + encodeURIComponent($('#zq').value.trim()) });
@@ -1210,12 +1210,12 @@ async function zimResults(q, el, max = 8, heading = '') {
   el.innerHTML = heading ? '' : `<p class="loading">${esc(tr('search.encyclopediasLoading', null, 'Searching the encyclopedias…'))}</p>`;
   try {
     const hits = await api('/api/collection-search?q=' + encodeURIComponent(q));
-    if (!hits.length) { el.innerHTML = heading ? '' : `<div class="empty"><span class="e-ico">${ico('wiki')}</span><b>No articles found</b><p>Try another word for the same thing.</p></div>`; return false }
+    if (!hits.length) { el.innerHTML = heading ? '' : `<div class="empty"><span class="e-ico">${ico('wiki')}</span><b>${tr('wiki.noArticles', null, 'No articles found')}</b><p>${tr('wiki.tryAnother', null, 'Try another word for the same thing.')}</p></div>`; return false }
     const ord = ['mdwiki', 'wikibooks', 'appropedia', 'wikipedia'];
     hits.sort((a, b) => ord.findIndex(k => a.collection.startsWith(k)) - ord.findIndex(k => b.collection.startsWith(k)));
     el.innerHTML = `${heading ? `<h2>${heading}</h2>` : ''}<ul class="list">${hits.slice(0, max).map(h => `<li><a class="row" href="#/wiki/${esc(h.path.replace(/^zim\//, ''))}?${fromQ()}"><span class="k">${ico('wiki')}</span><span><b>${esc(h.title)}</b><small>${esc(zimLabel(h.collection))}</small></span></a></li>`).join('')}</ul>`;
     return true;
-  } catch (e) { el.innerHTML = heading ? '' : `<p class="muted">Encyclopedia search isn’t available right now (${esc(e.message)}).</p>`; return false }
+  } catch (e) { el.innerHTML = heading ? '' : `<p class="muted">${esc(tr('wiki.searchUnavailable', { error: e.message }, 'Encyclopedia search isn’t available right now ({error}).'))}</p>`; return false }
 }
 
 /* ------------------------------------------------------------- search -- */
@@ -1228,8 +1228,8 @@ function topicMatches(q) {
 let searchSeq = 0;
 async function searchPage(q, kind) {
   setTitle(q ? tr('search.pageTitle', { query: q }, 'Search: {query}') : tr('search.label', null, 'Search'));
-  const kinds = [['all', 'Everything'], ['read', 'Manuals & pages'], ['video', 'Videos'], ['wiki', tr('wiki.title', null, 'Encyclopedias')]];
-  main.innerHTML = `<h1>${q ? tr('search.resultsHeading', null, 'Results') : 'Search'}</h1>
+  const kinds = [['all', tr('search.everything', null, 'Everything')], ['read', tr('search.manuals', null, 'Manuals & pages')], ['video', tr('videos.title', null, 'Videos')], ['wiki', tr('wiki.title', null, 'Encyclopedias')]];
+  main.innerHTML = `<h1>${q ? tr('search.resultsHeading', null, 'Results') : tr('search.label', null, 'Search')}</h1>
   ${searchBox('searchQ', q, tr('search.everyday', null, 'Describe it in everyday words'))}
   <div class="chips" role="group" aria-label="${tr('search.show', null, "Show")}" style="margin-top:12px" id="kinds">${kinds.map(([k, l]) => `<a class="chip ${k === kind ? 'on' : ''}" aria-pressed="${k === kind}" data-kind="${k}" href="#/search?q=${encodeURIComponent(q)}&kind=${k}">${l}</a>`).join('')}</div>
   <div id="sask"></div><div id="sout"></div>`;

@@ -289,7 +289,7 @@
         : `<div class="s-opt s-ai off" role="group" aria-label="${tr('setup.localAi', null, "Local AI")}"><span class="s-opt-in"><span class="s-opt-h"><b>${tr('setup.localAi', null, 'Local AI')}</b><span class="s-badge later">${tr('setup.notForThisComputer', null, 'Not for this computer')}</span></span>
             <small>${esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notEnoughMemory', null, 'This computer does not have enough memory for it.'))}</small></span></div>`;
     }
-    const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · doesn’t match the published file, so it is not used</small></span></div>`
+    const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · ${tr('setup.doesntMatch', null, 'doesn’t match the published file, so it is not used')}</small></span></div>`
       : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? packById(f.id).title + ' library' : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
         <button class="btn plain" data-use="${i}">${tr('setup.useFileYouHave', null, 'Use the file you already have')}</button></div>`).join('');
 
@@ -337,7 +337,7 @@
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
-      const details = off ? tr('setup.comingLater', null, 'coming later') : bytes ? size(bytes) + ' download' : 'included';
+      const details = off ? tr('setup.comingLater', null, 'coming later') : bytes ? tr('setup.aboutDownload', { size: size(bytes) }, 'About {size} download') : tr('setup.mapAlreadyIncluded', null, 'Your map is already included; only the address index downloads.');
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
     }).join('');
     const sel = mapById(selected), a = addressAdds();
@@ -345,8 +345,8 @@
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? tr('setup.selectState', null, 'Select your state to continue.') : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : tr('setup.stateIncluded', null, 'Your state map is already included.')) + ' ' + tr('setup.noAddressSearch', null, 'Street-address search is not available for this state yet.');
+    let hint = !sel ? tr('setup.selectState', null, 'Select your state to continue.') : bytes ? tr('setup.downloadAndDisk', { download: size(bytes), disk: size(disk) }, '{download} download · {disk} on disk') + (mapIncluded && a ? '. ' + tr('setup.mapAlreadyIncluded', null, 'Your map is already included; only the address index downloads.') : '') : tr('setup.mapAndIndexIncluded', null, 'Your state map and available address index are already included.');
+    if (unavailable) hint = (bytes ? tr('setup.downloadAndDisk', { download: size(bytes), disk: size(disk) }, '{download} download · {disk} on disk') + '.' : tr('setup.stateIncluded', null, 'Your state map is already included.')) + ' ' + tr('setup.noAddressSearch', null, 'Street-address search is not available for this state yet.');
     box.innerHTML = `<h2>${ico('map')}${tr('setup.yourLocalMap', null, 'Your local map')}</h2>
       <p class="s-mapnote">${tr('setup.mapIntro', null, 'Local streets, buildings, water and places to get help. Available offline.')}</p>
       ${now === 'us' ? `<p class="s-mapnote">${tr('setup.allStatesNote', null, 'All includes every state map. Choose your state for offline street-address search.')}</p>` : ''}
@@ -644,7 +644,7 @@
       cancelled: j.copy ? [tr('setup.copyCancelled', null, 'The copy was cancelled.'), tr('setup.copyCancelledHint', null, 'What was copied is still on the drive: copy again to the same place to carry on.'), 'back'] : [tr('setup.downloadCancelled', null, 'The download was cancelled.'), tr('setup.startAgainReady', null, 'Start again when you are ready.'), 'back'],
     }[code] || [esc(errText(e) || tr('app.errorGeneric', null, 'Something went wrong.')), tr('setup.retryOrChoose', null, 'Retry, or go back and choose again.'), 'retry'];
     return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === tr('setup.downloadNoun', null, 'download') ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}${tr('setup.retry', null, 'Retry')}</button>` : T[2] === tr('setup.downloadNoun', null, 'download') ? `<button class="btn" data-act="retry">${ico('down')}${tr('setup.downloadIt', null, 'Download it instead?')}</button>` : ''}${blockedModel ? `<button class="btn plain" data-act="model-file">${tr('setup.chooseAiModelFile', null, 'Choose an AI model file')}</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">${tr('setup.chooseAgain', null, 'Choose again')}</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
@@ -797,7 +797,7 @@
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? tr('setup.checked', null, 'Checked') : checked ? tr('common.ok', null, 'All good') : fixed ? tr('setup.repaired', null, 'Repaired') : tr('setup.ready', null, 'Ready')}</h1>
       <p class="lead">${unsure ? tr('setup.checkedRepaired', null, 'The library was checked and is complete. Anything that was damaged was downloaded again.') : checked ? tr('setup.checkedComplete', null, 'The library was checked and is complete.') : fixed ? tr('setup.damagedAside', null, 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.') : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? tr('setup.libraryReadyOpen', null, 'The library you chose is ready to open.') : tr('setup.libraryInstalled', null, 'The library is installed.')}</p>
-      <button class="btn big" id="open">Open the library</button><p class="s-note" id="openNote" hidden></p></div>`;
+      <button class="btn big" id="open">${tr('setup.openLibrary', null, 'Open the library')}</button><p class="s-note" id="openNote" hidden></p></div>`;
     live.textContent = checked ? tr('setup.libraryChecked', null, 'The library was checked.') : fixed ? tr('setup.repairedReady', null, 'Repaired. Ready to open.') : tr('setup.installedReady', null, 'Installed. Ready to open.');
     $('#open').onclick = async () => {
       const b = $('#open'); b.disabled = true; b.textContent = tr('setup.openingLibrary', null, 'Opening your library…');

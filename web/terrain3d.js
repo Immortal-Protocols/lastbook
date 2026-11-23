@@ -63,9 +63,9 @@ const Terrain3D = (() => {
   async function open(wrap, o) {
     close();
     const box = document.createElement('div'); box.className = 't3d';
-    box.innerHTML = `<canvas></canvas><div class="bar"><button data-a="exit">✕ Exit 3D</button>
-      <label title="${tr('map3d.exaggerate', null, "Exaggerate heights")}">Height ×<input type="range" min="1" max="5" step="0.5" value="${o.z < 10 ? 3 : 1.5}"><span></span></label>
-      <button data-a="reset">Reset view</button></div><div class="hint">Loading elevation…</div>`;
+    box.innerHTML = `<canvas></canvas><div class="bar"><button data-a="exit">✕ ${tr('map3d.exit', null, 'Exit 3D')}</button>
+      <label title="${tr('map3d.heightTitle', null, 'Exaggerate heights')}">${tr('map3d.heightTimes', null, 'Height ×')}<input type="range" min="1" max="5" step="0.5" value="${o.z < 10 ? 3 : 1.5}"><span></span></label>
+      <button data-a="reset">${tr('map3d.resetView', null, 'Reset view')}</button></div><div class="hint">${tr('map3d.loadingElevation', null, 'Loading elevation…')}</div>`;
     wrap.appendChild(box);
     const cv = box.querySelector('canvas'), hint = box.querySelector('.hint'), range = box.querySelector('input');
     const me = cur = { box, alive: true };  // this session: checks after each await use me, not whatever cur is by then
@@ -88,7 +88,7 @@ const Terrain3D = (() => {
       let waiting = 0;
       for (const k of need) { const [z, x, y] = k.split('/').map(Number); if (o.getDem(z, x, y) === undefined) { o.demTile(z, x, y); waiting++ } }
       if (!waiting || !me.alive) break;
-      hint.textContent = `Loading elevation… ${need.size - waiting}/${need.size}`;
+      hint.textContent = tr('map3d.loadingElevationProgress', { done: need.size - waiting, total: need.size }, 'Loading elevation… {done}/{total}');
       await new Promise(r => setTimeout(r, 150));
     }
     if (!me.alive) return;

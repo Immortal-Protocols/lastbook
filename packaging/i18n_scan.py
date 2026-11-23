@@ -180,22 +180,22 @@ def display_context(pre: str) -> bool:
     return bool(DISPLAY_PRE.search(pre[-240:]))
 
 
-def classify(s: str, pre: str) -> str:
-    # Callers may pass following source for display-context detection. Wiring
-    # must be established from the prefix only; otherwise a later tr() call
-    # can mask a preceding literal.
-    prefix = pre.split('\n', 1)[0]
+def classify(s: str, pre: str, post: str = '') -> str:
+    # Wiring comes only from the source before this literal. Display and
+    # technical classification can use both sides to recognize a DOM sink.
+    context = pre + post
+    prefix = pre.rsplit(';', 1)[-1][-300:]
     if already_wired(prefix) or 'data-i18n' in s:
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
-    if any(c in pre[-80:] for c in LOG_CONTEXT):
+    if any(c in context[-260:] for c in LOG_CONTEXT):
         return 'technical'
     if s in CONTENT:
         return 'content'
     if looks_technical(s):
         return 'technical'
-    if looks_ui(s) and display_context(pre):
+    if looks_ui(s) and display_context(context):
         return 'chrome'
     # Flattened `${...}` templates are user-visible even when the prefix is only `return`.
     if looks_ui(s) and '{…}' in s:
@@ -394,7 +394,7 @@ def scan_web():
             post = text[pos:pos + 180]
             line = text[:pos].count('\n') + 1
             hits.append({'surface': f'web/{name}', 'line': line, 'text': s,
-                         'class': classify(s, pre)})
+                         'class': classify(s, pre, post)})
     return hits
 
 
@@ -412,7 +412,7 @@ def scan_python():
                 post = body[pos:pos + 220]
                 line = body[:pos].count('\n') + 1
                 hits.append({'surface': surface, 'file': rel, 'line': line,
-                             'text': s, 'class': classify(s, pre)})
+                             'text': s, 'class': classify(s, pre, post)})
     return hits
 
 

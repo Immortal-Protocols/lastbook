@@ -225,7 +225,7 @@ const Terrain3D = (() => {
       B.list = list; buildBldg(ex); render();
       if (!list.length) return '';
       const measured = list.filter(f => f.osm).length, guessed = list.filter(f => !f.est).length;
-      return `${tr('map3d.buildings', { count: list.length, extra: capped ? ' ' + tr('map3d.nearestShown', null, '(nearest shown)') : '' }, '{count} buildings{extra}')} · ${measured ? tr('map3d.mappedHeights', { count: measured }, '{count} with mapped heights (OpenStreetMap), the rest ') : tr('map3d.heightsAre', null, 'heights are ')}${tr('map3d.satelliteEstimates', null, 'satellite estimates')}${guessed ? tr('map3d.oneStoreyShown', { count: guessed }, '; {count} without one shown one storey tall') : ''}`;
+      return tr('map3d.buildingHeightSummary', { count: list.length, mapped: measured, satellite: list.length - measured, guessed, nearest: capped ? ' ' + tr('map3d.nearestShown', null, '(nearest shown)') : '' }, '{count} buildings: {mapped} mapped heights (OpenStreetMap) and {satellite} satellite estimates; {guessed} without estimated heights are shown as one storey tall.{nearest}');
     }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
     // the 2D map (streets, labels, pins) becomes the ground texture

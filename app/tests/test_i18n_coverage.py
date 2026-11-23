@@ -67,6 +67,34 @@ class Coverage(unittest.TestCase):
                 self.assertTrue(any(text == literal and scan.classify(text, pre) == 'chrome'
                                     for text, pre in hits), hits)
 
+    def test_installer_label_and_appkit_prompt_are_display_sinks(self):
+        # These were the two real misses from review: generic installer labels
+        # and NSOpenPanel prompts must count as UI even when not wrapped yet.
+        cases = [
+            ("sub = label(f'Version {VERSION}', 94, 58, 380, 20)", 'Version {VERSION}'),
+            ("panel.setPrompt_('Choose')", 'Choose'),
+        ]
+        for sample, literal in cases:
+            with self.subTest(literal=literal):
+                hits = [(text, pre) for _pos, text, pre, _body in scan.iter_py_strings(sample)]
+                self.assertIn(literal, [text for text, _pre in hits], hits)
+                pre = next(pre for text, pre in hits if text == literal)
+                self.assertEqual(scan.classify(literal, pre), 'chrome')
+
+    def test_catalogued_installer_and_appkit_fallbacks_stay_wired(self):
+        cases = [
+            ("sub = label(installer_t('installer.version', 'Version {version}', version=VERSION))",
+             'Version {version}'),
+            ("panel.setPrompt_(native_t('native.choose', 'Choose'))", 'Choose'),
+        ]
+        for sample, literal in cases:
+            with self.subTest(literal=literal):
+                hits = [(text, pre, body) for _pos, text, pre, body in scan.iter_py_strings(sample)]
+                pre, body = next((pre, body) for text, pre, body in hits if text == literal)
+                pos = body.index(literal)
+                post = body[pos:pos + len(literal) + 100]
+                self.assertEqual(scan.classify(literal, pre, post), 'wired')
+
     def test_adjacent_wired_call_does_not_hide_visible_literal(self):
         sample = 'el.textContent = tr("about.title"); dialog.setWindowTitle("Choose");'
         hits = [(text, pre) for _pos, text, pre, _body in scan.iter_py_strings(sample)]

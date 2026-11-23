@@ -203,6 +203,60 @@ TOPS = sorted({*TOPS, *SAME_FOR_HIM, *SAME_FOR_HIM.values(), *STILL_SHELTER})
 OWN = {'id': 'own', 'title': 'Agua potable', 'short': 'Hervir el agua', 'keywords': ['水'], 'choices': []}
 RANK_OWN = [['agua', [OWN]], ['水', [OWN]], ['hervir', [OWN]]]
 
+# Someone who passed out or won't wake up: "out" starts "outage", so these opened the power-outage guide or nothing.
+# The Not breathing choice cites the unresponsive pages (recovery position, CPR): [guide, choice] that comes first.
+UNCONSCIOUS = {
+    'passed out': ['hurt', 'breathing'], 'my dad passed out': ['hurt', 'breathing'], 'pass out': ['hurt', 'breathing'],
+    'passing out': ['hurt', 'breathing'], 'unresponsive': ['hurt', 'breathing'], "won't wake up": ['hurt', 'breathing'],
+    "baby won't wake up": ['hurt', 'breathing'], 'wont wake up': ['hurt', 'breathing'],
+    'I keep passing out': ['hurt', 'breathing'], 'she passed out': ['hurt', 'breathing'],
+}
+# Searches with "out", "black" or "pass" about something else keep their first result.
+STILL_OUT = {
+    'power is out': ['food', 'outage'], 'the power went out': ['power', 'first-hours'],
+    'lights out': ['power', 'first-hours'], 'out of food': ['food', 'outage'],
+    'black widow bite': ['hurt', 'animal-bite'], 'passing blood': ['health', 'chronic'],
+}
+# Ordinary searches with "pass" or "wake" in them: they never list Not breathing.
+NOT_UNCONSCIOUS = ['passing gas', 'passing stool', 'passing blood', 'passing a kidney stone', 'mountain pass', 'pass',
+                   'wake up', 'woke up', 'wake', 'out of food']
+# "pass out" also means handing something out. With an object after it, Not breathing is listed second, not first.
+HANDING_OUT = ['Passing out water at the shelter', 'pass out food', 'passing out water at the shelter', 'passing out flyers',
+               'pass out the cots', 'passing out these forms', 'passing out dust masks after the fire',
+               'volunteers passing out hot meals', 'pass out baby food', 'pass out ballots', 'passing out parade',
+               'how to pass out food at a distribution', 'pass out water bottles', 'passing out blankets to neighbors',
+               'passing out to neighbors', 'pass out rice', 'passing out seeds', 'pass out cookies',
+               'pass out 50 sandwiches', 'my church passing out food', 'passing out cold drinks', 'pass out a few cans',
+               'pass out them', 'passing out ki tablets']
+# Someone who passes out: "passed out" and "won't wake up" always put Not breathing first, whatever follows; "pass out"
+# does when no object can follow it (the search ends, or "when", "in", "during", "5mins" comes next).
+STILL_UNCONSCIOUS = [
+    'passed out in the heat', 'she passed out the other day', 'he passed out a few minutes ago', 'passed out cold',
+    'passed out from food poisoning', 'passed out of nowhere', 'passed out took pills', 'passed out propane heater',
+    'she passed out water broke', 'passed out contractions', 'she passed out to the floor', 'passed out 5 minutes ago',
+    'my dad passed out he wont respond', 'she passed out her lips are blue', 'about to pass out',
+    'i feel like im going to pass out', 'what to do if someone passes out', 'he keeps passing out',
+    'she is passing out what do i do', 'i keep passing out help', 'my son passes out', 'passing out',
+    'passing out when i stand', 'passing out in the shower', 'she passes out during contractions', 'passing out 5mins',
+    'passing out after exercise', 'passing out while pregnant', 'my pregnant wife is passing out',
+    'he keeps passing out with no pulse', 'she was passing out 5 minutes ago',
+    "baby won't wake up to feed", "grandma won't wake up this morning", "dad won't wake up phone is dead",
+    'she pushes and passes out', 'passed out diabetic']
+# "pass out" followed by something else: Not breathing is listed, second at the latest.
+FIRST_AID_FIRST = ['passing out chest pain', 'pass out bleeding', 'passing out overdose', 'passing out heat stroke',
+                   'passing out vomiting', 'passing out after giving blood', 'passing out all of a sudden',
+                   'passing out when standing up', 'passing out of nowhere', 'my dad pass out 5 mins ago']
+BREATHING_CHOICE = next(c for t in TOPICS if t['id'] == 'hurt' for c in t['choices'] if c['id'] == 'breathing')
+WEAK_URGENT = BREATHING_CHOICE.get('weakUrgent', [])
+# Each weak urgent phrase alone and with everyday words after it; and next to each life threat, where Not breathing is
+# listed, second at the latest.
+WEAK_URGENT_COUNTS = sorted({*WEAK_URGENT, *(f'{w} {p}' for p in WEAK_URGENT for w in ('he', 'she', 'my dad', 'why do i')),
+                             *(f'{p} {e}' for p in WEAK_URGENT for e in ('what do i do', 'help', 'what should we do', 'again'))})
+WEAK_URGENT_THREATS = sorted({f'{p} {t}' for p in WEAK_URGENT for t in ['not breathing', 'unconscious', 'choking',
+                              'having a seizure', 'chest pain', 'bleeding heavily', 'overdose', 'poisoned', 'cardiac arrest']})
+TOPS = sorted({*TOPS, *UNCONSCIOUS, *STILL_OUT, *NOT_UNCONSCIOUS, *HANDING_OUT, *STILL_UNCONSCIOUS, *FIRST_AID_FIRST,
+               *WEAK_URGENT_COUNTS, *WEAK_URGENT_THREATS})
+
 # Emergencies where the first choice decides what someone reads first. A cardiac arrest needs CPR, not the
 # long-term care guide that "heart" also matches: [guide, choice] that comes first.
 EMERGENCY_FIRST = {
@@ -479,6 +533,30 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertIn(choice, top[q])
 
+    def test_passing_out_finds_first_aid(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in [*UNCONSCIOUS.items(), *STILL_OUT.items()]:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
+            for q in NOT_UNCONSCIOUS:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotIn(['hurt', 'breathing'], top[q])
+
+    def test_handing_out_is_not_passing_out(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q in HANDING_OUT:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotEqual(top[q][:1], [['hurt', 'breathing']])
+                    self.assertIn('hurt', [t for t, _ in top[q][:2]])   # first aid still listed, second at the latest
+            for q in [*STILL_UNCONSCIOUS, *WEAK_URGENT_COUNTS]:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [['hurt', 'breathing']])
+            for q in [*FIRST_AID_FIRST, *WEAK_URGENT_THREATS]:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertIn(['hurt', 'breathing'], top[q][:2])
+
     def test_english_ranks_as_before(self):
         for r in self.modes:
             for case in r['rank']:
@@ -626,7 +704,8 @@ class TopicSearch(unittest.TestCase):
     def test_context_never_holds_a_life_threat(self):
         # A word in "context" lets a phrase count next to it, so a life threat there would put the pregnancy choice
         # ahead of first aid. The main words of every urgent phrase ("breathing", not "out"), and these, stay out.
-        threats = {w for t in TOPICS for c in t.get('choices', []) for u in c.get('urgent', []) for w in u.split()
+        threats = {w for t in TOPICS for c in t.get('choices', []) for u in [*c.get('urgent', []), *c.get('weakUrgent', [])]
+                   for w in u.split()
                    if len(w) > 3 and w not in ("isn't", 'isnt')}
         threats |= {'bleeding', 'blood', 'loss', 'weak', 'moving', 'limp', 'heavily', 'heavy', 'hemorrhage',
                     'haemorrhage', 'seizure', 'fitting', 'convulsing', 'choking', 'breathe', 'pulse', 'chest',

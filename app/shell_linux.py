@@ -113,7 +113,7 @@ def _flush():
 
 def _chooser(title, parent, files, start):
     action = Gtk.FileChooserAction.OPEN if files else Gtk.FileChooserAction.SELECT_FOLDER
-    d = Gtk.FileChooserNative.new(title, parent, action, 'Choose', 'Cancel')
+    d = Gtk.FileChooserNative.new(title, parent, action, native_t('native.choose', 'Choose'), native_t('native.cancel', 'Cancel'))
     d.set_modal(True)
     d.set_select_multiple(False)
     d.set_local_only(True)
@@ -142,13 +142,14 @@ def choose_folder(title, message):
     _flush()
     if r != Gtk.ResponseType.ACCEPT:
         return None
-    return _chooser('Choose the folder called LastbookData', None, False, os.path.expanduser('~/Downloads'))
+    return _chooser(native_t('native.chooseLastbookData', 'Choose the folder called LastbookData'), None, False, os.path.expanduser('~/Downloads'))
 
 
 def pick(files, start):
     """For setup's Choose… buttons. Called on the main thread (main.pick_folder posts it here)."""
     parent = SHELL.window if SHELL else None
-    return _chooser('Choose a library zip or model file' if files else 'Choose a folder', parent, files, start) or None
+    title = native_t('native.pickFilesTitle', 'Choose a library zip or model file') if files else native_t('native.pickFolderTitle', 'Choose a folder')
+    return _chooser(title, parent, files, start) or None
 
 
 # --------------------------------------------------------------------------------------------------------- one copy only --
@@ -595,7 +596,7 @@ class Shell:
         download.connect('decide-destination', self.on_destination)
 
     def on_destination(self, download, name):
-        d = Gtk.FileChooserNative.new('Save', self.window, Gtk.FileChooserAction.SAVE, 'Save', 'Cancel')
+        d = Gtk.FileChooserNative.new(native_t('native.save', 'Save'), self.window, Gtk.FileChooserAction.SAVE, native_t('native.save', 'Save'), native_t('native.cancel', 'Cancel'))
         d.set_do_overwrite_confirmation(True)
         d.set_current_name(name or 'conversation.txt')
         d.set_current_folder(os.path.expanduser('~'))

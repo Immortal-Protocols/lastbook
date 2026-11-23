@@ -192,7 +192,7 @@ def pick_folder(files=False):
                 panel.setDirectoryURL_(AppKit.NSURL.fileURLWithPath_(str(app_folders()[1])))
                 panel.setAllowsMultipleSelection_(False)
                 panel.setCanCreateDirectories_(not files)
-                panel.setPrompt_('Choose')
+                panel.setPrompt_(native_t('native.choose', 'Choose'))
                 if panel.runModal() == AppKit.NSModalResponseOK:
                     out.append(str(panel.URL().path()))
             finally:
@@ -203,7 +203,8 @@ def pick_folder(files=False):
 
         def ask():
             try:
-                out.append(shell_windows.pick_folder('Choose a library zip or model file' if files else 'Choose a folder', app_folders()[1], files=files))
+                title = native_t('native.pickFilesTitle', 'Choose a library zip or model file') if files else native_t('native.pickFolderTitle', 'Choose a folder')
+                out.append(shell_windows.pick_folder(title, app_folders()[1], files=files))
             except Exception:
                 traceback.print_exc()
             finally:

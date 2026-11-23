@@ -286,10 +286,12 @@ class SpanishWording(unittest.TestCase):
             self.assertNotIn(avoid, everything)
 
     def test_reviewed_copy_uses_neutral_consistent_wording(self):
-        self.assertIn('100 millas', self.es['map.nothingNearby'])
+        self.assertEqual(self.es['map.nothingNearby'], 'No hay elementos de tus capas a menos de 100 millas del centro del mapa.')
         self.assertIn('como familia', self.es['chat.starter.comms'])
         self.assertIn('mantén presionada la tecla Mayús', self.es['map3d.dragMouse'])
-        self.assertNotIn('en su lugar', self.es['chat.offlinePages'])
+        self.assertIn('mejor coinciden con tu pregunta', self.es['chat.offlinePages'])
+        self.assertIn('se conserva en la unidad', self.es['setup.stopCopyConfirm'])
+        self.assertIn('Instalaciones para embarcaciones', self.es['map.layer.boat'])
         self.assertEqual(self.es['setup.tryAgain'], 'Reintentar')
         self.assertIn('Vuelve a intentarlo', self.es['setup.connectionHint'])
 

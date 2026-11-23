@@ -883,7 +883,7 @@ const MapView = (() => {
   function countLine() {
     let n = 0; for (const p of st.pins) if (inView(p)) n += p.count;
     renderLayers();
-    statusLine(n ? `${n.toLocaleString()} place${n === 1 ? '' : 's'} in view${st.truncated ? ' (busiest shown — zoom in for all)' : ''}` : tr('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.'));
+    statusLine(n ? tr('map.placesInView', { count: n.toLocaleString(), extra: st.truncated ? tr('map.cappedPlacesInView', null, ' (busiest shown — zoom in for all)') : '' }, '{count} places in view{extra}') : tr('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.'));
   }
   async function nearby() {
     if (!st) return;

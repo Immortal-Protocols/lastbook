@@ -279,8 +279,19 @@ class SpanishWording(unittest.TestCase):
 
     def test_everyday_words_cover_the_full_catalogue(self):
         everything = ' '.join(self._texts(self.es))
-        for avoid in (' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo'):
+        for avoid in (
+            ' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo', 'relevamiento',
+            'gazetero', 'nata verde', 'en marcha', 'arrancando', 'municipalidades',
+        ):
             self.assertNotIn(avoid, everything)
+
+    def test_reviewed_copy_uses_neutral_consistent_wording(self):
+        self.assertIn('100 millas', self.es['map.nothingNearby'])
+        self.assertIn('como familia', self.es['chat.starter.comms'])
+        self.assertIn('mantén presionada la tecla Mayús', self.es['map3d.dragMouse'])
+        self.assertNotIn('en su lugar', self.es['chat.offlinePages'])
+        self.assertEqual(self.es['setup.tryAgain'], 'Reintentar')
+        self.assertIn('Vuelve a intentarlo', self.es['setup.connectionHint'])
 
     def test_3d_building_height_summary_is_a_complete_plural_message(self):
         key = 'map3d.buildingHeightSummary'

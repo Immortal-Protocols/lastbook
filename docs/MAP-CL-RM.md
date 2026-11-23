@@ -44,32 +44,94 @@ The build machine needs Python 3.11 or later and pyosmium. Nothing else is insta
 Geofabrik offers Chile only as one country file (about 352 MB), so the region is cut from it by the box. Sizes on
 this page are in MB, where 1 MB is 1,000,000 bytes.
 
-The builder and checker are not in the main branch. Step 0 takes them from #80 at the exact commit this map was built
-with, into a checkout of this repository, without merging #80.
+There are two ways to build it. **Reproduce the recorded build** rebuilds this map from the same dated source file,
+with #80 at the same commit, and checks the result against the checksums recorded under "The build this was checked
+with" below. **A fresh build** makes the same map from today's data; its checksums and counts will differ.
+
+The builder and checker are not in the main branch. Both ways start by taking them from #80 at the exact commit this
+map was built with, into a checkout of this repository, without merging #80.
+
+### Reproduce the recorded build
+
+Run from the top of a checkout of this repository.
 
 ```bash
 # 0. The prototype builder and checker from pull request #80 (still open), at commit a453274.
 git fetch https://github.com/AngryAnt3201/lastbook.git a453274353b2816b4ccb0114310024ea54c970b2
 git checkout FETCH_HEAD -- tools/build_region_map.py tools/check_region_map.py tools/test_build_region_map.py
 
-# 1. The source: Geofabrik's Chile extract (OpenStreetMap, ODbL 1.0). About 352 MB.
-curl -LO https://download.geofabrik.de/south-america/chile/chile-latest.osm.pbf
-curl -LO https://download.geofabrik.de/south-america/chile/chile-latest.osm.pbf.md5 && md5sum -c chile-latest.osm.pbf.md5
+# 1. The dated source this map was built from: Geofabrik's Chile extract with data up to 20 November 2026
+#    (OpenStreetMap, ODbL 1.0), 352,392,606 bytes. Check it against Geofabrik's MD5 and the recorded SHA-256.
+curl -LO https://download.geofabrik.de/south-america/chile/chile-261120.osm.pbf
+curl -LO https://download.geofabrik.de/south-america/chile/chile-261120.osm.pbf.md5 && md5sum -c chile-261120.osm.pbf.md5
+echo "3b169b7a146f6f28c1a78a3a887d5246896f906ee09820240a3fe18c434df8d8  chile-261120.osm.pbf" | sha256sum -c
 
-# 2. A build environment with pyosmium.
-python3 -m venv derived/buildenv && derived/buildenv/bin/pip install osmium
+# 2. A build environment with the pyosmium version the recorded build used.
+python3 -m venv derived/buildenv && derived/buildenv/bin/pip install osmium==4.3.2
 
 # 3. Build. The box is CL-RM's DPA 2023 box with the 0.15 degree margin, from REGIONS-CL-DPA2023.md.
 #    Write --bbox=... with "=": the box starts with a minus sign, which argparse would otherwise read as an option.
-derived/buildenv/bin/python tools/build_region_map.py chile-latest.osm.pbf \
+derived/buildenv/bin/python tools/build_region_map.py chile-261120.osm.pbf \
     --id CL-RM --name "Metropolitana de Santiago" --bbox=-71.87,-34.45,-69.61,-32.77 --out derived/regions
 
-# 4. Check the files, then check that the engine can use them with every connection blocked.
+# 4. Compare the five files with the recorded checksums. Every line should say OK.
+(cd derived/regions/CL-RM && sha256sum -c <<'EOF'
+a6fc979c62aaef127c84399012cea497bc58c255ae2edf5ec171aed2f23152b8  derived/geo/national.sqlite
+cd617d0747452f2f91a5fc02a66095bc04a8d0d0a23ed0320e5db527f77ef22f  derived/geo/map.sqlite
+54d7a427d55475cbaf422e0253f4dcc61a9eae7bd00d9172828b86e26b530956  derived/geo/places.sqlite
+1e3b42cd9a61c002837d73f22c8c1924951fca53ca13eec0cfad856847b0d364  derived/geo/national-status.json
+4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945  derived/geo/socal-cells.json
+EOF
+)
+
+# 5. Check the files, then check that the engine can use them with every connection blocked.
 python3 tools/check_region_map.py derived/regions/CL-RM
 python3 tools/check_region_map.py derived/regions/CL-RM --engine \
     --find Maipú --find Providencia --find "Hospital del Salvador" --find Ñuñoa --find "San José de Maipo" \
     --find nunoa --near=-33.4378,-70.6505
 ```
+
+The recorded build was made with Python 3.12.4 and SQLite 3.45.3 on Linux. Whether another SQLite version or platform
+gives the same bytes was not tested; if step 4 fails there but step 5 passes and the counts in
+`derived/regions/CL-RM.build.json` match the tables below, the difference is most likely in how the files were written,
+not in what they hold.
+
+**If the dated file is no longer offered.** Geofabrik keeps only recent daily files. On 23 November 2026 its [Chile
+folder](https://download.geofabrik.de/south-america/chile/) listed daily files for 12 to 22 November only, then the
+first of each month back to September 2026, then 1 January of each year back to 2014. The folder page does not say how
+long each is kept, so expect `chile-261120.osm.pbf` to drop out of that list within a few weeks. No other copy of the
+file has been verified for this page. When it is gone, the recorded checksums cannot be reproduced: make a fresh build
+(below), check it, and compare its counts with the tables below rather than its checksums. Anyone who kept a copy of the
+file can still use it here: step 1's two checks tell whether it is the same file.
+
+### A fresh build
+
+From the latest data, which Geofabrik replaces every day. Run step 0 and step 2 above first. The builder will not
+write over a map it has already built, so this build goes to its own folder.
+
+```bash
+# 1. The source: Geofabrik's latest Chile extract (OpenStreetMap, ODbL 1.0). About 352 MB.
+curl -LO https://download.geofabrik.de/south-america/chile/chile-latest.osm.pbf
+curl -LO https://download.geofabrik.de/south-america/chile/chile-latest.osm.pbf.md5 && md5sum -c chile-latest.osm.pbf.md5
+
+# 2. Build, with the same options.
+derived/buildenv/bin/python tools/build_region_map.py chile-latest.osm.pbf \
+    --id CL-RM --name "Metropolitana de Santiago" --bbox=-71.87,-34.45,-69.61,-32.77 --out derived/regions-latest
+
+# 3. Check the files, then check that the engine can use them with every connection blocked.
+python3 tools/check_region_map.py derived/regions-latest/CL-RM
+python3 tools/check_region_map.py derived/regions-latest/CL-RM --engine \
+    --find Maipú --find Providencia --find "Hospital del Salvador" --find Ñuñoa --find "San José de Maipo" \
+    --find nunoa --near=-33.4378,-70.6505
+```
+
+The checksums will not match the recorded ones, and the counts in `derived/regions-latest/CL-RM.build.json` will move as
+OpenStreetMap is edited. As a guide: a fresh build on 23 November 2026, from data up to 22 November, passed every check,
+and every count was within 0.1% of the tables below (building outlines +0.05%, the rest +0.02% or less: 411,828
+buildings, 384,132 roads, 6,518 places, 31,011 help points). Larger gaps after a longer time are normal; a layer that
+drops sharply or a check that fails is worth a look.
+
+### Look at it in the app
 
 To look at it in the app's interface, give the engine a data folder that holds the map and an empty library:
 
@@ -80,14 +142,14 @@ python3 server.py --data /path/to/SantiagoData --port 8890
 # then open the address it prints, choose Map, and go to:  #/map?lat=-33.4378&lon=-70.6505&z=16
 ```
 
-Geofabrik's Chile files now sit under `south-america/chile/`; the older `south-america/chile-latest.osm.pbf` address
-redirects there. `chile-latest` is replaced every day; the dated file used here is `chile-261120.osm.pbf`.
+Geofabrik's Chile files now sit under `south-america/chile/`; the older `south-america/chile-...` addresses redirect
+there.
 
 ## The build this was checked with
 
 | | |
 |---|---|
-| Source file | `chile-261120.osm.pbf` (from `https://download.geofabrik.de/south-america/chile/chile-261120.osm.pbf`), 352,392,606 bytes (352.4 MB), `Last-Modified` 21 Nov 2026 01:11:15 GMT |
+| Source file | `chile-261120.osm.pbf` (from `https://download.geofabrik.de/south-america/chile/chile-261120.osm.pbf`), 352,392,606 bytes (352.4 MB). Served with `Last-Modified` 21 Nov 2026 01:11:15 GMT when downloaded, and 20 Nov 2026 23:32:28 GMT on 23 Nov, with the same size and MD5: check the file by its checksums, not by that date |
 | Source SHA-256 | `3b169b7a146f6f28c1a78a3a887d5246896f906ee09820240a3fe18c434df8d8` |
 | Source MD5 (matches Geofabrik's `.md5`) | `fef09ad7ee6f28c7afc925ef68c737a4` |
 | OpenStreetMap data up to | 2026-11-20T21:21:21Z (from the file's header) |
@@ -103,9 +165,10 @@ redirects there. `chile-latest` is replaced every day; the dated file used here 
 | `derived/geo/national-status.json` | 59 | `1e3b42cd9a61c002837d73f22c8c1924951fca53ca13eec0cfad856847b0d364` |
 | `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
 
-The map set is 192,221,245 bytes in all (192.2 MB). The files hold no build time, so the same extract and
-options give the same bytes: a second build on the same machine (194 seconds) gave identical checksums for all five
-files. Whether another SQLite version or platform gives the same bytes was not tested.
+The map set is 192,221,245 bytes in all (192.2 MB). The files hold no build time, so the same extract and options give
+the same bytes: a second build on the same machine (194 seconds) gave identical checksums for all five files. Running
+"Reproduce the recorded build" above as written, on 23 November 2026 with the file downloaded again from Geofabrik, gave
+the same five checksums again. Whether another SQLite version or platform gives the same bytes was not tested.
 
 What the map holds:
 

@@ -34,6 +34,11 @@ for number, word in enumerate(ORDINALS):
 TO_WORDS = {value: key for key, value in TO_DIGITS.items()}
 # How a street can end. Three of these are also state codes: Ct (Court, Connecticut), Mt (Mount, Montana), NE (northeast, Nebraska).
 STREET_ENDINGS = set(WORDS.values()) | {'ne', 'nw', 'se', 'sw'}
+# Canada writes a unit before the house number: "4-120" is unit 4 at number 120. Elsewhere a hyphenated number can be one
+# house number ("37-12" in Queens, New York), and nothing in a query says which country it means. So the second part is
+# only tried as the house when every installed index is Canadian: named as docs/REGIONS.md proposes, CA-ON.sqlite.
+# CA.sqlite is California.
+UNIT_FIRST = re.compile(r'\d+[A-Z]?-(\d+[A-Z]?)')
 
 
 def normalize(text):
@@ -102,6 +107,9 @@ def find_addresses(query, geo_directory, limit=8, near=None):
         found = _lookup(*reading, geo_directory, limit, near)
         if found:
             return found
+    unit = UNIT_FIRST.fullmatch(_parts(query)[0]) if _canada_only(geo_directory) else None
+    if unit:    # nothing has that number as typed: read it as unit-number (the house alone cannot match again)
+        return find_addresses(f'{unit.group(1)} {query.strip().split(None, 1)[1]}', geo_directory, limit, near)
     return []
 
 
@@ -189,3 +197,10 @@ def _lookup(number, words, state, postcode, plain, town, geo_directory, limit, n
     finally:
         for connection in connections:
             connection.close()
+
+
+def _canada_only(geo_directory):
+    """Is every installed index Canadian (CA-ON.sqlite), with no older single addresses.sqlite beside them?"""
+    geo_directory = Path(geo_directory)
+    paths = list((geo_directory / 'addresses').glob('*.sqlite'))
+    return bool(paths) and all(path.stem.upper().startswith('CA-') for path in paths) and not (geo_directory / 'addresses.sqlite').is_file()

@@ -237,7 +237,7 @@ class QuebecAddressTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.geo = Path(self.temp.name)
         (self.geo / 'addresses').mkdir()
-        db = sqlite3.connect(self.geo / 'addresses' / 'QC.sqlite')
+        db = sqlite3.connect(self.geo / 'addresses' / 'CA-QC.sqlite')     # named as docs/REGIONS.md proposes
         try:
             db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL)')
             db.execute('CREATE INDEX addr_num_norm ON addr(num,norm)')
@@ -312,7 +312,6 @@ class QuebecAddressTests(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertFinds(query, '1250 rue des Érables')
 
-    @unittest.expectedFailure
     def test_unit_before_number(self):
         # In Canada "3-1250" is unit 3 at house number 1250.
         self.assertFinds('3-1250 rue des Érables', '1250 rue des Érables')
@@ -372,6 +371,10 @@ class OntarioAddressTests(unittest.TestCase):
         self.assertEqual(result[0]['name'], name)
         self.assertEqual(result[0]['lat'], lat)
 
+    def only_canada(self):
+        """Take the Ohio index away, leaving an install that holds Canadian indexes only."""
+        (self.geo / 'addresses' / 'OH.sqlite').unlink()
+
     def assertOntarioOnly(self, query):
         result = find_addresses(query, self.geo)
         self.assertEqual([r['lat'] for r in result], [44.10], f'{query!r}: {result}')
@@ -403,6 +406,154 @@ class OntarioAddressTests(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertFinds(query, '3100 Concession Road 6', 44.13)
 
+    def test_unit_before_the_house_number(self):
+        """Canada writes unit 4 at number 120 as "4-120". Read when every installed index is Canadian."""
+        self.only_canada()
+        for query in ('4-120 Exemplar St E', '4B-120 Exemplar St E', '1204-120 Exemplar St E', '4-120 Exemplar St E Exampleton'):
+            with self.subTest(query=query):
+                self.assertOntarioOnly(query)
+
+    def test_unit_is_not_read_beside_another_regions_index(self):
+        """With any index that is not Canadian installed, nothing says which country a query means: a unit is not read."""
+        for near in (None, (44.0, -79.0)):
+            with self.subTest(near=near):
+                self.assertEqual(find_addresses('4-120 Exemplar St E', self.geo, near=near), [])
+        self.only_canada()
+        for other in ('AZ', 'GB-LON', 'CA'):      # CA is California; AZ sorts ahead of CA-ON, the others after it
+            with self.subTest(other=other):
+                self.assertTrue(find_addresses('4-120 Exemplar St E', self.geo))
+                self.write_index(other, [('120', 'Exemplar Street East', 'Exampleton', other, '', 51.50, -0.12)])
+                self.assertEqual(find_addresses('4-120 Exemplar St E', self.geo), [])
+                (self.geo / 'addresses' / f'{other}.sqlite').unlink()
+
+    def test_lower_case_index_name_is_canadian(self):
+        self.only_canada()
+        self.write_index('ca-bc', [('120', 'Exemplar Mews', 'Exampleton', 'CA-BC', '', 49.10, -123.10)])
+        self.assertEqual([r['lat'] for r in find_addresses('4-120 Exemplar Mews', self.geo)], [49.10])
+
+    def test_unit_is_not_guessed_for_an_unknown_house(self):
+        self.only_canada()
+        self.assertEqual(find_addresses('4-120 Exemplar St E', self.geo)[0]['lat'], 44.10)
+        self.assertEqual(find_addresses('4-121 Exemplar St E', self.geo), [])
+        self.assertEqual(find_addresses('4-120 Exemplar St E Otherton', self.geo), [])
+        self.assertEqual(find_addresses('4-120 Exemplar St E 44000', self.geo), [])     # a ZIP no Ontario row has
+
+    def test_hyphenated_number_in_the_index_is_not_split(self):
+        """A number stored with its hyphen is found as typed, ahead of the house its second part would name."""
+        self.write_index('CA-BC', [
+            ('4-120', 'Exemplar Mews', 'Exampleton', 'CA-BC', '', 49.10, -123.10),
+            ('120', 'Exemplar Mews', 'Exampleton', 'CA-BC', '', 49.11, -123.11),
+        ])
+        result = find_addresses('4-120 Exemplar Mews', self.geo)
+        self.assertEqual([r['lat'] for r in result], [49.10])
+        self.only_canada()      # now a second part is tried, as "5-120" shows: the number as typed still comes first
+        self.assertEqual([r['lat'] for r in find_addresses('5-120 Exemplar Mews', self.geo)], [49.11])
+        self.assertEqual([r['lat'] for r in find_addresses('4-120 Exemplar Mews', self.geo)], [49.10])
+
+    def test_us_hyphenated_house_number_is_never_split(self):
+        """In Queens, New York, "37-12" is one house number. Missing from the index, it finds nothing: never house 12 or
+        14, in New York or in the Ontario index installed beside it, which has a house 14 on the same street."""
+        self.write_index('NY', [
+            ('37-12', 'Exemplar Avenue', 'Exampleton', 'NY', '11000', 40.70, -73.80),
+            ('14', 'Exemplar Avenue', 'Exampleton', 'NY', '11000', 40.71, -73.81),
+        ])
+        self.write_index('CA', [('14', 'Exemplar Avenue', 'Exampleton', 'CA', '90001', 34.00, -118.00)])    # California
+        self.write_index('CA-MB', [('14', 'Exemplar Avenue', 'Exampleton', 'CA-MB', '', 49.90, -97.10)])
+        self.assertEqual([r['lat'] for r in find_addresses('14 Exemplar Ave', self.geo)], [34.00, 49.90, 40.71])
+        self.assertEqual([r['lat'] for r in find_addresses('37-12 Exemplar Ave', self.geo)], [40.70])
+        for query in ('37-14 Exemplar Ave', '37-14 Exemplar Ave Exampleton', '37-14 Exemplar Ave Exampleton NY',
+                      '37-14 Exemplar Ave 11000'):
+            for near in (None, (40.70, -73.80)):
+                with self.subTest(query=query, near=near):
+                    self.assertEqual(find_addresses(query, self.geo, near=near), [])
+
+    def test_other_us_hyphenated_queries_do_not_find_a_canadian_house(self):
+        """A ZIP+4 typed first, a date and a phone number each start with digits and a hyphen. None is a unit."""
+        self.write_index('CA-MB', [
+            ('1234', 'Springfield Road', 'Exampleton', 'CA-MB', '', 49.91, -97.11),
+            ('11', 'Memorial Boulevard', 'Exampleton', 'CA-MB', '', 49.92, -97.12),
+            ('800', 'Flowers Street', 'Exampleton', 'CA-MB', '', 49.93, -97.13),
+        ])
+        for query, plain in (('62704-1234 Springfield', '1234 Springfield'), ('9-11 Memorial', '11 Memorial'),
+                             ('1-800 Flowers', '800 Flowers')):
+            with self.subTest(query=query):
+                self.assertTrue(find_addresses(plain, self.geo))
+                self.assertEqual(find_addresses(query, self.geo), [])
+
+    def test_unit_is_not_read_in_an_index_without_a_region(self):
+        """The older single addresses.sqlite does not say where its rows are, so a unit is not read there, or in a
+        Canadian index that sits beside it."""
+        old = self.geo / 'old'
+        old.mkdir()
+        db = sqlite3.connect(old / 'addresses.sqlite')
+        try:
+            db.execute('CREATE TABLE addr(num TEXT,street TEXT,norm TEXT,city TEXT,state TEXT,zip TEXT,lat REAL,lon REAL)')
+            db.execute("INSERT INTO addr VALUES('14','Exemplar Avenue','exemplar ave','Exampleton','NY','11000',40.71,-73.81)")
+            db.commit()
+        finally:
+            db.close()
+        self.assertEqual(find_addresses('14 Exemplar Ave', old)[0]['lat'], 40.71)
+        self.assertEqual(find_addresses('37-14 Exemplar Ave', old), [])
+        self.only_canada()
+        self.assertTrue(find_addresses('4-120 Exemplar St E', self.geo))
+        (old / 'addresses.sqlite').rename(self.geo / 'addresses.sqlite')
+        self.assertEqual(find_addresses('4-120 Exemplar St E', self.geo), [])
+
+    def test_unit_keeps_the_nearest_first(self):
+        self.only_canada()
+        self.write_index('CA-BC', [('120', 'Exemplar Street East', 'Exampleton', 'CA-BC', '', 49.10, -123.10)])
+        self.assertEqual([r['lat'] for r in find_addresses('4-120 Exemplar St E', self.geo)], [49.10, 44.10])
+        result = find_addresses('4-120 Exemplar St E', self.geo, near=(44.0, -79.0))
+        self.assertEqual([r['lat'] for r in result], [44.10, 49.10])
+
+    def test_unit_with_a_street_ending_that_is_also_a_state(self):
+        """A unit query is read the ways a plain one is: "NE" and "Ct" can end the street (a Calgary quadrant), and a state's
+        name can be a town."""
+        self.only_canada()
+        self.write_index('CA-AB', [('120', 'Main Street NE', 'Calgary', 'CA-AB', '', 51.10, -114.10),
+                                   ('120', 'Oak Court', 'Calgary', 'CA-AB', '', 51.20, -114.20),
+                                   ('120', 'Exemplar Road', 'Washington', 'CA-AB', '', 51.30, -114.30)])   # an invented town
+        self.assertEqual([r['lat'] for r in find_addresses('4-120 Main St NE', self.geo)], [51.10])
+        self.assertEqual([r['lat'] for r in find_addresses('4-120 Oak Ct', self.geo)], [51.20])
+        self.assertEqual([r['lat'] for r in find_addresses('4-120 Exemplar Rd Washington', self.geo)], [51.30])
+
+    def test_number_then_numbered_street_is_not_an_error(self):
+        """Edmonton writes house 10234 on 105 Street as "10234-105 Street": not read, and not an error."""
+        self.assertEqual(find_addresses('10234-105 Street', self.geo), [])
+        self.only_canada()      # the second search runs here
+        self.assertEqual(find_addresses('10234-105 Street', self.geo), [])
+
+    def test_unit_keeps_the_limit(self):
+        self.only_canada()
+        self.write_index('CA-BC', [('120', 'Exemplar Street East', 'Exampleton', 'CA-BC', '', 49.10, -123.10)])
+        self.assertEqual(len(find_addresses('4-120 Exemplar St E', self.geo)), 2)
+        self.assertEqual(len(find_addresses('4-120 Exemplar St E', self.geo, limit=1)), 1)
+
+    def test_unit_before_a_house_number_with_a_letter(self):
+        self.only_canada()
+        self.write_index('CA-BC', [('120A', 'Exemplar Mews', 'Exampleton', 'CA-BC', '', 49.12, -123.12)])
+        for query in ('4-120A Exemplar Mews', '4-120a Exemplar Mews'):
+            with self.subTest(query=query):
+                self.assertEqual([r['lat'] for r in find_addresses(query, self.geo)], [49.12])
+
+    def test_three_part_number_is_not_read(self):
+        self.only_canada()
+        self.write_index('CA-BC', [('3', 'Exemplar Street East', 'Exampleton', 'CA-BC', '', 49.13, -123.13)])
+        self.assertTrue(find_addresses('3 Exemplar St E', self.geo))
+        self.assertEqual(find_addresses('4-120-3 Exemplar St E', self.geo), [])
+
+    def test_app_route_reads_a_unit_only_in_a_canadian_install(self):
+        import server
+        (self.geo / 'derived').mkdir()
+        (self.geo / 'addresses').rename(self.geo / 'derived' / 'geo')
+        (self.geo / 'derived' / 'geo' / 'addresses').mkdir()
+        for path in (self.geo / 'derived' / 'geo').glob('*.sqlite'):
+            path.rename(self.geo / 'derived' / 'geo' / 'addresses' / path.name)
+        with patch.object(server, 'HERE', self.geo):
+            self.assertEqual(server.places('4-120 Exemplar St E', near=(44.0, -79.0)), [])
+            (self.geo / 'derived' / 'geo' / 'addresses' / 'OH.sqlite').unlink()
+            self.assertEqual([r['lat'] for r in server.places('4-120 Exemplar St E', near=(44.0, -79.0))], [44.10])
+
     # Wanted: fail today.
 
     @unittest.expectedFailure
@@ -426,9 +577,11 @@ class OntarioAddressTests(unittest.TestCase):
                 self.assertOntarioOnly(f'120 Exemplar St E {code}')
 
     @unittest.expectedFailure
-    def test_unit_before_the_house_number(self):
-        """Canada writes unit 4 at number 120 as "4-120"; today "4-120" is read as the house number."""
-        self.assertFinds('4-120 Exemplar St E', '120 Exemplar Street East', 44.10)
+    def test_unit_written_out(self):
+        """Not read yet: only the "4-120" form is."""
+        for query in ('120 Exemplar St E Unit 4', '120 Exemplar St E Apt 4', '120 Exemplar St E #4'):
+            with self.subTest(query=query):
+                self.assertOntarioOnly(query)
 
     def test_city_with_ste(self):
         """The query's city is normalized ("ste marie"), the stored one is not ("ste. marie"): both are compared normalized."""

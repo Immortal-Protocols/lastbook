@@ -1,6 +1,9 @@
-"""Looks inside a built Lastbook .deb and exits 1 if it holds what must not ship (the Linux counterpart of scan_package_macos.py).
+"""Looks inside a built Lastbook .deb or Flatpak and exits 1 if it holds what must not ship (the Linux counterpart of scan_package_macos.py).
 
   python3 scan_package_linux.py Lastbook_<version>_amd64.deb [--terms-file FILE]
+  python3 scan_package_linux.py --flatpak derived/app-build/flatpak/<date-time>/build [--terms-file FILE]
+
+A Flatpak's /app is laid out as the .deb is first (FLATPAK_PLACES), so the same rules see the same app folder under the same names.
 
 Refused: test code, the old window, model libraries, the Mac and Windows shells, the remote_storage module, machine names (FILE: private
 words, one per line, kept out of this public script), /Users/... and /home/<name> paths, the household's area and working names in our
@@ -12,6 +15,7 @@ import argparse
 import ast
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -42,6 +46,31 @@ SOCKET_CALLS = re.compile(r'^(socket|connect|bind|listen|accept4?|getaddrinfo|ge
 SYSTEM_LIBS = re.compile(r'^(libc|libm|libdl|libpthread|librt|libstdc\+\+|libgcc_s|libgomp|libvulkan|ld-linux-x86-64|libz|libgstreamer-1\.0|libgstbase-1\.0|libglib-2\.0|libgobject-2\.0)\.so')
 
 
+# Flatpak /app path -> the .deb path the rules below know, and what only a Flatpak has (its store data and build record).
+FLATPAK_PLACES = (('lastbook/', 'opt/lastbook/'), ('bin/lastbook', 'usr/bin/lastbook'),
+                  ('share/applications/org.lastbook.Lastbook.desktop', 'usr/share/applications/lastbook.desktop'),
+                  ('share/icons/hicolor/', 'usr/share/icons/hicolor/'), ('share/metainfo/', 'flatpak/share/metainfo/'),
+                  ('share/app-info/', 'flatpak/share/app-info/'), ('manifest.json', 'flatpak/manifest.json'))
+FLATPAK_OWNED = ('flatpak/share/metainfo/org.lastbook.Lastbook.metainfo.xml', 'flatpak/share/app-info/', 'flatpak/manifest.json')
+
+
+def unpack_flatpak(files, root):
+    """Copies a flatpak-builder build's files/ (the app's /app) into root under the .deb's names. Anything else goes under
+    app-other/, a name no owned place has, so the owned-places check always refuses it."""
+    for p in sorted(files.rglob('*')):
+        if p.is_dir() and not p.is_symlink():
+            continue
+        rel = p.relative_to(files).as_posix()
+        mapped = next((deb + rel[len(fp):] for fp, deb in FLATPAK_PLACES if rel == fp or (fp.endswith('/') and rel.startswith(fp))),
+                      'app-other/' + rel)
+        dest = root / mapped
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if p.is_symlink():
+            dest.symlink_to(p.readlink())
+        else:
+            shutil.copy2(p, dest)
+
+
 def bad_name(name):
     parts = re.split(r'[./]', name)
     return sorted((set(parts) & BAD_SEGMENTS) | {p for p in parts if p.endswith('_tests') or p.startswith('test_')})
@@ -59,9 +88,12 @@ def net_imports(source):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('deb', type=Path)
+    ap.add_argument('deb', type=Path, nargs='?')
+    ap.add_argument('--flatpak', type=Path, help="a flatpak-builder build folder (its files/ is the app's /app)")
     ap.add_argument('--terms-file', type=Path)
     a = ap.parse_args()
+    if bool(a.deb) == bool(a.flatpak):
+        ap.error('give a .deb or --flatpak, one of them')
     terms = []
     if a.terms_file and a.terms_file.is_file():
         terms = [t.strip().lower().encode() for t in a.terms_file.read_text(encoding='utf-8').splitlines() if t.strip()]
@@ -73,12 +105,16 @@ def main():
     n_files = n_elf = 0
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        subprocess.run(['dpkg-deb', '-x', str(a.deb), str(root)], check=True)
+        if a.flatpak:
+            unpack_flatpak(a.flatpak / 'files', root)
+        else:
+            subprocess.run(['dpkg-deb', '-x', str(a.deb), str(root)], check=True)
         try:
             i18n_catalogs.check_assets(root / 'opt' / 'lastbook' / 'web', i18n_catalogs.generate())
         except (OSError, ValueError) as error:
             problems.append(f'localization: {error}')
-        control = subprocess.run(['dpkg-deb', '-f', str(a.deb)], capture_output=True, text=True, check=True).stdout
+        control = ((a.flatpak / 'metadata').read_text(encoding='utf-8') if a.flatpak else
+                   subprocess.run(['dpkg-deb', '-f', str(a.deb)], capture_output=True, text=True, check=True).stdout)
         print(control.split('\nDescription')[0])
         packaged = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() or p.is_symlink()}
         for rel in sorted(packaged):
@@ -89,7 +125,8 @@ def main():
                     problems.append(f'symlink out of the package: {rel} -> {target}')
                 continue
             n_files += 1
-            if not rel.startswith(('opt/lastbook/', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop', 'usr/share/icons/hicolor/', 'usr/share/doc/lastbook/')):
+            owned = ('opt/lastbook/', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop', 'usr/share/icons/hicolor/', 'usr/share/doc/lastbook/')
+            if not rel.startswith(owned + (FLATPAK_OWNED if a.flatpak else ())):
                 problems.append(f'file outside the places the package owns: {rel}')
             if bad_name(rel.removeprefix('opt/lastbook/')) or BAD_FILE.search(rel) or p.name in ship['never_ship']:
                 problems.append(f'file not allowed: {rel}')

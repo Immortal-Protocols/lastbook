@@ -248,6 +248,18 @@ It bundles the local AI runner when `derived/llm/bin-linux/lastbook-llm` exists.
 the package in a fresh container of the same release.
 Linux integration-test helpers live under `app/tests/linux_*`; set `LASTBOOK_TEST_HOST` to a Windows SSH host with WSL2
 before running them. Their disposable test distro is named `LastbookTest`, with files under `C:\LastbookTest`.
+The app folder both Linux packages ship (`/opt/lastbook`, or `/app/lastbook`) comes from one list in
+`packaging/linux/stage_linux.py`; `app/tests/test_stage_linux.py` fails when the app imports a module that list lacks.
+
+**Linux Flatpak (pilot, any distribution, x86_64)**
+
+```bash
+bash packaging/linux/flatpak/build_flatpak.sh --install
+```
+
+It builds on the GNOME 51 runtime with `flatpak-builder`, scans the result like the `.deb`, and writes
+`derived/app-build/flatpak/<timestamp>/Lastbook-<version>-x86_64.flatpak`. `packaging/linux/flatpak/README.md` has the
+details and its two smoke tests, including a library the person chose outside the app's folder.
 
 ## Packs, state maps and the local AI
 

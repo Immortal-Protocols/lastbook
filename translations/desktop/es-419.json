@@ -1236,5 +1236,13 @@
     "one": "{count} registro",
     "other": "{count} registros"
   },
-  "map.distFromArea": "a {distance} de tu zona"
+  "map.distFromArea": "a {distance} de tu zona",
+  "chat.dottedLine": "punteada",
+  "chat.offlineSearchPages": "Puedes seguir explorando y buscando. Estas son las páginas que mejor responden a tu pregunta:",
+  "wiki.communitySafetyNotice": "Contenido de la comunidad: sirve como referencia general; para temas de seguridad, usa los manuales de las guías.",
+  "wiki.communityWrittenReview": "Contenido de la comunidad; verifica los pasos importantes para la seguridad con un manual.",
+  "wiki.openOnItsOwn": "abrir por separado",
+  "setup.downloadAndDisk": "{download} de descarga · {disk} en el disco",
+  "setup.mapAndIndexIncluded": "El mapa de tu estado y el índice de direcciones disponible ya están incluidos.",
+  "map.cappedPlacesInView": " (se muestran los más concurridos; acerca el mapa para ver todos)"
 }

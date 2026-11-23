@@ -1236,5 +1236,13 @@
     "one": "{count} record",
     "other": "{count} records"
   },
-  "map.distFromArea": "{distance} from your area"
+  "map.distFromArea": "{distance} from your area",
+  "chat.dottedLine": "dotted",
+  "chat.offlineSearchPages": "You can keep browsing and searching. Here are the pages that best match your question:",
+  "wiki.communitySafetyNotice": "Community-written: good for background — use the guides’ manuals for safety-critical steps.",
+  "wiki.communityWrittenReview": "Community-written; check safety-critical steps against a manual",
+  "wiki.openOnItsOwn": "open on its own",
+  "setup.downloadAndDisk": "{download} download · {disk} on disk",
+  "setup.mapAndIndexIncluded": "Your state map and available address index are already included.",
+  "map.cappedPlacesInView": " (busiest shown — zoom in for all)"
 }

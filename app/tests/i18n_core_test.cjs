@@ -56,6 +56,22 @@ test("regional Spanish routes to es-419, with exact catalogs and English fallbac
   assert.equal(i18n.t("constructor"), undefined);
 });
 
+test("3D building height summaries are complete and use singular/plural grammar", () => {
+  const root = resolve(__dirname, "../../translations/desktop");
+  const realCatalogs = {
+    en: JSON.parse(readFileSync(resolve(root, "en.json"), "utf8")),
+    "es-419": JSON.parse(readFileSync(resolve(root, "es-419.json"), "utf8")),
+  };
+  const values = { count: 1, mapped: 1, satellite: 0, guessed: 0, nearest: "" };
+  const en = createI18n({ catalogs: realCatalogs, locale: "en" });
+  const es = createI18n({ catalogs: realCatalogs, locale: "es-419" });
+  assert.match(en.t("map3d.buildingHeightSummary", values), /^1 building:/);
+  assert.match(es.t("map3d.buildingHeightSummary", values), /^1 edificio:/);
+  values.count = 2;
+  assert.match(en.t("map3d.buildingHeightSummary", values), /^2 buildings:/);
+  assert.match(es.t("map3d.buildingHeightSummary", values), /^2 edificios:/);
+});
+
 test("plural selection uses exact counts and the grammar of the matched catalog", () => {
   for (const [locale, expected] of [
     ["en", ["No files", "1 file", "2 files"]],

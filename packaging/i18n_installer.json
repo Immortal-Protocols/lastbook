@@ -43,7 +43,7 @@
       "installer.installed": "Lastbook está instalado",
       "installer.openLastbook": "Abrir Lastbook",
       "installer.productName": "Lastbook",
-      "installer.removeConfirm": "¿Quieres quitar Lastbook de esta computadora?\n\nTu biblioteca (LastbookData) y tus ajustes se quedan.",
+      "installer.removeConfirm": "¿Quieres quitar Lastbook de esta computadora?\n\nTu biblioteca (LastbookData) y tus ajustes se conservan.",
       "installer.removed": "Lastbook se quitó.",
       "installer.setupTitle": "Instalación de Lastbook",
       "installer.uninstallFileDescription": "Desinstalar Lastbook",

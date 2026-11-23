@@ -81,6 +81,7 @@
     if (e.key) return tr(e.key, e.params || null, e.message || e.error || '');
     return e.message || e.error || '';
   };
+  const apiErrorText = r => r && r.key ? tr(r.key, r.params || null, r.error || '') : (r && r.error) || '';
   const recommendWhy = r => {
     if (!r) return '';
     if (Array.isArray(r.why_parts) && r.why_parts.length) {
@@ -97,7 +98,8 @@
     const and = tr('common.and', null, 'and');
     if (parts.length === 1) return parts[0];
     if (parts.length === 2) return parts[0] + ' ' + and + ' ' + parts[1];
-    return parts.slice(0, -1).join(', ') + ' ' + and + ' ' + parts[parts.length - 1];
+    const serial = and === 'and' ? ',' : '';
+    return parts.slice(0, -1).join(', ') + serial + ' ' + and + ' ' + parts[parts.length - 1];
   };
 
   /* ------------------------------------------------------------ state */
@@ -406,7 +408,7 @@
     if (btn) btn.disabled = true;
     try {
       const r = await call('use', { path, ...only });
-      if (r && r.error) throw new Error(r.error);
+      if (r && r.error) throw new Error(apiErrorText(r));
       if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = tr('setup.aiFileWillBeUsed', null, 'The local AI file will be used. No need to download it.'); return }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
@@ -419,7 +421,7 @@
     const b = $('#start'); b.disabled = true;
     const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
-    if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = (r && r.error) || tr('setup.error', null, 'Setup could not start.'); return }
+    if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = apiErrorText(r) || tr('setup.error', null, 'Setup could not start.'); return }
     S.job = r; go('job'); poll();
   }
 
@@ -464,7 +466,7 @@
       $('#srvList').disabled = true;
       const r = await call('server-models', { address: addr() }).catch(e => ({ error: e.message }));
       srv.models = r && r.models || null;
-      say(r && r.error ? r.error : r.models.length === 1
+      say(r && r.error ? apiErrorText(r) : r.models.length === 1
         ? tr('setup.server.oneModelAt', { address: esc(r.address) }, 'One model at {address}.')
         : tr('setup.server.modelsAt', { count: r.models.length, address: esc(r.address) }, '{count} models at {address}.'), !(r && r.error));
       renderServer(srv.models ? '#srvModel' : '#srvAddr');
@@ -473,7 +475,7 @@
       $('#srvUse').disabled = true;
       const model = $('#srvModel').value;
       const r = await call('use-server', { address: addr(), model }).catch(e => ({ error: e.message }));
-      if (r && r.error) { say(r.error); renderServer('#srvAddr'); return }
+      if (r && r.error) { say(apiErrorText(r)); renderServer('#srvAddr'); return }
       S.model_server = r.model_server; srv.open = false; srv.models = null;
       say(cur()
         ? tr('setup.server.chatNowAnswers', { model: esc(model) }, 'Chat now answers with {model}.')
@@ -482,7 +484,7 @@
     };
     if ($('#srvStop')) $('#srvStop').onclick = async () => {
       const r = await call('stop-server', {}).catch(e => ({ error: e.message }));
-      if (r && r.error) { say(r.error); renderServer('#srvNote'); return }
+      if (r && r.error) { say(apiErrorText(r)); renderServer('#srvNote'); return }
       S.model_server = null;
       say(cur() && model() && cur().model
         ? tr('setup.server.chatLocalAiAgain', null, 'Chat answers with the local AI again.')
@@ -562,7 +564,7 @@
     };
     if ($('#repair')) $('#repair').onclick = async () => {
       const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
-      if (!r || r.error) { note = (r && r.error) || tr('setup.repairFailed', null, 'Repair could not start.'); manageView(); return }
+      if (!r || r.error) { note = apiErrorText(r) || tr('setup.repairFailed', null, 'Repair could not start.'); manageView(); return }
       repair = { fixed: false, sure: true }; S.job = r; go('job'); poll();
     };
     renderServer();
@@ -611,7 +613,7 @@
     const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? tr('setup.cannotDoThat', null, 'This Lastbook cannot do that yet.') : e.message }));
     confirmRemove = confirmOld = false;
     noteOk = !(r && r.error);
-    if (r && r.error) note = r.error;
+    if (r && r.error) note = apiErrorText(r);
     else { note = done; S = await call('state').catch(() => S) }
     manageView();
     const n = $('#haveNote'); if (n) { n.tabIndex = -1; n.focus() }
@@ -622,6 +624,7 @@
                   model: [['downloading', tr('setup.stage.download', null, 'Download')], ['verifying', tr('setup.stage.check', null, 'Check')], ['activating', tr('setup.stage.finish', null, 'Finish')]] };
   STEPS.map = [['downloading', tr('setup.stage.download', null, 'Download')], ['unpacking', tr('setup.stage.unpack', null, 'Unpack')]];   // the engine's map item: waiting, downloading, unpacking, done
   STEPS.addresses = STEPS.map;
+  STEPS.check = [['verifying', tr('setup.stage.check', null, 'Check')]];   // Check now reads every item without downloading it
   STEPS.copy = [['copying', tr('setup.stage.copy', null, 'Copy')]];
   const WORD = { waiting: tr('setup.state.waiting', null, 'Waiting'), downloading: tr('setup.state.downloading', null, 'Downloading'), paused: tr('setup.state.paused', null, 'Paused'), verifying: tr('setup.state.checking', null, 'Checking'), unpacking: tr('setup.state.unpacking', null, 'Unpacking'), activating: tr('setup.state.finishing', null, 'Finishing'), copying: tr('setup.state.copying', null, 'Copying'), done: tr('setup.state.done', null, 'Done'), failed: tr('setup.state.stopped', null, 'Stopped') };
   const ACTIVE = new Set(['waiting', 'downloading', 'verifying', 'unpacking', 'activating', 'copying']);
@@ -630,7 +633,8 @@
   function errorBox(j) {
     const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     const e = j.error, code = errCode(e) || j.code, c = cur();
-    const blockedModel = code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done);
+    const failedModel = (j.items || []).some(it => it.kind === 'model' && it.state === 'failed');
+    const blockedModel = failedModel && (code === 'unreachable' || (code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done)));
     const safe = c ? tr('setup.libraryUntouched', null, 'Your library is untouched and still works.') : tr('setup.nothingElseChanged', null, 'Nothing else on this computer was changed.');
     const d = diskFor(j.folder || folder);
     const T = {
@@ -642,6 +646,10 @@
       network: blockedModel
         ? [tr('setup.aiServerUnreachable', null, 'This network could not reach the local AI download server.'), tr('setup.aiServerHint', null, 'What is downloaded is kept. Retry, or choose the published AI model file downloaded another way.'), 'retry']
         : [tr('setup.connectionDropped', null, 'The internet connection dropped.'), tr('setup.connectionHint', null, 'What is downloaded is kept. Retry when you are online again.'), 'retry'],
+      unreachable: [tr('setup.unreachable.heading', { host: esc((e && e.host) || 'the download server') }, 'Lastbook can’t reach {host}.'),
+        blockedModel
+          ? tr('setup.unreachable.modelHint', null, 'It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, then choose it here.')
+          : tr('setup.unreachable.libraryHint', null, 'It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, then choose it with Choose again and “Choose a library zip or AI model file”.'), 'retry'],
       server: [tr('setup.serverBusy', null, 'The download server stayed busy.'), tr('setup.serverBusyHint', null, 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.'), 'retry'],
       checksum: [tr('setup.damagedTwice', null, 'The download came out damaged twice, so it was not used.'), tr('setup.damagedHint', null, 'Retry to download it once more.'), 'retry'],
       unpack: [e && e.key ? esc(errText(e)) : tr('setup.unpackFailed', null, 'Unpacking did not finish.'), tr('setup.unpackHint', null, 'Check there is room on the disk, then retry.'), 'retry'],
@@ -650,12 +658,13 @@
       cancelled: j.copy ? [tr('setup.copyCancelled', null, 'The copy was cancelled.'), tr('setup.copyCancelledHint', null, 'What was copied is still on the drive: copy again to the same place to carry on.'), 'back'] : [tr('setup.downloadCancelled', null, 'The download was cancelled.'), tr('setup.startAgainReady', null, 'Start again when you are ready.'), 'back'],
     }[code] || [esc(errText(e) || tr('app.errorGeneric', null, 'Something went wrong.')), tr('setup.retryOrChoose', null, 'Retry, or go back and choose again.'), 'retry'];
     return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
+      ${code === 'unreachable' && e && e.name ? facts(e) : ''}
       <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}${tr('setup.retry', null, 'Retry')}</button>` : T[2] === tr('setup.downloadNoun', null, 'download') ? `<button class="btn" data-act="retry">${ico('down')}${tr('setup.downloadIt', null, 'Download it instead?')}</button>` : ''}${blockedModel ? `<button class="btn plain" data-act="model-file">${tr('setup.chooseAiModelFile', null, 'Choose an AI model file')}</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">${tr('setup.chooseAgain', null, 'Choose again')}</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
-    const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
-    return `<dl class="s-facts">${row('File', `<code>${esc(e.name)}</code>`)}${e.size ? row('Size', `${size(e.size)} (${esc(Number(e.size).toLocaleString('en-US'))} bytes)`) : ''}${e.url ? row('Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
+    const row = (key, fallback, v) => `<dt>${tr(key, null, fallback)}</dt><dd>${v}</dd>`;
+    return `<dl class="s-facts">${row('setup.facts.file', 'File', `<code>${esc(e.name)}</code>`)}${e.size ? row('setup.facts.size', 'Size', `${size(e.size)} (${esc(Number(e.size).toLocaleString('en-US'))} bytes)`) : ''}${e.url ? row('setup.facts.address', 'Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('setup.facts.sha256', 'SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
   }
   function itemHTML(it, j) {
     const FAILED_AT = { checksum: 'verifying', found_mismatch: 'verifying', unpack: 'unpacking', activate: 'activating' };
@@ -696,12 +705,13 @@
     if (showPct) bar.setAttribute('aria-valuenow', Math.round(pct)); else bar.removeAttribute('aria-valuenow');
     let t = '';
     if (it.state === 'done') t = it.bytes_total ? size(it.bytes_total) : '';
+    else if (it.kind === 'copy' && it.state === 'waiting') t = it.bytes_total ? tr('setup.sizeToCopy', { size: size(it.bytes_total) }, '{size} to copy') : '';
+    else if (it.kind === 'copy' && (it.state === 'copying' || it.state === 'paused' || it.state === 'failed')) t = [tr('setup.copiedAndChecked', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total} copied and checked'), it.state === 'copying' ? rate(it.rate_bps) : '', it.state === 'copying' ? eta(it.eta_s) : ''].filter(Boolean).join(' · ');
     else if (it.state === 'downloading') t = [tr('setup.progressOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total}'), it.retry_in_s ? retryIn(it.retry_in_s) : rate(it.rate_bps), eta(it.eta_s)].filter(Boolean).join(' · ');
     else if (it.state === 'paused' && noDownload(it)) t = `${STOPPED[it.paused_from] || tr('setup.state.stopped', null, 'Stopped')}${it.paused_from === 'unpacking' && it.bytes_done && it.bytes_total ? tr('setup.atProgressOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, ' at {done} of {total}') : ''}. ${tr('setup.nothingToDownload', null, 'Nothing to download.')}`;
     else if (it.state === 'waiting' && !it.bytes_done && checkOnly(it)) t = it.bytes_total ? tr('setup.alreadyOnComputerCheck', { size: size(it.bytes_total) }, 'Already on this computer: {size} to check') + (afterAbove(it) ? ', ' + tr('setup.afterTheOneAbove', null, 'after the one above') : '') : '';
     else if ((it.state === 'waiting' || it.state === 'paused') && !it.bytes_done) t = it.bytes_total ? tr('setup.sizeToDownload', { size: size(it.bytes_total) }, '{size} to download') + (behind(it) ? ', ' + tr('setup.afterTheOneAbove', null, 'after the one above') : '') : '';
  else if (it.state === 'paused' || it.state === 'waiting' || it.state === 'failed') t = it.bytes_total && it.bytes_done ? tr('setup.progressOf', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total}') : '';
-    else if (it.kind === 'copy' && (it.state === 'copying' || it.state === 'paused' || it.state === 'failed')) t = [tr('setup.copiedAndChecked', { done: size(it.bytes_done), total: size(it.bytes_total) }, '{done} of {total} copied and checked'), it.state === 'copying' ? rate(it.rate_bps) : '', it.state === 'copying' ? eta(it.eta_s) : ''].filter(Boolean).join(' · ');
     else if (it.state === 'verifying') {
       /* a resumed download re-reads the part it already has while the job stays 'downloading'; a check of a whole item (a repair,
          or a file already here) sets the job to 'verifying' too. Only that whole check has a true time left */
@@ -757,6 +767,9 @@
     if (j.state === 'failed') return '';
     if (j.copy) return j.state === 'paused' ? tr('setup.copyKeptResume', null, 'What is copied is kept. Resume when you are ready. If Lastbook closes, copy again to the same place to carry on.')
       : tr('setup.copyKeepUsing', null, 'You can keep using this computer. If Lastbook closes, copy again to the same place to carry on.');
+    if (j.check) return j.state === 'paused'
+      ? tr('setup.check.resume', null, 'Nothing was downloaded or changed. Resume to check again from the start, even after closing Lastbook.')
+      : tr('setup.check.reading', null, 'You can keep using this computer. Checking reads every file and downloads nothing.');
     const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
     return quiet ? tr('setup.stoppedClosedResume', null, 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.')
       : j.state === 'paused' ? tr('setup.downloadKeptResume', null, 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.')
@@ -824,9 +837,9 @@
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   /* what Repair would do for what the check found: a damaged library file means the whole library again; the AI file is replaced in place */
   function repairOffer(bad, ai, map) {
-    const does = [bad ? tr('setup.check.repairLibraryAction', null, 'download the whole library again and keep the damaged copy aside') : '', ai ? tr('setup.check.repairAiAction', null, 'download the local AI file again and put it in place of this one') : '',
-                  map ? tr('setup.check.repairMapAction', null, 'download the detailed map again') : ''].filter(Boolean);
-    return does.length ? tr('setup.check.repairOffer', { actions: does.join('; ') }, 'Repair: {actions}.') : '';
+    const does = [bad ? tr('setup.check.repairLibraryAction', null, 'downloads the whole library again and keeps the damaged copy aside') : '', ai ? tr('setup.check.repairAiAction', null, 'downloads the local AI file again and puts it in place of this one') : '',
+                  map ? tr('setup.check.repairMapAction', null, 'downloads the detailed map again') : ''].filter(Boolean);
+    return does.length ? tr('setup.check.repairOffer', { actions: joinList(does) }, 'Repair {actions}.') : '';
   }
   function checkedView() {
     const r = (S.job && S.job.result) || {}, ai = r.model_ok === false, map = r.map_ok === false, bad = (r.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // library files; the AI file and the map apart

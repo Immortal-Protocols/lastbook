@@ -378,8 +378,8 @@ class Download:
         answered this download, so retrying on this network will not help; else 'network'."""
         host = getattr(e, 'lastbook_host', None)
         if host and host not in self.answered:
-            return Failed('unreachable', f'Lastbook could not reach {host} from this network.', host=host)
-        return Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.')
+            return Failed('unreachable', f'Lastbook could not reach {host} from this network.', key='setup.unreachable.heading', params={'host': host}, host=host)
+        return Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.', key='setup.err.connectionKeptBreaking', params={'error': type(e).__name__})
 
     def done_bytes(self):
         """Bytes from 0 that are surely the file's: the .part's length, or after pieces, the hashed run the .json records."""
@@ -496,7 +496,7 @@ class Download:
                 start = now
                 etag = _load_meta(self.meta).get('etag') or etag
                 if tries >= NETWORK_TRIES:
-                    raise Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.', key='setup.err.connectionKeptBreaking', params={'error': type(e).__name__})
+                    raise self._gave_up(e)
                 print(f'setup: download broke at {start} of {self.size}: {type(e).__name__}: {e}; trying again', flush=True)
                 self.control.sleep(BACKOFF[min(tries, len(BACKOFF) - 1)])
         if h.hexdigest() != self.sha256:
@@ -795,7 +795,7 @@ class Download:
                     raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.', key='setup.err.diskFilledDownloading')
                 tries += 1
                 if tries >= NETWORK_TRIES:
-                    raise Failed('network', f'The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.', key='setup.err.connectionKeptBreaking', params={'error': type(e).__name__})
+                    raise self._gave_up(e)
                 print(f'setup: piece at {pos} of {self.size} broke: {type(e).__name__}: {e}; trying again', flush=True)
                 if st.stopping.wait(BACKOFF[min(tries - 1, len(BACKOFF) - 1)]):
                     return

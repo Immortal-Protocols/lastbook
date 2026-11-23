@@ -1392,7 +1392,8 @@ class Jobs(Base):
         s, j, blocked = self.unreachable_model()
         self.assertEqual((j['state'], [i['state'] for i in j['items']]), ('failed', ['done', 'failed']))
         self.assertEqual(j['error'], {'code': 'unreachable', 'message': 'Lastbook could not reach 127.0.0.1 from this network.',
-                                      'host': '127.0.0.1', 'name': 'model.gguf', 'size': len(self.model),
+                                      'host': '127.0.0.1', 'key': 'setup.unreachable.heading', 'params': {'host': '127.0.0.1'},
+                                      'name': 'model.gguf', 'size': len(self.model),
                                       'url': blocked.url('model.gguf'), 'sha256': sha(self.model)})
         self.assertEqual(j['items'][1]['error'], j['error'])
         self.assertTrue((self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'library-data' / 'catalog.json').exists())   # unpacked, kept
@@ -1462,7 +1463,7 @@ class Jobs(Base):
         short.write_bytes(self.model[:-1])
         r = s.use(str(short))
         self.assertEqual(r['code'], 'size')
-        self.assertIn(f'{len(self.model) - 1:,} bytes, not the {len(self.model):,}', r['error'])
+        self.assertIn(f'{len(self.model) - 1} bytes, not the {len(self.model)} bytes', r['error'])
         self.assertEqual(s.public_job()['error']['code'], 'unreachable')      # the stop is unchanged
         short.write_bytes(b'x' * len(self.model))
         s.use(str(short))
@@ -2762,6 +2763,7 @@ console.log(JSON.stringify({copy: jobLead(j), download: jobLead(Object.assign({}
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const size = b => b + ' B', rate = () => '', eta = () => '', retryIn = () => '', line = {};
+const tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 const bar = {classList: {contains: () => false}, firstChild: {style: {}}, setAttribute() {}, removeAttribute() {}};
 const el = {querySelector: s => s.includes('bar') ? bar : line};
 let repair = null, S = {job: {copy: true}};
@@ -2988,7 +2990,7 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const errCode = e => e && e.code, noDownload = () => false;
+const errCode = e => e && e.code, noDownload = () => false, tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let repair = null;
 const jobWords = j => { repair = j.repair && !j.check ? {fixed: false} : null; return {head: jobHead(j), lead: jobLead(j)} };
 eval(section('  function jobHead(', '  function jobView('));
@@ -2996,6 +2998,7 @@ eval(section('  function jobLead(', '  /* Resume when paused'));
 eval(section('  function repairedWords(', '  /* ---- Check now'));
 eval(section('  function repairOffer(', '  function checkedView('));
 const esc = String, ico = () => '', itemTitle = it => it.title, WORD = {paused: 'Paused'};
+const joinList = parts => parts.length < 2 ? parts[0] : parts.slice(0, -1).join(', ') + (parts.length > 2 ? ',' : '') + ' and ' + parts[parts.length - 1];
 eval(section('  const STEPS = ', '  const WORD = ') + section('  function itemHTML(', '  const itemTitle = '));   // one eval: STEPS in itemHTML's scope
 const steps = (j, it) => [...itemHTML(it, j).matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map(m => m[1]);
 const job = (state, extra) => Object.assign({state, items: [{state: state === 'paused' ? 'paused' : 'verifying'}], error: null}, extra);
@@ -3884,6 +3887,7 @@ const src = require('fs').readFileSync(process.argv[1], 'utf8'), kind = process.
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
 const diskName = () => 'this disk', errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+const tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const error = {code: 'unreachable', message: 'Lastbook could not reach huggingface.co from this network.', host: 'huggingface.co',

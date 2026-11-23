@@ -2,11 +2,13 @@
 """Builds the manifest the app carries: setup/manifest-v1.json (docs/SETUP-API.md, "The manifest").
 
   python3 -I -B packaging/release_manifest.py [--packs derived/release/manifest-v1.json] [--out derived/release/setup/manifest-v1.json]
-                                              [--measure /path/to/the.gguf] [--small-from derived/release/1.0.0-20261104-1507]
+                                              [--measure /path/to/the.gguf [--measure-model ID]] [--small-from derived/release/1.0.0-20261104-1507]
 
 Packs come from derived/release/manifest-v1.json, which session publish-packs writes for each verified pack. The model entries come
 from llm_local.py's MODELS (file, size, SHA-256, revision), so the two cannot drift. memory_bytes is llama.cpp's measure of
-the model and its context (device + host bytes from lastbook-llm --measure): MEASURED_MEMORY below, or measured again with --measure.
+the model and its context (device + host bytes from lastbook-llm --measure): MEASURED_MEMORY below, or measured again with --measure,
+which changes only the model named by the file or by --measure-model. Only ids in BUNDLED_AVAILABLE are offered in the bundled
+manifest; the other registered models stay listed as unavailable until they are verified.
 --small-from builds the Small pack's entry from a release folder's SHA256SUMS.txt when the packs file has none (before
 publish-packs has written it). Every URL must be on an allowed host (engine/setup/download.py) or the build stops.
 The packaging spec bundles the output as setup/manifest-v1.json.
@@ -34,6 +36,7 @@ MEASURED_MEMORY = {
 }
 BASE = 'https://downloads.lastbook.org'     # live since 12 Nov 2026; packs and maps are accepted from this host only
 SMALL_SUMMARY = 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'
+BUNDLED_AVAILABLE = frozenset({'gemma-4-26b-a4b'})   # models setup may offer from the bundled manifest; others stay gated
 
 
 def model_entry(spec, memory_bytes):
@@ -41,7 +44,8 @@ def model_entry(spec, memory_bytes):
     repo = spec['source'].split(',')[0].strip()
     return {'id': spec['id'], 'title': spec['title'], 'file': spec['file'],
             'url': f'https://huggingface.co/{repo}/resolve/{rev}/{spec["file"]}?download=true',
-            'size': spec['size'], 'sha256': spec['sha256'], 'memory_bytes': int(memory_bytes), 'available': True}
+            'size': spec['size'], 'sha256': spec['sha256'], 'memory_bytes': int(memory_bytes),
+            'available': spec['id'] in BUNDLED_AVAILABLE}
 
 
 def measure(gguf):
@@ -112,12 +116,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--packs', default=str(ROOT / 'derived' / 'release' / 'manifest-v1.json'))
     ap.add_argument('--out', default=str(ROOT / 'derived' / 'release' / 'setup' / 'manifest-v1.json'))
-    ap.add_argument('--measure', help='a copy of the model file to measure memory_bytes from')
+    ap.add_argument('--measure', help='a copy of one known model file to measure memory_bytes from')
+    ap.add_argument('--measure-model', choices=[m['id'] for m in llm_local.MODELS],
+                    help='the model --measure belongs to, when the file name does not say it')
     ap.add_argument('--small-from', help='a release folder holding Lastbook-Small.zip and SHA256SUMS.txt')
     ap.add_argument('--split-pack', type=Path, help='split a published ZIP into cacheable objects for the bundled desktop manifest')
     ap.add_argument('--parts-dir', type=Path, help='new directory for --split-pack objects, to publish at downloads.lastbook.org')
     ap.add_argument('--part-bytes', type=int, help='bytes per part (default and maximum: 256 MiB)')
     a = ap.parse_args()
+    if a.measure_model and not a.measure:
+        ap.error('--measure-model requires --measure')
     if a.part_bytes is not None and not a.split_pack:
         ap.error('--part-bytes requires --split-pack')
     if bool(a.split_pack) != bool(a.parts_dir):
@@ -139,7 +147,14 @@ def main():
         sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
     measured = dict(MEASURED_MEMORY)
     if a.measure:
-        measured[llm_local.MODELS[0]['id']] = measure(a.measure)   # the flag still measures the default model
+        if a.measure_model:
+            model_id = a.measure_model
+        else:
+            matches = [m for m in llm_local.MODELS if m['file'] == Path(a.measure).name]
+            if len(matches) != 1:
+                ap.error('--measure must name one known model file, or give --measure-model with its id')
+            model_id = matches[0]['id']
+        measured[model_id] = measure(a.measure)
     models = [model_entry(spec, measured[spec['id']]) for spec in llm_local.MODELS]
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),
            'address_indexes': list(src.get('address_indexes') or []),

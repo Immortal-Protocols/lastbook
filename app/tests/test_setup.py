@@ -306,13 +306,110 @@ class fast_backoff:
 
 # ----------------------------------------------------------------------------------------------------------- tests --
 class ReleaseManifest(unittest.TestCase):
+    @staticmethod
+    def builder():
+        spec = importlib.util.spec_from_file_location('release_manifest', ROOT / 'packaging/release_manifest.py')
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        return builder
+
+    def build_manifest(self, builder, tmp, out, *extra):
+        from app.tests.multipart_fixture import write_fixture
+        from tempfile import mkdtemp
+
+        folder = Path(mkdtemp(dir=tmp)) / 'fixture'
+        write_fixture(folder)
+        args = ['release_manifest', '--packs', str(folder / 'single.json'), '--out', str(out), *extra]
+        with mock.patch.object(sys, 'argv', args):
+            builder.main()
+        return json.loads(Path(out).read_text(encoding='utf-8'))
+
+    def test_bundled_manifest_offers_only_gemma(self):
+        from tempfile import TemporaryDirectory
+
+        builder = self.builder()
+        with TemporaryDirectory() as tmp:
+            m = self.build_manifest(builder, tmp, Path(tmp) / 'manifest.json')
+            v = manifest.validate(m, bundled=True)
+            self.assertIsNotNone(v)
+            models = {x['id']: x for x in m['models']}
+            self.assertEqual([x['id'] for x in m['models']], [x['id'] for x in builder.llm_local.MODELS])
+            self.assertTrue(models['gemma-4-26b-a4b']['available'])
+            self.assertFalse(models['lfm2.5-2.6b']['available'])
+            self.assertFalse(models['lfm3-1.7b']['available'])
+            offered = manifest.Manifest(bundled=v, remote=None)
+            self.assertEqual(offered.model()['id'], 'gemma-4-26b-a4b')
+            self.assertIsNone(offered.model('lfm2.5-2.6b'))
+            self.assertIsNone(offered.model('lfm3-1.7b'))
+
+    def test_measure_changes_only_the_named_model(self):
+        from tempfile import TemporaryDirectory
+
+        builder = self.builder()
+        target = next(x for x in builder.llm_local.MODELS if x['id'] == 'lfm3-1.7b')
+        with TemporaryDirectory() as tmp:
+            before = self.build_manifest(builder, tmp, Path(tmp) / 'before.json')
+            copy = Path(tmp) / 'downloads' / target['file']
+            copy.parent.mkdir()
+            copy.write_bytes(b'')
+            with mock.patch.object(builder, 'measure', return_value=4242):
+                after = self.build_manifest(builder, tmp, Path(tmp) / 'after.json', '--measure', str(copy))
+            for old, new in zip(before['models'], after['models']):
+                if old['id'] == target['id']:
+                    self.assertEqual(new['memory_bytes'], 4242)
+                    self.assertFalse(new['available'])
+                    self.assertEqual({k: v for k, v in new.items() if k != 'memory_bytes'},
+                                     {k: v for k, v in old.items() if k != 'memory_bytes'})
+                else:
+                    self.assertEqual(new, old)
+
+    def test_measure_can_name_its_model_explicitly(self):
+        from tempfile import TemporaryDirectory
+
+        builder = self.builder()
+        with TemporaryDirectory() as tmp:
+            before = self.build_manifest(builder, tmp, Path(tmp) / 'before.json')
+            copy = Path(tmp) / 'renamed-model.gguf'
+            copy.write_bytes(b'')
+            with mock.patch.object(builder, 'measure', return_value=2222):
+                after = self.build_manifest(builder, tmp, Path(tmp) / 'after.json',
+                                            '--measure', str(copy), '--measure-model', 'lfm2.5-2.6b')
+            for old, new in zip(before['models'], after['models']):
+                if old['id'] == 'lfm2.5-2.6b':
+                    self.assertEqual(new['memory_bytes'], 2222)
+                    self.assertFalse(new['available'])
+                else:
+                    self.assertEqual(new, old)
+
+    def test_measure_with_an_unknown_file_fails_without_writing(self):
+        from tempfile import TemporaryDirectory
+
+        builder = self.builder()
+        with TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'manifest.json'
+            self.build_manifest(builder, tmp, out)
+            original = out.read_bytes()
+            unknown = Path(tmp) / 'LFM9-unknown.gguf'
+            unknown.write_bytes(b'')
+            with self.assertRaises(SystemExit) as raised:
+                self.build_manifest(builder, tmp, out, '--measure', str(unknown))
+            self.assertNotEqual(raised.exception.code, 0)
+            self.assertEqual(out.read_bytes(), original)
+
+    def test_measure_model_requires_measure(self):
+        from tempfile import TemporaryDirectory
+
+        builder = self.builder()
+        with TemporaryDirectory() as tmp:
+            with self.assertRaises(SystemExit) as raised:
+                self.build_manifest(builder, tmp, Path(tmp) / 'manifest.json', '--measure-model', 'lfm3-1.7b')
+            self.assertNotEqual(raised.exception.code, 0)
+
     def test_rejects_invalid_generated_part_before_replacing_manifest(self):
         from app.tests.multipart_fixture import write_fixture
         from tempfile import TemporaryDirectory
 
-        spec = importlib.util.spec_from_file_location('release_manifest', ROOT / 'packaging/release_manifest.py')
-        builder = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(builder)
+        builder = self.builder()
         with TemporaryDirectory() as tmp:
             folder = Path(tmp) / 'fixture'
             write_fixture(folder)

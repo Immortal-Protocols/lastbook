@@ -261,9 +261,10 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
   says it fits (about 18 GB of memory for model and context, plus a reserve) and says why in plain words when it does not.
   Setup downloads it directly from Hugging Face. Two much smaller models from Liquid AI are pinned the same way:
   LFM2.5 2.6B (`LFM2.5-2.6B-Q4_K_M.gguf`, about 1.6 GB, about 2 GB of memory for model and context) and LFM3 1.7B
-  (`LFM3-1.7B-Q4_K_M.gguf`, about 1.1 GB, about 1.6 GB of memory), the size class a phone can hold. The setup manifest
-  lists both, and the fit check and the assistant treat each as a model like any other. Setup still downloads the big
-  model by default. The model is never part of the app or of this repository. The runner,
+  (`LFM3-1.7B-Q4_K_M.gguf`, about 1.1 GB, about 1.6 GB of memory), the size class a phone can hold. The adapters, fit check
+  and assistant treat each as a model like any other, but the bundled manifest lists the two Liquid AI models as
+  unavailable: Gemma remains the only model setup offers until they are verified. The model is never part of the app or
+  of this repository. The runner,
   `lastbook-llm`, is our own small program (`packaging/llm/lastbook_llm.cpp`) on llama.cpp tag b12032: Metal on a Mac,
   Vulkan with CPU fallbacks on Windows and Linux.
 - **Meaning-based search** uses BAAI's bge-small-en-v1.5 (ONNX) through onnxruntime, on Windows only; the Mac build uses

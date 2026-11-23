@@ -63,4 +63,13 @@ class Coverage(unittest.TestCase):
                 hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
                 if not hits:  # Python surfaces use the sibling Python scanner.
                     hits = [(text, pre) for _pos, text, pre, _body in scan.iter_py_strings(sample)]
-                self.assertTrue(any(text == literal for text, _pre in hits), hits)
+                self.assertTrue(any(text == literal and scan.classify(text, pre) == 'chrome'
+                                    for text, pre in hits), hits)
+
+    def test_adjacent_wired_call_does_not_hide_visible_literal(self):
+        sample = 'el.textContent = tr("about.title"); dialog.setWindowTitle("Choose");'
+        hits = [(text, pre) for _pos, text, pre, _body in scan.iter_py_strings(sample)]
+        choose = next((pre for text, pre in hits if text == 'Choose'), None)
+        self.assertIsNotNone(choose)
+        self.assertFalse(scan.already_wired(choose))
+        self.assertEqual(scan.classify('Choose', choose), 'chrome')

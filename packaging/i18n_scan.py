@@ -93,7 +93,7 @@ DISPLAY_PRE = re.compile(
     r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|GenericName|'
     r'Comment=|Name=|\.Text\s*=|why\s*=|Failed\(|_fail\(|live\.textContent|'
     r'set_tooltip|tooltip_text|add_buttons\(|initWithTitle_|ASK_TITLE|ASK\s*=|'
-    r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|menu\.append|view\.append|'
+    r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|setWindowTitle|title\s*[:=]|menu\.append|view\.append|'
     r'helps\.append|_menu\('
 )
 

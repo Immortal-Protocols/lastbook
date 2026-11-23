@@ -1224,5 +1224,17 @@
   "library.itemTypeLibrary": "biblioteca",
   "library.largest": "La más grande",
   "setup.checkRepair": "Comprobar y reparar",
-  "setup.openAnotherLibraryFolder": "Abrir otra carpeta de biblioteca"
+  "setup.openAnotherLibraryFolder": "Abrir otra carpeta de biblioteca",
+  "moment.optional": "(opcional)",
+  "setup.chooseAgain": "Elegir de nuevo",
+  "setup.chooseAiModelFile": "Elegir un archivo de modelo de IA",
+  "setup.downloadIt": "¿Prefieres descargarlo?",
+  "map3d.heightTitle": "Exagerar la altura",
+  "chat.stillIndexing": "sigue indexando ({count} fragmentos hasta ahora)",
+  "map.recordsNearest": "Se muestran los {shown} más cercanos de {total}{plus}. Acerca el mapa para ver el resto.",
+  "map.recordsCount": {
+    "one": "{count} registro",
+    "other": "{count} registros"
+  },
+  "map.distFromArea": "a {distance} de tu zona"
 }

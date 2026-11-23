@@ -67,7 +67,7 @@ const Chat = (() => {
     main.innerHTML = `<div class="chat">
       <aside class="chat-side" id="chatSide" aria-label="${tr('chat.conversations', null, "Conversations")}">
         <div class="cs-head"><b data-i18n="library.chats">${tr('library.chats', null, 'Chats')}</b><button class="iconbtn" id="closeSide" aria-label="${tr('chat.closeList', null, "Close chat list")}">${ico('back')}</button></div>
-        <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}New chat</a>
+        <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}<span data-i18n="chat.new">New chat</span></a>
         <ul class="cs-list" id="csList"></ul>
         <div class="cs-privacy">
           <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
@@ -219,10 +219,11 @@ const Chat = (() => {
       const st = ABOUT_STARTERS[aboutCtx.kind] || [];
       log.innerHTML = `<div class="chat-empty">
         <div class="ce-mark">${ico('ask')}</div>
-        <h1>Chat</h1>
-        <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
+        <h1 data-i18n="nav.chat">Chat</h1>
+        <p class="lead" data-i18n="chat.emptyLead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
         <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
-        <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+        <p class="small muted" style="margin-top:18px" data-i18n="chat.emptyNote">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+      globalThis.LastbookI18n?.apply(log);
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
       return;
@@ -564,7 +565,7 @@ const Chat = (() => {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && tr('chat.modelServerNotAnswering', { address: esc(st.server.address) }, 'The model server at {address} is not answering. Check that it is running.') });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
-      if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
+      if (!r.ok || !r.body) throw new Error(tr('chat.serverRefused', { detail: r.status }, 'The server refused the question ({detail})'));
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = '';
       for (;;) {
@@ -582,13 +583,13 @@ const Chat = (() => {
       }
       if (m.running && !m.content && !m.error) m.error = tr('chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.');
     } catch (e) {
-      if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
+      if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = tr('chat.stopped', null, 'Stopped.') }
       else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || tr('chat.modelNotRunning', null, 'The local assistant model isn’t running right now.'); await fallback(m, text) }
       else m.error = e.message || tr('app.errorGeneric', null, 'Something went wrong.');
     }
     m.running = false; delete m.state;
     if (m.stopped && m.content) {
-      m.content += '\n\n(Stopped.)';
+      m.content += '\n\n(' + tr('chat.stopped', null, 'Stopped.') + ')';
       // The `done` event never arrives, so `cited` would be empty and the finished view
       // would say the answer is unverified. Keep the sources already received.
       if (m.cited == null && (m.sources || []).length) m.cited = m.sources;
@@ -612,7 +613,7 @@ const Chat = (() => {
     else if (ev.type === 'stopped') m.stopped = true;
   }
   async function fallback(m, q) {
-    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += ' The library search also found nothing for this question.' }
+    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += tr('chat.fallbackNothing', null, ' The library search also found nothing for this question.') }
     catch { m.fallback = [] }
   }
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }

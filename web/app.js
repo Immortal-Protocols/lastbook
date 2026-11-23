@@ -626,7 +626,7 @@ async function videoRow(row, q) {
     <div class="vtools">${searchBox('vq', qq, tr('videos.searchThese', null, 'Search these videos'), ['search.go', 'Go'])}
       <label class="sr" for="vsort" data-i18n="videos.sort">Sort</label><select id="vsort">${[['', 'videos.mostUseful', 'Most useful first'], ['short', 'videos.shortestFirst', 'Shortest first'], ['new', 'videos.newestFirst', 'Newest first'], ['az', 'videos.az', 'A to Z']].map(([k, key, l]) => `<option value="${k}" ${k === sort ? 'selected' : ''} data-i18n="${key}">${tr(key, null, l)}</option>`).join('')}</select></div>
     <div class="chips" style="margin:8px 0 16px">${[['', tr('videos.anyLength', null, 'Any length')], ['short', tr('videos.under10', null, 'Under 10 min')], ['medium', tr('videos.10to30', null, '10–30 min')], ['long', tr('videos.over30', null, 'Over 30 min')]].map(([k, l]) => `<a class="chip ${k === len ? 'on' : ''}" href="${qs({ len: k })}">${l}</a>`).join('')}</div>
-    <p class="muted small">${first.total.toLocaleString()} video${first.total === 1 ? '' : 's'}</p>
+    <p class="muted small">${esc(tr('videos.videoCount', { count: first.total }, '{count} videos'))}</p>
     <div class="vgrid" id="vg"></div><p id="vmore"></p>`;
   $('#vqF').addEventListener('submit', e => { e.preventDefault(); location.hash = qs({ q: $('#vq').value.trim() }) });
   $('#vsort').addEventListener('change', e => { location.hash = qs({ sort: e.target.value }) });
@@ -971,10 +971,10 @@ async function reader(id, page, from, view) {
     leaving = Speak.attach(sb, async () => {
       let t;
       try { t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`) }
-      catch { toast('This page could not be read aloud. Try again.'); return '' }   // shown, not only spoken: the sound may be off
+      catch { toast(tr('reader.speakFailed', null, 'This page could not be read aloud. Try again.')); return '' }   // shown, not only spoken: the sound may be off
       hadText = !!(t.text || '').trim();
-      if (!hadText) toast('This page has no text that can be read aloud.');
-      return hadText ? (isPdf ? `Page ${page}. ` : '') + t.text : 'This page has no text that can be read aloud.';
+      if (!hadText) toast(tr('reader.speakNoText', null, 'This page has no text that can be read aloud.'));
+      return hadText ? (isPdf ? `${tr('reader.pageView', null, 'Page')} ${page}. ` : '') + t.text : tr('reader.speakNoText', null, 'This page has no text that can be read aloud.');
     }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null);
     let goingOn = null;
     try { goingOn = sessionStorage.getItem('sg.speakOn'); sessionStorage.removeItem('sg.speakOn') } catch { }
@@ -1089,7 +1089,7 @@ async function wiki(path, from, y) {
       if (f.contentDocument !== fd) return;
       if (front && own) own.style.setProperty('display', tr('map.noneOn', null, 'none'), 'important');   // the skin sets its own display, which the hidden attribute does not beat
       main.classList.toggle('own-title', front);   // then the app's heading names it
-      const nt = front ? zimLabel(zim) : raw || p.split('/').pop().replace(/_/g, ' '), sub = front ? 'Encyclopedia' : zimLabel(zim);
+      const nt = front ? zimLabel(zim) : raw || p.split('/').pop().replace(/_/g, ' '), sub = front ? tr('wiki.encyclopedia', null, 'Encyclopedia') : zimLabel(zim);
       $('#wtitle').textContent = nt; if ($('#wopen')) $('#wopen').href = loc; setTitle(nt, '', zimLabel(zim));
       f.lbName = !front && own ? { nt, at: own.getBoundingClientRect().bottom + fw.scrollY } : null; barName();
       $('#wsave').innerHTML = saveButton({ key: 'w:' + p, title: nt, href, sub });

@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from html.parser import HTMLParser
 from collections import defaultdict
 from pathlib import Path
 
@@ -25,8 +26,14 @@ EN = ROOT / 'translations' / 'desktop' / 'en.json'
 
 WEB_FILES = [
     'index.html', 'setup.html', 'app.js', 'setup.js', 'chat.js', 'map.js',
-    'update.js', 'terrain3d.js', 'video-moments.js', 'i18n-app.js',
+    'update.js', 'terrain3d.js', 'video-moments.js', 'speak.js', 'i18n-app.js',
 ]
+# Runtime helpers with no interface copy: layout toggles, search-word folding,
+# the service worker, i18n engine/DOM adapter and generated catalogue data.
+WEB_NON_UI_FILES = {
+    'plat.js', 'words.js', 'sw.js', 'i18n-core.js', 'i18n-dom.js',
+    'i18n-en.js', 'i18n-locales.js',
+}
 
 PYTHON_SURFACES = {
     'engine/setup': [
@@ -35,6 +42,7 @@ PYTHON_SURFACES = {
         ROOT / 'engine' / 'setup' / 'hardware.py',
         ROOT / 'engine' / 'setup' / 'install.py',
     ],
+    'engine/update': [ROOT / 'engine' / 'update.py'],
     'app/main': [ROOT / 'app' / 'main.py'],
     'native/macos': [ROOT / 'app' / 'shell_macos.py'],
     'native/windows': [ROOT / 'app' / 'shell_windows.py'],
@@ -62,6 +70,8 @@ TECHNICAL_EXACT = {
     'Escape', 'Enter', 'AbortError', 'HEVC', 'START-HERE.txt',
     'LastbookData.setup', 'application/json', 'text/html',
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
+    'Could not access the desktop language preference',
+    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=',
 }
 
 TECHNICAL_PREFIX = (
@@ -74,6 +84,7 @@ LOG_CONTEXT = (
     'console.', 'logger.', 'log(', '_log(', 'print(',
     'raise RuntimeError', 'raise ValueError', 'raise OSError',
 )
+LOG_CALLS = {'debug', 'error', 'info', 'log', 'print', 'warning', '_log'}
 
 SVG_RE = re.compile(r'^M-?\d')
 KEYISH = re.compile(r'^[A-Za-z][A-Za-z0-9_.-]{0,40}$')
@@ -88,12 +99,12 @@ TOKEN = re.compile(
     re.I,
 )
 DISPLAY_PRE = re.compile(
-    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|'
+    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|'
     r'setUiTitle|aria-label|placeholder|confirm\(|alert\(|toast\(|show_error|'
     r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|setPrompt_|GenericName|'
-    r'Comment=|Name=|\.Text\s*=|why\s*=|Failed\(|_fail\(|live\.textContent|'
+    r'Comment=|Name=|\.Text\s*=|why\s*=|message\s*=|[\'"]error[\'"]\s*:|Failed\(|_fail\(|live\.textContent|'
     r'set_tooltip|tooltip_text|add_buttons\(|initWithTitle_|ASK_TITLE|ASK\s*=|'
-    r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|setWindowTitle|title\s*[:=]|\blabel\s*\(|menu\.append|view\.append|'
+    r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|setWindowTitle|title\s*[:=]|menu\.append|view\.append|'
     r'helps\.append|_menu\('
 )
 
@@ -120,13 +131,13 @@ def already_wired(pre: str) -> bool:
     # same function must not hide a later hard-coded label (the old 300-char
     # window caused this false positive, especially in compact JS).
     tail = pre.rsplit(';', 1)[-1][-300:]
-    if re.search(r"(?:tr|native_t|installer_t|user_error|t)\s*\(", tail):
+    if re.search(r"\b(?:tr|native_t|installer_t|user_error|t)\s*\(", tail):
         return True
     if 'data-i18n' in tail:
         return True
     if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT|NO_RUNTIME|setUiTitle|labelPair|backButton|GO)\s*[=(]", tail):
         return True
-    if re.search(r"(?:key\s*=|\[\s*['\"]key['\"]\s*\]\s*=)\s*['\"](?:setup|native|installer|desktop|nav|chat|map)\.", tail):
+    if re.search(r"(?:key|message_key)\s*=\s*['\"](?:setup|native|installer|desktop|nav|chat|map|update|reader|wiki)\.", tail):
         return True
     return False
 
@@ -144,11 +155,8 @@ def _has_i18n_marker_in_tag(pre: str, post: str) -> bool:
     return bool(tag and re.search(r'\bdata-i18n(?:-[a-z-]+)?\s*=', tag))
 
 
-def _inside_translation_call(pre: str) -> bool:
-    """True when the string is an argument to an open translation call."""
-    # The scanner supplies a prefix ending immediately before the literal.
-    # Track call parentheses while skipping quoted/template strings so a
-    # completed neighboring tr() cannot mark the next literal as translated.
+def _inside_named_call(pre: str, names) -> bool:
+    """True when the current literal is nested in a call with one of these names."""
     stack = []
     i = 0
     while i < len(pre):
@@ -165,7 +173,13 @@ def _inside_translation_call(pre: str) -> bool:
         elif c == ')' and stack:
             stack.pop()
         i += 1
-    return any(name in {'tr', 'native_t', 'installer_t', 'user_error', 't'} for name in stack)
+    return any(name in names for name in stack)
+
+
+def _inside_translation_call(pre: str) -> bool:
+    """True when the string is an argument to an open translation call."""
+    # A completed neighboring tr() cannot mark the next literal as translated.
+    return _inside_named_call(pre, {'tr', 'native_t', 'installer_t', 'user_error', 't'})
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
@@ -175,8 +189,14 @@ def _inside_keyed_error_call(pre: str, post: str) -> bool:
     if re.search(r"why_part\s*\(\s*['\"]setup\.", source):
         return True
     # Failed stores the key after its fallback text. Keep the lookahead local
-    # to the current call and require a setup key to avoid hiding raw errors.
-    if re.search(r"(?:Failed|Refused|_fail)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"]setup\.", source):
+    # to the current call and require a catalogue key to avoid hiding raw errors.
+    if re.search(r"(?:Failed|Refused|_fail|_refuse_carried_back)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"](?:setup|update)\.", source):
+        return True
+    # Update state records carry a translation key next to the English fallback;
+    # web/update.js renders that key for the selected locale.
+    if re.search(r"_set\s*\([\s\S]{0,1200}?\bmessage_key\s*=\s*['\"]update\.", source):
+        return True
+    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"]update\.", source):
         return True
     # Some errors are stored as adjacent `error` / `key` fields and translated
     # by the UI consumer. Treat only that explicit keyed record as a fallback.
@@ -197,6 +217,8 @@ def looks_technical(s: str) -> bool:
     if re.match(r'^(?:#[\w-]+(?:,\s*[^;]+)?|\.[\w-]+(?:,\s*[^;]+)?)$', s):
         return True
     if re.fullmatch(r'\[value="\{…\}"\]', s):
+        return True
+    if re.fullmatch(r'&near=\{…\},\{…\}', s):
         return True
     if re.fullmatch(r'#[\w-]+\s+[a-zA-Z][\w-]*', s):
         return True
@@ -265,7 +287,10 @@ def looks_ui(s: str) -> bool:
 
 
 def display_context(pre: str) -> bool:
-    return bool(DISPLAY_PRE.search(pre[-240:]))
+    # The installer helper label() is a visible WinForms sink. Require the
+    # literal to be its immediate first argument so a nearby helper definition
+    # cannot misclassify a font name such as "Segoe UI" as interface text.
+    return bool(DISPLAY_PRE.search(pre[-240:]) or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]))
 
 
 def classify(s: str, pre: str, post: str = '') -> str:
@@ -286,7 +311,7 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
-    if any(c in context[-260:] for c in LOG_CONTEXT):
+    if any(c in context[-260:] for c in LOG_CONTEXT) or _inside_named_call(pre, LOG_CALLS):
         return 'technical'
     if s in CONTENT:
         return 'content'
@@ -424,12 +449,74 @@ def looks_like_markup(s):
     return False
 
 
+class _MarkupStrings(HTMLParser):
+    """Yield visible text and accessible attributes from HTML template literals."""
+    VISIBLE_ATTRIBUTES = {'alt', 'aria-description', 'aria-label', 'placeholder', 'title', 'value'}
+    VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
+
+    def __init__(self, prefix):
+        super().__init__(convert_charrefs=True)
+        self.prefix = prefix
+        self.tags = []
+        self.strings = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        markers = {key for key in values if key == 'data-i18n' or key.startswith('data-i18n-')}
+        if tag not in self.VOID_ELEMENTS:
+            self.tags.append((tag, markers))
+        for name in self.VISIBLE_ATTRIBUTES:
+            value = values.get(name)
+            if value and '{…}' not in value:
+                marker = f'data-i18n-{name}'
+                pre = self.prefix + ' ' + name + (' data-i18n' if marker in markers else '')
+                self.strings.append((value, pre))
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        for index in range(len(self.tags) - 1, -1, -1):
+            if self.tags[index][0] == tag:
+                del self.tags[index:]
+                break
+
+    def handle_data(self, data):
+        value = data.strip()
+        if value:
+            wired = any('data-i18n' in markers for _tag, markers in self.tags)
+            self.strings.append((value, self.prefix + ' innerHTML' + (' data-i18n' if wired else '')))
+
+
+def _template_markup_strings(flat, pre):
+    # A single template can contain translated and untranslated elements. Do
+    # not classify the whole template from a nearby marker: inspect each text
+    # node and visible attribute in its own element context.
+    parser = _MarkupStrings(pre)
+    try:
+        parser.feed(flat)
+        parser.close()
+    except Exception:
+        return []
+    return parser.strings
+
+
+def _is_markup_fragment(value):
+    return '<' in value and '>' in value and value.lstrip().startswith('<')
+
+
 def iter_js_strings(text):
     text = strip_comments_js(text)
     for m in STR_RE.finditer(text):
         raw, q = m.group(2), m.group(1)
         s = unescape(raw, q)
-        yield m.start(), s, text[max(0, m.start() - 2000):m.start()]
+        pre = text[max(0, m.start() - 2000):m.start()]
+        if _is_markup_fragment(s):
+            for value, local_pre in _template_markup_strings(s, pre):
+                yield m.start(), value, local_pre
+        else:
+            yield m.start(), s, pre
     i, n = 0, len(text)
     while i < n:
         c = text[i]
@@ -443,10 +530,18 @@ def iter_js_strings(text):
             if any(kind == 'expr' for kind, _ in parts):
                 flat = ''.join(lit if kind == 'lit' else '{…}' for kind, lit in parts)
                 if flat.strip() and flat.strip() != '{…}':
-                    yield start, flat, pre
+                    if _is_markup_fragment(flat):
+                        for value, local_pre in _template_markup_strings(flat, pre):
+                            yield start, value, local_pre
+                    else:
+                        yield start, flat, pre
             else:
                 s = ''.join(lit for kind, lit in parts if kind == 'lit')
-                yield start, s, pre
+                if _is_markup_fragment(s):
+                    for value, local_pre in _template_markup_strings(s, pre):
+                        yield start, value, local_pre
+                else:
+                    yield start, s, pre
             i = end
             continue
         i += 1

@@ -21,6 +21,29 @@ class Coverage(unittest.TestCase):
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
 
+    def test_every_web_runtime_file_is_scanned_or_declared_non_ui(self):
+        actual = {path.name for path in (ROOT / 'web').glob('*.js')} | {'index.html', 'setup.html'}
+        inventoried = set(scan.WEB_FILES) | scan.WEB_NON_UI_FILES
+        self.assertEqual(actual, inventoried,
+                         f'unclassified web files: {sorted(actual - inventoried)}; stale entries: {sorted(inventoried - actual)}')
+
+    def test_literal_catalogue_references_exist(self):
+        # Catch key typos and stale references across every scanned runtime,
+        # not only JS tr() calls. setup.html/setup.json are asset filenames.
+        keys = set(self.english)
+        sources = [scan.WEB / name for name in scan.WEB_FILES]
+        sources.extend(path for paths in scan.PYTHON_SURFACES.values() for path in paths)
+        referenced = set()
+        for path in sources:
+            if path.is_file():
+                referenced.update(re.findall(r"['\"]((?:about|app|chat|common|copy|desktop|error|help|installer|language|library|map|native|nav|reader|saved|search|setup|time|topic|update|video|videos|wiki)\.[A-Za-z][A-Za-z0-9_.-]*)['\"]",
+                                             path.read_text(encoding='utf-8')))
+        referenced.difference_update({'setup.html', 'setup.json', 'app.zip'})
+        referenced = {key for key in referenced if not key.endswith('.')}
+        self.assertGreaterEqual(len(referenced), 800)
+        self.assertEqual(referenced - keys, set(),
+                         f'catalogue references without English messages: {sorted(referenced - keys)}')
+
     def test_no_unique_hardcoded_chrome(self):
         leftover = {text: locs for text, locs in self.chrome.items()}
         self.assertEqual(
@@ -95,6 +118,24 @@ class Coverage(unittest.TestCase):
                 post = body[pos:pos + len(literal) + 100]
                 self.assertEqual(scan.classify(literal, pre, post), 'wired')
 
+    def test_keyed_update_fallbacks_stay_wired(self):
+        cases = [
+            ("return {'error': 'Updates are only open on this computer.', 'error_key': 'update.localOnly'}",
+             'Updates are only open on this computer.'),
+            ("return {'error': f'The check stopped on an internal error ({type(e).__name__}).', 'error_key': 'update.internalError'}",
+             'The check stopped on an internal error ({type(e).__name__}).'),
+            ("self._set('failed', message='The download site did not answer properly.', message_key='update.serverError')",
+             'The download site did not answer properly.'),
+            ("_refuse_carried_back(files, new, old, f'Lastbook could not move your files ({type(e).__name__}).', key='setup.err.couldNotMoveFilesIn')",
+             'Lastbook could not move your files ({type(e).__name__}).'),
+        ]
+        for sample, expected in cases:
+            with self.subTest(expected=expected):
+                hits = list(scan.iter_py_strings(sample))
+                self.assertIn(expected, [text for _pos, text, _pre, _body in hits], hits)
+                pos, _text, pre, body = next(hit for hit in hits if hit[1] == expected)
+                self.assertEqual(scan.classify(expected, pre, body[pos:pos + 800]), 'wired')
+
     def test_adjacent_wired_call_does_not_hide_visible_literal(self):
         sample = 'el.textContent = tr("about.title"); dialog.setWindowTitle("Choose");'
         hits = [(text, pre) for _pos, text, pre, _body in scan.iter_py_strings(sample)]
@@ -111,6 +152,35 @@ class Coverage(unittest.TestCase):
         adjacent = '"trailing marker"; <button title="Choose">'
         _pos, _text, pre = next(item for item in scan.iter_js_strings(adjacent) if item[1] == 'Choose')
         self.assertFalse(scan._has_i18n_marker_in_tag(pre, adjacent[_pos:]))
+
+    def test_template_marker_does_not_hide_neighboring_markup_text(self):
+        sample = 'el.innerHTML = `<h1 data-i18n="about.title">About</h1><h2>Untranslated heading</h2><button aria-label="Open">Open</button>`;'
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        by_text = {text: scan.classify(text, pre) for text, pre in hits}
+        self.assertEqual(by_text.get('About'), 'wired')
+        self.assertEqual(by_text.get('Untranslated heading'), 'chrome')
+        self.assertEqual(by_text.get('Open'), 'chrome')
+
+    def test_void_element_marker_does_not_hide_later_text(self):
+        sample = 'el.innerHTML = `<img data-i18n-alt="image.alt" alt="A map"><p>Untranslated text</p>`;'
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        by_text = {text: scan.classify(text, pre) for text, pre in hits}
+        self.assertEqual(by_text.get('A map'), 'wired')
+        self.assertEqual(by_text.get('Untranslated text'), 'chrome')
+
+    def test_error_message_sink_keeps_user_messages_visible_to_scanner(self):
+        sample = "throw new Error('The server refused the question (' + status + ').')"
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        message = next((text, pre) for text, pre in hits if 'server refused' in text)
+        self.assertEqual(scan.classify(*message), 'chrome')
+        self.assertEqual(scan.classify('Could not access the desktop language preference', 'new Error('), 'technical')
+
+    def test_quoted_markup_is_scanned_per_visible_node(self):
+        sample = 'el.innerHTML = "<p data-i18n=\\"about.title\\">About</p><p>Raw text</p>";'
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        by_text = {text: scan.classify(text, pre) for text, pre in hits}
+        self.assertEqual(by_text.get('About'), 'wired')
+        self.assertEqual(by_text.get('Raw text'), 'chrome')
 
     def test_translation_fallback_inside_open_tr_call_is_wired(self):
         sample = "return tr('chat.step.readPage', {title, pages}, 'Read {title}, page {pages}');"

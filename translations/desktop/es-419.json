@@ -1344,5 +1344,34 @@
   "setup.check.reading": "Puedes seguir usando esta computadora. La revisión lee todos los archivos y no descarga nada.",
   "setup.check.resume": "No se descargó ni cambió nada. Reanuda la revisión desde el principio, incluso si cierras Lastbook.",
   "setup.err.checkNoLibraryToOpen": "La revisión no cambia nada, así que no hay nada que abrir.",
-  "setup.err.noLibraryToCheck": "Aún no hay una biblioteca para revisar."
+  "setup.err.noLibraryToCheck": "Aún no hay una biblioteca para revisar.",
+  "reader.readAloud": "Leer en voz alta",
+  "reader.speakFailed": "No se pudo leer esta página en voz alta. Vuelve a intentarlo.",
+  "reader.speakNoText": "Esta página no tiene texto que se pueda leer en voz alta.",
+  "reader.stopReading": "Detener la lectura",
+  "update.badInfo": "No se pudo leer la información de actualización del sitio de descargas. Vuelve a intentarlo más tarde.",
+  "update.internalError": "La comprobación de actualizaciones se detuvo por un error interno.",
+  "update.localOnly": "Las actualizaciones solo están disponibles en la aplicación de esta computadora.",
+  "chat.emptyLead": "Las respuestas se basan únicamente en los manuales, las guías y las transcripciones de video de esta computadora, e indican la página o el momento exacto del video correspondiente.",
+  "chat.emptyNote": "La IA local solo procesa texto: no puede interpretar videos sin subtítulos, páginas escaneadas sin texto ni archivos de mapas sin procesar. Lastbook indica cuando la biblioteca no tiene información para responder una pregunta.",
+  "map.searchMatches": {
+    "one": "{count} resultado",
+    "other": "{count} resultados"
+  },
+  "videos.videoCount": {
+    "one": "{count} video",
+    "other": "{count} videos"
+  },
+  "setup.copyLead": "Copia la biblioteca {library}{size} en {disk}, junto con un archivo START-HERE.txt con instrucciones para configurar Lastbook en otra computadora.",
+  "setup.copyNotCopied": "No se copian tus ajustes, elementos guardados, chats, notas, búsqueda de direcciones ni la IA local. Solo se copian los archivos propios de la biblioteca y se lee cada uno desde la unidad para comprobar que todos llegaron completos.",
+  "chat.fallbackNothing": " La búsqueda en la biblioteca tampoco encontró información para responder esta pregunta.",
+  "update.networkError": "No se pudieron comprobar las actualizaciones por un problema de red. Vuelve a intentarlo más tarde.",
+  "update.offline": "Lastbook no pudo conectarse a internet. El resto de Lastbook sigue funcionando sin conexión; vuelve a intentarlo cuando tengas conexión.",
+  "update.refusedAddress": "Lastbook rechazó la dirección utilizada para comprobar actualizaciones.",
+  "update.secureConnection": "Lastbook no pudo confirmar que se conectaba al sitio de descargas oficial y se detuvo. Algunas redes, como las de oficinas y hoteles, interceptan conexiones seguras y pueden causar este problema.",
+  "update.serverError": "El sitio de descargas no respondió correctamente. Vuelve a intentarlo más tarde.",
+  "update.tooOldOs": "La versión {version} requiere {os} {minimum} o una versión posterior.",
+  "update.tooOldOsLinux": "La versión {version} requiere {os} {minimum} o una versión posterior, o un sistema basado en esa versión.",
+  "update.unsupported": "Las actualizaciones están disponibles en las aplicaciones para Mac, Windows y Linux.",
+  "wiki.encyclopedia": "Enciclopedia"
 }

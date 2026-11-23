@@ -582,7 +582,8 @@ class Download:
                     if 500 <= r.status < 600 or r.status == 429:
                         raise _Busy(r.status, r.getheader('Retry-After'))
                     if r.status >= 400:
-                        raise Failed('network', f'The download server refused the file (HTTP {r.status}).')
+                        raise Failed('network', f'The download server refused the file (HTTP {r.status}).',
+                                     key='setup.err.serverRefusedHttp', params={'status': r.status})
                     cr = _content_range(r.getheader('Content-Range'))
                     if r.status != 206 or not cr or cr[0] != a:
                         raise OSError(f'HTTP {r.status} to a check of the bytes at {a}')

@@ -58,9 +58,19 @@ class Catalogues(unittest.TestCase):
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, message):
                 catalogues.generate(self.work)
 
-    def test_allows_missing_messages_and_locale_specific_plural_categories(self):
-        self.spanish.write_text('{"files":{"=0":"Ninguno", "many":"{count} archivos", "other":"{count} archivos"}}', encoding='utf-8')
-        self.assertIn('Ninguno', catalogues.generate(self.work)['i18n-locales.js'].decode('utf-8'))
+    def test_requires_every_spanish_message(self):
+        self.spanish.write_text('{"hi":"Hola, {name}"}', encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, "missing required translations: 'files'"):
+            catalogues.generate(self.work)
+
+    def test_allows_locale_specific_plural_categories_and_partial_sample_locales(self):
+        self.spanish.write_text(
+            '{"hi":"Hola, {name}", "files":{"=0":"Ninguno", "many":"{count} archivos", "other":"{count} archivos"}}',
+            encoding='utf-8')
+        (self.work / 'de.json').write_text('{"hi":"Hallo, {name}"}', encoding='utf-8')
+        generated = catalogues.generate(self.work)
+        self.assertIn('Ninguno', generated['i18n-locales.js'].decode('utf-8'))
+        self.assertIn('de', generated['i18n-locales.js'].decode('utf-8'))
 
     def test_output_is_order_independent_and_writes_literal_data(self):
         value = '¡Está listo! \u2028 <img src=x onerror="bad()"> "); bad(); ({name}'
@@ -275,8 +285,12 @@ class SpanishWording(unittest.TestCase):
             'map.zoom', 'library.shelfVideos',
             'native.menu.zoom', 'common.video',
             'native.appFileDescription', 'installer.productName', 'installer.companyName',
-            'setup.facts.sha256',
+            'setup.facts.sha256', 'videos.videoCount',
         })
+
+    def test_catalogue_covers_every_english_message(self):
+        self.assertEqual(set(self.es), set(self.en),
+                         f'missing: {sorted(set(self.en) - set(self.es))}; extra: {sorted(set(self.es) - set(self.en))}')
 
     def test_everyday_words_cover_the_full_catalogue(self):
         everything = ' '.join(self._texts(self.es))

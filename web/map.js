@@ -355,7 +355,7 @@ const MapView = (() => {
     if (hit === st.hover) { if (hit) placeTip(x, y); return }
     st.hover = hit; const tip = $('tip'); if (!tip) return;
     if (!hit) return hideTip();
-    tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${hit.count.toLocaleString()} places</b>${breakdown(hit)}<small>${st.z >= 16 ? tr('map.clickToList', null, 'Click to list them') : tr('map.clickToZoom', null, 'Click to zoom in')}</small>`
+    tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${escH(tr('map.placesHere', { count: hit.count }))}</b>${breakdown(hit)}<small>${st.z >= 16 ? tr('map.clickToList', null, 'Click to list them') : tr('map.clickToZoom', null, 'Click to zoom in')}</small>`
       : hit.count > 1 ? `<b>${hit.count} records at one spot</b><small>${escH(tLayer(layerOf(hit.cls)))} · click to list them</small>`
       : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${escH(hit.place ? hit.kind || tr('map.place', null, 'Place') : tLayer(layerOf(hit.cls)))}${hit.records > 1 ? ` · ${hit.records} records · click to list` : ''}</small>`;
     tip.hidden = false; placeTip(x, y);
@@ -914,7 +914,7 @@ const MapView = (() => {
       if (st !== state || serial !== st.serial.place) return;
       if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? tr('map.addressNotFound', null, tr('map.addressNotFound', null, 'Address not found in your offline data. Check the house number and street.')) + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : tr('map.placeNotFound', null, 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.')) + '</p>'; return }
       const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
-      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
+      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${escH(tr('map.searchMatches', { count: r.length }, '{count} matches'))}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);
     } catch { if (st === state) box.innerHTML = `<p class="muted small">${escH(tr('map.finderUnavailable', null, 'Place finder unavailable.'))}</p>` }

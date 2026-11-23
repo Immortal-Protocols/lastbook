@@ -36,8 +36,9 @@
       case 'checking': return `${ver} ${tr('update.checking', null, 'Checking for updates…')}`;
       case 'up_to_date': return `${ver} ${tr('update.upToDate', null, 'Lastbook is up to date.')} ${btn(tr('update.checkAgain', null, 'Check again'))}`;
       case 'available': return `${ver} ${tr('update.available', { version: E(s.version), website: E(s.website) }, 'Version {version} is available. Download it from {website}. Your library, local AI and chats stay.')} ${btn(tr('update.checkAgain', null, 'Check again'))}`;
-      case 'not_published': return `${ver} ${tr('update.noInfo', null, 'No update information yet.')} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
-      case 'too_old_os': case 'error': return `${ver} ${E(s.message)} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
+      case 'not_published': return `${ver} ${tr(s.message_key || 'update.noInfo', null, 'No update information yet.')} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
+      case 'too_old_os': return `${ver} ${E(tr(s.message_key || 'update.tooOldOs', s.message_params, s.message || 'This version needs a newer operating system.'))} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
+      case 'error': return `${ver} ${E(s.message_key ? tr(s.message_key, s.message_params, s.message) : s.message || tr('update.failed', null, 'Lastbook could not ask about updates.'))} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
       default: return `${ver} ${btn(tr('update.checkFor', null, 'Check for updates'))}`;
     }
   }
@@ -57,7 +58,7 @@
   async function check(el) {
     try {
       const s = await call('check');
-      if (s.error && !s.state) { el.textContent = s.error; return }
+      if (s.error && !s.state) { el.textContent = tr(s.error_key || 'update.failed', null, s.error); return }
       paint(el, s);
     } catch { el.textContent = tr('update.failed', null, 'Lastbook could not ask about updates.') }
   }

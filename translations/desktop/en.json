@@ -1344,5 +1344,34 @@
   "setup.check.reading": "You can keep using this computer. Checking reads every file and downloads nothing.",
   "setup.check.resume": "Nothing was downloaded or changed. Resume to check again from the start, even after closing Lastbook.",
   "setup.err.checkNoLibraryToOpen": "A check changes nothing, so there is nothing to open.",
-  "setup.err.noLibraryToCheck": "There is no library to check yet."
+  "setup.err.noLibraryToCheck": "There is no library to check yet.",
+  "reader.readAloud": "Read aloud",
+  "reader.speakFailed": "This page could not be read aloud. Try again.",
+  "reader.speakNoText": "This page has no text that can be read aloud.",
+  "reader.stopReading": "Stop reading",
+  "update.badInfo": "The update information on the download site could not be read. Try again later.",
+  "update.internalError": "The update check stopped because of an internal error.",
+  "update.localOnly": "Updates are available only in the app on this computer.",
+  "chat.emptyLead": "Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.",
+  "chat.emptyNote": "It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.",
+  "map.searchMatches": {
+    "one": "{count} match",
+    "other": "{count} matches"
+  },
+  "videos.videoCount": {
+    "one": "{count} video",
+    "other": "{count} videos"
+  },
+  "setup.copyLead": "Copy the {library} library{size} to {disk}, with a START-HERE.txt that says how to set it up on another computer.",
+  "setup.copyNotCopied": "Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.",
+  "chat.fallbackNothing": " The library search also found nothing for this question.",
+  "update.networkError": "Lastbook could not check for updates because of a network problem. Try again later.",
+  "update.offline": "Lastbook could not reach the internet. Everything else in Lastbook still works without it; try again when you are online.",
+  "update.refusedAddress": "Lastbook refused to check an address it does not know.",
+  "update.secureConnection": "Lastbook could not confirm it was talking to the real download site, so it stopped. A network that intercepts secure connections (some offices, hotels) can cause this.",
+  "update.serverError": "The download site did not answer properly. Try again later.",
+  "update.tooOldOs": "Version {version} needs {os} {minimum} or later.",
+  "update.tooOldOsLinux": "Version {version} needs {os} {minimum} or later, or a system built on it.",
+  "update.unsupported": "Updates are for the Mac, Windows and Linux app.",
+  "wiki.encyclopedia": "Encyclopedia"
 }

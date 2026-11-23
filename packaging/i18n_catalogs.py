@@ -13,9 +13,10 @@ NATIVE = APP / 'i18n_native.json'
 INSTALLER = ROOT / 'packaging' / 'i18n_installer.json'
 INSTALLER_PREFIXES = ('installer.',)
 REQUIRED = {'en', 'es-419'}
+COMPLETE = {'es-419'}
 SCRIPTS = ('i18n-core.js', 'i18n-dom.js', 'i18n-en.js', 'i18n-locales.js', 'i18n-app.js')
 ENTRIES = {'index.html': 'app.js', 'setup.html': 'setup.js'}
-RUNTIME = (*SCRIPTS, *ENTRIES, *ENTRIES.values(), 'plat.js', 'app.css', 'setup.css', 'sw.js')
+RUNTIME = (*SCRIPTS, *ENTRIES, *ENTRIES.values(), 'plat.js', 'speak.js', 'app.css', 'setup.css', 'sw.js')
 LOCALE = re.compile(r'[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?')
 KEY = re.compile(r'[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*')
 PLACEHOLDER = re.compile(r'\{([A-Za-z_][A-Za-z0-9_]*)\}')
@@ -118,6 +119,12 @@ def generate(source=SOURCE):
                         raise ValueError(f'unknown message key {key!r}')
                     if entry != reference[key]:
                         raise ValueError(f'incompatible message {key!r}')
+                if locale in COMPLETE:
+                    missing = sorted(reference.keys() - schema.keys())
+                    if missing:
+                        sample = ', '.join(repr(key) for key in missing[:10])
+                        more = f' (and {len(missing) - 10} more)' if len(missing) > 10 else ''
+                        raise ValueError(f'missing required translations: {sample}{more}')
         except (OSError, ValueError) as error:
             raise ValueError(f'{path}: {error}') from error
     english = catalogs.pop('en')

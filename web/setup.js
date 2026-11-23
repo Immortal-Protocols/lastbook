@@ -575,11 +575,12 @@
   function copyView() {
     const c = cur() || {}, p = packById(c.pack), r = copyTo || {};
     const need = p && p.installed_bytes;
+    const copyParams = { library: p ? p.title : 'Lastbook', size: need ? ` (${size(need)})` : '', disk: r.disk || home(r.path || '') };
     main.innerHTML = `<h1 data-i18n="setup.copyTitle">Copy for someone else</h1>
-      <p class="lead">Copy the ${esc(p ? p.title : 'Lastbook')} library${need ? ` (${size(need)})` : ''} to ${esc(r.disk || home(r.path || ''))}, with a START-HERE.txt that says how to set it up on another computer.</p>
+      <p class="lead" data-i18n="setup.copyLead" data-i18n-params='${esc(JSON.stringify(copyParams))}'>Copy the {library} library{size} to {disk}, with a START-HERE.txt that says how to set it up on another computer.</p>
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b>${esc(home(r.path || ''))}</b><small>${r.free_bytes != null ? size(r.free_bytes) + ' free there' : ''}</small></span></div></div>
-      <p class="s-note">Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.</p>
-      <p class="s-two"><button class="btn big" id="copyGo">Copy</button> <button class="btn big plain" id="copyBack">Back</button></p>
+      <p class="s-note" data-i18n="setup.copyNotCopied">Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.</p>
+      <p class="s-two"><button class="btn big" id="copyGo" data-i18n="common.copy">Copy</button> <button class="btn big plain" id="copyBack" data-i18n="nav.back">Back</button></p>
       <p class="s-note" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
     $('#copyBack').onclick = () => go('manage');
     $('#copyGo').onclick = async () => {

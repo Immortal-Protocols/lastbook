@@ -1244,5 +1244,6 @@
   "wiki.openOnItsOwn": "open on its own",
   "setup.downloadAndDisk": "{download} download · {disk} on disk",
   "setup.mapAndIndexIncluded": "Your state map and available address index are already included.",
-  "map.cappedPlacesInView": " (busiest shown — zoom in for all)"
+  "map.cappedPlacesInView": " (busiest shown — zoom in for all)",
+  "setup.mapItemName": "{name} map"
 }

@@ -63,6 +63,7 @@ const TC = { hurt: '#c62828', water: '#1565c0', power: '#c77700', food: '#d4570f
 const SHORT_EN = { hurt: 'Injury & illness', water: 'Drinking water', power: 'Power is out', food: 'Food & cooking', shelter: 'Too hot or cold', sanitation: 'Toilets & hygiene',
   disaster: 'Quake, fire, flood', comms: 'Contact & find way', grow: 'Grow food', preserve: 'Preserve food', health: 'Health care', repair: 'Repair & build', energy: 'Power systems', land: 'Land & resources' };
 const shortName = id => tr('topic.' + id, null, SHORT_EN[id] || '');
+const topicShort = t => tr('topic.short.' + t.id, null, t.short || '');
 // chat.js and other scripts still read SHORT[id] for the short tile name.
 const SHORT = Object.fromEntries(Object.keys(SHORT_EN).map(id => [id, SHORT_EN[id]]));
 function refreshShort() { for (const id of Object.keys(SHORT_EN)) SHORT[id] = shortName(id); }
@@ -499,7 +500,7 @@ function searchBox(id, value, placeholder, buttonLabel) {
 /* --------------------------------------------------------------- home -- */
 async function home() {
   setTitle('');
-  const tile = t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(t.short || '')}</small></a>`;
+  const tile = t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))}</small></a>`;
   const cont = await continueItems();
   const pins = (await libInfo()).pins !== false;
   const exampleChips = [[tr('search.ex.boilWater', null, 'boil water'), 'search.ex.boilWater'], [tr('search.ex.cutBleeding', null, 'cut won’t stop bleeding'), 'search.ex.cutBleeding'], [tr('search.ex.fridgePower', null, 'fridge after power cut'), 'search.ex.fridgePower'], [tr('search.ex.burn', null, 'burn'), 'search.ex.burn'], [tr('search.ex.toilet', null, 'toilet not working'), 'search.ex.toilet'], [tr('search.ex.smellGas', null, 'smell gas'), 'search.ex.smellGas']].map(([q, key]) => `<a class="chip" href="#/search?q=${encodeURIComponent(q)}" data-i18n="${key}">${esc(tr(key, null, q))}</a>`).join('');
@@ -517,7 +518,7 @@ async function home() {
   ${cont.length ? secHead(`<span data-i18n="home.pickUp">Pick up where you left off</span>`) + rail(cont.join('')) : ''}
   <div id="homeVideos"></div>
   ${secHead(`<span data-i18n="home.learnSkill">Learn a skill</span>`, `<span data-i18n="home.learnLead">Step-by-step routes for the weeks and months ahead</span>`, `<a href="#/library" data-i18n="home.allSkills">All skills</a>`)}
-  ${rail(learnTopics().map(t => `<a class="skill" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(t.short || '')}</small><span class="steps">${esc(tr('home.steps', { count: (t.route || []).length }, '{count} steps'))}</span></a>`).join(''), 'skills')}
+  ${rail(learnTopics().map(t => `<a class="skill" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))}</small><span class="steps">${esc(tr('home.steps', { count: (t.route || []).length }, '{count} steps'))}</span></a>`).join(''), 'skills')}
   <a class="banner prep" href="#/prepare"><span class="ico">${ico('prep')}</span><span><b data-i18n="home.getReadyBanner">Get ready before it happens</b><small data-i18n="home.getReadyLead">Store water and food, plan for outages, pack kits</small></span><span class="go">${ico('right')}</span></a>`;
   $('#bigQF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/search?q=' + encodeURIComponent($('#bigQ').value.trim()) });
   const ex = $('.examples', main), exEnd = () => { ex.classList.toggle('at-end', ex.scrollLeft + ex.clientWidth >= ex.scrollWidth - 4); ex.classList.toggle('at-start', ex.scrollLeft < 4) };
@@ -1350,7 +1351,7 @@ async function library() {
     <a class="card" href="#/not-found" id="nfCard" hidden><span class="ico">${ico('search')}</span><b data-i18n="library.notFound">Things I couldn’t find</b><small id="nfCount" data-i18n="library.notFoundEmpty">Notes you kept when a search found nothing</small></a>
   </div>
   ${secHead(`<span data-i18n="home.learnSkill">Learn a skill</span>`, `<span data-i18n="library.learnLead">Step-by-step routes that start simple</span>`)}
-  <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(t.short || '')} · ${(t.route || []).length} steps</small></a>`).join('')}</div>
+  <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))} · ${(t.route || []).length} steps</small></a>`).join('')}</div>
   ${zims.length ? secHead(`<span data-i18n="wiki.title">Encyclopedias</span>`, `<span data-i18n="library.encyclopediasLead">Complete offline copies</span>`, `<a href="#/encyclopedias" data-i18n="library.searchThem">Search them</a>`) + `<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/library')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>` : ''}
   ${secHead(`<span data-i18n="library.browseSubject">Browse by subject</span>`, `<span data-i18n="library.browseLead">Every manual, saved web page and video</span>`)}<div id="shelves"><p class="loading" data-i18n="common.loading">Loading…</p></div>
   <p style="margin-top:20px"><a href="#/about" data-i18n="library.aboutLink">About this library and its sources</a>${IN_WINDOW ? ' · <a href="/ui/setup.html#manage">Library and local AI</a>' : ''}</p>`;

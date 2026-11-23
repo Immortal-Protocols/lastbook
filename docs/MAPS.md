@@ -31,6 +31,28 @@ Two kinds of table carry the things a person can tap:
 - `resource(id, source_id, kind, name, lat, lon, detail, source, origin)` with its `spatial` index: a record with a kind,
   a line of detail and the name of its source.
 
+## Several maps in one library
+
+A library shows one map set at a time, but it can hold several installed. The one it shows is the **active** map; the
+others stay on disk, and you switch between them from the running app's Map screen.
+
+- **Legacy (flat) layout.** One map set per library: `map-set.json` at the library's top and its files under
+  `derived/geo/`. A library with no `derived/geo/maps.json` still reads this way, so a library made before multi-map
+  support keeps working unchanged.
+- **Namespaced layout.** Each installed map has its own folder, `derived/geo/maps/<name>/`, holding that map's
+  `map-set.json` and `derived/geo/` files. A registry, `derived/geo/maps.json`, names the active map and lists the rest
+  (`engine/setup/install.py`: `active_map`, `map_unit`, `map_dirs`, `add_map`, `set_active`, `migrate_flat`).
+- **The shared atlas.** `library-data/geography/resources/atlas.sqlite` stays at the library's root, shared by every
+  map; it is never copied into a map's folder.
+- **Adding never replaces.** `add_map` installs a map into its own folder and makes it the active one; the maps already
+  there stay put. Re-adding a name upgrades that map in place. The first map added to a still-flat library moves the
+  old flat set into its own folder first (`migrate_flat`), so the two then live side by side.
+- **The server serves the active map.** `server.py` resolves every map file through the active map's folder (`geo_dir`),
+  and its tile and content caches key off the active map, so switching maps redraws cleanly.
+- **Add a map from a file.** The Map screen takes the path to a `.zip` you built and adds it with the same guards a
+  downloaded map gets (a `map-set.json`, no path tricks, store-or-deflate only); it then becomes the active map. Build
+  one for a place outside the US with `tools/build_region.py` (see the `REGIONS-*.md` notes).
+
 ## Opening a locally built map on Windows
 
 The setup picker lists published maps. To preview a map you built, keep it in its own writable folder with

@@ -23,6 +23,7 @@ what to show when the country is unknown are still being discussed in the issue.
       "works_from_source": "https://example.gov/dialling-rules",
       "free": true,
       "free_source": "https://example.gov/costs",
+      "url": "https://example.gov/samu",
       "keywords": {"local": ["ambulancia", "samu"], "en": ["ambulance"]},
       "when": "Free-text note: when to use this number, or where it applies.",
       "source": "https://example.gov/page",
@@ -56,6 +57,7 @@ what to show when the country is unknown are still being discussed in the issue.
 | `works_from_source` | The page that says `works_from`. Required when `works_from` is not empty; leave it out otherwise. |
 | `free` | `true` or `false` when a source says whether a call costs money, `null` when none does. Always present. |
 | `free_source` | The page that says `free`. Required when `free` is not `null`; leave it out otherwise. |
+| `url` | Optional. The web address of the service's own page, where a person can read more. It is not evidence for any claim (the `*_source` fields are); leave it out when the service has no page of its own. |
 | `when` | A free-text note, in English: when this number is the right one and where it applies. Empty string if there is nothing to add. |
 | `source` | The web address of the page the number and its name were read from. A country's own government or the service's own page. |
 | `checked_on` | `YYYY-MM-DD`, the day someone read the number on that page. Not in the future. |

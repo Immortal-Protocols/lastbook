@@ -97,6 +97,8 @@ def problems(data, name, latest=None):
             out.append(f'{who}: "when" must be a string (empty if there is nothing to add)')
         if not source(s.get('source')):
             out.append(f'{who}: "source" must be the web address of the page the number was read from')
+        if 'url' in s and not source(s['url']):
+            out.append(f'{who}: "url" is optional, but when present it must be the web address of the service\'s own page')
         c = s.get('checked_on')
         try:
             d = date.fromisoformat(c)
@@ -209,6 +211,12 @@ class Checker(unittest.TestCase):
         d = copy.deepcopy(self.GOOD)
         del d['services'][0]['free']
         self.assertTrue(problems(d, 'ZZ.json'))
+
+    def test_url_is_optional_but_must_be_an_address(self):
+        self.assertFalse(self.bad())
+        self.assertFalse(self.bad(s_url='https://example.org/service'))
+        for v in ('', None, 'not an address', 5):
+            self.assertTrue(self.bad(s_url=v), v)
 
     def test_a_claim_left_unknown_needs_no_source(self):
         self.assertFalse(self.bad(s_works_from=[], s_works_from_source=None, s_free=None, s_free_source=None))

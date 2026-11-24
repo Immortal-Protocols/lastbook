@@ -1166,6 +1166,17 @@ class DrugstoreLabel(unittest.TestCase):
         self.assertTrue(layer in src, 'pharmacy layer label in web/map.js')   # assertIn would print the whole file
         self.assertTrue(re.search(r"chemist: 'Drugstore: [^']*prescription", src), 'chemist caution in web/map.js')
 
+    def test_each_result_names_its_own_kind(self):
+        # The layer switch is shared, but a list row and a detail card say Pharmacy or Drugstore per record.
+        src = (ROOT / 'web' / 'map.js').read_text(encoding='utf-8')
+        self.assertTrue("const KIND = { pharmacy: 'Pharmacy', chemist: 'Drugstore' }" in src, 'per-record kind names')
+        self.assertEqual(server.HELP['chemist'], 'Drugstore')
+        near_row = next(line for line in src.splitlines() if 'box.innerHTML = list.map(' in line)
+        card = next(line for line in src.splitlines() if '<div class="kind">${sym(l, 20)}' in line)
+        self.assertIn('kindOf(p.cls)', near_row)
+        self.assertNotIn('layerOf(p.cls).label', near_row)
+        self.assertIn('kindOf(p.cls)', card)
+
 
 class ServerMode(unittest.TestCase):
     """server.py run on its own (--lan, the library server): the map asks for 20 or more tiles at once."""

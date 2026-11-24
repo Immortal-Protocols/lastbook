@@ -100,6 +100,12 @@
       "by": "FEMA",
       "url": "https://www.fema.gov/sites/default/files/2020-08/fema_earthquakes_fema-p-530-earthquake-safety-at-home-march-2020.pdf",
       "library": true
+    },
+    "50machines": {
+      "name": "50 Machines: the book",
+      "by": "50 Machines (publisher)",
+      "url": "https://50machines.com/",
+      "library": false
     }
   },
   "sections": [
@@ -577,6 +583,42 @@
           ],
           "products": [],
           "search": "emergency sleeping bag"
+        }
+      ]
+    },
+    {
+      "id": "rebuild",
+      "title": "Rebuilding",
+      "icon": "/img/ink/pair-book.svg",
+      "line": "Make tools and machines again, step by step, from what you have.",
+      "items": [
+        {
+          "name": "A build manual on paper",
+          "why": "Shows how to make working machines when there is no power and no screen.",
+          "look": [
+            [
+              "A drawing, a parts list and the steps for each machine.",
+              "50machines"
+            ],
+            [
+              "Safety notes and the key measurements next to each build.",
+              "50machines"
+            ],
+            [
+              "Printed on paper, so it works with no power or screen.",
+              "50machines"
+            ]
+          ],
+          "products": [
+            {
+              "name": "50 Machines, by Rolando Zubirán",
+              "maker_url": "https://50machines.com/shop",
+              "feature": "336 illustrated pages: 50 machines in the order you could build them, from a pottery and brick kiln to a relay computer. English and Spanish editions.",
+              "checked": "2026-11-24",
+              "query": "50 Machines Rolando Zubiran"
+            }
+          ],
+          "search": "build manual book"
         }
       ]
     }

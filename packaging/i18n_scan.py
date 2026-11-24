@@ -14,8 +14,11 @@ Run:  python3 -B packaging/i18n_scan.py
 from __future__ import annotations
 
 import json
+import io
 import re
 import sys
+import tokenize
+from html.parser import HTMLParser
 from collections import defaultdict
 from pathlib import Path
 
@@ -25,18 +28,29 @@ EN = ROOT / 'translations' / 'desktop' / 'en.json'
 
 WEB_FILES = [
     'index.html', 'setup.html', 'app.js', 'setup.js', 'chat.js', 'map.js',
-    'update.js', 'terrain3d.js', 'video-moments.js', 'i18n-app.js',
+    'update.js', 'terrain3d.js', 'video-moments.js', 'speak.js', 'i18n-app.js',
 ]
+# Runtime helpers with no interface copy: layout toggles, search-word folding,
+# the service worker, i18n engine/DOM adapter and generated catalogue data.
+WEB_NON_UI_FILES = {
+    'plat.js', 'words.js', 'sw.js', 'i18n-core.js', 'i18n-dom.js',
+    'i18n-en.js', 'i18n-locales.js',
+}
 
 PYTHON_SURFACES = {
+    'engine/model-server': [ROOT / 'engine' / 'model_server.py'],
     'engine/setup': [
         ROOT / 'engine' / 'setup' / 'api.py',
         ROOT / 'engine' / 'setup' / 'download.py',
         ROOT / 'engine' / 'setup' / 'hardware.py',
         ROOT / 'engine' / 'setup' / 'install.py',
     ],
+    'engine/update': [ROOT / 'engine' / 'update.py'],
     'app/main': [ROOT / 'app' / 'main.py'],
+    'app/bridge': [ROOT / 'app' / 'bridge.py'],
     'native/macos': [ROOT / 'app' / 'shell_macos.py'],
+    'native/macos-updater': [ROOT / 'app' / 'update_macos.py'],
+    'app/contribute': [ROOT / 'app' / 'contribute.py'],
     'native/windows': [ROOT / 'app' / 'shell_windows.py'],
     'native/linux': [ROOT / 'app' / 'shell_linux.py'],
     'installer': [ROOT / 'packaging' / 'lastbook_setup.py'],
@@ -53,6 +67,7 @@ CONTENT = {
     'Other tree crops', 'WHO', 'FEMA', 'CDC', 'EPA', 'USDA', 'NOAA',
     'UNICEF', 'MSF', 'Small', 'Medium', 'Large',
     'Where There Is No Doctor', 'National Center for Home Food Preservation',
+    'Appropedia', 'Wikipedia',
 }
 
 TECHNICAL_EXACT = {
@@ -62,6 +77,9 @@ TECHNICAL_EXACT = {
     'Escape', 'Enter', 'AbortError', 'HEVC', 'START-HERE.txt',
     'LastbookData.setup', 'application/json', 'text/html',
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
+    'Could not access the desktop language preference', 'Contents',
+    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$',
+    '(pointer: coarse)',
 }
 
 TECHNICAL_PREFIX = (
@@ -74,6 +92,7 @@ LOG_CONTEXT = (
     'console.', 'logger.', 'log(', '_log(', 'print(',
     'raise RuntimeError', 'raise ValueError', 'raise OSError',
 )
+LOG_CALLS = {'debug', 'error', 'info', 'log', 'print', 'warning', '_log'}
 
 SVG_RE = re.compile(r'^M-?\d')
 KEYISH = re.compile(r'^[A-Za-z][A-Za-z0-9_.-]{0,40}$')
@@ -88,10 +107,10 @@ TOKEN = re.compile(
     re.I,
 )
 DISPLAY_PRE = re.compile(
-    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|'
+    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|'
     r'setUiTitle|aria-label|placeholder|confirm\(|alert\(|toast\(|show_error|'
-    r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|GenericName|'
-    r'Comment=|Name=|\.Text\s*=|why\s*=|Failed\(|_fail\(|live\.textContent|'
+    r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|setPrompt_|GenericName|'
+    r'Comment=|Name=|\.Text\s*=|why\s*=|message\s*[:=]|[\'"]error[\'"]\s*:|Failed\(|_fail\(|live\.textContent|'
     r'set_tooltip|tooltip_text|add_buttons\(|initWithTitle_|ASK_TITLE|ASK\s*=|'
     r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|setWindowTitle|title\s*[:=]|menu\.append|view\.append|'
     r'helps\.append|_menu\('
@@ -116,17 +135,14 @@ def unescape(s, quote):
 
 
 def already_wired(pre: str) -> bool:
-    # Only inspect the current statement. A translation call earlier in the
-    # same function must not hide a later hard-coded label (the old 300-char
-    # window caused this false positive, especially in compact JS).
+    # A completed translation call elsewhere in the same statement must not
+    # hide a different literal, especially inside a nested template.
     tail = pre.rsplit(';', 1)[-1][-300:]
-    if re.search(r"(?:tr|native_t|installer_t|user_error|t)\s*\(", tail):
+    if _inside_translation_call(pre):
         return True
-    if 'data-i18n' in tail:
+    if _inside_named_call(pre, {'setUiTitle', 'labelPair', 'backButton'}):
         return True
-    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT|NO_RUNTIME|setUiTitle|labelPair|backButton|GO)\s*[=(]", tail):
-        return True
-    if re.search(r"(?:key\s*=|\[\s*['\"]key['\"]\s*\]\s*=)\s*['\"](?:setup|native|installer|desktop|nav|chat|map)\.", tail):
+    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT)\s*=\s*$", tail):
         return True
     return False
 
@@ -144,28 +160,64 @@ def _has_i18n_marker_in_tag(pre: str, post: str) -> bool:
     return bool(tag and re.search(r'\bdata-i18n(?:-[a-z-]+)?\s*=', tag))
 
 
+def _inside_named_call(pre: str, names) -> bool:
+    """True when the current literal is nested in a call with one of these names."""
+    stack = []
+    n = len(pre)
+
+    def code(i, stop_brace=False):
+        braces = 0
+        while i < n:
+            if pre.startswith('//', i):
+                end = pre.find('\n', i + 2)
+                i = n if end < 0 else end + 1
+                continue
+            if pre.startswith('/*', i):
+                end = pre.find('*/', i + 2)
+                i = n if end < 0 else end + 2
+                continue
+            c = pre[i]
+            if c in "'\"":
+                i = _skip_string(pre, i)
+                continue
+            if c == '`':
+                i = template(i)
+                continue
+            if c == '(':
+                m = re.search(r'([A-Za-z_$][\w$]*)\s*$', pre[:i])
+                stack.append(m.group(1) if m else '')
+            elif c == ')' and stack:
+                stack.pop()
+            elif c == '{':
+                braces += 1
+            elif c == '}':
+                if stop_brace and braces == 0:
+                    return i + 1
+                braces = max(0, braces - 1)
+            i += 1
+        return i
+
+    def template(i):
+        i += 1
+        while i < n:
+            if pre[i] == '\\':
+                i += 2
+            elif pre.startswith('${', i):
+                i = code(i + 2, stop_brace=True)
+            elif pre[i] == '`':
+                return i + 1
+            else:
+                i += 1
+        return i
+
+    code(0)
+    return any(name in names for name in stack)
+
+
 def _inside_translation_call(pre: str) -> bool:
     """True when the string is an argument to an open translation call."""
-    # The scanner supplies a prefix ending immediately before the literal.
-    # Track call parentheses while skipping quoted/template strings so a
-    # completed neighboring tr() cannot mark the next literal as translated.
-    stack = []
-    i = 0
-    while i < len(pre):
-        c = pre[i]
-        if c in "'\"":
-            i = _skip_string(pre, i)
-            continue
-        if c == '`':
-            i = _skip_template(pre, i)
-            continue
-        if c == '(':
-            m = re.search(r'([A-Za-z_$][\w$]*)\s*$', pre[:i])
-            stack.append(m.group(1) if m else '')
-        elif c == ')' and stack:
-            stack.pop()
-        i += 1
-    return any(name in {'tr', 'native_t', 'installer_t', 'user_error', 't'} for name in stack)
+    # A completed neighboring tr() cannot mark the next literal as translated.
+    return _inside_named_call(pre, {'tr', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
@@ -175,8 +227,14 @@ def _inside_keyed_error_call(pre: str, post: str) -> bool:
     if re.search(r"why_part\s*\(\s*['\"]setup\.", source):
         return True
     # Failed stores the key after its fallback text. Keep the lookahead local
-    # to the current call and require a setup key to avoid hiding raw errors.
-    if re.search(r"(?:Failed|Refused|_fail)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"]setup\.", source):
+    # to the current call and require a catalogue key to avoid hiding raw errors.
+    if re.search(r"(?:Failed|Refused|_fail|_refuse_carried_back)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"](?:setup|update)\.", source):
+        return True
+    # Update state records carry a translation key next to the English fallback;
+    # web/update.js renders that key for the selected locale.
+    if re.search(r"_set\s*\([\s\S]{0,1200}?\bmessage_key\s*=\s*['\"]update\.", source):
+        return True
+    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"]update\.", source):
         return True
     # Some errors are stored as adjacent `error` / `key` fields and translated
     # by the UI consumer. Treat only that explicit keyed record as a fallback.
@@ -185,6 +243,8 @@ def _inside_keyed_error_call(pre: str, post: str) -> bool:
 
 def looks_technical(s: str) -> bool:
     if s in TECHNICAL_EXACT:
+        return True
+    if re.fullmatch(r'[A-Z][A-Za-z0-9]*(?:Enabled|Preconnect|Prefetch)', s):
         return True
     if s.startswith(TECHNICAL_PREFIX) or SVG_RE.match(s):
         return True
@@ -195,6 +255,8 @@ def looks_technical(s: str) -> bool:
     if re.match(r'^(?:#[\w-]+(?:,\s*[^;]+)?|\.[\w-]+(?:,\s*[^;]+)?)$', s):
         return True
     if re.fullmatch(r'\[value="\{…\}"\]', s):
+        return True
+    if re.fullmatch(r'&near=\{…\},\{…\}', s):
         return True
     if re.fullmatch(r'#[\w-]+\s+[a-zA-Z][\w-]*', s):
         return True
@@ -263,7 +325,10 @@ def looks_ui(s: str) -> bool:
 
 
 def display_context(pre: str) -> bool:
-    return bool(DISPLAY_PRE.search(pre[-240:]))
+    # The installer helper label() is a visible WinForms sink. Require the
+    # literal to be its immediate first argument so a nearby helper definition
+    # cannot misclassify a font name such as "Segoe UI" as interface text.
+    return bool(DISPLAY_PRE.search(pre[-240:]) or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]))
 
 
 def classify(s: str, pre: str, post: str = '') -> str:
@@ -278,13 +343,13 @@ def classify(s: str, pre: str, post: str = '') -> str:
             and '{…}' in s):
         return 'wired'
     mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
-    if (_inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
+    if ('__i18n_bound' in pre or _inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
             or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
-    if any(c in context[-260:] for c in LOG_CONTEXT):
+    if any(c in context[-260:] for c in LOG_CONTEXT) or _inside_named_call(pre, LOG_CALLS):
         return 'technical'
     if s in CONTENT:
         return 'content'
@@ -319,6 +384,27 @@ def strip_comments_js(text: str) -> str:
     return ''.join(out)
 
 
+def strip_python_comments(text: str) -> str:
+    """Blank Python comments without touching hashes inside strings."""
+    lines = text.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+    chars = list(text)
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+            if tok.type != tokenize.COMMENT:
+                continue
+            start = offsets[tok.start[0] - 1] + tok.start[1]
+            end = offsets[tok.end[0] - 1] + tok.end[1]
+            for i in range(start, end):
+                if chars[i] != '\n':
+                    chars[i] = ' '
+    except (tokenize.TokenError, IndentationError):
+        return text
+    return ''.join(chars)
+
+
 def _skip_string(text, i):
     """i points at an opening quote. Return the index after the closing quote."""
     quote = text[i]
@@ -341,6 +427,14 @@ def _skip_js_expr(text, i):
     depth = 1
     n = len(text)
     while i < n and depth:
+        if text.startswith('//', i):
+            end = text.find('\n', i + 2)
+            i = n if end < 0 else end + 1
+            continue
+        if text.startswith('/*', i):
+            end = text.find('*/', i + 2)
+            i = n if end < 0 else end + 2
+            continue
         c = text[i]
         if c in "'\"":
             i = _skip_string(text, i)
@@ -412,6 +506,58 @@ def _template_parts(text, start):
     return i, parts
 
 
+def _template_expressions(text, start):
+    """Return the source ranges of expressions directly inside a template."""
+    i, n = start + 1, len(text)
+    while i < n:
+        if text[i] == '\\':
+            i = min(i + 2, n)
+            continue
+        if text.startswith('${', i):
+            expr_start = i + 2
+            expr_end = _skip_js_expr(text, expr_start) - 1
+            yield expr_start, expr_end
+            i = expr_end + 1
+            continue
+        if text[i] == '`':
+            return
+        i += 1
+
+
+def _iter_js_templates(text, base, source):
+    """Yield template messages recursively, including nested template branches."""
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] in "'\"":
+            i = _skip_string(text, i)
+            continue
+        if text[i] != '`':
+            i += 1
+            continue
+        start = i
+        end, parts = _template_parts(text, start)
+        absolute = base + start
+        pre = source[max(0, absolute - 2000):absolute]
+        if any(kind == 'expr' for kind, _ in parts):
+            flat = ''.join(lit if kind == 'lit' else '{…}' for kind, lit in parts)
+            if flat.strip() and flat.strip() != '{…}':
+                if _is_markup_fragment(flat):
+                    for value, local_pre in _template_markup_strings(flat, pre):
+                        yield absolute, value, local_pre
+                else:
+                    yield absolute, flat, pre
+            for expr_start, expr_end in _template_expressions(text, start):
+                yield from _iter_js_templates(text[expr_start:expr_end], base + expr_start, source)
+        else:
+            literal = ''.join(lit for kind, lit in parts if kind == 'lit')
+            if _is_markup_fragment(literal):
+                for value, local_pre in _template_markup_strings(literal, pre):
+                    yield absolute, value, local_pre
+            else:
+                yield absolute, literal, pre
+        i = end
+
+
 def looks_like_markup(s):
     body = s.replace('{…}', ' ')
     if '<' in body and '>' in body and body.lstrip().startswith('<'):
@@ -422,32 +568,75 @@ def looks_like_markup(s):
     return False
 
 
+class _MarkupStrings(HTMLParser):
+    """Yield visible text and accessible attributes from HTML template literals."""
+    VISIBLE_ATTRIBUTES = {'alt', 'aria-description', 'aria-label', 'placeholder', 'title', 'value'}
+    VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
+
+    def __init__(self, prefix):
+        super().__init__(convert_charrefs=True)
+        self.prefix = prefix
+        self.tags = []
+        self.strings = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        markers = {key for key in values if key == 'data-i18n' or key.startswith('data-i18n-')}
+        if tag not in self.VOID_ELEMENTS:
+            self.tags.append((tag, markers))
+        for name in self.VISIBLE_ATTRIBUTES:
+            value = values.get(name)
+            if value and '{…}' not in value:
+                marker = f'data-i18n-{name}'
+                pre = self.prefix + ' ' + name + (' __i18n_bound_attribute__' if marker in markers else '')
+                self.strings.append((value, pre))
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        for index in range(len(self.tags) - 1, -1, -1):
+            if self.tags[index][0] == tag:
+                del self.tags[index:]
+                break
+
+    def handle_data(self, data):
+        value = data.strip()
+        if value:
+            wired = bool(self.tags and 'data-i18n' in self.tags[-1][1])
+            self.strings.append((value, self.prefix + ' innerHTML' + (' __i18n_bound_text__' if wired else '')))
+
+
+def _template_markup_strings(flat, pre):
+    # A single template can contain translated and untranslated elements. Do
+    # not classify the whole template from a nearby marker: inspect each text
+    # node and visible attribute in its own element context.
+    parser = _MarkupStrings(pre)
+    try:
+        parser.feed(flat)
+        parser.close()
+    except Exception:
+        return []
+    return parser.strings
+
+
+def _is_markup_fragment(value):
+    return '<' in value and '>' in value and value.lstrip().startswith('<')
+
+
 def iter_js_strings(text):
     text = strip_comments_js(text)
     for m in STR_RE.finditer(text):
         raw, q = m.group(2), m.group(1)
         s = unescape(raw, q)
-        yield m.start(), s, text[max(0, m.start() - 2000):m.start()]
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        if c in "'\"":
-            i = _skip_string(text, i)
-            continue
-        if c == '`':
-            start = i
-            end, parts = _template_parts(text, start)
-            pre = text[max(0, start - 2000):start]
-            if any(kind == 'expr' for kind, _ in parts):
-                flat = ''.join(lit if kind == 'lit' else '{…}' for kind, lit in parts)
-                if flat.strip() and flat.strip() != '{…}':
-                    yield start, flat, pre
-            else:
-                s = ''.join(lit for kind, lit in parts if kind == 'lit')
-                yield start, s, pre
-            i = end
-            continue
-        i += 1
+        pre = text[max(0, m.start() - 2000):m.start()]
+        if _is_markup_fragment(s):
+            for value, local_pre in _template_markup_strings(s, pre):
+                yield m.start(), value, local_pre
+        else:
+            yield m.start(), s, pre
+    yield from _iter_js_templates(text, 0, text)
 
 
 def mask_py_docstrings(text: str) -> str:
@@ -502,16 +691,38 @@ def scan_python():
         for path in paths:
             if not path.is_file():
                 continue
-            text = path.read_text(encoding='utf-8')
+            text = strip_python_comments(path.read_text(encoding='utf-8'))
             rel = str(path.relative_to(ROOT))
+            # These short labels are values in the Linux navigation table;
+            # the corresponding key map sends them through native_t later.
+            go_values = set()
+            if rel == 'app/shell_linux.py':
+                go_match = re.search(r'\bGO\s*=\s*\[(.*?)\]', text, re.S)
+                key_match = re.search(r'go_names\s*=\s*\{(.*?)\}', text, re.S)
+                if go_match and key_match and 'native_t(go_names.get(name' in text:
+                    go_values = set(re.findall(r"['\"]([^'\"]+)['\"]\s*,", go_match.group(1)))
+                    translated_names = set(re.findall(r"['\"]([^'\"]+)['\"]\s*:\s*['\"]nav\.", key_match.group(1)))
+                    go_values &= translated_names
             for pos, s, pre, body in iter_py_strings(text):
                 if not s or len(s) > 300:
                     continue
                 end = _skip_string(body, pos)
                 post = body[pos:min(len(body), end + 600)]
                 line = body[:pos].count('\n') + 1
+                kind = 'wired' if s in go_values else classify(s, pre, post)
                 hits.append({'surface': surface, 'file': rel, 'line': line,
-                             'text': s, 'class': classify(s, pre, post)})
+                             'text': s, 'class': kind})
+            if rel == 'app/bridge.py':
+                embedded = re.search(r'(?m)^TOP_SCRIPT\s*=\s*r"""([\s\S]*?)"""', text)
+                if embedded:
+                    script = embedded.group(1)
+                    line_offset = text[:embedded.start(1)].count('\n')
+                    for pos, s, pre in iter_js_strings(script):
+                        if not s or len(s) > 2000:
+                            continue
+                        line = line_offset + script[:pos].count('\n') + 1
+                        hits.append({'surface': surface, 'file': rel, 'line': line,
+                                     'text': s, 'class': classify(s, pre)})
     return hits
 
 

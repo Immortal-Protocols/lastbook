@@ -57,6 +57,51 @@ class Coverage(unittest.TestCase):
         kinds = {scan.classify(text, pre) for _pos, text, pre in scan.iter_js_strings(wired)}
         self.assertNotIn('chrome', kinds)
 
+    def test_scanner_finds_untranslated_text_in_nested_templates(self):
+        sample = '''
+          root.innerHTML = `<div>${ready ? `<button>Stop</button>` : `<button>Keep going</button>`}</div>`;
+        '''
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        for literal in ('Stop', 'Keep going'):
+            with self.subTest(literal=literal):
+                pre = next((pre for text, pre in hits if text == literal), None)
+                self.assertIsNotNone(pre, f'nested template string {literal!r} was skipped: {hits!r}')
+                self.assertEqual(scan.classify(literal, pre), 'chrome')
+
+    def test_scanner_does_not_let_a_translation_elsewhere_in_an_expression_hide_text(self):
+        sample = '''
+          root.innerHTML = `${tr('setup.title', null, 'Settings')}${done ? `<a>Add your state’s address search</a>` : ''}`;
+        '''
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        pre = next((pre for text, pre in hits if text == 'Add your state’s address search'), None)
+        self.assertIsNotNone(pre, f'nested visible label was skipped: {hits!r}')
+        self.assertEqual(scan.classify('Add your state’s address search', pre), 'chrome')
+
+    def test_translated_words_are_never_used_as_platform_or_css_values(self):
+        app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
+        chat = (ROOT / 'web' / 'chat.js').read_text(encoding='utf-8')
+        map_js = (ROOT / 'web' / 'map.js').read_text(encoding='utf-8')
+        self.assertNotIn("tr('map.noneOn'", app)
+        self.assertNotIn("tr('map.noneOn'", chat)
+        self.assertIn("colorSpaceConversion: 'none', premultiplyAlpha: 'none'", map_js)
+        self.assertIn("style.setProperty('display', 'none'", app)
+        self.assertIn("x.style.display = 'none'", chat)
+        self.assertNotRegex(map_js, r"createImageBitmap\([^\n]*tr\(")
+        self.assertNotRegex(app, r"style\.setProperty\(['\"]display['\"],\s*tr\(")
+        self.assertNotRegex(chat, r"style\.display\s*=\s*tr\(")
+        self.assertLessEqual(scan.strip_comments_js(map_js).count("tr('map.noneOn'"), 1)
+
+    def test_model_server_keyed_api_fallbacks_are_wired(self):
+        keyed = "_api_error('no_answer', 'setup.err.modelServerNoAnswer', 'Nothing answers at {where}.', where=where)"
+        hits = list(scan.iter_py_strings(keyed))
+        message = next(hit for hit in hits if hit[1] == 'Nothing answers at {where}.')
+        self.assertEqual(scan.classify(message[1], message[2], message[3][message[0]:message[0] + 100]), 'wired')
+
+        unkeyed = "return {'code': 'no_answer', 'error': 'Nothing answers at {where}.'}"
+        hits = list(scan.iter_py_strings(unkeyed))
+        message = next(hit for hit in hits if hit[1] == 'Nothing answers at {where}.')
+        self.assertEqual(scan.classify(message[1], message[2], message[3][message[0]:message[0] + 100]), 'chrome')
+
     def test_scanner_does_not_let_adjacent_translation_hide_literal(self):
         # A translation in the preceding statement must not classify the next
         # string as wired merely because it is nearby in the source text.

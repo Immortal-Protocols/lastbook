@@ -87,7 +87,7 @@ TOP_SCRIPT = r"""(() => {
   if (window.top !== window || window.origin === 'null') return;  // a saved page, in a frame or not, gets nothing
   if (__UI_LANGUAGE__) window.LB_DESKTOP_LANGUAGE = true;
   // Asking for a location goes to the system's location service, which can ask the network. The map's button shows this message.
-  const none = { getCurrentPosition(ok, no) { if (no) setTimeout(no, 0, { code: 1, message: 'Lastbook stays offline and does not ask where you are.' }) }, watchPosition() { return 0 }, clearWatch() { } };
+  const none = { getCurrentPosition(ok, no) { if (no) setTimeout(no, 0, { code: 1, message: lastbookTr('map.locationOffline', null, 'Lastbook stays offline and does not ask where you are.') }) }, watchPosition() { return 0 }, clearWatch() { } };
   try { Object.defineProperty(Navigator.prototype, 'geolocation', { get() { return none }, configurable: false }) } catch { }
   const KEY = '__KEY__', POLL = __POLL__, own = location.protocol + '//' + location.host;
   const real = window.fetch.bind(window);

@@ -55,6 +55,9 @@
   function activate(saved) {
     selection = saved || 'en';
     engine.usePreferredLocales(selection);
+    // UI rendered through tr() inherits the document language, including
+    // unmarked dynamic text. Keep the document metadata in sync for assistive tech.
+    document.documentElement.lang = engine.locale || 'en';
     apply();
     document.dispatchEvent(new Event('lastbook:languagechange'));
   }

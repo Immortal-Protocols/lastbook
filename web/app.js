@@ -210,9 +210,10 @@ function vcard(v, opts = {}) {
   const p = vprog()[v.id];
   const pct = p && p.t && (v.duration || p.d) ? Math.min(100, 100 * p.t / (v.duration || p.d)) : 0;
   const watched = isWatched(v.id, p, v);
+  const translate = globalThis.lastbookTr || ((_key, _params, fallback) => fallback);
   return `<a class="vcard" href="#/watch/${encodeURIComponent(v.id)}?${fromQ()}" ${opts.style || ''}>
     <span class="vthumb">${v.thumb ? `<img loading="lazy" alt="" src="${fileUrl(v.thumb)}" onerror="this.remove()">` : `<span class="ph">${ico('video')}</span>`}
-      ${watched ? `<span class="vcheck" title="${esc(globalThis.lastbookTr?.('videos.watched', null, 'Watched') || 'Watched')}" aria-label="${esc(globalThis.lastbookTr?.('videos.watched', null, 'Watched') || 'Watched')}" data-i18n-title="videos.watched">${ico('check')}</span>` : ''}${v.transcript ? `<span class="cc" title="${esc(tr('video.hasTranscript', null, 'Has a transcript'))}" data-i18n-title="video.hasTranscript">CC</span>` : ''}${v.duration ? `<span class="dur">${clock(v.duration)}</span>` : ''}${pct > 2 ? `<span class="prog" style="width:${pct}%"></span>` : ''}<span class="play">${ico('play')}</span></span>
+      ${watched ? `<span class="vcheck" title="${esc(translate('videos.watched', null, 'Watched'))}" aria-label="${esc(translate('videos.watched', null, 'Watched'))}" data-i18n-title="videos.watched">${ico('check')}</span>` : ''}${v.transcript ? `<span class="cc" title="${esc(translate('video.hasTranscript', null, 'Has a transcript'))}" data-i18n-title="video.hasTranscript">CC</span>` : ''}${v.duration ? `<span class="dur">${clock(v.duration)}</span>` : ''}${pct > 2 ? `<span class="prog" style="width:${pct}%"></span>` : ''}<span class="play">${ico('play')}</span></span>
     <b>${esc(v.title)}</b><span class="vm">${esc(opts.sub || v.publisher || '')}</span></a>`;
 }
 function rail(html, cls = '') {
@@ -435,7 +436,82 @@ function searchPlaceholder() {
   } else q.placeholder = short ? tr('search.label', null, 'Search') : tr('search.library', null, 'Search the library');
 }
 new ResizeObserver(searchPlaceholder).observe($('#topQ'));
-document.addEventListener('lastbook:languagechange', applyChromeLanguage);
+let renderedLocale = globalThis.LastbookI18n?.locale || 'en';
+function snapshotForLanguageChange() {
+  const fields = $$('#main input,#main textarea,#main select').map((el, index) => ({
+    index, id: el.id, tag: el.tagName, type: el.type, value: el.value,
+    checked: 'checked' in el ? el.checked : undefined,
+    start: typeof el.selectionStart === 'number' ? el.selectionStart : null,
+    end: typeof el.selectionEnd === 'number' ? el.selectionEnd : null,
+  }));
+  const focusables = $$('#main a,#main button,#main input,#main textarea,#main select,[tabindex]');
+  const active = document.activeElement;
+  const media = $$('#main video,#main audio').map((el, index) => ({
+    index, id: el.id, time: el.currentTime, paused: el.paused,
+    rate: el.playbackRate, muted: el.muted, volume: el.volume,
+  }));
+  const scrollables = $$('#main [id]').filter(el => el.scrollTop || el.scrollLeft)
+    .map(el => ({ id: el.id, top: el.scrollTop, left: el.scrollLeft }));
+  return {
+    href: here(), y: scrollY, topSearch: $('#topQ').value, fields, media, scrollables,
+    focusId: active && active.id,
+    focusIndex: focusables.indexOf(active),
+  };
+}
+function restoreAfterLanguageChange(s) {
+  if (here() !== s.href) return;
+  $('#topQ').value = s.topSearch;
+  const fields = $$('#main input,#main textarea,#main select');
+  for (const saved of s.fields) {
+    const el = (saved.id && document.getElementById(saved.id)) || fields[saved.index];
+    if (!el || el.tagName !== saved.tag || el.type === 'file') continue;
+    if (saved.checked !== undefined) el.checked = saved.checked;
+    else if (el.value !== saved.value) {
+      el.value = saved.value;
+      if (el.matches('input[type="search"],input[type="text"],textarea')) el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (saved.start !== null && el.setSelectionRange) {
+      try { el.setSelectionRange(saved.start, saved.end) } catch { }
+    }
+  }
+  for (const saved of s.scrollables) {
+    const el = document.getElementById(saved.id);
+    if (el) { el.scrollTop = saved.top; el.scrollLeft = saved.left }
+  }
+  for (const saved of s.media) {
+    const el = (saved.id && document.getElementById(saved.id)) || $$('#main video,#main audio')[saved.index];
+    if (!el) continue;
+    const restore = () => {
+      try { el.currentTime = saved.time } catch { }
+      el.playbackRate = saved.rate; el.muted = saved.muted; el.volume = saved.volume;
+      if (!saved.paused) el.play().catch(() => { });
+    };
+    if (el.readyState >= 1) restore(); else el.addEventListener('loadedmetadata', restore, { once: true });
+  }
+  const focusables = $$('#main a,#main button,#main input,#main textarea,#main select,[tabindex]');
+  const focus = (s.focusId && document.getElementById(s.focusId)) || focusables[s.focusIndex];
+  if (focus && focus.isConnected) focus.focus({ preventScroll: true });
+  requestAnimationFrame(() => { if (here() === s.href) scrollTo(0, s.y) });
+}
+async function refreshCurrentLanguage() {
+  if (!current) return;
+  const state = snapshotForLanguageChange();
+  if ((parse().parts[0] || 'videos') === 'map') {
+    await MapView.refreshLanguage(main);
+    translateRendered();
+    restoreAfterLanguageChange(state);
+  } else {
+    await route();
+    restoreAfterLanguageChange(state);
+  }
+}
+document.addEventListener('lastbook:languagechange', () => {
+  applyChromeLanguage();
+  const locale = globalThis.LastbookI18n?.locale || 'en';
+  if (locale === renderedLocale) return;
+  renderedLocale = locale;
+  void refreshCurrentLanguage();
+});
 // At 900 and wider a page's .dock controls (view switch, Save, Ask) sit in the toolbar; narrower they stay in the page.
 const docks = () => wide.matches || (!MAC && innerWidth >= 640);
 function dock() {
@@ -448,7 +524,7 @@ const pageBack = () => $('main a[data-back]');
 function barState() { $('#tbBack').disabled = navAt < 1 && !pageBack(); $('#tbFwd').disabled = navAt >= navEnd }
 function bandState() {
   if (MAC) return;
-  const s = $('#topSearch'), searchInBand = html.classList.contains('compact') && getComputedStyle(s).visibility !== 'hidden' && getComputedStyle(s).display !== tr('map.noneOn', null, 'none');
+  const s = $('#topSearch'), searchInBand = html.classList.contains('compact') && getComputedStyle(s).visibility !== 'hidden' && getComputedStyle(s).display !== 'none';
   const was = html.classList.contains('no-bar'), now = !$('#tbActs').children.length && !searchInBand;
   html.classList.toggle('no-bar', now);
   if (was !== now && window.onresize) window.onresize();   // a page that measures itself (the map) measures again
@@ -569,7 +645,7 @@ async function topicPage(id, open) {
   const route = (t.route || []).length ? `<h2>${esc(tr('guide.yourRoute', null, 'Your learning route'))}</h2><p class="muted small">${esc(tr('guide.routeTicksNote', null, 'Ticks are your own notes on this device. Reading or watching is not the same as practising safely.'))}</p>
     <ol class="route">${t.route.map((s, i) => { const k = id + ':' + i, p = progress[k] || {}; return `<li class="step${p.practised ? ' done' : ''}"><h3>${esc(s.title.replace(/^Step \d+:\s*/i, ''))}</h3>${s.goal ? `<p class="goal">${esc(s.goal)}</p>` : ''}
       <div class="rcards">${(s.read || []).map(rcard).join('')}</div>
-      <div class="mark"><label><input type="checkbox" data-prog="${k}" data-f="read" ${p.read ? 'checked' : ''}> I’ve read this</label><label><input type="checkbox" data-prog="${k}" data-f="practised" ${p.practised ? 'checked' : ''}> I’ve practised it with someone who knows</label></div></li>` }).join('')}</ol>` : '';
+      <div class="mark"><label><input type="checkbox" data-prog="${k}" data-f="read" ${p.read ? 'checked' : ''}> ${tr('guide.readThis', null, 'I’ve read this')}</label><label><input type="checkbox" data-prog="${k}" data-f="practised" ${p.practised ? 'checked' : ''}> ${tr('guide.practisedWithSomeone', null, 'I’ve practised it with someone who knows')}</label></div></li>` }).join('')}</ol>` : '';
   const sec = (icon, title, items) => items && items.length ? `<details class="more"><summary>${ico(icon)}<span>${title} <span class="n">· ${items.length}</span></span></summary><div class="body"><ul class="list">${items.map(i => rowItem({ ...i, preview: true })).join('')}</ul></div></details>` : '';
   const vids = topicVideos(t);
   const related = (t.related || []).map(topicById).filter(Boolean);
@@ -580,7 +656,7 @@ async function topicPage(id, open) {
       ${(t.choices || []).length ? `<p class="ask" id="askh">${learn ? tr('guide.whereStart', null, 'Where do you want to start?') : tr('guide.whatsHappening', null, 'What’s happening?')}</p><div class="situations" aria-labelledby="askh">${sits}</div>` : ''}
       <div class="gnarrow">${limits}${disagree}</div>
       ${route}
-      ${vids.length ? secHead(tr('guide.videosForThis', null, 'Videos for this'), `${vids.length} picked video${vids.length > 1 ? 's' : ''}`) + rail(vids.map(v => vcard(v)).join('')) : ''}
+      ${vids.length ? secHead(tr('guide.videosForThis', null, 'Videos for this'), tr('guide.pickedVideos', { count: vids.length }, '{count} picked videos')) + rail(vids.map(v => vcard(v)).join('')) : ''}
       ${sec('prep', 'Get ready before it happens', t.prepare)}
       ${sec('book', tr('guide.goDeeper', null, 'Go deeper: full manuals & articles'), t.learn)}
       ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>Not in this library</span></summary><div class="body"><p class="muted small" style="margin-top:0">Looked for but not found when this guide was put together (October 2026):</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
@@ -633,7 +709,7 @@ async function videoRow(row, q) {
     <div class="vtools">${searchBox('vq', qq, tr('videos.searchThese', null, 'Search these videos'), ['search.go', 'Go'])}
       <label class="sr" for="vsort" data-i18n="videos.sort">Sort</label><select id="vsort">${[['', 'videos.mostUseful', 'Most useful first'], ['short', 'videos.shortestFirst', 'Shortest first'], ['new', 'videos.newestFirst', 'Newest first'], ['az', 'videos.az', 'A to Z']].map(([k, key, l]) => `<option value="${k}" ${k === sort ? 'selected' : ''} data-i18n="${key}">${tr(key, null, l)}</option>`).join('')}</select></div>
     <div class="chips" style="margin:8px 0 16px">${[['', tr('videos.anyLength', null, 'Any length')], ['short', tr('videos.under10', null, 'Under 10 min')], ['medium', tr('videos.10to30', null, '10–30 min')], ['long', tr('videos.over30', null, 'Over 30 min')]].map(([k, l]) => `<a class="chip ${k === len ? 'on' : ''}" href="${qs({ len: k })}">${l}</a>`).join('')}</div>
-    <p class="muted small">${first.total.toLocaleString()} video${first.total === 1 ? '' : 's'}</p>
+    <p class="muted small">${esc(tr('videos.videoCount', { count: first.total }, '{count} videos'))}</p>
     <div class="vgrid" id="vg"></div><p id="vmore"></p>`;
   $('#vqF').addEventListener('submit', e => { e.preventDefault(); location.hash = qs({ q: $('#vq').value.trim() }) });
   $('#vsort').addEventListener('change', e => { location.hash = qs({ sort: e.target.value }) });
@@ -685,7 +761,6 @@ async function videoFormats(url) {
 }
 
 async function watch(id, t, from) {
-  const tr = globalThis.lastbookTr || ((_key, _params, fallback) => fallback);
   const d = await api('/api/doc/' + encodeURIComponent(id));
   setTitle(d.title);
   const selfHref = `#/watch/${encodeURIComponent(id)}`;
@@ -743,10 +818,10 @@ async function watch(id, t, from) {
     const w = isWatched(id, null, d);
     if (b.getAttribute('aria-pressed') === String(w)) return;
     b.setAttribute('aria-pressed', w);
-      const titleKey = w ? 'videos.markUnwatched' : 'videos.markWatched', labelKey = w ? 'videos.watched' : 'videos.markWatched';
-      b.title = tr(titleKey, null, w ? 'Mark as unwatched' : 'Mark as watched');
-      if (b.dataset) b.dataset.i18nTitle = titleKey;
-      const sp = $('span', b); if (sp) { if (sp.dataset) sp.dataset.i18n = labelKey; sp.textContent = tr(labelKey, null, w ? 'Watched' : 'Mark watched') }
+    const titleKey = w ? 'videos.markUnwatched' : 'videos.markWatched', labelKey = w ? 'videos.watched' : 'videos.markWatched';
+    b.title = tr(titleKey, null, w ? 'Mark as unwatched' : 'Mark as watched');
+    b.dataset.i18nTitle = titleKey;
+    const sp = $('span', b); if (sp) { sp.dataset.i18n = labelKey; sp.textContent = tr(labelKey, null, w ? 'Watched' : 'Mark watched') }
     const res = $('#resume'); if (res) res.hidden = w;
   };
   const bWatched = $('#markWatched');
@@ -982,10 +1057,10 @@ async function reader(id, page, from, view) {
     leaving = Speak.attach(sb, async () => {
       let t;
       try { t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`) }
-      catch { toast('This page could not be read aloud. Try again.'); return '' }   // shown, not only spoken: the sound may be off
+      catch { toast(tr('reader.speakFailed', null, 'This page could not be read aloud. Try again.')); return '' }   // shown, not only spoken: the sound may be off
       hadText = !!(t.text || '').trim();
-      if (!hadText) toast('This page has no text that can be read aloud.');
-      return hadText ? (isPdf ? `Page ${page}. ` : '') + t.text : 'This page has no text that can be read aloud.';
+      if (!hadText) toast(tr('reader.speakNoText', null, 'This page has no text that can be read aloud.'));
+      return hadText ? (isPdf ? `${tr('reader.pageView', null, 'Page')} ${page}. ` : '') + t.text : tr('reader.speakNoText', null, 'This page has no text that can be read aloud.');
     }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null);
     let goingOn = null;
     try { goingOn = sessionStorage.getItem('sg.speakOn'); sessionStorage.removeItem('sg.speakOn') } catch { }
@@ -1098,9 +1173,9 @@ async function wiki(path, from, y) {
       if (!m[2] && !raw) return;   // the bare address, on its way to the front page
       const front = decodeURIComponent(loc) === await mainPage;   // the front page is named by its file, such as App/IntroPage: the encyclopedia's name says it instead
       if (f.contentDocument !== fd) return;
-      if (front && own) own.style.setProperty('display', tr('map.noneOn', null, 'none'), 'important');   // the skin sets its own display, which the hidden attribute does not beat
+      if (front && own) own.style.setProperty('display', 'none', 'important');   // the skin sets its own display, which the hidden attribute does not beat
       main.classList.toggle('own-title', front);   // then the app's heading names it
-      const nt = front ? zimLabel(zim) : raw || p.split('/').pop().replace(/_/g, ' '), sub = front ? 'Encyclopedia' : zimLabel(zim);
+      const nt = front ? zimLabel(zim) : raw || p.split('/').pop().replace(/_/g, ' '), sub = front ? tr('wiki.encyclopedia', null, 'Encyclopedia') : zimLabel(zim);
       $('#wtitle').textContent = nt; if ($('#wopen')) $('#wopen').href = loc; setTitle(nt, '', zimLabel(zim));
       f.lbName = !front && own ? { nt, at: own.getBoundingClientRect().bottom + fw.scrollY } : null; barName();
       $('#wsave').innerHTML = saveButton({ key: 'w:' + p, title: nt, href, sub });
@@ -1132,10 +1207,10 @@ function tidyArticle(fd) {
   const wrap = (t, cs) => {
     const box = fd.createElement('div'); box.className = 'lb-wide';
     box.style.margin = `${cs.marginTop} 0 ${cs.marginBottom}`;   // the space above and below, which inside the box would no longer meet its neighbours'
-    if (cs.clear !== tr('map.noneOn', null, 'none')) box.style.clear = cs.clear;
+    if (cs.clear !== 'none') box.style.clear = cs.clear;
     t.before(box); box.append(t);
     t.style.setProperty('margin-top', '0', 'important'); t.style.setProperty('margin-bottom', '0', 'important');
-    if (cs.float !== tr('map.noneOn', null, 'none')) { t.style.setProperty('float', tr('map.noneOn', null, 'none'), 'important'); t.style.setProperty('margin-left', '0', 'important'); t.style.setProperty('margin-right', '0', 'important') }
+    if (cs.float !== 'none') { t.style.setProperty('float', 'none', 'important'); t.style.setProperty('margin-left', '0', 'important'); t.style.setProperty('margin-right', '0', 'important') }
     box.style.width = 'min-content'; const least = box.offsetWidth; box.style.width = '';
     box.style.minWidth = `min(100%, ${least}px)`;
     boxes.push(box); return box;
@@ -1143,7 +1218,7 @@ function tidyArticle(fd) {
   for (const t of root.querySelectorAll('table')) {
     if (t.parentElement.closest('table,.lb-wide') || scrolls(t)) continue;   // inside another table, or a box that scrolls already (a navbox)
     const cs = fw.getComputedStyle(t);
-    if (cs.position === 'absolute' || cs.position === 'fixed' || (cs.float !== tr('map.noneOn', null, 'none') && t.offsetWidth <= root.clientWidth)) continue;   // a floated box that fits (an infobox) stays beside the text
+    if (cs.position === 'absolute' || cs.position === 'fixed' || (cs.float !== 'none' && t.offsetWidth <= root.clientWidth)) continue;   // a floated box that fits (an infobox) stays beside the text
     wrap(t, cs);
   }
   // Anything else still wider than the column (a bar chart, a box of fixed width, a group set inline) gets a box too, now and after a resize.
@@ -1163,7 +1238,7 @@ function tidyArticle(fd) {
   };
   for (const li of root.querySelectorAll('table li')) {
     const s = fw.getComputedStyle(li), list = li.parentElement;
-    if (s.display !== 'list-item' || s.listStyleType === tr('map.noneOn', null, 'none') || s.listStylePosition !== 'outside' || list.dataset.lbIn) continue;
+    if (s.display !== 'list-item' || s.listStyleType === 'none' || s.listStylePosition !== 'outside' || list.dataset.lbIn) continue;
     const r = li.getBoundingClientRect(), cell = li.closest('td,th'), c = cell ? cell.getBoundingClientRect() : r, m = parseFloat(s.fontSize) * 1.4;
     const rtl = s.direction === 'rtl', room = rtl ? c.right - r.right : r.left - c.left;
     if (room < m) { list.dataset.lbIn = 1; list.style.setProperty(rtl ? 'margin-right' : 'margin-left', `calc(${fw.getComputedStyle(list)[rtl ? 'marginRight' : 'marginLeft']} + ${Math.ceil(m - room)}px)`) }
@@ -1188,7 +1263,7 @@ function tidyArticle(fd) {
     else if (e.closest('sup.reference')) { const m = /^(lower|upper)-(alpha|roman) (\d+)$/.exec(n.data.trim()); if (m) { const k = +m[3], s = m[2] === 'alpha' ? ab(k - 1) : roman(k); n.data = m[1] === 'upper' ? s.toUpperCase() : s } }
   }
   for (const p of root.querySelectorAll('p')) if (!p.textContent.trim() && !p.querySelector('img,svg,video,audio,iframe,input,math,object')) gone.push(p);
-  gone.forEach(e => e.style.setProperty('display', tr('map.noneOn', null, 'none'), 'important'));
+  gone.forEach(e => e.style.setProperty('display', 'none', 'important'));
   rest(); let rt = 0; new fw.ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(rest, 200) }).observe(root);
   fd.documentElement.dataset.lbTidy = boxes.length;
   return { boxes, edge };   // boxes: also those rest() adds later
@@ -1276,7 +1351,7 @@ async function results(q, kind) {
     return;
   }
   const g = kind === 'all' ? topicMatches(q) : [];
-  out.innerHTML = `${g.length ? `<h2>Start with a guide</h2>${g.map(({ t, c }) => `<a class="ghit" href="#/t/${t.id}${c ? '/' + c.id : ''}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><span><b>${esc(shortName(t.id) || t.title)}${c ? ' — ' + esc(c.label) : ''}</b><small>Picked pages with exact page numbers and safety limits</small></span></a>`).join('')}` : ''}
+  out.innerHTML = `${g.length ? `<h2>${tr('search.startWithGuide', null, 'Start with a guide')}</h2>${g.map(({ t, c }) => `<a class="ghit" href="#/t/${t.id}${c ? '/' + c.id : ''}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><span><b>${esc(shortName(t.id) || t.title)}${c ? ' — ' + esc(c.label) : ''}</b><small>${tr('search.pickedPagesSafety', null, 'Picked pages with exact page numbers and safety limits')}</small></span></a>`).join('')}` : ''}
     <div id="spass"></div><div id="svid"></div><div id="sres"></div><div id="szim"></div>`;
   if (kind === 'wiki') return zimResults(q, $('#szim'), 40);
   // Each part answers whether it found anything; "nothing matched" shows once, only when none did.
@@ -1362,7 +1437,7 @@ async function library() {
     <a class="card" href="#/not-found" id="nfCard" hidden><span class="ico">${ico('search')}</span><b data-i18n="library.notFound">Things I couldn’t find</b><small id="nfCount" data-i18n="library.notFoundEmpty">Notes you kept when a search found nothing</small></a>
   </div>
   ${secHead(`<span data-i18n="home.learnSkill">Learn a skill</span>`, `<span data-i18n="library.learnLead">Step-by-step routes that start simple</span>`)}
-  <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))} · ${(t.route || []).length} steps</small></a>`).join('')}</div>
+  <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))} · ${tr('guide.stepCount', { count: (t.route || []).length }, '{count} steps')}</small></a>`).join('')}</div>
   ${zims.length ? secHead(`<span data-i18n="wiki.title">Encyclopedias</span>`, `<span data-i18n="library.encyclopediasLead">Complete offline copies</span>`, `<a href="#/encyclopedias" data-i18n="library.searchThem">Search them</a>`) + `<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/library')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>` : ''}
   ${secHead(`<span data-i18n="library.browseSubject">Browse by subject</span>`, `<span data-i18n="library.browseLead">Every manual, saved web page and video</span>`)}<div id="shelves"><p class="loading" data-i18n="common.loading">Loading…</p></div>
   <p style="margin-top:20px"><a href="#/about" data-i18n="library.aboutLink">About this library and its sources</a>${IN_WINDOW ? ' · <a href="/ui/setup.html#manage">Library and local AI</a>' : ''}</p>`;
@@ -1395,7 +1470,7 @@ async function shelfPage(id, kind, q) {
   let off = 0;
   const load = async () => {
     const d = await api(`/api/shelf/${id}?kind=${kind}&q=${encodeURIComponent(q)}&offset=${off}`);
-    const html = d.collections.map(c => `<section class="collection"><h3>${esc(c.collection)}</h3><div class="small muted">${esc(c.trust)} · ${c.count} item${c.count > 1 ? 's' : ''}</div><ul class="list">${c.items.map(r => rowItem({ src: r })).join('')}</ul>${c.count > c.items.length ? `<a class="btn ghost" href="#/collection?name=${encodeURIComponent(c.collection)}&${fromQ()}">See all ${c.count}</a>` : ''}</section>`).join('');
+    const html = d.collections.map(c => `<section class="collection"><h3>${esc(c.collection)}</h3><div class="small muted">${esc(c.trust)} · ${tr('library.itemCount', { count: c.count }, '{count} items')}</div><ul class="list">${c.items.map(r => rowItem({ src: r })).join('')}</ul>${c.count > c.items.length ? `<a class="btn ghost" href="#/collection?name=${encodeURIComponent(c.collection)}&${fromQ()}">${tr('library.seeAllCount', { count: c.count }, 'See all {count}')}</a>` : ''}</section>`).join('');
     if (!off) $('#shres').innerHTML = d.collections.length ? '' : `<div class="empty">${esc(tr('library.nothingMatches', null, 'Nothing here matches. Try another word.'))}</div>`;
     $('#shres').insertAdjacentHTML('beforeend', html);
     $('#moreb')?.remove();
@@ -1429,9 +1504,9 @@ async function savedPage() {
   const available = new Set(await held([...new Set(moments.map(x => x.videoId))]));
   main.innerHTML = `<h1 data-i18n="nav.saved">${esc(tr('nav.saved', null, 'Saved'))}</h1><p class="lead" data-i18n="saved.keptOnDevice">${esc(tr('saved.keptOnDevice', null, 'Kept on this device only.'))}</p>
   ${savedError ? `<div class="err" role="alert">${esc(savedError)}</div>` : moments.length ? momentSection() : ''}
-  ${s.length ? `<div class="collection" style="margin-top:18px"><ul class="list">${s.map(li).join('')}</ul></div>` : !moments.length && !savedError ? `<div class="empty"><span class="e-ico">${ico('save')}</span><b>Nothing saved yet</b><p>Choose Save on any page, video, article or answer to keep it here.</p></div>` : ''}
+  ${s.length ? `<div class="collection" style="margin-top:18px"><ul class="list">${s.map(li).join('')}</ul></div>` : !moments.length && !savedError ? `<div class="empty"><span class="e-ico">${ico('save')}</span><b>${tr('saved.nothingYet', null, 'Nothing saved yet')}</b><p>${tr('saved.chooseSaveHint', null, 'Choose Save on any page, video, article or answer to keep it here.')}</p></div>` : ''}
   ${cont.length ? secHead(`<span data-i18n="videos.continue">Continue watching</span>`) + rail(cont.map(([id, v]) => vcard({ id, title: v.title, thumb: v.thumb, duration: v.d }, { sub: tr('home.resumeAt', { time: clock(v.t) }, 'Resume at {time}') })).join('')) : ''}
-  ${secHead(tr('library.recentlyOpened', null, 'Recently opened'))}${r.length ? `<div class="collection"><ul class="list">${r.map(li).join('')}</ul></div><p><button class="btn plain" id="clr">Clear recent list</button></p>` : '<div class="empty"><p>Pages you open will appear here.</p></div>'}`;
+  ${secHead(tr('library.recentlyOpened', null, 'Recently opened'))}${r.length ? `<div class="collection"><ul class="list">${r.map(li).join('')}</ul></div><p><button class="btn plain" id="clr">${tr('saved.clearRecent', null, 'Clear recent list')}</button></p>` : `<div class="empty"><p>${tr('saved.recentEmpty', null, 'Pages you open will appear here.')}</p></div>`}`;
   if (moments.length) wireMoments({ available });
   const c = $('#clr'); if (c) c.onclick = () => { store.set('recent', []); savedPage() };
 }
@@ -1554,12 +1629,12 @@ async function about(showUpdate = false) {
   main.innerHTML = `<h1 data-i18n="about.title">${esc(tr('about.title', null, 'About this library'))}</h1>
   <p class="lead" data-i18n="about.lead">${esc(tr('about.lead', null, 'Public manuals, health guides, courses, videos and encyclopedias kept on this computer, so it works when the internet and phones don’t.'))}</p>
   <div class="cards2" style="margin-top:16px">
+   ${showUpdate && IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
    <div class="card"><b data-i18n="about.whatsInIt">${esc(tr('about.whatsInIt', null, 'What’s in it'))}</b><small>${esc(contents)}</small></div>
    ${ch ? `<div class="card"><b data-i18n="about.stillArriving">${esc(tr('about.stillArriving', null, 'Still arriving'))}</b><small>${esc(tr('about.queuedVideos', { pending: ch.pending.toLocaleString(), downloading: ch.downloading }, '{pending} more videos are queued and {downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.'))}</small></div>` : ''}
    <div class="card"><b data-i18n="about.assistant">${esc(tr('about.assistant', null, 'Assistant'))}</b><small>${localAbout(st) || (st.online ? esc(tr('about.localModelAvailable', { model: st.model }, 'Local model {model} — available.')) : esc(tr('about.localAiOff', null, 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')))}${esc(indexLine)}</small></div>
    <div class="card"><b data-i18n="about.cantSee">${esc(tr('about.cantSee', null, 'What the assistant can’t see'))}</b><small>${blind(st.coverage)}${esc(cantSee)}${esc(remote)}</small></div>
    ${!showUpdate && IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
-   ${showUpdate && IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
   </div>
   <h2 data-i18n="about.howLabelled">${esc(tr('about.howLabelled', null, 'How sources are labelled'))}</h2><ul>
    <li><b data-i18n="about.label.health">${esc(tr('about.label.health', null, 'International health & humanitarian guidance'))}</b> — ${esc(tr('about.label.healthDetail', null, 'WHO, Red Cross / Red Crescent, MSF, UNICEF, Sphere, St John Ambulance.'))}</li>

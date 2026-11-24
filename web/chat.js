@@ -67,7 +67,7 @@ const Chat = (() => {
     main.innerHTML = `<div class="chat">
       <aside class="chat-side" id="chatSide" aria-label="${tr('chat.conversations', null, "Conversations")}">
         <div class="cs-head"><b data-i18n="library.chats">${tr('library.chats', null, 'Chats')}</b><button class="iconbtn" id="closeSide" aria-label="${tr('chat.closeList', null, "Close chat list")}">${ico('back')}</button></div>
-        <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}New chat</a>
+        <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}<span data-i18n="chat.new">New chat</span></a>
         <ul class="cs-list" id="csList"></ul>
         <div class="cs-privacy">
           <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
@@ -133,7 +133,7 @@ const Chat = (() => {
       measuring: [false, tr('chat.checkingMemory', null, 'Checking this computer’s memory…')],
       absent: [false, tr('chat.notAdded', null, 'No local AI added')],
       wrong: [false, l.message || tr('chat.wrongFile', null, 'The local AI file is not the right one.')],
-      too_big: [false, l.message || `The local AI needs about ${gb(l.needs_bytes || 0)} of memory.`],
+      too_big: [false, l.message || tr('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
       off: [false, tr('chat.isOff', null, 'Local AI is off')],
       error: [false, l.message || tr('chat.startFailed', null, 'The local AI could not start.')],
     })[l.state] || [false, l.message || tr('chat.unavailable', null, 'Local AI unavailable')];
@@ -219,10 +219,11 @@ const Chat = (() => {
       const st = ABOUT_STARTERS[aboutCtx.kind] || [];
       log.innerHTML = `<div class="chat-empty">
         <div class="ce-mark">${ico('ask')}</div>
-        <h1>Chat</h1>
-        <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
+        <h1 data-i18n="nav.chat">Chat</h1>
+        <p class="lead" data-i18n="chat.emptyLead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
         <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
-        <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+        <p class="small muted" style="margin-top:18px" data-i18n="chat.emptyNote">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+      globalThis.LastbookI18n?.apply(log);
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
       return;
@@ -248,8 +249,8 @@ const Chat = (() => {
     const over = () => document.scrollingElement.scrollHeight > innerHeight;
     if (!over()) return;
     const shown = all.filter(x => x.offsetWidth);
-    for (let k = shown.length; k > 2 && over(); k -= 2) shown.slice(k - 2, k).forEach(x => x.style.display = tr('map.noneOn', null, 'none'));
-    for (const x of extra) if (over()) x.style.display = tr('map.noneOn', null, 'none');
+    for (let k = shown.length; k > 2 && over(); k -= 2) shown.slice(k - 2, k).forEach(x => x.style.display = 'none');
+    for (const x of extra) if (over()) x.style.display = 'none';
   }
   addEventListener('resize', () => { if ($('.chat-empty')) fitEmpty() });
   function updateBot(i) {
@@ -409,12 +410,12 @@ const Chat = (() => {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
       let pv;
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
-      else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
+      else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">${esc(tr('reader.pagePrefix', { page: s.page }, 'Page {page}'))}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
-      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
+      const where = s.kind === 'video' ? (s.t != null ? tr('chat.atTime', { time: clock(s.t) }, 'at {time}') : '') : s.page ? (s.pages ? tr('reader.pageOfTotal', { page: s.page, total: s.pages }, 'Page {page} of {total}') : tr('reader.pagePrefix', { page: s.page }, 'Page {page}')) : '';
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
-        ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}
+         ${!compact && s.excerpt ? `<span class="sc-ex">${tr('chat.sourceExcerpt', { excerpt: esc(s.excerpt.slice(0, 220)) + (s.excerpt.length > 220 ? '…' : '') }, '“{excerpt}”')}</span>` : ''}
         ${s.image ? '<span class="sc-tag">diagram viewed</span>' : ''}</span></a>`;
     }).join('')}</div>`;
   }
@@ -564,7 +565,7 @@ const Chat = (() => {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && tr('chat.modelServerNotAnswering', { address: esc(st.server.address) }, 'The model server at {address} is not answering. Check that it is running.') });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
-      if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
+      if (!r.ok || !r.body) throw new Error(tr('chat.serverRefused', { detail: r.status }, 'The server refused the question ({detail})'));
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = '';
       for (;;) {
@@ -582,13 +583,13 @@ const Chat = (() => {
       }
       if (m.running && !m.content && !m.error) m.error = tr('chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.');
     } catch (e) {
-      if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
+      if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = tr('chat.stopped', null, 'Stopped.') }
       else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || tr('chat.modelNotRunning', null, 'The local assistant model isn’t running right now.'); await fallback(m, text) }
       else m.error = e.message || tr('app.errorGeneric', null, 'Something went wrong.');
     }
     m.running = false; delete m.state;
     if (m.stopped && m.content) {
-      m.content += '\n\n(Stopped.)';
+      m.content += '\n\n(' + tr('chat.stopped', null, 'Stopped.') + ')';
       // The `done` event never arrives, so `cited` would be empty and the finished view
       // would say the answer is unverified. Keep the sources already received.
       if (m.cited == null && (m.sources || []).length) m.cited = m.sources;
@@ -612,7 +613,7 @@ const Chat = (() => {
     else if (ev.type === 'stopped') m.stopped = true;
   }
   async function fallback(m, q) {
-    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += ' The library search also found nothing for this question.' }
+    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += tr('chat.fallbackNothing', null, ' The library search also found nothing for this question.') }
     catch { m.fallback = [] }
   }
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }

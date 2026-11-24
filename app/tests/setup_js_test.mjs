@@ -91,4 +91,18 @@ const check = (name, ok) => { if (!ok) { bad++; console.log('FAIL', name) } else
   check('and leave the scroll position alone', scrolls === 1);
 }
 
+{   // "Use this file": it goes to the folder chosen on screen, with nothing to download; a noted map does not tick the AI
+  const p = page({ state: state(), pick: { path: '/d/Lastbook-Map-CA.zip' }, use: { noted: true, kind: 'map', job: null } });
+  await flush();
+  check('the chooser says a zip installs on its own', p.el('#main').innerHTML.includes('A library zip is installed as it is, on its own'));
+  p.el('#haveFile').onclick(); await flush();
+  const use = p.calls.find(c => c[0] === 'use');
+  check('use sends the path and the chosen folder', use && use[1].path === '/d/Lastbook-Map-CA.zip' && use[1].folder === '/x/LastbookData');
+  check('and nothing to download with it', use && !('ai' in use[1]) && !('map' in use[1]) && !('address_id' in use[1]));
+  check('a noted map is not the AI file', p.el('#haveNote').textContent.includes('map file') && !p.el('#haveNote').textContent.includes('AI'));
+  const note = p.el('#haveNote').textContent;   // wonderdawg on #465: say which action uses it, since a library zip does not
+  check('the note names the button that uses the map', note.includes('“Download and install”, once your state is chosen'));
+  check('and says a library zip does not', note.includes('A library zip') && !note.includes('will be used.'));
+}
+
 process.exit(bad ? 1 : 0);

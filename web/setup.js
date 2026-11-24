@@ -307,6 +307,7 @@
         ${c ? '' : '<button class="s-link" id="haveLib">Choose an existing library folder</button>'}
         <button class="s-link" id="haveFile">Choose a library zip or AI model file</button>
       </div>
+      ${c ? '' : '<p class="s-hint" id="zipHint">A library zip is installed as it is, on its own. The local AI, a map and address search can be added after, from Library and local AI.</p>'}
       <p class="s-note" id="haveNote" hidden></p>`;
     main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { setPack(r.value); shortfall = null; mapSection(); summary() });
     const box = $('#aiBox'); if (box && !box.disabled) box.onchange = () => { choice.ai = box.checked; shortfall = null; summary() };
@@ -400,9 +401,18 @@
   async function useFile(path, btn, only) {
     if (btn) btn.disabled = true;
     try {
-      const r = await call('use', { path, ...only });
+      const r = await call('use', { path, folder, ...only });   // a library zip goes to the folder chosen on screen, as it is: nothing is downloaded
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'The local AI file will be used. No need to download it.'; return }
+      if (r && r.noted) {   // a model, map or address file kept for the start that follows; only the model is the AI's tick
+        S = await call('state').catch(() => S);
+        const kind = r.kind || 'model';
+        if (kind === 'model') choice.ai = true;
+        chooseView(); const n = $('#haveNote'); n.hidden = false;
+        const what = kind === 'model' ? 'local AI' : kind === 'map' ? 'map' : 'address search';   // the noted file is for the start button, not for a library zip
+        const by = !mapMissing() && $('#start').textContent ? `“${$('#start').textContent}”` : `${cur() ? 'the button above' : '“Download and install”'}, once your state is chosen`;
+        n.textContent = `The ${what} file will be used by ${by}, with nothing to download for it. A library zip is installed without it.`;
+        return;
+      }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;

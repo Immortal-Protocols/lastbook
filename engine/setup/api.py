@@ -632,7 +632,7 @@ class Setup:
             return p.parent if p.name == DATA_NAME else p
         return self.current.parent if self.current else self.default_parent
 
-    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, copy_to=None, check=False):
+    def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, copy_to=None, check=False, as_is=False):
         if copy_to:
             return self._start_copy(copy_to)
         if repair or check:
@@ -656,7 +656,8 @@ class Setup:
             if map_id and (not mp or not mp['available']):
                 return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
             requested_address = address_id
-            address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
+            if not as_is:      # a library zip used as it is (use()) brings no address index its pack's map would add
+                address_id = address_id or map_id or (pack or {}).get('map') or cur.get('map')
             if address_id in ('base', 'us'):
                 address_id = next(iter(cur.get('address_indexes', [])), None)
             addresses = self.manifest.address_index(address_id) if address_id else None
@@ -1114,10 +1115,11 @@ class Setup:
         for sub in subs:
             shutil.rmtree(work / sub, ignore_errors=True)
 
-    def use(self, path, library_only=False):
+    def use(self, path, library_only=False, folder=None):
         """A library or file already on this computer. library_only (Library and local AI's "Open another library folder", #266):
         only an existing library, or the folder that holds one, is accepted. A folder holding a pack zip, or a file, is refused
-        and nothing starts, so choosing a folder can never begin replacing the open library."""
+        and nothing starts, so choosing a folder can never begin replacing the open library. folder: the place chosen on screen;
+        a library zip is installed there, as it is, with no download (the AI, a map or addresses are added after, as a choice)."""
         p = Path(path or '').expanduser()
         if not str(path or '').strip() or not p.exists():
             return {'error': 'Lastbook cannot find that file or folder.', 'code': 'missing'}
@@ -1134,7 +1136,7 @@ class Setup:
                     known.add(model['file'])
                 inside = sorted(c for c in p.iterdir() if c.name in known and c.is_file()) if p.is_dir() else []
                 if inside:          # the person explicitly chose this folder
-                    return self.use(str(inside[0]))
+                    return self.use(str(inside[0]), folder=folder)
                 return {'error': f'“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.', 'code': 'not_library'}
             if self.current and install._real(lib) == install._real(self.current):
                 return {'error': 'That library is the one open now.', 'code': 'current'}
@@ -1158,7 +1160,7 @@ class Setup:
                     if not pk['available']:
                         return {'error': 'That library is not available in this version.', 'code': 'unavailable'}
                     self.sources[name] = str(p)
-                    return self.start(pk['id'], False, None, {name: str(p)}, explicit=True)
+                    return self.start(pk['id'], False, folder, {name: str(p)}, explicit=True, as_is=True)
         for x in self.manifest.current.get('maps', []):
             for f in x['files']:
                 if f['name'] == name:
@@ -1167,7 +1169,7 @@ class Setup:
                     self.sources[name] = str(p)
                     if self.mode == 'manage':
                         return self.start(None, False, None, {name: str(p)}, explicit=True, map_id=x['id'])
-                    return self.public_job() or {'job': None, 'noted': True}
+                    return self.public_job() or {'job': None, 'noted': True, 'kind': 'map'}
         for entry in self.manifest.current.get('address_indexes', []):
             for file in entry['files']:
                 if file['name'] != name:
@@ -1177,7 +1179,7 @@ class Setup:
                 self.sources[name] = str(p)
                 if self.mode == 'manage':
                     return self.start(sources={name: str(p)}, explicit=True, address_id=entry['id'])
-                return self.public_job() or {'job': None, 'noted': True}
+                return self.public_job() or {'job': None, 'noted': True, 'kind': 'addresses'}
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:
@@ -1199,7 +1201,7 @@ class Setup:
                     return self.retry()  # keep the finished pack; check the chosen model before using it
             if self.mode == 'manage':
                 return self.start(None, True, None, {name: str(p)}, explicit=True)
-            return self.public_job() or {'job': None, 'noted': True}
+            return self.public_job() or {'job': None, 'noted': True, 'kind': 'model'}
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
 
     def finish(self):
@@ -1958,7 +1960,7 @@ ROUTES = {
     ('POST', 'resume'): lambda s, b: s.resume(),
     ('POST', 'cancel'): lambda s, b: s.cancel(),
     ('POST', 'retry'): lambda s, b: s.retry(),
-    ('POST', 'use'): lambda s, b: s.use(b.get('path'), library_only=b.get('library') is True),
+    ('POST', 'use'): lambda s, b: s.use(b.get('path'), library_only=b.get('library') is True, folder=b.get('folder')),
     ('POST', 'finish'): lambda s, b: s.finish(),
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),

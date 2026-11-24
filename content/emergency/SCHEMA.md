@@ -78,6 +78,10 @@ they can be dialled or whether they are free, so those stay unknown. `when` hold
 basis. It stays within what the row's cited pages say: advice such as "call another service first" goes in only with
 a source of its own.
 
+Every value has one JSON type, checked row by row: text is a string, `free` and `area_whole_country` are `true` or
+`false` (never `0` or `1`, never the word "yes"), `how`, `works_from` and the keyword lists hold strings, and a wrong
+type fails the test with a plain message instead of passing or crashing it.
+
 A key that is not in this document fails the test (a typo such as `works_form` would otherwise pass unnoticed), and so
 does the same `number` listed twice in one file.
 

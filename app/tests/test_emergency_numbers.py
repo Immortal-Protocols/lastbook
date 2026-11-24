@@ -45,6 +45,16 @@ def source(x):
     return isinstance(x, str) and bool(SOURCE.match(x))
 
 
+def one_of(x, allowed):
+    """A string that is one of `allowed`. Tested by type first: a list or a number must fail, not crash the check."""
+    return isinstance(x, str) and x in allowed
+
+
+def choices(x, allowed):
+    """A list whose every item is a string from `allowed` (it may be empty: the callers decide)."""
+    return isinstance(x, list) and all(one_of(i, allowed) for i in x)
+
+
 def words(x):
     return isinstance(x, list) and bool(x) and all(isinstance(w, str) and w.strip() and w == w.lower() for w in x)
 
@@ -53,6 +63,8 @@ def problems(data, name, latest=None):
     """What is wrong with one country's table, as a list of plain lines. Empty when it is sound. `latest` is the last
     day a check may be dated (default: latest_checked_date()); the tests below give it a fixed day."""
     latest = latest or latest_checked_date()
+    if not isinstance(data, dict):
+        return [f'{name}: the file must hold one object']
     out = []
     code = name[:-5] if name.endswith('.json') else name
     if not re.fullmatch(r'[A-Z]{2}', code):
@@ -63,7 +75,7 @@ def problems(data, name, latest=None):
         out.append(f'{name}: "code" is {data.get("code")!r}, but the file name says {code!r}')
     if not isinstance(data.get('country'), str) or not data['country'].strip():
         out.append(f'{name}: "country" is missing')
-    if not CALLING_CODE.match(str(data.get('calling_code', ''))):
+    if not isinstance(data.get('calling_code'), str) or not CALLING_CODE.match(data['calling_code']):
         out.append(f'{name}: "calling_code" must be + and digits, such as +56')
     langs = data.get('languages')
     langs_ok = (isinstance(langs, list) and bool(langs) and all(isinstance(c, str) and LANG.fullmatch(c) for c in langs)
@@ -80,7 +92,7 @@ def problems(data, name, latest=None):
         if not isinstance(s, dict):
             out.append(f'{who}: not an object')
             continue
-        if s.get('kind') not in KINDS:
+        if not one_of(s.get('kind'), KINDS):
             out.append(f'{who}: "kind" {s.get("kind")!r} is not one of {sorted(KINDS)}')
         if not isinstance(s.get('name'), str) or not s['name'].strip():
             out.append(f'{who}: "name" is missing')
@@ -92,10 +104,10 @@ def problems(data, name, latest=None):
         else:
             numbers.add(n)
         v = s.get('how')
-        if not isinstance(v, list) or not v or not set(v) <= HOW:
+        if not choices(v, HOW) or not v:
             out.append(f'{who}: "how" must be a non-empty list from {sorted(HOW)}')
         v = s.get('works_from')   # empty: the source does not say
-        if not isinstance(v, list) or not set(v) <= WORKS_FROM:
+        if not choices(v, WORKS_FROM):
             out.append(f'{who}: "works_from" must be a list from {sorted(WORKS_FROM)}, empty if the source does not say')
         k = s.get('keywords')
         if not isinstance(k, dict) or not all(isinstance(c, str) and words(w) for c, w in k.items()) or not k:
@@ -118,7 +130,7 @@ def problems(data, name, latest=None):
             out.append(f'{who}: "works_from" is listed, so "works_from_source" must be the address of the page that says so')
         if not s.get('works_from') and s.get('works_from_source') is not None:
             out.append(f'{who}: "works_from" is empty (unknown), so leave "works_from_source" out')
-        if 'free' not in s or s['free'] not in (True, False, None):
+        if 'free' not in s or not (s['free'] is None or isinstance(s['free'], bool)):   # 0 and 1 are not booleans
             out.append(f'{who}: "free" must be true, false or null (null: the sources do not say)')
         elif s['free'] is not None and not source(s.get('free_source')):
             out.append(f'{who}: "free" is {str(s["free"]).lower()}, so "free_source" must be the address of the page that says so')
@@ -138,10 +150,10 @@ def problems(data, name, latest=None):
                 out.append(f'{who}: "checked_on" {c} is after the last allowed day, {latest}')
         except (TypeError, ValueError):
             out.append(f'{who}: "checked_on" must be a date as YYYY-MM-DD')
-        if s.get('verified') not in VERIFIED:
+        if not one_of(s.get('verified'), VERIFIED):
             out.append(f'{who}: "verified" must be one of {sorted(VERIFIED)}')
     g = data.get('general')
-    if g is not None and g not in numbers:
+    if g is not None and (not isinstance(g, str) or g not in numbers):
         out.append(f'{name}: "general" is {g!r}, which is not the number of any service')
     return out
 
@@ -327,6 +339,88 @@ class Checker(unittest.TestCase):
         self.assertFalse(self.bad(s_url='https://example.org/service'))
         for v in ('', None, 'not an address', 5):
             self.assertTrue(self.bad(s_url=v), v)
+
+
+# The JSON type each field must hold, written once and apart from problems(), so the two can disagree and a test fail.
+# 'text' = a string, 'bool' = true/false only (never 0 or 1), 'bool?' = true/false/null, 'list' = a list of strings,
+# 'map' = an object of language code to list of strings. 'text?' fields are optional: they may be missing.
+SERVICE_TYPES = {
+    'kind': 'text', 'name': 'text', 'number': 'text', 'how': 'list', 'works_from': 'list', 'works_from_source': 'text?',
+    'free': 'bool?', 'free_source': 'text?', 'keywords': 'map', 'when': 'text', 'source': 'text|list',
+    'url': 'text', 'area_whole_country': 'bool', 'area': 'text', 'checked_on': 'text', 'verified': 'text',
+}
+COUNTRY_TYPES = {'country': 'text', 'code': 'text', 'calling_code': 'text', 'languages': 'list', 'general': 'text?',
+                 'services': 'list of rows'}
+OPTIONAL = {'works_from_source', 'free_source', 'url', 'area_whole_country', 'area'}   # may be missing; `free` may not
+
+
+def has_type(v, kind):
+    """Strictly the JSON type: bool is not a number here and a number is not a bool."""
+    for k in kind.rstrip('?').split('|'):
+        if k == 'text' and isinstance(v, str):
+            return True
+        if k in ('bool',) and isinstance(v, bool):
+            return True
+        if k == 'list' and isinstance(v, list) and all(isinstance(i, str) for i in v):
+            return True
+        if k == 'map' and isinstance(v, dict) and all(isinstance(c, str) and isinstance(w, list)
+                                                      and all(isinstance(i, str) for i in w) for c, w in v.items()):
+            return True
+        if k == 'list of rows' and isinstance(v, list) and all(isinstance(i, dict) for i in v):
+            return True
+    return kind.endswith('?') and v is None
+
+
+class Types(unittest.TestCase):
+    """Every value of every row is the kind of value its field holds, and a wrong kind fails without crashing."""
+    JUNK = [0, 1, -1, 1.5, True, False, None, '', ' ', 'x', 'true', [], [0], [1], [None], [[]], [{}], {}, {'a': 1}, {'es': 'x'}]
+
+    def test_every_value_of_every_real_row_has_its_field_type(self):
+        for f in sorted(DIR.glob('*.json')):
+            data = json.loads(f.read_text(encoding='utf-8'))
+            for key, kind in COUNTRY_TYPES.items():
+                with self.subTest(file=f.name, field=key):
+                    self.assertTrue(has_type(data.get(key), kind), f'{key} must be {kind}: {data.get(key)!r}')
+            for i, s in enumerate(data['services']):
+                for key, value in s.items():
+                    with self.subTest(file=f.name, row=f'{i} {s["number"]}', field=key):
+                        self.assertIn(key, SERVICE_TYPES)
+                        self.assertTrue(has_type(value, SERVICE_TYPES[key]), f'{key} must be {SERVICE_TYPES[key]}: {value!r}')
+                for key in set(SERVICE_TYPES) - OPTIONAL:
+                    self.assertIn(key, s, f'{f.name} row {i} ({s["number"]}) lacks "{key}"')
+
+    def test_a_value_of_the_wrong_type_fails_and_never_crashes(self):
+        good = Checker.GOOD
+        for key, kind in SERVICE_TYPES.items():
+            for junk in self.JUNK:
+                if has_type(junk, kind):
+                    continue
+                d = copy.deepcopy(good)
+                d['services'][0][key] = junk
+                with self.subTest(field=key, value=junk):
+                    self.assertTrue(problems(d, 'ZZ.json', latest=date(2026, 11, 22)), f'{key}={junk!r} passed')
+        for key, kind in COUNTRY_TYPES.items():
+            for junk in self.JUNK:
+                if has_type(junk, kind) and key != 'services':
+                    continue
+                d = copy.deepcopy(good)
+                d[key] = junk
+                with self.subTest(field=key, value=junk):
+                    self.assertTrue(problems(d, 'ZZ.json', latest=date(2026, 11, 22)), f'{key}={junk!r} passed')
+
+    def test_free_is_a_json_boolean_or_null_never_a_number(self):
+        for ok in (True, False):
+            self.assertFalse(Checker().bad(s_free=ok))
+        self.assertFalse(Checker().bad(s_free=None, s_free_source=None))
+        for n in (0, 1, 0.0, 1.0):
+            self.assertTrue(Checker().bad(s_free=n), n)
+        self.assertTrue(Checker().bad(s_free=0, s_free_source=None))
+        self.assertTrue(Checker().bad(s_area_whole_country=0))
+        self.assertTrue(Checker().bad(s_area_whole_country=1))
+
+    def test_a_file_that_is_not_an_object_fails(self):
+        for v in ([], 'x', 5, None):
+            self.assertTrue(problems(v, 'ZZ.json'))
 
 
 if __name__ == '__main__':

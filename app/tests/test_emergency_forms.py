@@ -173,6 +173,9 @@ class SamePageAndTestVerdict(unittest.TestCase):
         variants['free 0'], variants['free 1'] = mutate(s_free=0), mutate(s_free=1)
         for cc in ('+1', '+591', '+1234', '+123123123', '+', '+5a', '++56'):
             variants[f'calling {cc}'] = mutate(calling_code=cc)
+        for n in (4, 5):
+            ls = ['es', 'qu', 'ay', 'gn', 'fr'][:n]
+            variants[f'{n} languages'] = mutate(languages=ls, s_keywords={**{c: ['x'] for c in ls}, 'en': ['y']})
         for lg in ('esp', 'es1', 'qu', 'ES', 'é'):
             variants[f'language {lg}'] = mutate(languages=[lg], s_keywords={lg: ['x'], 'en': ['y']})
         cases = [(d, 'ZZ.json', LATEST) for d in variants.values()]

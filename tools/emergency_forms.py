@@ -32,7 +32,7 @@ def rules_json():
         'kinds': sorted(rules.KINDS), 'how': sorted(rules.HOW), 'worksFrom': sorted(rules.WORKS_FROM),
         'verified': sorted(rules.VERIFIED), 'countryKeys': sorted(rules.COUNTRY_KEYS), 'serviceKeys': sorted(rules.SERVICE_KEYS),
         'number': rules.NUMBER.pattern, 'callingCode': rules.CALLING_CODE.pattern, 'source': rules.SOURCE.pattern,
-        'lang': rules.LANG.pattern,
+        'lang': rules.LANG.pattern, 'maxLanguages': rules.MAX_LANGUAGES,
     }
 
 
@@ -57,8 +57,8 @@ function validate(data, name, latest) {
   if (!isStr(data.country) || !data.country.trim()) out.push(name + ': "country" is missing');
   if (!isStr(data.calling_code) || !new RegExp(R.callingCode).test(data.calling_code)) out.push(name + ': "calling_code" must be + and one to three digits, such as +56 (type the digits only: the + is added for you)');
   const langs = data.languages;
-  const langsOk = Array.isArray(langs) && langs.length > 0 && langs.every(lang) && new Set(langs).size === langs.length;
-  if (!langsOk) out.push(name + ': "languages" is required: each one a two-letter ISO 639-1 code in lower-case letters, such as ["es"], with no region and no 3-letter code, each listed once');
+  const langsOk = Array.isArray(langs) && langs.length > 0 && langs.every(lang) && new Set(langs).size === langs.length && langs.length <= R.maxLanguages;
+  if (!langsOk) out.push(name + ': "languages" is required: each one a two-letter ISO 639-1 code in lower-case letters, such as ["es"], with no region and no 3-letter code, each listed once, at most ' + R.maxLanguages);
   const services = data.services;
   if (!Array.isArray(services) || services.length === 0) return out.concat([name + ': "services" must list at least one number']);
   const numbers = new Set();
@@ -288,7 +288,7 @@ def rule_list():
     return [
         'One file per country, named with the ISO 3166-1 alpha-2 code in capitals (<code>CL.json</code>); <code>code</code> is the same two letters.',
         'The calling code is <code>+</code> and 1 to 3 digits (digits only: the page adds the <code>+</code>).',
-        '<code>languages</code> is required: the country\'s main languages as two-letter ISO 639-1 codes (<code>es</code>, <code>qu</code>; never <code>es-cl</code>, never a three-letter code, letters only), each once.',
+        '<code>languages</code> is required: the country\'s main languages as two-letter ISO 639-1 codes (<code>es</code>, <code>qu</code>; never <code>es-cl</code>, never a three-letter code, letters only), each once, up to 4 main languages.',
         'At least one service. <code>general</code> is the number of one of the services, or the box "no general number" is ticked.',
         f'<code>kind</code> is one of {q(r["kinds"])}. <code>name</code> is not empty.',
         '<code>number</code> is digits and spaces, with an optional leading <code>+</code> or <code>*</code>, and is not listed twice in the file.',

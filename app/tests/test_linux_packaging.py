@@ -27,6 +27,18 @@ def write(root, rel, data=''):
     return path
 
 
+def real_web(dest):
+    """The web files the scanner's localization check requires, as they are in the checkout."""
+    sys.path.insert(0, str(ROOT / 'packaging'))
+    try:
+        import i18n_catalogs
+    finally:
+        sys.path.pop(0)
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in i18n_catalogs.RUNTIME:
+        shutil.copyfile(ROOT / 'web' / name, dest / name)
+
+
 @unittest.skipUnless(all(shutil.which(c) for c in ('gcc', 'readelf', 'nm')), 'needs GCC and binutils for local fixtures')
 class LinuxPackaging(unittest.TestCase):
     def setUp(self):
@@ -37,9 +49,10 @@ class LinuxPackaging(unittest.TestCase):
         self.base = Path(self.tmp.name)
         self.root = self.base / 'payload'
         # Independent minimum payload for scan tests; not a runnable app.
-        for rel in ('lastbook.py', 'app/main.py', 'app/shell_linux.py', 'engine/setup/roots.pem',
-                    'web/index.html', 'setup/manifest-v1.json', 'VERSION'):
+        for rel in ('lastbook.py', 'app/main.py', 'app/shell_linux.py', 'app/ui_language.py', 'app/contribute.py',
+                    'engine/setup/roots.pem', 'setup/manifest-v1.json', 'VERSION'):
             write(self.root, 'opt/lastbook/' + rel)
+        real_web(self.root / 'opt/lastbook/web')
         write(self.root, 'usr/bin/lastbook', '#!/bin/sh\n')
         write(self.root, 'usr/share/applications/lastbook.desktop', '[Desktop Entry]\n')
         write(self.root, 'usr/share/icons/hicolor/256x256/apps/lastbook.png', 'synthetic icon fixture')
@@ -108,18 +121,13 @@ class LinuxPackaging(unittest.TestCase):
 
     def staging_inputs(self):
         source, ship, vendor = (self.base / name for name in ('source', 'ship', 'vendor'))
-        for rel in ('app/main.py', 'app/bridge.py', 'app/shell_linux.py', 'server.py', 'retrieval.py', 'assistant.py', 'llm_local.py',
-                    'engine/__init__.py', 'engine/paths.py', 'engine/library.py', 'engine/saved_pages.py',
-                    'engine/address_search.py', 'engine/update.py', 'engine/encyclopedias.py',
-                    'engine/safe_paths.py', 'engine/page_tables.py', 'engine/setup/__init__.py', 'engine/setup/api.py',
-                    'engine/setup/download.py', 'engine/setup/hardware.py', 'engine/setup/install.py', 'engine/setup/manifest.py'):
-            write(source, rel, '# Synthetic staging fixture\n')
-        write(source, 'engine/setup/roots.pem', 'synthetic certificate fixture')
+        for rel in self.load('stage_linux.py').PROGRAM_FILES:      # synthetic stand-ins for exactly the files the stager copies
+            write(source, rel, 'synthetic certificate fixture' if rel.endswith('.pem') else '# Synthetic staging fixture\n')
         for rel in ('packaging/linux/lastbook.py', 'packaging/linux/lastbook.desktop', 'packaging/icon/tile-1024.png'):
             dest = source / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / rel, dest)
-        write(ship, 'web/index.html', '<p>Synthetic staging fixture</p>')
+        real_web(ship / 'web')
         write(ship, 'content/gaps.json', '{}')
         write(ship, 'setup/manifest-v1.json', json.dumps({'version': 1, 'packs': []}))
         write(vendor, 'example/__init__.py', '# Synthetic wheel payload\n')
@@ -250,25 +258,33 @@ class LinuxPackaging(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
+    # Imported only on another system: the other shells by app/main.py, the Mac updater by shell_macos, quiet_onnx by retrieval.py under
+    # os.name == 'nt'. scan_package_linux.py refuses the first three in a package, and main's own Debian copy list leaves all four out.
+    NOT_ON_LINUX = {'app/shell_macos.py', 'app/shell_windows.py', 'app/update_macos.py', 'engine/quiet_onnx.py'}
+
     def test_program_list_covers_every_module_the_shipped_code_imports(self):
-        """A list that drops a module the app imports at load time ships a package that cannot start."""
+        """A list that drops a module the app imports ships a package that cannot start, or fails when that feature is used.
+        Every import counts, also one inside a function, and each name resolves as the launcher's sys.path does: app/, then the root."""
         shipped = set(self.load('stage_linux.py').PROGRAM_FILES)
-        missing = set()
-        for rel in sorted(shipped):
-            if not rel.endswith('.py'):
-                continue
-            for node in ast.parse((ROOT / rel).read_text(encoding='utf-8')).body:
+        missing, todo, seen = {}, sorted(r for r in shipped if r.endswith('.py')), set()
+        while todo:
+            rel = todo.pop()
+            for node in ast.walk(ast.parse((ROOT / rel).read_text(encoding='utf-8'))):
                 names = []
-                if isinstance(node, ast.ImportFrom) and node.module:
+                if isinstance(node, ast.ImportFrom) and node.module and not node.level:
                     base = node.module.replace('.', '/')
                     names = [base, *(f'{base}/{a.name}' for a in node.names if a.name != '*')]
                 elif isinstance(node, ast.Import):
                     names = [a.name.replace('.', '/') for a in node.names]
                 for name in names:
-                    found = {c for c in (f'{name}.py', f'{name}/__init__.py') if (ROOT / c).is_file()}
-                    if found and not found & shipped:
-                        missing |= found
-        self.assertEqual(missing, set(), 'not in PROGRAM_FILES (packaging/linux/stage_linux.py)')
+                    for c in (f'{d}{name}{tail}' for d in ('app/', '') for tail in ('.py', '/__init__.py')):
+                        if (ROOT / c).is_file() and c not in self.NOT_ON_LINUX:
+                            if c not in shipped:
+                                missing.setdefault(c, set()).add(rel)
+                            if c not in seen:
+                                seen.add(c)
+                                todo.append(c)
+        self.assertEqual(missing, {}, 'imported by shipped code but not in PROGRAM_FILES (packaging/linux/stage_linux.py)')
 
     def test_arch_snapshot_ships_the_web_assets_the_checkout_tracks(self):
         """The snapshot refuses an asset it does not recognise, so the font and its licence must be allowed."""
@@ -279,6 +295,16 @@ class LinuxPackaging(unittest.TestCase):
             with self.subTest(asset=rel):
                 self.assertTrue((dest / rel).is_file())
         self.assertEqual((dest / 'web/Nunito-OFL.txt').read_bytes(), (ROOT / 'web/Nunito-OFL.txt').read_bytes())
+
+    def test_arch_snapshot_holds_what_ship_app_files_needs(self):
+        """build_arch.py runs ship_app_files.py from the snapshot, which checks the translations: they must travel with it."""
+        module = self.load('arch/build_arch.py')
+        dest = self.base / 'snapshot'
+        module.snapshot(dest)
+        r = subprocess.run([sys.executable, '-I', '-B', str(dest / 'packaging/ship_app_files.py'), str(self.base / 'ship')],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr or r.stdout)
+        self.assertTrue((self.base / 'ship/web/i18n-locales.js').is_file())
 
 
 if __name__ == '__main__':

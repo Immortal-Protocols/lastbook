@@ -58,12 +58,12 @@ def wheel_lock(directory):
 
 
 def snapshot(dest):
-    """Explicit program list plus tracked public UI assets; no checkout sweep."""
-    support = ('LICENSE', 'THIRD_PARTY_NOTICES.md', 'packaging/ship_app_files.py', 'packaging/ship_edits.json',
+    """Explicit program list plus tracked public UI assets and the translations they are checked against; no checkout sweep."""
+    support = ('LICENSE', 'THIRD_PARTY_NOTICES.md', 'packaging/ship_app_files.py', 'packaging/ship_edits.json', 'packaging/i18n_catalogs.py',
                'packaging/check_tls_roots.py', 'packaging/linux/stage_linux.py', 'packaging/linux/scan_package_linux.py',
                'packaging/linux/requirements_linux.txt', 'packaging/linux/gst/lastbooksrc.c')
     files = list(PROGRAM_FILES) + list(ASSETS) + list(support)
-    tracked = subprocess.run(['git', '-C', str(ROOT), 'ls-files', '-z', '--', 'web', 'content/gaps.json', 'content/topics'],
+    tracked = subprocess.run(['git', '-C', str(ROOT), 'ls-files', '-z', '--', 'web', 'content/gaps.json', 'content/topics', 'translations/desktop'],
                              env={'PATH': '/usr/bin:/bin', 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull},
                              check=True, capture_output=True).stdout.decode('utf-8').split('\0')
     edits = json.loads(checked(ROOT / 'packaging/ship_edits.json').read_text(encoding='utf-8'))
@@ -74,7 +74,7 @@ def snapshot(dest):
         # .woff2 and .txt are web's heading font and the licence its OFL requires shipping beside it.
         allowed = ((len(p.parts) == 2 and p.parts[0] == 'web' and p.suffix in {'.html', '.css', '.js', '.json', '.webmanifest', '.svg', '.png', '.woff2', '.txt'})
                    or rel == 'content/gaps.json'
-                   or (len(p.parts) == 3 and p.parts[:2] == ('content', 'topics') and p.suffix == '.json'))
+                   or (len(p.parts) == 3 and p.parts[:2] in {('content', 'topics'), ('translations', 'desktop')} and p.suffix == '.json'))
         if not allowed or any(part.startswith('.') for part in p.parts):
             raise ValueError(f'unexpected tracked asset: {rel}')
         files.append(rel)

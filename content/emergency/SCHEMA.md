@@ -42,7 +42,7 @@ what to show when the country is unknown are still being discussed in the issue.
 | `country` | The country's name in English. |
 | `code` | ISO 3166-1 alpha-2, capitals. Must match the file name. |
 | `calling_code` | The country calling code: `+` and one to three digits (`+56`). |
-| `languages` | Required. The country's main languages, as two-letter ISO 639-1 codes without a region (`es`, `qu`, `ay`; never `es-cl`, never a three-letter code), each listed once. Every service's `keywords` must cover exactly these languages plus `en`, none of them empty; the test fails otherwise. |
+| `languages` | Required. The country's main languages, as two-letter ISO 639-1 codes without a region (`es`, `qu`, `ay`; never `es-cl`, never a three-letter code), each listed once, up to 4 main languages (not "the official languages": a country such as Bolivia, South Africa or India names many more; list the main ones people actually use).  Every service's `keywords` must cover exactly these languages plus `en`, none of them empty; the test fails otherwise. |
 | `general` | The `number` of the service that answers any emergency, or `null`. `null` means no unified line is recorded here; it does not say the country has none, unless a source establishes that. It must match a `number` in `services`. |
 | `services` | The list of numbers, most reliable first. At least one. |
 

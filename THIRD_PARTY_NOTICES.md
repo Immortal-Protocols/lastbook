@@ -41,6 +41,7 @@ Versions are the pins in `packaging/requirements*.txt`, `packaging/llm/*.sh`, `p
 | Microsoft Edge WebView2 Runtime (Windows) | installed by Windows | Microsoft software licence terms | https://developer.microsoft.com/microsoft-edge/webview2/ | Not bundled: the app uses the copy Windows provides |
 | llama.cpp and ggml, in `lastbook-llm` (optional local AI runner) | tag b12032 (dde879bc) | MIT (Copyright the ggml authors) | https://github.com/ggml-org/llama.cpp | Checked: `LICENSE`; it ships beside the runner as `LICENSE-llama.cpp.txt` |
 | nlohmann/json, used by llama.cpp's `common/` | as vendored in b12032 | MIT | https://github.com/nlohmann/json | Checked: `licenses/LICENSE-jsonhpp` |
+| Sparkle 2 (`Sparkle.framework`, Mac builds with Update now only: `docs/UPDATE-NOW-MAC.md`) | 2.10.1, pinned in `packaging/sparkle.lock.json` | MIT; its bundled components are listed in its `LICENSE` | https://sparkle-project.org | Its `LICENSE` ships as `Contents/Resources/LICENSE-Sparkle.txt` in Update now builds; not in the default build |
 | LLVM libc++, libunwind, OpenMP runtime (`libc++.dll`, `libunwind.dll`, `libomp.dll`, Windows runner) | llvm-mingw 20261020 | Apache-2.0 WITH LLVM-exception | https://github.com/mstorsjo/llvm-mingw | Checked: ships as `LICENSE-llvm-mingw.txt` |
 
 Build-only tools (uv, CMake, Ninja, glslc/shaderc, Vulkan and SPIR-V headers, pyinstaller-hooks-contrib, altgraph,

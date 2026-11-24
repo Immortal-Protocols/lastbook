@@ -275,6 +275,8 @@ def run_setup():
     open_log(work)
     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} start pid={os.getpid()} args={sys.argv[1:]} setup', flush=True)
     setup_api.configure(mode='first-run', **setup_options())
+    from engine import update
+    update.configure(app_folders()[0])    # Setup's "Notify me about app updates" is saved there; nothing is checked in setup mode
     if sys.platform == 'darwin':
         import shell_macos
         shell_macos.run(B.Bridge(setup_api.SetupServer, 'stream', B.ORIGIN_MAC, language_file=language_file()))
@@ -408,6 +410,8 @@ def main():
     setup_api.configure(mode='manage', current=data, **setup_options())
     import assistant
     setup_api.follow_model_server(assistant.use_server)   # a model server chosen in Setup (#78)
+    from engine import update
+    update.configure(app_folders()[0])    # opt-in update notices (off unless turned on); the window asks for the daily check
     import bridge as B
     if sys.platform == 'darwin':
         import shell_macos

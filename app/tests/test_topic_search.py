@@ -383,6 +383,30 @@ IT_NOTHING = ['civil', 'protection', 'comb']
 TOPS = sorted({*TOPS, *IT_SAME_GUIDE, *IT_SAME_GUIDE.values(),
                *IT_UNDISTURBED, *IT_NOTHING})
 
+# Avalanche, landslide and volcano situations in the disaster guide: [guide, choice] that comes first. Most found
+# nothing before; "caught in avalanche" opened the tornado choice and "rock fall" the nuclear one.
+SLIDES_AND_ERUPTIONS = {
+    'avalanche': ['disaster', 'avalanche'], 'caught in avalanche': ['disaster', 'avalanche'],
+    'avalanche warning': ['disaster', 'avalanche'], 'buried in snow': ['disaster', 'avalanche'],
+    'landslide': ['disaster', 'landslide'], 'landslide warning': ['disaster', 'landslide'],
+    'mudslide': ['disaster', 'landslide'], 'debris flow': ['disaster', 'landslide'],
+    'rockfall': ['disaster', 'landslide'], 'rock fall': ['disaster', 'landslide'],
+    'volcano': ['disaster', 'volcano'], 'volcano warning': ['disaster', 'volcano'],
+    'eruption': ['disaster', 'volcano'], 'lava flow': ['disaster', 'volcano'],
+    'volcanic ash': ['disaster', 'volcano'], 'ashfall': ['disaster', 'volcano'],      # clearly volcanic
+}
+# Searches those situations must not disturb: [guide, choice] that comes first. Ash on its own is smoke, not a
+# volcano: "ash fall" has "fall", which also starts "fallout", and put Nuclear explosion first while "ashfall" was a
+# keyword of the disaster guide. "snow" stays with shelter, a flood clean-up with sanitation, someone trapped still
+# gets signalling for help, and "back" does not find a word in the avalanche hint.
+SLIDES_UNDISTURBED = {
+    'ash': ['shelter', 'smoke'], 'ash fall': ['shelter', 'smoke'], 'ash falling': ['shelter', 'smoke'],
+    'snow': ['shelter', None], 'mud in the house': ['sanitation', 'floodmess'],
+    'trapped under debris': ['comms', 'signal'], 'tsunami warning': ['disaster', 'tsunami'],
+    'back labour poisoned': ['hurt', 'head'],
+}
+TOPS = sorted({*TOPS, *SLIDES_AND_ERUPTIONS, *SLIDES_UNDISTURBED})
+
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
     'rankOwn': RANK_OWN, 'rankForms': [[q, FORM_TOPICS] for q in RANK_FORMS],
@@ -667,6 +691,13 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q], [])
 
+
+    def test_avalanche_landslide_and_volcano(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in {**SLIDES_AND_ERUPTIONS, **SLIDES_UNDISTURBED}.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
 
 if __name__ == '__main__':
     unittest.main()

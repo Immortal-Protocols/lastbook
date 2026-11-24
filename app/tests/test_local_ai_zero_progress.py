@@ -1,9 +1,11 @@
 """Regression checks for local AI's explicit 0% startup state."""
-import unittest
 import json
 import queue
+import re
 import threading
+import unittest
 from pathlib import Path
+from unittest import mock
 
 from llm_local import Local
 
@@ -64,7 +66,23 @@ class LocalAiZeroProgressTests(unittest.TestCase):
 
     def test_chat_asset_version_bumped(self):
         index = INDEX.read_text(encoding="utf-8")
-        self.assertIn('/ui/chat.js?v=15', index)
+        asset = re.search(r'<script src="/ui/chat\.js\?v=(\d+)"></script>', index)
+        self.assertIsNotNone(asset)
+        self.assertGreaterEqual(int(asset.group(1)), 15)
+
+    def test_chat_asset_version_check_keeps_the_minimum(self):
+        # Later chat changes must not fail this check, but an old or unversioned script must.
+        for version, accepted in ((14, False), (15, True), (16, True), (100, True),
+                                  (None, False), ('invalid', False)):
+            with self.subTest(version=version):
+                query = '' if version is None else f'?v={version}'
+                index = f'<script src="/ui/chat.js{query}"></script>'
+                with mock.patch.object(Path, 'read_text', return_value=index):
+                    if accepted:
+                        self.test_chat_asset_version_bumped()
+                    else:
+                        with self.assertRaises(AssertionError):
+                            self.test_chat_asset_version_bumped()
 
     def test_unknown_progress_still_uses_starting_ellipsis(self):
         source = CHAT.read_text(encoding="utf-8")

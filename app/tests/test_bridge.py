@@ -248,6 +248,11 @@ class Both:
         self.assertEqual(json.loads(file.read_bytes()), {'language': 'zh-Hans'})
         self.assertEqual(json.loads(call(b, 'GET', B.ui_language.ROUTE, key).body), {'language': 'zh-Hans'})
 
+    def test_german_can_be_saved(self):
+        file, b, key = self.language_bridge()
+        self.assertEqual(call(b, 'POST', B.ui_language.ROUTE, key, b'{"language":"de"}').status, 200)
+        self.assertEqual(json.loads(file.read_bytes()), {'language': 'de'})
+
     def test_language_rejects_invalid_bodies_and_paths(self):
         file, b, key = self.language_bridge()
         route = B.ui_language.ROUTE
@@ -973,7 +978,7 @@ class Both:
 
     def test_link_rule(self):
         o, nw = self.b.origin, self.b.new_window
-        for gesture in (True, False, None):   # the app hands nothing to a browser, from anywhere
+        for gesture in (True, False, None):   # direct web addresses never leave the app
             self.assertEqual(nw('https://example.org/a', True, gesture), ('nothing', None))
             self.assertEqual(nw('http://example.org/', True, gesture), ('nothing', None))
         for gesture in (True, False, None):   # a frame opens nothing, gesture or not
@@ -991,6 +996,18 @@ class Both:
         self.assertEqual(nw(o + '/pages/s.html', True, False), ('nothing', None))
         for u in (nw(o + '/pages/s.html', True, True)[1], nw(o + '/documents/s.pdf', True, True)[1], nw(o + '/zim/a/b', True, True)[1]):
             self.assertTrue(self.b.top_url_ok(u), u)
+
+    def test_project_repository_requires_a_top_frame_popup_with_a_user_gesture(self):
+        origin, new_window = self.b.origin, self.b.new_window
+        action = origin + '/contribute/github'
+        self.assertEqual(new_window(action, True, True, popup=True), ('contribute', None))
+        for args in ((False, True), (True, False), (True, None)):
+            self.assertEqual(new_window(action, *args, popup=True), ('nothing', None))
+        self.assertEqual(new_window(action, True, True), ('nothing', None))
+        self.assertFalse(self.b.top_url_ok(action))
+        self.assertFalse(self.b.frame_url_ok(action))
+        for url in (action + '?q=local', action + '#local', action + '/', 'https://github.com/Immortal-Protocols/lastbook'):
+            self.assertEqual(new_window(url, True, True, popup=True), ('nothing', None), url)
 
 
 class AssistantStaysHere(unittest.TestCase):
@@ -1201,6 +1218,12 @@ class NothingGoesOut(unittest.TestCase):
             src = (ROOT / 'app' / name).read_text(encoding='utf-8')
             for word in ('open_in_browser', 'open_external', 'startfile', 'NSWorkspace', 'openURL', "'browser'", 'webbrowser', 'Process.Start', 'ShellExecute'):
                 self.assertNotIn(word, src, name)
+
+    def test_contribution_opens_only_the_public_project_repository(self):
+        from contribute import launch_project_repository
+        with mock.patch('contribute.webbrowser.open') as launch:
+            launch_project_repository()
+        launch.assert_called_once_with('https://github.com/Immortal-Protocols/lastbook')
 
 
 class StreamTests(Both, unittest.TestCase):

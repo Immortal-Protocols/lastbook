@@ -80,6 +80,29 @@
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
   let note = '', noteOk = false;
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something; {sure}: this page saw it from the start
+  let U = null;           // GET updates: {supported, notify}. null (an engine without it, or the server version's {supported: false}): no control
+
+  /* "Notify me about app updates": the first-run choose screen and Settings. Off until the person ticks it; only their own change
+     is saved (POST updates), on its own, so it never holds up or changes an install. Changes are sent one after another, in order. */
+  let updQ = Promise.resolve();
+  const updatesBox = () => U && U.supported ? `<label class="s-check"><input type="checkbox" id="updBox"${U.notify ? ' checked' : ''} aria-describedby="updHint">
+      <span><b>Notify me about app updates</b><small id="updHint">Lastbook checks once a day while the app is open and online.</small></span></label>
+      <p class="s-note" id="updNote" role="status" hidden></p>` : '';
+  function wireUpdates() {
+    const b = $('#updBox'); if (!b) return;
+    b.onchange = () => { const want = b.checked; updQ = updQ.then(() => saveUpdates(want)) };
+  }
+  async function saveUpdates(want) {
+    const r = await call('updates', { notify: want }).catch(e => ({ error: e.message }));
+    const b = $('#updBox'), n = $('#updNote');
+    if (!r || r.error) {
+      if (b) b.checked = !!(U && U.notify);
+      if (n) { n.hidden = false; n.textContent = (r && r.error) || 'Lastbook could not save this setting. Try again.' }
+      return;
+    }
+    U = { ...r, supported: true };
+    if (n) n.hidden = true;
+  }
 
   const packs = () => (S.manifest && S.manifest.packs) || [];
   const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
@@ -152,6 +175,7 @@
   }
 
   async function load() {
+    const upd = call('updates').catch(() => null);   // alongside state: a missing route only hides the control
     try { S = await call('state') }
     catch (e) {
       main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b data-i18n="setup.error">Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again" data-i18n="setup.tryAgain">Try again</button></p></div></div>`;
@@ -168,6 +192,8 @@
       choice.ai = !!rec.ai && aiFits();
       if (cur()) { choice.pack = cur().pack; choice.ai = !!cur().model }
     }
+    const u = await upd;
+    U = u && !u.error ? u : null;
     const j = S.job;
     if (j && j.state && j.state !== 'done' && !(j.state === 'failed' && errCode(j.error) === 'cancelled')) view = 'job';
     else if (j && j.state === 'done') view = (j.copy || j.check) && cur() ? 'manage' : 'done';   // a finished copy, or Check now: back to Library and local AI
@@ -247,6 +273,7 @@
       ${ai ? `<h2>Local AI</h2>${ai}` : ''}
       ${c ? '' : '<div id="srvSlot"></div>'}
       <section class="s-sum" id="sum" aria-live="polite"></section>
+      ${c ? '' : updatesBox()}
       <div class="s-go">
         <button class="btn big" id="start"></button>
         ${c ? '' : '<button class="s-link" id="haveLib">Choose an existing library folder</button>'}
@@ -260,6 +287,7 @@
     if ($('#toManage')) $('#toManage').onclick = () => go('manage');
     if ($('#haveLib')) $('#haveLib').onclick = () => haveLibrary(false);
     $('#haveFile').onclick = () => haveLibrary(true);
+    wireUpdates();
     mapSection();
     summary();
     srv.heading = !ai;   // no Local AI section above: the full row brings its own heading
@@ -477,7 +505,9 @@
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small>Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut">Copy to a drive…</button></div></div>
       <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}Check and repair</button>` : ''}
         <button class="s-link" id="otherLib">${ico('folder')}Open another library folder</button></div>
-      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
+      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>
+      ${U && U.supported ? `<h2>App updates</h2>${updatesBox()}` : ''}`;
+    wireUpdates();
     cloudPoll(c);
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };

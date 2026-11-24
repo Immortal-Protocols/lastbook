@@ -161,6 +161,32 @@ class SimplifiedChineseWording(unittest.TestCase):
         self.assertEqual(same, set())
 
 
+class GermanWording(unittest.TestCase):
+    """The de catalogue keeps the conventions in docs/i18n.md#german-de: formal "Sie" throughout, and fixed words for the screens."""
+
+    @classmethod
+    def setUpClass(cls):
+        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
+        cls.en, cls.de = load('en.json'), load('de.json')
+
+    def test_formal_address_only(self):
+        import re
+        everything = ' '.join(self.de.values())
+        informal = re.findall(r'\b(du|dich|dir|dein\w*|euch|euer\w*|ihr)\b', everything, flags=re.IGNORECASE)
+        self.assertEqual(informal, [])
+        self.assertIn('Wählen Sie', self.de['setup.chooseIntro'])
+
+    def test_setup_and_settings_are_different_words(self):
+        self.assertEqual(self.de['setup.title'], 'Lastbook einrichten')
+        self.assertEqual(self.de['nav.settings'], 'Einstellungen')
+        self.assertIn('Einrichtung und Einstellungen', self.de['language.preview'])
+        self.assertIn('Region', self.de['setup.chooseIntro'])        # not "Bundesstaat": the prompt is for any region
+
+    def test_no_message_is_left_in_english(self):
+        same = {key for key in self.de if self.de[key] == self.en[key]}
+        self.assertLessEqual(same, {'nav.chat', 'nav.videos', 'nav.video', 'search.filter'})
+
+
 class SpanishWording(unittest.TestCase):
     """The shipped es-419 catalogue keeps the terms docs/i18n.md#sample-locale-wording-es-419 asks for."""
 

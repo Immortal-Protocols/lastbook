@@ -50,6 +50,12 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-opt small{font-size:15px;color:var(--ink2);line-height:1.38}
 .s-sizes{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:4px;font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
 .s-ai.off{padding-left:16px}
+/* a quiet option beside the main choice ("Notify me about app updates"): a plain checkbox and its line, no card */
+.s-check{display:flex;gap:10px;align-items:flex-start;margin:18px 0 0;cursor:default;-webkit-user-select:none;user-select:none}
+.s-check input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent)}
+.s-check>span{display:grid;gap:3px;min-width:0}
+.s-check b{font-weight:500;font-size:16px;line-height:1.25}
+.s-check small{font-size:14.5px;color:var(--ink2);line-height:1.38}
 .s-badge{font:650 12.5px/1 var(--font);padding:4px 8px;border-radius:999px;background:var(--sunk);color:var(--ink2);white-space:nowrap}
 .s-badge.rec{background:var(--accent);color:var(--accent-ink)}
 .s-badge.here{background:var(--accent-soft);color:var(--accent)}

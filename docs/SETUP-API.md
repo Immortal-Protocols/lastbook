@@ -12,8 +12,8 @@ Several sessions build this at once. This file is the interface between them. Ch
 - **The one way out.** Setup's downloader is the only code in Lastbook that may reach the internet, and only when the person
   starts or resumes a download. It fetches over HTTPS only from hosts in `ALLOWED_HOSTS` (below), with no proxy taken from
   the system, and follows a redirect only to another allowed host. Everything else stays as it is: the windows block all web
-  loads, the assistant talks to loopback or pipes only, and nothing is sent anywhere (no telemetry, no update check at
-  startup). The owner authorized this route on 2026-11-12 for the first-run install. It replaces "downloads happen outside
+  loads, the assistant talks to loopback or pipes only, and nothing is sent anywhere (no telemetry; no update check at
+  startup unless the person turned on "Notify me about app updates", see `updates` below). The owner authorized this route on 2026-11-12 for the first-run install. It replaces "downloads happen outside
   the app" for library packs and the model, and nothing more.
 - **No blanket memory floor.** The local AI is offered when the measured fit says it fits (`llm_local.judge`, about 18 GB
   of memory for model and context, plus a 2.5 GiB reserve). It is not offered below that, and the screen says why in plain words.
@@ -128,6 +128,8 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/server-models` `{address}` | the models of a model server on this computer (#78): `{base, address, models}` from its `/v1/models`, or `{error, code}`: `not_here` (not a loopback address; nothing is asked), `no_answer`, `needs_key` (401 or 403: no key is sent yet), `no_list`, `no_models`. The one request made before a choice, and only when the person presses *List models* |
 | `POST /api/setup/use-server` `{address, model}` | lists the models again and saves the choice in `setup.json` (`model_server: {base, model}`): `{model_server: {address, model}}`, or `not_listed`. While a server is chosen, Chat uses it instead of the local AI (text only, no `view_page`); the local AI file stays. In manage mode the open library switches at once; a choice made in first-run setup counts when the library opens. `SURVIVAL_MODEL_BASE` set at start wins over the saved choice until the person chooses again |
 | `POST /api/setup/stop-server` | forgets the choice: `{model_server: null}`; Chat goes back to the local AI |
+| `GET /api/setup/updates` | "Notify me about app updates" (engine/update.py `Notices`): `{supported, notify, available, checking}`. `supported: false` outside the desktop app |
+| `POST /api/setup/updates` `{notify: true\|false}` | sets it, from the person's own checkbox only (Setup's choose screen, Settings). Off clears any saved notice at once. Starts no check. Error `code`: `save`, `unsupported`, `bad_request` |
 | `POST /api/setup/start` `{repair: true, ai}` | manage mode: re-checks every file against the library's `pack-manifest.tsv` and the model's SHA-256 (items `verifying`); fetches again only what is wrong (the pack: downloaded and switched to like an upgrade; the model: replaced in place). All well: `done`, nothing downloaded |
 
 Added by setup-backend on 2026-11-12: `pick` (answers `{path, free_bytes, disk}` or `{path: null, cancelled: true}`), `delete-old`, `remove-ai` and repair above; `hardware.disks[].name` (Macintosh HD, "Data (D:)"); `current.old` (old libraries kept after an upgrade);

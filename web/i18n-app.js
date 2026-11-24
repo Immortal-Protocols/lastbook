@@ -8,7 +8,7 @@
 
   const english = window.lastbookI18nEnglish;
   // The languages a person can choose, besides English. Each needs its catalogue, an <option> in setup.html and app/ui_language.py.
-  const LOCALES = ['es-419', 'zh-Hans'];
+  const LOCALES = ['es-419', 'zh-Hans', 'de'];
   const LANGUAGES = ['en', ...LOCALES];
   const fallbacks = { 'es-AR': ['es-419'], 'es-CL': ['es-419'], 'es-UY': ['es-419'] };
   let engine;

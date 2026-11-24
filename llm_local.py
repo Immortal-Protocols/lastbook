@@ -266,22 +266,35 @@ class Local:
             if self.state != 'loading':
                 self._spawn()
         t0 = time.time()
-        # A slow load that is still getting further is left to finish: only START_WAIT seconds with no step forward end it.
-        # Stopping it would not help, because the next question would start again from nothing and stop at the same place.
-        while time.time() - max(t0, self.t_progress) < START_WAIT:
+        # Progress is timestamped by the reader under the same lock. Check the
+        # deadline and stop atomically so progress at the boundary cannot be lost.
+        with self.lock:
+            waiting_for = self.proc
+        while True:
             with self.lock:
+                if self.proc is not waiting_for:
+                    return self.message or 'The local AI start was interrupted.'
                 if self.state == 'ready':
                     self.last_used = time.time()
                     return None
                 if self.state != 'loading':
                     return self.message or 'The local AI did not start.'
+                if time.time() - max(t0, self.t_progress) >= START_WAIT:
+                    # Detach atomically with the deadline check, then let the
+                    # potentially slow child shutdown happen outside this lock.
+                    timed_out_proc, self.proc = self.proc, None
+                    self.state, self.pct, self.message = 'stopped', None, ''
+                else:
+                    timed_out_proc = None
+                    pct = self.pct
+            if timed_out_proc is not None:
+                self._finish_stop(timed_out_proc, 'took too long to start')
+                return 'The local AI took too long to start.'
             if cancelled():
                 return 'stopped'
             if on_wait:
-                on_wait(self.pct)
+                on_wait(pct)
             time.sleep(0.25)
-        self.stop('took too long to start')
-        return 'The local AI took too long to start.'
 
     def _spawn(self):
         import queue
@@ -354,6 +367,10 @@ class Local:
             if self.state in ('ready', 'loading', 'error') and self.path and (self.fit or {}).get('fits'):
                 self.state, self.pct = 'stopped', None
                 self.message = ''
+        self._finish_stop(proc, why)
+
+    @staticmethod
+    def _finish_stop(proc, why=''):
         if proc and proc.poll() is None:
             print(f'local AI: stopping ({why or "asked"})', flush=True)
             try:

@@ -1763,7 +1763,25 @@ ROUTES = {
     ('POST', 'server-models'): lambda s, b: s.server_models(b.get('address')),
     ('POST', 'use-server'): lambda s, b: s.use_server(b.get('address'), b.get('model')),
     ('POST', 'stop-server'): lambda s, b: s.stop_server(),
+    ('GET', 'updates'): lambda s, b: _updates(),
+    ('POST', 'updates'): lambda s, b: _set_update_notice(b.get('notify')),
 }
+
+
+def _updates():
+    """The desktop app exposes this preference in Setup and Settings."""
+    from engine import update
+    n = update.NOTICES
+    return dict(n.notice(), supported=True) if n else {'supported': False, 'notify': False}
+
+
+def _set_update_notice(notify):
+    from engine import update
+    if not isinstance(notify, bool):
+        return {'error': 'notify is true or false.', 'code': 'bad_request'}
+    if update.NOTICES is None:
+        return {'error': 'App updates are set in the desktop app.', 'code': 'unsupported'}
+    return dict(update.NOTICES.set_notify(notify), supported=True)
 
 
 def _send_json(h, obj, status=200):

@@ -384,6 +384,51 @@
           }
         }
       ]
+    },
+    {
+      "version": "1.1.17",
+      "highlights": [
+        {
+          "pr": 329,
+          "title": "Update Lastbook from your Mac",
+          "credit": "@wonderdawg",
+          "handle": "wonderdawg",
+          "illustration": {
+            "file": "fig-laptop.svg",
+            "tone": "sage"
+          }
+        },
+        {
+          "pr": 411,
+          "title": "Contribute from the desktop sidebar",
+          "credit": "@wonderdawg",
+          "handle": "wonderdawg",
+          "illustration": {
+            "file": "fig-laptop.svg",
+            "tone": "sage"
+          }
+        },
+        {
+          "pr": 344,
+          "title": "Mark videos as watched",
+          "credit": "@shahzad-eth",
+          "handle": "shahzad-eth",
+          "illustration": {
+            "file": "fig-reader.svg",
+            "tone": "sage"
+          }
+        },
+        {
+          "pr": 314,
+          "title": "Filter Chat sources by type",
+          "credit": "@nskpaun",
+          "handle": "nskpaun",
+          "illustration": {
+            "file": "fig-reader.svg",
+            "tone": "sage"
+          }
+        }
+      ]
     }
   ]
 }

@@ -96,7 +96,9 @@ python3 tools/emergency_forms.py        # writes build/emergency/review.html, su
 - `review.html` shows every number in `content/emergency/*.json` as a card, with what the test says about it, and a
   selector per field ("approved" or "comment"). A button turns the comments into one block of text for a review.
 - `submit.html` is an empty entry for a new country. It lists the rules the test checks, checks the entry as it is
-  typed, and gives the finished `<CC>.json` to copy or download.
+  typed, and gives the finished `<CC>.json` to copy or download. To add a number or a language to a country that already
+  has a file, type its code and press "Load the existing table": the page fills the form with the whole table, and the
+  file it gives back is the complete updated one. A file that would drop an existing number fails the check.
 - `coverage.html` is a table of countries: the languages each one speaks, the languages the tables can be searched in, and
   the number of services. A picker answers "for your country we have numbers in these languages, not yet in these", or
   "your country is not covered yet, we would appreciate if you helped us". The languages of each country are in

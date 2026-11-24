@@ -132,10 +132,12 @@ class Coverage(unittest.TestCase):
             self.assertIn(state, page)
         self.assertIn('My country is not in this list', page)
 
-    def test_the_submit_page_refuses_a_second_table_for_a_country_and_warns_about_an_unknown_code(self):
+    def test_the_submit_page_lets_a_country_that_has_a_table_be_extended_and_warns_about_an_unknown_code(self):
         page = forms.build_submit()
         self.assertIn('already exists', page)
-        self.assertIn('"CL"', page[page.index('"have"'):])    # the codes that already have a table are embedded
+        self.assertIn('load that table first', page)      # a file that drops an existing number fails
+        self.assertIn('id="loadtable"', page)
+        self.assertIn('"tables"', page)                    # the existing tables are embedded, to load and add to
         self.assertIn('is not in our list of countries and territories', page)
         self.assertIn('Wikipedia lists for', page)
 

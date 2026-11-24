@@ -331,7 +331,7 @@ function addService() {
     '<label>name <small>what it is called locally</small><input type="text" class="name"></label>' +
     '<label>number <small>digits and spaces; a leading + or * is allowed</small><input type="text" class="number"></label>' +
     '<div class="fld"><b>how</b> <small>one or more</small>' + checks(0, 0, RULES.how, 'how') + '</div>' +
-    '<div class="fld"><b>works_from</b> <small>tick what a source says, or tick "unknown" when none does</small>' + checks(0, 0, RULES.worksFrom, 'wf') + '<label class="inl"><input type="checkbox" class="wfunk"> unknown (no source says)</label></div>' +
+    '<div class="fld"><b>works_from</b> <small>tick what a source says, or tick "unknown" when none does</small>' + checks(0, 0, ['mobile', 'landline', 'voip'].filter(x => RULES.worksFrom.includes(x)).concat(RULES.worksFrom.filter(x => !['mobile', 'landline', 'voip'].includes(x))), 'wf') + '<label class="inl"><input type="checkbox" class="wfunk"> unknown (no source says)</label></div>' +
     '<label class="wfs">works_from_source <small>the page that says it (only when works_from is not empty)</small><input type="text" class="wfsrc"></label>' +
     '<div class="fld"><b>free</b> <small>does it cost money, both the call and the service? Free only if both are free; only if a source says</small>' + radios('free' + id, [['yes', 'free'], ['no', 'not free'], ['unknown', 'unknown']]) + '</div>' +
     '<label class="frs">free_source <small>the page that says it (only when free is set)</small><input type="text" class="frsrc"></label>' +
@@ -360,6 +360,28 @@ function renderKeywords(box) {
     wrap.appendChild(l);
   });
 }
+function pick(b, prefix, v) { const r = $$('input[type=radio]', b).find(x => x.name.startsWith(prefix) && x.value === v); if (r) r.checked = true; }
+function loadTable(code) {
+  const t = K.tables[code]; if (!t) return;
+  $('#country').value = t.country; $('#code').value = t.code; $('#calling').value = t.calling_code.replace(/^\+/, '');
+  $('#languages').value = t.languages.join(', ');
+  $('#nogeneral').checked = t.general === null; $('#general').value = t.general || '';
+  $('#services').innerHTML = '';
+  t.services.forEach(s => {
+    addService(); const b = $$('.svc').pop();
+    $('.kind', b).value = s.kind; $('.name', b).value = s.name; $('.number', b).value = s.number;
+    $$('.how', b).forEach(x => { x.checked = s.how.includes(x.value); });
+    if (s.works_from.length) $$('.wf', b).forEach(x => { x.checked = s.works_from.includes(x.value); }); else $('.wfunk', b).checked = true;
+    $('.wfsrc', b).value = s.works_from_source || '';
+    pick(b, 'free', s.free === true ? 'yes' : s.free === false ? 'no' : 'unknown'); $('.frsrc', b).value = s.free_source || '';
+    renderKeywords(b); $$('.kwbox textarea', b).forEach(x => { x.value = (s.keywords[x.dataset.lang] || []).join(', '); });
+    $('.when', b).value = s.when; $('.source', b).value = [].concat(s.source).join('\n'); $('.url', b).value = s.url || '';
+    pick(b, 'awc', s.area_whole_country === true ? 'yes' : s.area_whole_country === false ? 'no' : ''); $('.area', b).value = s.area || '';
+    $('.checked', b).value = s.checked_on; $('.verified', b).value = s.verified;
+  });
+  renumber(); refresh();
+}
+document.addEventListener('click', ev => { if (ev.target.id === 'loadtable') loadTable($('#code').value.trim()); });
 const list = s => s.split(/[,\n]/).map(x => x.trim()).filter(Boolean);
 
 function collect() {
@@ -413,7 +435,13 @@ function refresh() {
   if (!$('#nogeneral').checked && !$('#general').value.trim()) found.push(name + ': "general" is not answered: type the number of the service that answers any emergency, or tick "no general number"');
   $('#general').disabled = $('#nogeneral').checked;
   const warn = [], code = data.code;
-  if (K.have.includes(code)) found.push(name + ': a table for ' + code + ' already exists: use review.html to check or change it, do not submit a second one');
+  const table = K.tables[code], ex = $('#existing');
+  if (table) {
+    const mine = new Set(data.services.map(s => s.number)), lost = table.services.map(s => s.number).filter(n => !mine.has(n));
+    if (lost.length) found.push(name + ': this file would drop ' + lost.join(', ') + ' from the table that already exists for ' + code + ': load that table first, then add what is new');
+    const html = 'A table for <b>' + esc(table.country) + '</b> (' + code + ') already exists, with ' + table.services.length + ' numbers. To add a number or a language, load it, add what is new, and submit the whole file. <button type="button" id="loadtable">Load the existing ' + code + ' table</button>';
+    if (ex.dataset.code !== code) { ex.innerHTML = html; ex.dataset.code = code; }
+  } else if (ex.dataset.code) { ex.innerHTML = ''; ex.dataset.code = ''; }
   if (/^[A-Z]{2}$/.test(code)) {
     const k = K.known[code];
     if (!k) warn.push(code + ' is not in our list of countries and territories: check that it is the ISO 3166-1 alpha-2 code of the place (it is the file name).');
@@ -449,16 +477,20 @@ def build_submit():
     rl = ''.join(f'<li>{x}</li>' for x in rule_list())
     cd = coverage_data()
     known = {c: {'name': d['name'], 'languages': d['want']} for c, d in cd.items()}
-    have = sorted(c for c, d in cd.items() if 'services' in d)
-    known_blob = json.dumps({'known': known, 'have': have}, ensure_ascii=False).replace('</', '<\\/')
+    tables = {}
+    for f in sorted(DATA.glob('*.json')):
+        d = json.loads(f.read_text(encoding='utf-8'))
+        tables[d['code']] = d
+    known_blob = json.dumps({'known': known, 'tables': tables}, ensure_ascii=False).replace('</', '<\\/')
     return f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emergency numbers: add a country</title>
 <style>{CSS}</style>
 <h1>Emergency numbers: add a country</h1>
-<p>An empty entry for a country that has no file yet. Fill it in; the checks below run as you type, and the finished file appears at the bottom. To check what is already in a file, use <code>review.html</code>. This page loads nothing from the network and sends nothing anywhere.</p>
+<p>An empty entry for a new country. To add a number or a language to a country that already has a file, type its code and load the existing table first. Fill it in; the checks below run as you type, and the finished file appears at the bottom. To check what is already in a file, use <code>review.html</code>. This page loads nothing from the network and sends nothing anywhere.</p>
 <h2>The rules</h2>
 <p>These are what <code>app/tests/test_emergency_numbers.py</code> checks; the test is the authority, and this page runs the same checks. See <code>content/emergency/SCHEMA.md</code> for what each field means.</p>
 <ul class="rules">{rl}</ul>
 <h2>The country</h2>
+<div id="existing" class="note"></div>
 <label>country <small>its name in English</small><input type="text" id="country"></label>
 <label>code <small>ISO 3166-1 alpha-2, capitals (this is the file name)</small><input type="text" id="code" maxlength="2"></label>
 <label>calling_code <small>one to three digits, such as 56; the + is added for you</small><span class="pre"><b>+</b><input type="text" id="calling" inputmode="numeric" autocomplete="off"></span></label>

@@ -67,8 +67,12 @@
           "rescue"
         ]
       },
-      "when": "Firefighters. The national numbering plan gives Bomberos = 119 as its example of a short emergency code, in the 110 to 129 range reserved for citizen emergencies (police, firefighters, medical services).",
-      "source": "https://www.oopp.gob.bo/wp-content/uploads/2022/03/2021-RM339-Plan-Tecnico-Fundamental-de-Numeracion.pdf",
+      "when": "Firefighters. The national numbering plan gives Bomberos = 119 as its example of a short emergency code, in the 110 to 129 range reserved for citizen emergencies (police, firefighters, medical services); municipal emergency lists give it as the national firefighters' number.",
+      "source": [
+        "https://www.oopp.gob.bo/wp-content/uploads/2022/03/2021-RM339-Plan-Tecnico-Fundamental-de-Numeracion.pdf",
+        "https://www.gamirupana.gob.bo/unidad-de-transparencia/",
+        "https://www.concejosacaba.gob.bo/telefonos_emergencia.html"
+      ],
       "checked_on": "2026-11-24",
       "verified": "official"
     },

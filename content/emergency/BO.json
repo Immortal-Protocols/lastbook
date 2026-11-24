@@ -173,7 +173,10 @@
         ]
       },
       "when": "Free, confidential psycho-emotional support to prevent and deal with violence against children, adolescents, women and men of all ages, from anywhere in Bolivia, every day from 06:00 to midnight (not 24 hours). Not an emergency service.",
-      "source": "https://www.unicef.org/bolivia/familia-segura",
+      "source": [
+        "https://www.minedu.gob.bo/files/publicaciones/minedu/2_GUA_IDENTIFICACIN_VIOLENCIA_INTRAFAMILIAR_compressed.pdf",
+        "https://www.unicef.org/bolivia/familia-segura"
+      ],
       "url": "https://www.unicef.org/bolivia/familia-segura",
       "area_whole_country": true,
       "checked_on": "2026-11-24",
@@ -205,8 +208,11 @@
           "helpline"
         ]
       },
-      "when": "Text messages on WhatsApp to the same service as 800 11 30 40, every day from 06:00 to midnight. The source does not say whether messages cost anything.",
-      "source": "https://www.unicef.org/bolivia/familia-segura",
+      "when": "Text messages on WhatsApp to the same service as 800 11 30 40, every day from 06:00 to midnight. The sources do not say whether messages cost anything.",
+      "source": [
+        "https://www.minedu.gob.bo/files/publicaciones/minedu/2_GUA_IDENTIFICACIN_VIOLENCIA_INTRAFAMILIAR_compressed.pdf",
+        "https://www.unicef.org/bolivia/familia-segura"
+      ],
       "url": "https://www.unicef.org/bolivia/familia-segura",
       "area_whole_country": true,
       "checked_on": "2026-11-24",

@@ -245,8 +245,12 @@
           "emergency"
         ]
       },
-      "when": "Municipal pre-hospital emergency and ambulance service of El Alto, named in the Ministry of Health national norm for emergency health care (2017). Only for El Alto; Bolivia has no single national ambulance number.",
-      "source": "https://minsalud.gob.bo/images/Documentacion/dgss/Area_de_Redes/dgss_redes_Norma_Caracterizacin_SNES.pdf",
+      "when": "Municipal pre-hospital emergency and ambulance service of El Alto (Gobierno Autónomo Municipal de El Alto), covering the city's 14 districts. Only for El Alto; Bolivia has no single national ambulance number. The municipality calls 161 a free line (\"línea gratuita\"); no page says whether the ambulance care itself is charged.",
+      "source": [
+        "https://elalto.gob.bo/noticias/?p=20933",
+        "https://elalto.gob.bo/noticias/?p=17389",
+        "https://minsalud.gob.bo/images/Documentacion/dgss/Area_de_Redes/dgss_redes_Norma_Caracterizacin_SNES.pdf"
+      ],
       "area": "El Alto (La Paz department)",
       "checked_on": "2026-11-24",
       "verified": "official"

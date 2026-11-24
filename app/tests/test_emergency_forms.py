@@ -171,6 +171,10 @@ class SamePageAndTestVerdict(unittest.TestCase):
             for i, junk in enumerate(rules.Types.JUNK):
                 variants[f'type country {key} #{i} {junk!r}'] = mutate(**{key: junk})
         variants['free 0'], variants['free 1'] = mutate(s_free=0), mutate(s_free=1)
+        for cc in ('+1', '+591', '+1234', '+123123123', '+', '+5a', '++56'):
+            variants[f'calling {cc}'] = mutate(calling_code=cc)
+        for lg in ('esp', 'es1', 'qu', 'ES', 'é'):
+            variants[f'language {lg}'] = mutate(languages=[lg], s_keywords={lg: ['x'], 'en': ['y']})
         cases = [(d, 'ZZ.json', LATEST) for d in variants.values()]
         js = self.js(cases)
         for (label, d), found in zip(variants.items(), js):

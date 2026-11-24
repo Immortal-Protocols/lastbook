@@ -55,10 +55,10 @@ function validate(data, name, latest) {
   for (const k of Object.keys(data).sort()) if (!R.countryKeys.includes(k)) out.push(name + ': unknown key "' + k + '"');
   if (data.code !== code) out.push(name + ': "code" is ' + JSON.stringify(data.code) + ', but the file name says "' + code + '"');
   if (!isStr(data.country) || !data.country.trim()) out.push(name + ': "country" is missing');
-  if (!isStr(data.calling_code) || !new RegExp(R.callingCode).test(data.calling_code)) out.push(name + ': "calling_code" must be + and digits, such as +56');
+  if (!isStr(data.calling_code) || !new RegExp(R.callingCode).test(data.calling_code)) out.push(name + ': "calling_code" must be + and one to three digits, such as +56 (type the digits only: the + is added for you)');
   const langs = data.languages;
   const langsOk = Array.isArray(langs) && langs.length > 0 && langs.every(lang) && new Set(langs).size === langs.length;
-  if (!langsOk) out.push(name + ': "languages" is required: the main languages as codes without a region, such as ["es"], each listed once');
+  if (!langsOk) out.push(name + ': "languages" is required: each one a two-letter ISO 639-1 code in lower-case letters, such as ["es"], with no region and no 3-letter code, each listed once');
   const services = data.services;
   if (!Array.isArray(services) || services.length === 0) return out.concat([name + ': "services" must list at least one number']);
   const numbers = new Set();
@@ -123,6 +123,7 @@ tr.flag{background:#fff6d8} tr.flag th{color:#7a5a00;font-weight:700}
 #bar{position:sticky;top:0;background:#fffe;border-bottom:1px solid #ccc;padding:.4rem 0;z-index:2} button{font:inherit;padding:.3rem .8rem;margin-right:.4rem}
 #fmt{width:100%;box-sizing:border-box;min-height:14rem;font:13px/1.4 ui-monospace,monospace}
 label{display:block;margin:.5rem 0} label small,.fld small{display:block;color:#666} .inl{display:inline-block;margin-right:1rem}
+.pre{display:flex;align-items:center;gap:.3rem}.pre b{font-size:1.2em}.pre input{flex:1}
 .switch{display:inline-flex;border:1px solid #888;border-radius:999px;overflow:hidden;margin:.2rem 0}
 .switch label{margin:0;position:relative}.switch input{position:absolute;opacity:0;pointer-events:none}.switch span{display:block;padding:.2rem .9rem;cursor:pointer;background:#f3f3f3;color:#333}
 .switch input:checked+span{background:#1f6f43;color:#fff}.switch input:focus-visible+span{outline:2px solid #06c;outline-offset:-2px}
@@ -286,9 +287,9 @@ def rule_list():
     q = lambda xs: ', '.join(f'<code>{e(x)}</code>' for x in xs)
     return [
         'One file per country, named with the ISO 3166-1 alpha-2 code in capitals (<code>CL.json</code>); <code>code</code> is the same two letters.',
-        'The calling code is <code>+</code> and 1 to 4 digits.',
-        '<code>languages</code> is required: the country\'s main languages as codes without a region (<code>es</code>, <code>qu</code>; never <code>es-cl</code>), each once.',
-        'At least one service. <code>general</code> is empty, or the number of one of the services.',
+        'The calling code is <code>+</code> and 1 to 3 digits (digits only: the page adds the <code>+</code>).',
+        '<code>languages</code> is required: the country\'s main languages as two-letter ISO 639-1 codes (<code>es</code>, <code>qu</code>; never <code>es-cl</code>, never a three-letter code, letters only), each once.',
+        'At least one service. <code>general</code> is the number of one of the services, or the box "no general number" is ticked.',
         f'<code>kind</code> is one of {q(r["kinds"])}. <code>name</code> is not empty.',
         '<code>number</code> is digits and spaces, with an optional leading <code>+</code> or <code>*</code>, and is not listed twice in the file.',
         f'<code>how</code>: one or more of {q(r["how"])}. <code>works_from</code>: any of {q(r["worksFrom"])}, or none when no source says.',
@@ -327,7 +328,7 @@ function addService() {
     '<div class="fld"><b>how</b> <small>one or more</small>' + checks(0, 0, RULES.how, 'how') + '</div>' +
     '<div class="fld"><b>works_from</b> <small>only what a source says; none = unknown</small>' + checks(0, 0, RULES.worksFrom, 'wf') + '</div>' +
     '<label class="wfs">works_from_source <small>the page that says it (only when works_from is not empty)</small><input type="text" class="wfsrc"></label>' +
-    '<div class="fld"><b>free</b> <small>does the call cost money? only if a source says</small>' + radios('free' + id, [['yes', 'free'], ['no', 'not free'], ['unknown', 'unknown']]) + '</div>' +
+    '<div class="fld"><b>free</b> <small>does it cost money, both the call and the service? Free only if both are free; only if a source says</small>' + radios('free' + id, [['yes', 'free'], ['no', 'not free'], ['unknown', 'unknown']]) + '</div>' +
     '<label class="frs">free_source <small>the page that says it (only when free is set)</small><input type="text" class="frsrc"></label>' +
     '<div class="fld kw"><b>keywords</b> <small>one box for every language of the country, plus en; separated by commas, lower case</small><div class="kwbox"></div></div>' +
     '<label>when <small>only what the cited pages say; may be empty</small><textarea class="when"></textarea></label>' +
@@ -359,8 +360,8 @@ const list = s => s.split(/[,\n]/).map(x => x.trim()).filter(Boolean);
 function collect() {
   const langs = languages();
   const data = {
-    country: $('#country').value.trim(), code: $('#code').value.trim(), calling_code: $('#calling').value.trim(),
-    languages: langs, general: $('#general').value.trim() || null, services: []
+    country: $('#country').value.trim(), code: $('#code').value.trim(), calling_code: '+' + $('#calling').value.trim(),
+    languages: langs, general: $('#nogeneral').checked ? null : ($('#general').value.trim() || null), services: []
   };
   $$('.svc').forEach(b => {
     const s = {};
@@ -398,6 +399,8 @@ function refresh() {
     if (picked(b, 'free') === null) found.push(who + ': "free" is not answered: switch it to free, not free or unknown');
     if (picked(b, 'awc') === null) found.push(who + ': "area_whole_country" is not answered: switch it to yes, no or not stated');
   });
+  if (!$('#nogeneral').checked && !$('#general').value.trim()) found.push(name + ': "general" is not answered: type the number of the service that answers any emergency, or tick "no general number"');
+  $('#general').disabled = $('#nogeneral').checked;
   $('#problems').innerHTML = found.length
     ? '<b class="bad">' + found.length + ' thing(s) to fix before this passes the test:</b><ul class="problems">' + found.map(x => '<li>' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') + '</ul>'
     : '<b class="good">All checks pass.</b> Save it as content/emergency/' + name + ', set REFERENCE_DATE in app/tests/test_emergency_numbers.py to the day you checked, and run the test.';
@@ -430,9 +433,10 @@ def build_submit():
 <h2>The country</h2>
 <label>country <small>its name in English</small><input type="text" id="country"></label>
 <label>code <small>ISO 3166-1 alpha-2, capitals (this is the file name)</small><input type="text" id="code" maxlength="2"></label>
-<label>calling_code <small>+ and digits, such as +56</small><input type="text" id="calling"></label>
-<label>languages <small>the main languages as codes without a region, separated by commas (es, qu, ay)</small><input type="text" id="languages"></label>
-<label>general <small>the number of the service that answers any emergency, written as in its row; empty if none is recorded</small><input type="text" id="general"></label>
+<label>calling_code <small>one to three digits, such as 56; the + is added for you</small><span class="pre"><b>+</b><input type="text" id="calling" inputmode="numeric" autocomplete="off"></span></label>
+<label>languages <small>the main languages as two-letter ISO 639-1 codes (es, qu, ay), lower case, separated by commas; no region (es-cl) and no three-letter codes</small><input type="text" id="languages"></label>
+<label>general <small>the number of the service that answers any emergency, written as in its row</small><input type="text" id="general"></label>
+<label class="inl"><input type="checkbox" id="nogeneral"> no general number (none is recorded; this switches the box above off)</label>
 <h2>The services</h2>
 <div id="services"></div>
 <p><button type="button" id="add">Add another service</button></p>

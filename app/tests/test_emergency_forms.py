@@ -163,6 +163,14 @@ class SamePageAndTestVerdict(unittest.TestCase):
             'no calling code': mutate(calling_code='56'), 'no country': mutate(country=''), 'wrong code': mutate(code='YY'),
             'no services': mutate(services=[]), 'when not text': mutate(s_when=None),
         }
+        # The same wrong-type values the test tries on every field (rules.Types.JUNK): the page must reach the same verdict.
+        for key in rules.SERVICE_TYPES:
+            for i, junk in enumerate(rules.Types.JUNK):
+                variants[f'type {key} #{i} {junk!r}'] = mutate(**{'s_' + key: junk})
+        for key in rules.COUNTRY_TYPES:
+            for i, junk in enumerate(rules.Types.JUNK):
+                variants[f'type country {key} #{i} {junk!r}'] = mutate(**{key: junk})
+        variants['free 0'], variants['free 1'] = mutate(s_free=0), mutate(s_free=1)
         cases = [(d, 'ZZ.json', LATEST) for d in variants.values()]
         js = self.js(cases)
         for (label, d), found in zip(variants.items(), js):

@@ -47,6 +47,7 @@ function validate(data, name, latest) {
   const lang = c => isStr(c) && new RegExp('^(?:' + R.lang + ')$').test(c);
   const words = x => Array.isArray(x) && x.length > 0 && x.every(w => isStr(w) && w.trim() !== '' && w === w.toLowerCase());
   const subset = (a, b) => a.every(x => b.includes(x));
+  if (!isObj(data)) return [name + ': the file must hold one object'];
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const set = (o, k) => has(o, k) && o[k] !== null && o[k] !== undefined;
   const code = name.endsWith('.json') ? name.slice(0, -5) : name;
@@ -54,7 +55,7 @@ function validate(data, name, latest) {
   for (const k of Object.keys(data).sort()) if (!R.countryKeys.includes(k)) out.push(name + ': unknown key "' + k + '"');
   if (data.code !== code) out.push(name + ': "code" is ' + JSON.stringify(data.code) + ', but the file name says "' + code + '"');
   if (!isStr(data.country) || !data.country.trim()) out.push(name + ': "country" is missing');
-  if (!new RegExp(R.callingCode).test(String(data.calling_code == null ? '' : data.calling_code))) out.push(name + ': "calling_code" must be + and digits, such as +56');
+  if (!isStr(data.calling_code) || !new RegExp(R.callingCode).test(data.calling_code)) out.push(name + ': "calling_code" must be + and digits, such as +56');
   const langs = data.languages;
   const langsOk = Array.isArray(langs) && langs.length > 0 && langs.every(lang) && new Set(langs).size === langs.length;
   if (!langsOk) out.push(name + ': "languages" is required: the main languages as codes without a region, such as ["es"], each listed once');

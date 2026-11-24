@@ -441,7 +441,9 @@ def updater():
 def configure(settings_dir):
     """app/main.py, the desktop app only: notices, with their setting in the app's own settings folder. Reaches no network."""
     global NOTICES
-    NOTICES = Notices(settings_dir, updater())
+    u = updater()
+    # A package-manager install has no download to offer, so no notice could ever appear: no checkbox, no daily check.
+    NOTICES = None if u.key in PACKAGE_MANAGER else Notices(settings_dir, u)
     return NOTICES
 
 

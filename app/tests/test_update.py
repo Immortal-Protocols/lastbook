@@ -123,6 +123,16 @@ class UpdateTest(unittest.TestCase):
         self.assertIn('Arch', s['message'])
         self.assertIsNone(u.thread)      # no check was started, so nothing reached the network
 
+    def test_arch_package_offers_no_update_notices(self):
+        """Notices could never find a version for a package-manager install, so Setup and Settings must not offer them."""
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(update, 'UPDATER', update.Updater(key='arch', version='1.1.9')), \
+                mock.patch.object(update, 'NOTICES', None):
+            self.assertIsNone(update.configure(d))
+            self.assertIsNone(update.NOTICES)
+            self.assertFalse(update._with_notice(update.UPDATER.state())['can_open_download'])
+            self.assertEqual(list(Path(d).iterdir()), [])     # nothing saved
+
     def test_linux_key_follows_the_package_channel(self):
         from unittest import mock
         with tempfile.TemporaryDirectory() as d, mock.patch.object(update.sys, 'platform', 'linux'), \

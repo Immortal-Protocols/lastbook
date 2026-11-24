@@ -249,6 +249,11 @@ class Both:
         self.assertEqual(json.loads(file.read_bytes()), {'language': 'zh-Hans'})
         self.assertEqual(json.loads(call(b, 'GET', B.ui_language.ROUTE, key).body), {'language': 'zh-Hans'})
 
+    def test_german_can_be_saved(self):
+        file, b, key = self.language_bridge()
+        self.assertEqual(call(b, 'POST', B.ui_language.ROUTE, key, b'{"language":"de"}').status, 200)
+        self.assertEqual(json.loads(file.read_bytes()), {'language': 'de'})
+
 
     def test_language_rejects_invalid_bodies_and_paths(self):
         file, b, key = self.language_bridge()

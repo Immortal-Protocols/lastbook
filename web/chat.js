@@ -133,7 +133,7 @@ const Chat = (() => {
       measuring: [false, tr('chat.checkingMemory', null, 'Checking this computer’s memory…')],
       absent: [false, tr('chat.notAdded', null, 'No local AI added')],
       wrong: [false, l.message || tr('chat.wrongFile', null, 'The local AI file is not the right one.')],
-      too_big: [false, l.message || `The local AI needs about ${gb(l.needs_bytes || 0)} of memory.`],
+      too_big: [false, l.message || tr('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
       off: [false, tr('chat.isOff', null, 'Local AI is off')],
       error: [false, l.message || tr('chat.startFailed', null, 'The local AI could not start.')],
     })[l.state] || [false, l.message || tr('chat.unavailable', null, 'Local AI unavailable')];
@@ -249,8 +249,8 @@ const Chat = (() => {
     const over = () => document.scrollingElement.scrollHeight > innerHeight;
     if (!over()) return;
     const shown = all.filter(x => x.offsetWidth);
-    for (let k = shown.length; k > 2 && over(); k -= 2) shown.slice(k - 2, k).forEach(x => x.style.display = tr('map.noneOn', null, 'none'));
-    for (const x of extra) if (over()) x.style.display = tr('map.noneOn', null, 'none');
+    for (let k = shown.length; k > 2 && over(); k -= 2) shown.slice(k - 2, k).forEach(x => x.style.display = 'none');
+    for (const x of extra) if (over()) x.style.display = 'none';
   }
   addEventListener('resize', () => { if ($('.chat-empty')) fitEmpty() });
   function updateBot(i) {
@@ -410,12 +410,12 @@ const Chat = (() => {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
       let pv;
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
-      else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
+      else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">${esc(tr('reader.pagePrefix', { page: s.page }, 'Page {page}'))}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
-      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
+      const where = s.kind === 'video' ? (s.t != null ? tr('chat.atTime', { time: clock(s.t) }, 'at {time}') : '') : s.page ? (s.pages ? tr('reader.pageOfTotal', { page: s.page, total: s.pages }, 'Page {page} of {total}') : tr('reader.pagePrefix', { page: s.page }, 'Page {page}')) : '';
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
-        ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}
+         ${!compact && s.excerpt ? `<span class="sc-ex">${tr('chat.sourceExcerpt', { excerpt: esc(s.excerpt.slice(0, 220)) + (s.excerpt.length > 220 ? '…' : '') }, '“{excerpt}”')}</span>` : ''}
         ${s.image ? '<span class="sc-tag">diagram viewed</span>' : ''}</span></a>`;
     }).join('')}</div>`;
   }

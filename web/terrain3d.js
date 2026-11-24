@@ -282,8 +282,9 @@ const Terrain3D = (() => {
     me.ro = new ResizeObserver(render); me.ro.observe(cv);
     setEx();
     const rel = hmax - hmin;
-    const base = rel < 1 ? tr('map3d.noElevation', null, 'No elevation data here (ocean or outside the US).') : `${matchMedia('(pointer: coarse)').matches ? tr('map3d.dragTouch', null, 'Drag to turn and tilt · pinch to zoom') : tr('map3d.dragMouse', null, 'Drag to rotate · scroll to zoom · shift-drag to tilt')} · ${Math.round(hmin * 3.28084).toLocaleString()}–${Math.round(hmax * 3.28084).toLocaleString()} ft`;
-    hint.textContent = base + (W <= BLDG_MAX_SPAN && Hm <= BLDG_MAX_SPAN ? ' · loading buildings…' : '');
+    const number = n => globalThis.LastbookI18n?.number?.(n) ?? n.toLocaleString();
+    const base = rel < 1 ? tr('map3d.noElevation', null, 'No elevation data here (ocean or outside the US).') : `${matchMedia('(pointer: coarse)').matches ? tr('map3d.dragTouch', null, 'Drag to turn and tilt · pinch to zoom') : tr('map3d.dragMouse', null, 'Drag to rotate · scroll to zoom · shift-drag to tilt')} · ${tr('map3d.elevationRange', { min: number(Math.round(hmin * 3.28084)), max: number(Math.round(hmax * 3.28084)) }, '{min}–{max} ft')}`;
+    hint.textContent = base + (W <= BLDG_MAX_SPAN && Hm <= BLDG_MAX_SPAN ? tr('map3d.loadingBuildings', null, '· loading buildings…') : '');
     const note = await loadBldg();
     if (!me.alive) return;
     hint.textContent = note ? `${base} · ${note}` : base;

@@ -356,8 +356,8 @@ const MapView = (() => {
     st.hover = hit; const tip = $('tip'); if (!tip) return;
     if (!hit) return hideTip();
     tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${escH(tr('map.placesHere', { count: hit.count }))}</b>${breakdown(hit)}<small>${st.z >= 16 ? tr('map.clickToList', null, 'Click to list them') : tr('map.clickToZoom', null, 'Click to zoom in')}</small>`
-      : hit.count > 1 ? `<b>${hit.count} records at one spot</b><small>${escH(tLayer(layerOf(hit.cls)))} · click to list them</small>`
-      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${escH(hit.place ? hit.kind || tr('map.place', null, 'Place') : tLayer(layerOf(hit.cls)))}${hit.records > 1 ? ` · ${hit.records} records · click to list` : ''}</small>`;
+      : hit.count > 1 ? `<b>${escH(tr('map.recordsAtSpot', { count: hit.count }, '{count} records at one spot'))}</b><small>${escH(tLayer(layerOf(hit.cls)))} · ${escH(tr('map.clickToListLower', null, 'click to list them'))}</small>`
+      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${escH(hit.place ? hit.kind || tr('map.place', null, 'Place') : tLayer(layerOf(hit.cls)))}${hit.records > 1 ? ` · ${escH(tr('map.recordsClickToList', { count: hit.records }, '{count} records · click to list'))}` : ''}</small>`;
     tip.hidden = false; placeTip(x, y);
   }
   function breakdown(p) {
@@ -595,7 +595,9 @@ const MapView = (() => {
     if (!st.demPending.has(k) && st.demPending.size < 6) {
       st.demPending.add(k); const state = st;
       fetch(`/api/map/terrain/${k}.png${st.ver ? '?v=' + st.ver : ''}`).then(r => r.status === 200 ? r.blob() : null)
-        .then(b => b && createImageBitmap(b, { colorSpaceConversion: tr('map.noneOn', null, 'none'), premultiplyAlpha: tr('map.noneOn', null, 'none') }))
+        // These are Web API enum values, not interface copy. Translating `none`
+        // makes createImageBitmap reject the options in every non-English locale.
+        .then(b => b && createImageBitmap(b, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }))
         .then(img => {
           if (st !== state) return; st.demPending.delete(k);
           if (!img) { st.dem.set(k, null); st.demNone.set(k, Date.now()); return }
@@ -808,8 +810,11 @@ const MapView = (() => {
     const tx = sheet ? w / 2 : (cr + 24 + w - 60) / 2, ty = sheet ? Math.max(70, ct / 2 + 20) : h / 2;
     pan(tx - x, ty - y); st.listAt = 1; settle(true);  // the nearby list stays put while the map makes room
   }
-  function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
-  function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || tr('map.place', null, 'Place'))}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">${escH(tr('map.removeMarker', null, 'Remove marker'))}</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
+  function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; st.cardState = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
+  function showPlace(p) {
+    st.cardState = { type: 'place', p };
+    openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || tr('map.place', null, 'Place'))}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">${escH(tr('map.removeMarker', null, 'Remove marker'))}</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p)
+  }
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
     const id = 'el' + Math.random().toString(36).slice(2, 8);
@@ -822,6 +827,7 @@ const MapView = (() => {
     el.querySelector('[data-a=zoom]')?.addEventListener('click', () => { go(p.lat, p.lon, Math.max(st.z, 16)); reveal(p.lat, p.lon) });
   }
   function showDetail(p, back) {
+    st.cardState = { type: 'detail', p, back };
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
     const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
@@ -834,6 +840,7 @@ const MapView = (() => {
     wireCoords(p); reveal(p.lat, p.lon);
   }
   async function showMembers(p) {
+    st.cardState = { type: 'members', p };
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
     st.sel = { lat: p.lat, lon: p.lon }; draw();
     const title = p.spot ? tr('map.recordsAtOneSpot', { count: Math.max(p.count, p.records || 0) }, '{count} records at one spot') : tr('map.placesHere', { count: p.count }, '{count} places here');
@@ -912,12 +919,50 @@ const MapView = (() => {
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? tr('map.addressNotFound', null, tr('map.addressNotFound', null, 'Address not found in your offline data. Check the house number and street.')) + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : tr('map.placeNotFound', null, 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.')) + '</p>'; return }
+      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? escH(tr('map.addressNotFound', null, 'Address not found in your offline data. Check the house number and street.')) + (IN_WINDOW ? ` <a href="/ui/setup.html#manage">${escH(tr('map.addAddressSearch', null, 'Add your state’s address search'))}</a>.` : '') : escH(tr('map.placeNotFound', null, 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.'))) + '</p>'; return }
       const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
       box.innerHTML = `<div class="small muted" style="padding:4px 8px">${escH(tr('map.searchMatches', { count: r.length }, '{count} matches'))}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);
     } catch { if (st === state) box.innerHTML = `<p class="muted small">${escH(tr('map.finderUnavailable', null, 'Place finder unavailable.'))}</p>` }
   }
-  return { page, stop };
+  async function refreshLanguage(main) {
+    if (!st) return;
+    const old = {
+      lat: st.lat, lon: st.lon, z: st.z, on: [...st.on], mark: st.mark, sel: st.sel,
+      card: st.cardState, layersOpen: !$('layers').hidden, search: $('pq').value,
+      searchOpen: !$('pres').hidden, max: $('mapwrap').classList.contains('max') || !!document.fullscreenElement,
+      terrain3d: typeof Terrain3D !== 'undefined' && Terrain3D.isOpen(), toolsTop: main.querySelector('.maptools').scrollTop,
+    };
+    const q = new URLSearchParams({ lat: old.lat, lon: old.lon, z: old.z, layers: old.on.join(',') });
+    // page() installs observers and event handlers, so tear the old map down
+    // before rebuilding it. The view itself (center, layers, marker and open
+    // details) is restored below.
+    stop();
+    await page(main, q);
+    if (!st) return;
+    st.mark = old.mark;
+    st.sel = old.sel;
+    draw();
+    if (old.max) { $('mapwrap').classList.add('max'); syncFull() }
+    if (old.layersOpen) { $('layers').hidden = false; $('layers-btn').setAttribute('aria-expanded', 'true'); renderLayers() }
+    main.querySelector('.maptools').scrollTop = old.toolsTop;
+    if (old.search) {
+      $('pq').value = old.search;
+      if (old.searchOpen) await findPlace(old.search);
+    }
+    if (old.card) {
+      if (old.card.type === 'place') showPlace(old.card.p);
+      else if (old.card.type === 'detail') showDetail(old.card.p, old.card.back);
+      else if (old.card.type === 'members') await showMembers(old.card.p);
+    }
+    if (old.terrain3d && typeof Terrain3D !== 'undefined') {
+      const cv = $('mapc');
+      Terrain3D.open($('mapwrap'), { lat: st.lat, lon: st.lon, z: st.z, w: cv.clientWidth, h: cv.clientHeight,
+        texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y),
+        getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
+        geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon) });
+    }
+  }
+  return { page, stop, refreshLanguage };
 })();

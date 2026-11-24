@@ -38,6 +38,7 @@ WEB_NON_UI_FILES = {
 }
 
 PYTHON_SURFACES = {
+    'engine/model-server': [ROOT / 'engine' / 'model_server.py'],
     'engine/setup': [
         ROOT / 'engine' / 'setup' / 'api.py',
         ROOT / 'engine' / 'setup' / 'download.py',
@@ -66,6 +67,7 @@ CONTENT = {
     'Other tree crops', 'WHO', 'FEMA', 'CDC', 'EPA', 'USDA', 'NOAA',
     'UNICEF', 'MSF', 'Small', 'Medium', 'Large',
     'Where There Is No Doctor', 'National Center for Home Food Preservation',
+    'Appropedia', 'Wikipedia',
 }
 
 TECHNICAL_EXACT = {
@@ -76,7 +78,8 @@ TECHNICAL_EXACT = {
     'LastbookData.setup', 'application/json', 'text/html',
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
     'Could not access the desktop language preference', 'Contents',
-    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=',
+    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$',
+    '(pointer: coarse)',
 }
 
 TECHNICAL_PREFIX = (
@@ -132,17 +135,14 @@ def unescape(s, quote):
 
 
 def already_wired(pre: str) -> bool:
-    # Only inspect the current statement. A translation call earlier in the
-    # same function must not hide a later hard-coded label (the old 300-char
-    # window caused this false positive, especially in compact JS).
+    # A completed translation call elsewhere in the same statement must not
+    # hide a different literal, especially inside a nested template.
     tail = pre.rsplit(';', 1)[-1][-300:]
-    if re.search(r"\b(?:tr|lastbookTr|native_t|installer_t|user_error|t)\s*\(", tail):
+    if _inside_translation_call(pre):
         return True
-    if 'data-i18n' in tail:
+    if _inside_named_call(pre, {'setUiTitle', 'labelPair', 'backButton'}):
         return True
-    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT|NO_RUNTIME|setUiTitle|labelPair|backButton|GO)\s*[=(]", tail):
-        return True
-    if re.search(r"(?:key|message_key)\s*=\s*['\"](?:setup|native|installer|desktop|nav|chat|map|update|reader|wiki)\.", tail):
+    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT)\s*=\s*$", tail):
         return True
     return False
 
@@ -163,28 +163,61 @@ def _has_i18n_marker_in_tag(pre: str, post: str) -> bool:
 def _inside_named_call(pre: str, names) -> bool:
     """True when the current literal is nested in a call with one of these names."""
     stack = []
-    i = 0
-    while i < len(pre):
-        c = pre[i]
-        if c in "'\"":
-            i = _skip_string(pre, i)
-            continue
-        if c == '`':
-            i = _skip_template(pre, i)
-            continue
-        if c == '(':
-            m = re.search(r'([A-Za-z_$][\w$]*)\s*$', pre[:i])
-            stack.append(m.group(1) if m else '')
-        elif c == ')' and stack:
-            stack.pop()
+    n = len(pre)
+
+    def code(i, stop_brace=False):
+        braces = 0
+        while i < n:
+            if pre.startswith('//', i):
+                end = pre.find('\n', i + 2)
+                i = n if end < 0 else end + 1
+                continue
+            if pre.startswith('/*', i):
+                end = pre.find('*/', i + 2)
+                i = n if end < 0 else end + 2
+                continue
+            c = pre[i]
+            if c in "'\"":
+                i = _skip_string(pre, i)
+                continue
+            if c == '`':
+                i = template(i)
+                continue
+            if c == '(':
+                m = re.search(r'([A-Za-z_$][\w$]*)\s*$', pre[:i])
+                stack.append(m.group(1) if m else '')
+            elif c == ')' and stack:
+                stack.pop()
+            elif c == '{':
+                braces += 1
+            elif c == '}':
+                if stop_brace and braces == 0:
+                    return i + 1
+                braces = max(0, braces - 1)
+            i += 1
+        return i
+
+    def template(i):
         i += 1
+        while i < n:
+            if pre[i] == '\\':
+                i += 2
+            elif pre.startswith('${', i):
+                i = code(i + 2, stop_brace=True)
+            elif pre[i] == '`':
+                return i + 1
+            else:
+                i += 1
+        return i
+
+    code(0)
     return any(name in names for name in stack)
 
 
 def _inside_translation_call(pre: str) -> bool:
     """True when the string is an argument to an open translation call."""
     # A completed neighboring tr() cannot mark the next literal as translated.
-    return _inside_named_call(pre, {'tr', 'lastbookTr', 'native_t', 'installer_t', 'user_error', 't'})
+    return _inside_named_call(pre, {'tr', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
@@ -310,7 +343,7 @@ def classify(s: str, pre: str, post: str = '') -> str:
             and '{…}' in s):
         return 'wired'
     mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
-    if (_inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
+    if ('__i18n_bound' in pre or _inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
             or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
@@ -394,6 +427,14 @@ def _skip_js_expr(text, i):
     depth = 1
     n = len(text)
     while i < n and depth:
+        if text.startswith('//', i):
+            end = text.find('\n', i + 2)
+            i = n if end < 0 else end + 1
+            continue
+        if text.startswith('/*', i):
+            end = text.find('*/', i + 2)
+            i = n if end < 0 else end + 2
+            continue
         c = text[i]
         if c in "'\"":
             i = _skip_string(text, i)
@@ -465,6 +506,58 @@ def _template_parts(text, start):
     return i, parts
 
 
+def _template_expressions(text, start):
+    """Return the source ranges of expressions directly inside a template."""
+    i, n = start + 1, len(text)
+    while i < n:
+        if text[i] == '\\':
+            i = min(i + 2, n)
+            continue
+        if text.startswith('${', i):
+            expr_start = i + 2
+            expr_end = _skip_js_expr(text, expr_start) - 1
+            yield expr_start, expr_end
+            i = expr_end + 1
+            continue
+        if text[i] == '`':
+            return
+        i += 1
+
+
+def _iter_js_templates(text, base, source):
+    """Yield template messages recursively, including nested template branches."""
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] in "'\"":
+            i = _skip_string(text, i)
+            continue
+        if text[i] != '`':
+            i += 1
+            continue
+        start = i
+        end, parts = _template_parts(text, start)
+        absolute = base + start
+        pre = source[max(0, absolute - 2000):absolute]
+        if any(kind == 'expr' for kind, _ in parts):
+            flat = ''.join(lit if kind == 'lit' else '{…}' for kind, lit in parts)
+            if flat.strip() and flat.strip() != '{…}':
+                if _is_markup_fragment(flat):
+                    for value, local_pre in _template_markup_strings(flat, pre):
+                        yield absolute, value, local_pre
+                else:
+                    yield absolute, flat, pre
+            for expr_start, expr_end in _template_expressions(text, start):
+                yield from _iter_js_templates(text[expr_start:expr_end], base + expr_start, source)
+        else:
+            literal = ''.join(lit for kind, lit in parts if kind == 'lit')
+            if _is_markup_fragment(literal):
+                for value, local_pre in _template_markup_strings(literal, pre):
+                    yield absolute, value, local_pre
+            else:
+                yield absolute, literal, pre
+        i = end
+
+
 def looks_like_markup(s):
     body = s.replace('{…}', ' ')
     if '<' in body and '>' in body and body.lstrip().startswith('<'):
@@ -495,7 +588,7 @@ class _MarkupStrings(HTMLParser):
             value = values.get(name)
             if value and '{…}' not in value:
                 marker = f'data-i18n-{name}'
-                pre = self.prefix + ' ' + name + (' data-i18n' if marker in markers else '')
+                pre = self.prefix + ' ' + name + (' __i18n_bound_attribute__' if marker in markers else '')
                 self.strings.append((value, pre))
 
     def handle_startendtag(self, tag, attrs):
@@ -511,8 +604,8 @@ class _MarkupStrings(HTMLParser):
     def handle_data(self, data):
         value = data.strip()
         if value:
-            wired = any('data-i18n' in markers for _tag, markers in self.tags)
-            self.strings.append((value, self.prefix + ' innerHTML' + (' data-i18n' if wired else '')))
+            wired = bool(self.tags and 'data-i18n' in self.tags[-1][1])
+            self.strings.append((value, self.prefix + ' innerHTML' + (' __i18n_bound_text__' if wired else '')))
 
 
 def _template_markup_strings(flat, pre):
@@ -543,34 +636,7 @@ def iter_js_strings(text):
                 yield m.start(), value, local_pre
         else:
             yield m.start(), s, pre
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        if c in "'\"":
-            i = _skip_string(text, i)
-            continue
-        if c == '`':
-            start = i
-            end, parts = _template_parts(text, start)
-            pre = text[max(0, start - 2000):start]
-            if any(kind == 'expr' for kind, _ in parts):
-                flat = ''.join(lit if kind == 'lit' else '{…}' for kind, lit in parts)
-                if flat.strip() and flat.strip() != '{…}':
-                    if _is_markup_fragment(flat):
-                        for value, local_pre in _template_markup_strings(flat, pre):
-                            yield start, value, local_pre
-                    else:
-                        yield start, flat, pre
-            else:
-                s = ''.join(lit for kind, lit in parts if kind == 'lit')
-                if _is_markup_fragment(s):
-                    for value, local_pre in _template_markup_strings(s, pre):
-                        yield start, value, local_pre
-                else:
-                    yield start, s, pre
-            i = end
-            continue
-        i += 1
+    yield from _iter_js_templates(text, 0, text)
 
 
 def mask_py_docstrings(text: str) -> str:

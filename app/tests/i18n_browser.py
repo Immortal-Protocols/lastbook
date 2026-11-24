@@ -173,7 +173,7 @@ class Browser(unittest.TestCase):
             self.assertEqual(select.locator('[lang="es-419"]').inner_text(), 'Español (Latinoamérica)')
             select.select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
             expect(page.locator('.loading')).to_have_text('Revisando esta computadora…')
             self.assertEqual(json.loads(self.language_file.read_bytes()), {'language': 'es-419'})
             hold.set()
@@ -193,7 +193,7 @@ class Browser(unittest.TestCase):
             guides = sidebar.get_by_role('link', name='Guías')
             expect(guides).to_have_attribute('aria-current', 'page')
             expect(guides).to_have_attribute('lang', 'es-419')
-            expect(page.locator('html')).to_have_attribute('lang', 'en')
+            expect(page.locator('html')).to_have_attribute('lang', 'es-419')
             expect(page.locator('.need[href="#/t/hurt"] small')).to_have_text('Primeros auxilios para hemorragias, quemaduras, problemas respiratorios, lesiones y enfermedades repentinas')
             expect(page.locator('.need[href="#/t/water"] small')).to_have_text('Tratar, encontrar y almacenar agua')
             expect(page.locator('.need[href="#/t/shelter"] small')).to_have_text('Calor, frío, humo, monóxido de carbono, viviendas dañadas y refugio al aire libre')
@@ -256,15 +256,20 @@ class Browser(unittest.TestCase):
             self.assertEqual(json.loads(self.language_file.read_bytes()), {'language': 'es-419'})
             page.get_by_label('Idioma de la interfaz').select_option('es-419')
             pending.set()
-            expect(page.get_by_role('status')).to_have_text('Language saved.')
+            expect(page.get_by_role('status')).to_have_text('Language saved. Restart Lastbook to update its menus.')
             expect(page.get_by_label('Interface language')).to_have_value('en')
             expect(page.locator('h1')).to_have_text('Library and local AI')
+            expect(page.locator('.s-have .s-row').first).not_to_contain_text('La más grande')
+            expect(page.locator('.s-have .s-row').first).to_contain_text('The largest')
             expect(page.get_by_role('button', name='Save language')).to_be_focused()
             page.evaluate('history.back()')
             page.wait_for_url('**/#/guides', wait_until='commit')
             expect(sidebar.get_by_role('link', name='Guides')).to_be_visible()
             self.assertTrue(page.evaluate('window.restoredFromCache'))
-            self.assertTrue(page.evaluate("window.guideView === document.querySelector('.hero')"))
+            self.assertFalse(page.evaluate("window.guideView === document.querySelector('.hero')"))
+            expect(page.locator('html')).to_have_attribute('lang', 'en')
+            expect(page.locator('.need[href="#/t/hurt"] small')).to_have_text('First aid for bleeding, burns, breathing, injuries and sudden illness')
+            expect(page.locator('.need[href="#/t/water"] small')).to_have_text('Treat, find and store water')
             page.reload()
             expect(page.locator('.need[href="#/t/hurt"] small')).to_have_text('First aid for bleeding, burns, breathing, injuries and sudden illness')
             expect(page.locator('.need[href="#/t/water"] small')).to_have_text('Treat, find and store water')
@@ -272,6 +277,21 @@ class Browser(unittest.TestCase):
             sidebar.get_by_role('link', name='Settings').click()
             page.get_by_role('link', name='Back to the library').click()
             expect(page.locator('.side').get_by_role('link', name='Guides')).to_be_visible()
+
+    def test_copy_start_api_error_is_translated_in_spanish(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/setup/start', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'code': 'folder', 'error': 'Lastbook cannot save there. Choose another drive.',
+                                 'key': 'setup.err.cannotSaveThere'})))
+            page.goto(origin + '/ui/setup.html#manage', wait_until='domcontentloaded')
+            expect(page.locator('h1')).to_have_text('Biblioteca e IA local')
+            page.locator('#copyOut').click()
+            expect(page.locator('h1')).to_have_text('Copiar para otra persona')
+            page.locator('#copyGo').click()
+            expect(page.locator('#haveNote')).to_have_text('Lastbook no puede guardar ahí. Elige una unidad en la que puedas escribir.')
 
     def test_setup_polling_and_a_completed_action_preserve_the_selector(self):
         setup = self.configure_setup()
@@ -291,8 +311,8 @@ class Browser(unittest.TestCase):
             expect(select).to_be_focused()
             select.select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
-            expect(page.get_by_role('button', name='Resume')).to_be_visible()
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
+            expect(page.get_by_role('button', name='Reanudar')).to_be_visible()
 
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()
@@ -324,7 +344,7 @@ class Browser(unittest.TestCase):
                     self.assertFalse(self.language_file.exists())
                     page.get_by_label('Interface language').select_option('es-419')
                     page.get_by_role('button', name='Save language').press('Enter')
-                    expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+                    expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
                 self.language_file.unlink()
 
     def test_library_ignores_an_old_get_after_a_save_and_route_change(self):
@@ -344,7 +364,7 @@ class Browser(unittest.TestCase):
                     settings.goto(origin + '/ui/setup.html#manage')
                     settings.get_by_label('Interface language').select_option('es-419')
                     settings.get_by_role('button', name='Save language').click()
-                    expect(settings.get_by_role('status')).to_have_text('Idioma guardado.')
+                    expect(settings.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
                 library.evaluate("""() => {
                     location.hash = '#/search';
                     dispatchEvent(new PageTransitionEvent('pageshow', {persisted: true}));
@@ -380,11 +400,11 @@ class Browser(unittest.TestCase):
                         first.get_by_label('Interface language').select_option('en')
                         first.eval_on_selector('#languageSettings', 'form => form.requestSubmit()')
                         second.get_by_role('button', name='Save language').click()
-                        expect(second.get_by_role('status')).to_have_text('Language saved.')
+                        expect(second.get_by_role('status')).to_have_text('Language saved. Restart Lastbook to update its menus.')
                         release.set()
-                        expected = 'Could not save the language. Try again.' if fails else 'Idioma guardado.'
+                        expected = 'Could not save the language. Try again.' if fails else 'Idioma guardado. Reinicia Lastbook para actualizar los menús.'
                         expect(first.get_by_role('status')).to_have_text(expected)
-                        expect(second.get_by_role('status')).to_have_text('Language saved.')
+                        expect(second.get_by_role('status')).to_have_text('Language saved. Restart Lastbook to update its menus.')
                         self.assertEqual(len(first_posts), 1)
                         self.assertEqual(json.loads(self.language_file.read_bytes()), {'language': 'en'})
                 with self.page(origin, http, 'es-UY') as restarted:
@@ -508,7 +528,7 @@ class Browser(unittest.TestCase):
                 release.set()
             page.get_by_label('Interface language').select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
 
     def test_label_helpers_accept_plain_strings_and_pairs(self):
         self.configure_setup(current=DATA)

@@ -111,8 +111,7 @@ class Catalogues(unittest.TestCase):
 
 
 class FallbackWording(unittest.TestCase):
-    """language.unavailable is shown in English when the saved language's catalogue cannot load (web/i18n-app.js), whichever
-    language that is. The selector offers more than one translated language, so the message must not name one."""
+    """Unavailable-language copy stays neutral across all offered locales."""
 
     def test_english_fallback_names_no_language(self):
         en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
@@ -122,47 +121,8 @@ class FallbackWording(unittest.TestCase):
             self.assertNotIn(name, text)
 
 
-class SimplifiedChineseWording(unittest.TestCase):
-    """The zh-Hans catalogue keeps the conventions in docs/i18n.md#simplified-chinese-zh-hans."""
-
-    @classmethod
-    def setUpClass(cls):
-        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
-        cls.en, cls.zh = load('en.json'), load('zh-Hans.json')
-
-    def test_setup_and_settings_are_different_words(self):
-        self.assertEqual(self.zh['nav.settings'], '设置')
-        self.assertIn('初始设置', self.zh['setup.title'])
-        # "初始设置" contains "设置"; the rest of the heading must not say it again.
-        self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
-        # Where a sentence names both screens, it names both.
-        self.assertIn('初始设置', self.zh['language.preview'])
-        self.assertIn('设置', self.zh['language.preview'])
-
-    def test_simplified_characters_only(self):
-        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網路線說檔電腦檢區換'
-        everything = ' '.join(self.zh.values())
-        self.assertEqual([character for character in traditional if character in everything], [])
-
-    def test_everyday_words_and_formatting(self):
-        self.assertIn('这台电脑', self.zh['setup.loading'])
-        self.assertIn('州或地区', self.zh['setup.chooseIntro'])
-        # A space separates Chinese from Latin words, and names stay as they are.
-        self.assertIn('Lastbook 会', self.zh['setup.chooseIntro'])
-        self.assertEqual(self.zh['setup.settingsTitle'], '资料库与本地 AI')
-        # Full-width punctuation, no space before it, no ideographic space.
-        everything = ' '.join(self.zh.values())
-        for bad in (' ,', ' 。', ' ，', ' ；', ' …', '\u3000', '..'):
-            self.assertNotIn(bad, everything)
-        self.assertTrue(self.zh['language.saving'].endswith('…'))
-
-    def test_no_message_is_left_in_english(self):
-        same = {key for key in self.zh if self.zh[key] == self.en[key]}
-        self.assertEqual(same, set())
-
-
 class GermanWording(unittest.TestCase):
-    """The de catalogue keeps the conventions in docs/i18n.md#german-de: formal "Sie" throughout, and fixed words for the screens."""
+    """The de catalogue keeps the conventions in docs/i18n.md#german-de."""
 
     @classmethod
     def setUpClass(cls):
@@ -180,7 +140,7 @@ class GermanWording(unittest.TestCase):
         self.assertEqual(self.de['setup.title'], 'Lastbook einrichten')
         self.assertEqual(self.de['nav.settings'], 'Einstellungen')
         self.assertIn('Einrichtung und Einstellungen', self.de['language.preview'])
-        self.assertIn('Region', self.de['setup.chooseIntro'])        # not "Bundesstaat": the prompt is for any region
+        self.assertIn('Region', self.de['setup.chooseIntro'])
 
     def test_no_message_is_left_in_english(self):
         same = {key for key in self.de if self.de[key] == self.en[key]}
@@ -198,9 +158,7 @@ class SimplifiedChineseWording(unittest.TestCase):
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.zh['nav.settings'], '设置')
         self.assertIn('初始设置', self.zh['setup.title'])
-        # "初始设置" contains "设置"; the rest of the heading must not say it again.
         self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
-        # Where a sentence names both screens, it names both.
         self.assertIn('初始设置', self.zh['language.preview'])
         self.assertIn('设置', self.zh['language.preview'])
 
@@ -212,10 +170,8 @@ class SimplifiedChineseWording(unittest.TestCase):
     def test_everyday_words_and_formatting(self):
         self.assertIn('这台电脑', self.zh['setup.loading'])
         self.assertIn('州或地区', self.zh['setup.chooseIntro'])
-        # A space separates Chinese from Latin words, and names stay as they are.
         self.assertIn('Lastbook 会', self.zh['setup.chooseIntro'])
         self.assertEqual(self.zh['setup.settingsTitle'], '资料库与本地 AI')
-        # Full-width punctuation, no space before it, no ideographic space.
         everything = ' '.join(self.zh.values())
         for bad in (' ,', ' 。', ' ，', ' ；', ' …', '\u3000', '..'):
             self.assertNotIn(bad, everything)
@@ -274,7 +230,8 @@ class SpanishWording(unittest.TestCase):
             'saved.pdf', 'app.titleSuffix', 'time.hoursMinutes', 'time.minutes', 'time.seconds',
             'map.zoom', 'library.shelfVideos',
             'native.menu.zoom', 'common.video',
-            'native.appFileDescription', 'installer.productName', 'installer.companyName',
+            'native.appFileDescription', 'installer.productName', 'installer.companyName', 'videos.videoCount',
+            'setup.facts.sha256',
         })
 
     def test_everyday_words_cover_the_full_catalogue(self):

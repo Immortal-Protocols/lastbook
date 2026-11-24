@@ -169,7 +169,7 @@ class Updater:
     def check(self, token=None, *, automatic=False):
         """token: handed back to on_done with the result (Notices drops a result whose token is from before an opt-out)."""
         if not self.key:
-            return {'error': 'Updates are for the Mac, Windows and Linux app.', 'code': 'unsupported'}
+            return {'error': 'Updates are for the Mac, Windows and Linux app.', 'error_key': 'update.unsupported', 'code': 'unsupported'}
         with self.lock:
             if self.thread is None or not self.thread.is_alive():
                 self.s = {'state': 'checking'}
@@ -185,7 +185,8 @@ class Updater:
             self._check()
         except Exception as e:
             traceback.print_exc()
-            self._set(state='error', code='internal', message=f'The check stopped on an internal error ({type(e).__name__}).')
+            self._set(state='error', code='internal', message=f'The check stopped on an internal error ({type(e).__name__}).',
+                       message_key='update.internalError')
         done = self.on_done
         if done:
             try:
@@ -196,14 +197,15 @@ class Updater:
     def _fetch(self):
         """(status, bytes) of the metadata through download.py. Raises download.Failed with code 'offline' when nothing answers."""
         if self.product and urllib.parse.urlsplit(self.url).port not in (None, 443):
-            raise download.Failed('network', 'Lastbook refused to check an address it does not know.')
+            raise download.Failed('network', 'Lastbook refused to check an address it does not know.', key='update.refusedAddress')
         try:
             conn, r, final = download._open(self.url, 0, None, self.allowed, self.context or download.tls_context(), 15)
         except download.Failed:
             raise
         except download.ssl.SSLCertVerificationError:
             raise download.Failed('network', 'Lastbook could not confirm it was talking to the real download site, so it stopped. '
-                                             'A network that intercepts secure connections (some offices, hotels) can cause this.')
+                                             'A network that intercepts secure connections (some offices, hotels) can cause this.',
+                                  key='update.secureConnection')
         except (OSError, ValueError, download.http.client.HTTPException):   # names through download.py: no network module here
             raise download.Failed('offline', OFFLINE)
         try:
@@ -220,27 +222,33 @@ class Updater:
         try:
             status, data = self._fetch()
         except download.Failed as f:
-            return self._set(state='error', code=f.code, message=f.message)
+            message_key = f.key or {'offline': 'update.offline', 'network': 'update.networkError', 'server': 'update.serverError'}.get(f.code, 'update.failed')
+            params = f.params or ({'host': f.extra['host']} if f.extra.get('host') else None)
+            return self._set(state='error', code=f.code, message=f.message, message_key=message_key, message_params=params)
         if status in (403, 404):
-            return self._set(state='not_published', message='No update information yet. Try again later.')
+            return self._set(state='not_published', message_key='update.noInfo')
         if status != 200 or len(data) > MAX_BODY:
-            return self._set(state='error', code='server', message='The download site did not answer properly. Try again later.')
+            return self._set(state='error', code='server', message='The download site did not answer properly. Try again later.',
+                             message_key='update.serverError')
         try:
             offer = validate(json.loads(data), self.key)
         except ValueError:
             offer = None
         if not offer and self.key == 'linux' and _has_no_entry(data, self.key):   # Linux is announced only once the site lists it
-            return self._set(state='not_published', message='No update information yet. Try again later.')
+            return self._set(state='not_published', message_key='update.noInfo')
         if not offer:
-            return self._set(state='error', code='bad_info', message='The update information on the download site could not be read. Try again later.')
+            return self._set(state='error', code='bad_info', message='The update information on the download site could not be read. Try again later.',
+                             message_key='update.badInfo')
         mine = _ver(self.version or '')
         if mine and _ver(offer['version']) <= mine:
             return self._set(state='up_to_date', latest=offer['version'])
         have = _ver(os_version())
         if offer['min_os'] and have and have < _ver(offer['min_os']):
+            key = 'update.tooOldOsLinux' if self.key == 'linux' else 'update.tooOldOs'
+            params = {'version': offer['version'], 'os': OS_NAMES.get(self.key, self.key), 'minimum': offer['min_os']}
             built_on = ', or a system built on it' if self.key == 'linux' else ''
-            return self._set(state='too_old_os', version=offer['version'],
-                             message=f"Version {offer['version']} needs {OS_NAMES.get(self.key, self.key)} {offer['min_os']} or later{built_on}.")
+            message = f"Version {offer['version']} needs {params['os']} {offer['min_os']} or later{built_on}."
+            return self._set(state='too_old_os', version=offer['version'], message=message, message_key=key, message_params=params)
         self._set(state='available', version=offer['version'])
 
 
@@ -375,7 +383,7 @@ class Notices:
         with self.lock:
             lock = self._lock_settings()
             if lock is None:
-                return {'error': 'Lastbook could not save this setting. Try again.', 'code': 'save'}
+                return {'error': 'Lastbook could not save this setting. Try again.', 'error_key': 'update.savePreferenceFailed', 'code': 'save'}
             with lock:
                 p = self._read()
                 p['notify'] = on is True
@@ -384,7 +392,7 @@ class Notices:
                     p.pop('found', None)
                 if self._save(p):
                     return self._public(p)
-                return {'error': 'Lastbook could not save this setting. Try again.', 'code': 'save'}
+                return {'error': 'Lastbook could not save this setting. Try again.', 'error_key': 'update.savePreferenceFailed', 'code': 'save'}
 
     def _record(self, s, token):
         with self.lock:
@@ -444,9 +452,9 @@ def _has_offer(u):
 def _update_now(u):
     """Update now: starts the native updater, which asks the person before anything is installed. Takes nothing from the request."""
     if NATIVE is None or NOTICES is None or not _ver(u.version) or not NATIVE.ready():
-        return {'error': 'This copy of Lastbook cannot update itself. Use the download page instead.', 'fallback': True}
+        return {'error': 'This copy of Lastbook cannot update itself. Use the download page instead.', 'error_key': 'update.cannotUpdateSelf', 'fallback': True}
     if not _has_offer(u):
-        return {'error': 'Check for an update again first.'}
+        return {'error': 'Check for an update again first.', 'error_key': 'update.checkAgainFirst'}
     out = NATIVE.begin()
     if 'error' in out:
         out['fallback'] = True
@@ -456,15 +464,15 @@ def _update_now(u):
 def _open_download(u):
     """The desktop app's only browser handoff. The destination comes from this code, never the feed or the request."""
     if NOTICES is None or not _ver(u.version):
-        return {'error': 'Open lastbook.org/download/ in your browser for the installer.'}
+        return {'error': 'Open lastbook.org/download/ in your browser for the installer.', 'error_key': 'update.openDownloadInstructions'}
     if not _has_offer(u):
-        return {'error': 'Check for an update again before opening the installer page.'}
+        return {'error': 'Check for an update again before opening the installer page.', 'error_key': 'update.checkAgainBeforeDownload'}
     try:
         if webbrowser.open_new_tab(DOWNLOAD_URL):
             return {'opened': True}
     except (OSError, webbrowser.Error):
         pass
-    return {'error': 'Lastbook could not open your browser. Copy the download link and open it there.'}
+    return {'error': 'Lastbook could not open your browser. Copy the download link and open it there.', 'error_key': 'update.browserOpenFailed'}
 
 
 ROUTES = {
@@ -481,7 +489,8 @@ def handle(h, method, path):
     """Answers one /api/update/ request on a BaseHTTPRequestHandler h. This computer only."""
     from engine.setup.api import _send_json
     if h.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
-        return _send_json(h, {'error': 'Updates are only open on this computer.'}, 403)
+        return _send_json(h, {'error': 'Updates are only open on this computer.',
+                              'error_key': 'update.localOnly'}, 403)
     fn = ROUTES.get(('GET' if method == 'HEAD' else method, path[len('/api/update/'):].strip('/')))
     if not fn:
         return _send_json(h, {'error': 'not found'}, 404)
@@ -496,5 +505,6 @@ def handle(h, method, path):
         out = fn(updater())
     except Exception as e:
         traceback.print_exc()
-        return _send_json(h, {'error': f'The check stopped on an internal error ({type(e).__name__}).'}, 500)
+        return _send_json(h, {'error': f'The check stopped on an internal error ({type(e).__name__}).',
+                              'error_key': 'update.internalError'}, 500)
     return _send_json(h, out)

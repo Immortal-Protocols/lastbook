@@ -356,12 +356,12 @@ const Chat = (() => {
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
-    if (m.fallback) h += srcCards(m.fallback, true);
+    if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
-      const cited = m.cited || [];
+      const cited = sourcesForFinish(m);
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">${esc(tr('chat.invalidSources', { list: m.invalid.join(', ') }, 'The model referred to sources that don’t exist ({list}); those markers were removed.'))}</p>`;
       h += `<div class="legend small"><span><span class="lg-c">1</span> ${esc(tr('chat.linkedToPageOrVideo', null, 'linked to a page or video'))}</span><span><span class="lg-u">${esc(tr('chat.dottedLine', null, 'dotted'))}</span> ${esc(tr('chat.modelsOwnWording', null, 'the model’s own wording, not linked to a source'))}</span></div>`;
-      if (cited.length) h += `<h3 class="srch">${esc(tr('chat.sourcesCount', { count: cited.length }, 'Sources ({count})'))}</h3>${srcCards(cited, false)}`;
+      if (cited.length) h += `<h3 class="srch">${esc(tr('chat.sourcesCount', { count: cited.length }, 'Sources ({count})'))}</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
       else h += `<p class="notice small">${esc(tr('chat.noLinkedSources', null, 'This answer has no linked sources. Treat it as unverified.'))}</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');
       if (other.length) h += `<details class="also"><summary>${esc(tr('chat.alsoLookedAt', { count: other.length }, 'Also looked at ({count}, not used)'))}</summary>${srcCards(other.slice(0, 10), true)}</details>`;

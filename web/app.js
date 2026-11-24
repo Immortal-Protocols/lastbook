@@ -95,6 +95,13 @@ function toggleSave(item, btn) {
   if (btn) { btn.setAttribute('aria-pressed', isSaved(item.key)); const sp = $('span', btn); if (sp) { sp.dataset.i18n = isSaved(item.key) ? 'saved.actionOn' : 'saved.action'; sp.textContent = isSaved(item.key) ? tr('saved.actionOn', null, 'Saved') : tr('saved.action', null, 'Save') } }
 }
 const saveButton = item => `<button class="btn plain" title="${esc(tr('saved.action', null, 'Save'))}" data-i18n-title="${isSaved(item.key) ? 'saved.actionOn' : 'saved.action'}" data-save='${esc(JSON.stringify(item))}' aria-pressed="${isSaved(item.key)}">${ico('save')}<span data-i18n="${isSaved(item.key) ? 'saved.actionOn' : 'saved.action'}">${isSaved(item.key) ? tr('saved.actionOn', null, 'Saved') : tr('saved.action', null, 'Save')}</span></button>`;
+const watchedButton = (id, d) => {
+  const w = isWatched(id, null, d);
+  const translate = globalThis.lastbookTr || ((_key, _params, fallback) => fallback);
+  const titleKey = w ? 'videos.markUnwatched' : 'videos.markWatched';
+  const labelKey = w ? 'videos.watched' : 'videos.markWatched';
+  return `<button class="btn plain" id="markWatched" title="${esc(translate(titleKey, null, w ? 'Mark as unwatched' : 'Mark as watched'))}" data-i18n-title="${titleKey}" aria-pressed="${w}">${ico('check')}<span data-i18n="${labelKey}">${translate(labelKey, null, w ? 'Watched' : 'Mark watched')}</span></button>`;
+};
 document.addEventListener('click', e => { const b = e.target.closest('[data-save]'); if (b) toggleSave(JSON.parse(b.dataset.save), b) });
 let toastT;
 function toast(msg) {
@@ -205,7 +212,7 @@ function vcard(v, opts = {}) {
   const watched = isWatched(v.id, p, v);
   return `<a class="vcard" href="#/watch/${encodeURIComponent(v.id)}?${fromQ()}" ${opts.style || ''}>
     <span class="vthumb">${v.thumb ? `<img loading="lazy" alt="" src="${fileUrl(v.thumb)}" onerror="this.remove()">` : `<span class="ph">${ico('video')}</span>`}
-      ${v.transcript ? `<span class="cc" title="${esc(tr('video.hasTranscript', null, 'Has a transcript'))}" data-i18n-title="video.hasTranscript">CC</span>` : ''}${v.duration ? `<span class="dur">${clock(v.duration)}</span>` : ''}${pct > 2 ? `<span class="prog" style="width:${pct}%"></span>` : ''}<span class="play">${ico('play')}</span></span>
+      ${watched ? `<span class="vcheck" title="${esc(globalThis.lastbookTr?.('videos.watched', null, 'Watched') || 'Watched')}" aria-label="${esc(globalThis.lastbookTr?.('videos.watched', null, 'Watched') || 'Watched')}" data-i18n-title="videos.watched">${ico('check')}</span>` : ''}${v.transcript ? `<span class="cc" title="${esc(tr('video.hasTranscript', null, 'Has a transcript'))}" data-i18n-title="video.hasTranscript">CC</span>` : ''}${v.duration ? `<span class="dur">${clock(v.duration)}</span>` : ''}${pct > 2 ? `<span class="prog" style="width:${pct}%"></span>` : ''}<span class="play">${ico('play')}</span></span>
     <b>${esc(v.title)}</b><span class="vm">${esc(opts.sub || v.publisher || '')}</span></a>`;
 }
 function rail(html, cls = '') {
@@ -678,6 +685,7 @@ async function videoFormats(url) {
 }
 
 async function watch(id, t, from) {
+  const tr = globalThis.lastbookTr || ((_key, _params, fallback) => fallback);
   const d = await api('/api/doc/' + encodeURIComponent(id));
   setTitle(d.title);
   const selfHref = `#/watch/${encodeURIComponent(id)}`;
@@ -685,6 +693,7 @@ async function watch(id, t, from) {
   const p = vprog()[id];
   const start = t !== null && Number.isFinite(+t) && +t >= 0 ? +t : null;
   const resumeAt = start === null && p && p.t > 15 && (!d.duration || p.t < d.duration - 20) ? p.t : 0;
+  const watched = isWatched(id, p, d);
   main.innerHTML = `<div class="rtop">${backButton(from, ['nav.videos', tr('nav.videos', null, 'Videos')])}</div>
   <div class="watch">
     <div>
@@ -693,8 +702,8 @@ async function watch(id, t, from) {
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">${esc(tr('videos.storedRemote', { name: d.remote }, 'Stored on the remote drive “{name}”. It plays only while that computer is reachable.'))}</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
-      ${resumeAt ? `<div class="resume" id="resume">${esc(tr('videos.youStoppedAt', { time: clock(resumeAt) }, 'You stopped at {time}.'))} <button class="btn" id="resYes">${esc(tr('videos.resume', null, 'Resume'))}</button><button class="btn plain" id="resNo">${esc(tr('videos.startOver', null, 'Start over'))}</button></div>` : ''}
-      <div class="vactions dock">${saveButton({ key: 'v:' + id, title: d.title, href: selfHref, sub: tr('common.video', null, 'Video') + ' · ' + fmtDur(d.duration) })}<a class="btn plain" title="${esc(tr('videos.askAbout', null, 'Ask about this video'))}" href="#/ask?about=${encodeURIComponent('video:' + id)}&${fromQ()}" id="askv">${ico('ask')}<span>${esc(tr('videos.askAbout', null, 'Ask about this video'))}</span></a></div>
+      ${resumeAt ? `<div class="resume" id="resume"${watched ? ' hidden' : ''}>${esc(tr('videos.youStoppedAt', { time: clock(resumeAt) }, 'You stopped at {time}.'))} <button class="btn" id="resYes">${esc(tr('videos.resume', null, 'Resume'))}</button><button class="btn plain" id="resNo">${esc(tr('videos.startOver', null, 'Start over'))}</button></div>` : ''}
+      <div class="vactions dock">${saveButton({ key: 'v:' + id, title: d.title, href: selfHref, sub: tr('common.video', null, 'Video') + ' · ' + fmtDur(d.duration) })}${watchedButton(id, d)}<a class="btn plain" title="${esc(tr('videos.askAbout', null, 'Ask about this video'))}" href="#/ask?about=${encodeURIComponent('video:' + id)}&${fromQ()}" id="askv">${ico('ask')}<span>${esc(tr('videos.askAbout', null, 'Ask about this video'))}</span></a></div>
       ${momentSection(true)}
       <div class="notice small">${esc(tr('videos.noticeHobby', null, 'A video shows how one person did something. Watching isn’t practice, and it may not match current safety guidance — check a manual for anything risky.'))}</div>
     </div>
@@ -734,8 +743,10 @@ async function watch(id, t, from) {
     const w = isWatched(id, null, d);
     if (b.getAttribute('aria-pressed') === String(w)) return;
     b.setAttribute('aria-pressed', w);
-    b.title = w ? 'Mark as unwatched' : 'Mark as watched';
-    const sp = $('span', b); if (sp) sp.textContent = w ? 'Watched' : 'Mark watched';
+      const titleKey = w ? 'videos.markUnwatched' : 'videos.markWatched', labelKey = w ? 'videos.watched' : 'videos.markWatched';
+      b.title = tr(titleKey, null, w ? 'Mark as unwatched' : 'Mark as watched');
+      if (b.dataset) b.dataset.i18nTitle = titleKey;
+      const sp = $('span', b); if (sp) { if (sp.dataset) sp.dataset.i18n = labelKey; sp.textContent = tr(labelKey, null, w ? 'Watched' : 'Mark watched') }
     const res = $('#resume'); if (res) res.hidden = w;
   };
   const bWatched = $('#markWatched');
@@ -744,7 +755,7 @@ async function watch(id, t, from) {
       const cur = isWatched(id, null, d);
       setWatched(id, !cur);
       updateWatchedBtn();
-      toast(!cur ? 'Marked as watched' : 'Marked as unwatched');
+      toast(tr(!cur ? 'videos.toastMarkedWatched' : 'videos.toastMarkedUnwatched', null, !cur ? 'Marked as watched' : 'Marked as unwatched'));
     };
   }
   let lastSave = 0;
@@ -1480,7 +1491,53 @@ async function localAI(action) {
   try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch { }
   setTimeout(() => { if (location.hash.startsWith('#/about')) route() }, 400);
 }
-async function about() {
+function contributePage() {
+  setTitle('Contribute to Lastbook');
+  main.innerHTML = `<section class="contribute">
+    <h1 data-i18n="contribute.title">Contribute to Lastbook</h1>
+    <p class="lead" data-i18n="contribute.welcome">We’re building Lastbook together. We need you.</p>
+    <p class="contribute-help" data-i18n="contribute.help">Describe one idea and copy the prompt into your AI. You can review the change before it opens a pull request.</p>
+    <div class="card contribute-card">
+      <label for="contrib-idea"><span data-i18n="contribute.idea">Your idea</span> <span class="muted" data-i18n="contribute.optional">(optional)</span></label>
+      <input id="contrib-idea" type="text" maxlength="300" placeholder="Example: Make offline map labels easier to read" data-i18n-placeholder="contribute.example">
+      <label for="contrib-prompt" data-i18n="contribute.prompt">Prompt for your AI</label>
+      <textarea id="contrib-prompt" rows="6" spellcheck="false"></textarea>
+      <div class="contribute-actions">
+        <button class="btn" id="copy-contrib" type="button" data-i18n="contribute.copy">Copy prompt</button>
+        <a class="contribute-link" id="github-contrib" href="/contribute/github" target="_blank" rel="noopener"><span data-i18n="contribute.github">Open GitHub</span> <span aria-hidden="true">↗</span></a>
+      </div>
+      <p class="small muted contribute-note" data-i18n="contribute.local">Your idea stays on this device until you share it.</p>
+      <p role="status" class="small" id="contrib-status"></p>
+    </div>
+  </section>`;
+  const idea = $('#contrib-idea'), prompt = $('#contrib-prompt'), status = $('#contrib-status');
+  const sync = () => {
+    const ideaLine = idea.value.trim()
+      ? tr('contribute.promptIdea', { idea: idea.value.trim() }, 'Make one focused change in a fork: {idea}')
+      : tr('contribute.promptDefault', null, 'Help me choose a small improvement and make one focused change in a fork.');
+    prompt.value = tr('contribute.promptBody', { ideaLine }, 'Read CONTRIBUTING.md in github.com/Immortal-Protocols/lastbook.\n\n{ideaLine}\n\nRun the relevant tests and prepare a pull request. Explain what changed and what you tested. Wait for my approval before opening the PR.');
+  };
+  sync();
+  idea.addEventListener('input', sync);
+  $('#copy-contrib').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.value);
+      status.dataset.i18n = 'contribute.copiedMessage';
+      status.textContent = tr('contribute.copiedMessage', null, 'Prompt copied.');
+      $('#copy-contrib').dataset.i18n = 'contribute.copied';
+      $('#copy-contrib').textContent = 'Copied';
+      translateRendered();
+    } catch {
+      prompt.focus();
+      prompt.select();
+      status.dataset.i18n = 'contribute.copyFallback';
+      status.textContent = tr('contribute.copyFallback', null, 'Prompt selected. Press your copy shortcut.');
+      translateRendered(status);
+    }
+  });
+}
+
+async function about(showUpdate = false) {
   setUiTitle('about.title', tr('about.title', null, 'About this library'));
   let dl = {}, st = {};
   LIB = null;   // About shows the counts as they are now
@@ -1501,7 +1558,8 @@ async function about() {
    ${ch ? `<div class="card"><b data-i18n="about.stillArriving">${esc(tr('about.stillArriving', null, 'Still arriving'))}</b><small>${esc(tr('about.queuedVideos', { pending: ch.pending.toLocaleString(), downloading: ch.downloading }, '{pending} more videos are queued and {downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.'))}</small></div>` : ''}
    <div class="card"><b data-i18n="about.assistant">${esc(tr('about.assistant', null, 'Assistant'))}</b><small>${localAbout(st) || (st.online ? esc(tr('about.localModelAvailable', { model: st.model }, 'Local model {model} — available.')) : esc(tr('about.localAiOff', null, 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')))}${esc(indexLine)}</small></div>
    <div class="card"><b data-i18n="about.cantSee">${esc(tr('about.cantSee', null, 'What the assistant can’t see'))}</b><small>${blind(st.coverage)}${esc(cantSee)}${esc(remote)}</small></div>
-   ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
+   ${!showUpdate && IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
+   ${showUpdate && IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
   </div>
   <h2 data-i18n="about.howLabelled">${esc(tr('about.howLabelled', null, 'How sources are labelled'))}</h2><ul>
    <li><b data-i18n="about.label.health">${esc(tr('about.label.health', null, 'International health & humanitarian guidance'))}</b> — ${esc(tr('about.label.healthDetail', null, 'WHO, Red Cross / Red Crescent, MSF, UNICEF, Sphere, St John Ambulance.'))}</li>

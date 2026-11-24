@@ -1,6 +1,6 @@
 # Lastbook
 
-Lastbook is an offline survival library for Mac, Windows and Linux. It puts manuals, videos, encyclopedias, an offline map and
+Lastbook is a community built and maintained offline survival library for Mac, Windows and Linux. Point your AI to our repo and contribute to humanity's survival. It puts manuals, videos, encyclopedias, an offline map and
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.
 Chat answers questions using the library, including the offline encyclopedias when they are present, and links to its sources.
 
@@ -13,9 +13,9 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 
 | Platform | Version | Status |
 |---|---|---|
-| macOS (Apple Silicon, macOS 14 or later) | 1.1.13 | Live on lastbook.org, signed and notarized |
-| Windows (64-bit, Windows 10 or later) | 1.1.13 | Live on lastbook.org, Authenticode signed |
-| Linux (Ubuntu 24.04 or 26.04 LTS, x86_64) | 1.1.13 | Ubuntu packages; installation instructions below |
+| macOS (Apple Silicon, macOS 14 or later) | 1.1.17 | Live on lastbook.org, signed and notarized |
+| Windows (64-bit, Windows 10 or later) | 1.1.17 | Live on lastbook.org, Authenticode signed |
+| Linux (Ubuntu 24.04 or 26.04 LTS, x86_64) | 1.1.17 | Ubuntu packages; installation instructions below |
 
 ## iPad (development preview, source only)
 
@@ -27,11 +27,11 @@ A native iPad app (Videos, Map and Chat, offline, with optional on-device AI) is
 ## Install on Linux
 
 The Linux packages target **Ubuntu 24.04 LTS and Ubuntu 26.04 LTS on Intel/AMD x86_64 computers**, one package for each. Download
-[Lastbook for Ubuntu 24.04](https://downloads.lastbook.org/Lastbook_1.1.13_amd64.deb) (or [for Ubuntu 26.04](https://downloads.lastbook.org/Lastbook_1.1.13_ubuntu26.04_amd64.deb)), then install it with apt so Ubuntu resolves its dependencies.
+[Lastbook for Ubuntu 24.04](https://downloads.lastbook.org/Lastbook_1.1.17_amd64.deb) (or [for Ubuntu 26.04](https://downloads.lastbook.org/Lastbook_1.1.17_ubuntu26.04_amd64.deb)), then install it with apt so Ubuntu resolves its dependencies.
 
 ```bash
-sudo apt install ./Lastbook_1.1.13_amd64.deb                  # Ubuntu 24.04
-sudo apt install ./Lastbook_1.1.13_ubuntu26.04_amd64.deb      # Ubuntu 26.04
+sudo apt install ./Lastbook_1.1.17_amd64.deb                  # Ubuntu 24.04
+sudo apt install ./Lastbook_1.1.17_ubuntu26.04_amd64.deb      # Ubuntu 26.04
 ```
 
 Open Lastbook from the application menu. First-run setup downloads your chosen library, state map and optional local AI.
@@ -53,20 +53,25 @@ other Linux distributions have not been validated for this release.
   picks the state; Lastbook never detects location.
 - **Optional local AI.** Ask questions in plain words and get answers that cite library pages, from a model that runs on
   the computer itself (see "The local AI" below). Without it, Chat still finds the right pages.
+- **Saved video moments.** Keep several named positions in a video and open them from the player or Saved. Names and
+  positions stay on this device; the video and its captions are unchanged.
 - **One-download setup.** On first run, setup defaults to Small and selects local AI when the computer can run it.
   The person can choose Small, Medium or All, selects a state map, and starts the checked downloads. A library already on the
   computer (a folder or a pack zip) can be used instead of downloading.
-- **Check for updates, only when asked.** About has a Check for updates button (and the Mac menu has Lastbook > Check for
-  Updates…). It only says whether a newer version is on the website; nothing is downloaded or installed.
+- **App updates.** Choose **Notify me about app updates** in Settings or during first-time setup. Lastbook checks at most once
+  every 24 hours while it is open and online. If a compatible version is available, the sidebar shows **Update available**.
+  On a Mac build that can update itself, About's **Update now** asks you to confirm, installs the signed update and restarts
+  Lastbook. Elsewhere, **Open download page** opens the official download page: run the new installer. Either way your existing
+  library, settings and chats stay as they are. You can also check manually in About or the Mac menu under Lastbook > Check for Updates….
 
 ## Privacy and network use
 
 - **No listening port.** The desktop app opens no network port. The window and the engine talk through an in-memory bridge
   (`app/bridge.py`): WKURLSchemeHandler on macOS (`app/shell_macos.py`), WebView2 `WebResourceRequested` on Windows
   (`app/shell_windows.py`), and WebKitGTK `URISchemeRequest` on Linux (`app/shell_linux.py`). The local AI runner speaks JSON lines on standard input and output and opens no socket either.
-- **Two uses of the network, both started by the person.** (1) Setup's downloader (`engine/setup/`), when the person
-  starts or resumes a download. (2) The update check (`engine/update.py`, `web/update.js`), when the person presses
-  the button. Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,
+- **Two uses of the network.** (1) Setup's downloader (`engine/setup/`), when the person starts or resumes a download.
+  (2) The app update check (`engine/update.py`, `web/update.js`), when the person checks manually or opts into daily checks.
+  Both go through `engine/setup/download.py`, the only module that opens a connection: HTTPS on port 443 only,
   to allow-listed hosts only (`downloads.lastbook.org` for packs, maps, the manifest and update information; Hugging Face's
   download hosts for the AI model; the update check accepts `downloads.lastbook.org` alone), no proxy from the system, and a
   redirect is followed only to another allowed host.
@@ -75,8 +80,8 @@ other Linux distributions have not been validated for this release.
   (`packaging/check_tls_roots.py`).
 - **Checked files.** Every download is checked against the SHA-256 in the manifest before it is used. Zips are checked
   for unsafe paths, links and sizes before anything is written.
-- **Nothing else.** The windows block all web loads, there is no telemetry, no account, and nothing runs on a timer or at
-  startup that reaches the network.
+- **Nothing else.** The windows block web loads, and there is no telemetry or account. App update notices are off by
+  default. With notices enabled, the app can check the release feed after launch or while the app is open.
 - **A working library is never broken.** New data is unpacked beside the old one, checked, and then switched in with a
   single rename. A failure at any step leaves the old library as it was.
 
@@ -125,8 +130,12 @@ https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.3856.49 and copy
 against the hashes in `packaging/build_app_windows.sh`.
 
 On Linux, start it through `packaging/linux/run_source_linux.sh` instead, or videos will not play. The window comes
-from the system (WebKitGTK 4.1 and PyGObject), so make the virtual environment with `--system-site-packages` and install
-`packaging/linux/requirements_linux.txt`:
+from the system (WebKitGTK 4.1 and PyGObject), so make the virtual environment with `--system-site-packages` and
+install one requirements file — `packaging/linux/requirements_linux.txt` on Ubuntu (or Arch), or
+`packaging/linux/requirements_linux_fedora.txt` on Fedora (and any source install on Python 3.15, where the packaged
+pins have no wheel):
+
+Ubuntu (or Arch):
 
 ```bash
 python3 -m venv --system-site-packages .venv
@@ -134,16 +143,27 @@ python3 -m venv --system-site-packages .venv
 bash packaging/linux/run_source_linux.sh --data /path/to/LastbookData
 ```
 
+Fedora:
+
+```bash
+python3 -m venv --system-site-packages .venv
+.venv/bin/pip install -r packaging/linux/requirements_linux_fedora.txt
+bash packaging/linux/run_source_linux.sh --data /path/to/LastbookData
+```
+
 The packaged app plays library videos through `lastbooksrc`, its own GStreamer source for `lastbook://` addresses
 (`packaging/linux/gst/lastbooksrc.c`). A source run has no copy of it. The script builds it into `derived/gst/`,
 points GStreamer and WebKit at it for that launch only, and warns about any missing decoders. It needs these packages:
 
-| | Arch | Ubuntu |
-|---|---|---|
-| Build the plugin | `gcc pkg-config gstreamer` | `gcc pkg-config libgstreamer1.0-dev` |
-| Window | `webkit2gtk-4.1 python-gobject` | `gir1.2-webkit2-4.1 python3-gi` |
-| MP4, H.264, AAC | `gst-plugins-base gst-plugins-good gst-libav` | `gstreamer1.0-plugins-good gstreamer1.0-libav` |
-| AV1 (many of the library's videos) | `gst-plugin-dav1d` | `gstreamer1.0-plugins-bad` |
+| | Arch | Ubuntu | Fedora |
+|---|---|---|---|
+| Build the plugin | `gcc pkg-config gstreamer` | `gcc pkg-config libgstreamer1.0-dev` | `gcc pkgconf-pkg-config gstreamer1-devel gstreamer1-plugins-base-devel` |
+| Window | `webkit2gtk-4.1 python-gobject` | `gir1.2-webkit2-4.1 python3-gi` | `webkit2gtk4.1 python3-gobject` |
+| MP4, H.264, AAC | `gst-plugins-base gst-plugins-good gst-libav` | `gstreamer1.0-plugins-good gstreamer1.0-libav` | `gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugin-libav` |
+| AV1 (many of the library's videos) | `gst-plugin-dav1d` | `gstreamer1.0-plugins-bad` | `gstreamer1-plugin-dav1d` |
+
+A source run was validated natively on Fedora 45 (Python 3.15), with `requirements_linux_fedora.txt`: the whole test
+suite passes, videos decode, and the window opens.
 
 Without an AV1 decoder, those videos fail or play with sound and a black picture. To check video without opening the
 window, decode a few library videos through `lastbooksrc`. Name an AV1 video to cover that decoder too:
@@ -170,7 +190,8 @@ so some of its paths and ports describe that setup. The desktop app does not use
 
 The builds write into `derived/app-build/` and refuse to finish if the package scan finds something that must not ship:
 test code, a network call outside setup's downloader, a web address in our own pages, or a word from the private list
-(see below). The builds also run the TLS roots gate.
+(see below). The builds also run the TLS roots gate and check that the packaged
+localization assets are present and up to date. [Localization guide](docs/i18n.md)
 
 **macOS (Apple Silicon, needs [uv](https://github.com/astral-sh/uv)):**
 
@@ -211,7 +232,7 @@ The published Windows 1.1.8 installer passed installation and startup checks, an
 had valid signatures. The release is 104,960,408 bytes with SHA-256
 `0b31eea87fa05523ca710575e5939754fe10a65eb44ee7d88fe975fbbd161d74`.
 
-**Linux (build on Ubuntu 24.04 or 26.04, x86_64)**
+**Linux (build on Ubuntu 24.04 or 26.04, or Debian 13, x86_64)**
 
 ```bash
 bash packaging/llm/build_llm_linux.sh
@@ -219,11 +240,12 @@ bash packaging/linux/build_app_linux.sh
 ```
 
 The package uses the system Python and pinned wheels from `packaging/linux/requirements_linux.txt`, built for that Python
-only, so each Ubuntu release gets its own package. On 24.04 (Python 3.12) the app build creates
-`derived/app-build/linux/<timestamp>/Lastbook_1.1.13_amd64.deb`; on 26.04 (Python 3.14) it creates
-`Lastbook_1.1.13_ubuntu26.04_amd64.deb`, with the version `1.1.13+ubuntu26.04`, which apt takes as newer than the 24.04 package.
+only, so each release gets its own package. On 24.04 (Python 3.12) the app build creates
+`derived/app-build/linux/<timestamp>/Lastbook_1.1.17_amd64.deb`; on 26.04 (Python 3.14) it creates
+`Lastbook_1.1.17_ubuntu26.04_amd64.deb`, with the version `1.1.17+ubuntu26.04`, which apt takes as newer than the 24.04 package; on Debian 13 (Python 3.13) it creates
+`Lastbook_1.1.17_debian13_amd64.deb`, with the version `1.1.17+debian13`.
 It bundles the local AI runner when `derived/llm/bin-linux/lastbook-llm` exists. `packaging/linux/smoke_deb.sh` checks
-the package in a fresh container of the same Ubuntu release.
+the package in a fresh container of the same release.
 Linux integration-test helpers live under `app/tests/linux_*`; set `LASTBOOK_TEST_HOST` to a Windows SSH host with WSL2
 before running them. Their disposable test distro is named `LastbookTest`, with files under `C:\LastbookTest`.
 
@@ -270,12 +292,10 @@ experimental and not an AUR package; test results are in that README.
 
 ## Tests
 
-```bash
-python3 -B -m unittest app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts
-```
+See [the contributor test instructions](CONTRIBUTING.md#test) for the unit test command and platform requirements.
 
-`test_bridge` needs a data folder (`LASTBOOK_DATA`); the others run without a library. `packaging/test_pack_tools.py SAMPLE
-WORK` checks the pack tools against a pack sample (`build_packs.py build <pack> --sample N`). The `mac_*` and `win_*`
+`packaging/test_pack_tools.py SAMPLE WORK` checks the pack tools against a pack sample
+(`build_packs.py build <pack> --sample N`). The `mac_*` and `win_*`
 scripts in `app/tests/` drive a real build against a real data folder, and their paths are placeholders
 (`/path/to/lastbook`, `C:\Users\you\app-test`) to set for your own machine.
 

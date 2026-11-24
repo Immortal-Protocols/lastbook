@@ -4,7 +4,8 @@ Run:  python3 app/tests/setup_stub.py [port]      (default 8925)
 Then open http://127.0.0.1:8925/__stub/<scenario> to reset to a scenario, which redirects to the setup page.
 Scenarios (see SCENARIOS): mac, mac-small (AI does not fit), win, found, low-disk, paused (a restart picked up a job),
 network, server, checksum, unpack, activate (each fails once at that step; Retry then goes through), busy (the server
-answers 503 for 2 minutes, then the download goes on), manage, manage-ai, upgraded.
+answers 503 for 2 minutes, then the download goes on), manage, manage-ai, upgraded,
+manage-notify (app update notices already on), updates-fail (saving the preference fails).
 The page itself never knows it talks to a stub.
 """
 import copy
@@ -110,12 +111,17 @@ SCENARIOS = {
     'upgraded': dict(mode='manage', hardware=hw(), current={'folder': MAC, 'pack': 'medium', 'model': None,
                      'old': [MAC + '.old-2026-11-12']},
                      recommend={'pack': 'medium', 'ai': True, 'why': ''}),
+    # "Notify me about app updates" already turned on (Settings shows it ticked); 'updates-fail': saving the setting fails
+    'manage-notify': dict(mode='manage', hardware=hw(), current={'folder': MAC, 'pack': 'small', 'model': None, 'map': 'base'},
+                          recommend={'pack': 'medium', 'ai': True, 'why': ''}, notify=True),
+    'updates-fail': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, updates_fail=True),
 }
 
 SCENARIOS['hostile']['hardware']['disks'][0]['name'] = X
 
 RATE = 2.2 * GB        # pretend bytes per second, so a whole run takes about half a minute
 STEP_S = 2.5           # seconds each of checking, unpacking and finishing takes
+CHECK_S = 12           # seconds a repair's check of each item takes, long enough to watch it count
 
 
 class Stub:
@@ -129,6 +135,7 @@ class Stub:
         self.fault = s.get('fault')
         self.busy_until = None
         self.found = s.get('found', [])
+        self.notify = s.get('notify', False)     # as engine/update.py: off unless turned on
         self.folder = (self.current or {}).get('folder') or (WIN if s['hardware']['os'] == 'windows' else MAC)
         if 'job' in s:
             j = s['job']
@@ -160,11 +167,11 @@ class Stub:
             m = self.M['models'][0]
             items.append({'id': m['id'], 'kind': 'model', 'title': m['title'], 'state': 'waiting', 'bytes_done': 0,
                           'bytes_total': m['size'], 'rate_bps': 0, 'eta_s': None, 'error': None})
-        if use:
-            for it in items:
-                if any(f['path'] == use and f['id'] == it['id'] for f in self.found):
-                    it['bytes_done'] = it['bytes_total']
-                    it['use'] = True
+        for it in items:    # as the engine: a file of the right size already here is used, and checked from its first byte
+            ok = [f for f in self.found if f['id'] == it['id'] and f['kind'] == it['kind'] and f.get('size_ok') and not f.get('rejected')]
+            it['source'] = 'found' if ok else 'download'
+            if use and any(f['path'] == use for f in ok):
+                it['use'] = True
         self.job = {'id': 'j1', 'state': 'waiting', 'items': items, 'error': None, 'started': time.time(), 'folder': self.folder}
         self.last = time.time()
         self.phase_t = 0.0
@@ -199,9 +206,14 @@ class Stub:
         if body.get('repair'):
             self._make(None, False)
             p = next(p for p in self.M['packs'] if p['id'] == self.current['pack'])
-            self.job['items'] = [{'id': p['id'], 'kind': 'pack', 'title': p['title'], 'state': 'verifying', 'bytes_done': 0, 'repair': True,
+            # as the engine answers: the job says it is a repair, and every item is still waiting
+            self.job['items'] = [{'id': p['id'], 'kind': 'pack', 'title': p['title'], 'state': 'waiting', 'bytes_done': 0, 'source': 'download',
                                   'bytes_total': p['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None}]
-            self.job['state'] = 'verifying'
+            if self.current.get('model'):    # the installed AI file is found on this computer and checked after the library
+                m = self.M['models'][0]
+                self.job['items'].append({'id': m['id'], 'kind': 'model', 'title': m['title'], 'state': 'waiting', 'bytes_done': 0,
+                                          'source': 'found', 'bytes_total': m['size'], 'rate_bps': 0, 'eta_s': None, 'error': None})
+            self.job['repair'] = True
             return self.public()
         if need > self.free():
             return {'error': 'There is not enough room on this disk.', 'code': 'no_space', 'need_bytes': need, 'free_bytes': self.free()}
@@ -222,7 +234,8 @@ class Stub:
             if it['state'] == 'done':
                 continue
             if it['state'] in ('waiting', 'paused'):
-                it['state'] = 'downloading' if it['bytes_done'] < it['bytes_total'] else 'verifying'
+                check = it.get('source') == 'found' or (j.get('repair') and it['kind'] == 'pack')   # a file already here, or the open library
+                it['state'] = 'downloading' if it['bytes_done'] < it['bytes_total'] and not check else 'verifying'
             if it['state'] == 'downloading' and self.fault and self.fault[1] == 'busy' and it['bytes_done'] > it['bytes_total'] * 0.4:
                 self.busy_until = self.busy_until or now + 120     # as the engine: no rate, and the time of the next try
                 it['retry_in_s'], it['rate_bps'], it['eta_s'] = round(self.busy_until - now), 0, None
@@ -247,14 +260,21 @@ class Stub:
                         it['bytes_total'] = p['installed_bytes']
                         it['bytes_done'] = int(p['installed_bytes'] * min(1, self.phase_t / STEP_S))
                         it['eta_s'] = int(max(0, STEP_S - self.phase_t) * 40)
-                if self.phase_t >= STEP_S:
+                span = CHECK_S if j.get('repair') else STEP_S
+                counts = it['state'] == 'verifying' and (j.get('repair') or it.get('source') == 'found')
+                if counts:                         # as the engine: a check of a whole file or library counts the bytes it reads
+                    it['bytes_done'] = int(it['bytes_total'] * min(1, self.phase_t / span))
+                    it['eta_s'] = int(max(0, span - self.phase_t) * 40)
+                if self.phase_t >= (span if counts else STEP_S):
                     self.phase_t = 0
                     if self.fault and self.fault[0] == it['state']:
                         return self._fail(it)
                     order = ['verifying', 'unpacking', 'activating', 'done'] if it['kind'] == 'pack' else ['unpacking', 'done'] if it['kind'] == 'map' else ['verifying', 'activating', 'done']
-                    if it.get('repair'):
+                    if j.get('repair'):
                         order = ['verifying', 'done']
                     it['state'] = order[order.index(it['state']) + 1]
+                    if it['state'] == 'unpacking':
+                        it['bytes_done'] = 0     # as the engine: unpacking counts from nothing
             j['state'] = it['state'] if it['state'] != 'done' else j['state']
             break
         if all(it['state'] == 'done' for it in j['items']):
@@ -272,6 +292,7 @@ class Stub:
             for f in self.found:
                 f.update(rejected=True, size_ok=False)
             it['bytes_done'] = 0
+            it['source'] = 'download'
         it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', {'code': code, 'message': msg}, 0, None
         self.job['state'] = 'failed'
         self.job['error'] = {'code': code, 'message': msg, **({'file': self.found[0]['path']} if code == 'found_mismatch' else {})}
@@ -355,6 +376,8 @@ class H(BaseHTTPRequestHandler):
         if p == '/api/setup/job':
             STUB.tick()
             return self.send(200, STUB.public())
+        if p == '/api/setup/updates':
+            return self.send(200, {'supported': True, 'notify': STUB.notify, 'available': None, 'checking': False})
         if p in ('/', ''):
             return self.send(200, b'<!doctype html><title>Library</title><h1>The library would open here.</h1><p><a href="/ui/setup.html#manage">Library and local AI</a>', 'text/html')
         if p.startswith('/ui/'):
@@ -393,6 +416,12 @@ class H(BaseHTTPRequestHandler):
             if STUB.s['hardware']['os'] == 'macos':
                 STUB.s['hardware']['disks'].append({'path': '/Volumes/Big Disk', 'name': 'Big Disk', 'free_bytes': 1800 * GB, 'total_bytes': 2000 * GB})
             return self.send(200, {'path': other, 'free_bytes': 1800 * GB, 'disk': 'Data (D:)' if STUB.s['hardware']['os'] == 'windows' else 'Big Disk'})
+        if a == 'updates':
+            if STUB.s.get('updates_fail'):
+                return self.send(400, {'error': 'Lastbook could not save this setting. Try again.', 'code': 'save'})
+            STUB.notify = body.get('notify') is True
+            print('stub: notify =', STUB.notify, flush=True)     # what a reviewer can watch: only a click on the box writes it
+            return self.send(200, {'supported': True, 'notify': STUB.notify, 'available': None, 'checking': False})
         if a == 'remove-ai':
             if STUB.current:
                 STUB.current['model'] = None
@@ -402,7 +431,9 @@ class H(BaseHTTPRequestHandler):
                 STUB.current['old'] = [o for o in STUB.current.get('old', []) if o != body.get('path')]
             return self.send(200, {'ok': True})
         if a == 'finish':
-            if STUB.job and STUB.job['state'] == 'done':
+            if STUB.job and STUB.job['state'] == 'done' and STUB.job.get('repair'):
+                STUB.job = None              # a repair leaves the library what it was
+            elif STUB.job and STUB.job['state'] == 'done':
                 cur = STUB.current or {'folder': STUB.folder, 'pack': None, 'model': None, 'map': 'base'}
                 for it in STUB.job['items']:
                     if it['kind'] == 'pack' and it['id'] != 'repair':

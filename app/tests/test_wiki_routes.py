@@ -47,7 +47,7 @@ class Tags(html.parser.HTMLParser):
 class WikiRoutes(unittest.TestCase):
  def test_encoded_card_reader_and_revisit(self):
   articles=['Why?','100%_Juice','X"onmouseover="review','Literal%2FName','Folder/Why?','A&B#C']
-  r=subprocess.run([NODE,'-e',HARNESS,str(ROOT/'web/app.js'),str(ROOT/'web/chat.js'),json.dumps(articles)],capture_output=True,text=True,check=True)
+  r=subprocess.run([NODE,'-e',HARNESS,str(ROOT/'web/app.js'),str(ROOT/'web/chat.js'),json.dumps(articles)],capture_output=True,text=True,encoding='utf-8',check=True)
   for row in json.loads(r.stdout):
    with self.subTest(article=row['article']):
     self.assertNotIn('error',row,row)
@@ -57,12 +57,14 @@ class WikiRoutes(unittest.TestCase):
     self.assertEqual(row['replaced'],row['lastSaved']['href']+'?from=%23%2Fask')
     self.assertEqual(unquote(row['framePath']),'/zim/'+expected)
     tags=Tags();tags.feed(row['card']+row['iframe'])
-    self.assertEqual(set(next(a for n,a in tags.tags if n=='a')),{'class','href','id'})
+    card_attrs=next(a for n,a in tags.tags if n=='a')
+    self.assertEqual(set(card_attrs),{'class','href','id','data-type'})
+    self.assertEqual(card_attrs['data-type'],'wiki')
     self.assertEqual(set(next(a for n,a in tags.tags if n=='iframe')),{'class','id','title','src'})
  def test_malformed_encodings_are_not_silently_reinterpreted(self):
-  app=(ROOT/'web/app.js').read_text();parse=app[app.index('function parse()'):app.index('// The sidebar row')]
+  app=(ROOT/'web/app.js').read_text(encoding='utf-8');parse=app[app.index('function parse()'):app.index('// The sidebar row')]
   script='const here=()=>process.argv[1];'+parse+';try{parse();process.stdout.write("accepted")}catch(e){process.stdout.write(e.name)}'
   for route in ('#/wiki/demo.zim/bad%','#/wiki/demo.zim/%GG','#/wiki/demo.zim/%C0%AF'):
    with self.subTest(route=route):
-    r=subprocess.run([NODE,'-e',script,route],capture_output=True,text=True,check=True);self.assertEqual(r.stdout,'URIError')
+    r=subprocess.run([NODE,'-e',script,route],capture_output=True,text=True,encoding='utf-8',check=True);self.assertEqual(r.stdout,'URIError')
 if __name__=='__main__':unittest.main()

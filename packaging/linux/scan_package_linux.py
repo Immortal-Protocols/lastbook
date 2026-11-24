@@ -18,8 +18,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the build invokes this scanner with -I
+import i18n_catalogs  # noqa: E402
+
 BAD_SEGMENTS = {'test', 'tests', 'testing', 'pytest', 'unittest', 'doctest', 'remote_storage', 'webview', 'bottle', 'proxy_tools', 'onnxruntime',
-                'tokenizers', 'shell_windows', 'shell_macos', 'clr', 'clr_loader', 'pythonnet', 'lastbook_launcher', 'tkinter', 'PyInstaller',
+                'tokenizers', 'shell_windows', 'shell_macos', 'update_macos', 'clr', 'clr_loader', 'pythonnet', 'lastbook_launcher', 'tkinter', 'PyInstaller',
                 'objc', 'AppKit', 'Foundation', 'PyObjCTools', 'vendor-macos', 'fixture', 'real_data_check', 'http_regression', 'cdp', 'f2py', 'pypdfium2_cli'}
 BAD_FILE = re.compile(r'(^|/)(test_[^/]*|[^/]*_test\.(py|pyc|so)|[^/]*_tests[^/]*\.so|[^/]*\.onnx|[^/]*\.gguf|mac_[^/]*|win_[^/]*)$', re.I)
 TEST_MARKERS = [b'TEST-STUB', b'mac_offscreen', b'stub_chat', b'stub-chat']
@@ -86,6 +89,10 @@ def main():
     problems, remote_hits, user_paths, net_report = [], {}, {}, {}
     n_files = n_elf = 0
     with package_tree(a.package) as root:
+        try:
+            i18n_catalogs.check_assets(root / 'opt' / 'lastbook' / 'web', i18n_catalogs.generate())
+        except (OSError, ValueError) as error:
+            problems.append(f'localization: {error}')
         packaged = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() or p.is_symlink()}
         for rel in sorted(packaged):
             p = root / rel
@@ -119,7 +126,10 @@ def main():
                 mods = net_imports(data.decode('utf-8'))
                 if mods:
                     net_report[rel] = mods
-                    if rel not in NET_ALLOWED:
+                    # Setup's explicit model-server choice uses numeric loopback, with proxies and redirects disabled.
+                    if rel not in NET_ALLOWED and not (
+                        rel == 'opt/lastbook/engine/model_server.py' and mods == ['urllib.request']
+                    ):
                         problems.append(f'network module in {rel}: {mods}')
             if data[:4] == b'\x7fELF':
                 n_elf += 1
@@ -142,7 +152,7 @@ def main():
         for u, where in user_paths.items():
             if u.startswith('/Users/') or any(FIRST_PARTY.search(w) for w in where):
                 problems.append(f'path of a person\'s folder {u} in {where[:3]}')
-        for need in ('opt/lastbook/engine/setup/roots.pem', 'opt/lastbook/gst/libgstlastbooksrc.so', 'opt/lastbook/lastbook.py', 'opt/lastbook/app/main.py', 'opt/lastbook/app/shell_linux.py', 'opt/lastbook/web/index.html',
+        for need in ('opt/lastbook/engine/setup/roots.pem', 'opt/lastbook/gst/libgstlastbooksrc.so', 'opt/lastbook/lastbook.py', 'opt/lastbook/app/main.py', 'opt/lastbook/app/shell_linux.py', 'opt/lastbook/app/ui_language.py', 'opt/lastbook/app/contribute.py',
                      'opt/lastbook/setup/manifest-v1.json', 'opt/lastbook/VERSION', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop'):
             if need not in packaged or not (root / need).is_file() or (root / need).is_symlink():
                 problems.append(f'missing from the package: {need}')

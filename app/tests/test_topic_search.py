@@ -318,7 +318,8 @@ GUIDE_URGENT = {
     'want to die': (['health', 'mind'], None), 'i just want to die': (['health', 'mind'], None),
     'my son says he wants to die': (['health', 'mind'], None), 'end my life': (['health', 'mind'], None),
     "i don't want to live anymore": (['health', 'mind'], None), 'dont want to live': (['health', 'mind'], None),
-    'not breathing want to die': (['hurt', 'breathing'], ['health', 'mind']),
+    'he keeps saying he wants to die': (['health', 'mind'], None), 'my husband wants to die': (['health', 'mind'], None),
+    'not breathing want to die': (['hurt', 'breathing'], None),
     # A crisis phrase next to a labor phrase: the urgent crisis choice leads. "live" is also an everyday word in the
     # labor context ("we live far from the hospital"), which keeps opening the pregnancy choice (PREGNANT_FIRST).
     "her water broke and i don't want to live": (['health', 'mind'], None),
@@ -332,11 +333,22 @@ GUIDE_ORDINARY = {
     'radio not responding': ['comms', 'alerts-radio'], 'dental abscess': ['health', 'teeth'], 'propane burns': ['hurt', 'shock'],
     'suicidal': ['health', 'mind'], 'i want to build a bench': ['repair', 'build'], 'kill bugs': ['sanitation', 'spread'],
     'battery dying': ['power', 'batteries-solar'], 'live power line': ['water', 'apartment'],
-    # Fear words open the Health guide, and never ahead of a breathing emergency.
-    'scared': ['health', None], 'kids are scared': ['health', None], 'afraid': ['health', None],
+    # Fear words open the crisis choice alone or next to a person, and never ahead of what the fear is about.
+    'scared': ['health', 'mind'], 'kids are scared': ['health', 'mind'], 'afraid': ['health', 'mind'],
     'scared and cant breathe': ['hurt', 'breathing'], 'scared not breathing': ['hurt', 'breathing'],
+    'afraid of snakes': ['hurt', 'snakebite'], 'scared of aftershocks': ['disaster', 'earthquake-after'],
 }
-TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY})
+# The crisis phrases count only when the rest of the search is everyday words or a person ("my son says he wants to
+# die"). With any other subject the search ranks as it did before the phrases: query -> the rows main shows. The test
+# checks the first row and that no Health row was added.
+CRISIS_OTHER_SUBJECT = {
+    'dog wants to die': [['food', 'special'], ['hurt', 'animal-bite']],
+    'my dog wants to die': [['food', 'special'], ['hurt', 'animal-bite']],
+    'kill weeds': [], 'how to kill weeds': [], 'kill bacteria': [], 'kill rats': [['sanitation', 'garbage']],
+    'want to live': [['grow', 'calories'], ['land', 'coast'], ['power', 'generator']],
+    'shelf life': [], 'life jacket': [], 'die': [['food', 'special']], 'will i die': [['food', 'special']],
+}
+TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY, *CRISIS_OTHER_SUBJECT})
 # Cardiac arrest is urgent too: "heart stopped" in a search with other words still opens CPR first, and the guide
 # those words point to is still offered: query -> (first row, a row that must still be shown).
 HEART_URGENT = {
@@ -587,6 +599,10 @@ class TopicSearch(unittest.TestCase):
             for q, first in GUIDE_ORDINARY.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])
+            for q, rows in CRISIS_OTHER_SUBJECT.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], rows[:1])
+                    self.assertNotIn('health', [row[0] for row in top[q]])
 
     def test_heart_stopped_is_urgent(self):
         for r in self.modes:

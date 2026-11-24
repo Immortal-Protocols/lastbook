@@ -77,8 +77,14 @@
  },
  "comms": {
   "missing": [
-   "No text of the FCC amateur radio rules (Part 97) or current GMRS licence guidance; the ham study guide covers the 2014–2018 question pool.",
-   "No modern civilian land-navigation manual."
+   "The complete official eCFR text of 47 CFR Parts 80, 87, 95 and 97 is not bundled as a full edition; the comms tool quotes the cited sections from the public rule text. A later FCC amendment is not applied until that data is updated.",
+   "No live amateur satellite transponder schedule, ISS crew configuration, or TLE (Keplerian element) file is bundled; those go stale. Pass prediction needs a TLE file the person already has, plus an already-installed offline predictor.",
+   "No national repeater directory or current Winlink RMS/gateway frequency list is bundled; those assignments change. Use a printed or previously saved list, or a pre-arranged peer-to-peer plan.",
+   "No vendor manuals for Winlink Express, Pat, VARA, JS8Call, Meshtastic, Iridium GO, or inReach-style messengers are in the library; the comms tool describes system roles and modes, not click-by-click menus.",
+   "NOAA Weather Radio site-by-site transmitter assignments are not bundled; only the seven national frequencies are.",
+   "Morse decode from a microphone, a recording, or a flashing light is not in this build.",
+   "No modern civilian land-navigation manual.",
+   "Public-domain U.S. government manuals worth ingesting later are named by the comms tool (dated 47 CFR Parts 95 and 97 snapshots, TM 11-333 for EE-8, TM 11-5820-398-12 for the PRC-25, TM 11-5820-919-12 for the PRC-104A, TM 11-5820-358-35 for the R-390A) but the PDF files are not bundled in this build. Commercial manufacturer manuals are not bundled."
   ],
   "disagree": [
    "Sources disagree on the GMRS licence term (ARES 2015 vs TACDA)."

@@ -126,6 +126,23 @@ class Steps(unittest.TestCase):
         self.assertEqual(got[3], 'Tried to read an unknown encyclopedia article')
         self.assertEqual(got[4], 'Read the encyclopedia article “&quot;&gt;&lt;svg onload=alert(1)&gt;”')
 
+
+    def test_comms_steps_are_escaped(self):
+        bad = {'toString': 'x'}
+        got = self.text([
+            {'name': 'lookup_comms', 'args': {'query': '146.52', 'topic': 'channels'}, 'summary': {'count': 2}},
+            {'name': 'lookup_comms', 'args': {'query': '<b>x</b>'}, 'summary': {'count': 1}},
+            {'name': 'lookup_comms', 'args': {'query': bad, 'topic': bad}, 'summary': {}},
+            {'name': 'lookup_comms', 'args': 'not an object', 'summary': {'count': 0}},
+        ])
+        for t in got:
+            self.assertFalse(t.startswith('THROW'), t)
+            self.assertNotIn('<', t)
+        self.assertEqual(got[0], 'Looked up comms “146.52” (channels) — 2 sources')
+        self.assertEqual(got[1], 'Looked up comms “&lt;b&gt;x&lt;/b&gt;” — 1 source')
+        self.assertEqual(got[2], 'Looking up comms “”')
+        self.assertEqual(got[3], 'Looked up comms “” — 0 sources')
+
     def test_encyclopedia_odd_argument_shapes(self):
         bad = {'toString': 'x'}
         got = self.text([

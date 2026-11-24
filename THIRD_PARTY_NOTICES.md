@@ -87,6 +87,20 @@ There is no published iPad build. These parts go into an iPad app that a contrib
 | Atkinson Hyperlegible Next (`website/fonts/`) | SIL Open Font License 1.1 | https://github.com/googlefonts/atkinson-hyperlegible-next | Checked: `website/fonts/OFL.txt` |
 | Nunito (`website-next/fonts/`) | SIL Open Font License 1.1 | https://github.com/googlefonts/nunito | Checked: `website-next/fonts/OFL.txt` |
 
+
+## Bundled communications reference data
+
+The `lookup_comms` tool ships short reference entries in `engine/comms_data/`, and International Morse encode in `engine/morse.py`. These are not library pack items.
+
+| Component | Licence | Source | Checked |
+|---|---|---|---|
+| Quoted sections and frequency tables from 47 CFR Parts 80, 87, 95 and 97 (FCC rules), including §§ 97.403 and 97.405 | US government work, public domain | eCFR Title 47 | Upstream: public rule text as cited on each entry |
+| NOAA Weather Radio frequencies; NOAA/NESDIS weather-satellite direct-readout frequencies; NOAA SARSAT 406 MHz beacon guidance | US government work, public domain | NOAA / NWS / NESDIS / SARSAT | Upstream: public NOAA material as cited on each entry |
+| FAA phonetic alphabet (AIM) | US government work, public domain | FAA Aeronautical Information Manual | Upstream |
+| International Morse character set and spacing | ITU-R M.1677-1 (the standard, implemented; the recommendation’s prose is not copied) | ITU-R M.1677-1; distress signal SOS as used in the Radio Regulations and USCG/FCC practice | Upstream |
+| US national FM simplex calling frequencies (146.520 MHz, 446.000 MHz and the other published national FM calling channels) | Part 97 does not itself name calling frequencies; the frequencies are the published US national FM simplex channels used in the in-library ARES Field Resources Manual and standard US VHF/UHF band-plan practice | ARES Field Resources Manual (library copy); 47 CFR 97.301 for the amateur allocations those frequencies sit in | In-library manual plus public rule |
+| Winlink / JS8Call / Meshtastic / commercial satellite-messenger system roles | Original Lastbook summary of publicly documented system roles and of Part 97 emission rules (including FCC 23-93). No vendor manual or protocol specification is copied, and those applications are not bundled | 47 CFR 97.307, 97.309, 97.115, 97.221; public system descriptions | This repository |
+
 ## Library content
 
 The manuals, videos, encyclopedias and map data in the library packs are not part of this repository. Each pack has a

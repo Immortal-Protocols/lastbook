@@ -319,7 +319,8 @@ GUIDE_URGENT = {
     'my son says he wants to die': (['health', 'mind'], None), 'end my life': (['health', 'mind'], None),
     "i don't want to live anymore": (['health', 'mind'], None), 'dont want to live': (['health', 'mind'], None),
     'he keeps saying he wants to die': (['health', 'mind'], None), 'my husband wants to die': (['health', 'mind'], None),
-    'not breathing want to die': (['hurt', 'breathing'], None),
+    'not breathing want to die': (['hurt', 'breathing'], ['health', 'mind']),
+    'not breathing i want to die': (['health', 'mind'], ['hurt', 'breathing']),
     # A crisis phrase next to a labor phrase: the urgent crisis choice leads. "live" is also an everyday word in the
     # labor context ("we live far from the hospital"), which keeps opening the pregnancy choice (PREGNANT_FIRST).
     "her water broke and i don't want to live": (['health', 'mind'], None),
@@ -349,6 +350,20 @@ CRISIS_OTHER_SUBJECT = {
     'shelf life': [], 'life jacket': [], 'die': [['food', 'special']], 'will i die': [['food', 'special']],
 }
 TOPS = sorted({*TOPS, *GUIDE_URGENT, *GUIDE_ORDINARY, *CRISIS_OTHER_SUBJECT})
+# A search that names a breathing emergency and a crisis keeps both rows. "breathing" is in the crisis choice's
+# context, so the phrase counts next to it; the gate still holds, so naming an animal keeps Health out. Which of
+# the two leads is the urgent rule: a guide whose urgent phrase the search names comes first, and only the
+# first-person forms are urgent. query -> every row, in order.
+BOTH_EMERGENCIES = {
+    'not breathing i want to die': [['health', 'mind'], ['hurt', 'breathing']],
+    'not breathing want to die': [['hurt', 'breathing'], ['health', 'mind']],
+    'scared not breathing': [['hurt', 'breathing'], ['health', 'mind']],
+    'dog not breathing i want to die': [['hurt', 'breathing'], ['food', 'special'], ['grow', 'calories']],
+    'cat is not breathing and i want to die': [['hurt', 'breathing'], ['food', 'special'], ['grow', 'calories']],
+    'baby not breathing': [['hurt', 'breathing'], ['sanitation', 'diarrhea']],
+    'not breathing': [['hurt', 'breathing']],
+}
+TOPS = sorted({*TOPS, *BOTH_EMERGENCIES})
 # Cardiac arrest is urgent too: "heart stopped" in a search with other words still opens CPR first, and the guide
 # those words point to is still offered: query -> (first row, a row that must still be shown).
 HEART_URGENT = {
@@ -603,6 +618,9 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], rows[:1])
                     self.assertNotIn('health', [row[0] for row in top[q]])
+            for q, rows in BOTH_EMERGENCIES.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q], rows)
 
     def test_heart_stopped_is_urgent(self):
         for r in self.modes:

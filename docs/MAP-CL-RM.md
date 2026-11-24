@@ -16,6 +16,17 @@ main branch. This map was built and checked with #80 at commit
 If #80 changes, or is merged in another form, the build and the checks here need to be run again.
 
 It adds no code and no app change. The map is not downloaded by setup and is not in any pack.
+[MAP-BO-L.md](MAP-BO-L.md) does the same for La Paz department in Bolivia, with the same tool at the same commit.
+
+## Why the Santiago Metropolitan Region
+
+- **The most people and the most data.** Santiago is the capital and Chile's largest city (general knowledge). Of
+  Overture's 4,199,023 Chilean addresses, 1,593,107 (38%) are in this region (REGIONS-CL-DPA2023.md), so it is the
+  region where an address layer would matter most once the tool builds one.
+- **One metropolitan area.** Greater Santiago lies well inside the region, so the cut does not split the city.
+- **It tests the hard parts of the box.** The region is landlocked between Valparaíso and O'Higgins, so its
+  rectangle overlaps theirs (REGIONS-CL.md); it fills only 56% of its unpadded box. The padded box reaches the
+  Pacific on one side and Argentina on the other.
 
 ## The id and the box
 

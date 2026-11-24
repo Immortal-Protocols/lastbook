@@ -1,0 +1,279 @@
+{
+  "country": "Bolivia",
+  "code": "BO",
+  "calling_code": "+591",
+  "languages": [
+    "es"
+  ],
+  "general": null,
+  "services": [
+    {
+      "kind": "police",
+      "name": "Radio Patrullas 110 (Policía Boliviana, BOL 110)",
+      "number": "110",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": true,
+      "free_source": "https://www.bcb.gob.bo/webdocs/normativa/2012%20-%20DS%201391%20-%20Reglamento%20Ley%20N%C2%B0%20164.pdf",
+      "keywords": {
+        "es": [
+          "policía",
+          "radio patrullas",
+          "patrulla",
+          "emergencia",
+          "robo",
+          "violencia",
+          "bol 110"
+        ],
+        "en": [
+          "police",
+          "emergency",
+          "crime",
+          "patrol"
+        ]
+      },
+      "when": "Police emergency line of the Policía Boliviana. The Defensoría del Pueblo lists it as an emergency number to call in cases of gender-based violence, and the Policía Boliviana gives it as its official contact number.",
+      "source": [
+        "https://www.defensoria.gob.bo/uploads/files/triptico-para-garantizar-a-las-mujeres-una-vida-libre-de-violencia.pdf",
+        "https://www.policia.bo/"
+      ],
+      "url": "https://www.policia.bo/",
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "fire",
+      "name": "Bomberos (Policía Boliviana)",
+      "number": "119",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": true,
+      "free_source": "https://www.bcb.gob.bo/webdocs/normativa/2012%20-%20DS%201391%20-%20Reglamento%20Ley%20N%C2%B0%20164.pdf",
+      "keywords": {
+        "es": [
+          "bomberos",
+          "incendio",
+          "fuego",
+          "rescate",
+          "bomberas"
+        ],
+        "en": [
+          "fire",
+          "firefighters",
+          "rescue"
+        ]
+      },
+      "when": "Firefighters. The national numbering plan gives Bomberos = 119 as its example of a short emergency code, in the 110 to 129 range reserved for citizen emergencies (police, firefighters, medical services).",
+      "source": "https://www.oopp.gob.bo/wp-content/uploads/2022/03/2021-RM339-Plan-Tecnico-Fundamental-de-Numeracion.pdf",
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "police",
+      "name": "PAC (Policía Boliviana)",
+      "number": "120",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": true,
+      "free_source": "https://www.bcb.gob.bo/webdocs/normativa/2012%20-%20DS%201391%20-%20Reglamento%20Ley%20N%C2%B0%20164.pdf",
+      "keywords": {
+        "es": [
+          "pac",
+          "policía",
+          "patrulla",
+          "emergencia",
+          "auxilio"
+        ],
+        "en": [
+          "police",
+          "emergency",
+          "patrol"
+        ]
+      },
+      "when": "Police line listed next to 110 by the Defensoría del Pueblo as an emergency number to call in cases of gender-based violence, and given by the Policía Boliviana as a contact number.",
+      "source": [
+        "https://www.defensoria.gob.bo/uploads/files/triptico-para-garantizar-a-las-mujeres-una-vida-libre-de-violencia.pdf",
+        "https://www.policia.bo/"
+      ],
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "other",
+      "name": "FELCV (Fuerza Especial de Lucha Contra la Violencia, Policía Boliviana)",
+      "number": "800 14 0348",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": null,
+      "keywords": {
+        "es": [
+          "felcv",
+          "violencia contra la mujer",
+          "violencia de género",
+          "violencia familiar",
+          "violencia sexual",
+          "mujer",
+          "denuncia"
+        ],
+        "en": [
+          "violence against women",
+          "gender violence",
+          "domestic violence",
+          "sexual violence",
+          "women",
+          "report"
+        ]
+      },
+      "when": "Police unit for violence against women. The Defensoría del Pueblo lists this line as the first number to call in an emergency of physical, psychological, sexual or political violence; a report can also be made at FELCV offices, the municipal SLIM or the Fiscalía.",
+      "source": "https://www.defensoria.gob.bo/uploads/files/triptico-para-garantizar-a-las-mujeres-una-vida-libre-de-violencia.pdf",
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "other",
+      "name": "Familia Segura (UNICEF)",
+      "number": "800 11 30 40",
+      "how": [
+        "call"
+      ],
+      "works_from": [
+        "mobile",
+        "landline"
+      ],
+      "works_from_source": "https://www.unicef.org/bolivia/familia-segura",
+      "free": true,
+      "free_source": "https://www.unicef.org/bolivia/familia-segura",
+      "keywords": {
+        "es": [
+          "familia segura",
+          "violencia",
+          "apoyo emocional",
+          "salud mental",
+          "niños",
+          "niñas",
+          "adolescentes",
+          "mujer",
+          "unicef"
+        ],
+        "en": [
+          "emotional support",
+          "mental health",
+          "violence",
+          "children",
+          "family",
+          "helpline"
+        ]
+      },
+      "when": "Free, confidential psycho-emotional support to prevent and deal with violence against children, adolescents, women and men of all ages, from anywhere in Bolivia, every day from 06:00 to midnight (not 24 hours). Not an emergency service.",
+      "source": "https://www.unicef.org/bolivia/familia-segura",
+      "url": "https://www.unicef.org/bolivia/familia-segura",
+      "area_whole_country": true,
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "other",
+      "name": "Familia Segura (UNICEF), WhatsApp",
+      "number": "+591 7779 7667",
+      "how": [
+        "chat"
+      ],
+      "works_from": [],
+      "free": null,
+      "keywords": {
+        "es": [
+          "familia segura",
+          "whatsapp",
+          "violencia",
+          "apoyo emocional",
+          "salud mental",
+          "unicef"
+        ],
+        "en": [
+          "whatsapp",
+          "emotional support",
+          "mental health",
+          "violence",
+          "helpline"
+        ]
+      },
+      "when": "Text messages on WhatsApp to the same service as 800 11 30 40, every day from 06:00 to midnight. The source does not say whether messages cost anything.",
+      "source": "https://www.unicef.org/bolivia/familia-segura",
+      "url": "https://www.unicef.org/bolivia/familia-segura",
+      "area_whole_country": true,
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "ambulance",
+      "name": "SUMA 161 (Sistema de Urgencias Médicas El Alto)",
+      "number": "161",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": null,
+      "keywords": {
+        "es": [
+          "ambulancia",
+          "suma",
+          "urgencia",
+          "emergencia médica",
+          "el alto"
+        ],
+        "en": [
+          "ambulance",
+          "medical emergency",
+          "emergency"
+        ]
+      },
+      "when": "Municipal pre-hospital emergency and ambulance service of El Alto, named in the Ministry of Health national norm for emergency health care (2017). Only for El Alto; Bolivia has no single national ambulance number.",
+      "source": "https://minsalud.gob.bo/images/Documentacion/dgss/Area_de_Redes/dgss_redes_Norma_Caracterizacin_SNES.pdf",
+      "area": "El Alto (La Paz department)",
+      "checked_on": "2026-11-24",
+      "verified": "official"
+    },
+    {
+      "kind": "other",
+      "name": "Línea Segura 156 (Defensoría Municipal de La Paz)",
+      "number": "156",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": true,
+      "free_source": "https://www.unicef.org/bolivia/comunicados-prensa/unicef-y-el-municipio-de-la-paz-unen-sus-l%C3%ADneas-gratuitas-familia-segura-y-l%C3%ADnea",
+      "keywords": {
+        "es": [
+          "línea segura",
+          "violencia",
+          "defensoría",
+          "niños",
+          "niñas",
+          "denuncia",
+          "maltrato"
+        ],
+        "en": [
+          "violence",
+          "child abuse",
+          "children",
+          "report",
+          "helpline"
+        ]
+      },
+      "when": "Free 24-hour line of the Defensoría Municipal of the municipality of La Paz for reports of violence that need immediate attention; for emotional support it refers callers to Familia Segura.",
+      "source": "https://www.unicef.org/bolivia/comunicados-prensa/unicef-y-el-municipio-de-la-paz-unen-sus-l%C3%ADneas-gratuitas-familia-segura-y-l%C3%ADnea",
+      "area": "Municipality of La Paz",
+      "checked_on": "2026-11-24",
+      "verified": "found_online"
+    }
+  ]
+}

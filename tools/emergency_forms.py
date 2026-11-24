@@ -322,11 +322,11 @@ function addService() {
   box.className = 'svc';
   box.innerHTML =
     '<legend>Service <span class="n"></span> <button type="button" class="rm">remove</button></legend>' +
-    '<label>kind<select class="kind">' + RULES.kinds.map(k => '<option>' + k + '</option>').join('') + '</select></label>' +
+    '<label>kind<select class="kind"><option value="" selected>choose one…</option>' + RULES.kinds.map(k => '<option>' + k + '</option>').join('') + '</select></label>' +
     '<label>name <small>what it is called locally</small><input type="text" class="name"></label>' +
     '<label>number <small>digits and spaces; a leading + or * is allowed</small><input type="text" class="number"></label>' +
     '<div class="fld"><b>how</b> <small>one or more</small>' + checks(0, 0, RULES.how, 'how') + '</div>' +
-    '<div class="fld"><b>works_from</b> <small>only what a source says; none = unknown</small>' + checks(0, 0, RULES.worksFrom, 'wf') + '</div>' +
+    '<div class="fld"><b>works_from</b> <small>tick what a source says, or tick "unknown" when none does</small>' + checks(0, 0, RULES.worksFrom, 'wf') + '<label class="inl"><input type="checkbox" class="wfunk"> unknown (no source says)</label></div>' +
     '<label class="wfs">works_from_source <small>the page that says it (only when works_from is not empty)</small><input type="text" class="wfsrc"></label>' +
     '<div class="fld"><b>free</b> <small>does it cost money, both the call and the service? Free only if both are free; only if a source says</small>' + radios('free' + id, [['yes', 'free'], ['no', 'not free'], ['unknown', 'unknown']]) + '</div>' +
     '<label class="frs">free_source <small>the page that says it (only when free is set)</small><input type="text" class="frsrc"></label>' +
@@ -336,8 +336,8 @@ function addService() {
     '<label>url <small>optional: the service\'s own page</small><input type="text" class="url"></label>' +
     '<div class="fld"><b>area_whole_country</b> <small>optional, only if a source says</small>' + radios('awc' + id, [['yes', 'yes'], ['no', 'no'], ['', 'not stated']]) + '</div>' +
     '<label>area <small>optional: the specific place it covers (not when the whole country is yes)</small><input type="text" class="area"></label>' +
-    '<label>checked_on <small>YYYY-MM-DD, the day you read the pages</small><input type="text" class="checked" value="' + todayLocal() + '"></label>' +
-    '<label>verified<select class="verified">' + RULES.verified.map(k => '<option>' + k + '</option>').join('') + '</select></label>';
+    '<label>checked_on <small>YYYY-MM-DD, the day you read the pages</small><input type="text" class="checked" placeholder="' + todayLocal() + '"></label>' +
+    '<label>verified <small>official = seen on an official page; choose it yourself</small><select class="verified"><option value="" selected>choose one…</option>' + RULES.verified.map(k => '<option>' + k + '</option>').join('') + '</select></label>';
   box._kw = {};
   box.querySelector('.rm').onclick = () => { box.remove(); renumber(); refresh(); };
   $('#services').appendChild(box);
@@ -388,6 +388,8 @@ function collect() {
 }
 function refresh() {
   $$('.svc').forEach(b => {
+    const unk = $('.wfunk', b).checked;
+    $$('.wf', b).forEach(x => { if (unk) x.checked = false; x.disabled = unk; });
     $('.wfs', b).style.display = $$('.wf:checked', b).length ? '' : 'none';
     const free = picked(b, 'free');
     $('.frs', b).style.display = free === 'yes' || free === 'no' ? '' : 'none';
@@ -396,6 +398,10 @@ function refresh() {
   const found = validate(data, name, latest);
   $$('.svc').forEach((b, i) => {
     const who = name + ' services[' + i + ']';
+    if (!$('.kind', b).value) found.push(who + ': "kind" is not answered: choose one');
+    if (!$('.verified', b).value) found.push(who + ': "verified" is not answered: choose official or found_online');
+    if (!$('.wf:checked', b) && !$('.wfunk', b).checked) found.push(who + ': "works_from" is not answered: tick what a source says, or tick "unknown"');
+    if (!$('.checked', b).value.trim()) found.push(who + ': "checked_on" is not answered: type the day you read the pages (YYYY-MM-DD)');
     if (picked(b, 'free') === null) found.push(who + ': "free" is not answered: switch it to free, not free or unknown');
     if (picked(b, 'awc') === null) found.push(who + ': "area_whole_country" is not answered: switch it to yes, no or not stated');
   });

@@ -199,7 +199,7 @@ def user_error(code, message, key=None, params=None, **extra):
 class Setup:
     def __init__(self, mode, settings_dir, default_parent, current=None, manifest=None, allowed=None, context=None,
                  on_finish=None, pick_folder=None, look_for_libraries=None, home=None, llm_local=None, default_why=None,
-                 default_why_part=None):
+                 default_why_part=None, on_model_server=None):
         """mode: 'first-run' or 'manage'. current: the open library (manage). on_finish(folder): the app opens that library
         (it relaunches). pick_folder(): a folder the person chose, or None. look_for_libraries(): LastbookData folders found."""
         self.mode, self.current = mode, Path(current) if current else None
@@ -208,6 +208,7 @@ class Setup:
         self.allowed, self.context = allowed, context
         self.on_finish, self.pick_folder, self.look_for_libraries = on_finish, pick_folder, look_for_libraries
         self.default_why = default_why     # why the default folder is not the usual one (a long Windows user folder), for the screen
+        self.on_model_server = on_model_server
         self.default_why_part = default_why_part
         self._llm = llm_local
         self.lock = threading.RLock()
@@ -536,7 +537,8 @@ class Setup:
 
         if not packs:
             text = 'No library is ready to download yet.'
-            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'why': text,
+            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'map_need_bytes': map_need,
+                    'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': text,
                     'why_key': 'setup.why.noLibraryReady', 'why_parts': [why_part('setup.why.noLibraryReady', text)]}
         margin = _margin(total)
         choice, folder, elsewhere = None, parent, None
@@ -555,7 +557,8 @@ class Setup:
         if not choice:
             small = packs[-1]
             text = f'The smallest library, {small["title"]}, needs {_gb(need[small["id"]])} free, and this computer has {_gb(free)} free.'
-            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'why': text,
+            return {'pack': None, 'ai': False, 'folder': str(parent), 'need_bytes': need, 'map_need_bytes': map_need,
+                    'address_need_bytes': {x['id']: _map_need(x, ()) for x in self.manifest.current.get('address_indexes', []) if x['available']}, 'why': text,
                     'why_key': 'setup.why.smallestNeeds',
                     'why_params': {'title': small['title'], 'need': _gb(need[small['id']]), 'free': _gb(free)},
                     'why_parts': [why_part('setup.why.smallestNeeds', text, title=small['title'], need=_gb(need[small['id']]), free=_gb(free))]}
@@ -608,7 +611,9 @@ class Setup:
         if got.get('error'):
             return got
         if model not in got['models']:
-            return {'code': 'not_listed', 'error': f'The server at {got["address"]} no longer lists {str(model)[:model_server.MAX_ID]}. List its models again.'}
+            name = str(model)[:model_server.MAX_ID]
+            return user_error('not_listed', f'The server at {got["address"]} no longer lists {name}. List its models again.',
+                              'setup.err.modelServerNoLongerLists', {'where': got['address'], 'model': name})
         self._choose_server(got['base'], model)
         return {'model_server': self.model_server()}
 
@@ -768,11 +773,17 @@ class Setup:
                 return user_error('busy', 'A download is already under way. Pause or cancel it first.', 'setup.err.downloadUnderWay')
             cur = self.current_info()
             if self.mode != 'manage' or not cur:
+                if check_only:
+                    return user_error('nothing', 'There is no library to check yet.', 'setup.err.noLibraryToCheck')
                 return user_error('nothing', 'There is no library to repair yet.', 'setup.err.noLibraryToRepair')
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             if not pack or not pack['available']:
+                if check_only:
+                    return user_error('unavailable', 'Lastbook cannot tell which library this is, so it cannot check it. Choose a library Lastbook recognizes.', 'setup.err.cannotTellLibraryCheck')
                 return user_error('unavailable', 'Lastbook cannot tell which library this is, so it cannot repair it. Download a library instead.', 'setup.err.cannotTellLibraryRepair')
-            model = self.manifest.model() if (ai or cur['model']) else None
+            m = self.manifest.model()
+            present = bool(m) and (self.current / 'models' / m['file']).is_file()
+            model = m if (present if check_only else (ai or present)) else None
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model', 'map')}
@@ -1149,7 +1160,7 @@ class Setup:
         m = self.manifest.model()
         if m and name == m['file']:
             if p.stat().st_size != m['size']:
-                return user_error('size', f'That file is {_gb(p.stat().st_size)}, not the {_gb(m["size"])} of the model. The download may not have finished.', 'setup.err.modelSizeMismatch', {'actual': _gb(p.stat().st_size), 'expected': _gb(m['size'])})
+                return user_error('size', f'That file is {p.stat().st_size} bytes, not the {m["size"]} bytes required for the model. The download may not have finished.', 'setup.err.modelSizeMismatch', {'actual': p.stat().st_size, 'expected': m['size']})
             self.sources[name] = str(p)
             with self.lock:
                 job = self.job
@@ -1177,6 +1188,8 @@ class Setup:
                 return user_error('not_done', 'Setup has not finished yet.', 'setup.err.setupNotFinished')
             if job.get('copy'):       # a copy went to a drive: there is no library here to switch to
                 return user_error('nothing', 'A copy has no library to open here. It is on the drive.', 'setup.err.copyNoLibraryHere')
+            if job.get('check'):
+                return user_error('nothing', 'A check changes nothing, so there is nothing to open.', 'setup.err.checkNoLibraryToOpen')
             plan = job['plan']
             folder = plan.get('use_library') or plan['target']
         if not self.on_finish:
@@ -1318,7 +1331,8 @@ class Setup:
         except OSError as e:
             if plan.get('check_only'):  # a file it could not read, not the internet: a check downloads nothing
                 traceback.print_exc()
-                self._fail(it, 'check', f'Lastbook could not read one of the files it was checking ({type(e).__name__}: {e.strerror or e}).')
+                self._fail(it, 'check', f'Lastbook could not read one of the files it was checking ({type(e).__name__}: {e.strerror or e}).',
+                           key='setup.err.checkCouldNotReadFile', params={'error': type(e).__name__, 'detail': e.strerror or str(e)})
             elif plan.get('copy'):      # the drive, not the internet: a copy downloads nothing
                 traceback.print_exc()
                 if download.disk_full(e):

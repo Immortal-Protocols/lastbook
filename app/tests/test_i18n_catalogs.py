@@ -231,7 +231,7 @@ class SpanishWording(unittest.TestCase):
             'map.zoom', 'library.shelfVideos',
             'native.menu.zoom', 'common.video',
             'native.appFileDescription', 'installer.productName', 'installer.companyName', 'videos.videoCount',
-            'setup.facts.sha256',
+            'setup.facts.sha256', 'setup.facts.bytes',
         })
 
     def test_everyday_words_cover_the_full_catalogue(self):

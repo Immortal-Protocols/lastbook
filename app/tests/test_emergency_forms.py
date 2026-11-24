@@ -55,6 +55,22 @@ class Pages(unittest.TestCase):
         self.assertIn('The test fails on this entry', page)
         self.assertIn('unknown key', page)
 
+    def test_each_country_folds_away_and_a_long_list_starts_folded(self):
+        self.assertIn('<details class="country" open>', self.review)       # the real list is short: open
+        self.assertIn('id="collapse"', self.review)
+        base = json.loads((rules.DIR / 'CL.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as t:
+            for code in ('AA', 'BB', 'CC', 'DD'):
+                d = dict(base, code=code)
+                (Path(t) / f'{code}.json').write_text(json.dumps(d), encoding='utf-8')
+            page = forms.build_review(Path(t))
+            self.assertEqual(page.count('<details class="country">'), 4)    # four countries: all start folded
+            self.assertNotIn('<details class="country" open>', page)
+            d = dict(base, code='EE', languages=['es-cl'])                  # a country with a problem is never folded
+            (Path(t) / 'EE.json').write_text(json.dumps(d), encoding='utf-8')
+            page = forms.build_review(Path(t))
+        self.assertEqual(page.count('<details class="country" open>'), 1)
+
     def test_the_submit_page_states_every_value_the_test_allows(self):
         for group in (rules.KINDS, rules.HOW, rules.WORKS_FROM, rules.VERIFIED):
             for v in group:

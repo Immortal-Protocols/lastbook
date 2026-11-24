@@ -126,6 +126,9 @@ input[type=text],textarea,select{width:100%;box-sizing:border-box;font:inherit} 
 fieldset{border:1px solid #bbb;border-radius:8px;margin:1rem 0;padding:.5rem 1rem} legend{font-weight:600}
 .rules{background:#f6f6fb;border-radius:8px;padding:.5rem 1rem} .rules li{margin:.25rem 0}
 #problems{position:sticky;bottom:0;background:#fffe;border-top:1px solid #ccc;padding:.4rem 0}
+details.country>summary{cursor:pointer;list-style:none} details.country>summary::-webkit-details-marker{display:none}
+details.country>summary h2{display:inline-block;margin:.6rem 0} details.country>summary::before{content:'\25B6';font-size:.8em;margin-right:.4rem;color:#555}
+details.country[open]>summary::before{content:'\25BC'}
 pre#json{background:#f4f4f4;padding:.7rem;border-radius:6px;overflow:auto;max-height:28rem}
 '''
 
@@ -232,6 +235,8 @@ function format() {
   const out = document.getElementById('fmt'); out.value = lines.join('\n'); out.select();
 }
 document.getElementById('format').onclick = format;
+document.getElementById('expand').onclick = () => document.querySelectorAll('details.country').forEach(d => d.open = true);
+document.getElementById('collapse').onclick = () => document.querySelectorAll('details.country').forEach(d => d.open = false);
 document.getElementById('copy').onclick = () => { format(); try { navigator.clipboard.writeText(document.getElementById('fmt').value); } catch (e) { document.execCommand('copy'); } };
 document.getElementById('reset').onclick = () => { if (confirm('Approve every row and clear all comments?')) { state = {}; save(); rows.forEach(paint); count(); } };
 '''
@@ -239,20 +244,27 @@ document.getElementById('reset').onclick = () => { if (confirm('Approve every ro
 
 def build_review(data_dir=DATA):
     parts = []
-    for p in sorted(Path(data_dir).glob('*.json')):
+    files = sorted(Path(data_dir).glob('*.json'))
+    for p in files:
         d = json.loads(p.read_text(encoding='utf-8'))
         found = rules.problems(d, p.name, latest=rules.REFERENCE_DATE)
         country = [x for x in found if ' services[' not in x]
-        parts.append(f'<h2>{e(d["country"])} <small>{e(d["code"])} · {e(d["calling_code"])} · languages: '
-                     f'{e(", ".join(d.get("languages", [])))} · general: {e(str(d["general"])) if d["general"] else "none recorded"}</small></h2>')
+        bad = f' · <span class="bad">{len(found)} problem(s)</span>' if found else ''
+        inner = []
         if country:
-            parts.append('<p class="bad">The test fails on this country:</p><ul class="problems">' + ''.join(f'<li>{e(x)}</li>' for x in country) + '</ul>')
+            inner.append('<p class="bad">The test fails on this country:</p><ul class="problems">' + ''.join(f'<li>{e(x)}</li>' for x in country) + '</ul>')
         for i, s in enumerate(d['services']):
             mine = [x for x in found if f' services[{i}] (' in x]
-            parts.append(card(d['code'], i, s, mine))
+            inner.append(card(d['code'], i, s, mine))
+        # A country is a section you can fold away. Open by default while the list is short; a long list starts folded
+        # (a country with a problem is always open, so it is not missed).
+        opened = ' open' if len(files) <= 3 or found else ''
+        parts.append(f'<details class="country"{opened}><summary><h2>{e(d["country"])} <small>{e(d["code"])} · {e(d["calling_code"])} · '
+                     f'languages: {e(", ".join(d.get("languages", [])))} · general: {e(str(d["general"])) if d["general"] else "none recorded"} · '
+                     f'{len(d["services"])} numbers{bad}</small></h2></summary>{"".join(inner)}</details>')
     return f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emergency numbers: review</title>
 <style>{CSS}</style>
-<div id="bar"><b>Review</b> &nbsp; <span id="count"></span> &nbsp; <a href="#end">go to the format button</a></div>
+<div id="bar"><b>Review</b> &nbsp; <span id="count"></span> &nbsp; <button id="expand">Expand all</button><button id="collapse">Collapse all</button> <a href="#end">go to the format button</a></div>
 <h1>Emergency numbers: check what is already there</h1>
 <p>Built from <code>content/emergency/*.json</code>. Every row starts as <b>approved</b>; pick <b>comment</b> to write what is wrong. Your choices stay in this browser. Orange italic <span class="unk">unknown</span> = empty or null by design. The line under each title is what <code>app/tests/test_emergency_numbers.py</code> says about that entry. For a new country, use <code>submit.html</code>. This page loads nothing from the network.</p>
 {''.join(parts)}

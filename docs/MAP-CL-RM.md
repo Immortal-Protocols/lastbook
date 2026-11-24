@@ -251,6 +251,11 @@ entry is part of this).
   not build addresses, and `tools/build_addresses.py` is US-only. Roads are not in the place finder.
 - **Terrain, contours and the 3D view**, **crops** and the **water and dam inventory**. In this region terrain matters:
   the Andes rise to over 6,000 m in the east of the box.
+- **Cable cars and funiculars.** The builder reads no `aerialway` tags, and its railway classes leave out
+  `railway=funicular`. In the box, OpenStreetMap has 4 `aerialway=gondola` ways (among them the Teleférico de
+  Santiago, the Teleférico Pío Nono and the Teleférico Bicentenario) and 26 `railway=funicular` ways (among them the
+  Funicular de Santiago on Cerro San Cristóbal and Valparaíso's ascensores). None is on the map. The box's 76 ski
+  lifts are left out too.
 - **Government lists.** MINSAL's health facilities and SENAPRED's layers (REGIONS-CL-DPA2023.md) are not used. Every
   point here is from OpenStreetMap.
 - **Emergency points the tool does not read.** In the box, OpenStreetMap has 203 `emergency=assembly_point` (the
@@ -266,13 +271,17 @@ entry is part of this).
 **Known limits**
 
 - **Every place's detail line says "Metropolitana de Santiago"**, the `--name` given, including Viña del Mar,
-  Valparaíso, Quilpué, Villa Alemana, Quillota, Los Andes, San Antonio and Rancagua, which are in other regions. 8 of
-  the 11 city labels are outside the region; only Santiago, Melipilla and Colina are in it.
+  Valparaíso, Quilpué, Villa Alemana, Quillota, Los Andes, San Antonio and Rancagua, which are in other regions. 50 of
+  the 73 city and town labels are outside the region's polygon: 8 of the 11 cities (only Santiago, Melipilla and
+  Colina are in it) and 42 of the 62 towns, from Concón, Quintero and Limache in Valparaíso to Machalí, Graneros and
+  Rengo in O'Higgins.
 - **The checker's search test is too easy here.** It searches for the first word of a city name ("Santiago"), and the
   word is in every row's detail line, so it would pass with any index. The `--find` searches above are the real test.
-- **Hospital rows are not all hospitals.** 125 rows group into 118 places within 150 m. Some are primary care centres
-  (for example a CESFAM-SAR in Puente Alto), so "nearest hospital" can name a place without an emergency ward. 3 have
-  no name.
+- **Hospital rows are not all hospitals.** 125 rows group into 118 places within 150 m; 73 rows are inside the
+  region. By name: 73 have "hospital" in it, 26 are a "clínica" (most of them private hospitals, 2 dental clinics), 7
+  are primary or urgent care centres (CESFAM, SAR, consultorio, COSAM; for example a CESFAM-SAR in Puente Alto), and
+  16 have other names (specialist institutes such as the Instituto Nacional del Cáncer, the Red Cross, the medical
+  examiner's building). So "nearest hospital" can name a place without an emergency ward. 3 have no name.
 - **Duplicates.** 132 named help points lie within 50 m of another with the same class and name, mostly where a place
   is mapped as a point and as an outline. A search for "Hospital del Salvador" lists it twice.
 - **Completeness follows OpenStreetMap.** 8,060 help points have no name. Nothing was compared against an official
@@ -283,7 +292,8 @@ entry is part of this).
   here is from OpenStreetMap.
 - **Miles.** The "Nearest" list gives longer distances in miles (for example "7.9 mi"), and the scale bar shows miles
   beside kilometres, as for the US maps.
-- **Tile size.** A zoom-10 tile over central Santiago (10/311/613) is 731,230 bytes (0.73 MB), with 4,999 roads.
+- **Tile size.** A zoom-10 tile over central Santiago (10/311/613) is 731,230 bytes (0.73 MB), with 4,999 roads;
+  the zoom-13 tile (13/2488/4904) is 346,008 bytes (0.35 MB), with 2,252 roads.
 
 ## Licence and attribution
 

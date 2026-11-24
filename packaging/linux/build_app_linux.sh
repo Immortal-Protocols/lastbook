@@ -43,7 +43,6 @@ fi
 PYV="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
 [ "$PYV" = "$WANT_PY" ] || { echo "python3 is $PYV, not $WANT_PY" >&2; exit 1; }
 PY_NEXT="${PYV%.*}.$(( ${PYV#*.} + 1 ))"   # the .deb needs this python3 exactly: lib/ holds compiled modules for it alone
-mkdir -p "$OPT"
 
 # web/ and content/ as they ship, and what setup can install (the same steps as the Mac and Windows builds)
 python3 -I -B "$ROOT/packaging/ship_app_files.py" "$OUT/ship"

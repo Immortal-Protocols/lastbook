@@ -278,7 +278,7 @@
         <input type="radio" name="pack" value="${esc(p.id)}"${choice.pack === p.id ? ' checked' : ''}${off ? ' disabled' : ''}>
         <span class="s-opt-in"><span class="s-opt-h"><b>${esc(p.title)}</b>${badge}</span>
         <small data-pack-summary="${esc(p.id)}">${esc(packSummary(p))}</small>
-        <span class="s-sizes">${off ? tr('setup.notReadyDownload', null, 'Not ready to download yet') : here ? tr('setup.onThisComputer', null, 'On this computer') : `<span>${foundFor('pack', p.id) ? tr('setup.alreadyDownloaded', null, 'Already downloaded') : tr('setup.sizeDownload', { size: size(packDl(p)) }, '{size} download')}</span><span>${size(p.installed_bytes)} on disk</span>`}</span></span></label>`;
+        <span class="s-sizes">${off ? tr('setup.notReadyDownload', null, 'Not ready to download yet') : here ? tr('setup.onThisComputer', null, 'On this computer') : `<span>${foundFor('pack', p.id) ? tr('setup.alreadyDownloaded', null, 'Already downloaded') : tr('setup.sizeDownload', { size: size(packDl(p)) }, '{size} download')}</span><span>${tr('setup.sizeOnDisk', { size: size(p.installed_bytes) }, '{size} on disk')}</span>`}</span></span></label>`;
     }).join('');
     let ai = '';
     if (m && m.available !== false) {
@@ -449,7 +449,7 @@
           <label class="s-maplabel" for="srvAddr">${tr('setup.server.address', null, 'Address')}</label>
           <input id="srvAddr" class="s-select" inputmode="url" autocomplete="off" spellcheck="false" placeholder="127.0.0.1:11434" value="${esc(srv.address)}" aria-describedby="srvHint">
           <p class="s-hint" id="srvHint">${tr('setup.server.portHint', null, 'Ollama uses port 11434, llama.cpp port 8080. A server that needs a key does not work yet.')}</p>
-          ${opts ? `<label class="s-maplabel" for="srvModel">Model</label><select id="srvModel" class="s-select">${opts}</select>` : ''}
+          ${opts ? `<label class="s-maplabel" for="srvModel">${tr('setup.server.model', null, 'Model')}</label><select id="srvModel" class="s-select">${opts}</select>` : ''}
           <div class="s-go left">${opts ? `<button class="btn" id="srvUse">${tr('setup.server.useModel', null, 'Use this model')}</button><button class="btn plain" id="srvList">${tr('setup.server.listAgain', null, 'List again')}</button>` : `<button class="btn" id="srvList">${tr('setup.server.listModels', null, 'List models')}</button>`}
             <button class="s-link" id="srvCancel">${tr('common.cancel', null, 'Cancel')}</button></div>
         </div></div>${note}`;
@@ -531,7 +531,7 @@
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} ${tr('library.itemTypeLibrary', null, 'library')}</b><small>${libraryUpdate ? tr('setup.updatedEdition', { detail: '' }, 'Updated edition available · {detail}') : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
-          ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : `<span class="s-badge here">${tr('library.largest', null, 'The largest')}</span>`}</div>
+          ${libraryUpdate ? `<button class="btn" id="libraryUpdate">${tr('setup.updatePack', { name: esc(p.title) }, 'Update {name}')}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}${tr('setup.getPack', { name: esc(bigger[0].title) }, 'Get {name}')}</button>` : later ? `<span class="s-badge later">${tr('setup.packComingLater', { name: esc(later.title) }, '{name} comes later')}</span>` : `<span class="s-badge here">${tr('library.largest', null, 'The largest')}</span>`}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>${tr('setup.localAi', null, 'Local AI')}</b><small>${c.model ? tr('setup.onThisComputerSize', { detail: size(m.size) }, 'On this computer · {detail}') : aiFits() ? tr('setup.notInstalledAbout', { size: size(m.size) }, 'Not installed · about {size}') : esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notForComputer', null, 'Not for this computer.'))}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
@@ -540,7 +540,7 @@
       </div>
       ${cloudNote(c)}
       <div id="srvSlot"></div>
-      ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
+        ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>${tr('setup.oldLibraryStillHere', null, 'The old library is still here')}</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>${tr('setup.oldLibraryDeleteConfirm', null, 'Delete it for good?')}</span><button class="btn danger" id="oldYes">${tr('common.delete', null, 'Delete')}</button><button class="btn plain" id="oldNo">${tr('setup.oldLibraryKeep', null, 'Keep')}</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}${tr('setup.oldLibraryDelete', null, 'Delete it')}</button>`}</div>` : ''}
       ${computer()}
       ${CAN.repair ? `<div class="s-have"><div class="s-row">${ico('ok', 's-ri')}<span><b>${tr('setup.check.libraryTitle', null, 'Library check')}</b><small id="lastCheck">${checkLine(c.checked)}</small></span><button class="btn plain" id="checkNow">${tr('setup.check.now', null, 'Check now')}</button></div></div>` : ''}
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small data-i18n="setup.copyIntro">Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut" data-i18n="setup.copyToDrive">Copy to a drive…</button></div></div>
@@ -595,7 +595,7 @@
     $('#copyGo').onclick = async () => {
       $('#copyGo').disabled = true;
       const x = await call('start', { copy_to: r.path }).catch(e => ({ error: e.message }));
-      if (!x || x.error) { note = (x && x.error) || tr('setup.copyFailedStart', null, 'The copy could not start.'); copyView(); return }
+      if (!x || x.error) { note = apiErrorText(x) || tr('setup.copyFailedStart', null, 'The copy could not start.'); copyView(); return }
       repair = null; S.job = x; go('job'); poll();
     };
     globalThis.LastbookI18n?.apply(main);
@@ -674,7 +674,8 @@
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
     const row = (key, fallback, v) => `<dt>${tr(key, null, fallback)}</dt><dd>${v}</dd>`;
-    return `<dl class="s-facts">${row('setup.facts.file', 'File', `<code>${esc(e.name)}</code>`)}${e.size ? row('setup.facts.size', 'Size', `${size(e.size)} (${esc(Number(e.size).toLocaleString('en-US'))} bytes)`) : ''}${e.url ? row('setup.facts.address', 'Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('setup.facts.sha256', 'SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
+    const bytes = globalThis.LastbookI18n?.number?.(Number(e.size)) ?? Number(e.size).toLocaleString();
+    return `<dl class="s-facts">${row('setup.facts.file', 'File', `<code>${esc(e.name)}</code>`)}${e.size ? row('setup.facts.size', 'Size', `${size(e.size)} (${tr('setup.facts.bytes', { count: bytes }, '{count} bytes')})`) : ''}${e.url ? row('setup.facts.address', 'Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('setup.facts.sha256', 'SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
   }
   function itemHTML(it, j) {
     const FAILED_AT = { checksum: 'verifying', found_mismatch: 'verifying', unpack: 'unpacking', activate: 'activating' };
@@ -736,15 +737,25 @@
   }
   /* the job screen's heading. A Check now is known from the engine's job (check), so also after a restart */
   function jobHead(j) {
-    return { paused: 'Paused', failed: errCode(j.error) === 'cancelled' ? 'Cancelled' : 'Stopped' }[j.state]
-      || (j.copy ? 'Copying to the drive' : j.check ? 'Checking the library' : repair && !repair.fixed ? 'Checking the library' : repair ? 'Repairing' : 'Installing');
+    return { paused: tr('setup.state.paused', null, 'Paused'), failed: errCode(j.error) === 'cancelled' ? tr('setup.state.cancelled', null, 'Cancelled') : tr('setup.state.stopped', null, 'Stopped') }[j.state]
+      || (j.copy ? tr('setup.copyingToDrive', null, 'Copying to the drive') : j.check ? tr('setup.checkingLibrary', null, 'Checking the library') : repair && !repair.fixed ? tr('setup.checkingLibrary', null, 'Checking the library') : repair ? tr('setup.state.repairing', null, 'Repairing') : tr('setup.state.installing', null, 'Installing'));
+  }
+  function cancelWords(j) {
+    return {
+      prompt: j.copy ? tr('setup.stopCopyConfirm', null, 'Stop copying? What is copied stays on the drive.')
+        : j.check ? tr('setup.stopCheckConfirm', null, 'Stop checking? Nothing has been downloaded or changed.')
+          : tr('setup.stopThrowAway', null, 'Stop and throw away the download?'),
+      stopped: j.copy ? tr('setup.copyStoppedOnDrive', null, 'The copy was stopped. What was copied is on the drive.')
+        : j.check ? tr('setup.check.stopped', null, 'The check was stopped. Nothing was downloaded or changed.')
+          : tr('setup.downloadCancelled', null, 'The download was cancelled.'),
+    };
   }
   function jobView(j) {
     if (!j) { go(cur() ? 'manage' : 'choose'); return }
     if (j.state === 'done') { go('done'); return }
     syncRepair(j);
     const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
-    const head = { paused: tr('setup.state.paused', null, 'Paused'), failed: errCode(j.error) === 'cancelled' ? tr('setup.state.cancelled', null, 'Cancelled') : tr('setup.state.stopped', null, 'Stopped') }[j.state] || (j.copy ? tr('setup.copyingToDrive', null, 'Copying to the drive') : repair && !repair.fixed ? tr('setup.checkingLibrary', null, 'Checking the library') : repair ? tr('setup.state.repairing', null, 'Repairing') : tr('setup.state.installing', null, 'Installing'));
+    const head = { paused: tr('setup.state.paused', null, 'Paused'), failed: errCode(j.error) === 'cancelled' ? tr('setup.state.cancelled', null, 'Cancelled') : tr('setup.state.stopped', null, 'Stopped') }[j.state] || (j.copy ? tr('setup.copyingToDrive', null, 'Copying to the drive') : j.check ? tr('setup.checkingLibrary', null, 'Checking the library') : repair && !repair.fixed ? tr('setup.checkingLibrary', null, 'Checking the library') : repair ? tr('setup.state.repairing', null, 'Repairing') : tr('setup.state.installing', null, 'Installing'));
     if (key !== shapeKey) {
       const had = lastAct || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null);
       lastAct = null;
@@ -755,7 +766,7 @@
         ${j.state === 'failed' ? errorBox(j) : ''}
         <div class="s-items">${j.items.map(it => itemHTML(it, j)).join('')}</div>
         ${j.state === 'failed' ? '' : `<div class="s-go left">${confirmCancel
-          ? `<span class="s-confirm"><span>${j.copy ? tr('setup.stopCopyConfirm', null, 'Stop copying? What is copied stays on the drive.') : tr('setup.stopThrowAway', null, 'Stop and throw away the download?')}</span><button class="btn danger" data-act="cancel-yes">Stop</button><button class="btn plain" data-act="cancel-no">Keep going</button></span>`
+          ? `<span class="s-confirm"><span>${cancelWords(j).prompt}</span><button class="btn danger" data-act="cancel-yes">${tr('setup.stop', null, 'Stop')}</button><button class="btn plain" data-act="cancel-no">${tr('setup.keepGoing', null, 'Keep going')}</button></span>`
           : jobControls(j)}</div>`}`;
       main.querySelectorAll('[data-act]').forEach(b => b.onclick = () => jobAct(b.dataset.act, b));
       const again = had && main.querySelector(`[data-act="${had}"]`) || (had && main.querySelector('[data-act]'));
@@ -798,9 +809,10 @@
     if (a === 'cancel') { confirmCancel = true; jobView(S.job); main.querySelector('[data-act="cancel-no"]').focus(); return }
     if (a === 'cancel-no') { confirmCancel = false; jobView(S.job); return }
     if (a === 'cancel-yes') { confirmCancel = false; a = 'cancel' }
+    const cancelCopy = a === 'cancel' ? cancelWords(S.job) : null;
     b.disabled = true; lastAct = a;
     try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { }
-    if (a === 'cancel') { const was = S.job && S.job.copy; S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = was ? tr('setup.copyStoppedOnDrive', null, 'The copy was stopped. What was copied is on the drive.') : tr('setup.downloadCancelled', null, 'The download was cancelled.'); return }
+    if (a === 'cancel') { S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = cancelCopy.stopped; return }
     jobView(S.job);
     poll();
   }
@@ -825,13 +837,13 @@
     const fixed = repair && (r ? !!r.repaired : repair.fixed), checked = repair && !fixed, unsure = checked && !r && !repair.sure;   // unsure: opened again late in a repair
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? tr('setup.checked', null, 'Checked') : checked ? tr('common.ok', null, 'All good') : fixed ? tr('setup.repaired', null, 'Repaired') : tr('setup.ready', null, 'Ready')}</h1>
-      <p class="lead">${unsure ? tr('setup.checkedRepaired', null, 'The library was checked and is complete. Anything that was damaged was downloaded again.') : checked ? tr('setup.checkedComplete', null, 'The library was checked and is complete.') : fixed ? tr('setup.damagedAside', null, 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.') : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? tr('setup.libraryReadyOpen', null, 'The library you chose is ready to open.') : tr('setup.libraryInstalled', null, 'The library is installed.')}</p>
+      <p class="lead">${unsure ? tr('setup.checkedRepaired', null, 'The library was checked and is complete. Anything that was damaged was downloaded again.') : checked ? tr('setup.checkedComplete', null, 'The library was checked and is complete.') : fixed ? tr('setup.damagedAside', null, 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.') : got ? tr('setup.installedItems', { items: got }, 'Installed: {items}.') : j.items.some(i => i.id === 'library') ? tr('setup.libraryReadyOpen', null, 'The library you chose is ready to open.') : tr('setup.libraryInstalled', null, 'The library is installed.')}</p>
       <button class="btn big" id="open">${tr('setup.openLibrary', null, 'Open the library')}</button><p class="s-note" id="openNote" hidden></p></div>`;
     live.textContent = checked ? tr('setup.libraryChecked', null, 'The library was checked.') : fixed ? tr('setup.repairedReady', null, 'Repaired. Ready to open.') : tr('setup.installedReady', null, 'Installed. Ready to open.');
     $('#open').onclick = async () => {
       const b = $('#open'); b.disabled = true; b.textContent = tr('setup.openingLibrary', null, 'Opening your library…');
       const r = await call('finish', {}).catch(e => ({ error: e.message }));   // on {ok} the app relaunches itself into the library
-      if (!r || r.error) { b.disabled = false; b.textContent = tr('setup.openLibrary', null, 'Open the library'); const n = $('#openNote'); n.hidden = false; n.textContent = (r && r.error) || tr('setup.libraryDidNotOpen', null, 'The library did not open. Try again.') }
+      if (!r || r.error) { b.disabled = false; b.textContent = tr('setup.openLibrary', null, 'Open the library'); const n = $('#openNote'); n.hidden = false; n.textContent = apiErrorText(r) || tr('setup.libraryDidNotOpen', null, 'The library did not open. Try again.') }
       else live.textContent = tr('setup.openingLibrary', null, 'Opening your library…');
     };
   }
@@ -867,7 +879,7 @@
     $('#back').onclick = async () => { S = await call('state').catch(() => S); go('manage') };
     if ($('#doRepair')) $('#doRepair').onclick = async () => {
       const x = await call('start', { repair: true, ai: !!(S.current && S.current.model) }).catch(e => ({ error: e.message }));
-      if (!x || x.error) { note = (x && x.error) || 'Repair could not start.'; go('manage'); return }
+      if (!x || x.error) { note = apiErrorText(x) || tr('setup.repairFailed', null, 'Repair could not start.'); go('manage'); return }
       repair = { fixed: false, sure: true }; S.job = x; go('job'); poll();
     };
   }
@@ -880,6 +892,35 @@
   });
   /* the window comes back to the front: the job may have moved on, or a restart paused it */
   addEventListener('focus', () => { if (view === 'job') call('job').then(j => { if (j) { S.job = j; jobView(j); poll() } }).catch(() => { }) });
+
+  // Dynamic copy is built with tr() rather than data-i18n markers. Rebuild the
+  // active view after an in-place language save, while retaining form values,
+  // scroll, focus, confirmation state and the current job.
+  document.addEventListener('lastbook:languagechange', () => {
+    if (!S) return;
+    const y = scrollY, active = document.activeElement;
+    const activeId = active && active.id;
+    const controls = [...main.querySelectorAll('input,textarea,select')].map((el, index) => ({
+      id: el.id, index, tag: el.tagName, type: el.type, value: el.value,
+      checked: 'checked' in el ? el.checked : undefined,
+      start: typeof el.selectionStart === 'number' ? el.selectionStart : null,
+      end: typeof el.selectionEnd === 'number' ? el.selectionEnd : null,
+    }));
+    render(false);
+    const fresh = [...main.querySelectorAll('input,textarea,select')];
+    for (const saved of controls) {
+      const el = (saved.id && document.getElementById(saved.id)) || fresh[saved.index];
+      if (!el || el.tagName !== saved.tag || el.type === 'file') continue;
+      if (saved.checked !== undefined) el.checked = saved.checked;
+      else el.value = saved.value;
+      if (saved.start !== null && el.setSelectionRange) {
+        try { el.setSelectionRange(saved.start, saved.end) } catch { }
+      }
+    }
+    if (activeId && !languageHasFocus()) document.getElementById(activeId)?.focus({ preventScroll: true });
+    requestAnimationFrame(() => scrollTo(0, y));
+    if (view === 'job') poll();
+  });
 
   load().then(() => { if (view === 'job') poll() });
 })();

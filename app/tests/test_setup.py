@@ -2337,6 +2337,14 @@ class Manage(Base):
         self.assertEqual(self.setup().start(check=True)['code'], 'nothing')
         self.assertIn('check', self.setup().start(check=True)['error'])
 
+    def test_check_of_an_unrecognized_library_has_check_specific_error(self):
+        s = self.setup('manage', current=self.tmp)
+        with mock.patch.object(s, 'current_info', return_value={'pack': 'missing'}):
+            result = s.start(check=True)
+        self.assertEqual(result['code'], 'unavailable')
+        self.assertEqual(result['key'], 'setup.err.cannotTellLibraryCheck')
+        self.assertIn('cannot check it', result['error'])
+
     def drive(self):
         d = self.tmp / 'drive'
         d.mkdir()
@@ -2982,6 +2990,8 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
             j = self.wait(s)
         self.assertEqual((j['state'], j['error']['code']), ('failed', 'check'))
         self.assertNotIn('internet', j['error']['message'])
+        self.assertEqual(j['error']['key'], 'setup.err.checkCouldNotReadFile')
+        self.assertEqual(j['error']['params']['error'], 'OSError')
 
     @unittest.skipUnless(shutil.which('node'), 'needs Node')
     def test_check_and_repair_words(self):
@@ -2994,6 +3004,7 @@ const errCode = e => e && e.code, noDownload = () => false, tr = (_key, params, 
 let repair = null;
 const jobWords = j => { repair = j.repair && !j.check ? {fixed: false} : null; return {head: jobHead(j), lead: jobLead(j)} };
 eval(section('  function jobHead(', '  function jobView('));
+eval(section('  function cancelWords(', '  function jobView('));
 eval(section('  function jobLead(', '  /* Resume when paused'));
 eval(section('  function repairedWords(', '  /* ---- Check now'));
 eval(section('  function repairOffer(', '  function checkedView('));
@@ -3005,6 +3016,8 @@ const job = (state, extra) => Object.assign({state, items: [{state: state === 'p
 console.log(JSON.stringify({
   checking: jobWords(job('verifying', {check: true, repair: true})),
   paused: jobWords(job('paused', {check: true, repair: true})),
+  check_cancel: cancelWords(job('verifying', {check: true})),
+  download_cancel: cancelWords(job('downloading', {})),
   repairing: jobWords(job('verifying', {repair: true})),
   install: jobWords(job('downloading', {})),
   offer_ai: repairOffer(0, true, false), offer_lib: repairOffer(2, false, false), offer_all: repairOffer(1, true, true),
@@ -3021,6 +3034,11 @@ console.log(JSON.stringify({
         self.assertIn('downloads nothing', w['checking']['lead'])
         self.assertEqual(w['paused']['head'], 'Paused')
         self.assertIn('Nothing was downloaded or changed', w['paused']['lead'])
+        self.assertIn('Stop checking?', w['check_cancel']['prompt'])
+        self.assertIn('Nothing has been downloaded or changed', w['check_cancel']['prompt'])
+        self.assertIn('check was stopped', w['check_cancel']['stopped'])
+        self.assertNotIn('throw away the download', w['check_cancel']['prompt'].lower())
+        self.assertIn('throw away the download', w['download_cancel']['prompt'])
         self.assertNotIn('What is downloaded is kept', w['paused']['lead'])
         self.assertEqual(w['repairing']['head'], 'Checking the library')
         self.assertEqual(w['install']['head'], 'Installing')
@@ -4024,6 +4042,7 @@ class ModelServer(Base):
             for typed in ('10.0.0.5:8080', 'example.org:80', 'https://127.0.0.1:1', '0.0.0.0:8080', '127.0.0.1:1@example.org:1', '', None, '127.0.0.1', '127.0.0.1:0', '127.0.0.1:70000'):
                 got = s.server_models(typed)
                 self.assertEqual(got['code'], 'not_here', typed)
+                self.assertEqual(got['key'], 'setup.err.modelServerLoopbackOnly')
                 self.assertIn('on this computer', got['error'])
                 self.assertEqual(s.use_server(typed, 'small-9b')['code'], 'not_here')
         self.assertEqual(self.switched, [])
@@ -4034,6 +4053,8 @@ class ModelServer(Base):
             port = k.getsockname()[1]
         got = self.chooser().server_models(f'127.0.0.1:{port}')
         self.assertEqual(got['code'], 'no_answer')
+        self.assertEqual(got['key'], 'setup.err.modelServerNoAnswer')
+        self.assertEqual(got['params'], {'where': f'127.0.0.1:{port}'})
         self.assertIn(f'127.0.0.1:{port}', got['error'])
         self.assertNotIn('http', got['error'])
 
@@ -4045,6 +4066,13 @@ class ModelServer(Base):
             got = self.chooser().server_models(self.where)
             self.assertEqual(got['code'], code, answer)
             self.assertIn(self.where, got['error'])
+            expected_key = {
+                'needs_key': 'setup.err.modelServerNeedsKey',
+                'no_list': 'setup.err.modelServerNoListStatus' if answer[0] == 500 else 'setup.err.modelServerNoList',
+                'no_models': 'setup.err.modelServerNoModels',
+            }[code]
+            self.assertEqual(got['key'], expected_key, answer)
+            self.assertEqual(got['params']['where'], self.where)
 
     def test_choosing_saves_and_switches(self):
         self.settings.mkdir(parents=True, exist_ok=True)
@@ -4067,6 +4095,8 @@ class ModelServer(Base):
         for model in ('gone', '', None, ['small-9b']):
             got = s.use_server(self.where, model)
             self.assertEqual(got['code'], 'not_listed', model)
+            self.assertEqual(got['key'], 'setup.err.modelServerNoLongerLists')
+            self.assertEqual(got['params']['where'], self.where)
         self.assertIsNone(api.saved_model_server(self.settings))
         self.assertEqual(self.switched, [])
 

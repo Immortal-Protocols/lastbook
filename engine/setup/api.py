@@ -611,7 +611,9 @@ class Setup:
         if got.get('error'):
             return got
         if model not in got['models']:
-            return {'code': 'not_listed', 'error': f'The server at {got["address"]} no longer lists {str(model)[:model_server.MAX_ID]}. List its models again.'}
+            name = str(model)[:model_server.MAX_ID]
+            return user_error('not_listed', f'The server at {got["address"]} no longer lists {name}. List its models again.',
+                              'setup.err.modelServerNoLongerLists', {'where': got['address'], 'model': name})
         self._choose_server(got['base'], model)
         return {'model_server': self.model_server()}
 
@@ -776,6 +778,8 @@ class Setup:
                 return user_error('nothing', 'There is no library to repair yet.', 'setup.err.noLibraryToRepair')
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             if not pack or not pack['available']:
+                if check_only:
+                    return user_error('unavailable', 'Lastbook cannot tell which library this is, so it cannot check it. Choose a library Lastbook recognizes.', 'setup.err.cannotTellLibraryCheck')
                 return user_error('unavailable', 'Lastbook cannot tell which library this is, so it cannot repair it. Download a library instead.', 'setup.err.cannotTellLibraryRepair')
             m = self.manifest.model()
             present = bool(m) and (self.current / 'models' / m['file']).is_file()
@@ -1327,7 +1331,8 @@ class Setup:
         except OSError as e:
             if plan.get('check_only'):  # a file it could not read, not the internet: a check downloads nothing
                 traceback.print_exc()
-                self._fail(it, 'check', f'Lastbook could not read one of the files it was checking ({type(e).__name__}: {e.strerror or e}).')
+                self._fail(it, 'check', f'Lastbook could not read one of the files it was checking ({type(e).__name__}: {e.strerror or e}).',
+                           key='setup.err.checkCouldNotReadFile', params={'error': type(e).__name__, 'detail': e.strerror or str(e)})
             elif plan.get('copy'):      # the drive, not the internet: a copy downloads nothing
                 traceback.print_exc()
                 if download.disk_full(e):

@@ -37,6 +37,14 @@ def shown(base):
     return base[len('http://'):]
 
 
+def _api_error(code, key, error, **params):
+    """An API error with an English compatibility message and a UI catalogue key."""
+    result = {'code': code, 'error': error, 'key': key}
+    if params:
+        result['params'] = params
+    return result
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *a, **k):
         return None     # the answer comes back as an error instead of being followed: a redirect could lead off this computer
@@ -58,7 +66,8 @@ def list_models(text):
     try:
         base = typed_base(text)
     except ValueError:
-        return {'code': 'not_here', 'error': 'Lastbook only uses a model server on this computer. Use an address like 127.0.0.1:11434.'}
+        return _api_error('not_here', 'setup.err.modelServerLoopbackOnly',
+                          'Lastbook only uses a model server on this computer. Use an address like 127.0.0.1:11434.')
     where = shown(base)
     try:
         with model_open(base + '/v1/models', timeout=LIST_TIMEOUT) as r:
@@ -66,16 +75,22 @@ def list_models(text):
     except urllib.error.HTTPError as e:
         e.close()
         if e.code in (401, 403):
-            return {'code': 'needs_key', 'error': f'The server at {where} asks for a key. Lastbook cannot send one yet. Start it without a key.'}
-        return {'code': 'no_list', 'error': f'The server at {where} answered, but not with a list of models (error {e.code}).'}
+            return _api_error('needs_key', 'setup.err.modelServerNeedsKey',
+                              f'The server at {where} asks for a key. Lastbook cannot send one yet. Start it without a key.', where=where)
+        return _api_error('no_list', 'setup.err.modelServerNoListStatus',
+                          f'The server at {where} answered, but not with a list of models (error {e.code}).', where=where, status=e.code)
     except (urllib.error.URLError, OSError):
-        return {'code': 'no_answer', 'error': f'Nothing answers at {where}. Check that the model server is running and the port is right.'}
+        return _api_error('no_answer', 'setup.err.modelServerNoAnswer',
+                          f'Nothing answers at {where}. Check that the model server is running and the port is right.', where=where)
     except ValueError:
-        return {'code': 'no_list', 'error': f'The server at {where} answered, but not with a list of models.'}
+        return _api_error('no_list', 'setup.err.modelServerNoList',
+                          f'The server at {where} answered, but not with a list of models.', where=where)
     rows = data.get('data') if isinstance(data, dict) else None
     ids = [m['id'] for m in rows if isinstance(m, dict) and isinstance(m.get('id'), str) and 0 < len(m['id']) <= MAX_ID] if isinstance(rows, list) else None
     if ids is None:
-        return {'code': 'no_list', 'error': f'The server at {where} answered, but not with a list of models.'}
+        return _api_error('no_list', 'setup.err.modelServerNoList',
+                          f'The server at {where} answered, but not with a list of models.', where=where)
     if not ids:
-        return {'code': 'no_models', 'error': f'The server at {where} has no models loaded.'}
+        return _api_error('no_models', 'setup.err.modelServerNoModels',
+                          f'The server at {where} has no models loaded.', where=where)
     return {'base': base, 'address': where, 'models': ids[:MAX_MODELS]}

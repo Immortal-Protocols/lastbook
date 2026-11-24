@@ -1867,6 +1867,85 @@ class Switching(Base):
         time.sleep(0.5)
         self.assertFalse(old.exists())
 
+    def interrupted_switch(self, assets=None):
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        work = self.parent / 'LastbookData.setup'
+        staged = work / 'unpack' / 'LastbookData'
+        staged.parent.mkdir(parents=True)
+        if assets:
+            self.lib(staged, 'staged')
+            for rel, content in assets.items():
+                (staged / rel).parent.mkdir(parents=True, exist_ok=True)
+                (staged / rel).write_bytes(content)
+        old = self.parent / 'LastbookData.old-20260101'
+        os.replace(cur, old)
+        pend = api._pending_file(self.settings)
+        pend.parent.mkdir(parents=True)
+        pend.write_text(json.dumps({'new': str(staged), 'target': str(cur),
+                                    'switched': True, 'old': str(old), 'written': 0}))
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        api._job_file(self.settings).write_text(json.dumps({'state': 'done'}))
+        return cur, work, staged
+
+    def test_missing_new_library_at_restart_restores_the_old_one(self):
+        cur, _, _ = self.interrupted_switch()
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertIn('error', note)
+        self.assertIsNone(note['old'])
+
+    def test_recovers_staged_files_before_cleanup(self):
+        assets = {'models/model.gguf': b'model', 'derived/geo/addresses/CA.sqlite': b'address index'}
+        cur, work, _ = self.interrupted_switch(assets)
+
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        api.opened(self.settings, lib, note)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        for rel, content in assets.items():
+            self.assertEqual((cur / rel).read_bytes(), content)
+        self.assertFalse(work.exists())
+
+    def test_incomplete_recovery_keeps_stage_until_next_restart(self):
+        model = 'models/model.gguf'
+        index = 'derived/geo/addresses/CA.sqlite'
+        cur, work, staged = self.interrupted_switch({model: b'model', index: b'address index'})
+        real = os.replace
+
+        def locked_index(src, dst):
+            if Path(src) == staged / index:
+                raise PermissionError('address index in use')
+            return real(src, dst)
+
+        with mock.patch.object(install.os, 'replace', locked_index):
+            lib, note = api.startup(self.settings)
+            self.assertEqual(lib, cur)
+            api.opened(self.settings, lib, note)
+        self.assertEqual((staged / index).read_bytes(), b'address index')
+        self.assertEqual((cur / model).read_bytes(), b'model')
+
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        api.opened(self.settings, lib, note)
+        self.assertEqual((cur / index).read_bytes(), b'address index')
+        self.assertFalse(work.exists())
+
+    def test_recovery_preserves_both_files_on_a_name_conflict(self):
+        model = Path('models/model.gguf')
+        cur, _, staged = self.interrupted_switch({model: b'staged model'})
+        pending = json.loads(api._pending_file(self.settings).read_text())
+        existing = Path(pending['old']) / model
+        existing.parent.mkdir()
+        existing.write_bytes(b'previous model')
+
+        for _ in range(2):
+            lib, note = api.startup(self.settings)
+            self.assertEqual(lib, cur)
+            api.opened(self.settings, lib, note)
+            self.assertEqual((cur / model).read_bytes(), b'previous model')
+            self.assertEqual((staged / model).read_bytes(), b'staged model')
+
     def test_new_library_that_does_not_open_is_rolled_back(self):
         cur = self.lib(self.parent / 'LastbookData', 'old')
         new = self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')

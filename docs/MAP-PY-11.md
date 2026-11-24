@@ -1,12 +1,19 @@
 # A detailed map of Central, with Asunción (`PY-11`): how it is built and what it holds
 
-A second worked example for `tools/build_region_map.py`, after Bangkok ([MAP-TH-10.md](MAP-TH-10.md)), built with that
-tool unchanged. It maps Paraguay's Central department with the box [REGIONS-PY.md](REGIONS-PY.md) gives it. That box
+A second worked example for `tools/build_region_map.py`, after Bangkok
+([MAP-TH-10.md](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/docs/MAP-TH-10.md)), built with that tool unchanged. It maps Paraguay's Central department with the box [REGIONS-PY.md](REGIONS-PY.md) gives it. That box
 contains all of Asunción, so the capital is in the map too.
 
-The tool, its checker and the Bangkok page come from pull request #80 and are not in this repository until it is
-merged. This map was built and checked with them as they were at commit `a453274`. If the tool changes before then,
-the build and the checks here need to be run again.
+**A prototype dependency.** The tool, its checker and the Bangkok page come from pull request #80, which is still
+open. They are not in the main branch. This map was built and checked with #80 at commit
+[`a453274`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2) (AngryAnt3201/lastbook, branch `map/bangkok-th-10`). The files used, at that commit:
+
+- [`tools/build_region_map.py`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/build_region_map.py), the builder
+- [`tools/check_region_map.py`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/check_region_map.py), the checker
+- [`tools/test_build_region_map.py`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/tools/test_build_region_map.py), its tests
+- [`docs/MAP-TH-10.md`](https://github.com/AngryAnt3201/lastbook/blob/a453274353b2816b4ccb0114310024ea54c970b2/docs/MAP-TH-10.md), the Bangkok example and the builder's notes
+
+If #80 changes, or is merged in another form, the build and the checks here need to be run again.
 
 It adds no code and no app change. The map is not downloaded by setup and is not in any pack: the shared way to
 describe, install and publish regions is still being worked out, and this gives it one more concrete map to carry.
@@ -33,24 +40,73 @@ to test the tool on the part of Paraguay where most people live.
 
 The build machine needs Python 3.11 or later and pyosmium. Nothing else is installed, and the tool downloads nothing.
 
-```bash
-# 1. The source: Geofabrik's Paraguay extract (OpenStreetMap, ODbL 1.0). About 155 MB.
-curl -LO https://download.geofabrik.de/south-america/paraguay-latest.osm.pbf
-curl -LO https://download.geofabrik.de/south-america/paraguay-latest.osm.pbf.md5 && md5sum -c paraguay-latest.osm.pbf.md5
+There are two ways to build it. **Reproduce the recorded build** rebuilds this map from the same dated source file, with
+#80 at the same commit, and checks the result against the checksums recorded under "The build this was checked with"
+below. **A fresh build** makes the same map from today's data; its checksums and counts will differ.
 
-# 2. A build environment with pyosmium.
-python3 -m venv derived/buildenv && derived/buildenv/bin/pip install osmium
+The builder and checker are not in the main branch. Both ways start by taking them from #80 at the exact commit this
+map was built with, into a checkout of this repository, without merging #80.
+
+### Reproduce the recorded build
+
+Run from the top of a checkout of this repository. The commands were run as written on macOS 27.0.1. The SHA-256
+checks use `shasum`, which macOS and most Linux systems have: macOS's own `sha256sum -c` does not read a list from a
+pipe.
+
+```bash
+# 0. The prototype builder and checker from pull request #80 (still open), at commit a453274.
+git fetch https://github.com/AngryAnt3201/lastbook.git a453274353b2816b4ccb0114310024ea54c970b2
+git checkout FETCH_HEAD -- tools/build_region_map.py tools/check_region_map.py tools/test_build_region_map.py
+
+# 1. The dated source this map was built from: Geofabrik's Paraguay extract with data up to 16 November 2026
+#    (OpenStreetMap, ODbL 1.0), 154,670,977 bytes. Check it against Geofabrik's MD5 and the recorded SHA-256.
+curl -LO https://download.geofabrik.de/south-america/paraguay/paraguay-261116.osm.pbf
+curl -LO https://download.geofabrik.de/south-america/paraguay/paraguay-261116.osm.pbf.md5 && md5sum -c paraguay-261116.osm.pbf.md5
+echo "041dd8eab303e1f7f91ecba4692db5cfc102843dfad01b5f6d0ce94ddedc053f  paraguay-261116.osm.pbf" | shasum -a 256 -c
+
+# 2. A build environment with the pyosmium version the recorded build used.
+python3 -m venv derived/buildenv && derived/buildenv/bin/pip install osmium==4.3.2
 
 # 3. Build. The box is Central's box with the 0.15 degree margin, from REGIONS-PY.md.
-derived/buildenv/bin/python tools/build_region_map.py paraguay-latest.osm.pbf \
-    --id PY-11 --name Central --bbox -57.98,-26.18,-57.04,-24.94 --out derived/regions
+#    Write --bbox=... with "=": the box starts with a minus sign, which some Python versions read as an option.
+derived/buildenv/bin/python tools/build_region_map.py paraguay-261116.osm.pbf \
+    --id PY-11 --name Central --bbox=-57.98,-26.18,-57.04,-24.94 --out derived/regions
 
-# 4. Check the files, then check that the engine can use them with every connection blocked.
+# 4. Compare the five files with the recorded checksums. Every line should say OK.
+(cd derived/regions/PY-11 && shasum -a 256 -c <<'EOF'
+884a726a765e8396732306807bb700ee976169ba5a4bbd5b2c953bddd47b2590  derived/geo/national.sqlite
+620cabc336cb71606590f155a29b45c19ed1bebdafba44857e2ab749d7754a45  derived/geo/map.sqlite
+4509db3830f8e50b6194880b8989ce896fb0003b1676e14f82996befc46bc81f  derived/geo/places.sqlite
+85d352dddc7048f5ee5032f74f80f82441632a772a6b985a37f79a38a5d26143  derived/geo/national-status.json
+4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945  derived/geo/socal-cells.json
+EOF
+)
+
+# 5. Check the files, then check that the engine can use them with every connection blocked.
 python3 tools/check_region_map.py derived/regions/PY-11
 python3 tools/check_region_map.py derived/regions/PY-11 --engine \
     --find "Hospital de Trauma" --find Luque --find nemby --find lambare --find "San Lorenzo" \
     --near -25.2822,-57.6351
 ```
+
+Geofabrik keeps dated files for a limited time. If `paraguay-261116.osm.pbf` is gone, only a later snapshot is
+available from them: use "A fresh build" below, or a copy of the dated file from elsewhere that passes the SHA-256
+check in step 1. The source file's name is written into the map, so a copy saved under another name gives different
+checksums for `national.sqlite` and `map.sqlite`.
+
+### A fresh build
+
+Do step 0 and step 2 above, then:
+
+```bash
+curl -LO https://download.geofabrik.de/south-america/paraguay-latest.osm.pbf
+curl -LO https://download.geofabrik.de/south-america/paraguay-latest.osm.pbf.md5 && md5sum -c paraguay-latest.osm.pbf.md5
+derived/buildenv/bin/python tools/build_region_map.py paraguay-latest.osm.pbf \
+    --id PY-11 --name Central --bbox=-57.98,-26.18,-57.04,-24.94 --out derived/regions
+```
+
+Then run the two checks in step 5. Skip step 4: Geofabrik replaces `paraguay-latest` every day, so the checksums and
+some counts will differ from the ones recorded here.
 
 To look at it in the app's interface, give the engine a data folder that holds the map and an empty library:
 
@@ -65,26 +121,31 @@ python3 server.py --data /path/to/CentralData --port 8890
 
 | | |
 |---|---|
-| Source file | `paraguay-latest.osm.pbf`, 154,670,977 bytes |
+| Source file | [`paraguay-261116.osm.pbf`](https://download.geofabrik.de/south-america/paraguay/paraguay-261116.osm.pbf), 154,670,977 bytes |
 | Source SHA-256 | `041dd8eab303e1f7f91ecba4692db5cfc102843dfad01b5f6d0ce94ddedc053f` |
 | Source MD5 (matches Geofabrik's `.md5`) | `afcdcfd67f68a409bc696b049df815c4` |
 | OpenStreetMap data up to | 2026-11-16T21:22:36Z (from the file's header) |
-| Built on | 17 November 2026, macOS 27.0.1 on Apple M5, Python 3.14.4, pyosmium 4.3.2 from PyPI |
-| Build time | about 120 seconds, reading the whole country and keeping the box |
+| Built on | 24 November 2026, macOS 27.0.1 on Apple M5, Python 3.14.4, pyosmium 4.3.2 from PyPI |
+| Build time | about 110 seconds, reading the whole country and keeping the box |
 | Box | -57.98, -26.18, -57.04, -24.94 (west, south, east, north) |
 
 | File | Bytes | SHA-256 |
 |---|---|---|
-| `derived/geo/national.sqlite` | 160,661,504 | `0d6d89d7054e5657697db0c5b2d8008f7daaafe2bd2e79344fdf3f097438c71b` |
-| `derived/geo/map.sqlite` | 36,864 | `154f6172df41aa6d4710bccd4aac2fdf78e167bb1b332d9075818f5ed6c56055` |
+| `derived/geo/national.sqlite` | 160,661,504 | `884a726a765e8396732306807bb700ee976169ba5a4bbd5b2c953bddd47b2590` |
+| `derived/geo/map.sqlite` | 36,864 | `620cabc336cb71606590f155a29b45c19ed1bebdafba44857e2ab749d7754a45` |
 | `derived/geo/places.sqlite` | 823,296 | `4509db3830f8e50b6194880b8989ce896fb0003b1676e14f82996befc46bc81f` |
 | `derived/geo/national-status.json` | 59 | `85d352dddc7048f5ee5032f74f80f82441632a772a6b985a37f79a38a5d26143` |
 | `derived/geo/socal-cells.json` | 2 | `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` |
 
 The files hold no build time, so the same extract and options give the same bytes: two builds on the machine above
 gave identical checksums for all five files. Whether another SQLite version or platform gives the same bytes was not
-tested; the counts below should match in any case. Geofabrik replaces `paraguay-latest` every day, so a later download
-gives a different source checksum and slightly different counts.
+tested; the counts below should match in any case.
+
+The map was first built on 17 November 2026 from the same bytes, downloaded that day as `paraguay-latest.osm.pbf`.
+The build recorded here was made on 24 November from a fresh download of the dated file. `places.sqlite` and the two
+JSON files came out byte for byte the same. `national.sqlite` and `map.sqlite` hold the source file's name, so their
+checksums changed with the name and nothing else: a build from the same download saved as `paraguay-latest.osm.pbf`
+gave the first build's checksums again (`0d6d89d7…` and `154f6172…`).
 
 What the map holds:
 

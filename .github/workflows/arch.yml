@@ -43,7 +43,7 @@ jobs:
         run: |
           # Bridge/content integration tests require a separately downloaded library.
           runuser -u builder -- /usr/bin/python3 -B -m unittest \
-            app.tests.test_arch_install app.tests.test_linux_packaging \
+            app.tests.test_arch_install app.tests.test_arch_llm app.tests.test_linux_packaging \
             app.tests.test_setup app.tests.test_data_folder app.tests.test_update \
             app.tests.test_address_search app.tests.test_topic_search \
             app.tests.test_validate_topics app.tests.test_libq
@@ -79,8 +79,9 @@ jobs:
           import sys
           sys.frozen = True
           sys._MEIPASS = '/opt/lastbook'
-          sys.path[:0] = ['/opt/lastbook/lib', '/opt/lastbook']
+          sys.path[:0] = ['/opt/lastbook/app', '/opt/lastbook', '/opt/lastbook/lib']   # as packaging/linux/lastbook.py sets it
           import libzim, numpy, pypdfium2
+          import main, bridge, shell_linux, server, retrieval, assistant, llm_local   # the app's own modules load from the package alone
           from engine import update
           assert update.platform_key() == 'arch'
           u = update.Updater(version=open('/opt/lastbook/VERSION').read().strip())

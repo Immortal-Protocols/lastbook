@@ -133,7 +133,9 @@ label{display:block;margin:.5rem 0} label small,.fld small{display:block;color:#
 input[type=text],textarea,select{width:100%;box-sizing:border-box;font:inherit} .fld{margin:.6rem 0}
 fieldset{border:1px solid #bbb;border-radius:8px;margin:1rem 0;padding:.5rem 1rem} legend{font-weight:600}
 .rules{background:#f6f6fb;border-radius:8px;padding:.5rem 1rem} .rules li{margin:.25rem 0}
-#problems{position:sticky;bottom:0;background:#fffe;border-top:1px solid #ccc;padding:.4rem 0}
+#problems{position:sticky;bottom:0;background:#fff;border:1px solid #ccc;border-radius:6px 6px 0 0;padding:.4rem .6rem;max-height:30vh;min-height:3rem;overflow:auto;resize:vertical;box-shadow:0 -2px 6px #0002}
+#problems>b{position:sticky;top:-.4rem;display:block;background:#fff;padding:.2rem 0;border-bottom:1px solid #eee}
+#warnings{max-height:18vh;overflow:auto;resize:vertical}
 details.country>summary{cursor:pointer;list-style:none} details.country>summary::-webkit-details-marker{display:none}
 details.country>summary h2{display:inline-block;margin:.6rem 0} details.country>summary::before{content:'\25B6';font-size:.8em;margin-right:.4rem;color:#555}
 details.country[open]>summary::before{content:'\25BC'}

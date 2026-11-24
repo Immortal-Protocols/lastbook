@@ -1,0 +1,2620 @@
+{
+ "_about": "Languages per country, taken from the English Wikipedia page \"List of official languages by country and territory\" (revision 1386756474, read 2026-11-24): the \"Official language(s)\" column, first four, in the order listed. \"wikipedia_count\" is the page's own count (official, regional and de facto). \"code\" is the two-letter ISO 639-1 code, or null when the language has none (most Indigenous languages) or the tool could not match it. Entries marked set_by_hand (Bosnia, Switzerland, Uruguay, Bolivia, Czech Republic, Mexico, Mauritius) were corrected or filled by hand; for a country with more than 4, the first four listed are not necessarily the main ones. This file only drives the coverage page; it is not evidence for any number.",
+ "countries": {
+  "AD": {
+   "name": "Andorra",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Catalan",
+     "code": "ca"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AE": {
+   "name": "United Arab Emirates",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AF": {
+   "name": "Afghanistan",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Persian",
+     "code": "fa"
+    },
+    {
+     "name": "Pashto",
+     "code": "ps"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AG": {
+   "name": "Antigua and Barbuda",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AL": {
+   "name": "Albania",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Albanian",
+     "code": "sq"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AM": {
+   "name": "Armenia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Armenian",
+     "code": "hy"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AO": {
+   "name": "Angola",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AR": {
+   "name": "Argentina",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    },
+    {
+     "name": "Argentine Sign Language",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "AT": {
+   "name": "Austria",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "German",
+     "code": "de"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AU": {
+   "name": "Australia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "AZ": {
+   "name": "Azerbaijan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Azerbaijani",
+     "code": "az"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BA": {
+   "name": "Bosnia and Herzegovina",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "Bosnian",
+     "code": "bs"
+    },
+    {
+     "name": "Croatian",
+     "code": "hr"
+    },
+    {
+     "name": "Serbian",
+     "code": "sr"
+    }
+   ],
+   "more_than_4": false,
+   "set_by_hand": true
+  },
+  "BB": {
+   "name": "Barbados",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BD": {
+   "name": "Bangladesh",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Bengali",
+     "code": "bn"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BE": {
+   "name": "Belgium",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "Dutch",
+     "code": "nl"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "German",
+     "code": "de"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BF": {
+   "name": "Burkina Faso",
+   "wikipedia_count": 4,
+   "official": [
+    {
+     "name": "Mooré",
+     "code": null
+    },
+    {
+     "name": "Bissa",
+     "code": null
+    },
+    {
+     "name": "Dyula",
+     "code": null
+    },
+    {
+     "name": "Fula",
+     "code": "ff"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BG": {
+   "name": "Bulgaria",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Bulgarian",
+     "code": "bg"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BH": {
+   "name": "Bahrain",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BI": {
+   "name": "Burundi",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Kirundi",
+     "code": "rn"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BJ": {
+   "name": "Benin",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BN": {
+   "name": "Brunei",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Malay",
+     "code": "ms"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BO": {
+   "name": "Bolivia",
+   "wikipedia_count": 37,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    },
+    {
+     "name": "Quechua",
+     "code": "qu"
+    },
+    {
+     "name": "Aymara",
+     "code": "ay"
+    },
+    {
+     "name": "Guarani",
+     "code": "gn"
+    }
+   ],
+   "more_than_4": true,
+   "set_by_hand": true
+  },
+  "BR": {
+   "name": "Brazil",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BS": {
+   "name": "Bahamas",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BT": {
+   "name": "Bhutan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Dzongkha",
+     "code": "dz"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BW": {
+   "name": "Botswana",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BY": {
+   "name": "Belarus",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Belarusian",
+     "code": "be"
+    },
+    {
+     "name": "Russian",
+     "code": "ru"
+    }
+   ],
+   "more_than_4": false
+  },
+  "BZ": {
+   "name": "Belize",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CA": {
+   "name": "Canada",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CD": {
+   "name": "Democratic Republic of the Congo",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CF": {
+   "name": "Central African Republic",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Sango",
+     "code": "sg"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CG": {
+   "name": "Republic of the Congo",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CH": {
+   "name": "Switzerland",
+   "wikipedia_count": 4,
+   "official": [
+    {
+     "name": "German",
+     "code": "de"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Italian",
+     "code": "it"
+    },
+    {
+     "name": "Romansh",
+     "code": "rm"
+    }
+   ],
+   "more_than_4": false,
+   "set_by_hand": true
+  },
+  "CI": {
+   "name": "Ivory Coast",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CK": {
+   "name": "Cook Islands",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Cook Islands Māori",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "CL": {
+   "name": "Chile",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CM": {
+   "name": "Cameroon",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CN": {
+   "name": "China",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Standard Chinese",
+     "code": "zh"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CO": {
+   "name": "Colombia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CR": {
+   "name": "Costa Rica",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CU": {
+   "name": "Cuba",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CV": {
+   "name": "Cape Verde",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CY": {
+   "name": "Cyprus",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Greek",
+     "code": "el"
+    },
+    {
+     "name": "Turkish",
+     "code": "tr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "CZ": {
+   "name": "Czech Republic",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Czech",
+     "code": "cs"
+    }
+   ],
+   "more_than_4": false,
+   "set_by_hand": true
+  },
+  "DE": {
+   "name": "Germany",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "German",
+     "code": "de"
+    }
+   ],
+   "more_than_4": false
+  },
+  "DJ": {
+   "name": "Djibouti",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "DK": {
+   "name": "Denmark",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Danish",
+     "code": "da"
+    }
+   ],
+   "more_than_4": false
+  },
+  "DM": {
+   "name": "Dominica",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "DO": {
+   "name": "Dominican Republic",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "DZ": {
+   "name": "Algeria",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "Berber",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "EC": {
+   "name": "Ecuador",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "EE": {
+   "name": "Estonia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Estonian",
+     "code": "et"
+    }
+   ],
+   "more_than_4": false
+  },
+  "EG": {
+   "name": "Egypt",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ER": {
+   "name": "Eritrea",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Tigrinya",
+     "code": "ti"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ES": {
+   "name": "Spain",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ET": {
+   "name": "Ethiopia",
+   "wikipedia_count": 5,
+   "official": [
+    {
+     "name": "Afar",
+     "code": "aa"
+    },
+    {
+     "name": "Amharic",
+     "code": "am"
+    },
+    {
+     "name": "Oromo",
+     "code": "om"
+    },
+    {
+     "name": "Somali",
+     "code": "so"
+    }
+   ],
+   "more_than_4": true
+  },
+  "FI": {
+   "name": "Finland",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Finnish",
+     "code": "fi"
+    },
+    {
+     "name": "Swedish",
+     "code": "sv"
+    }
+   ],
+   "more_than_4": false
+  },
+  "FJ": {
+   "name": "Fiji",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Fijian",
+     "code": "fj"
+    },
+    {
+     "name": "Hindi",
+     "code": "hi"
+    }
+   ],
+   "more_than_4": false
+  },
+  "FM": {
+   "name": "Federated States of Micronesia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "FR": {
+   "name": "France",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GA": {
+   "name": "Gabon",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GB": {
+   "name": "United Kingdom",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GD": {
+   "name": "Grenada",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GE": {
+   "name": "Georgia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Georgian",
+     "code": "ka"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GH": {
+   "name": "Ghana",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GM": {
+   "name": "The Gambia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GN": {
+   "name": "Guinea",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GQ": {
+   "name": "Equatorial Guinea",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    },
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GR": {
+   "name": "Greece",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Greek",
+     "code": "el"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GT": {
+   "name": "Guatemala",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GW": {
+   "name": "Guinea-Bissau",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "GY": {
+   "name": "Guyana",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "HK": {
+   "name": "Hong Kong",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Cantonese",
+     "code": null
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "HN": {
+   "name": "Honduras",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "HR": {
+   "name": "Croatia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Croatian",
+     "code": "hr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "HT": {
+   "name": "Haiti",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Haitian Creole",
+     "code": "ht"
+    }
+   ],
+   "more_than_4": false
+  },
+  "HU": {
+   "name": "Hungary",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Hungarian",
+     "code": "hu"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ID": {
+   "name": "Indonesia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Indonesian",
+     "code": "id"
+    }
+   ],
+   "more_than_4": false
+  },
+  "IE": {
+   "name": "Ireland",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Irish",
+     "code": "ga"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "IL": {
+   "name": "Israel",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Hebrew",
+     "code": "he"
+    }
+   ],
+   "more_than_4": false
+  },
+  "IN": {
+   "name": "India",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Hindi",
+     "code": "hi"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "IQ": {
+   "name": "Iraq",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "Kurdish",
+     "code": "ku"
+    }
+   ],
+   "more_than_4": false
+  },
+  "IR": {
+   "name": "Iran",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Persian",
+     "code": "fa"
+    }
+   ],
+   "more_than_4": false
+  },
+  "IS": {
+   "name": "Iceland",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Icelandic",
+     "code": "is"
+    },
+    {
+     "name": "Icelandic Sign Language",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "IT": {
+   "name": "Italy",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Italian",
+     "code": "it"
+    }
+   ],
+   "more_than_4": false
+  },
+  "JM": {
+   "name": "Jamaica",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "JO": {
+   "name": "Jordan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "JP": {
+   "name": "Japan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Japanese",
+     "code": "ja"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KE": {
+   "name": "Kenya",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Swahili",
+     "code": "sw"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KG": {
+   "name": "Kyrgyzstan",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Kyrgyz",
+     "code": "ky"
+    },
+    {
+     "name": "Russian",
+     "code": "ru"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KH": {
+   "name": "Cambodia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Khmer",
+     "code": "km"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KI": {
+   "name": "Kiribati",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Gilbertese",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "KM": {
+   "name": "Comoros",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "Comorian",
+     "code": null
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KN": {
+   "name": "Saint Kitts and Nevis",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KP": {
+   "name": "North Korea",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Korean",
+     "code": "ko"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KR": {
+   "name": "South Korea",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Korean",
+     "code": "ko"
+    },
+    {
+     "name": "Korean Sign Language",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "KW": {
+   "name": "Kuwait",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "KZ": {
+   "name": "Kazakhstan",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Kazakh",
+     "code": "kk"
+    },
+    {
+     "name": "Russian",
+     "code": "ru"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LA": {
+   "name": "Laos",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Lao",
+     "code": "lo"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LB": {
+   "name": "Lebanon",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LC": {
+   "name": "Saint Lucia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LI": {
+   "name": "Liechtenstein",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "German",
+     "code": "de"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LK": {
+   "name": "Sri Lanka",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Sinhala",
+     "code": "si"
+    },
+    {
+     "name": "Tamil",
+     "code": "ta"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LR": {
+   "name": "Liberia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LS": {
+   "name": "Lesotho",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Sesotho",
+     "code": "st"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LT": {
+   "name": "Lithuania",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Lithuanian",
+     "code": "lt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LU": {
+   "name": "Luxembourg",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "German",
+     "code": "de"
+    },
+    {
+     "name": "Luxembourgish",
+     "code": "lb"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LV": {
+   "name": "Latvia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Latvian",
+     "code": "lv"
+    }
+   ],
+   "more_than_4": false
+  },
+  "LY": {
+   "name": "Libya",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MA": {
+   "name": "Morocco",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "Berber",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "MC": {
+   "name": "Monaco",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MD": {
+   "name": "Moldova",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Romanian",
+     "code": "ro"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ME": {
+   "name": "Montenegro",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Montenegrin",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "MG": {
+   "name": "Madagascar",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Malagasy",
+     "code": "mg"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MH": {
+   "name": "Marshall Islands",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Marshallese",
+     "code": "mh"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MK": {
+   "name": "North Macedonia",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Macedonian",
+     "code": "mk"
+    },
+    {
+     "name": "Albanian",
+     "code": "sq"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ML": {
+   "name": "Mali",
+   "wikipedia_count": 13,
+   "official": [
+    {
+     "name": "Bambara",
+     "code": "bm"
+    },
+    {
+     "name": "Bobo",
+     "code": null
+    },
+    {
+     "name": "Bozo",
+     "code": null
+    },
+    {
+     "name": "Dogon",
+     "code": null
+    }
+   ],
+   "more_than_4": true
+  },
+  "MM": {
+   "name": "Myanmar",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Burmese",
+     "code": "my"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MN": {
+   "name": "Mongolia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Mongolian",
+     "code": "mn"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MO": {
+   "name": "Macau",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Cantonese",
+     "code": null
+    },
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MR": {
+   "name": "Mauritania",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MT": {
+   "name": "Malta",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Maltese",
+     "code": "mt"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MU": {
+   "name": "Mauritius",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false,
+   "set_by_hand": true
+  },
+  "MV": {
+   "name": "Maldives",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Dhivehi",
+     "code": "dv"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MW": {
+   "name": "Malawi",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MX": {
+   "name": "Mexico",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false,
+   "set_by_hand": true
+  },
+  "MY": {
+   "name": "Malaysia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Malay",
+     "code": "ms"
+    }
+   ],
+   "more_than_4": false
+  },
+  "MZ": {
+   "name": "Mozambique",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NA": {
+   "name": "Namibia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NE": {
+   "name": "Niger",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Hausa",
+     "code": "ha"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NG": {
+   "name": "Nigeria",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NI": {
+   "name": "Nicaragua",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NL": {
+   "name": "Netherlands",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Dutch",
+     "code": "nl"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NO": {
+   "name": "Norway",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Norwegian",
+     "code": "no"
+    },
+    {
+     "name": "Sami",
+     "code": "se"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NP": {
+   "name": "Nepal",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Nepali",
+     "code": "ne"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NR": {
+   "name": "Nauru",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Nauruan",
+     "code": "na"
+    }
+   ],
+   "more_than_4": false
+  },
+  "NU": {
+   "name": "Niue",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Niuean",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "NZ": {
+   "name": "New Zealand",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "Māori language",
+     "code": "mi"
+    },
+    {
+     "name": "New Zealand Sign Language",
+     "code": null
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "OM": {
+   "name": "Oman",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PA": {
+   "name": "Panama",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PE": {
+   "name": "Peru",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PG": {
+   "name": "Papua New Guinea",
+   "wikipedia_count": 4,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Hiri Motu",
+     "code": "ho"
+    },
+    {
+     "name": "PNG Sign Language",
+     "code": null
+    },
+    {
+     "name": "Tok Pisin",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "PH": {
+   "name": "Philippines",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Filipino",
+     "code": null
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PK": {
+   "name": "Pakistan",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Urdu",
+     "code": "ur"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PL": {
+   "name": "Poland",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Polish",
+     "code": "pl"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PS": {
+   "name": "Palestine",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PT": {
+   "name": "Portugal",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "PW": {
+   "name": "Palau",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Palauan",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "PY": {
+   "name": "Paraguay",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    },
+    {
+     "name": "Guarani",
+     "code": "gn"
+    }
+   ],
+   "more_than_4": false
+  },
+  "QA": {
+   "name": "Qatar",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "RO": {
+   "name": "Romania",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Romanian",
+     "code": "ro"
+    }
+   ],
+   "more_than_4": false
+  },
+  "RS": {
+   "name": "Serbia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Serbian",
+     "code": "sr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "RU": {
+   "name": "Russia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Russian",
+     "code": "ru"
+    }
+   ],
+   "more_than_4": false
+  },
+  "RW": {
+   "name": "Rwanda",
+   "wikipedia_count": 4,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Kinyarwanda",
+     "code": "rw"
+    },
+    {
+     "name": "Swahili",
+     "code": "sw"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SA": {
+   "name": "Saudi Arabia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SB": {
+   "name": "Solomon Islands",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SC": {
+   "name": "Seychelles",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Seychellois Creole",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "SD": {
+   "name": "Sudan",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SE": {
+   "name": "Sweden",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Swedish",
+     "code": "sv"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SG": {
+   "name": "Singapore",
+   "wikipedia_count": 4,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Malay",
+     "code": "ms"
+    },
+    {
+     "name": "Mandarin Chinese",
+     "code": "zh"
+    },
+    {
+     "name": "Tamil",
+     "code": "ta"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SI": {
+   "name": "Slovenia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Slovene",
+     "code": "sl"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SK": {
+   "name": "Slovakia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Slovak",
+     "code": "sk"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SL": {
+   "name": "Sierra Leone",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SM": {
+   "name": "San Marino",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Italian",
+     "code": "it"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SN": {
+   "name": "Senegal",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SO": {
+   "name": "Somalia",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Somali",
+     "code": "so"
+    },
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SR": {
+   "name": "Suriname",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Dutch",
+     "code": "nl"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SS": {
+   "name": "South Sudan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ST": {
+   "name": "São Tomé and Príncipe",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SV": {
+   "name": "El Salvador",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SY": {
+   "name": "Syria",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "SZ": {
+   "name": "Eswatini",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Swazi",
+     "code": "ss"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TD": {
+   "name": "Chad",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TG": {
+   "name": "Togo",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "French",
+     "code": "fr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TH": {
+   "name": "Thailand",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Thai",
+     "code": "th"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TJ": {
+   "name": "Tajikistan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Tajik",
+     "code": "tg"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TL": {
+   "name": "East Timor",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Portuguese",
+     "code": "pt"
+    },
+    {
+     "name": "Tetum",
+     "code": null
+    }
+   ],
+   "more_than_4": false
+  },
+  "TM": {
+   "name": "Turkmenistan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Turkmen",
+     "code": "tk"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TO": {
+   "name": "Tonga",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Tongan",
+     "code": "to"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TR": {
+   "name": "Turkey",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Turkish",
+     "code": "tr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TT": {
+   "name": "Trinidad and Tobago",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TV": {
+   "name": "Tuvalu",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Tuvaluan",
+     "code": null
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TW": {
+   "name": "Taiwan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Mandarin Chinese",
+     "code": "zh"
+    }
+   ],
+   "more_than_4": false
+  },
+  "TZ": {
+   "name": "Tanzania",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Swahili",
+     "code": "sw"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "UA": {
+   "name": "Ukraine",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Ukrainian",
+     "code": "uk"
+    }
+   ],
+   "more_than_4": false
+  },
+  "UG": {
+   "name": "Uganda",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Swahili",
+     "code": "sw"
+    }
+   ],
+   "more_than_4": false
+  },
+  "US": {
+   "name": "United States",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "UY": {
+   "name": "Uruguay",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    },
+    {
+     "name": "Uruguayan Sign Language",
+     "code": null
+    }
+   ],
+   "more_than_4": false,
+   "set_by_hand": true
+  },
+  "UZ": {
+   "name": "Uzbekistan",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Uzbek",
+     "code": "uz"
+    }
+   ],
+   "more_than_4": false
+  },
+  "VA": {
+   "name": "Vatican City",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Italian",
+     "code": "it"
+    },
+    {
+     "name": "Latin",
+     "code": "la"
+    }
+   ],
+   "more_than_4": false
+  },
+  "VC": {
+   "name": "Saint Vincent and the Grenadines",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "VE": {
+   "name": "Venezuela",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Spanish",
+     "code": "es"
+    }
+   ],
+   "more_than_4": false
+  },
+  "VN": {
+   "name": "Vietnam",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Vietnamese",
+     "code": "vi"
+    }
+   ],
+   "more_than_4": false
+  },
+  "VU": {
+   "name": "Vanuatu",
+   "wikipedia_count": 3,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "French",
+     "code": "fr"
+    },
+    {
+     "name": "Bislama",
+     "code": "bi"
+    }
+   ],
+   "more_than_4": false
+  },
+  "WS": {
+   "name": "Samoa",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Samoan",
+     "code": "sm"
+    }
+   ],
+   "more_than_4": false
+  },
+  "XK": {
+   "name": "Kosovo",
+   "wikipedia_count": 2,
+   "official": [
+    {
+     "name": "Albanian",
+     "code": "sq"
+    },
+    {
+     "name": "Serbian",
+     "code": "sr"
+    }
+   ],
+   "more_than_4": false
+  },
+  "YE": {
+   "name": "Yemen",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "Arabic",
+     "code": "ar"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ZA": {
+   "name": "South Africa",
+   "wikipedia_count": 12,
+   "official": [
+    {
+     "name": "Afrikaans",
+     "code": "af"
+    },
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Southern Ndebele",
+     "code": "nr"
+    },
+    {
+     "name": "Sotho",
+     "code": "st"
+    }
+   ],
+   "more_than_4": true
+  },
+  "ZM": {
+   "name": "Zambia",
+   "wikipedia_count": 1,
+   "official": [
+    {
+     "name": "English",
+     "code": "en"
+    }
+   ],
+   "more_than_4": false
+  },
+  "ZW": {
+   "name": "Zimbabwe",
+   "wikipedia_count": 16,
+   "official": [
+    {
+     "name": "Chewa",
+     "code": "ny"
+    },
+    {
+     "name": "Chibarwe",
+     "code": null
+    },
+    {
+     "name": "English",
+     "code": "en"
+    },
+    {
+     "name": "Kalanga",
+     "code": null
+    }
+   ],
+   "more_than_4": true
+  }
+ }
+}

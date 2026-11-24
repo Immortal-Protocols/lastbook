@@ -87,18 +87,24 @@ does the same `number` listed twice in one file.
 
 A service whose `source` could not be reached is not added. A number nobody can source stays out of the table.
 
-## Two pages to check and to add (`tools/emergency_forms.py`)
+## Three pages to check, to add and to see what is covered (`tools/emergency_forms.py`)
 
 ```
-python3 tools/emergency_forms.py        # writes build/emergency/review.html and submit.html (git ignores build/)
+python3 tools/emergency_forms.py        # writes build/emergency/review.html, submit.html and coverage.html (git ignores build/)
 ```
 
 - `review.html` shows every number in `content/emergency/*.json` as a card, with what the test says about it, and a
   selector per field ("approved" or "comment"). A button turns the comments into one block of text for a review.
 - `submit.html` is an empty entry for a new country. It lists the rules the test checks, checks the entry as it is
   typed, and gives the finished `<CC>.json` to copy or download.
+- `coverage.html` is a table of countries: the languages each one speaks, the languages the tables can be searched in, and
+  the number of services. A picker answers "for your country we have numbers in these languages, not yet in these", or
+  "your country is not covered yet, we would appreciate if you helped us". The languages of each country are in
+  `tools/emergency_languages.json`, read from Wikipedia's "List of official languages by country and territory" (the
+  revision and date are in the file; up to the first four languages; a few entries were set by hand and say so). That
+  file only drives this page: it is not evidence for any number.
 
-Both are plain offline files. The rules are read from `app/tests/test_emergency_numbers.py`, and
+All three are plain offline files. The rules are read from `app/tests/test_emergency_numbers.py`, and
 `app/tests/test_emergency_forms.py` runs the submit page's checker (in Node, when installed) against the real files and
 against the test's checker on broken rows, so the two give the same verdict.
 

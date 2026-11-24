@@ -6,6 +6,9 @@
   review.html  reads every content/emergency/*.json and shows each number as a card. Every field has a selector,
                "approved" or "comment"; a button turns the comments into one block of text to paste into a review.
                Each card also shows what the test says about it.
+  coverage.html  a table of countries: the languages each speaks (tools/emergency_languages.json, from Wikipedia's list of
+               official languages), the languages the tables cover, and how many numbers. A picker says "for your country we
+               have ... in these languages", or that the country is not covered yet.
   submit.html  an empty entry form for a completely new country. It states the rules the test checks, checks the entry
                as it is typed, and gives the finished <CC>.json to copy or download.
 
@@ -455,10 +458,95 @@ def build_submit():
 </html>'''
 
 
+LANGUAGES_FILE = ROOT / 'tools' / 'emergency_languages.json'
+COVERAGE_CSS = '''
+.cov{border-collapse:collapse;width:100%;font-size:.95em} .cov th,.cov td{border-bottom:1px solid #ddd;padding:.3rem .5rem;text-align:left;vertical-align:top}
+.cov th{background:#f3f3f3;position:sticky;top:0} .st{padding:0 .5rem;border-radius:4px;white-space:nowrap} .st.covered{background:#dfd} .st.partly{background:#fed} .st.none{background:#eee;color:#555}
+#where{font-size:1.1em;padding:.3rem;max-width:100%} #answer{border:2px solid #999;border-radius:8px;padding:.8rem 1rem;margin:1rem 0;min-height:2.5rem}
+'''
+COVERAGE_JS = r'''
+const D = JSON.parse(document.getElementById('data').textContent);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const names = l => l.map(x => esc(x)).join(', ');
+const sel = document.getElementById('where'), box = document.getElementById('answer');
+Object.keys(D).sort((a, b) => D[a].name.localeCompare(D[b].name)).forEach(c => {
+  const o = document.createElement('option'); o.value = c; o.textContent = D[c].name + ' (' + c + ')'; sel.appendChild(o);
+});
+function show() {
+  const c = sel.value, d = D[c];
+  if (!d) { box.textContent = 'Choose your country above.'; return; }
+  if (!d.services) {
+    box.innerHTML = '<b>Your country is not covered yet, we would appreciate if you helped us.</b> The page <a href="submit.html">submit.html</a> is an empty entry for a new country.';
+    return;
+  }
+  let t = '<b>' + esc(d.name) + '</b>: we have ' + d.services + ' number' + (d.services === 1 ? '' : 's') + ', with search words in ' + names(d.covered) + '.';
+  if (d.missing.length) t += ' <b>Not yet in:</b> ' + names(d.missing) + '. If you speak ' + (d.missing.length === 1 ? 'it' : 'one of them') + ' and can supply and check the words, you can help us.';
+  else t += ' Every main language of the country is covered.';
+  if (d.nocode.length) t += ' (' + names(d.nocode) + ' ' + (d.nocode.length === 1 ? 'has' : 'have') + ' no two-letter ISO 639-1 code, so ' + (d.nocode.length === 1 ? 'it cannot' : 'they cannot') + ' be added yet.)';
+  if (d.more) t += ' The country has more than 4 languages; only the main ones are listed.';
+  box.innerHTML = t;
+}
+sel.onchange = show; show();
+'''
+
+
+def coverage_data(data_dir=DATA, languages_file=LANGUAGES_FILE):
+    """{ISO code: {...}} for every country in the languages file or with a table: what the country speaks (the languages
+    file), what the table covers, what is missing."""
+    doc = json.loads(Path(languages_file).read_text(encoding='utf-8'))['countries']
+    have = {}
+    for p in sorted(Path(data_dir).glob('*.json')):
+        d = json.loads(p.read_text(encoding='utf-8'))
+        have[d['code']] = d
+    out = {}
+    for code in sorted(set(doc) | set(have)):
+        wiki = doc.get(code, {})
+        want = wiki.get('official', [])
+        name_of = {x['code']: x['name'] for x in want if x['code']}
+        row = {'name': wiki.get('name') or have[code]['country'], 'want': want, 'more': bool(wiki.get('more_than_4'))}
+        if code in have:
+            covered = have[code]['languages']
+            row.update(services=len(have[code]['services']), covered=[name_of.get(c, c) for c in covered],
+                       covered_codes=covered,
+                       missing=[x['name'] for x in want if x['code'] and x['code'] not in covered],
+                       nocode=[x['name'] for x in want if not x['code']])
+        out[code] = row
+    return out
+
+
+def build_coverage(data_dir=DATA, languages_file=LANGUAGES_FILE):
+    data = coverage_data(data_dir, languages_file)
+    rows = []
+    for code, d in data.items():
+        wants = ', '.join(f'{e(x["name"])}{" (" + x["code"] + ")" if x["code"] else ""}' for x in d['want']) or '<span class="unk">not listed</span>'
+        if 'services' not in d:
+            status, label, cov, n = 'none', 'not yet', '<span class="unk">none</span>', 0
+        else:
+            status, label = ('partly', 'partly') if d['missing'] or d['nocode'] else ('covered', 'covered')
+            cov, n = e(', '.join(d['covered'])), d['services']
+        rows.append(f'<tr><td>{e(d["name"])} <small>{e(code)}</small></td><td>{wants}{" <small>(more than 4 exist)</small>" if d["more"] else ""}</td>'
+                    f'<td>{cov}</td><td>{n}</td><td><span class="st {status}">{label}</span></td></tr>')
+    have = sum(1 for d in data.values() if 'services' in d)
+    blob = json.dumps({c: {k: v for k, v in d.items() if k in ('name', 'services', 'covered', 'missing', 'nocode', 'more')} for c, d in data.items()},
+                      ensure_ascii=False).replace('</', '<\\/')
+    return f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emergency numbers: coverage</title>
+<style>{CSS}{COVERAGE_CSS}</style>
+<h1>Emergency numbers: coverage</h1>
+<p>Which countries have a table in <code>content/emergency/</code>, and in which of their languages it can be searched. {have} of {len(data)} countries have one. The languages of each country come from Wikipedia's list of official languages (<code>tools/emergency_languages.json</code>; for a country with more than 4 languages, only the main ones). This page loads nothing from the network and sends nothing anywhere.</p>
+<h2>Where are you?</h2>
+<select id="where"><option value="">choose your country…</option></select>
+<div id="answer" aria-live="polite"></div>
+<h2>All countries</h2>
+<table class="cov"><tr><th>Country</th><th>Languages of the country</th><th>Languages we cover</th><th>Numbers</th><th>Status</th></tr>{"".join(rows)}</table>
+<script type="application/json" id="data">{blob}</script>
+<script>{COVERAGE_JS}</script>
+</html>'''
+
+
 def main(argv):
     out = Path(argv[1]) if len(argv) > 1 else ROOT / 'build' / 'emergency'
     out.mkdir(parents=True, exist_ok=True)
-    for name, text in (('review.html', build_review()), ('submit.html', build_submit())):
+    for name, text in (('review.html', build_review()), ('submit.html', build_submit()), ('coverage.html', build_coverage())):
         (out / name).write_text(text, encoding='utf-8')
         print(out / name)
 

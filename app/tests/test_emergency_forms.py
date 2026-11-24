@@ -6,7 +6,7 @@
 The submit page checks an entry in JavaScript. These tests build both pages, and (when Node is installed) run that
 checker on the real files and on the test's own broken rows, to prove it gives the same verdict as problems() in
 app/tests/test_emergency_numbers.py. The rules live there, once. The pages must also stay offline."""
-import contextlib, copy, io, json, shutil, subprocess, sys, tempfile, unittest
+import contextlib, copy, io, json, re, shutil, subprocess, sys, tempfile, unittest
 from datetime import date
 from pathlib import Path
 
@@ -86,6 +86,45 @@ class Pages(unittest.TestCase):
             for bad in ('<script src', '<link', '<img', '<iframe', 'fetch(', 'XMLHttpRequest', 'sendBeacon', 'WebSocket',
                         '@import', 'url(http'):
                 self.assertNotIn(bad, page, bad)
+
+
+class Coverage(unittest.TestCase):
+    """The coverage page: which languages of each country the tables can be searched in."""
+
+    def test_the_languages_file_is_sound(self):
+        doc = json.loads(forms.LANGUAGES_FILE.read_text(encoding='utf-8'))['countries']
+        self.assertGreater(len(doc), 150)
+        for code, d in doc.items():
+            with self.subTest(code):
+                self.assertRegex(code, r'^[A-Z]{2}$')
+                self.assertTrue(d['name'])
+                self.assertTrue(1 <= len(d['official']) <= rules.MAX_LANGUAGES)
+                for lang in d['official']:
+                    self.assertTrue(lang['name'])
+                    self.assertTrue(lang['code'] is None or re.fullmatch(r'[a-z]{2}', lang['code']), lang)
+                self.assertIsInstance(d['more_than_4'], bool)
+        self.assertEqual([x['code'] for x in doc['BO']['official']], ['es', 'qu', 'ay', 'gn'])
+
+    def test_a_country_without_a_table_is_not_covered_and_one_with_a_table_says_what_is_missing(self):
+        with tempfile.TemporaryDirectory() as t:
+            (Path(t) / 'BO.json').write_text(json.dumps({'code': 'BO', 'country': 'Bolivia', 'languages': ['es'], 'services': [{}, {}]}),
+                                             encoding='utf-8')
+            data = forms.coverage_data(t)
+            self.assertEqual(data['BO']['services'], 2)
+            self.assertEqual(data['BO']['covered'], ['Spanish'])
+            self.assertEqual(data['BO']['missing'], ['Quechua', 'Aymara', 'Guarani'])
+            self.assertNotIn('services', data['CL'])
+            page = forms.build_coverage(t)
+        self.assertIn('Your country is not covered yet, we would appreciate if you helped us.', page)
+        self.assertIn('1 of ', page)
+        for bad in ('<script src', '<link', '<img', '<iframe', 'fetch(', 'XMLHttpRequest', 'sendBeacon', 'WebSocket', '@import', 'url(http'):
+            self.assertNotIn(bad, page, bad)
+
+    def test_the_real_tables_are_listed(self):
+        data = forms.coverage_data()
+        for p in rules.DIR.glob('*.json'):
+            self.assertIn(json.loads(p.read_text(encoding='utf-8'))['code'], data)
+            self.assertIn('services', data[p.stem])
 
 
 @unittest.skipUnless(NODE, 'Node is not installed: the page checker is not compared with the test')

@@ -120,6 +120,25 @@ class Coverage(unittest.TestCase):
         for bad in ('<script src', '<link', '<img', '<iframe', 'fetch(', 'XMLHttpRequest', 'sendBeacon', 'WebSocket', '@import', 'url(http'):
             self.assertNotIn(bad, page, bad)
 
+    def test_every_sovereign_state_and_territory_has_a_place_on_the_page(self):
+        """Wikipedia's List of sovereign states has 205 entries: 199 have an ISO code (in the file), 6 have none."""
+        doc = json.loads(forms.LANGUAGES_FILE.read_text(encoding='utf-8'))
+        self.assertIn('TN', doc['countries'])            # a row the parser once merged into another
+        self.assertTrue(doc['countries']['HK']['territory'] and doc['countries']['MO']['territory'])
+        self.assertEqual(len(forms.states_without_iso()), 6)
+        self.assertIn('Somaliland', forms.states_without_iso())
+        page = forms.build_coverage()
+        for state in forms.states_without_iso():
+            self.assertIn(state, page)
+        self.assertIn('My country is not in this list', page)
+
+    def test_the_submit_page_refuses_a_second_table_for_a_country_and_warns_about_an_unknown_code(self):
+        page = forms.build_submit()
+        self.assertIn('already exists', page)
+        self.assertIn('"CL"', page[page.index('"have"'):])    # the codes that already have a table are embedded
+        self.assertIn('is not in our list of countries and territories', page)
+        self.assertIn('Wikipedia lists for', page)
+
     def test_the_real_tables_are_listed(self):
         data = forms.coverage_data()
         for p in rules.DIR.glob('*.json'):

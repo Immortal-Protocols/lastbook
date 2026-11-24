@@ -1,5 +1,13 @@
 {
- "_about": "Languages per country, taken from the English Wikipedia page \"List of official languages by country and territory\" (revision 1386756474, read 2026-11-24): the \"Official language(s)\" column, first four, in the order listed. \"wikipedia_count\" is the page's own count (official, regional and de facto). \"code\" is the two-letter ISO 639-1 code, or null when the language has none (most Indigenous languages) or the tool could not match it. Entries marked set_by_hand (Bosnia, Switzerland, Uruguay, Bolivia, Czech Republic, Mexico, Mauritius) were corrected or filled by hand; for a country with more than 4, the first four listed are not necessarily the main ones. This file only drives the coverage page; it is not evidence for any number.",
+ "_about": "Languages per country, taken from the English Wikipedia page \"List of official languages by country and territory\" (revision 1386756474, read 2026-11-24): the \"Official language(s)\" column, first four, in the order listed. \"wikipedia_count\" is the page's own count (official, regional and de facto). \"code\" is the two-letter ISO 639-1 code, or null when the language has none (most Indigenous languages) or the tool could not match it. Entries marked set_by_hand (Bosnia, Switzerland, Uruguay, Bolivia, Czech Republic, Mexico, Mauritius) were corrected or filled by hand; for a country with more than 4, the first four listed are not necessarily the main ones. This file only drives the coverage page; it is not evidence for any number. \"territory\" marks Hong Kong and Macau, which are not in Wikipedia's List of sovereign states (revision read 2026-11-24). \"states_without_iso_code\" are the states in that list that have no ISO 3166-1 code, so the one-file-per-code format cannot hold them yet.",
+ "states_without_iso_code": [
+  "Abkhazia",
+  "Northern Cyprus",
+  "Sahrawi Arab Democratic Republic",
+  "Somaliland",
+  "South Ossetia",
+  "Transnistria"
+ ],
  "countries": {
   "AD": {
    "name": "Andorra",
@@ -946,7 +954,8 @@
      "code": "en"
     }
    ],
-   "more_than_4": false
+   "more_than_4": false,
+   "territory": true
   },
   "HN": {
    "name": "Honduras",
@@ -1559,7 +1568,8 @@
      "code": "pt"
     }
    ],
-   "more_than_4": false
+   "more_than_4": false,
+   "territory": true
   },
   "MR": {
    "name": "Mauritania",

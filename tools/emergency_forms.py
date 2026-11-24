@@ -308,6 +308,8 @@ def rule_list():
 
 SUBMIT_JS = r'''
 const $ = (s, el) => (el || document).querySelector(s);
+const K = JSON.parse(document.getElementById('known').textContent);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const $$ = (s, el) => [...(el || document).querySelectorAll(s)];
 const todayLocal = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const ORDER = ['kind', 'name', 'number', 'how', 'works_from', 'works_from_source', 'free', 'free_source', 'keywords', 'when', 'source', 'url', 'area_whole_country', 'area', 'checked_on', 'verified'];
@@ -410,6 +412,19 @@ function refresh() {
   });
   if (!$('#nogeneral').checked && !$('#general').value.trim()) found.push(name + ': "general" is not answered: type the number of the service that answers any emergency, or tick "no general number"');
   $('#general').disabled = $('#nogeneral').checked;
+  const warn = [], code = data.code;
+  if (K.have.includes(code)) found.push(name + ': a table for ' + code + ' already exists: use review.html to check or change it, do not submit a second one');
+  if (/^[A-Z]{2}$/.test(code)) {
+    const k = K.known[code];
+    if (!k) warn.push(code + ' is not in our list of countries and territories: check that it is the ISO 3166-1 alpha-2 code of the place (it is the file name).');
+    else {
+      if (data.country && data.country.toLowerCase() !== k.name.toLowerCase()) warn.push('In our list, ' + code + ' is ' + k.name + ', not ' + data.country + '.');
+      const want = k.languages.map(l => l.code).filter(Boolean), have = data.languages;
+      if (want.length && (want.some(c => !have.includes(c)) || have.some(c => !want.includes(c))))
+        warn.push('Wikipedia lists for ' + k.name + ': ' + k.languages.map(l => l.name + (l.code ? ' (' + l.code + ')' : ' (no two-letter code)')).join(', ') + '. You typed: ' + (have.join(', ') || 'nothing') + '. Only languages you have keywords for belong in the list.');
+    }
+  }
+  $('#warnings').innerHTML = warn.length ? '<b>Check, but these do not stop the file:</b><ul class="problems">' + warn.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
   $('#problems').innerHTML = found.length
     ? '<b class="bad">' + found.length + ' thing(s) to fix before this passes the test:</b><ul class="problems">' + found.map(x => '<li>' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') + '</ul>'
     : '<b class="good">All checks pass.</b> Save it as content/emergency/' + name + ', set REFERENCE_DATE in app/tests/test_emergency_numbers.py to the day you checked, and run the test.';
@@ -432,6 +447,10 @@ addService();
 
 def build_submit():
     rl = ''.join(f'<li>{x}</li>' for x in rule_list())
+    cd = coverage_data()
+    known = {c: {'name': d['name'], 'languages': d['want']} for c, d in cd.items()}
+    have = sorted(c for c, d in cd.items() if 'services' in d)
+    known_blob = json.dumps({'known': known, 'have': have}, ensure_ascii=False).replace('</', '<\\/')
     return f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emergency numbers: add a country</title>
 <style>{CSS}</style>
 <h1>Emergency numbers: add a country</h1>
@@ -452,7 +471,9 @@ def build_submit():
 <h2>The file</h2>
 <pre id="json"></pre>
 <p><button type="button" id="cp">Copy</button><button type="button" id="dl">Download</button></p>
+<div id="warnings"></div>
 <div id="problems"></div>
+<script type="application/json" id="known">{known_blob}</script>
 <script>{validator_script()}</script>
 <script>{SUBMIT_JS}</script>
 </html>'''
@@ -466,14 +487,19 @@ COVERAGE_CSS = '''
 '''
 COVERAGE_JS = r'''
 const D = JSON.parse(document.getElementById('data').textContent);
+const NS = JSON.parse(document.getElementById('nocode').textContent);
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const names = l => l.map(x => esc(x)).join(', ');
 const sel = document.getElementById('where'), box = document.getElementById('answer');
 Object.keys(D).sort((a, b) => D[a].name.localeCompare(D[b].name)).forEach(c => {
-  const o = document.createElement('option'); o.value = c; o.textContent = D[c].name + ' (' + c + ')'; sel.appendChild(o);
+  const o = document.createElement('option'); o.value = c; o.textContent = D[c].name + ' (' + c + ')' + (D[c].territory ? ', territory' : ''); sel.appendChild(o);
 });
+NS.forEach((n, i) => { const o = document.createElement('option'); o.value = 'ns' + i; o.textContent = n + ' (no ISO code)'; sel.appendChild(o); });
+{ const o = document.createElement('option'); o.value = 'other'; o.textContent = 'My country is not in this list'; sel.appendChild(o); }
 function show() {
   const c = sel.value, d = D[c];
+  if (c === 'other') { box.innerHTML = '<b>Your country is not in our list, so it is not covered yet. We would appreciate if you helped us:</b> tell us which country or territory is missing, and see <a href="submit.html">submit.html</a> to add its numbers.'; return; }
+  if (/^ns\d+$/.test(c)) { box.innerHTML = '<b>' + esc(NS[+c.slice(2)]) + '</b> has no ISO 3166-1 country code, and the tables are one file per two-letter code, so it cannot be added yet. It is not covered; we would appreciate if you helped us decide how to list it.'; return; }
   if (!d) { box.textContent = 'Choose your country above.'; return; }
   if (!d.services) {
     box.innerHTML = '<b>Your country is not covered yet, we would appreciate if you helped us.</b> The page <a href="submit.html">submit.html</a> is an empty entry for a new country.';
@@ -503,7 +529,8 @@ def coverage_data(data_dir=DATA, languages_file=LANGUAGES_FILE):
         wiki = doc.get(code, {})
         want = wiki.get('official', [])
         name_of = {x['code']: x['name'] for x in want if x['code']}
-        row = {'name': wiki.get('name') or have[code]['country'], 'want': want, 'more': bool(wiki.get('more_than_4'))}
+        row = {'name': wiki.get('name') or have[code]['country'], 'want': want, 'more': bool(wiki.get('more_than_4')),
+               'territory': bool(wiki.get('territory'))}
         if code in have:
             covered = have[code]['languages']
             row.update(services=len(have[code]['services']), covered=[name_of.get(c, c) for c in covered],
@@ -514,8 +541,13 @@ def coverage_data(data_dir=DATA, languages_file=LANGUAGES_FILE):
     return out
 
 
+def states_without_iso(languages_file=LANGUAGES_FILE):
+    return json.loads(Path(languages_file).read_text(encoding='utf-8')).get('states_without_iso_code', [])
+
+
 def build_coverage(data_dir=DATA, languages_file=LANGUAGES_FILE):
     data = coverage_data(data_dir, languages_file)
+    nocode = states_without_iso(languages_file)
     rows = []
     for code, d in data.items():
         wants = ', '.join(f'{e(x["name"])}{" (" + x["code"] + ")" if x["code"] else ""}' for x in d['want']) or '<span class="unk">not listed</span>'
@@ -524,21 +556,25 @@ def build_coverage(data_dir=DATA, languages_file=LANGUAGES_FILE):
         else:
             status, label = ('partly', 'partly') if d['missing'] or d['nocode'] else ('covered', 'covered')
             cov, n = e(', '.join(d['covered'])), d['services']
-        rows.append(f'<tr><td>{e(d["name"])} <small>{e(code)}</small></td><td>{wants}{" <small>(more than 4 exist)</small>" if d["more"] else ""}</td>'
+        rows.append(f'<tr><td>{e(d["name"])} <small>{e(code)}{", territory" if d["territory"] else ""}</small></td><td>{wants}{" <small>(more than 4 exist)</small>" if d["more"] else ""}</td>'
                     f'<td>{cov}</td><td>{n}</td><td><span class="st {status}">{label}</span></td></tr>')
+    rows += [f'<tr><td>{e(n)} <small>no ISO code</small></td><td><span class="unk">not listed</span></td><td><span class="unk">none</span></td><td>0</td>'
+             f'<td><span class="st none">not yet</span></td></tr>' for n in nocode]
     have = sum(1 for d in data.values() if 'services' in d)
-    blob = json.dumps({c: {k: v for k, v in d.items() if k in ('name', 'services', 'covered', 'missing', 'nocode', 'more')} for c, d in data.items()},
+    nocode_blob = json.dumps(nocode, ensure_ascii=False).replace('</', '<\\/')
+    blob = json.dumps({c: {k: v for k, v in d.items() if k in ('name', 'services', 'covered', 'missing', 'nocode', 'more', 'territory')} for c, d in data.items()},
                       ensure_ascii=False).replace('</', '<\\/')
     return f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emergency numbers: coverage</title>
 <style>{CSS}{COVERAGE_CSS}</style>
 <h1>Emergency numbers: coverage</h1>
-<p>Which countries have a table in <code>content/emergency/</code>, and in which of their languages it can be searched. {have} of {len(data)} countries have one. The languages of each country come from Wikipedia's list of official languages (<code>tools/emergency_languages.json</code>; for a country with more than 4 languages, only the main ones). This page loads nothing from the network and sends nothing anywhere.</p>
+<p>Which countries have a table in <code>content/emergency/</code>, and in which of their languages it can be searched. {have} of {len(data)} countries and territories have one, and {len(nocode)} more states have no ISO code to name a file with (the list of countries is Wikipedia's list of official languages plus its list of sovereign states). The languages of each country come from Wikipedia's list of official languages (<code>tools/emergency_languages.json</code>; for a country with more than 4 languages, only the main ones). This page loads nothing from the network and sends nothing anywhere.</p>
 <h2>Where are you?</h2>
 <select id="where"><option value="">choose your country…</option></select>
 <div id="answer" aria-live="polite"></div>
 <h2>All countries</h2>
 <table class="cov"><tr><th>Country</th><th>Languages of the country</th><th>Languages we cover</th><th>Numbers</th><th>Status</th></tr>{"".join(rows)}</table>
 <script type="application/json" id="data">{blob}</script>
+<script type="application/json" id="nocode">{nocode_blob}</script>
 <script>{COVERAGE_JS}</script>
 </html>'''
 

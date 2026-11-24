@@ -20,9 +20,9 @@ VERIFIED = {'official', 'found_online'}
 COUNTRY_KEYS = {'country', 'code', 'calling_code', 'languages', 'general', 'services'}
 SERVICE_KEYS = {'kind', 'name', 'number', 'how', 'works_from', 'works_from_source', 'free', 'free_source', 'keywords',
                 'when', 'source', 'url', 'area_whole_country', 'area', 'checked_on', 'verified'}
-LANG = re.compile(r'[a-z]{2,3}')   # language code of a keyword list: es, en, qu, ay, gn ... (no region: not es-cl)
+LANG = re.compile(r'[a-z]{2}')   # ISO 639-1: two letters, as in es, en, qu, ay, gn (no region such as es-cl, no 3-letter code)
 NUMBER = re.compile(r'^[+*]?[0-9][0-9 ]*$')
-CALLING_CODE = re.compile(r'^\+[0-9]{1,4}$')
+CALLING_CODE = re.compile(r'^\+[0-9]{1,3}$')   # ITU country calling codes have one to three digits
 SOURCE = re.compile(r'^https?://[^\s/]+\.[^\s/]+\S*$')
 
 
@@ -309,6 +309,17 @@ class Checker(unittest.TestCase):
             self.assertTrue(self.bad(s_keywords={code: ['emergencia'], 'en': ['emergency']}), repr(code))
             self.assertTrue(self.bad(languages=[code], s_keywords={code: ['emergencia'], 'en': ['emergency']}), repr(code))
         self.assertFalse(self.bad(s_keywords={'es': ['emergencia'], 'en': ['emergency']}))
+
+    def test_languages_are_two_letter_iso_639_1_codes(self):
+        for code in ('esp', 'spa', 'es1', '1a', 'é', 'e s', 'ES'):
+            self.assertTrue(self.bad(languages=[code], s_keywords={code: ['x'], 'en': ['y']}), repr(code))
+        self.assertFalse(self.bad(languages=['qu'], s_keywords={'qu': ['ratu'], 'en': ['emergency']}))
+
+    def test_calling_code_is_plus_and_one_to_three_digits(self):
+        for ok in ('+1', '+56', '+591'):
+            self.assertFalse(self.bad(calling_code=ok), ok)
+        for no in ('+1234', '+123123123', '+', '56', '+5a', '++56', '+ 56', '+-5', ''):
+            self.assertTrue(self.bad(calling_code=no), repr(no))
 
     def test_a_typo_in_a_key_fails(self):
         self.assertTrue(self.bad(s_works_form=['mobile']))

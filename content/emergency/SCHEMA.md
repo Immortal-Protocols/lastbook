@@ -41,8 +41,8 @@ what to show when the country is unknown are still being discussed in the issue.
 | --- | --- |
 | `country` | The country's name in English. |
 | `code` | ISO 3166-1 alpha-2, capitals. Must match the file name. |
-| `calling_code` | The country calling code, `+` and digits. |
-| `languages` | Required. The country's main languages, as language codes without a region (`es`, `qu`, `ay`; never `es-cl`), each listed once. Every service's `keywords` must cover exactly these languages plus `en`, none of them empty; the test fails otherwise. |
+| `calling_code` | The country calling code: `+` and one to three digits (`+56`). |
+| `languages` | Required. The country's main languages, as two-letter ISO 639-1 codes without a region (`es`, `qu`, `ay`; never `es-cl`, never a three-letter code), each listed once. Every service's `keywords` must cover exactly these languages plus `en`, none of them empty; the test fails otherwise. |
 | `general` | The `number` of the service that answers any emergency, or `null`. `null` means no unified line is recorded here; it does not say the country has none, unless a source establishes that. It must match a `number` in `services`. |
 | `services` | The list of numbers, most reliable first. At least one. |
 
@@ -55,12 +55,12 @@ what to show when the country is unknown are still being discussed in the issue.
 | `number` | Digits, spaces, and a leading `+` or `*` only, as it is dialled. |
 | `how` | One or more of `call`, `sms`, `chat`, `app`. |
 | `works_from` | Any of `mobile`, `landline`, `voip`. List only what a source says; empty when the source does not say. |
-| `keywords` | Language code only (2 or 3 lower-case letters: `es`, `qu`, `ay`; never a region such as `es-cl`, which the test rejects) to a list of words a person might type to find this service ("bomberos" / "fire"). One list for every language in the country's `languages`, plus `en`, no more and no fewer, and none empty. Lower case. |
+| `keywords` | Language code only (two lower-case letters, ISO 639-1: `es`, `qu`, `ay`; never a region such as `es-cl` or a three-letter code, which the test rejects) to a list of words a person might type to find this service ("bomberos" / "fire"). One list for every language in the country's `languages`, plus `en`, no more and no fewer, and none empty. Lower case. |
 | `area_whole_country` | Optional. `true` (yes) when a source says the number covers the whole country, `false` (no) when a source says it does not. Leave it out when no source says. |
 | `area` | Optional, and only when `area_whole_country` is not `true`. The specific place the number covers, in free text (a comuna, a city). Numbers that belong to one comuna, such as the 1XXX municipal lines, need it. Leave it out when no source says. |
 | `url` | Optional. The web address of the service's own page, where a person can read more. It is not evidence for any claim (the `*_source` fields are); leave it out when the service has no page of its own. |
 | `works_from_source` | The page that says `works_from`. Required when `works_from` is not empty; leave it out otherwise. |
-| `free` | `true` or `false` when a source says whether a call costs money, `null` when none does. Always present. |
+| `free` | `true` or `false` when a source says whether it costs money, `null` when none does. `true` means both the call and the service are free; `false` when either costs something (a call charged at landline rates to a free service is `false`). Always present. |
 | `free_source` | The page that says `free`. Required when `free` is not `null`; leave it out otherwise. |
 | `when` | A free-text note, in English: when this number is the right one and where it applies. Empty string if there is nothing to add. |
 | `source` | The web address of the page the number and its name were read from. A country's own government or the service's own page. A list of addresses when more than one page backs the row (a numbering resolution and the decree that created the service). |

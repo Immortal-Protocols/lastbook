@@ -123,6 +123,9 @@ tr.flag{background:#fff6d8} tr.flag th{color:#7a5a00;font-weight:700}
 #bar{position:sticky;top:0;background:#fffe;border-bottom:1px solid #ccc;padding:.4rem 0;z-index:2} button{font:inherit;padding:.3rem .8rem;margin-right:.4rem}
 #fmt{width:100%;box-sizing:border-box;min-height:14rem;font:13px/1.4 ui-monospace,monospace}
 label{display:block;margin:.5rem 0} label small,.fld small{display:block;color:#666} .inl{display:inline-block;margin-right:1rem}
+.switch{display:inline-flex;border:1px solid #888;border-radius:999px;overflow:hidden;margin:.2rem 0}
+.switch label{margin:0;position:relative}.switch input{position:absolute;opacity:0;pointer-events:none}.switch span{display:block;padding:.2rem .9rem;cursor:pointer;background:#f3f3f3;color:#333}
+.switch input:checked+span{background:#1f6f43;color:#fff}.switch input:focus-visible+span{outline:2px solid #06c;outline-offset:-2px}
 input[type=text],textarea,select{width:100%;box-sizing:border-box;font:inherit} .fld{margin:.6rem 0}
 fieldset{border:1px solid #bbb;border-radius:8px;margin:1rem 0;padding:.5rem 1rem} legend{font-weight:600}
 .rules{background:#f6f6fb;border-radius:8px;padding:.5rem 1rem} .rules li{margin:.25rem 0}
@@ -305,7 +308,9 @@ const $$ = (s, el) => [...(el || document).querySelectorAll(s)];
 const todayLocal = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const ORDER = ['kind', 'name', 'number', 'how', 'works_from', 'works_from_source', 'free', 'free_source', 'keywords', 'when', 'source', 'url', 'area_whole_country', 'area', 'checked_on', 'verified'];
 const checks = (list, name, opts, cls) => opts.map(o => '<label class="inl"><input type="checkbox" class="' + cls + '" value="' + o + '"> ' + o + '</label>').join('');
-const radios = (name, opts) => opts.map((o, i) => '<label class="inl"><input type="radio" name="' + name + '" value="' + o[0] + '"' + (i === 0 ? ' checked' : '') + '> ' + o[1] + '</label>').join('');
+// A switch of 2 or 3 positions with none selected: the person must pick one, and an unanswered switch is a problem.
+const radios = (name, opts) => '<span class="switch" role="radiogroup">' + opts.map(o => '<label><input type="radio" name="' + name + '" value="' + o[0] + '"><span>' + o[1] + '</span></label>').join('') + '</span>';
+const picked = (b, prefix) => { const r = $$('input[type=radio]', b).find(x => x.name.startsWith(prefix) && x.checked); return r ? r.value : null; };
 let counter = 0;
 
 function languages() { return $('#languages').value.split(',').map(s => s.trim()).filter(Boolean); }
@@ -322,13 +327,13 @@ function addService() {
     '<div class="fld"><b>how</b> <small>one or more</small>' + checks(0, 0, RULES.how, 'how') + '</div>' +
     '<div class="fld"><b>works_from</b> <small>only what a source says; none = unknown</small>' + checks(0, 0, RULES.worksFrom, 'wf') + '</div>' +
     '<label class="wfs">works_from_source <small>the page that says it (only when works_from is not empty)</small><input type="text" class="wfsrc"></label>' +
-    '<div class="fld"><b>free</b> <small>does the call cost money? only if a source says</small>' + radios('free' + id, [['unknown', 'unknown'], ['yes', 'free'], ['no', 'not free']]) + '</div>' +
+    '<div class="fld"><b>free</b> <small>does the call cost money? only if a source says</small>' + radios('free' + id, [['yes', 'free'], ['no', 'not free'], ['unknown', 'unknown']]) + '</div>' +
     '<label class="frs">free_source <small>the page that says it (only when free is set)</small><input type="text" class="frsrc"></label>' +
     '<div class="fld kw"><b>keywords</b> <small>one box for every language of the country, plus en; separated by commas, lower case</small><div class="kwbox"></div></div>' +
     '<label>when <small>only what the cited pages say; may be empty</small><textarea class="when"></textarea></label>' +
     '<label>source <small>the page(s) the number and name were read from, one address per line</small><textarea class="source"></textarea></label>' +
     '<label>url <small>optional: the service\'s own page</small><input type="text" class="url"></label>' +
-    '<div class="fld"><b>area_whole_country</b> <small>optional, only if a source says</small>' + radios('awc' + id, [['', 'not stated'], ['yes', 'yes'], ['no', 'no']]) + '</div>' +
+    '<div class="fld"><b>area_whole_country</b> <small>optional, only if a source says</small>' + radios('awc' + id, [['yes', 'yes'], ['no', 'no'], ['', 'not stated']]) + '</div>' +
     '<label>area <small>optional: the specific place it covers (not when the whole country is yes)</small><input type="text" class="area"></label>' +
     '<label>checked_on <small>YYYY-MM-DD, the day you read the pages</small><input type="text" class="checked" value="' + todayLocal() + '"></label>' +
     '<label>verified<select class="verified">' + RULES.verified.map(k => '<option>' + k + '</option>').join('') + '</select></label>';
@@ -363,17 +368,17 @@ function collect() {
     s.how = $$('.how:checked', b).map(x => x.value);
     s.works_from = $$('.wf:checked', b).map(x => x.value);
     if (s.works_from.length) s.works_from_source = $('.wfsrc', b).value.trim();
-    const free = $$('input[type=radio]', b).find(r => r.name.startsWith('free') && r.checked).value;
-    s.free = free === 'yes' ? true : free === 'no' ? false : null;
-    if (s.free !== null) s.free_source = $('.frsrc', b).value.trim();
+    const free = picked(b, 'free');
+    if (free !== null) s.free = free === 'yes' ? true : free === 'no' ? false : null;
+    if (s.free === true || s.free === false) s.free_source = $('.frsrc', b).value.trim();
     s.keywords = {};
     $$('.kwbox textarea', b).forEach(t => { s.keywords[t.dataset.lang] = list(t.value); });
     s.when = $('.when', b).value.trim();
     const srcs = $('.source', b).value.split('\n').map(x => x.trim()).filter(Boolean);
     s.source = srcs.length === 1 ? srcs[0] : srcs;
     const url = $('.url', b).value.trim(); if (url) s.url = url;
-    const awc = $$('input[type=radio]', b).find(r => r.name.startsWith('awc') && r.checked).value;
-    if (awc) s.area_whole_country = awc === 'yes';
+    const awc = picked(b, 'awc');
+    if (awc === 'yes' || awc === 'no') s.area_whole_country = awc === 'yes';
     const area = $('.area', b).value.trim(); if (area) s.area = area;
     s.checked_on = $('.checked', b).value.trim(); s.verified = $('.verified', b).value;
     data.services.push(Object.fromEntries(ORDER.filter(k => k in s).map(k => [k, s[k]])));
@@ -383,11 +388,16 @@ function collect() {
 function refresh() {
   $$('.svc').forEach(b => {
     $('.wfs', b).style.display = $$('.wf:checked', b).length ? '' : 'none';
-    const free = $$('input[type=radio]', b).find(r => r.name.startsWith('free') && r.checked).value;
-    $('.frs', b).style.display = free === 'unknown' ? 'none' : '';
+    const free = picked(b, 'free');
+    $('.frs', b).style.display = free === 'yes' || free === 'no' ? '' : 'none';
   });
   const data = collect(), name = (data.code || 'XX') + '.json', latest = latestAllowedDate();
   const found = validate(data, name, latest);
+  $$('.svc').forEach((b, i) => {
+    const who = name + ' services[' + i + ']';
+    if (picked(b, 'free') === null) found.push(who + ': "free" is not answered: switch it to free, not free or unknown');
+    if (picked(b, 'awc') === null) found.push(who + ': "area_whole_country" is not answered: switch it to yes, no or not stated');
+  });
   $('#problems').innerHTML = found.length
     ? '<b class="bad">' + found.length + ' thing(s) to fix before this passes the test:</b><ul class="problems">' + found.map(x => '<li>' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>').join('') + '</ul>'
     : '<b class="good">All checks pass.</b> Save it as content/emergency/' + name + ', set REFERENCE_DATE in app/tests/test_emergency_numbers.py to the day you checked, and run the test.';

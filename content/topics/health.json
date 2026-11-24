@@ -866,7 +866,7 @@
    "hint": "Can't sleep, panic, hopeless, suicidal or talking about suicide, after a disaster",
    "urgent": ["kill myself", "killing myself", "kill himself", "kill herself", "kill themselves", "end my life", "i want to die", "i wanna die", "i don't want to live", "i dont want to live"],
    "phrases": ["kill myself", "killing myself", "kill himself", "kill herself", "kill themselves", "end my life", "end his life", "end her life", "want to die", "wants to die", "wanting to die", "wanna die", "don't want to live", "dont want to live", "doesn't want to live", "doesnt want to live", "scared", "afraid", "frightened"],
-   "context": ["husband", "wife", "son", "daughter", "child", "children", "kid", "kids", "family", "everyone", "teenager", "teen", "brother", "sister", "mom", "mum", "mother", "dad", "father", "friend", "boyfriend", "girlfriend", "partner", "roommate", "neighbor", "neighbour", "someone", "somebody", "person", "says", "said", "saying", "told", "keeps", "talking", "thinking", "think", "feel", "feels", "feeling", "anymore", "any more", "tired", "threatening", "threatened"],
+   "context": ["breathing", "husband", "wife", "son", "daughter", "child", "children", "kid", "kids", "family", "everyone", "teenager", "teen", "brother", "sister", "mom", "mum", "mother", "dad", "father", "friend", "boyfriend", "girlfriend", "partner", "roommate", "neighbor", "neighbour", "someone", "somebody", "person", "says", "said", "saying", "told", "keeps", "talking", "thinking", "think", "feel", "feels", "feeling", "anymore", "any more", "tired", "threatening", "threatened"],
    "read": [
     {
      "doc": "med-0faf49d8c0bd8eb2",

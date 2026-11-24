@@ -120,7 +120,7 @@
      is saved (POST updates), on its own, so it never holds up or changes an install. Changes are sent one after another, in order. */
   let updQ = Promise.resolve();
   const updatesBox = () => U && U.supported ? `<label class="s-check"><input type="checkbox" id="updBox"${U.notify ? ' checked' : ''} aria-describedby="updHint">
-      <span><b>Notify me about app updates</b><small id="updHint">Lastbook checks once a day while the app is open and online.</small></span></label>
+      <span><b data-i18n="update.notifyLabel">Notify me about app updates</b><small id="updHint" data-i18n="update.notifyHint">Lastbook checks once a day while the app is open and online.</small></span></label>
       <p class="s-note" id="updNote" role="status" hidden></p>` : '';
   function wireUpdates() {
     const b = $('#updBox'); if (!b) return;
@@ -131,7 +131,7 @@
     const b = $('#updBox'), n = $('#updNote');
     if (!r || r.error) {
       if (b) b.checked = !!(U && U.notify);
-      if (n) { n.hidden = false; n.textContent = (r && r.error) || 'Lastbook could not save this setting. Try again.' }
+      if (n) { n.hidden = false; n.textContent = tr(r && r.error_key || 'update.savePreferenceFailed', null, r && r.error || 'Lastbook could not save this setting. Try again.') }
       return;
     }
     U = { ...r, supported: true };
@@ -542,10 +542,14 @@
       <div id="srvSlot"></div>
       ${old ? `<div class="s-row s-old">${ico('folder', 's-ri')}<span><b>The old library is still here</b><small>${esc(home(old.path))}${old.bytes ? ' · ' + size(old.bytes) : ''}</small></span>${confirmOld ? `<span class="s-confirm"><span>Delete it for good?</span><button class="btn danger" id="oldYes">Delete</button><button class="btn plain" id="oldNo">Keep</button></span>` : `<button class="btn plain" id="rmOld">${ico('trash')}Delete it</button>`}</div>` : ''}
       ${computer()}
+      ${CAN.repair ? `<div class="s-have"><div class="s-row">${ico('ok', 's-ri')}<span><b>${tr('setup.check.libraryTitle', null, 'Library check')}</b><small id="lastCheck">${checkLine(c.checked)}</small></span><button class="btn plain" id="checkNow">${tr('setup.check.now', null, 'Check now')}</button></div></div>` : ''}
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small data-i18n="setup.copyIntro">Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut" data-i18n="setup.copyToDrive">Copy to a drive…</button></div></div>
       <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}${tr('setup.checkRepair', null, 'Check and repair')}</button>` : ''}
         <button class="s-link" id="otherLib">${ico('folder')}${tr('setup.openAnotherLibraryFolder', null, 'Open another library folder')}</button></div>
-      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
+      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>
+      ${U && U.supported ? `<h2 data-i18n="update.title">App updates</h2>${updatesBox()}` : ''}`;
+    wireUpdates();
+    cloudPoll(c);
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
@@ -557,6 +561,11 @@
     if ($('#rmOld')) $('#rmOld').onclick = () => { confirmOld = true; manageView(); $('#oldNo').focus() };
     if ($('#oldNo')) $('#oldNo').onclick = () => { confirmOld = false; manageView(); $('#rmOld').focus() };
     if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', tr('setup.oldLibraryDeleting', null, 'The old library is being deleted.'), { path: old.path });
+    if ($('#checkNow')) $('#checkNow').onclick = async () => {   // Check reads every file and downloads nothing.
+      const r = await call('start', { check: true }).catch(e => ({ error: e.message }));
+      if (!r || r.error) { note = apiErrorText(r) || tr('setup.check.startFailed', null, 'The check could not start.'); manageView(); return }
+      repair = null; S.job = r; go('job'); poll();
+    };
     if ($('#copyOut')) $('#copyOut').onclick = async () => {   // #114: choose the drive, then say what will be copied before copying
       const r = await call('pick', {}).catch(() => null);
       if (!r || !r.path) { if (!r) { note = tr('setup.pickerFailedRetry', null, 'The picker could not open. Try again.'); manageView() } return }

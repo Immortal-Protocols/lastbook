@@ -14,8 +14,10 @@ Run:  python3 -B packaging/i18n_scan.py
 from __future__ import annotations
 
 import json
+import io
 import re
 import sys
+import tokenize
 from html.parser import HTMLParser
 from collections import defaultdict
 from pathlib import Path
@@ -46,6 +48,8 @@ PYTHON_SURFACES = {
     'app/main': [ROOT / 'app' / 'main.py'],
     'app/bridge': [ROOT / 'app' / 'bridge.py'],
     'native/macos': [ROOT / 'app' / 'shell_macos.py'],
+    'native/macos-updater': [ROOT / 'app' / 'update_macos.py'],
+    'app/contribute': [ROOT / 'app' / 'contribute.py'],
     'native/windows': [ROOT / 'app' / 'shell_windows.py'],
     'native/linux': [ROOT / 'app' / 'shell_linux.py'],
     'installer': [ROOT / 'packaging' / 'lastbook_setup.py'],
@@ -71,7 +75,7 @@ TECHNICAL_EXACT = {
     'Escape', 'Enter', 'AbortError', 'HEVC', 'START-HERE.txt',
     'LastbookData.setup', 'application/json', 'text/html',
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
-    'Could not access the desktop language preference',
+    'Could not access the desktop language preference', 'Contents',
     'Unexpected desktop language preference', 'no byte range', 'no points', '?t=',
 }
 
@@ -347,6 +351,27 @@ def strip_comments_js(text: str) -> str:
     return ''.join(out)
 
 
+def strip_python_comments(text: str) -> str:
+    """Blank Python comments without touching hashes inside strings."""
+    lines = text.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+    chars = list(text)
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+            if tok.type != tokenize.COMMENT:
+                continue
+            start = offsets[tok.start[0] - 1] + tok.start[1]
+            end = offsets[tok.end[0] - 1] + tok.end[1]
+            for i in range(start, end):
+                if chars[i] != '\n':
+                    chars[i] = ' '
+    except (tokenize.TokenError, IndentationError):
+        return text
+    return ''.join(chars)
+
+
 def _skip_string(text, i):
     """i points at an opening quote. Return the index after the closing quote."""
     quote = text[i]
@@ -600,7 +625,7 @@ def scan_python():
         for path in paths:
             if not path.is_file():
                 continue
-            text = path.read_text(encoding='utf-8')
+            text = strip_python_comments(path.read_text(encoding='utf-8'))
             rel = str(path.relative_to(ROOT))
             # These short labels are values in the Linux navigation table;
             # the corresponding key map sends them through native_t later.

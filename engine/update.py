@@ -170,11 +170,14 @@ class Updater:
         """token: handed back to on_done with the result (Notices drops a result whose token is from before an opt-out)."""
         if not self.key:
             return {'error': 'Updates are for the Mac, Windows and Linux app.', 'error_key': 'update.unsupported', 'code': 'unsupported'}
-        if self.thread is not None and self.thread.is_alive():
-            return self.state()
-        self._set(state='checking')
-        self.thread = threading.Thread(target=self._guard, daemon=True, name='update-check')
-        self.thread.start()
+        with self.lock:
+            if self.thread is None or not self.thread.is_alive():
+                self.s = {'state': 'checking'}
+                self.automatic = automatic
+                self.thread = threading.Thread(target=self._guard, args=(token,), daemon=True, name='update-check')
+                self.thread.start()
+            elif not automatic:
+                self.automatic = False    # an explicit check shares the in-flight result and shows its status in About
         return self.state()
 
     def _guard(self, token=None):
@@ -184,6 +187,12 @@ class Updater:
             traceback.print_exc()
             self._set(state='error', code='internal', message=f'The check stopped on an internal error ({type(e).__name__}).',
                        message_key='update.internalError')
+        done = self.on_done
+        if done:
+            try:
+                done(self.state(), token)
+            except Exception:
+                traceback.print_exc()
 
     def _fetch(self):
         """(status, bytes) of the metadata through download.py. Raises download.Failed with code 'offline' when nothing answers."""
@@ -374,7 +383,7 @@ class Notices:
         with self.lock:
             lock = self._lock_settings()
             if lock is None:
-                return {'error': 'Lastbook could not save this setting. Try again.', 'code': 'save'}
+                return {'error': 'Lastbook could not save this setting. Try again.', 'error_key': 'update.savePreferenceFailed', 'code': 'save'}
             with lock:
                 p = self._read()
                 p['notify'] = on is True
@@ -383,7 +392,7 @@ class Notices:
                     p.pop('found', None)
                 if self._save(p):
                     return self._public(p)
-                return {'error': 'Lastbook could not save this setting. Try again.', 'code': 'save'}
+                return {'error': 'Lastbook could not save this setting. Try again.', 'error_key': 'update.savePreferenceFailed', 'code': 'save'}
 
     def _record(self, s, token):
         with self.lock:
@@ -443,9 +452,9 @@ def _has_offer(u):
 def _update_now(u):
     """Update now: starts the native updater, which asks the person before anything is installed. Takes nothing from the request."""
     if NATIVE is None or NOTICES is None or not _ver(u.version) or not NATIVE.ready():
-        return {'error': 'This copy of Lastbook cannot update itself. Use the download page instead.', 'fallback': True}
+        return {'error': 'This copy of Lastbook cannot update itself. Use the download page instead.', 'error_key': 'update.cannotUpdateSelf', 'fallback': True}
     if not _has_offer(u):
-        return {'error': 'Check for an update again first.'}
+        return {'error': 'Check for an update again first.', 'error_key': 'update.checkAgainFirst'}
     out = NATIVE.begin()
     if 'error' in out:
         out['fallback'] = True
@@ -455,15 +464,15 @@ def _update_now(u):
 def _open_download(u):
     """The desktop app's only browser handoff. The destination comes from this code, never the feed or the request."""
     if NOTICES is None or not _ver(u.version):
-        return {'error': 'Open lastbook.org/download/ in your browser for the installer.'}
+        return {'error': 'Open lastbook.org/download/ in your browser for the installer.', 'error_key': 'update.openDownloadInstructions'}
     if not _has_offer(u):
-        return {'error': 'Check for an update again before opening the installer page.'}
+        return {'error': 'Check for an update again before opening the installer page.', 'error_key': 'update.checkAgainBeforeDownload'}
     try:
         if webbrowser.open_new_tab(DOWNLOAD_URL):
             return {'opened': True}
     except (OSError, webbrowser.Error):
         pass
-    return {'error': 'Lastbook could not open your browser. Copy the download link and open it there.'}
+    return {'error': 'Lastbook could not open your browser. Copy the download link and open it there.', 'error_key': 'update.browserOpenFailed'}
 
 
 ROUTES = {

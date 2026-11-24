@@ -32,10 +32,27 @@
   function view(s) {
     const btn = (t) => `<button class="btn plain" data-upd="check">${t}</button>`;
     const ver = s.current ? tr('update.version', { version: E(s.current) }, 'Version {version}.') : tr('update.noVersion', null, 'This copy has no version number (it was not built as an app).');
+    /* The last verified notice stands in only when there is no newer verdict: nothing checked by the person yet (idle, which is
+       also what an automatic check looks like here, so its failures stay quiet), or the person's own check failed (error, e.g.
+       offline), where the failure is shown above the still-valid offer. up_to_date, too_old_os and not_published replace it. */
+    const failed = s.state === 'error';
+    const found = s.state === 'available' ? s.version : s.state === 'idle' || failed ? s.notice : null;
+    const now = !!s.can_update_now;
+    if (found) return `${ver}${failed ? ` <span class="upd-line" role="alert">${E(s.message_key ? tr(s.message_key, s.message_params, s.message) : s.message)}</span>` : ''} ${tr('update.availableVersion', { version: E(found) }, 'Version {version} is available.')}${failed ? ` ${tr('update.foundEarlier', null, '(found by an earlier check)')}` : ''}
+      <span class="upd-line">${now ? tr('update.updateNowDescription', null, 'Update now asks you to confirm, installs the signed update and restarts Lastbook. Your library, settings and chats stay as they are.')
+                                    : tr('update.runInstallerDescription', null, 'Run the installer to update Lastbook and keep your existing library.')}</span>
+      ${s.update_now_error ? `<span class="upd-line" role="alert">${E(tr('update.nativeError', null, s.update_now_error))}</span>` : ''}
+      <span class="upd-actions">
+        ${now ? `<button class="btn" data-upd="now">${tr('update.updateNow', null, 'Update now')}</button>` : ''}
+        ${s.can_open_download ? `<button class="btn${now ? ' plain' : ''}" data-upd="open">${tr('update.openDownload', null, 'Open download page')}</button>` : ''}
+        ${s.download_url ? `<button class="btn plain" data-upd="copy" data-url="${E(s.download_url)}"${s.can_open_download ? ' hidden' : ''}>${tr('update.copyDownloadLink', null, 'Copy download link')}</button>` : ''}
+        ${btn(tr(failed ? 'common.tryAgain' : 'update.checkAgain', null, failed ? 'Try again' : 'Check again'))}
+      </span>
+      <span class="upd-line" data-upd-status role="status"></span>
+      <span class="upd-line" data-upd-address hidden>${E(s.download_url || '')}</span>`;
     switch (s.state) {
       case 'checking': return `${ver} ${tr('update.checking', null, 'Checking for updates…')}`;
       case 'up_to_date': return `${ver} ${tr('update.upToDate', null, 'Lastbook is up to date.')} ${btn(tr('update.checkAgain', null, 'Check again'))}`;
-      case 'available': return `${ver} ${tr('update.available', { version: E(s.version), website: E(s.website) }, 'Version {version} is available. Download it from {website}. Your library, local AI and chats stay.')} ${btn(tr('update.checkAgain', null, 'Check again'))}`;
       case 'not_published': return `${ver} ${tr(s.message_key || 'update.noInfo', null, 'No update information yet.')} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
       case 'too_old_os': return `${ver} ${E(tr(s.message_key || 'update.tooOldOs', s.message_params, s.message || 'This version needs a newer operating system.'))} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
       case 'error': return `${ver} ${E(s.message_key ? tr(s.message_key, s.message_params, s.message) : s.message || tr('update.failed', null, 'Lastbook could not ask about updates.'))} ${btn(tr('common.tryAgain', null, 'Try again'))}`;
@@ -66,7 +83,7 @@
   async function copyLink(button, el) {
     try {
       await navigator.clipboard.writeText(button.dataset.url);
-      button.textContent = 'Link copied';
+      button.textContent = tr('update.linkCopied', null, 'Link copied');
     } catch {
       const address = el.querySelector('[data-upd-address]');
       address.hidden = false;
@@ -75,7 +92,7 @@
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
-      button.textContent = 'Address selected';
+      button.textContent = tr('update.addressSelected', null, 'Address selected');
     }
   }
 
@@ -86,12 +103,12 @@
     try {
       const result = await call('open');
       if (result.opened) {
-        status.textContent = 'Download page opened in your browser.';
+        status.textContent = tr('update.downloadOpened', null, 'Download page opened in your browser.');
         return;
       }
-      status.textContent = result.error;
+      status.textContent = result.error_key ? tr(result.error_key, null, result.error) : result.error;
     } catch {
-      status.textContent = 'Lastbook could not open the download page. Try copying the download link.';
+      status.textContent = tr('update.downloadOpenFailed', null, 'Lastbook could not open the download page. Try copying the download link.');
     } finally {
       button.disabled = false;
     }
@@ -106,20 +123,20 @@
     try {
       const result = await call('now');
       if (result.started) {
-        status.textContent = 'The updater is opening. Confirm in its window to install; Lastbook restarts when it is done.';
+        status.textContent = tr('update.updaterOpening', null, 'The updater is opening. Confirm in its window to install; Lastbook restarts when it is done.');
         setTimeout(async () => {      // the updater starts on the app's side: a failure to start comes back in state
           try {
             const s = await call('state');
-            if (s.update_now_error) { status.textContent = s.update_now_error; button.hidden = true }
+            if (s.update_now_error) { status.textContent = tr('update.nativeError', null, s.update_now_error); button.hidden = true }
           } catch { }
           button.disabled = false;
         }, 1500);
         return;
       }
-      status.textContent = result.error || 'Lastbook could not start the update.';
+       status.textContent = result.error_key ? tr(result.error_key, result.message_params, result.error) : result.error || tr('update.startFailed', null, 'Lastbook could not start the update.');
       if (result.fallback) button.hidden = true;
     } catch {
-      status.textContent = 'Lastbook could not start the update. Use the download page instead.';
+      status.textContent = tr('update.startFailedUseDownload', null, 'Lastbook could not start the update. Use the download page instead.');
     }
     button.disabled = false;
   }
@@ -129,7 +146,7 @@
     if (!row) return;
     const v = n && n.notify && n.available ? String(n.available) : '';
     row.hidden = !v;
-    row.setAttribute('aria-label', v ? `Update available: version ${v}` : 'Update available');
+    row.setAttribute('aria-label', v ? tr('update.availableRowVersion', { version: E(v) }, 'Update available: version {version}') : tr('update.availableRow', null, 'Update available'));
   }
   async function sync(action) {
     if (!row) return;

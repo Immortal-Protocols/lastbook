@@ -90,6 +90,18 @@ class Coverage(unittest.TestCase):
                 self.assertTrue(any(text == literal and scan.classify(text, pre) == 'chrome'
                                     for text, pre in hits), hits)
 
+    def test_recent_native_features_are_in_the_scanner_inventory(self):
+        files = {path.name for paths in scan.PYTHON_SURFACES.values() for path in paths}
+        self.assertIn('update_macos.py', files)
+        self.assertIn('contribute.py', files)
+
+    def test_python_comment_stripping_keeps_hashes_inside_strings(self):
+        source = '# "A comment that looks like visible UI"\nlabel = "Keep # in this value"  # trailing comment\n'
+        stripped = scan.strip_python_comments(source)
+        self.assertNotIn('A comment that looks like visible UI', stripped)
+        self.assertNotIn('trailing comment', stripped)
+        self.assertIn('"Keep # in this value"', stripped)
+
     def test_installer_label_and_appkit_prompt_are_display_sinks(self):
         # These were the two real misses from review: generic installer labels
         # and NSOpenPanel prompts must count as UI even when not wrapped yet.

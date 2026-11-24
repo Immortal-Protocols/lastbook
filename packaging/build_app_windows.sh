@@ -99,7 +99,7 @@ STAMP="${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
   --hidden-import server --hidden-import retrieval --hidden-import assistant --hidden-import llm_local --hidden-import engine.update --hidden-import engine.notes \
   --hidden-import engine.paths --hidden-import engine.library --hidden-import engine.saved_pages --hidden-import engine.quiet_onnx \
   --hidden-import bridge --hidden-import shell_windows --hidden-import i18n_native --hidden-import clr --hidden-import _cffi_backend \
-  --exclude-module shell_macos --exclude-module remote_storage --exclude-module tests \
+  --exclude-module shell_macos --exclude-module update_macos --exclude-module remote_storage --exclude-module tests \
   --exclude-module webview --exclude-module bottle --exclude-module proxy_tools --exclude-module lastbook_launcher \
   --exclude-module tkinter --exclude-module pytest --exclude-module unittest --exclude-module doctest --exclude-module pdb \
   --exclude-module numpy.tests --exclude-module numpy.testing --exclude-module numpy._core._multiarray_tests --exclude-module numpy.f2py \

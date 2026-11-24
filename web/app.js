@@ -206,6 +206,7 @@ function backButton(from, fallback) {
   else if (href.startsWith('#/map')) [key, label] = ['nav.map', 'Map'];
   else if (href.startsWith('#/videos')) [key, label] = ['nav.videos', 'Videos'];
   else if (href.startsWith('#/guides')) [key, label] = ['nav.guides', 'Guides'];
+  else if (href.startsWith('#/morse')) [key, label] = [null, 'Morse practice'];
   else if (href.startsWith('#/watch')) [key, label] = ['nav.video', 'Video'];
   else if (href.startsWith('#/read')) [key, label] = ['nav.backToPage', 'Back to page'];
   else if (href.startsWith('#/library') || href.startsWith('#/shelf') || href.startsWith('#/collection') || href.startsWith('#/encyclopedias') || href.startsWith('#/prepare')) [key, label] = ['nav.library', 'Library'];
@@ -255,7 +256,7 @@ function parse() {
   return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
 }
 // The sidebar row each page belongs to. Reading pages stay under Library, articles under Encyclopedias; search results select no row.
-const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
+const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', morse: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
 let leaving = null;  // cleanup hook for the current view (player, chat stream…)
 async function route() {
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
@@ -306,6 +307,7 @@ async function route() {
     else if (v === 'shelf') await shelfPage(parts[1], q.get('kind') || 'all', q.get('q') || '');
     else if (v === 'collection') await collectionPage(q.get('name') || '', q.get('from'));
     else if (v === 'about') await about();
+    else if (v === 'morse') await MorsePage.page(main);
     else notFound();
   } catch (e) { setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
   translateRendered(); wireRails(); dock(); barState();
@@ -516,7 +518,7 @@ async function topicPage(id, open) {
   const related = (t.related || []).map(topicById).filter(Boolean);
   main.innerHTML = `<div class="ghero" ${tcStyle(id)}><div class="ghero-in">${crumbs([['Guides', '#/guides'], [learn ? 'Learn a skill' : 'Need help now', learn ? '#/library' : '#/guides'], [SHORT[id] || t.title]])}
       <div class="row1"><span class="ico">${ico(t.id)}</span><h1>${esc(t.title)}</h1></div><p class="lead">${esc(t.intro || '')}</p>
-      <div class="vactions" style="margin-bottom:0">${askLink('topic:' + id, 'Ask a question about this')}</div></div></div>
+      <div class="vactions" style="margin-bottom:0">${askLink('topic:' + id, 'Ask a question about this')}${id === 'comms' ? '<a class="btn plain" href="#/morse">' + ico('comms') + '<span>Morse practice</span></a>' : ''}</div></div></div>
     <div class="gcols" ${tcStyle(id)}><div>
       ${(t.choices || []).length ? `<p class="ask" id="askh">${learn ? 'Where do you want to start?' : 'What’s happening?'}</p><div class="situations" aria-labelledby="askh">${sits}</div>` : ''}
       <div class="gnarrow">${limits}${disagree}</div>

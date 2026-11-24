@@ -980,3 +980,15 @@ body.map-maxed{overflow:hidden}
   html.wcap .mapwrap.max,html.wcap .chat-side.open{top:var(--cap-h)}   /* the title bar stays, as in Windows' own apps */
   html.wcap:fullscreen .capband,html.wcap:has(:fullscreen) .capband{display:none}   /* nothing of the band, its drag area included, over a page in full screen */
 }
+
+/* Morse practice (#/morse) */
+.morse-page{max-width:44em;margin:8px auto 40px;padding:0 4px}
+.morse-page textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:var(--r-ctl);padding:12px 14px;background:var(--bg);color:var(--ink);font:16px/1.45 inherit;resize:vertical}
+.morse-marks{font:600 22px/1.45 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em;margin:6px 0 14px;word-break:break-word}
+.morse-controls{display:flex;flex-wrap:wrap;gap:16px 24px;margin:8px 0 16px}
+.morse-controls label{display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:15px}
+.morse-controls input[type=range]{width:140px}
+.morse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin:0 0 16px}
+.morse-cell{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border:1px solid var(--line2);border-radius:10px;padding:8px 10px;background:var(--paper)}
+.morse-cell b{font:600 16px/1 var(--display)}
+.morse-cell code,.morse-page code{font:15px/1.3 ui-monospace,Menlo,Consolas,monospace}

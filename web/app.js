@@ -8,6 +8,9 @@ const main = $('#main'), pageTop = $('#pageTop');
 const i18n = globalThis.LastbookI18n;
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
+const CAN_CONTRIBUTE = IN_WINDOW && !document.documentElement.classList.contains('lb-embed');
+if (CAN_CONTRIBUTE) $('#sideContribute').hidden = false;
+if (IN_WINDOW && window.LBUpdate) LBUpdate.watch($('#sideUpdate'));   // the opt-in "Update available" row (web/update.js); hidden unless notices are on and found one
 $('.skip').addEventListener('click', e => { e.preventDefault(); main.focus() });
 
 /* ---------------------------------------------------------------- icons -- */
@@ -37,6 +40,7 @@ const I = {
   ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>', prep: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
   shelf: '<path d="M4 4v16M9 4v16M14 5l4 15M3 20h18"/>', search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   play: '<path d="M7 4v16l13-8z"/>', speak: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a3 3 0 0 1 0 6M18.5 6.5a7 7 0 0 1 0 11"/>', stopsq: '<rect x="6.5" y="6.5" width="11" height="11" rx="2"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
   insp: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M15 5v14"/>',
   ask: '<path d="M4 5h16v11H9l-5 4z"/><path d="M9 9.5h6M9 12.5h4"/>', spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
 };
@@ -74,6 +78,10 @@ function toggleSave(item, btn) {
   if (btn) { btn.setAttribute('aria-pressed', isSaved(item.key)); const sp = $('span', btn); if (sp) sp.textContent = isSaved(item.key) ? 'Saved' : 'Save' }
 }
 const saveButton = item => `<button class="btn plain" title="Save" data-save='${esc(JSON.stringify(item))}' aria-pressed="${isSaved(item.key)}">${ico('save')}<span>${isSaved(item.key) ? 'Saved' : 'Save'}</span></button>`;
+const watchedButton = (id, d) => {
+  const w = isWatched(id, null, d);
+  return `<button class="btn plain" id="markWatched" title="${w ? 'Mark as unwatched' : 'Mark as watched'}" aria-pressed="${w}">${ico('check')}<span>${w ? 'Watched' : 'Mark watched'}</span></button>`;
+};
 document.addEventListener('click', e => { const b = e.target.closest('[data-save]'); if (b) toggleSave(JSON.parse(b.dataset.save), b) });
 let toastT;
 function toast(msg) {
@@ -82,11 +90,25 @@ function toast(msg) {
 }
 // Video watch progress: {id: {t, d, title, thumb, at}}
 const vprog = () => store.get('vprog', {});
+// Explicit watched states survive beyond vprog's 60-video limit: {id: boolean}
+const vwatched = () => store.get('vwatched', {});
+function setWatched(id, state) {
+  const w = vwatched();
+  if (state == null) delete w[id]; else w[id] = !!state;
+  store.set('vwatched', w);
+}
+function isWatched(id, p, v) {
+  const w = vwatched();
+  if (w[id] !== undefined) return w[id];
+  p = p || vprog()[id];
+  const dur = (v && v.duration) || (p && p.d);
+  return Boolean(p && p.t && dur && p.t >= dur * 0.9);
+}
 // This device's history is kept for every library opened on it (each download is its own library): show only what the open one holds
 const HELD = {};
 const held = ids => Promise.all(ids.map(id => HELD[id] ?? (HELD[id] = fetch('/api/doc/' + encodeURIComponent(id)).then(r => r.status !== 404 && r.status !== 400).catch(() => true)))).then(ok => ids.filter((_, i) => ok[i]));
 async function resumable(n = 60) {
-  const list = Object.entries(vprog()).filter(([, v]) => v.t > 10 && (!v.d || v.t < v.d - 15)).sort((a, b) => b[1].at - a[1].at).slice(0, n);
+  const list = Object.entries(vprog()).filter(([id, v]) => !isWatched(id, v) && v.t > 10 && (!v.d || v.t < v.d - 15)).sort((a, b) => b[1].at - a[1].at).slice(0, n);
   const ok = new Set(await held(list.map(([id]) => id)));
   return list.filter(([id]) => ok.has(id));
 }
@@ -167,9 +189,10 @@ function rowItem(item) {
 function vcard(v, opts = {}) {
   const p = vprog()[v.id];
   const pct = p && p.t && (v.duration || p.d) ? Math.min(100, 100 * p.t / (v.duration || p.d)) : 0;
+  const watched = isWatched(v.id, p, v);
   return `<a class="vcard" href="#/watch/${encodeURIComponent(v.id)}?${fromQ()}" ${opts.style || ''}>
     <span class="vthumb">${v.thumb ? `<img loading="lazy" alt="" src="${fileUrl(v.thumb)}" onerror="this.remove()">` : `<span class="ph">${ico('video')}</span>`}
-      ${v.transcript ? '<span class="cc" title="Has a transcript">CC</span>' : ''}${v.duration ? `<span class="dur">${clock(v.duration)}</span>` : ''}${pct > 2 ? `<span class="prog" style="width:${pct}%"></span>` : ''}<span class="play">${ico('play')}</span></span>
+      ${watched ? `<span class="vcheck" title="Watched" aria-label="Watched">${ico('check')}</span>` : ''}${v.transcript ? '<span class="cc" title="Has a transcript">CC</span>' : ''}${v.duration ? `<span class="dur">${clock(v.duration)}</span>` : ''}${pct > 2 ? `<span class="prog" style="width:${pct}%"></span>` : ''}<span class="play">${ico('play')}</span></span>
     <b>${esc(v.title)}</b><span class="vm">${esc(opts.sub || v.publisher || '')}</span></a>`;
 }
 function rail(html, cls = '') {
@@ -206,7 +229,6 @@ function backButton(from, fallback) {
   else if (href.startsWith('#/map')) [key, label] = ['nav.map', 'Map'];
   else if (href.startsWith('#/videos')) [key, label] = ['nav.videos', 'Videos'];
   else if (href.startsWith('#/guides')) [key, label] = ['nav.guides', 'Guides'];
-  else if (href.startsWith('#/morse')) [key, label] = [null, 'Morse practice'];
   else if (href.startsWith('#/watch')) [key, label] = ['nav.video', 'Video'];
   else if (href.startsWith('#/read')) [key, label] = ['nav.backToPage', 'Back to page'];
   else if (href.startsWith('#/library') || href.startsWith('#/shelf') || href.startsWith('#/collection') || href.startsWith('#/encyclopedias') || href.startsWith('#/prepare')) [key, label] = ['nav.library', 'Library'];
@@ -256,7 +278,7 @@ function parse() {
   return { parts: path.split('/').filter(Boolean).map(decodeURIComponent), q: new URLSearchParams(qs || '') };
 }
 // The sidebar row each page belongs to. Reading pages stay under Library, articles under Encyclopedias; search results select no row.
-const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', morse: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about' };
+const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about', contribute: 'contribute' };
 let leaving = null;  // cleanup hook for the current view (player, chat stream…)
 async function route() {
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
@@ -278,7 +300,8 @@ async function route() {
   const y = typeof at === 'number' ? scrolls[h] : null;   // read now: while the page is rebuilt it scrolls (shorter, then taller), and those scrolls are recorded too
   const v = parts[0] || 'videos';
   document.body.className = v ? 'v-' + v : 'home';
-  const nav = v === 'read' && (q.get('from') || '').startsWith('#/about') ? 'about' : NAV_OF[v] || '';   // Sources, opened from About, stays under About
+  const showUpdate = v === 'about' && q.has('updates') && !$('#sideUpdate').hidden;
+  const nav = showUpdate ? 'update' : v === 'read' && (q.get('from') || '').startsWith('#/about') ? 'about' : NAV_OF[v] || '';
   $$('[data-nav]').forEach(a => nav && (a.dataset.nav === nav || (a.dataset.also || '').split(' ').includes(nav)) ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   const rows = $$('.side a.row-s'); rows.forEach(a => a.tabIndex = a.hasAttribute('aria-current') || (!nav && a === rows[0]) ? 0 : -1);   // the sidebar is one Tab stop; arrows move inside it
   savedCount();
@@ -306,8 +329,8 @@ async function route() {
     else if (v === 'not-found') await notFoundPage();
     else if (v === 'shelf') await shelfPage(parts[1], q.get('kind') || 'all', q.get('q') || '');
     else if (v === 'collection') await collectionPage(q.get('name') || '', q.get('from'));
-    else if (v === 'about') await about();
-    else if (v === 'morse') await MorsePage.page(main);
+    else if (v === 'contribute' && CAN_CONTRIBUTE) contributePage();
+    else if (v === 'about') await about(q.has('updates'));
     else notFound();
   } catch (e) { setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
   translateRendered(); wireRails(); dock(); barState();
@@ -518,7 +541,7 @@ async function topicPage(id, open) {
   const related = (t.related || []).map(topicById).filter(Boolean);
   main.innerHTML = `<div class="ghero" ${tcStyle(id)}><div class="ghero-in">${crumbs([['Guides', '#/guides'], [learn ? 'Learn a skill' : 'Need help now', learn ? '#/library' : '#/guides'], [SHORT[id] || t.title]])}
       <div class="row1"><span class="ico">${ico(t.id)}</span><h1>${esc(t.title)}</h1></div><p class="lead">${esc(t.intro || '')}</p>
-      <div class="vactions" style="margin-bottom:0">${askLink('topic:' + id, 'Ask a question about this')}${id === 'comms' ? '<a class="btn plain" href="#/morse">' + ico('comms') + '<span>Morse practice</span></a>' : ''}</div></div></div>
+      <div class="vactions" style="margin-bottom:0">${askLink('topic:' + id, 'Ask a question about this')}</div></div></div>
     <div class="gcols" ${tcStyle(id)}><div>
       ${(t.choices || []).length ? `<p class="ask" id="askh">${learn ? 'Where do you want to start?' : 'What’s happening?'}</p><div class="situations" aria-labelledby="askh">${sits}</div>` : ''}
       <div class="gnarrow">${limits}${disagree}</div>
@@ -635,6 +658,7 @@ async function watch(id, t, from) {
   const p = vprog()[id];
   const start = t !== null && Number.isFinite(+t) && +t >= 0 ? +t : null;
   const resumeAt = start === null && p && p.t > 15 && (!d.duration || p.t < d.duration - 20) ? p.t : 0;
+  const watched = isWatched(id, p, d);
   main.innerHTML = `<div class="rtop">${backButton(from, ['nav.videos', 'Videos'])}</div>
   <div class="watch">
     <div>
@@ -643,8 +667,8 @@ async function watch(id, t, from) {
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">Stored on the remote drive “${esc(d.remote)}”. It plays only while that computer is reachable.</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
-      ${resumeAt ? `<div class="resume" id="resume">You stopped at ${clock(resumeAt)}. <button class="btn" id="resYes">Resume</button><button class="btn plain" id="resNo">Start over</button></div>` : ''}
-      <div class="vactions dock">${saveButton({ key: 'v:' + id, title: d.title, href: selfHref, sub: 'Video · ' + fmtDur(d.duration) })}<a class="btn plain" title="Ask about this video" href="#/ask?about=${encodeURIComponent('video:' + id)}&${fromQ()}" id="askv">${ico('ask')}<span>Ask about this video</span></a></div>
+      ${resumeAt ? `<div class="resume" id="resume"${watched ? ' hidden' : ''}>You stopped at ${clock(resumeAt)}. <button class="btn" id="resYes">Resume</button><button class="btn plain" id="resNo">Start over</button></div>` : ''}
+      <div class="vactions dock">${saveButton({ key: 'v:' + id, title: d.title, href: selfHref, sub: 'Video · ' + fmtDur(d.duration) })}${watchedButton(id, d)}<a class="btn plain" title="Ask about this video" href="#/ask?about=${encodeURIComponent('video:' + id)}&${fromQ()}" id="askv">${ico('ask')}<span>Ask about this video</span></a></div>
       ${momentSection(true)}
       <div class="notice small">A video shows how one person did something. Watching isn’t practice, and it may not match current safety guidance — check a manual for anything risky.</div>
     </div>
@@ -674,12 +698,70 @@ async function watch(id, t, from) {
       : `This video file couldn’t be played here. <a href="${fileUrl(d.path)}" target="_blank" rel="noopener">Open the file directly</a>.`);
   }, { once: true });
   if (resumeAt) {
-    $('#resYes').onclick = () => { vid.currentTime = resumeAt; vid.play().catch(() => { }); $('#resume').remove() };
-    $('#resNo').onclick = () => { vid.currentTime = 0; vid.play().catch(() => { }); $('#resume').remove() };
+    $('#resYes').onclick = () => { vid.currentTime = resumeAt; vid.play().catch(() => { }); $('#resume')?.remove() };
+    $('#resNo').onclick = () => { vid.currentTime = 0; vid.play().catch(() => { }); $('#resume')?.remove() };
+    vid.addEventListener('play', () => { $('#resume')?.remove() });
+  }
+  const updateWatchedBtn = () => {
+    const b = $('#markWatched');
+    if (!b) return;
+    const w = isWatched(id, null, d);
+    if (b.getAttribute('aria-pressed') === String(w)) return;
+    b.setAttribute('aria-pressed', w);
+    b.title = w ? 'Mark as unwatched' : 'Mark as watched';
+    const sp = $('span', b); if (sp) sp.textContent = w ? 'Watched' : 'Mark watched';
+    const res = $('#resume'); if (res) res.hidden = w;
+  };
+  const bWatched = $('#markWatched');
+  if (bWatched) {
+    bWatched.onclick = () => {
+      const cur = isWatched(id, null, d);
+      setWatched(id, !cur);
+      updateWatchedBtn();
+      toast(!cur ? 'Marked as watched' : 'Marked as unwatched');
+    };
   }
   let lastSave = 0;
-  const saveProg = () => { if (vid.currentTime > 3) setVprog(id, { t: vid.currentTime, d: d.duration || vid.duration, title: d.title, thumb: d.thumb }) };
-  vid.addEventListener('timeupdate', () => { if (Date.now() - lastSave > 4000) { lastSave = Date.now(); saveProg() } });
+  let below90 = !((t || (resumeAt && !watched)) && (d.duration || vid.duration) && (t || (resumeAt && !watched)) >= (d.duration || vid.duration) * 0.9);
+  const saveProg = () => {
+    if (vid.currentTime > 3) {
+      $('#resume')?.remove();
+      setVprog(id, { t: vid.currentTime, d: d.duration || vid.duration, title: d.title, thumb: d.thumb });
+    }
+  };
+  const onSeek = () => {
+    const dur = d.duration || vid.duration;
+    if (dur) below90 = vid.currentTime < dur * 0.9;
+  };
+  vid.addEventListener('seeking', onSeek);
+  vid.addEventListener('seeked', onSeek);
+  vid.addEventListener('loadedmetadata', () => {
+    if (!d.duration && vid.duration) d.duration = vid.duration;
+    const dur = d.duration || vid.duration;
+    if (dur) {
+      const pos = vid.currentTime || t || (resumeAt && $('#resume') && !$('#resume').hidden ? resumeAt : 0);
+      below90 = pos < dur * 0.9;
+    }
+  });
+  vid.addEventListener('timeupdate', () => {
+    const dur = d.duration || vid.duration;
+    if (dur) {
+      if (vid.currentTime < dur * 0.9) {
+        below90 = true;
+      } else if (below90 && !vid.paused && !vid.seeking) {
+        below90 = false;
+        setWatched(id, true);
+        updateWatchedBtn();
+      }
+    }
+    if (Date.now() - lastSave > 4000) { lastSave = Date.now(); saveProg() }
+  });
+  vid.addEventListener('ended', () => {
+    if (!isWatched(id, null, d)) {
+      setWatched(id, true);
+      updateWatchedBtn();
+    }
+  });
   vid.addEventListener('pause', saveProg);
   leaving = () => { saveProg(); vid.pause() };
   // keep "Ask about this video" pointing at the current moment
@@ -1367,7 +1449,54 @@ async function localAI(action) {
   try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }) } catch { }
   setTimeout(() => { if (location.hash.startsWith('#/about')) route() }, 400);
 }
-async function about() {
+
+function contributePage() {
+  setTitle('Contribute to Lastbook');
+  main.innerHTML = `<section class="contribute">
+    <h1 data-i18n="contribute.title">Contribute to Lastbook</h1>
+    <p class="lead" data-i18n="contribute.welcome">We’re building Lastbook together. We need you.</p>
+    <p class="contribute-help" data-i18n="contribute.help">Describe one idea and copy the prompt into your AI. You can review the change before it opens a pull request.</p>
+    <div class="card contribute-card">
+      <label for="contrib-idea"><span data-i18n="contribute.idea">Your idea</span> <span class="muted" data-i18n="contribute.optional">(optional)</span></label>
+      <input id="contrib-idea" type="text" maxlength="300" placeholder="Example: Make offline map labels easier to read" data-i18n-placeholder="contribute.example">
+      <label for="contrib-prompt" data-i18n="contribute.prompt">Prompt for your AI</label>
+      <textarea id="contrib-prompt" rows="6" spellcheck="false"></textarea>
+      <div class="contribute-actions">
+        <button class="btn" id="copy-contrib" type="button" data-i18n="contribute.copy">Copy prompt</button>
+        <a class="contribute-link" id="github-contrib" href="/contribute/github" target="_blank" rel="noopener"><span data-i18n="contribute.github">Open GitHub</span> <span aria-hidden="true">↗</span></a>
+      </div>
+      <p class="small muted contribute-note" data-i18n="contribute.local">Your idea stays on this device until you share it.</p>
+      <p role="status" class="small" id="contrib-status"></p>
+    </div>
+  </section>`;
+  const idea = $('#contrib-idea'), prompt = $('#contrib-prompt'), status = $('#contrib-status');
+  const sync = () => {
+    prompt.value = 'Read CONTRIBUTING.md in github.com/Immortal-Protocols/lastbook.\n\n'
+      + (idea.value.trim() ? 'Make one focused change in a fork: ' + idea.value.trim()
+         : 'Help me choose a small improvement and make one focused change in a fork.')
+      + '\n\nRun the relevant tests and prepare a pull request. Explain what changed and what you tested. Wait for my approval before opening the PR.';
+  };
+  sync();
+  idea.addEventListener('input', sync);
+  $('#copy-contrib').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.value);
+      status.dataset.i18n = 'contribute.copiedMessage';
+      status.textContent = 'Prompt copied.';
+      $('#copy-contrib').dataset.i18n = 'contribute.copied';
+      $('#copy-contrib').textContent = 'Copied';
+      translateRendered();
+    } catch {
+      prompt.focus();
+      prompt.select();
+      status.dataset.i18n = 'contribute.copyFallback';
+      status.textContent = 'Prompt selected. Press your copy shortcut.';
+      translateRendered(status);
+    }
+  });
+}
+
+async function about(showUpdate) {
   setTitle('About this library');
   let dl = {}, st = {};
   LIB = null;   // About shows the counts as they are now
@@ -1376,14 +1505,16 @@ async function about() {
   try { dl = await api('/api/download-status') } catch { }
   try { st = await fetch('/api/assistant/status').then(r => r.json()) } catch { }   // not api(): this answer names an error when no model is running, and still holds what is wanted
   const ch = dl.channels && dl.channels.counts, ix = st.index || {};
+  const updateCard = IN_WINDOW && window.LBUpdate ? LBUpdate.card() : '';
   main.innerHTML = `<h1>About this library</h1>
   <p class="lead">Public manuals, health guides, courses, videos and encyclopedias kept on this computer, so it works when the internet and phones don’t.</p>
   <div class="cards2" style="margin-top:16px">
+   ${showUpdate ? updateCard : ''}
    <div class="card"><b>What’s in it</b><small>${(s.pdfs || 0).toLocaleString()} PDF manuals (${(s.pdf_pages || 0).toLocaleString()} pages), ${(s.web_pages || 0).toLocaleString()} saved web pages, ${(s.videos || 0).toLocaleString()} downloaded videos and ${s.collections || 0} complete encyclopedias.</small></div>
    ${ch ? `<div class="card"><b>Still arriving</b><small>${ch.pending.toLocaleString()} more videos are queued and ${ch.downloading} downloading. Queued videos are not in the library yet — they appear only once downloaded.</small></div>` : ''}
    <div class="card"><b>Assistant</b><small>${localAbout(st) || (st.server ? `Model server on this computer: ${esc(st.server.model)} at ${esc(st.server.address)}, ${st.online ? 'available' : 'not answering'}. Change it in Library and local AI.` : st.online ? `Local model ${esc(st.model)} — available.` : 'No local model is running, so Chat can’t write answers right now. Guides, search, videos and the map all work without one.')} ${ix.chunks ? `Meaning-based index: ${ix.chunks.toLocaleString()} passages from ${ix.docs.toLocaleString()} documents${ix.pending ? `, ${ix.pending.toLocaleString()} still to index` : ''}.` : ''}</small></div>
    <div class="card"><b>What the assistant can’t see</b><small>${blind(st.coverage)}It also can’t see pictures in videos or raw map data. It reads text${st.vision === false ? '' : ' (and page images when it asks to)'} and says when it finds nothing.${st.coverage && st.coverage.remote_videos ? ` ${st.coverage.remote_videos} videos are stored on a remote drive and play only when that computer is reachable.` : ''}</small></div>
-   ${IN_WINDOW && window.LBUpdate ? LBUpdate.card() : ''}
+   ${showUpdate ? '' : updateCard}
   </div>
   <h2>How sources are labelled</h2><ul>
    <li><b>International health &amp; humanitarian guidance</b> — WHO, Red Cross / Red Crescent, MSF, UNICEF, Sphere, St John Ambulance.</li>
@@ -1400,7 +1531,7 @@ async function about() {
   ${s.sources ? `<h2>Sources and credits</h2><p><a href="#/read/${encodeURIComponent(s.sources)}?${fromQ()}">Sources and permissions</a>: every publisher in this library, where it came from, and how to ask for something to be removed.</p>` : ''}
   ${IN_WINDOW ? '' : '<h2>Using it on a phone</h2><p>Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with <code>server.py --lan</code>. Phones need the access link shown in the terminal the first time.</p>'}
   ${oldServer ? '<h2>Other ways in</h2><p><a href="/reports/gap-closure-status.html" target="_blank">Gap closure report</a> · <a href="/reports/learning-pathways.html" target="_blank">Learning pathways report</a> · <a href="/reports/survival-tools-cart.html" target="_blank">Supplies planning</a></p>' : ''}`;
-  if (IN_WINDOW && window.LBUpdate) LBUpdate.mount(main);   // Check for updates (web/update.js): only when the person asks
+  if (updateCard) LBUpdate.mount(main);
 }
 
 route();

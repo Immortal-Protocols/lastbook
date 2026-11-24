@@ -102,7 +102,11 @@ def check(folder):
             continue
         if writable(f):
             return f, None
-        return None, f'Lastbook cannot save in “{shown(f)}”. Move the LastbookData folder somewhere you can save to, then choose it there.'
+        return None, native_t(
+            'setup.err.cannotSaveInNamed',
+            'Lastbook cannot save in “{name}”. Move the LastbookData folder somewhere you can save to, then choose it there.',
+            name=shown(f),
+        )
     return None, native_t(
         'setup.err.notALibrary',
         '“{name}” is not a Lastbook library. Choose the folder called {folder}.',

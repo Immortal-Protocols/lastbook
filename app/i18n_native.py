@@ -42,7 +42,7 @@ def load_catalogs():
 def set_locale(locale):
     global _locale
     catalogs = load_catalogs()
-    if locale == 'en' or locale in catalogs.get('locales', {}):
+    if isinstance(locale, str) and (locale == 'en' or locale in catalogs.get('locales', {})):
         _locale = locale
     else:
         _locale = 'en'
@@ -93,7 +93,7 @@ def configure(settings_dir=None):
         try:
             data = json.loads(path.read_text(encoding='utf-8'))
             saved = data.get('language') if isinstance(data, dict) else None
-            if saved:
+            if isinstance(saved, str) and saved:
                 locale = saved
         except FileNotFoundError:
             pass

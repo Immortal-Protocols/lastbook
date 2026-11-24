@@ -5,11 +5,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'packaging'))
+sys.path.insert(0, str(ROOT / 'app'))
 import i18n_catalogs as catalogues  # noqa: E402
+import i18n_native  # noqa: E402
 
 
 class Catalogues(unittest.TestCase):
@@ -131,6 +134,27 @@ class FallbackWording(unittest.TestCase):
             self.assertNotIn(name, text)
 
 
+class NativeLocaleSettings(unittest.TestCase):
+    def test_malformed_saved_language_falls_back_to_english(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            settings = Path(tmp)
+            for value in ([], {}, 7, True, None, 'not-a-locale'):
+                (settings / 'ui-language.json').write_text(
+                    json.dumps({'language': value}), encoding='utf-8')
+                with self.subTest(value=value):
+                    self.assertEqual(i18n_native.configure(settings), 'en')
+            (settings / 'ui-language.json').write_text(
+                json.dumps({'language': ['es-419']}), encoding='utf-8')
+            self.assertEqual(i18n_native.configure(settings), 'en')
+        self.assertEqual(i18n_native.set_locale('en'), 'en')
+
+    def test_non_string_locale_is_safe_even_when_set_directly(self):
+        for value in ([], {}, 7, True, None):
+            with self.subTest(value=value):
+                self.assertEqual(i18n_native.set_locale(value), 'en')
+        self.assertEqual(i18n_native.set_locale('en'), 'en')
+
+
 class GermanWording(unittest.TestCase):
     """The de catalogue keeps the conventions in docs/i18n.md#german-de."""
 
@@ -241,7 +265,7 @@ class SpanishWording(unittest.TestCase):
             'map.zoom', 'library.shelfVideos',
             'native.menu.zoom', 'common.video',
             'native.appFileDescription', 'installer.productName', 'installer.companyName',
-            'setup.facts.sha256', 'videos.videoCount',
+            'setup.facts.sha256', 'setup.facts.bytes', 'videos.videoCount',
         })
 
     def test_catalogue_covers_every_english_message(self):
@@ -362,4 +386,21 @@ class NativeInterpolation(unittest.TestCase):
         i18n_native.set_locale('es-419')
         _, message = main.check(ROOT / 'does-not-exist')
         self.assertIn('no es una biblioteca de Lastbook', message)
+        self.assertIn('LastbookData', message)
+
+    def test_native_unwritable_library_error_uses_catalogue(self):
+        sys.path.insert(0, str(ROOT / 'app'))
+        import i18n_native
+        import main
+        old_locale = i18n_native.current_locale()
+        self.addCleanup(i18n_native.set_locale, old_locale)
+        i18n_native.set_locale('es-419')
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / 'LastbookData'
+            (folder / 'library-data').mkdir(parents=True)
+            (folder / 'library-data' / 'catalog.json').write_text('{}', encoding='utf-8')
+            with mock.patch.object(main, 'writable', return_value=False):
+                found, message = main.check(folder)
+        self.assertIsNone(found)
+        self.assertIn('Lastbook no puede guardar en', message)
         self.assertIn('LastbookData', message)

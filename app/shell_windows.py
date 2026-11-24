@@ -77,6 +77,18 @@ BLOCKED_SCHEMES = ('http', 'https', 'ws', 'wss', 'ftp')
 MENU_KEEP = {'cut', 'copy', 'paste', 'pasteAndMatchStyle', 'selectAll', 'undo', 'redo', 'copyImage'}
 
 
+def runtime_error_message(exception):
+    """Use the install hint only for a missing WebView2 runtime; explain other failures."""
+    try:
+        exception = exception.GetBaseException()
+    except Exception:
+        pass
+    if 'NotFound' in str(type(exception)):
+        return native_t('native.needWebView2', NO_RUNTIME)
+    detail = getattr(exception, 'Message', None) or str(exception)
+    return native_t('native.windowCouldNotOpen', 'Lastbook could not open its window.\n\n{detail}', detail=detail)
+
+
 def light_theme():
     """Windows' own app theme: Settings > Personalisation > Colours."""
     try:
@@ -574,7 +586,7 @@ def preflight():
     print('WebView2 runtime', version, flush=True)
     global RUNTIME
     RUNTIME = str(version or '')
-    return None if version else NO_RUNTIME
+    return None if version else native_t('native.needWebView2', NO_RUNTIME)
 
 
 RUNTIME = ''
@@ -818,7 +830,7 @@ class Shell:
             timer.Stop()
             if task.IsFaulted:
                 print('WebView2 environment:', task.Exception, flush=True)
-                message(NO_RUNTIME)
+                message(runtime_error_message(task.Exception))
                 self.form.Close()
                 return
             self.view.EnsureCoreWebView2Async(task.Result)
@@ -829,7 +841,7 @@ class Shell:
     def on_ready(self, sender, args):
         if not args.IsSuccess:
             print('WebView2 did not start:', args.InitializationException, flush=True)
-            message(NO_RUNTIME if 'NotFound' in str(type(args.InitializationException)) else f'Lastbook could not open its window.\n\n{args.InitializationException.Message}')
+            message(runtime_error_message(args.InitializationException))
             self.form.Close()
             return
         Core = self.n.Core

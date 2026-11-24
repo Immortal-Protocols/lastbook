@@ -551,7 +551,7 @@ class Shell:
         WebKit.WKContentRuleListStore.defaultStore().compileContentRuleListForIdentifier_encodedContentRuleList_completionHandler_('lastbook-no-network', NO_NETWORK, compiled)
 
     def refuse_to_open(self):
-        show_error(NO_NETWORK_REFUSED)
+        show_error(native_t('native.networkAccessNotDisabled', NO_NETWORK_REFUSED))
         AppKit.NSApplication.sharedApplication().terminate_(None)
 
     def go_home(self):

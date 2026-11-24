@@ -474,7 +474,7 @@ class Shell:
                 print('no network rule list:', e.message, flush=True)
                 rules = None
             if rules is None:
-                show_error(NO_NETWORK_REFUSED)
+                show_error(native_t('native.networkAccessNotDisabled', NO_NETWORK_REFUSED))
                 return quit_app()
             self.ucm.add_filter(rules)
             self.network_off = True

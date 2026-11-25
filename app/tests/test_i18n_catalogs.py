@@ -219,3 +219,37 @@ class SpanishWording(unittest.TestCase):
         # Words that must differ from English (brand names and loan words such as "Chat" may match).
         same = {key for key in self.es if self.es[key] == self.en[key]}
         self.assertLessEqual(same, {'nav.chat', 'nav.videos', 'nav.video'})
+
+
+class VietnameseWording(unittest.TestCase):
+    """The vi catalogue keeps the conventions in docs/i18n.md#vietnamese-vi."""
+
+    @classmethod
+    def setUpClass(cls):
+        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
+        cls.en, cls.vi = load('en.json'), load('vi.json')
+
+    def test_setup_and_settings_are_different_words(self):
+        self.assertEqual(self.vi['nav.settings'], 'Cài đặt')
+        self.assertIn('Thiết lập', self.vi['setup.title'])
+        self.assertNotIn('Cài đặt', self.vi['setup.title'])
+        # Where a sentence names both screens, it names both.
+        self.assertIn('Thiết lập', self.vi['language.preview'])
+        self.assertIn('Cài đặt', self.vi['language.preview'])
+
+    def test_covers_the_whole_english_catalogue(self):
+        self.assertEqual(set(self.vi), set(self.en))
+
+    def test_everyday_words_and_formatting(self):
+        self.assertIn('máy tính này', self.vi['setup.loading'])
+        self.assertIn('bang hoặc tỉnh', self.vi['setup.chooseIntro'])
+        self.assertIn('ngoại tuyến', self.vi['setup.chooseIntro'])
+        self.assertEqual(self.vi['setup.settingsTitle'], 'Thư viện và AI cục bộ')
+        everything = ' '.join(self.vi.values())
+        self.assertNotIn('...', everything)
+        self.assertTrue(self.vi['language.saving'].endswith('…'))
+
+    def test_no_message_is_left_in_english(self):
+        # "Video" is the everyday Vietnamese word too.
+        same = {key for key in self.vi if self.vi[key] == self.en[key]}
+        self.assertLessEqual(same, {'nav.video'})

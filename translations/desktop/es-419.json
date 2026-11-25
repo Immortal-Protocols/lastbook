@@ -1302,5 +1302,17 @@
   "setup.skipMapNoAddressLabel": "Sin búsqueda por dirección",
   "setup.skipMapNoLocalLabel": "Sin mapa local",
   "setup.skipMapForNow": "— omitir por ahora",
-  "setup.err.setupFolderLinkOrSpecial": "La carpeta de configuración contiene un enlace o un archivo especial. Elige otra carpeta para la biblioteca."
+  "setup.err.setupFolderLinkOrSpecial": "La carpeta de configuración contiene un enlace o un archivo especial. Elige otra carpeta para la biblioteca.",
+  "setup.repairSummaryLibrary": "La biblioteca se volvió a descargar porque algunos archivos estaban dañados. La copia dañada quedó guardada aparte; puedes eliminarla en Biblioteca e IA local.",
+  "setup.repairSummaryAiWithLibrary": "También se volvió a descargar el archivo de IA local.",
+  "setup.repairSummaryAiOnly": "El archivo de IA local estaba dañado, así que se descargó de nuevo y reemplazó al anterior.",
+  "setup.repairSummaryMap": "El mapa detallado se volvió a descargar.",
+  "setup.repairSummaryOther": "Se volvió a descargar una parte dañada.",
+  "chat.memoryEstimate": "La IA local necesita aproximadamente {size} de memoria.",
+  "chat.exportTitle": "Conversación: {title}",
+  "chat.exportedFrom": "Exportado desde Lastbook (biblioteca sin conexión) el {date}",
+  "chat.exportNotice": "Las respuestas se escribieron con un modelo de IA local a partir de los documentos de la biblioteca. Revisa las páginas vinculadas; pide ayuda a personal capacitado para temas serios.",
+  "chat.exportQuestion": "Pregunta",
+  "chat.exportAnswer": "Respuesta",
+  "chat.exportNoAnswer": "(sin respuesta: {reason})"
 }

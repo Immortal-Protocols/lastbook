@@ -142,7 +142,8 @@ def main():
         if 'opt/lastbook/engine/setup/roots.pem' not in packaged:
             problems.append('missing from the package: opt/lastbook/engine/setup/roots.pem')
         for need in ('opt/lastbook/gst/libgstlastbooksrc.so', 'opt/lastbook/lastbook.py', 'opt/lastbook/app/main.py', 'opt/lastbook/app/shell_linux.py', 'opt/lastbook/app/ui_language.py', 'opt/lastbook/app/contribute.py',
-                     'opt/lastbook/setup/manifest-v1.json', 'opt/lastbook/VERSION', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop'):
+                     'opt/lastbook/setup/manifest-v1.json', 'opt/lastbook/VERSION', 'opt/lastbook/engine/english_words.txt.gz',
+                     'opt/lastbook/engine/english_words.LICENSE.txt', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop'):
             if need not in packaged:
                 problems.append(f'missing from the package: {need}')
         llm = 'opt/lastbook/llm/lastbook-llm' in packaged

@@ -164,6 +164,9 @@ def main():
     if not any(r.is_file() for r in roots):    # setup's downloader trusts only these roots; without them it downloads nothing
         problems.append('missing from the package: engine/setup/roots.pem')
     problems += sparkle_problems(a.app)
+    for name in ('english_words.txt.gz', 'english_words.LICENSE.txt'):   # engine/typos.py's English words
+        if not any((a.app / 'Contents' / d / 'engine' / name).is_file() for d in ('Resources', 'Frameworks')):
+            problems.append(f'missing from the package: engine/{name}')
     if 'ui_language' not in modules:
         problems.append('missing module from the package: ui_language')
     print(f'files {n_files}, native binaries {n_macho}, modules looked inside {n_mods}')

@@ -349,16 +349,21 @@ const Chat = (() => {
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
+    // the library's pages and the encyclopedia articles are two searches, shown apart, each in its own order
+    const [libF, wikiF] = byShelf(found);
+    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${libF.length ? srcCards(libF.slice(0, 6), true) : ''}${wikiF.length ? `<p class="small muted">From the encyclopedias (community-written background):</p>${srcCards(wikiF.slice(0, 3), true)}` : ''}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
       const cited = sourcesForFinish(m);
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
       h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
-      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
-      else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
-      const other = (m.consulted || []).filter(s => s.kind !== 'place');
-      if (other.length) h += `<details class="also"><summary>Also looked at (${other.length}, not used)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
+      const [libC, wikiC] = byShelf(cited);
+      if (libC.length) h += `<h3 class="srch">Sources (${libC.length})</h3>${srcFilter(libC, m.srcType, i)}${srcCards(libC, false, m.srcType)}`;
+      else if (!cited.length) h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
+      const [libO, wikiO] = byShelf((m.consulted || []).filter(s => s.kind !== 'place'));
+      // the encyclopedias' own search, shown whether the answer used it or not: the ones it cited first, then the rest
+      if (wikiC.length || wikiO.length) h += `<h3 class="srch">From the encyclopedias (${wikiC.length + wikiO.length})</h3><p class="small muted">A separate search of the encyclopedias: community-written background${wikiC.length ? '' : ', not used in this answer'}.</p>${wikiC.length ? srcCards(wikiC, false) : ''}${wikiO.length ? srcCards(wikiO.slice(0, 6), true) : ''}`;
+      if (libO.length) h += `<details class="also"><summary>Also looked at (${libO.length}, not used)</summary>${srcCards(libO.slice(0, 10), true)}</details>`;
       if ((m.steps || []).length) h += `<details class="also"><summary>How it searched (${m.steps.length} ${m.steps.length === 1 ? 'step' : 'steps'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
       h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">Copy</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Save answer</button><button class="btn plain" data-act="export">Export chat</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Ask again</button>` : ''}</div>`;
     }
@@ -382,6 +387,8 @@ const Chat = (() => {
     if (s.name === 'found') return `Matched ${s.count} passage${s.count === 1 ? '' : 's'} for your question`;
     return esc(s.name);
   }
+  const isWiki = s => s.kind === 'zim' || !!s.zim;
+  function byShelf(list) { return [list.filter(s => !isWiki(s)), list.filter(isWiki)] }
   function srcHref(s) {
     if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || 'Place from the answer')}`;
     if (s.kind === 'video') return `#/watch/${encodeURIComponent(s.doc_id)}?${s.t != null ? 't=' + Math.floor(s.t) + '&' : ''}from=${encodeURIComponent(here())}`;
@@ -403,7 +410,7 @@ const Chat = (() => {
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
       else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
-      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
+      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page && s.kind === 'html' ? `section ${s.page}` : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';   // a long web page is cited by section (engine/sections.py)
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
         ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}

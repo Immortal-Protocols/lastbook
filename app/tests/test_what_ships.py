@@ -142,6 +142,24 @@ class WhatShips(unittest.TestCase):
             self.assertIsNone(HOUSEHOLD.search((ROOT / rel).read_text(encoding='utf-8')), rel)
         self.assertNotIn('118.4', (ROOT / 'server.py').read_text(encoding='utf-8'))
 
+    def test_english_words_ship_with_their_licence(self):
+        """engine/typos.py's word list and its licence are in every build and every package scan, and name no household
+        place; the typo code itself names none either."""
+        import gzip
+        with gzip.open(ROOT / 'engine' / 'english_words.txt.gz', 'rt', encoding='utf-8') as f:
+            words = f.read()
+        self.assertGreater(len(words.split()), 50000)
+        self.assertIsNone(HOUSEHOLD.search(words))
+        self.assertIsNone(HOUSEHOLD.search((ROOT / 'engine' / 'typos.py').read_text(encoding='utf-8')))
+        self.assertIn('Kevin Atkinson', (ROOT / 'engine' / 'english_words.LICENSE.txt').read_text(encoding='utf-8'))
+        for rel in ('packaging/build_app_windows.sh', 'packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh',
+                    'packaging/scan_app_package.py', 'packaging/scan_package_macos.py', 'packaging/linux/scan_package_linux.py'):
+            text = (ROOT / rel).read_text(encoding='utf-8')
+            for name in ('english_words.txt.gz', 'english_words.LICENSE.txt'):
+                self.assertIn(name, text, rel)
+        for rel in ('packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh'):
+            self.assertIn('typos', (ROOT / rel).read_text(encoding='utf-8'), rel)    # the module itself
+
 
 if __name__ == '__main__':
     unittest.main()

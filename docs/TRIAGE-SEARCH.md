@@ -85,7 +85,8 @@ Numbers (measured on the author's fork):
 | Sections + typo correction + conversation handling | 26 → 4 (both modes); typo questions' useful pages 2.23 → 4.72 of 8 (kw) |
 | Build on the test data folder | 351 pages → 7,623 sections in 4.2 s, at most 1,890 sections in one page (read from the file's `meta` and `long` tables) |
 
-Rerun: `tools/search_eval/score.py --rows` before and after, and count the questions whose top 8 hold that book.
+Rerun: `tools/search_eval/score.py --rows` before, and `--rows --sections <scratch folder>` after, and count the questions whose
+top 8 hold that book.
 The mean hybrid search time per question over the triage set was 0.67 s on the fork; a before/after time for the long
 pages alone was not stored.
 
@@ -146,6 +147,16 @@ useful words inside the first 2,000 characters for 259 of the 622 articles that 
 Code: `engine/typos.py`. Entry points `correct(q)` (memoised, 2,000 entries), `correct_with(q, words)`, `fix_word`,
 `split_word`, `body_fix`. Switches: `LASTBOOK_TYPO_FIX=0` (all), `LASTBOOK_TYPO_SPLIT=0`, `LASTBOOK_TYPO_ENGLISH=0`,
 `LASTBOOK_BODY_FIX=0`. Called first in `assistant.hybrid`, `server.query_groups` and `assistant.is_danger`.
+`/api/find` and `/api/retrieve` add `corrected` (what was searched) when it differs from the question.
+
+In pull request 3, `body_fix` and `LASTBOOK_BODY_FIX` are not there yet: they need the body words of
+`engine/confidence.py` and come with it in pull request 5. `assistant.is_danger` comes in pull request 7.
+
+**Word forms.** The corrector does not change word endings: an English word is never changed, so "tourniquets",
+"fainting" and "choked" are searched as typed. The library search's own form rule is older than this module: a word of
+5+ letters ending in -s is also searched without it (`server.query_groups`). The guide search (`web/words.js`, #287)
+has a wider rule (-s, -es, -ies, -ed, -ing, with a dropped e or a doubled letter undone), used only when a guide search
+finds nothing. The two searches are separate: the corrector runs on the server, the guide search in the page.
 
 **The library's words** (`Words.from_db`, read once per search database, kept until its size or time changes):
 
@@ -192,7 +203,7 @@ are skipped when a machine, food or animal word is in the question. Letters type
 (`unstretch`: "bloooood" → blood).
 
 **Order in `correct_with(q)`:** a question that looks foreign (non-ASCII letters, or more Spanish/Portuguese/French function words
-than English ones) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
+than English ones; "a", "me" and "no" count for neither, added in pull request 3 after test list 4) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
 then `phrase_slips`; then each token: not plain letters or ALL CAPS (unless most of the question is capitals) or with inner capitals
 ("ODing", "iPhone"): kept (a run with an apostrophe or hyphen inside goes to `glued`); `unstretch`; `split_word`; `fix_word`;
 `body_fix`; capitalisation restored.
@@ -523,8 +534,8 @@ bge-small-en-v1.5 in `derived/models/` and, for hybrid runs, a meaning index bui
 uses an index built by main's own indexer (338,910 passages); the measurements of sections 1-10 were made earlier on the
 author's fork, against its own index (337,016 passages). `tools/search_eval/baseline-files.md` identifies every file.
 The scorer reads the data folder and never writes it: it opens the meaning index read-only (immutable when no
-write-ahead log is pending), never truncates `vectors.f16`, refuses the sections build (from PR 2 on), and starts no
-indexer and no local model.
+write-ahead log is pending), never truncates `vectors.f16`, never builds or removes a sections file there (`--sections <folder>`,
+from PR 2 on, keeps it in another folder), and starts no indexer and no local model.
 
 **Commands** (from the repository root):
 

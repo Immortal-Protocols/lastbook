@@ -33,7 +33,7 @@ def clean_sysconfig():
 
 datas = files('web', 'web') + files('content', 'content', 'gaps.json') + files('content/topics', 'content/topics', '*.json')
 binaries = []
-hidden = ['server', 'retrieval', 'assistant', 'llm_local', 'engine.paths', 'engine.library', 'engine.safe_paths', 'engine.encyclopedias', 'engine.saved_pages', 'engine.address_search', 'engine.page_tables', 'engine.notes', 'engine.model_server', 'bridge', 'shell_macos', 'PyObjCTools.AppHelper', 'update_macos']
+hidden = ['server', 'retrieval', 'assistant', 'llm_local', 'engine.paths', 'engine.library', 'engine.safe_paths', 'engine.encyclopedias', 'engine.saved_pages', 'engine.address_search', 'engine.page_tables', 'engine.sections', 'engine.typos', 'engine.notes', 'engine.model_server', 'bridge', 'shell_macos', 'PyObjCTools.AppHelper', 'update_macos']
 # The optional local AI's runner (packaging/llm/build_llm_macos.sh), in Contents/Frameworks/llm/. The model itself never ships.
 LLM = ROOT / 'derived' / 'llm' / 'bin-mac'
 binaries += [(str(LLM / 'lastbook-llm'), 'llm')]
@@ -41,6 +41,7 @@ datas += [(str(LLM / 'LICENSE-llama.cpp.txt'), 'llm')]
 datas += [(str(SHIP / 'setup' / 'manifest-v1.json'), 'setup')]   # what first-run setup can install
 hidden += collect_submodules('engine.setup')
 datas += [(str(ROOT / 'engine' / 'setup' / 'roots.pem'), 'engine/setup')]   # the only roots setup's downloader trusts
+datas += [(str(ROOT / 'engine' / n), 'engine') for n in ('english_words.txt.gz', 'english_words.LICENSE.txt')]   # engine/typos.py's English words
 for package in ('libzim', 'pypdfium2', 'pypdfium2_raw'):   # loaded only when a ZIM or PDF is first opened, and they carry native libraries
     d, b, h = collect_all(package)
     datas += d

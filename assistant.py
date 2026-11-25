@@ -8,7 +8,8 @@ import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.
 import retrieval
 from engine import encyclopedias
 from engine.paths import ro_uri
-from engine import page_tables
+from engine import page_tables, sections
+from engine import typos    # spelling mistakes in search questions
 
 import os
 from engine.model_server import LOOPBACK, loopback_base, model_open   # noqa: F401  (LOOPBACK and model_open: also used by the tests)
@@ -87,20 +88,24 @@ def _fts(q, limit=80, ids=None):
     content, groups = S.query_groups(q)
     if not groups:
         return []
-    only = (ids,) if ids is not None else ()
-    con = sqlite3.connect(ro_uri(S.library.DB), uri=True)
-    sql = ("SELECT doc_id,page,snippet(pages,6,'','',' … ',40) FROM pages WHERE pages MATCH ? " +
-           ("AND doc_id IN (SELECT value FROM json_each(?)) " if only else "") +
-           "ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT ?")
+    # Long saved web pages are searched in their sections (engine/sections.py).
+    run = lambda m: sections.query(S.library.DB, S.kind_of, "doc_id,page,snippet(pages,6,'','',' … ',40)",
+                                   'bm25(pages,0,6,1,1,0,0,1)', m, limit, ids)
     rows = []
     try:
-        rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
+        rows = run(S.fts_expr(groups))
         if len(rows) < 10 and len(groups) > 1:
-            rows += con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups),) + only + (limit,)).fetchall()
+            rows += run(' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups))
     except sqlite3.OperationalError:
         pass
-    con.close()
     return rows
+
+
+def _page(r, page):
+    """The page a hit is cited by: a PDF's page, or a long web page's section (engine/sections.py); else None."""
+    if r['kind'] == 'pdf' or (r['kind'] == 'html' and sections.sectioned(r['id'])):
+        return page
+    return None
 
 
 def _allowed(kind):
@@ -111,6 +116,7 @@ def _allowed(kind):
 
 def hybrid(q, k=8, kind='any', doc=None):
     """Best passages for q from keyword and meaning-based search, fused, with provenance."""
+    q = typos.correct(q)    # both searches get the misspellings put right (engine/typos.py)
     cat = S.catalog()
     allowed = _allowed(kind)
     if doc:
@@ -129,9 +135,9 @@ def hybrid(q, k=8, kind='any', doc=None):
             doc_id, page = v['id'], None
         if not allowed(doc_id):
             continue
-        kw.append((doc_id, page if cat['by_id'][doc_id]['kind'] == 'pdf' else None, None, snip))
+        kw.append((doc_id, _page(cat['by_id'][doc_id], page), None, snip))   # a long web page's sections rank on their own
     sem = INDEX.semantic(q, 80, allowed) if INDEX else []
-    sem_l = [(s['doc_id'], s['page'] if cat['by_id'][s['doc_id']]['kind'] == 'pdf' else None, s['t'], s['text'], s['sem']) for s in sem]
+    sem_l = [(s['doc_id'], _page(cat['by_id'][s['doc_id']], s['page']), s['t'], s['text'], s['sem']) for s in sem]
     key = lambda d, p, t: (d, p, None if t is None else int(t // 45))
     qwords = [w for w in re.findall(r'[a-z0-9-]{3,}', q.lower()) if w not in S.STOP]
     models = [w for w in re.findall(r'[a-z0-9-]+', q.lower()) if re.search(r'\d', w) and re.search(r'[a-z]', w) and len(w) >= 3]
@@ -354,7 +360,8 @@ def run_tool(name, args, sess, extra_msgs, root=None):
         r = cat.get(d)
         if not r or r['kind'] == 'metadata':
             return f'No document with id {d!r} in the library.', {'doc_id': d, 'error': 'unknown'}
-        texts = S.page_texts(r)
+        texts = S.doc_texts(r) if r['kind'] == 'html' else S.page_texts(r)   # a long web page by section, as search cites it
+        by_section = r['kind'] == 'html' and len(texts) > 1
         pages = [int(p) for p in (args.get('pages') or [1])][:3]
         pub = S.public(r)
         out = []
@@ -366,7 +373,7 @@ def run_tool(name, args, sess, extra_msgs, root=None):
                 continue
             body = page_body(texts[p - 1], 3500) or '(no text on this page — it may be a picture; use view_page)'
             src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'],
-                   'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
+                   'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' or by_section else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
             out.append(_src_block(sess.add(src), src, body))
         return '\n\n'.join(out), {'doc_id': d, 'title': pub['title'], 'pages': pages}
     if name == 'view_page':
@@ -470,11 +477,11 @@ def context_for(about, sess):
         r = cat.get(d)
         if not r:
             return None
-        texts, pub = S.page_texts(r), S.public(r)
+        texts, pub = (S.doc_texts(r) if r['kind'] == 'html' else S.page_texts(r)), S.public(r)   # a long web page by section
         p = int(p or 1)
         body = page_body(texts[p - 1], 4000) if 0 < p <= len(texts) else ''
         src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'],
-               'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
+               'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' or (r['kind'] == 'html' and len(texts) > 1) else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
         k = sess.add(src)
         return f"The person is looking at this page right now (questions like 'this' refer to it):\n" + _src_block(k, src, body or '(no extractable text on this page; use view_page)') + f"\nDocument id for tools: {d}"
     if kind == 'video':

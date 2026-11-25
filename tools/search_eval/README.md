@@ -43,6 +43,8 @@ python -B tools/search_eval/score.py --mode hybrid --out hy.json
 - `--search hybrid` (default) scores `assistant.hybrid(q, 8)`, what `/api/retrieve` and the chat's first search return; `--search find`
   scores the Library tab's search box (`server.find`), its first 8 documents.
 - `--sets triage,lists` runs some sets only; `--rows` also writes every question's top 8; `--code <checkout>` measures another checkout.
+- `--sections <folder>` searches long saved web pages in sections (`engine/sections.py`): the sections file is read from that folder,
+  and built there first if it is missing (a few seconds). Without it, long pages are searched whole, as on `main`.
 
 Nothing is written into the library folder. A full keyword run takes a few minutes, hybrid about half an hour.
 To check a rerun against the baseline, see [baseline-files.md](baseline-files.md#rerun-and-check).

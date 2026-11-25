@@ -143,7 +143,9 @@ def extract(r):
   try:
    m=json.loads(meta.read_text(encoding='utf-8'));details=m.get('details',{})
    if isinstance(details,dict) and m.get('sha256')==r.get('sha256') and (not video or m.get('caption_inputs')==caption_inputs):
-    text=textpath.read_text(encoding='utf-8');pages=text.split('\n\f\n');r.update(details);r['text_path']=textpath.relative_to(ROOT).as_posix();return r,pages,None
+    text=textpath.read_text(encoding='utf-8');pages=text.split('\n\f\n')
+    if not video or any(page.strip() for page in pages):
+     r.update(details);r['text_path']=textpath.relative_to(ROOT).as_posix();return r,pages,None
   except (OSError,ValueError,TypeError,AttributeError):pass  # an unreadable cache is rebuilt from the original below
  pages=[]
  try:

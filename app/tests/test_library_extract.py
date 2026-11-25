@@ -287,6 +287,25 @@ class LibraryExtraction(unittest.TestCase):
         self.textpath.unlink()
         self.assertEqual(self.extract(), ['A caption to restore.'])
 
+    def test_rebuild_recovers_blank_video_text_with_unchanged_captions(self):
+        for text in ('', ' \n\t', '\n\f\n', '\u00a0'):
+            with self.subTest(cached_text=repr(text)):
+                self.textpath.unlink(missing_ok=True)
+                self.metapath.unlink(missing_ok=True)
+                source = self.caption('Café label 12.')
+                original, _ = self.build()
+                before = (self.textpath.read_bytes(), self.metapath.read_bytes(), source.read_bytes())
+                self.textpath.write_text(text, encoding='utf-8')
+
+                record, summary = self.build()
+                self.assertEqual(record, original)
+                self.assertEqual(summary['indexed_units'], 1)
+                self.assertEqual(summary['extraction_errors'], [])
+                self.assertEqual([r['doc_id'] for r in library.search('12')], ['video-example'])
+                self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes(), source.read_bytes()), before)
+                with patch.object(Path, 'write_text', side_effect=AssertionError('rewrote repaired extract')):
+                    self.assertEqual(self.extract(), ['Café label 12.'])
+
     def test_rebuild_recovers_unreadable_extraction_caches(self):
         cases = ('invalid metadata', 'non-object metadata', 'invalid metadata encoding',
                  'invalid text encoding', 'invalid details')

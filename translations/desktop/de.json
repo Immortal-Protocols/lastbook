@@ -162,5 +162,22 @@
   "setup.skipMapNoAddressLabel": "Keine Adresssuche",
   "setup.skipMapNoLocalLabel": "Keine lokale Karte",
   "setup.skipMapForNow": "— vorerst überspringen",
-  "setup.err.setupFolderLinkOrSpecial": "Der Setup-Ordner enthält einen Link oder eine spezielle Datei. Wählen Sie einen anderen Bibliotheksordner."
+  "setup.err.setupFolderLinkOrSpecial": "Der Setup-Ordner enthält einen Link oder eine spezielle Datei. Wählen Sie einen anderen Bibliotheksordner.",
+  "setup.repairSummaryLibrary": "Die Bibliothek wurde erneut heruntergeladen, weil einige Dateien beschädigt waren. Die beschädigte Kopie wurde beiseitegelegt; Sie können sie unter Bibliothek und lokale KI löschen.",
+  "setup.repairSummaryAiWithLibrary": "Auch die Datei der lokalen KI wurde erneut heruntergeladen.",
+  "setup.repairSummaryAiOnly": "Die Datei der lokalen KI war beschädigt und wurde erneut heruntergeladen und ersetzt.",
+  "setup.repairSummaryMap": "Die Detailkarte wurde erneut heruntergeladen.",
+  "setup.repairSummaryOther": "Ein beschädigter Bestandteil wurde erneut heruntergeladen.",
+  "chat.exportTitle": "Chatverlauf: {title}",
+  "chat.exportedFrom": "Aus Lastbook (Offline-Bibliothek) exportiert am {date}",
+  "chat.exportNotice": "Die Antworten wurden von einem lokalen KI-Modell anhand der Dokumente der Bibliothek erstellt. Prüfen Sie die verlinkten Seiten; holen Sie bei ernsten Anliegen geschulte Hilfe.",
+  "chat.exportQuestion": "Frage",
+  "chat.exportAnswer": "Antwort",
+  "chat.exportNoAnswer": "(keine Antwort: {reason})",
+  "chat.conversations": "Unterhaltungen",
+  "chat.exportChat": "Chat exportieren",
+  "setup.retry": "Erneut versuchen",
+  "setup.downloadIt": "Stattdessen herunterladen?",
+  "setup.chooseAiModelFile": "Datei für das KI-Modell auswählen",
+  "setup.chooseAgain": "Erneut auswählen"
 }

@@ -162,5 +162,22 @@
   "setup.skipMapNoAddressLabel": "不含地址搜索",
   "setup.skipMapNoLocalLabel": "无本地地图",
   "setup.skipMapForNow": "— 暂时跳过",
-  "setup.err.setupFolderLinkOrSpecial": "配置文件夹中包含链接或特殊文件。请选择其他资料库文件夹。"
+  "setup.err.setupFolderLinkOrSpecial": "配置文件夹中包含链接或特殊文件。请选择其他资料库文件夹。",
+  "setup.repairSummaryLibrary": "由于部分文件已损坏，资料库已重新下载。损坏的副本已另行保留；您可以在“资料库和本地 AI”中将其删除。",
+  "setup.repairSummaryAiWithLibrary": "本地 AI 文件也已重新下载。",
+  "setup.repairSummaryAiOnly": "本地 AI 文件已损坏，因此已重新下载并替换原文件。",
+  "setup.repairSummaryMap": "详细地图已重新下载。",
+  "setup.repairSummaryOther": "已重新下载损坏的部分。",
+  "chat.exportTitle": "聊天：{title}",
+  "chat.exportedFrom": "导出自 Lastbook（离线资料库），时间：{date}",
+  "chat.exportNotice": "回答由本地 AI 模型根据资料库文档生成。请核对链接页面；处理严重问题时请寻求受过培训的人员帮助。",
+  "chat.exportQuestion": "问题",
+  "chat.exportAnswer": "回答",
+  "chat.exportNoAnswer": "（无回答：{reason}）",
+  "chat.conversations": "对话",
+  "chat.exportChat": "导出聊天",
+  "setup.retry": "重试",
+  "setup.downloadIt": "改为下载？",
+  "setup.chooseAiModelFile": "选择 AI 模型文件",
+  "setup.chooseAgain": "重新选择"
 }

@@ -1535,5 +1535,16 @@
   "setup.skipMapNoAddressLabel": "No street-address search",
   "setup.skipMapNoLocalLabel": "No local map",
   "setup.skipMapForNow": "— skip for now",
-  "setup.err.setupFolderLinkOrSpecial": "The setup folder contains a link or special file. Choose a different library folder."
+  "setup.err.setupFolderLinkOrSpecial": "The setup folder contains a link or special file. Choose a different library folder.",
+  "setup.repairSummaryLibrary": "The library was downloaded again because some of its files were damaged. The damaged copy was kept aside; you can delete it in Library and local AI.",
+  "setup.repairSummaryAiWithLibrary": "The local AI file was downloaded again too.",
+  "setup.repairSummaryAiOnly": "The local AI file was damaged, so it was downloaded again and replaced.",
+  "setup.repairSummaryMap": "The detailed map was downloaded again.",
+  "setup.repairSummaryOther": "A damaged part was downloaded again.",
+  "chat.exportTitle": "Chat: {title}",
+  "chat.exportedFrom": "Exported from Lastbook (offline library) on {date}",
+  "chat.exportNotice": "Answers were written by a local AI model from the library’s documents. Check the linked pages; get trained help for anything serious.",
+  "chat.exportQuestion": "Question",
+  "chat.exportAnswer": "Answer",
+  "chat.exportNoAnswer": "(no answer: {reason})"
 }

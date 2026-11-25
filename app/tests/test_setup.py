@@ -306,6 +306,17 @@ class fast_backoff:
 
 # ----------------------------------------------------------------------------------------------------------- tests --
 class ReleaseManifest(unittest.TestCase):
+    def test_release_builder_assigns_known_small_and_medium_summary_keys(self):
+        spec = importlib.util.spec_from_file_location('release_manifest', ROOT / 'packaging/release_manifest.py')
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        packs = [{'id': 'small', 'summary': builder.SMALL_SUMMARY},
+                 {'id': 'medium', 'summary': builder.MEDIUM_SUMMARY},
+                 {'id': 'custom', 'summary': 'Custom summary'}]
+        self.assertIs(builder.attach_summary_keys(packs), packs)
+        self.assertEqual([p.get('summary_key') for p in packs],
+                         ['setup.packSummary.small', 'setup.packSummary.medium', None])
+
     def test_rejects_invalid_generated_part_before_replacing_manifest(self):
         from app.tests.multipart_fixture import write_fixture
         from tempfile import TemporaryDirectory

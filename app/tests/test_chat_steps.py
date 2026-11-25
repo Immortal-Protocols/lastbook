@@ -22,6 +22,7 @@ const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
+  'const tr = (_key, _params, fallback) => fallback;',
   'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcCards = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcCards;')();
@@ -33,6 +34,7 @@ const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
+  'const tr = (_key, _params, fallback) => fallback;',
   'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcFilter = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcFilter;')();
@@ -220,7 +222,7 @@ class El {
   remove() { this.parent.removeChild(this) }
 }
 const doc = { createElement: t => new El(t) };
-const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const clock = t => String(t);',
+const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const tr = (_key, _params, fallback) => fallback;', 'const clock = t => String(t);',
   "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};'].join('\n');
 const src = chat.replace('return { page, count };', 'return { page, count, patchStream };');
 if (src === chat) throw new Error('chat.js no longer ends with return { page, count }');
@@ -554,7 +556,7 @@ const host = new El('div');
 host.innerHTML = '<div class="chat-main"><div class="chat-log" id="chatLog"></div></div>';
 const $ = (s, r) => (r || host).querySelector(s);
 const $$ = (s, r) => [...(r || host).querySelectorAll(s)];
-const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const clock = t => String(t);',
+const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const tr = (_key, _params, fallback) => fallback;', 'const clock = t => String(t);',
   "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};'].join('\n');
 const src = chat.replace('return { page, count };',
   'return { page, count, renderLog, setChat(c) { cur = c }, typeOf(i) { return (cur.messages[i] && cur.messages[i].srcType) || ""; } };');

@@ -277,6 +277,79 @@ class Browser(unittest.TestCase):
             expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
             expect(page.get_by_role('button', name='Resume')).to_be_visible()
 
+    def test_map_panels_use_the_selected_interface_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/map')
+            expect(page.locator('.maptools h2')).to_have_text([
+                'Más cercanos al centro del mapa', 'Tu zona', 'Cobertura de este mapa'])
+            expect(page.locator('.maptools section.panel:nth-of-type(1) p')).to_have_text(
+                'Según las capas activadas. Distancia en línea recta, no por carretera.')
+            expect(page.locator('.maptools section.panel:nth-of-type(2) p')).to_have_text(
+                'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
+            expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
+
+    def test_chat_guide_label_uses_the_selected_interface_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask')
+            expect(page.locator('.ask-learn small')).to_have_text(['Guía paso a paso'] * 3)
+
+    def test_small_pack_summary_uses_the_selected_interface_language(self):
+        from engine.setup import manifest as setup_manifest
+
+        bundled = setup_manifest.validate({'version': 1, 'packs': [{
+            'id': 'small', 'title': 'Small',
+            'summary': 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.',
+            'summary_key': 'setup.packSummary.small', 'available': False, 'files': [],
+        }], 'models': []})
+        self.assertIsNotNone(bundled)
+        server.setup_api.configure(mode='first-run', current=None, settings_dir=self.tmp, default_parent=self.tmp,
+                                   manifest=Manifest(bundled=bundled, remote=None), pick_folder=lambda files=False: str(DATA))
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/ui/setup.html')
+            expect(page.locator('[data-pack-summary="small"]')).to_have_text(
+                'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+
+    def test_selected_interface_language_formats_chat_and_note_dates(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', JSON.stringify([{id:'old', title:'Saved chat', updated:'2026-11-17T12:00:00Z', messages:[{role:'user',content:'Question'}]}]))")
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li a small').first).to_contain_text('17 nov')
+            page.route('**/api/not-found', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notes': [{'id': 'note-1', 'words': 'water filter', 'at': '2026-11-17', 'guide': None}]})))
+            page.goto(origin + '/#/not-found')
+            expect(page.locator('.row.nf small')).to_contain_text('17 de noviembre de 2026')
+
+    def test_search_results_arriving_after_route_change_do_not_touch_old_dom(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script(r"""window.auditSearchRequests = [];
+                const realFetch = window.fetch.bind(window);
+                window.fetch = (resource, init) => {
+                    const url = typeof resource === 'string' ? resource : resource.url;
+                    if (url.includes('/api/find?') || url.includes('/api/retrieve?')) {
+                        window.auditSearchRequests.push(url);
+                        return new Promise((resolve, reject) => setTimeout(
+                            () => realFetch(resource, init).then(resolve, reject), 500));
+                    }
+                    return realFetch(resource, init);
+                };""")
+            page.goto(origin + '/#/guides')
+            expect(page.locator('h1')).to_have_text('What do you need?')
+            page.evaluate("location.hash = '#/search?q=zzqzxqwv'")
+            page.wait_for_function('window.auditSearchRequests.length >= 2')
+            page.evaluate("location.hash = '#/guides'")
+            expect(page.locator('h1')).to_have_text('What do you need?')
+            page.wait_for_timeout(700)
+
+
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()
         for fails in (False, True):

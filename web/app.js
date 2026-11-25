@@ -6,6 +6,13 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fileUrl = p => '/' + String(p || '').split('/').map(encodeURIComponent).join('/');
 const main = $('#main'), pageTop = $('#pageTop');
 const i18n = globalThis.LastbookI18n;
+function tr(key, params, fallback) {
+  const text = i18n?.t?.(key, params);
+  if (text != null) return text;
+  if (params && typeof fallback === 'string') return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => params[n] != null ? String(params[n]) : '{' + n + '}');
+  return fallback;
+}
+globalThis.lastbookTr = tr;
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
 const CAN_CONTRIBUTE = IN_WINDOW && !document.documentElement.classList.contains('lb-embed');
@@ -281,6 +288,7 @@ function parse() {
 const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about', contribute: 'contribute' };
 let leaving = null;  // cleanup hook for the current view (player, chat stream…)
 async function route() {
+  searchSeq++;   // invalidate asynchronous results from the view being left
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
   const { parts, q } = parse();
   const h = here();
@@ -549,8 +557,8 @@ async function topicPage(id, open) {
       ${vids.length ? secHead('Videos for this', `${vids.length} picked video${vids.length > 1 ? 's' : ''}`) + rail(vids.map(v => vcard(v)).join('')) : ''}
       ${sec('prep', 'Get ready before it happens', t.prepare)}
       ${sec('book', 'Go deeper: full manuals & articles', t.learn)}
-      ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>Not in this library</span></summary><div class="body"><p class="muted small" style="margin-top:0">Looked for but not found when this guide was put together (October 2026):</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
-      ${related.length ? `<h2>Related guides</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${esc(SHORT[r.id] || r.title)}</a>`).join('')}</div>` : ''}
+      ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>${tr('guide.notInLibrary', null, 'Not in this library')}</span></summary><div class="body"><p class="muted small" style="margin-top:0">${tr('guide.gapsNotFound', null, 'Looked for but not found when this guide was put together (October 2026):')}</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
+      ${related.length ? `<h2>${tr('guide.related', null, 'Related guides')}</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${esc(SHORT[r.id] || r.title)}</a>`).join('')}</div>` : ''}
     </div><aside class="gside" aria-label="Safety"></aside></div>`;
   // On wide screens the safety box sits beside the choices so it stays visible.
   const side = $('.gside', main), nar = $('.gnarrow', main);
@@ -663,7 +671,7 @@ async function watch(id, t, from) {
   <div class="watch">
     <div>
       <div class="player"><video id="vid" controls preload="metadata" playsinline src="${fileUrl(d.path)}${start !== null ? '#t=' + start : ''}"></video></div>
-      <div class="video-speed"><label for="videoSpeed">Playback speed</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+      <div class="video-speed"><label for="videoSpeed">${tr('videos.speed', null, 'Playback speed')}</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>${tr('videos.speedNormal', null, 'Normal')}</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">Stored on the remote drive “${esc(d.remote)}”. It plays only while that computer is reachable.</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
@@ -1229,7 +1237,7 @@ async function searchPage(q, kind) {
 }
 function askOffer(q) {
   const el = $('#sask'); if (!el) return;
-  el.innerHTML = q && q.split(/\s+/).length >= 2 ? `<a class="ghit" href="#/ask?q=${encodeURIComponent(q)}" style="--tc:var(--accent)"><span class="ico">${ico('ask')}</span><span><b>Ask the library: “${esc(q)}”</b><small>Get a written answer with the exact pages it came from</small></span></a>` : '';
+  el.innerHTML = q && q.split(/\s+/).length >= 2 ? `<a class="ghit" href="#/ask?q=${encodeURIComponent(q)}" style="--tc:var(--accent)"><span class="ico">${ico('ask')}</span><span><b>${esc(tr('search.askQuoted', { query: q }, 'Ask the library: “{query}”'))}</b><small>${esc(tr('search.askHint', null, 'Get a written answer with the exact pages it came from'))}</small></span></a>` : '';
 }
 async function results(q, kind) {
   const seq = ++searchSeq, out = $('#sout');
@@ -1257,7 +1265,7 @@ async function results(q, kind) {
         ${d.expanded.length ? `<p class="small muted">Also looked for: ${d.expanded.slice(0, 10).map(esc).join(', ')}${d.mode === 'some words' ? ' · showing pages with some of your words' : ''}</p>` : ''}
         <div class="results">${d.results.map(resultCard).join('')}</div>` : '';
       return d.results.length + vids.length > 0;
-    } catch (e) { if (seq === searchSeq) $('#sres').innerHTML = errorBox(e, 'Search isn’t responding.') + '<p class="small muted">The library may be busy rebuilding its index. Try again in a minute.</p>'; return true }
+    } catch (e) { if (seq === searchSeq) $('#sres').innerHTML = errorBox(e, 'Search isn’t responding.') + `<p class="small muted">${esc(tr('search.indexBusy', null, 'The library may be busy rebuilding its index. Try again in a minute.'))}</p>`; return true }
   })();
   parts.push(found);
   if (kind === 'all') parts.push(found.then(() => seq === searchSeq && zimResults(q, $('#szim'), 6, 'In the encyclopedias')));
@@ -1303,7 +1311,7 @@ async function offerNote(q) {
 }
 function resultCard(r) {
   const base = { src: r };
-  return `<article class="result"><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
+  return `<article class="result" lang="${esc(r.language || r.lang || 'en')}"><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
     <div class="rsrc">${srcText(r)} · ${esc(r.trust)}</div>
     ${r.hits.slice(0, 2).map(h => `<a class="hit" href="${hrefFor({ ...base, page: h.page })}">${h.page ? `<b>Page ${h.page}:</b> ` : ''}${h.snippet}</a>`).join('')}</article>`;
 }
@@ -1400,7 +1408,7 @@ async function notFoundPage(confirmAll) {
   let notes;
   try { notes = (await api('/api/not-found')).notes } catch (e) {
     main.innerHTML = `<h1>Things I couldn’t find</h1>${errorBox(e)}`; return }
-  const day = s => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) };
+  const day = s => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : (i18n?.date?.(d, { day: 'numeric', month: 'long', year: 'numeric' }) ?? d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })) };
   const li = n => { const t = n.guide && topicById(n.guide);
     return `<li class="row nf"><span class="k">${ico('search')}</span><span><b>“${esc(n.words)}”</b><small>${t ? `From the ${esc(SHORT[t.id] || t.title)} guide · ` : ''}${esc(day(n.at))}</small></span><button class="btn plain" data-del="${esc(n.id)}" aria-label="Delete the note “${esc(n.words)}”">Delete</button></li>` };
   main.innerHTML = `<h1>Things I couldn’t find</h1><p class="lead">Notes you chose to keep when a search found nothing. They stay on this computer, and nothing is sent anywhere.</p>
@@ -1451,7 +1459,7 @@ async function localAI(action) {
 }
 
 function contributePage() {
-  setTitle('Contribute to Lastbook');
+  setTitle(tr('contribute.title', null, 'Contribute to Lastbook'));
   main.innerHTML = `<section class="contribute">
     <h1 data-i18n="contribute.title">Contribute to Lastbook</h1>
     <p class="lead" data-i18n="contribute.welcome">We’re building Lastbook together. We need you.</p>
@@ -1484,7 +1492,7 @@ function contributePage() {
       status.dataset.i18n = 'contribute.copiedMessage';
       status.textContent = 'Prompt copied.';
       $('#copy-contrib').dataset.i18n = 'contribute.copied';
-      $('#copy-contrib').textContent = 'Copied';
+      $('#copy-contrib').textContent = tr('contribute.copied', null, 'Copied');
       translateRendered();
     } catch {
       prompt.focus();

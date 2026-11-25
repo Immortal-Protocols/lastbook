@@ -112,6 +112,7 @@ function setupEnvironment() {
     HELD: {},
     held: async ids => ids,
     ico: n => '<svg>' + n + '</svg>',
+    tr: (_key, _params, fallback) => fallback,
     clock: s => String(s),
     fmtDur: s => String(s) + 's',
     esc: s => String(s ?? ''),

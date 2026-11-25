@@ -64,6 +64,9 @@ def validate(m, allowed=None, *, bundled=False):
     for p in m.get('packs') or []:
         if not isinstance(p, dict) or not isinstance(p.get('id'), str) or not NAME.match(p['id']):
             return None
+        summary_key = p.get('summary_key')
+        if summary_key is not None and not (isinstance(summary_key, str) and NAME.fullmatch(summary_key)):
+            return None
         revision = p.get('revision', '')
         if not isinstance(revision, str) or (revision and not NAME.fullmatch(revision)):
             return None
@@ -81,6 +84,8 @@ def validate(m, allowed=None, *, bundled=False):
                       'installed_bytes': p.get('installed_bytes') if _int(p.get('installed_bytes')) else None,
                       'download_bytes': sum(f['size'] for f in files), 'available': available, 'files': files,
                  'map': p['map'] if isinstance(p.get('map'), str) and NAME.match(p['map']) and p['map'] != 'base' else None}
+        if summary_key is not None:
+            entry['summary_key'] = summary_key
         if bundled and 'parts' in p:
             entry['parts'] = _pack_parts(p['parts'], files, allowed)
             if entry['parts'] is None:

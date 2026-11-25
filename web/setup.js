@@ -7,6 +7,13 @@
   const main = $('#main'), live = $('#live');
   const languageHasFocus = () => $('#languageSettings')?.contains(document.activeElement);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const tr = (key, params, fallback) => {
+    const text = globalThis.LastbookI18n?.t?.(key, params);
+    if (text != null) return text;
+    if (params && typeof fallback === 'string') return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => params[n] != null ? String(params[n]) : '{' + n + '}');
+    return fallback;
+  };
+  globalThis.lastbookTr = tr;
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
@@ -130,11 +137,14 @@
   const mapMissing = () => !selectedState();
   const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
   function packSummary(p) {
-    const text = p.summary || '';
-    if (p.id !== 'medium' || !maps().length) return text;
-    // The manifest describes the archive's bundled map. Setup replaces it with the chosen state map.
-    const state = selectedState();
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your state'));
+    const state = p.id === 'medium' ? selectedState() : '';
+    const map = maps().length && state ? mapName(state) : 'California';
+    const text = p.summary_key
+      ? tr(p.summary_key, p.id === 'medium' ? { map } : null, p.summary || '')
+      : (p.summary || '');
+    if (p.id !== 'medium' || p.summary_key || !maps().length) return text;
+    // Older manifests have no catalogue key; preserve their summary while replacing the bundled map name.
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : tr('setup.yourState', null, 'your state')));
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -270,7 +280,7 @@
       <section id="mapBox" class="s-map-panel" aria-label="Your local map"></section>
       <h2 id="packH" data-i18n="nav.library">Library</h2>
       <div class="s-opts" role="radiogroup" aria-labelledby="packH">${packCards}</div>
-      ${ai ? `<h2>Local AI</h2>${ai}` : ''}
+      ${ai ? `<h2>${tr('setup.localAi', null, 'Local AI')}</h2>${ai}` : ''}
       ${c ? '' : '<div id="srvSlot"></div>'}
       <section class="s-sum" id="sum" aria-live="polite"></section>
       ${c ? '' : updatesBox()}
@@ -489,10 +499,10 @@
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       <div class="s-have">
-        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
+        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || tr('nav.library', null, 'Library'))} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
-          ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
+          ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">${tr('common.remove', null, 'Remove')}</button><button class="btn plain" id="rmNo">${tr('common.keep', null, 'Keep')}</button></span>` : `<button class="btn plain" id="rmAi">${tr('common.remove', null, 'Remove')}</button>`) : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
           return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
           <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
@@ -571,7 +581,7 @@
   // "Last checked 17 November 2026 · every file as published", from current.checked (Check now, or Repair's own check)
   function checkLine(ck) {
     if (!ck || !ck.at) return 'Not checked on this computer yet. Checking reads every file and downloads nothing.';
-    const when = new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const when = globalThis.LastbookI18n?.date?.(new Date(ck.at), { day: 'numeric', month: 'long', year: 'numeric' }) ?? new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
     const ai = ck.model_ok === false, map = ck.map_ok === false, files = (ck.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // 'damaged' counts the AI file and the map too
     const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired`
       : [files ? `${files} damaged or missing` : '', ai ? 'the local AI file did not match' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(' · ') || 'every file as published';
@@ -647,7 +657,7 @@
       <ol class="s-steps" aria-label="Steps">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
+  const itemTitle = it => it.title_key ? tr(it.title_key, it.title_params || null, it.title || '') : it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);

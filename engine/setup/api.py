@@ -858,7 +858,7 @@ class Setup:
             pack = self.manifest.pack(cur['pack']) if cur['pack'] else None
             title = (pack or {}).get('title') or cur['pack'] or 'Lastbook'
             self.job = {'id': uuid.uuid4().hex[:12], 'state': 'waiting', 'error': None, 'started': _now(), 'folder': str(target), 'copy': True,
-                        'items': [{'id': 'copy', 'kind': 'copy', 'title': f'Copy of the {title} library', 'state': 'waiting', 'bytes_done': 0,
+                        'items': [{'id': 'copy', 'kind': 'copy', 'title': f'Copy of the {title} library', 'title_key': 'setup.copyJobTitle', 'title_params': {'title': title}, 'state': 'waiting', 'bytes_done': 0,
                                    'bytes_total': total, 'rate_bps': 0, 'eta_s': None, 'error': None}],
                         'plan': {'copy': True, 'source': str(self.current), 'target': str(target), 'work': str(target / COPY_MARK),
                                  'title': title, 'sources': {}, 'explicit': False, 'retried': {}, 'switch': False}}
@@ -1778,9 +1778,9 @@ def _updates():
 def _set_update_notice(notify):
     from engine import update
     if not isinstance(notify, bool):
-        return {'error': 'notify is true or false.', 'code': 'bad_request'}
+        return {'error': 'notify is true or false.', 'error_key': 'setup.notifyMustBeBoolean', 'code': 'bad_request'}
     if update.NOTICES is None:
-        return {'error': 'App updates are set in the desktop app.', 'code': 'unsupported'}
+        return {'error': 'App updates are set in the desktop app.', 'error_key': 'setup.updatesDesktopOnly', 'code': 'unsupported'}
     return dict(update.NOTICES.set_notify(notify), supported=True)
 
 
@@ -1798,7 +1798,8 @@ def _send_json(h, obj, status=200):
 def handle(h, method, path):
     """Answers one /api/setup/ request on a BaseHTTPRequestHandler h."""
     if h.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
-        return _send_json(h, {'error': 'Setup is only open on this computer.'}, 403)
+        return _send_json(h, user_error('forbidden', 'Setup is only open on this computer.',
+                                        'setup.err.setupOnlyThisComputer'), 403)
     name = path[len('/api/setup/'):].strip('/')
     fn = ROUTES.get(('GET' if method == 'HEAD' else method, name))
     if not fn:
@@ -1818,7 +1819,7 @@ def handle(h, method, path):
         out = fn(SETUP or _default(), body)
     except Exception as e:
         traceback.print_exc()
-        return _send_json(h, {'error': f'Setup stopped on an internal error ({type(e).__name__}).'}, 500)
+        return _send_json(h, {'error': f'Setup stopped on an internal error ({type(e).__name__}).', 'error_key': 'setup.internalError', 'error_params': {'type': type(e).__name__}}, 500)
     status = 200
     if isinstance(out, dict) and out.get('error') and 'code' in out:
         status = 409 if out['code'] in ('busy', 'not_done') else 400 if out['code'] != 'no_space' else 507

@@ -232,6 +232,44 @@ class LibraryExtraction(unittest.TestCase):
             self.assertEqual([r['doc_id'] for r in library.search(query)], ['video-example'])
         self.assertEqual(summary['extraction_errors'], [])
 
+    def test_missing_caption_rejects_non_object_details_without_changing_record(self):
+        cases = (None, 12, 'invalid details', [],
+                 [['title', 'Stale title'], ['notes', 'Stale notes.']],
+                 [['title', 'Stale title'], ['notes', 'Stale notes.'], ['invalid']])
+        for details in cases:
+            with self.subTest(details=details):
+                self.textpath.unlink(missing_ok=True)
+                self.metapath.unlink(missing_ok=True)
+                path = self.caption('Previously available caption 12.')
+                original, _ = self.build()
+                metadata = json.loads(self.metapath.read_text(encoding='utf-8'))
+                metadata['details'] = details
+                self.metapath.write_text(json.dumps(metadata), encoding='utf-8')
+                before = (self.textpath.read_bytes(), self.metapath.read_bytes())
+                path.unlink()
+
+                record, pages, error = library.extract(dict(self.record))
+                self.assertEqual(record, self.record)
+                self.assertEqual(pages, [])
+                self.assertIsNotNone(error)
+                self.assertIn(path.name, error)
+                record, summary = self.build()
+                self.assertEqual(record, {k: v for k, v in original.items() if k != 'text_path'})
+                self.assertEqual(library.search('12'), [])
+                self.assertEqual(summary['indexed_units'], 0)
+                self.assertEqual(len(summary['extraction_errors']), 1)
+                self.assertIn(path.name, summary['extraction_errors'][0]['error'])
+                self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes()), before)
+
+                self.caption('Previously available caption 12.')
+                record, summary = self.build()
+                self.assertEqual(record, original)
+                self.assertEqual([r['title'] for r in library.search('12')], [original['title']])
+                self.assertEqual(summary['extraction_errors'], [])
+                self.assertEqual(self.textpath.read_bytes(), before[0])
+                metadata['details'] = {}
+                self.assertEqual(json.loads(self.metapath.read_text(encoding='utf-8')), metadata)
+
     def test_caption_permission_error_keeps_the_cached_extract(self):
         self.caption('Previously available caption.')
         self.extract()
@@ -248,6 +286,71 @@ class LibraryExtraction(unittest.TestCase):
         self.extract()
         self.textpath.unlink()
         self.assertEqual(self.extract(), ['A caption to restore.'])
+
+    def test_rebuild_recovers_unreadable_extraction_caches(self):
+        cases = ('invalid metadata', 'non-object metadata', 'invalid metadata encoding',
+                 'invalid text encoding', 'invalid details')
+        for kind in ('video', 'txt'):
+            for case in cases:
+                with self.subTest(kind=kind, cache=case):
+                    self.textpath.unlink(missing_ok=True)
+                    self.metapath.unlink(missing_ok=True)
+                    if kind == 'video':
+                        source = self.caption('Café label 12.')
+                        self.record.update(kind=kind, path='videos/example.mp4')
+                    else:
+                        source = self.root / 'example.txt'
+                        source.write_text('Café label 12.', encoding='utf-8')
+                        self.record.update(kind=kind, path='example.txt')
+                    self.build()
+                    before = (self.textpath.read_bytes(), self.metapath.read_bytes(), source.read_bytes())
+                    if case == 'invalid metadata':
+                        self.metapath.write_text('{', encoding='utf-8')
+                    elif case == 'non-object metadata':
+                        self.metapath.write_text('[]', encoding='utf-8')
+                    elif case == 'invalid metadata encoding':
+                        self.metapath.write_bytes(b'\xff')
+                    elif case == 'invalid text encoding':
+                        self.textpath.write_bytes(b'\xff')
+                    else:
+                        metadata = json.loads(self.metapath.read_text(encoding='utf-8'))
+                        metadata['details'] = 12
+                        self.metapath.write_text(json.dumps(metadata), encoding='utf-8')
+                    record, summary = self.build()
+                    self.assertEqual(record['text_path'], 'text/video-example.txt')
+                    self.assertEqual(summary['indexed_units'], 1)
+                    self.assertEqual(summary['extraction_errors'], [])
+                    self.assertEqual([r['doc_id'] for r in library.search('12')], ['video-example'])
+                    self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes(), source.read_bytes()), before)
+
+    def test_rebuild_rejects_non_object_details_without_changing_record(self):
+        cases = (None, 12, 'invalid details', [],
+                 [['title', 'Stale title'], ['notes', 'Stale notes.']],
+                 [['title', 'Stale title'], ['notes', 'Stale notes.'], ['invalid']])
+        for kind in ('video', 'txt'):
+            for details in cases:
+                with self.subTest(kind=kind, details=details):
+                    self.textpath.unlink(missing_ok=True)
+                    self.metapath.unlink(missing_ok=True)
+                    if kind == 'video':
+                        source = self.caption('Café label 12.')
+                        self.record.update(kind=kind, path='videos/example.mp4')
+                    else:
+                        source = self.root / 'example.txt'
+                        source.write_text('Café label 12.', encoding='utf-8')
+                        self.record.update(kind=kind, path='example.txt')
+                    original, _ = self.build()
+                    before = (self.textpath.read_bytes(), self.metapath.read_bytes(), source.read_bytes())
+                    metadata = json.loads(self.metapath.read_text(encoding='utf-8'))
+                    metadata['details'] = details
+                    self.metapath.write_text(json.dumps(metadata), encoding='utf-8')
+
+                    record, summary = self.build()
+                    self.assertEqual(record, original)
+                    self.assertEqual(summary['indexed_units'], 1)
+                    self.assertEqual(summary['extraction_errors'], [])
+                    self.assertEqual([r['title'] for r in library.search('12')], [original['title']])
+                    self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes(), source.read_bytes()), before)
 
     def test_changed_video_checksum_still_invalidates_cache(self):
         self.caption('The current caption.')

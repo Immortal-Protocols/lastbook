@@ -393,7 +393,7 @@ class Browser(unittest.TestCase):
             page.route('**/i18n-locales.js*', lambda route: route.fulfill(
                 status=200, content_type='text/javascript', body='window.lastbookI18nLocales = {"es-419":{"invalid":"bad"}};'))
             page.reload()
-            expect(page.get_by_role('status')).to_have_text('Spanish is unavailable. Lastbook is using English.')
+            expect(page.get_by_role('status')).to_have_text('The saved language is unavailable. Lastbook is using English.')
             expect(page.get_by_label('Interface language')).to_have_value('es-419')
             self.assertEqual(self.language_file.read_bytes(), written)
             page.unroute('**/i18n-locales.js*')

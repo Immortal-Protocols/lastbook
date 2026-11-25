@@ -23,6 +23,8 @@ const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(pro
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
   'const tr = (_key, _params, fallback) => fallback;',
+  "const chatResult = (key, params, fallback) => { const labels = {'chat.sourceType.all':'All','chat.sourceType.pages':'Pages','chat.sourceType.videos':'Videos','chat.sourceType.encyclopedias':'Encyclopedias','chat.sourceType.places':'Places'}; const text = labels[key] || fallback || ''; return { text: String(text).replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_, n) => params?.[n] ?? '{' + n + '}'), locale: 'en' }; }",
+  'const chatHtml = result => `<span lang="${result.locale}">${esc(result.text)}</span>`;',
   'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcCards = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcCards;')();
@@ -35,6 +37,8 @@ const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(pro
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
   'const tr = (_key, _params, fallback) => fallback;',
+  "const chatResult = (key, params, fallback) => { const labels = {'chat.sourceType.all':'All','chat.sourceType.pages':'Pages','chat.sourceType.videos':'Videos','chat.sourceType.encyclopedias':'Encyclopedias','chat.sourceType.places':'Places'}; const text = labels[key] || fallback || ''; return { text: String(text).replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_, n) => params?.[n] ?? '{' + n + '}'), locale: 'en' }; }",
+  'const chatHtml = result => `<span lang=\"${result.locale}\">${esc(result.text)}</span>`;',
   'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcFilter = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcFilter;')();

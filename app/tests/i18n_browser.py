@@ -147,7 +147,7 @@ class Browser(unittest.TestCase):
 
     @contextlib.contextmanager
     def page(self, origin, http, locale='en-US'):
-        context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850})
+        context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850}, accept_downloads=True)
         try:
             if hasattr(http, 'bridge'):
                 context.add_init_script(http.bridge.top_script())
@@ -173,7 +173,7 @@ class Browser(unittest.TestCase):
             self.assertEqual(select.locator('[lang="es-419"]').inner_text(), 'Español (Latinoamérica)')
             select.select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
             expect(page.locator('.loading')).to_have_text('Revisando esta computadora…')
             self.assertEqual(json.loads(self.language_file.read_bytes()), {'language': 'es-419'})
             hold.set()
@@ -274,7 +274,7 @@ class Browser(unittest.TestCase):
             expect(select).to_be_focused()
             select.select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
             expect(page.get_by_role('button', name='Resume')).to_be_visible()
 
     def test_map_panels_use_the_selected_interface_language(self):
@@ -296,6 +296,61 @@ class Browser(unittest.TestCase):
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
             page.goto(origin + '/#/ask')
             expect(page.locator('.ask-learn small')).to_have_text(['Guía paso a paso'] * 3)
+
+    def test_chat_empty_state_and_citation_name_use_resolved_catalogue_locale(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li.muted.small span[lang="en"]')).to_have_text('No chats yet.')
+
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        chat = {'id': 'source-title-chat', 'title': 'Question', 'updated': '2026-11-17T12:00:00Z',
+                'messages': [{'role': 'user', 'content': 'Question'}, {'role': 'assistant', 'content': 'Answer [S1] [S2].',
+                              'cited': [{'key': 'S1', 'kind': 'page', 'doc_id': 'manual', 'title': 'Manual'},
+                                        {'key': 'S2', 'kind': 'video', 'doc_id': 'video', 'title': 'Video', 't': 12}], 'steps': []}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/source-title-chat')
+            expect(page.locator('.cite').first).to_have_attribute('title', 'Fuente S1')
+            expect(page.locator('.cite').first).to_have_attribute('lang', 'es-419')
+            expect(page.locator('.srcfilter button')).to_have_text(['Todas 2', 'Páginas 1', 'Videos 1'])
+            expect(page.locator('.srcfilter button span[lang="es-419"]')).to_have_count(3)
+
+    def test_chat_context_starters_use_catalogue_copy(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask?about=topic:water')
+            expect(page.locator('.starter').first).to_have_text('¿Qué debería hacer primero?')
+
+    def test_library_note_count_uses_catalogue_plural_and_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/not-found', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notes': [{'id': 'note-1'}, {'id': 'note-2'}]})))
+            page.goto(origin + '/#/library')
+            expect(page.locator('#nfCount')).to_have_text('2 notas en esta computadora')
+            expect(page.locator('#nfCount span[lang="es-419"]')).to_have_text('2 notas en esta computadora')
+
+    def test_empty_search_hint_and_source_language_tags_use_catalogue_metadata(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/search')
+            expect(page.locator('#sout > p.muted span[lang="es-419"]')).to_have_text(
+                'Usa las palabras que usarías al hablar con alguien. Por ejemplo:')
+            actual = page.evaluate("""() => {
+              const language = value => {
+                const box = document.createElement('div');
+                box.innerHTML = resultCard({title:'Document', hits:[], trust:'', language:value});
+                return box.firstElementChild.getAttribute('lang');
+              };
+              return [language(undefined), language('not_a_tag'), language('es-mx')];
+            }""")
+            self.assertEqual(actual, [None, None, 'es-MX'])
 
     def test_small_pack_summary_uses_the_selected_interface_language(self):
         from engine.setup import manifest as setup_manifest
@@ -327,28 +382,80 @@ class Browser(unittest.TestCase):
             page.goto(origin + '/#/not-found')
             expect(page.locator('.row.nf small')).to_contain_text('17 de noviembre de 2026')
 
+    def test_chat_list_recovers_from_invalid_saved_dates(self):
+        self.configure_setup(current=DATA)
+        chat = {'id': 'invalid-date', 'title': 'Saved chat', 'messages': [{'role': 'user', 'content': 'Question'}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li b')).to_have_text('Saved chat')
+            expect(page.locator('#csList li small')).to_contain_text('1 question')
+
+    def test_chat_export_survives_without_i18n_date_adapter(self):
+        self.configure_setup(current=DATA)
+        chat = {'id': 'export-date-fallback', 'title': 'Saved chat', 'updated': '2026-11-17T12:00:00Z',
+                'messages': [{'role': 'user', 'content': 'Question'}, {'role': 'assistant', 'content': 'Answer.', 'cited': []}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/export-date-fallback')
+            page.evaluate('window.LastbookI18n = undefined')
+            with page.expect_download() as download_info:
+                page.locator('[data-act="export"]').click()
+            self.assertTrue(download_info.value.suggested_filename.endswith('.md'))
+
+    def test_chat_context_and_home_fallbacks_tag_their_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/doc/**', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'title': 'Reference'})))
+            page.goto(origin + '/#/ask?about=video:clip:90')
+            expect(page.locator('#ctxChip .muted span[lang="en"]')).to_have_text('Video at 1:30')
+            page.evaluate("location.hash = '#/ask'")
+            expect(page.locator('#askMore .ask-card .ac-t span[lang="en"]').first).to_be_visible()
+
     def test_search_results_arriving_after_route_change_do_not_touch_old_dom(self):
         self.configure_setup(current=DATA)
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
             page.add_init_script(r"""window.auditSearchRequests = [];
+                window.auditSearchCompleted = 0;
                 const realFetch = window.fetch.bind(window);
                 window.fetch = (resource, init) => {
                     const url = typeof resource === 'string' ? resource : resource.url;
                     if (url.includes('/api/find?') || url.includes('/api/retrieve?')) {
                         window.auditSearchRequests.push(url);
                         return new Promise((resolve, reject) => setTimeout(
-                            () => realFetch(resource, init).then(resolve, reject), 500));
+                            () => realFetch(resource, init).then(response => {
+                                window.auditSearchCompleted++;
+                                resolve(response);
+                            }, error => {
+                                window.auditSearchCompleted++;
+                                reject(error);
+                            }), 500));
                     }
                     return realFetch(resource, init);
                 };""")
+            page_errors = []
+            page.on('pageerror', lambda error: page_errors.append(str(error)))
             page.goto(origin + '/#/guides')
             expect(page.locator('h1')).to_have_text('What do you need?')
             page.evaluate("location.hash = '#/search?q=zzqzxqwv'")
             page.wait_for_function('window.auditSearchRequests.length >= 2')
             page.evaluate("location.hash = '#/guides'")
             expect(page.locator('h1')).to_have_text('What do you need?')
-            page.wait_for_timeout(700)
+            page.wait_for_function('window.auditSearchCompleted === window.auditSearchRequests.length')
+            expect(page.locator('#main .results')).to_have_count(0)
+            expect(page.locator('#main .result')).to_have_count(0)
+            self.assertEqual(page_errors, [])
 
+    def test_video_speed_fallback_is_tagged_as_english(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/watch/vida')
+            expect(page.locator('.video-speed label span[lang="en"]')).to_have_text('Playback speed')
+            expect(page.locator('#videoSpeed option[value="1"]')).to_have_attribute('lang', 'en')
+            expect(page.locator('#videoSpeed option[value="1"]')).to_have_text('Normal')
 
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()
@@ -380,7 +487,7 @@ class Browser(unittest.TestCase):
                     self.assertFalse(self.language_file.exists())
                     page.get_by_label('Interface language').select_option('es-419')
                     page.get_by_role('button', name='Save language').press('Enter')
-                    expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+                    expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
                 self.language_file.unlink()
 
     def test_library_ignores_an_old_get_after_a_save_and_route_change(self):
@@ -400,7 +507,7 @@ class Browser(unittest.TestCase):
                     settings.goto(origin + '/ui/setup.html#manage')
                     settings.get_by_label('Interface language').select_option('es-419')
                     settings.get_by_role('button', name='Save language').click()
-                    expect(settings.get_by_role('status')).to_have_text('Idioma guardado.')
+                    expect(settings.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
                 library.evaluate("""() => {
                     location.hash = '#/search';
                     dispatchEvent(new PageTransitionEvent('pageshow', {persisted: true}));
@@ -438,7 +545,7 @@ class Browser(unittest.TestCase):
                         second.get_by_role('button', name='Save language').click()
                         expect(second.get_by_role('status')).to_have_text('Language saved.')
                         release.set()
-                        expected = 'Could not save the language. Try again.' if fails else 'Idioma guardado.'
+                        expected = 'Could not save the language. Try again.' if fails else 'Idioma guardado. Reinicia Lastbook para actualizar los menús.'
                         expect(first.get_by_role('status')).to_have_text(expected)
                         expect(second.get_by_role('status')).to_have_text('Language saved.')
                         self.assertEqual(len(first_posts), 1)
@@ -564,7 +671,7 @@ class Browser(unittest.TestCase):
                 release.set()
             page.get_by_label('Interface language').select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
 
     def test_label_helpers_accept_plain_strings_and_pairs(self):
         self.configure_setup(current=DATA)

@@ -13,6 +13,14 @@ function tr(key, params, fallback) {
   return fallback;
 }
 globalThis.lastbookTr = tr;
+function trLang(key, params, fallback) {
+  const result = globalThis.LastbookI18n?.resolve?.(key, params);
+  const text = result?.text ?? tr(key, params, fallback);
+  const locale = result?.locale || 'en';
+  const direction = globalThis.LastbookI18n?.direction?.(locale);
+  return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(text)}</span>`;
+}
+function trLocale(key, params) { return globalThis.LastbookI18n?.resolve?.(key, params)?.locale || 'en' }
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
 const CAN_CONTRIBUTE = IN_WINDOW && !document.documentElement.classList.contains('lb-embed');
@@ -555,7 +563,7 @@ async function topicPage(id, open) {
       <div class="gnarrow">${limits}${disagree}</div>
       ${route}
       ${vids.length ? secHead('Videos for this', `${vids.length} picked video${vids.length > 1 ? 's' : ''}`) + rail(vids.map(v => vcard(v)).join('')) : ''}
-      ${sec('prep', 'Get ready before it happens', t.prepare)}
+      ${sec('prep', trLang('guide.getReady', null, 'Get ready before it happens'), t.prepare)}
       ${sec('book', 'Go deeper: full manuals & articles', t.learn)}
       ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>${tr('guide.notInLibrary', null, 'Not in this library')}</span></summary><div class="body"><p class="muted small" style="margin-top:0">${tr('guide.gapsNotFound', null, 'Looked for but not found when this guide was put together (October 2026):')}</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
       ${related.length ? `<h2>${tr('guide.related', null, 'Related guides')}</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${esc(SHORT[r.id] || r.title)}</a>`).join('')}</div>` : ''}
@@ -671,7 +679,7 @@ async function watch(id, t, from) {
   <div class="watch">
     <div>
       <div class="player"><video id="vid" controls preload="metadata" playsinline src="${fileUrl(d.path)}${start !== null ? '#t=' + start : ''}"></video></div>
-      <div class="video-speed"><label for="videoSpeed">${tr('videos.speed', null, 'Playback speed')}</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>${tr('videos.speedNormal', null, 'Normal')}</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+      <div class="video-speed"><label for="videoSpeed">${trLang('videos.speed', null, 'Playback speed')}</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected lang="${esc(trLocale('videos.speedNormal'))}">${tr('videos.speedNormal', null, 'Normal')}</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">Stored on the remote drive “${esc(d.remote)}”. It plays only while that computer is reachable.</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
@@ -1242,7 +1250,7 @@ function askOffer(q) {
 async function results(q, kind) {
   const seq = ++searchSeq, out = $('#sout');
   if (!q) {
-    out.innerHTML = `<p class="muted" style="margin-top:18px">Use the words you’d use with a friend. For example:</p><div class="chips wrapchips">${['clean drinking water', 'broken leg', 'carbon monoxide', 'keep food cold', 'ham radio license', 'plant potatoes', 'sharpen a knife', 'diarrhea in a child'].map(x => `<a class="chip" href="#/search?q=${encodeURIComponent(x)}">${esc(x)}</a>`).join('')}</div>`;
+    out.innerHTML = `<p class="muted" style="margin-top:18px">${trLang('search.friendWords', null, 'Use the words you’d use with a friend. For example:')}</p><div class="chips wrapchips">${['clean drinking water', 'broken leg', 'carbon monoxide', 'keep food cold', 'ham radio license', 'plant potatoes', 'sharpen a knife', 'diarrhea in a child'].map(x => `<a class="chip" href="#/search?q=${encodeURIComponent(x)}">${esc(x)}</a>`).join('')}</div>`;
     return;
   }
   const g = kind === 'all' ? topicMatches(q) : [];
@@ -1311,7 +1319,13 @@ async function offerNote(q) {
 }
 function resultCard(r) {
   const base = { src: r };
-  return `<article class="result" lang="${esc(r.language || r.lang || 'en')}"><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
+  let language = '';
+  for (const candidate of [r.language, r.lang]) {
+    if (typeof candidate !== 'string') continue;
+    try { language = Intl.getCanonicalLocales(candidate)[0] || ''; } catch { language = ''; }
+    if (language) break;
+  }
+  return `<article class="result"${language ? ` lang="${esc(language)}"` : ''}><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
     <div class="rsrc">${srcText(r)} · ${esc(r.trust)}</div>
     ${r.hits.slice(0, 2).map(h => `<a class="hit" href="${hrefFor({ ...base, page: h.page })}">${h.page ? `<b>Page ${h.page}:</b> ` : ''}${h.snippet}</a>`).join('')}</article>`;
 }
@@ -1336,7 +1350,7 @@ async function library() {
   if (await notesHere()) api('/api/not-found').then(d => {
     const c = $('#nfCard'); if (!c) return;
     c.hidden = false;
-    if (d.notes.length) $('#nfCount').textContent = `${d.notes.length} note${d.notes.length > 1 ? 's' : ''} on this computer`;
+    if (d.notes.length) $('#nfCount').innerHTML = trLang('notes.countOnDevice', { count: d.notes.length }, '{count} notes on this computer');
   }).catch(() => { });
   try {
     const sh = await api('/api/shelves');

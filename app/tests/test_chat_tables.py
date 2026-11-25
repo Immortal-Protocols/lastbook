@@ -12,8 +12,12 @@ RUN = r"""
 const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const esc = app.split('\n').find(l => /^const esc\s*=/.test(l));
+const tr = (_key, _params, fallback) => fallback;
+const chatResult = (_key, params, fallback) => ({
+  text: String(fallback ?? '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => params?.[n] ?? '{' + n + '}'), locale: 'en'
+});
 const i = chat.indexOf('function md('), j = chat.indexOf('\n  function wire(');
-const md = new Function(esc + '\n' + chat.slice(i, j) + '\nreturn md;')();
+const md = new Function(esc + '\n' + 'const chatResult = (_key, params, fallback) => ({ text: String(fallback ?? \'\').replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_, n) => params?.[n] ?? \'{\' + n + \'}\'), locale: \'en\' });\n' + chat.slice(i, j) + '\nreturn md;')();
 const m = { sources: [{ key: 'S1' }, { key: 'S2' }] };
 process.stdout.write(JSON.stringify(JSON.parse(process.argv[3]).map(t => md(t, m))));
 """

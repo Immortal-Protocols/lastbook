@@ -2,9 +2,22 @@
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
   const chatTr = (key, params, fallback) => globalThis.lastbookTr?.(key, params, fallback) ?? fallback;
+  const chatResult = (key, params, fallback) => globalThis.LastbookI18n?.resolve?.(key, params)
+    || { text: chatTr(key, params, fallback), locale: 'en' };
+  const chatHtml = result => {
+    const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+    return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+  };
   const chatDate = (value, options) => {
     const date = value instanceof Date ? value : new Date(value);
-    return globalThis.LastbookI18n?.date?.(date, options) ?? date.toLocaleDateString(undefined, options);
+    if (!Number.isFinite(date.getTime())) return '';
+    try {
+      const formatted = globalThis.LastbookI18n?.date?.(date, options);
+      if (formatted != null) return formatted;
+      return options && ('dateStyle' in options || 'timeStyle' in options)
+        ? date.toLocaleString(undefined, options)
+        : date.toLocaleDateString(undefined, options);
+    } catch { return '' }
   };
   const STARTERS = [
     ['water', 'The tap water is off. How do I make water safe to drink?'],
@@ -20,9 +33,9 @@ const Chat = (() => {
   // The ink drawings are the website's own (website-next/img/ink/), copied flat into web/ because builds ship web/ without folders.
   const HOME = [['water', 'water'], ['hurt', 'aid'], ['food', 'food'], ['power', 'power'], ['comms', 'radio'], ['grow', 'garden']];
   const LEARN = [['grow', 'garden'], ['health', 'carer'], ['energy', 'lantern']];
-  const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
-    video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
-    topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
+  const ABOUT_STARTERS = { doc: ['chat.explainPage', 'chat.pageWarnings', 'chat.videoForThis'],
+    video: ['chat.summariseVideo', 'chat.videoSafety', 'chat.findManual'],
+    topic: ['chat.doFirst', 'chat.importantWarnings', 'chat.whichVideo'] };
   const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
   const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
@@ -173,9 +186,11 @@ const Chat = (() => {
   async function describe(about) {
     const [kind, id, n] = about.split(':');
     try {
-      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: 'Guide', kind } }
+      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: chatResult('guide.topicKind', null, 'Guide'), kind } }
       const d = await api('/api/doc/' + encodeURIComponent(id));
-      return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : 'Video') : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
+      return { about, kind, label: d.title, sub: kind === 'video'
+        ? (n ? chatResult('chat.videoAt', { time: clock(+n) }, 'Video at {time}') : chatResult('nav.video', null, 'Video'))
+        : chatResult('reader.pagePrefix', { page: n || 1 }, 'Page {page}'), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
     } catch { return null }
   }
   function renderCtx() {
@@ -183,13 +198,14 @@ const Chat = (() => {
     const a = aboutCtx;
     if (!a) { el.hidden = true; return }
     el.hidden = false;
-    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>Asking about: <b>${esc(a.label)}</b> <span class="muted">${esc(a.sub || '')}</span></span>${cur && cur.messages.length ? '' : '<button type="button" aria-label="Don’t use this as context" id="ctxX">×</button>'}`;
+    const sub = typeof a.sub === 'string' ? { text: a.sub, locale: 'en' } : a.sub;
+    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>${chatHtml(chatResult('chat.askingAbout', null, 'Asking about:'))} <b>${esc(a.label)}</b> <span class="muted">${sub ? chatHtml(sub) : ''}</span></span>${cur && cur.messages.length ? '' : `<button type="button" aria-label="${esc(chatTr('chat.dontUseContext', null, "Don’t use this as context"))}" id="ctxX">×</button>`}`;
     const x = $('#ctxX'); if (x) x.onclick = () => { aboutCtx = null; renderCtx(); renderLog() };
   }
   function renderSide() {
     const el = $('#csList'); if (!el) return;
     el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${chatDate(c.updated, { month: 'short', day: 'numeric' })} · ${c.messages.filter(m => m.role === 'user').length} question${c.messages.filter(m => m.role === 'user').length > 1 ? 's' : ''}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="Delete this chat">×</button></li>`).join('')
-      : '<li class="muted small" style="padding:8px 4px">No chats yet.</li>';
+      : `<li class="muted small" style="padding:8px 4px">${chatHtml(chatResult('chat.noneYet', null, 'No chats yet.'))}</li>`;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
     // the list fades at an edge with more chats past it, so a row cut off there reads as more to scroll to
@@ -218,7 +234,7 @@ const Chat = (() => {
         <div class="ce-mark">${ico('ask')}</div>
         <h1>Chat</h1>
         <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
-        <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
+        <div class="starters">${st.map(key => { const text = chatTr(key); return `<button class="starter" ${tcStyle('ask')} data-start="${esc(text)}"><span class="ico">${ico('ask')}</span><span>${esc(text)}</span></button>`; }).join('')}</div>
         <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
@@ -228,11 +244,12 @@ const Chat = (() => {
     wire(log);
   }
   function homeMore() {
-    const q = Object.fromEntries(STARTERS), title = id => esc(SHORT[id] || id);
+    const q = Object.fromEntries(STARTERS.map(([id, en]) => [id, chatResult('chat.starter.' + id, null, en)]));
+    const title = id => chatHtml(chatResult('topic.' + id, null, SHORT[id] || id));
     return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>Runs on this computer. Nothing you ask leaves it.</p>
       <h2 class="ask-h">Start with what matters</h2>
-      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
-        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
+      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id].text)}">
+        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b>${chatHtml(q[id])}</span>${ico('right', 'ac-go')}</button>`).join('')}</div>
       <div class="ask-learn-head"><h2 class="ask-h">Keep learning</h2><a href="#/library">All skills</a></div>
       <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small data-i18n="guide.stepByStep">${chatTr('guide.stepByStep', null, 'Step-by-step guide')}</small></span></a>`).join('')}</div>`;
   }
@@ -398,7 +415,7 @@ const Chat = (() => {
     return `#/read/${encodeURIComponent(s.doc_id)}?${s.page ? 'p=' + s.page + '&' : ''}from=${encodeURIComponent(here())}`;
   }
   // What a source is, for the filter above an answer's sources: a page (manuals, PDFs, saved pages), a video, an encyclopedia article or a place on the map.
-  const SRC_TYPES = [['page', 'Pages'], ['video', 'Videos'], ['wiki', 'Encyclopedias'], ['place', 'Places']];
+  const SRC_TYPES = [['page', 'pages'], ['video', 'videos'], ['wiki', 'encyclopedias'], ['place', 'places']];
   const srcType = s => s.kind === 'video' ? 'video' : s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'place' : 'page';
   function srcCards(list, compact, type) {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
@@ -419,8 +436,8 @@ const Chat = (() => {
     const types = SRC_TYPES.filter(([t]) => n[t]);
     if (types.length < 2) return '';
     const on = type || '';
-    const btn = (t, label, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${label} <small>${count}</small></button>`;
-    return `<div class="srcfilter" role="group" aria-label="${tr('chat.sourcesByType', null, 'Show sources by type')}"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'All', list.length)}${types.map(([t, label]) => btn(t, label, n[t])).join('')}</div>`;
+    const btn = (t, key, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${chatHtml(chatResult('chat.sourceType.' + key, null, key))} <small>${count}</small></button>`;
+    return `<div class="srcfilter" role="group" aria-label="${tr('chat.sourcesByType', null, 'Show sources by type')}"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'all', list.length)}${types.map(([t, key]) => btn(t, key, n[t])).join('')}</div>`;
   }
   // Show only the cards of one type (or all of them, for ''), in the cards that follow this filter.
   function showType(filter, type) {
@@ -434,7 +451,11 @@ const Chat = (() => {
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
   function md(text, m) {
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
-    const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : '';
+    const cite = k => {
+      if (!keys.has(k) && m.cited) return '';
+      const title = chatResult('chat.sourceKey', { key: k }, 'Source {key}');
+      return `<a class="cite" href="#src-${k}" data-key="${k}" lang="${esc(title.locale)}" title="${esc(title.text)}">${k.replace(/^S/, '')}</a>`;
+    };
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');

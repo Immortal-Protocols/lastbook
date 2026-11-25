@@ -3,13 +3,10 @@ package local.lastbook.core.install
 import android.content.Context
 import local.lastbook.core.LastbookPaths
 import local.lastbook.core.Library
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -33,11 +30,7 @@ class InstallEngine(
     private val library: Library,
     private val catalog: InstallCatalog,
 ) {
-    private val http: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.MINUTES)
-        .followRedirects(true)
-        .build()
+    private val downloader = DownloadClient()
 
     fun installedPack(root: File? = library.root): String? = root?.resolve("pack.json")?.let { f ->
         runCatching { JSONObject(f.readText()).optString("name").takeIf { it.isNotEmpty() } }.getOrNull()
@@ -188,9 +181,7 @@ class InstallEngine(
         val part = File(dest.path + ".part")
         if (dest.isFile && dest.length() == file.size) { onBytes(file.size, file.size); return }
         var have = if (part.isFile) part.length() else 0L
-        val builder = Request.Builder().url(file.url).header("Accept-Encoding", "identity")
-        if (have > 0) builder.header("Range", "bytes=$have-")
-        val response = http.newCall(builder.build()).execute()
+        val response = downloader.open(file.url, have)
         response.use { r ->
             if (!r.isSuccessful) throw IllegalStateException("The download server answered ${r.code}.")
             val body = r.body ?: throw IllegalStateException("The download had no content.")

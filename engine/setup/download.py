@@ -11,6 +11,8 @@
     (the SHA-256 at the end still judges the whole file), and only if they are not does the file start over.
     (Not If-Match: on a redirect chain the first host's ETag is not the file's, so it would refuse every resume.)
   - The SHA-256 is computed while the bytes arrive. After a resume the bytes already on disk are read once to rebuild it.
+    A file that came over one connection is read back once it is all here, and judged on what the disk holds: a disk or a
+    network share can change bytes it was given without an error.
   - A file of PARALLEL_MIN or more comes over CONNECTIONS connections at once, each asking for one PIECE with a closed Range
     (bytes=a-b). Pieces are handed out in order and at most AHEAD pieces past the first unfinished one, so the finished part
     is always a run from byte 0 plus a short window. That run is hashed as it completes (read back from the disk, still in the
@@ -20,6 +22,10 @@
     The .json then says "parallel": true, and bytes_done is the hashed run: a resume keeps that and fetches the window again.
   - Giving up on broken connections says which: 'unreachable' when the host that broke never answered this download at all (a
     network that resets or blocks it, or no internet), else 'network' (it answered, then the connection kept breaking).
+  - A whole file that does not match its SHA-256 is deleted and the job downloads it once more, except a zip of REPAIR_MIN or
+    more (every pack and map is one): its members are checked against the CRC-32s in its central directory, fetched again from
+    the server, and only the members that fail are fetched again (Download._repair_zip). If it still does not match, it is
+    kept and the download fails with 'checksum' and kept: Retry checks it again from the disk.
   - Nothing here runs unless the person started or resumed a download (or opened setup: one GET of the manifest).
 
 Tests pass their own `allowed` and `context` to reach a local test server. The product never does.
@@ -32,11 +38,14 @@ import os
 import select
 import socket
 import ssl
+import struct
 import sys
 import threading
 import time
 import weakref
 import urllib.parse
+import zipfile
+import zlib
 from pathlib import Path
 
 ALLOWED_HOSTS = frozenset({
@@ -61,6 +70,8 @@ PIECE = 16 * 2 ** 20                # bytes asked for in one Range
 AHEAD = 2 * CONNECTIONS             # pieces handed out past the first unfinished one: the most the .part runs ahead of bytes_done
 SAMPLES = 3                         # stretches of a partial file compared with the server's when its ETag changed: start, middle, end
 SAMPLE = 1024 * 1024                # bytes in each
+REPAIR_MIN = 256 * 2 ** 20          # a zip at least this big that does not match is repaired member by member, not downloaded again
+TAIL = 1024 * 1024                  # the end of a zip fetched first when repairing it: its end-of-central-directory records
 
 
 class Stopped(Exception):
@@ -438,6 +449,7 @@ class Download:
         etag = meta.get('etag')
         if start < self.size and self._parallel_wanted():
             h, start, etag = self._run_parallel(h, start, etag, ctx)
+        streamed = start < self.size    # bytes come over one connection from here, hashed as they arrive, not as the disk holds them
         tries = busy = waited = 0       # broken connections, busy answers, and seconds waited on them, with no progress
         ignored_once = False            # a 200 to a Range already asked about since the last progress
         while start < self.size:
@@ -498,9 +510,10 @@ class Download:
                     raise self._gave_up(e)
                 print(f'setup: download broke at {start} of {self.size}: {type(e).__name__}: {e}; trying again', flush=True)
                 self.control.sleep(BACKOFF[min(tries, len(BACKOFF) - 1)])
+        if streamed:                    # judged on what the disk holds: pieces already were, read back as their run was hashed
+            h = self._rehash(self.size)[0]
         if h.hexdigest() != self.sha256:
-            self.discard()
-            raise BadChecksum('The downloaded file did not match its published checksum.')
+            self._recheck(ctx, etag)
         os.replace(self.part, self.dest)
         try:
             os.unlink(self.meta)
@@ -602,6 +615,137 @@ class Download:
                         conn.close()
                     except OSError:
                         pass
+        return True
+
+    # ---------------------------------------------------------------------------------------- when it does not match --
+    def _recheck(self, ctx, etag):
+        """All of the file is here, and what the disk holds does not match its SHA-256. A zip of REPAIR_MIN or more is not
+        thrown away on that alone: _repair_zip fetches again only its members that fail their CRC-32. Repaired, it is used. Still
+        not matching, it is kept: Failed 'checksum' with kept, and Retry checks it again from the disk. Anything else, or a zip
+        that cannot be repaired from the server, is deleted (BadChecksum: the job downloads it once more), as before."""
+        name = os.path.basename(self.dest)
+        print(f'setup: {name} on the disk does not match its published checksum', flush=True)
+        if self.size >= REPAIR_MIN and name.lower().endswith('.zip'):
+            damaged = self._repair_zip(ctx, etag)
+            if damaged is not None:
+                if self._rehash(self.size)[0].hexdigest() == self.sha256:
+                    print(f'setup: {name} repaired: {damaged} damaged members fetched again', flush=True)
+                    return
+                raise Failed('checksum', f'{name} still does not match its published checksum, so it was not used. '
+                                         'What was downloaded is kept: Retry checks it again and fetches only what is wrong.', kept=True)
+        self.discard()
+        raise BadChecksum('The downloaded file did not match its published checksum.')
+
+    def _repair_zip(self, ctx, etag):
+        """The end of the zip (its central directory) is fetched again from the server, every member is read back and checked
+        against its CRC-32, and only the members that fail, with their headers, are fetched again. The central directory is the
+        server's, so a member that passes is the server's member (a damaged one passing its CRC-32 is a chance of one in four
+        billion), and the file's SHA-256 is still the final check. The number of damaged members, or None when this is not a zip
+        or the server will not send parts of this copy of it (another ETag or size)."""
+        tail = min(self.size, TAIL)
+        print(f'setup: checking {os.path.basename(self.dest)} member by member against its central directory', flush=True)
+        if not self._fetch_range(self.size - tail, self.size, ctx, etag):
+            return None
+        try:
+            with zipfile.ZipFile(self.part) as z:
+                start_dir = z.start_dir
+        except (zipfile.BadZipFile, OSError, ValueError, EOFError):
+            return None
+        if start_dir < self.size - tail and not self._fetch_range(start_dir, self.size - tail, ctx, etag):
+            return None                                     # a central directory longer than TAIL: the rest of it
+        try:
+            z = zipfile.ZipFile(self.part)
+        except (zipfile.BadZipFile, OSError, ValueError, EOFError):
+            return None
+        bad, damaged = [], 0
+        with z, open(self.part, 'rb') as raw:
+            infos = sorted(z.infolist(), key=lambda i: i.header_offset)
+            ends = [i.header_offset for i in infos[1:]] + [z.start_dir]
+            total, done = sum(i.compress_size for i in infos) or 1, 0
+            if infos and infos[0].header_offset > 0:
+                bad.append((0, infos[0].header_offset))
+            for info, end in zip(infos, ends):
+                data_end = self._member_end(z, raw, info)
+                if data_end is None:
+                    damaged += 1
+                    bad.append((info.header_offset, end))
+                elif data_end < end:             # a data descriptor, or bytes between members: a few bytes, fetched again
+                    bad.append((data_end, end))
+                done += info.compress_size
+                self.progress(min(done, total), total, 'verifying')
+        merged = []
+        for a, b in sorted(bad):
+            if merged and a <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+            elif b > a:
+                merged.append((a, b))
+        print(f'setup: {damaged} damaged members in {os.path.basename(self.dest)}; fetching {sum(b - a for a, b in merged):,} bytes again', flush=True)
+        for a, b in merged:
+            if not self._fetch_range(a, b, ctx, etag):
+                return None
+        return damaged
+
+    def _member_end(self, z, raw, info):
+        """Where a member's data ends, if its local header is sound and its data matches its CRC-32; None if not."""
+        try:
+            raw.seek(info.header_offset)
+            head = raw.read(30)
+            if len(head) < 30 or head[:4] != b'PK\x03\x04':
+                return None
+            n, e = struct.unpack('<HH', head[26:30])
+            with z.open(info) as m:
+                while m.read(8 * CHUNK):
+                    self.control.check()
+            return info.header_offset + 30 + n + e + info.compress_size
+        except Stopped:
+            raise
+        except (zipfile.BadZipFile, zlib.error, OSError, EOFError, ValueError, NotImplementedError, RuntimeError):
+            return None
+
+    def _fetch_range(self, a, b, ctx, etag):
+        """Bytes a..b-1 of the server's file, written where they belong in the .part. False when the server will not send just
+        those bytes of the same copy: no 206 for them, another total size, or another ETag than the one downloaded."""
+        tries = 0
+        while a < b:
+            self.control.check()
+            try:
+                conn, r, _ = _open(self.url, a, None, self.allowed, ctx, self.timeout, end=b - 1, stopping=self.control.ev,
+                                   answered=self.answered.add)
+                try:
+                    if 500 <= r.status < 600 or r.status == 429:
+                        raise OSError(f'HTTP {r.status}')
+                    cr = _content_range(r.getheader('Content-Range'))
+                    if r.status != 206 or not cr or cr[0] != a or cr[1] != self.size or (etag and r.getheader('ETag') != etag):
+                        return False
+                    with open(self.part, 'r+b', buffering=0) as f:
+                        f.seek(a)
+                        while a < b:
+                            self.control.check()
+                            chunk = r.read1(min(CHUNK, b - a))
+                            if not chunk:
+                                raise ConnectionError('the connection closed early')
+                            _write_all(f, chunk)
+                            a += len(chunk)
+                            tries = 0
+                finally:
+                    try:
+                        conn.close()
+                    except OSError:
+                        pass
+            except (Stopped, Failed):
+                raise
+            except ssl.SSLCertVerificationError:
+                raise Failed('network', 'Lastbook could not confirm it is talking to the download server, so it stopped. '
+                                        'A network that intercepts secure connections (some offices, hotels) can cause this.')
+            except (OSError, http.client.HTTPException, ValueError) as e:
+                self.control.check()
+                if disk_full(e):
+                    raise Failed('no_space', 'The disk filled up while downloading. Free some space, then try again.')
+                tries += 1
+                if tries >= NETWORK_TRIES:
+                    raise self._gave_up(e)
+                print(f'setup: fetching {a}-{b - 1} again broke: {type(e).__name__}: {e}; trying again', flush=True)
+                self.control.sleep(BACKOFF[min(tries - 1, len(BACKOFF) - 1)])
         return True
 
     # ------------------------------------------------------------------------------------------ several connections --

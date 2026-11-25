@@ -159,8 +159,13 @@ server kept answering 5xx or 429 for 40 minutes, so the internet itself was up),
 with HTTP Range from the bytes already on disk. While downloading, a broken connection is retried six times over about 90 seconds.
 A server that answers 5xx or 429 is waited on longer (5 s rising to 5 minutes, or its `Retry-After` up to 10 minutes, and
 40 minutes in all without progress). While such a wait is ahead, the item has `retry_in_s`, the seconds until the next try.
-A corrupt download (wrong SHA-256) is deleted and downloaded once more
-automatically, then fails with `checksum`.
+A download is judged on what the disk holds: a file that came over one connection is read back once it is all here (pieces
+already are, as they are hashed). A corrupt download (wrong SHA-256) is deleted and downloaded once more
+automatically, then fails with `checksum`, except a zip of `REPAIR_MIN` (256 MiB) or more, which every pack and map is: its
+end is fetched again, each member is checked against the CRC-32 in its central directory, and only the members that fail
+are fetched again. If it then matches, it is used. If it does not, it is kept and the job fails with `checksum` and
+`kept: true`; Retry checks it again from the disk instead of downloading it. A server copy with another ETag or size by
+then is not repaired from: the file is deleted and downloaded once more, as before.
 
 ## Switching to the library
 

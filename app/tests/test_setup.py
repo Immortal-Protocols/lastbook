@@ -428,9 +428,10 @@ class Downloads(Base):
         self.files.answers['model.gguf'] = [(503, None)]
         with fast_backoff():
             self.assertEqual(Path(d.run()).read_bytes(), data)
-        last = max(i for i, (phase, _) in enumerate(seen) if phase == 'verifying')
-        self.assertEqual(seen[last], ('verifying', 600_000))
-        self.assertEqual(seen[last + 1], ('downloading', 600_000))
+        first = next(i for i, (phase, _) in enumerate(seen) if phase == 'downloading')
+        self.assertEqual(seen[first - 1], ('verifying', 600_000))
+        self.assertEqual(seen[first], ('downloading', 600_000))
+        self.assertEqual(seen[-1], ('verifying', len(data)))          # and at the end, all of it read back from the disk
 
     def test_busy_server_is_waited_out(self):
         """downloads.lastbook.org cut a 388 GB download, then answered its resume with 503 for minutes: more 503s in a row than
@@ -1166,6 +1167,221 @@ class ParallelDownloads(Base):
             self.files.answers.clear()
             s.resume()
             self.assertEqual(self.wait(s)['state'], 'done')
+
+
+def make_big_zip(path, members=6, size=256 * 1024):
+    """A zip like a pack: a folder, several stored members and one deflated. Its bytes, and (name, header offset, compressed
+    length) of each member."""
+    with zipfile.ZipFile(path, 'w', zipfile.ZIP_STORED) as z:
+        z.writestr('LastbookData/', b'')
+        for i in range(members):
+            z.writestr(f'LastbookData/library-data/m{i}.bin', os.urandom(size))
+        z.writestr(zipfile.ZipInfo('LastbookData/library-data/text.txt'), b'words ' * 50_000, compress_type=zipfile.ZIP_DEFLATED)
+    with zipfile.ZipFile(path) as z:
+        info = [(i.filename, i.header_offset, i.compress_size) for i in z.infolist()]
+    return Path(path).read_bytes(), info
+
+
+class _FlipWrite:
+    """A partial file whose writes all succeed, except that the byte at `at` (from the file's start) reaches the disk changed,
+    `left` times, with no error: a disk or network share that changes what it was given."""
+
+    def __init__(self, f, state):
+        self.f, self.state = f, state
+
+    def write(self, b):
+        pos = self.f.tell()
+        if self.state['left'] and pos <= self.state['at'] < pos + len(b):
+            self.state['left'] -= 1
+            b = bytearray(b)
+            b[self.state['at'] - pos] ^= 0xff
+        return self.f.write(b)
+
+    def __getattr__(self, name):
+        return getattr(self.f, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return self.f.__exit__(*a)
+
+
+def flipped_write(part, at, times=1):
+    """download.py's writes to `part` go through _FlipWrite."""
+    import builtins
+    real, state = builtins.open, {'left': times, 'at': at}
+
+    def fake(path, mode='r', *a, **k):
+        f = real(path, mode, *a, **k)
+        return _FlipWrite(f, state) if str(path) == str(part) and ('+' in mode or 'w' in mode or 'a' in mode) else f
+    return mock.patch.object(download, 'open', fake, create=True)
+
+
+def _requested(log, name):
+    """(first, last) byte of each Range asked for `name`: last is None for an open Range, and None stands for a request without one."""
+    out = []
+    for n, r, _ in log:
+        if n == name:
+            a, _, b = (r or '=').split('=')[1].partition('-')
+            out.append((int(a), int(b) if b else None) if r else None)
+    return out
+
+
+class ZipRepair(Base):
+    """A zip of REPAIR_MIN or more (every pack and map is one) that does not match its SHA-256 once all of it is here is not
+    deleted and downloaded again: its members are checked against the central directory, and only those that fail are fetched
+    again. If it still does not match, it is kept. Before this, main deleted it and downloaded the whole file once more."""
+
+    def setUp(self):
+        super().setUp()
+        for name, value in (('REPAIR_MIN', MiB), ('TAIL', 4096)):
+            p = mock.patch.object(download, name, value)
+            p.start()
+            self.addCleanup(p.stop)
+        self.big, self.members = make_big_zip(self.tmp / 'src.zip')
+        self.files.data['big.zip'] = self.big
+
+    def dl(self, sha256=None, name='big.zip'):
+        data = self.files.data[name]
+        return download.Download(f'{self.base}/{name}', self.tmp / 'dl' / name, len(data), sha256 or sha(data),
+                                 download.Control(), allowed=ALLOWED, context=self.ctx)
+
+    def test_in_pieces_a_damaged_member_is_fetched_again_alone(self):
+        """Several connections: one byte of one member reaches the disk changed. The pieces are hashed as the disk holds them,
+        so the SHA-256 does not match at the end. Only the end of the zip and that member are fetched again."""
+        _, offset, length = self.members[3]
+        at = offset + 200 + length // 2
+        d = self.dl()
+        with pieces(), flipped_write(d.part, at=at):
+            self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        asked = _requested(self.files.log, 'big.zip')
+        self.assertNotIn(None, asked)                                          # never the whole file again
+        self.assertEqual(len([1 for a, b in asked if a <= at <= b]), 2)        # its piece, then the member alone
+        self.assertLess(sum(b - a + 1 for a, b in asked) - len(self.big), 2 * length)
+        self.assertFalse(Path(d.part).exists() or Path(d.meta).exists())
+
+    def only_the_end_and_the_member(self, again, at, length):
+        """What was asked for after the download: closed ranges only, one of them over the changed byte, about one member's worth."""
+        self.assertTrue(again and all(b is not None for _, b in again), again)
+        self.assertTrue(any(a <= at <= b for a, b in again), again)
+        self.assertLess(sum(b - a + 1 for a, b in again), 2 * length)
+
+    def test_over_one_connection_the_disk_is_what_counts(self):
+        """One connection hashes the bytes as they arrive, also across a broken connection carried on in the same run. Main took
+        a file whose disk had changed a byte as good, because what arrived matched. It is read back and judged on what the disk
+        holds, and repaired."""
+        for cut in (None, 700_000):
+            with self.subTest(broken_at=cut):
+                self.files.log.clear()
+                if cut:
+                    self.files.cut_after['big.zip'] = [cut]
+                _, offset, length = self.members[2]
+                at = offset + 100 + length // 2
+                d = self.dl()
+                with fast_backoff(), flipped_write(d.part, at=at):
+                    self.assertEqual(Path(d.run()).read_bytes(), self.big)
+                asked = _requested(self.files.log, 'big.zip')
+                self.assertEqual(asked[0], None)                               # the download
+                again = [r for r in asked[1:] if r[1] is not None]             # past its resume, if it broke
+                self.only_the_end_and_the_member(again, at, length)
+                os.unlink(d.dest)
+
+    def test_resumed_in_a_new_run(self):
+        """A download resumed in a new run (after Pause or a restart) reads what is on the disk again to rebuild the SHA-256, so a
+        byte the disk changed before is in it: main deleted the file at the end and downloaded it again. The same repair."""
+        _, offset, length = self.members[1]                                   # the first member with data, after the folder
+        at, have = offset + 1000, 700_000
+        d = self.dl()
+        os.makedirs(os.path.dirname(d.part), exist_ok=True)
+        part = bytearray(self.big[:have])
+        part[at] ^= 0xff
+        Path(d.part).write_bytes(part)
+        Path(d.meta).write_text(json.dumps({'url': d.url, 'size': d.size, 'sha256': d.sha256, 'etag': '"e1"', 'bytes_done': have}))
+        self.assertEqual(Path(d.run()).read_bytes(), self.big)
+        asked = _requested(self.files.log, 'big.zip')
+        self.assertEqual(asked[0], (have, None))                               # the resume
+        self.only_the_end_and_the_member(asked[1:], at, length)
+
+    def test_a_damaged_deflated_member_or_central_directory(self):
+        for at in (self.members[-1][1] + 100 + self.members[-1][2] // 2, len(self.big) - 300):
+            with self.subTest(at=at):
+                d = self.dl()
+                with pieces(), flipped_write(d.part, at=at):
+                    self.assertEqual(Path(d.run()).read_bytes(), self.big)
+                os.unlink(d.dest)
+
+    def test_still_wrong_is_kept_and_checked_again(self):
+        """Every member matches its CRC-32, and still the file is not the published one (here: a SHA-256 that is not its bytes').
+        It is kept, the error says so, and Retry checks it again from the disk instead of downloading it."""
+        d = self.dl(sha256='0' * 64)
+        with self.assertRaises(download.Failed) as e:
+            d.run()
+        self.assertEqual((e.exception.code, e.exception.extra.get('kept')), ('checksum', True))
+        self.assertEqual(Path(d.part).read_bytes(), self.big)
+        self.files.log.clear()
+        with self.assertRaises(download.Failed) as e:
+            self.dl(sha256='0' * 64).run()
+        self.assertTrue(e.exception.extra.get('kept'))
+        self.assertNotIn(None, _requested(self.files.log, 'big.zip'))         # only the end of the zip, nothing whole
+
+    def test_a_new_etag_on_the_server_is_not_repaired_from(self):
+        """The server's copy has another ETag by the time of the repair: its central directory may not be this file's, so nothing
+        is fetched from it. The file is deleted and downloaded again, as before."""
+        d = self.dl()
+        real = download.Download._recheck
+
+        def renamed(me, *a):
+            self.files.etag['big.zip'] = '"another"'
+            return real(me, *a)
+        with pieces(), flipped_write(d.part, at=self.members[2][1] + 500), \
+                mock.patch.object(download.Download, '_recheck', renamed), self.assertRaises(download.BadChecksum):
+            d.run()
+        self.assertFalse(Path(d.part).exists())
+
+    def test_not_a_zip_is_downloaded_again_as_before(self):
+        self.files.data['big.bin'] = os.urandom(len(self.big))
+        d = self.dl(name='big.bin')
+        with pieces(), flipped_write(d.part, at=1000), self.assertRaises(download.BadChecksum):
+            d.run()
+        self.assertFalse(Path(d.part).exists())
+        self.assertEqual(len(_requested(self.files.log, 'big.bin')), -(-len(self.big) // (256 * 1024)))   # the pieces, nothing more
+
+    def test_in_a_job_it_is_kept_and_retry_downloads_nothing_whole(self):
+        """The pack's zip (over REPAIR_MIN here) does not match its published SHA-256. Main downloaded it twice and kept neither.
+        Now the job fails with checksum and kept after one download, and Retry checks it again without downloading it."""
+        whole = lambda: [r for n, r, _ in self.files.log if n == 'Lastbook-Small.zip' and not r]
+        s = self.setup(manifest=self.manifest(zip_sha='1' * 64))
+        s.start('small', False)
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['error']['code'], j['error'].get('kept')), ('failed', 'checksum', True), j)
+        self.assertEqual(len(whole()), 1)
+        s.retry()
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['error'].get('kept')), ('failed', True), j)
+        self.assertEqual(len(whole()), 1)
+        self.assertFalse((self.parent / 'LastbookData').exists())
+
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_the_screen_says_it_is_kept(self):
+        """setup.js's errorBox: a kept checksum failure says the download is kept and Retry checks it again; one without kept
+        still says it came out damaged twice."""
+        script = r"""
+const src = require('fs').readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk', errCode = e => e && e.code,
+      errText = e => e && e.message, cur = () => null, diskFor = () => null;
+let folder = '';
+eval(section('  function errorBox(', '  function itemHTML('));
+const box = kept => { const error = {code: 'checksum', message: 'm', kept}; return errorBox({error, items: [{kind: 'pack', state: 'failed', error}]}) };
+console.log(JSON.stringify({kept: box(true), not: box(undefined)}));
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        w = json.loads(r.stdout)
+        self.assertIn('What was downloaded is kept. Retry checks it again', w['kept'])
+        self.assertNotIn('damaged twice', w['kept'])
+        self.assertIn('The download came out damaged twice', w['not'])
+        self.assertIn('data-act="retry"', w['kept'])
 
 
 class Unpacking(Base):

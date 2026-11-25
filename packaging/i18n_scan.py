@@ -300,6 +300,49 @@ def _inside_translation_call(pre: str) -> bool:
     return _inside_named_call(pre, {'tr', 'trHtml', 'trLang', 'trResult', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
 
 
+def _inside_catalogued_fallback(pre: str, names) -> bool:
+    """Recognize keyed helper fallbacks only when their English key exists."""
+    keys = _english_keys()
+    source = pre[-2000:]
+
+    def remains_open(start):
+        opening = source.find('(', start)
+        if opening < 0:
+            return False
+        depth, i = 0, opening
+        while i < len(source):
+            c = source[i]
+            if c in "'\"":
+                i = _skip_string(source, i)
+                continue
+            if c == '`':
+                i = _skip_template(source, i)
+                continue
+            if c == '(':
+                depth += 1
+            elif c == ')':
+                depth -= 1
+                if depth == 0:
+                    return False
+            i += 1
+        return depth > 0
+
+    for name in names:
+        pattern = re.compile(r'\b' + re.escape(name) + r'\s*\(')
+        for match in reversed(list(pattern.finditer(source))):
+            if not remains_open(match.start()):
+                continue
+            args = source[match.end():]
+            direct = (re.match(r"\s*'([A-Za-z][A-Za-z0-9_.-]+)'\s*,", args) or
+                      re.match(r'\s*"([A-Za-z][A-Za-z0-9_.-]+)"\s*,', args))
+            if direct and direct.group(1) in keys:
+                return True
+            if (name == 'tHtml' and re.match(r"\s*n\s*\?\s*PRESET_KEY\[n\][\s\S]*?:\s*['\"]map\.preset\.none['\"]\s*,", args)
+                    and 'map.preset.none' in keys):
+                return True
+    return False
+
+
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
     """Recognize literal fallbacks paired with an explicit translation key."""
     source = pre[-2000:] + post[:1000]
@@ -319,6 +362,11 @@ def _inside_keyed_error_call(pre: str, post: str) -> bool:
 
 
 def looks_technical(s: str) -> bool:
+    # Numeric detail templates such as “16.9 GB (16,947,541,728 bytes)”. The
+    # words come from the size formatter and a catalogue-backed byte label;
+    # this flattened punctuation-only shape is not a copy string of its own.
+    if s == '{…} ({…})':
+        return True
     if s in TECHNICAL_EXACT:
         return True
     if re.fullmatch(r'[A-Za-z0-9_.-]+\.py --[A-Za-z0-9_-]+', s):
@@ -438,6 +486,7 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'wired'
     mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
     if ('__i18n_bound' in pre or _inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
+            or _inside_catalogued_fallback(pre, {'message', 'tHtml', 'chatResult', 'chatTr', 'setError', 'trMarkup', 'keyedMessage'})
             or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'

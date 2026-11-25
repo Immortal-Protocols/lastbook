@@ -96,6 +96,21 @@ class Coverage(unittest.TestCase):
         self.assertGreater(self.totals['wired'], 1000)
         self.assertEqual(self.totals['chrome'], 0)
 
+    def test_catalogued_helper_fallbacks_are_wired_but_missing_keys_are_not(self):
+        for source, literal, expected in [
+            ("el.innerHTML = `${tHtml('map.clickToList', null, 'Click to list them')}`;",
+             'Click to list them', 'wired'),
+            ("el.innerHTML = `${keyedMessage('setup.noAnswer', null, 'Lastbook did not answer.')}`;",
+             'Lastbook did not answer.', 'wired'),
+            ("el.innerHTML = `${tHtml('missing.newKey', null, 'Brand new visible string')}`;",
+             'Brand new visible string', 'chrome'),
+        ]:
+            with self.subTest(literal=literal):
+                _pos, text, pre = next(item for item in scan.iter_js_strings(source) if item[1] == literal)
+                self.assertEqual(scan.classify(text, pre), expected)
+        self.assertEqual(scan.classify('{…} ({…})', "return `<dt>${size(value)} (${trMarkup("), 'technical')
+        self.assertEqual(scan.classify('Amount {…} ({…})', 'el.innerHTML = `'), 'chrome')
+
     def test_scanner_does_not_hide_visible_markup_after_a_translated_expression(self):
         sample = "main.innerHTML = `<div><h1>Map</h1>${tr('map.heading', null, 'Map')}<section><h2>Nearest to the map center</h2>" + (
             '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</section>`;'

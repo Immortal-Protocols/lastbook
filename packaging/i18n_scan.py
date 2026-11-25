@@ -14,18 +14,20 @@ Run:  python3 -B packaging/i18n_scan.py
 from __future__ import annotations
 
 import json
+import argparse
 import io
 import re
 import sys
 import tokenize
 import ast
 from html.parser import HTMLParser
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'web'
 EN = ROOT / 'translations' / 'desktop' / 'en.json'
+CHROME_BASELINE = ROOT / 'packaging' / 'i18n_known_chrome.json'
 
 WEB_FILES = [
     'index.html', 'setup.html', 'app.js', 'setup.js', 'chat.js', 'map.js',
@@ -1064,6 +1066,59 @@ def unique_chrome(hits):
     return seen
 
 
+def chrome_inventory(hits):
+    """Count known hard-coded copy by surface, source file and exact text.
+
+    This lets the scanner preserve an explicitly reviewed legacy backlog while
+    rejecting new strings or additional occurrences of the same string.
+    """
+    counts = Counter()
+    for hit in hits:
+        if hit['class'] != 'chrome':
+            continue
+        key = (hit['surface'], hit.get('file') or '', hit['text'])
+        counts[key] += 1
+    return counts
+
+
+def inventory_rows(counts):
+    return [
+        {'surface': surface, 'file': file, 'text': text, 'count': count}
+        for (surface, file, text), count in sorted(counts.items())
+    ]
+
+
+def load_chrome_baseline(path=CHROME_BASELINE):
+    data = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(data, dict) or data.get('version') != 1 or not isinstance(data.get('items'), list):
+        raise ValueError(f'{path}: invalid hard-coded chrome baseline')
+    baseline = Counter()
+    for row in data['items']:
+        if (not isinstance(row, dict) or not isinstance(row.get('surface'), str)
+                or not isinstance(row.get('file'), str) or not isinstance(row.get('text'), str)
+                or not isinstance(row.get('count'), int) or isinstance(row.get('count'), bool)
+                or row['count'] < 1):
+            raise ValueError(f'{path}: invalid hard-coded chrome baseline entry')
+        key = (row['surface'], row['file'], row['text'])
+        if key in baseline:
+            raise ValueError(f'{path}: duplicate hard-coded chrome baseline entry')
+        baseline[key] = row['count']
+    return baseline
+
+
+def new_chrome(hits, baseline):
+    """Return hard-coded chrome occurrences beyond the reviewed baseline."""
+    current = chrome_inventory(hits)
+    return inventory_rows(Counter({key: count - baseline.get(key, 0)
+                                   for key, count in current.items()
+                                   if count > baseline.get(key, 0)}))
+
+
+def write_chrome_baseline(path, hits):
+    path.write_text(json.dumps({'version': 1, 'items': inventory_rows(chrome_inventory(hits))},
+                               ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+
 def report(hits, key_count):
     by, totals = summarize(hits)
     chrome = unique_chrome(hits)
@@ -1086,11 +1141,30 @@ def report(hits, key_count):
 
 
 def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--update-baseline', action='store_true',
+                        help='replace the reviewed legacy-copy baseline with the current scan')
+    args = parser.parse_args(argv)
     english, _ = load_english()
     hits = scan_web() + scan_python()
     text, totals, chrome, by = report(hits, len(english))
+    if args.update_baseline:
+        write_chrome_baseline(CHROME_BASELINE, hits)
+        print(f'Updated {CHROME_BASELINE.relative_to(ROOT)} with {sum(chrome_inventory(hits).values())} reviewed occurrences.')
+        return 0
     sys.stdout.write(text)
-    return 0
+    try:
+        baseline = load_chrome_baseline()
+    except (OSError, ValueError) as error:
+        sys.stderr.write(f'Localization scanner: {error}\n')
+        return 2
+    added = new_chrome(hits, baseline)
+    new_count = sum(row['count'] for row in added)
+    print(f'New hard-coded chrome occurrences since baseline: {new_count}')
+    for row in added:
+        file = row['file'] or row['surface']
+        print(f"  {file}: {row['text']!r} (+{row['count']})")
+    return 1 if added else 0
 
 
 if __name__ == '__main__':

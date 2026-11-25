@@ -1,8 +1,4 @@
-"""The leftover-string scanner runs on desktop surfaces.
-
-Wiring leftover chrome is completed in follow-up pull requests; this test
-fails only if the scanner itself breaks or unique chrome is not reported.
-"""
+"""Gate new hard-coded UI copy and test scanner classification regressions."""
 import sys
 import re
 import unittest
@@ -21,14 +17,32 @@ class Coverage(unittest.TestCase):
         cls.hits = scan.scan_web() + scan.scan_python()
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
+        cls.baseline = scan.load_chrome_baseline()
 
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
 
     def test_scanner_reports_leftover_chrome(self):
-        # Report-only in this pull request: unique chrome is wired in follow-ups.
+        # Legacy entries remain visible in the inventory until follow-up work
+        # wires them; this gate prevents this backlog from growing.
         self.assertIsInstance(self.chrome, dict)
         self.assertGreater(self.totals['wired'] + self.totals['chrome'] + self.totals['technical'], 0)
+
+    def test_no_new_hardcoded_chrome_since_reviewed_baseline(self):
+        added = scan.new_chrome(self.hits, self.baseline)
+        self.assertEqual(added, [], f'new untranslated UI copy: {added!r}')
+
+    def test_gate_detects_new_copy_and_extra_occurrences(self):
+        baseline = scan.Counter({('web/index.html', '', 'Existing label'): 1})
+        hits = [
+            {'surface': 'web/index.html', 'text': 'Existing label', 'class': 'chrome'},
+            {'surface': 'web/index.html', 'text': 'Existing label', 'class': 'chrome'},
+            {'surface': 'web/index.html', 'text': 'New visible label', 'class': 'chrome'},
+        ]
+        self.assertEqual(scan.new_chrome(hits, baseline), [
+            {'surface': 'web/index.html', 'file': '', 'text': 'Existing label', 'count': 1},
+            {'surface': 'web/index.html', 'file': '', 'text': 'New visible label', 'count': 1},
+        ])
 
     def test_scanner_classifies_command_examples_native_keys_and_attribution(self):
         self.assertEqual(scan.classify('server.py --lan', "command: ", ""), 'technical')

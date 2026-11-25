@@ -8,18 +8,6 @@
       "count": 1
     },
     {
-      "surface": "app/bridge",
-      "file": "app/bridge.py",
-      "text": "POST /api/chat HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Type: application/json\r\nOrigin: http://localhost\r\nContent-Length: {len(body)}\r\n\r\n",
-      "count": 1
-    },
-    {
-      "surface": "app/bridge",
-      "file": "app/bridge.py",
-      "text": "sandbox allow-scripts; ",
-      "count": 1
-    },
-    {
       "surface": "app/main",
       "file": "app/main.py",
       "text": "Choose",
@@ -42,6 +30,102 @@
       "file": "app/main.py",
       "text": "The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py",
       "count": 2
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "\nDocument id for tools: {d}",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "\nVideo id for tools: {v}",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "\n[…shortened to fit]",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": " | doc_id={d['doc_id']}",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": " — outside the offline street map",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "Initial library search results for the latest question (already retrieved — search again only if these are not enough; use read_pages or read_encyclopedia to check exact wording):\n\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "Offline map data (may be outdated; does not show closures or damage):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The local model stopped responding.",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The model did not produce an answer. The passages it found are listed below.",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The person is looking at this page right now (questions like 'this' refer to it):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The person is on the guide “{t['title']}”. Curated pages they can see (use read_pages to cite them):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The person is watching this video (around {t // 60}:{t % 60:02d}):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "[Note from the Lastbook app, not from the person]\n",
+      "count": 1
+    },
+    {
+      "surface": "desktop",
+      "file": "packaging/linux/lastbook.desktop",
+      "text": "Offline survival library",
+      "count": 1
+    },
+    {
+      "surface": "desktop",
+      "file": "packaging/linux/lastbook.desktop",
+      "text": "Search and read the survival library on this computer, with no internet",
+      "count": 1
+    },
+    {
+      "surface": "desktop",
+      "file": "packaging/linux/lastbook.desktop",
+      "text": "survival;library;offline;first aid;",
+      "count": 1
     },
     {
       "surface": "engine/model-server",
@@ -142,6 +226,12 @@
     {
       "surface": "engine/setup",
       "file": "engine/setup/api.py",
+      "text": "App updates are set in the desktop app.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
       "text": "Choose a library first.",
       "count": 2
     },
@@ -155,6 +245,12 @@
       "surface": "engine/setup",
       "file": "engine/setup/api.py",
       "text": "Choose a place outside this library, such as a USB drive.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Copy of the {title} library",
       "count": 1
     },
     {
@@ -268,8 +364,14 @@
     {
       "surface": "engine/setup",
       "file": "engine/setup/api.py",
-      "text": "Setup stopped on an internal error ({type(e).__name__}).",
+      "text": "Setup is only open on this computer.",
       "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Setup stopped on an internal error ({type(e).__name__}).",
+      "count": 2
     },
     {
       "surface": "engine/setup",
@@ -370,6 +472,12 @@
     {
       "surface": "engine/setup",
       "file": "engine/setup/api.py",
+      "text": "The setup folder contains a link or special file. Choose a different library folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
       "text": "The {DATA_NAME} folder there is a link. Choose another drive or folder.",
       "count": 1
     },
@@ -442,6 +550,12 @@
     {
       "surface": "engine/setup",
       "file": "engine/setup/api.py",
+      "text": "This needs {_gb(left)} free, and that drive has {_gb(free)}. Choose a larger drive.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
       "text": "This needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space or choose another disk.",
       "count": 1
     },
@@ -449,6 +563,12 @@
       "surface": "engine/setup",
       "file": "engine/setup/api.py",
       "text": "Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "notify is true or false.",
       "count": 1
     },
     {
@@ -533,6 +653,12 @@
       "surface": "engine/setup",
       "file": "engine/setup/hardware.py",
       "text": " plus its graphics memory.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/hardware.py",
+      "text": "The battery is only shown on this computer.",
       "count": 1
     },
     {
@@ -892,6 +1018,12 @@
     {
       "surface": "native/macos",
       "file": "app/shell_macos.py",
+      "text": "Go",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
       "text": "Help",
       "count": 1
     },
@@ -922,6 +1054,12 @@
     {
       "surface": "native/macos",
       "file": "app/shell_macos.py",
+      "text": "OK",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
       "text": "Paste",
       "count": 1
     },
@@ -935,12 +1073,6 @@
       "surface": "native/macos",
       "file": "app/shell_macos.py",
       "text": "Redo",
-      "count": 1
-    },
-    {
-      "surface": "native/macos",
-      "file": "app/shell_macos.py",
-      "text": "Select All",
       "count": 1
     },
     {
@@ -986,6 +1118,354 @@
       "count": 1
     },
     {
+      "surface": "server",
+      "file": "server.py",
+      "text": " County",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " features (buildings come from Microsoft, below)",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · also called {d['other_names']}",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · building",
+      "count": 2
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · downloading",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · historical stocking record",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · nearby",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · {int(h):,} OpenStreetMap buildings with measured heights in 3D",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · {km / 1.609:,.0f} mi away",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "All videos",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Coalcracker Bushcraft",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Converting — ",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Corporals Corner",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Courses, lectures & more",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Dave Canterbury",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "First aid & health",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Growing & preserving food",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Making things by hand",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Picked for the guides",
+      "count": 2
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Police",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Power, generators & solar",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Primitive Technology",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Server error ({sys.exc_info()[0].__name__}).",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Shelter, fire & outdoor skills",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Shown on this map — ",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "The assistant stopped on an internal error ({type(e).__name__}).",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "The local assistant model is not running right now.",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "This item is not in the library catalog.",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Tools, engines & repair",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Water & sanitation",
+      "count": 2
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/comms.json",
+      "text": "Communicate & find your way",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/comms.json",
+      "text": "Family contact, emergency radio, ham radio, map and compass",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/disaster.json",
+      "text": "Earthquake, tsunami, hurricane, tornado, thunderstorm, avalanche, landslide, volcano, wildfire, home and high-rise fire, flood, nuclear explosion, bombing, shelter-in-place",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/disaster.json",
+      "text": "Stay safe in an earthquake, storm, fire, flood or tsunami",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/energy.json",
+      "text": "Electricity basics, batteries, solar, generators",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/energy.json",
+      "text": "Make and manage power",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/food.json",
+      "text": "Fridge and freezer in an outage, safe cooking, emergency food",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/food.json",
+      "text": "Keep food safe and cook without power",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/grow.json",
+      "text": "Containers, beds, soil, water, staple crops and seed saving",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/grow.json",
+      "text": "Grow staple food",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/health.json",
+      "text": "Care for health over time without a doctor",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/health.json",
+      "text": "Examining the sick, medicines, chronic illness, teeth, pregnancy, mental health, disability",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/hurt.json",
+      "text": "First aid for bleeding, burns, breathing, injuries and sudden illness",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/hurt.json",
+      "text": "Someone is hurt or sick",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/land.json",
+      "text": "Find safe land and natural resources",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/land.json",
+      "text": "Local hazards, soil, water sources, wild plants and finding your way",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/power.json",
+      "text": "Outages, generators, batteries and gas safety",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/power.json",
+      "text": "Power is out — light, phones & power",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/preserve.json",
+      "text": "Canning, drying, freezing, pickling and fermenting safely",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/preserve.json",
+      "text": "Preserve and store food",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/repair.json",
+      "text": "Hand tools, sharpening, home fixes, woodworking, engines, welding, simple structures",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/repair.json",
+      "text": "Repair and build",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/sanitation.json",
+      "text": "Emergency toilets, handwashing, garbage, diarrhea",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/sanitation.json",
+      "text": "Toilets, waste and hygiene when plumbing fails",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/shelter.json",
+      "text": "Heat, cold, smoke, carbon monoxide, damaged homes and outdoor shelter",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/shelter.json",
+      "text": "Stay warm, cool and sheltered",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/water.json",
+      "text": "Get safe drinking water",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/water.json",
+      "text": "Treat, find and store water",
+      "count": 1
+    },
+    {
       "surface": "web/app.js",
       "file": "",
       "text": " (and page images when it asks to)",
@@ -1001,12 +1481,6 @@
       "surface": "web/app.js",
       "file": "",
       "text": " and the {…} guide",
-      "count": 1
-    },
-    {
-      "surface": "web/app.js",
-      "file": "",
-      "text": " lang=\"{…}\"",
       "count": 1
     },
     {
@@ -1204,6 +1678,12 @@
     {
       "surface": "web/app.js",
       "file": "",
+      "text": "Ask the library: “{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
       "text": "Assistant",
       "count": 1
     },
@@ -1271,6 +1751,18 @@
       "surface": "web/app.js",
       "file": "",
       "text": "Continue watching",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Contribute to Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Copied",
       "count": 1
     },
     {
@@ -1414,6 +1906,12 @@
     {
       "surface": "web/app.js",
       "file": "",
+      "text": "Get a written answer with the exact pages it came from",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
       "text": "Get an answer built from the manuals, with the exact pages and video moments it came from",
       "count": 1
     },
@@ -1421,7 +1919,7 @@
       "surface": "web/app.js",
       "file": "",
       "text": "Get ready before it happens",
-      "count": 1
+      "count": 2
     },
     {
       "surface": "web/app.js",
@@ -1630,6 +2128,12 @@
     {
       "surface": "web/app.js",
       "file": "",
+      "text": "Looked for but not found when this guide was put together (October 2026):",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
       "text": "MDWiki: plain-language articles on conditions, medicines and first aid.",
       "count": 1
     },
@@ -1781,6 +2285,18 @@
       "surface": "web/app.js",
       "file": "",
       "text": "No videos match. Try another word or length.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Normal",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Not in this library",
       "count": 1
     },
     {
@@ -1942,6 +2458,12 @@
     {
       "surface": "web/app.js",
       "file": "",
+      "text": "Playback speed",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
       "text": "Prepare your household",
       "count": 3
     },
@@ -1991,6 +2513,12 @@
       "surface": "web/app.js",
       "file": "",
       "text": "Recently opened",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Related guides",
       "count": 1
     },
     {
@@ -2290,6 +2818,12 @@
     {
       "surface": "web/app.js",
       "file": "",
+      "text": "The library may be busy rebuilding its index. Try again in a minute.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
       "text": "The library sent an unreadable reply.",
       "count": 1
     },
@@ -2399,6 +2933,12 @@
       "surface": "web/app.js",
       "file": "",
       "text": "University / extension service",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Use the words you’d use with a friend. For example:",
       "count": 1
     },
     {
@@ -2578,6 +3118,12 @@
     {
       "surface": "web/app.js",
       "file": "",
+      "text": "{…} note{…} on this computer",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
       "text": "{…} of {…} {…} no captions or transcript",
       "count": 1
     },
@@ -2746,12 +3292,6 @@
     {
       "surface": "web/chat.js",
       "file": "",
-      "text": " data-i=\"{…}\"",
-      "count": 1
-    },
-    {
-      "surface": "web/chat.js",
-      "file": "",
       "text": " title=\"Not linked to a source\"",
       "count": 1
     },
@@ -2825,6 +3365,12 @@
       "surface": "web/chat.js",
       "file": "",
       "text": "Add the local AI to get written answers.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "All",
       "count": 1
     },
     {
@@ -2974,7 +3520,37 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "Don’t use this as context",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Encyclopedias",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "Export chat",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Guide",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "How do I change the oil on a Honda EU2200i generator?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "How do I run a generator safely during a power outage?",
       "count": 1
     },
     {
@@ -2993,6 +3569,12 @@
       "surface": "web/chat.js",
       "file": "",
       "text": "It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Keep chat history on this device",
       "count": 1
     },
     {
@@ -3046,7 +3628,25 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "No chats yet.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "No transcript for {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Page ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Pages",
       "count": 1
     },
     {
@@ -3054,6 +3654,18 @@
       "file": "",
       "text": "Pages found so far — you can open them while the answer is written:",
       "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Phones are down. How can our household stay in contact?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Places",
+      "count": 1
     },
     {
       "surface": "web/chat.js",
@@ -3112,6 +3724,24 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "Show sources by type",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Someone has a deep cut that won’t stop bleeding. What do I do?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Source {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "Sources ({…})",
       "count": 1
     },
@@ -3130,6 +3760,12 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "Step-by-step guide",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "Stop the answer",
       "count": 1
     },
@@ -3137,6 +3773,12 @@
       "surface": "web/chat.js",
       "file": "",
       "text": "The assistant is offline; you will get matching pages instead",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The fridge has been off for 6 hours. What food is still safe?",
       "count": 1
     },
     {
@@ -3184,6 +3826,18 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "The tap water is off. How do I make water safe to drink?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The toilets don’t work. How do we make an emergency toilet?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "This answer has no linked sources. Treat it as unverified.",
       "count": 1
     },
@@ -3196,7 +3850,25 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "Video at ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Videos",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "What do you need to know?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "What vegetables can I plant this month?",
       "count": 1
     },
     {
@@ -3256,6 +3928,12 @@
     {
       "surface": "web/chat.js",
       "file": "",
+      "text": "{…}<span>Asking about: <b>{…}</b> <span class=\"muted\">{…}</span></span>{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
       "text": "{…}>",
       "count": 1
     },
@@ -3287,6 +3965,24 @@
       "surface": "web/chat.js",
       "file": "",
       "text": "“{…}{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/index.html",
+      "file": "",
+      "text": "Offline survival and rebuilding guide: first aid, water, food, power, shelter, videos, maps and skills — works without internet.",
+      "count": 1
+    },
+    {
+      "surface": "web/index.html",
+      "file": "",
+      "text": "Opening the guide…",
+      "count": 1
+    },
+    {
+      "surface": "web/index.html",
+      "file": "",
+      "text": "Update available",
       "count": 1
     },
     {
@@ -3347,6 +4043,24 @@
       "surface": "web/map.js",
       "file": "",
       "text": "All",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Berries & asparagus",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Boating facilities (California)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Campsites",
       "count": 1
     },
     {
@@ -3364,6 +4078,12 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Clinics & doctors",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "Close details",
       "count": 2
     },
@@ -3372,6 +4092,12 @@
       "file": "",
       "text": "Close layers",
       "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Community centers, town halls & libraries",
+      "count": 1
     },
     {
       "surface": "web/map.js",
@@ -3406,6 +4132,24 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Dams (with storage & purpose)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Dentists",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Drinking-water taps",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "Elevation ",
       "count": 1
     },
@@ -3413,6 +4157,18 @@
       "surface": "web/map.js",
       "file": "",
       "text": "Elevation…",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Emergency",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Emergency help",
       "count": 1
     },
     {
@@ -3442,7 +4198,37 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Fire stations",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Fish-stocking sites (California)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Food that keeps growing (2025 crop maps)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Food trees",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "For the layers you have on. Straight-line distance, not by road.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Fuel stations",
       "count": 1
     },
     {
@@ -3461,6 +4247,18 @@
       "surface": "web/map.js",
       "file": "",
       "text": "Group",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Hardware stores",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Hospitals",
       "count": 1
     },
     {
@@ -3538,8 +4336,20 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Minerals & mines (US)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "My area",
       "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Natural resources (historical records)",
+      "count": 1
     },
     {
       "surface": "web/map.js",
@@ -3568,7 +4378,7 @@
     {
       "surface": "web/map.js",
       "file": "",
-      "text": "No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.",
+      "text": "None",
       "count": 1
     },
     {
@@ -3598,7 +4408,19 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Numbers are places in the current view.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Oil & gas wells (California)",
       "count": 1
     },
     {
@@ -3610,7 +4432,13 @@
     {
       "surface": "web/map.js",
       "file": "",
-      "text": "Outside the area this map details, only main roads, towns and water show.",
+      "text": "Orchards: nuts, fruit, citrus, olives",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Pharmacies",
       "count": 1
     },
     {
@@ -3622,7 +4450,25 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Police",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "Remove marker",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Reservoirs & named lakes",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Resources",
       "count": 1
     },
     {
@@ -3646,6 +4492,12 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Shelters (structures)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "Show on map",
       "count": 1
     },
@@ -3658,19 +4510,37 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Springs (untested water)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Supermarkets & food shops",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Supplies",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Supplies & camping",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "The home button returns here. Saved on this device only.",
       "count": 1
     },
     {
       "surface": "web/map.js",
       "file": "",
-      "text": "This download has the base map only: main roads, towns and water.",
-      "count": 1
-    },
-    {
-      "surface": "web/map.js",
-      "file": "",
-      "text": "US streets still being converted ({count}M roads & features so far) — gaps fill in automatically.",
+      "text": "US streets still being converted ({…}M roads & features so far) — gaps fill in automatically.",
       "count": 1
     },
     {
@@ -3682,8 +4552,26 @@
     {
       "surface": "web/map.js",
       "file": "",
+      "text": "Unnamed ponds (1+ acre, year-round)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
       "text": "Use my location",
       "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Vineyards (grapes)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Water",
+      "count": 3
     },
     {
       "surface": "web/map.js",
@@ -3754,12 +4642,6 @@
     {
       "surface": "web/map.js",
       "file": "",
-      "text": "{count} place{plural} in view{extra}",
-      "count": 1
-    },
-    {
-      "surface": "web/map.js",
-      "file": "",
       "text": "{…} from your area",
       "count": 1
     },
@@ -3779,6 +4661,12 @@
       "surface": "web/map.js",
       "file": "",
       "text": "{…} places here",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} place{…} in view{…}",
       "count": 1
     },
     {
@@ -3869,12 +4757,6 @@
       "surface": "web/setup.js",
       "file": "",
       "text": " at {…} of {…}",
-      "count": 1
-    },
-    {
-      "surface": "web/setup.js",
-      "file": "",
-      "text": " class=\"{…}\"",
       "count": 1
     },
     {
@@ -4217,7 +5099,7 @@
       "surface": "web/setup.js",
       "file": "",
       "text": "Keep",
-      "count": 1
+      "count": 2
     },
     {
       "surface": "web/setup.js",
@@ -4270,6 +5152,12 @@
     {
       "surface": "web/setup.js",
       "file": "",
+      "text": "Library",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
       "text": "Library check",
       "count": 1
     },
@@ -4289,7 +5177,7 @@
       "surface": "web/setup.js",
       "file": "",
       "text": "Local AI",
-      "count": 6
+      "count": 8
     },
     {
       "surface": "web/setup.js",
@@ -4404,6 +5292,12 @@
       "file": "",
       "text": "Ready",
       "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Remove",
+      "count": 2
     },
     {
       "surface": "web/setup.js",
@@ -4786,6 +5680,18 @@
     {
       "surface": "web/setup.js",
       "file": "",
+      "text": "{…} — skip for now",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} — {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
       "text": "{…}. Nothing was changed or downloaded. {…}",
       "count": 1
     },
@@ -5100,6 +6006,60 @@
       "file": "",
       "text": "Use a name between 1 and 120 characters.",
       "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Lastbook Setup",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not find itself.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not find the temporary folder.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not make a temporary folder.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not read itself.",
+      "count": 2
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not start. Windows may have blocked it.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not unpack itself. Check there is room on the disk.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not write to the temporary folder.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "This copy of Setup is damaged. Download it again.",
+      "count": 5
     }
   ]
 }

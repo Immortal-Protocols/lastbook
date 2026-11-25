@@ -14,7 +14,7 @@ class Coverage(unittest.TestCase):
     def setUpClass(cls):
         english, _ = scan.load_english()
         cls.english = english
-        cls.hits = scan.scan_web() + scan.scan_python()
+        cls.hits = scan.scan_web() + scan.scan_topics() + scan.scan_python() + scan.scan_c()
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
         cls.baseline = scan.load_chrome_baseline()
@@ -63,6 +63,11 @@ class Coverage(unittest.TestCase):
     def test_scanner_still_classifies_surfaces(self):
         self.assertGreater(self.totals['wired'], 0)
         self.assertGreater(self.totals['technical'], 0)
+        self.assertEqual(scan.new_chrome(self.hits, self.baseline), [])
+
+    def test_cli_scanner_includes_dynamic_topics_and_windows_stub(self):
+        source = (ROOT / 'packaging' / 'i18n_scan.py').read_text(encoding='utf-8')
+        self.assertIn('hits = scan_web() + scan_topics() + scan_python() + scan_c()', source)
 
     def test_scanner_does_not_hide_visible_markup_after_a_translated_expression(self):
         sample = "main.innerHTML = `<div><h1>Map</h1>${tr('map.heading', null, 'Map')}<section><h2>Nearest to the map center</h2>" + (
@@ -156,6 +161,22 @@ class Coverage(unittest.TestCase):
 
         # The short word by itself is not enough to call a code value UI.
         self.assertEqual(scan.classify('Add', 'const action = '), 'technical')
+        self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
+
+    def test_scanner_checks_map_fallback_keys_and_ignores_markup_fragments(self):
+        wired = "message('map.outsideDetail', null, 'Outside the area this map details, only main roads, towns and water show.')"
+        text = next(hit for hit in scan.iter_js_strings(wired)
+                    if hit[1].startswith('Outside the area'))
+        self.assertEqual(scan.classify(text[1], text[2]), 'wired')
+
+        missing = "message('map.missingKey', null, 'A newly hard-coded status')"
+        text = next(hit for hit in scan.iter_js_strings(missing)
+                    if hit[1] == 'A newly hard-coded status')
+        self.assertEqual(scan.classify(text[1], text[2]), 'chrome')
+
+        for fragment in (' lang="{…}"', ' title="{…}"', ' · <span class="muted">{…}</span>'):
+            with self.subTest(fragment=fragment):
+                self.assertEqual(scan.classify(fragment, 'return `'), 'technical')
 
     def test_scanner_detects_leading_space_ui_fragments(self):
         sample = '''function recommendLine() {

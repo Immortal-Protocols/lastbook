@@ -134,7 +134,12 @@ class RebuildRecoveryTests(unittest.TestCase):
             self.addCleanup(patcher.stop)
         source = self.base / 'source'
         source.mkdir()
-        (source / 'fetched.json').write_text(json.dumps({'fetched': '', 'files': {}}), encoding='utf-8')
+        files = {}
+        for name in builder.SOURCE_ARCHIVES:
+            path = source / name
+            path.write_bytes(b'archive: ' + name.encode())
+            files[name] = {'sha256': builder.sha256(path), 'bytes': path.stat().st_size}
+        (source / 'fetched.json').write_text(json.dumps({'fetched': '', 'files': files}), encoding='utf-8')
         self.data = self.base / 'data'
         self.write_minimal_output(self.data)
         self.old = self.files(self.data)
@@ -328,26 +333,42 @@ class ExtractionProvenanceTests(unittest.TestCase):
 
 
 class SourceProvenanceTests(unittest.TestCase):
-    """The build reports what it builds from: an archive on disk that no longer matches fetched.json
-    stops the build at the entry point — naming the archive, touching nothing — the mismatch the #481
-    review reproduced by swapping the cached ZIP under a stale fetched.json."""
+    """The build reports what it builds from: every source the build uses must be recorded in
+    fetched.json and match the archive on disk before anything runs — naming the archive, touching
+    nothing — the mismatches the #481 review reproduced (a stale hash under a swapped ZIP, then a
+    missing entry beside a ZIP still on disk)."""
 
     def setUp(self):
         self.base = Path(tempfile.mkdtemp())
-        for name, value in (('BASE', self.base), ('SOURCE', self.base / 'source')):
+        self.source = self.base / 'source'
+        for name, value in (('BASE', self.base), ('SOURCE', self.source)):
             patcher = mock.patch.object(builder, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
-        source = self.base / 'source'
-        source.mkdir()
-        (source / 'fetched.json').write_text(json.dumps({'fetched': '', 'files': {
-            'caop_raa.zip': {'sha256': 'recorded-in-fetched', 'bytes': 1}}}), encoding='utf-8')
-        (source / 'caop_raa.zip').write_bytes(b'an archive that no longer matches the record')
+        self.source.mkdir()
         self.data = self.base / 'data'
         self.data.mkdir()
         (self.data / 'marker.txt').write_text('previous good build', encoding='utf-8')
 
+    def seed(self, wrong_caop=False, missing_caop_entry=False):
+        """Writes all three archives on disk plus the fetched.json record: SHAs correct for every recorded
+        archive — except the CAOP zip carries a stale hash when `wrong_caop` (the round-2 case) and has no
+        entry at all when `missing_caop_entry` (the round-3 case)."""
+        files = {}
+        for name in builder.SOURCE_ARCHIVES:
+            path = self.source / name
+            path.write_bytes(b'archive: ' + name.encode())
+            if name == 'caop_raa.zip' and missing_caop_entry:
+                continue
+            sha = builder.sha256(path)
+            if name == 'caop_raa.zip' and wrong_caop:
+                sha = 'recorded-in-fetched'
+            files[name] = {'sha256': sha, 'bytes': path.stat().st_size}
+        (self.source / 'fetched.json').write_text(
+            json.dumps({'fetched': '', 'files': files}), encoding='utf-8')
+
     def test_a_stale_archive_stops_the_build_naming_it(self):
+        self.seed(wrong_caop=True)
         with self.assertRaises(SystemExit) as caught:
             builder.build()
         self.assertIn('caop_raa.zip', str(caught.exception))
@@ -355,6 +376,28 @@ class SourceProvenanceTests(unittest.TestCase):
         # the last good output is untouched: the build stopped before staging anything
         self.assertEqual((self.data / 'marker.txt').read_text(encoding='utf-8'), 'previous good build')
         self.assertFalse((self.base / 'data.new').exists())
+
+    def test_a_missing_source_entry_stops_the_build_the_same_way(self):
+        # the CAOP zip sits on disk but fetched.json carries no entry for it: the build would use its
+        # data while publishing nothing about it, so the missing record stops the build like a bad one
+        self.seed(missing_caop_entry=True)
+        with self.assertRaises(SystemExit) as caught:
+            builder.build()
+        self.assertIn('caop_raa.zip', str(caught.exception))
+        self.assertIn('fetched.json', str(caught.exception))
+        self.assertEqual((self.data / 'marker.txt').read_text(encoding='utf-8'), 'previous good build')
+        self.assertFalse((self.base / 'data.new').exists())
+
+    def test_matching_records_build(self):
+        """With every source recorded and matching, the entry-point checks pass the build on to staging."""
+        self.seed()
+        for step in ('cut_map', 'build_addresses', 'build_places', 'build_map'):
+            patcher = mock.patch.object(builder, step, lambda *args: {})
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        with mock.patch.object(builder, 'check', lambda root=None: []):
+            builder.build()
+        self.assertTrue((self.data / 'build.json').exists())
 
 
 if __name__ == '__main__':

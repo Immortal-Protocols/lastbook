@@ -68,6 +68,7 @@ CUTBOX = (BBOX[0] - MARGIN, BBOX[1] - MARGIN, BBOX[2] + MARGIN, BBOX[3] + MARGIN
 GEOFABRIK = 'https://download.geofabrik.de/europe/portugal-latest-free.gpkg.zip'
 ADDRESSES = 'https://data.openaddresses.io/cache/uploads/jeffdefacto/2026-02-23-921i3/pt_addresses.csv.zip'
 CAOP = 'https://geo2.dgterritorio.gov.pt/caop/CAOP_RAA_2025-gpkg.zip'
+SOURCE_ARCHIVES = ('osm.gpkg.zip', 'pt_addresses.csv.zip', 'caop_raa.zip')
 ADDRESSES_TOTAL = 5911139      # rows in the full CSV, checked at fetch
 ADDRESS_EXPECTED = 110897      # Azores rows inside the box: AC26 (108,523) + AC25 (2,374), docs/REGIONS-PT.md
 FREGUESIAS_EXPECTED = 156
@@ -700,10 +701,14 @@ def build():
     if not (SOURCE / 'fetched.json').exists():
         raise SystemExit(f'no fetched.json in {SOURCE}; run the fetch step first')
     fetched = json.loads((SOURCE / 'fetched.json').read_text(encoding='utf-8'))
-    # the report publishes what it builds from, so the sources on disk are checked against fetched.json
-    # before anything else runs: an archive swapped under a stale record stops the build here, naming
-    # the archive, and leaves the last good output untouched
-    for name, info in sorted(fetched['files'].items()):
+    # the report publishes what it builds from, so every source the build uses must be recorded in
+    # fetched.json and match the archive on disk before anything else runs: a stale hash or a missing
+    # entry stops the build here, naming the archive, and leaves the last good output untouched
+    for name in SOURCE_ARCHIVES:
+        info = fetched['files'].get(name)
+        if info is None:
+            raise SystemExit(f'{name}: no entry in fetched.json — the build reports what it builds from, so '
+                             'run the fetch step to record every source before building')
         path = SOURCE / name
         if not path.exists() or sha256(path) != info.get('sha256'):
             raise SystemExit(f'{name}: the archive on disk does not match fetched.json — run the fetch step '

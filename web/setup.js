@@ -16,6 +16,30 @@
     return fallback;
   }
   globalThis.lastbookTr = tr;
+  function tHtml(key, params, fallback) {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    const text = result?.text ?? tr(key, params, fallback);
+    return `<span lang="${esc(result?.locale || 'en')}">${esc(text ?? '')}</span>`;
+  }
+  const keyedMessage = (key, params, fallback) => ({ key, params: params || null, fallback });
+  const rawMessage = (text, locale = 'en') => text ? { text: String(text), locale } : null;
+  function trMarkup(key, params, fallback) {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params), text = result?.text ?? tr(key, params, fallback);
+    const locale = result?.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(text ?? '')}</span>`;
+  }
+  function messageMarkup(message) {
+    if (!message) return '';
+    if (message.key) return trMarkup(message.key, message.params, message.fallback);
+    const locale = message.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(message.text || '')}</span>`;
+  }
+  function apiMessage(value, fallback = null) {
+    if (value?.translation) return value.translation;
+    if (value && (value.key || value.error_key)) return keyedMessage(value.key || value.error_key, value.params || value.error_params, value.message || value.error || '');
+    const text = apiErrorText(value);
+    return text ? rawMessage(text, 'en') : fallback;
+  }
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
@@ -69,10 +93,10 @@
   /* ------------------------------------------------------------ the engine */
   async function call(path, body) {
     const opts = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-    let r; try { r = await fetch('/api/setup/' + path, opts) } catch { throw Object.assign(new Error(tr('setup.noAnswer', null, 'Lastbook did not answer. Close it and open it again.')), { status: 0 }) }
+    let r; try { r = await fetch('/api/setup/' + path, opts) } catch { throw Object.assign(new Error(tr('setup.noAnswer', null, 'Lastbook did not answer. Close it and open it again.')), { status: 0, translation: keyedMessage('setup.noAnswer', null, 'Lastbook did not answer. Close it and open it again.') }) }
     let d = null; try { d = await r.json() } catch { }
     if (d && d.error_key) { d.key = d.error_key; d.params = d.error_params || d.params; }
-    if (!r.ok && !(d && (d.error || d.need_bytes))) throw Object.assign(new Error(r.status === 404 ? tr('setup.notAvailable', null, 'Not available.') : tr('setup.unreadableReply', null, 'Lastbook sent an unreadable reply.')), { status: r.status });
+    if (!r.ok && !(d && (d.error || d.need_bytes))) { const key = r.status === 404 ? 'setup.notAvailable' : 'setup.unreadableReply', fallback = r.status === 404 ? 'Not available.' : 'Lastbook sent an unreadable reply.'; throw Object.assign(new Error(tr(key, null, fallback)), { status: r.status, translation: keyedMessage(key, null, fallback) }) }
     return d;
   }
   const errCode = e => e && (typeof e === 'object' ? e.code : null);
@@ -113,7 +137,7 @@
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
-  let note = '', noteOk = false;
+  let note = null, noteOk = false;
   let emptyTries = 0;     // times state was asked again because the manifest came back with no libraries
   let shown = '';         // the state answer the screen last drew: a background answer the same as it draws nothing
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something; {sure}: this page saw it from the start
@@ -130,11 +154,11 @@
     b.onchange = () => { const want = b.checked; updQ = updQ.then(() => saveUpdates(want)) };
   }
   async function saveUpdates(want) {
-    const r = await call('updates', { notify: want }).catch(e => ({ error: e.message }));
+    const r = await call('updates', { notify: want }).catch(e => ({ error: e.message, translation: e.translation }));
     const b = $('#updBox'), n = $('#updNote');
     if (!r || r.error) {
       if (b) b.checked = !!(U && U.notify);
-      if (n) { n.hidden = false; n.textContent = tr(r && r.error_key || 'update.savePreferenceFailed', null, r && r.error || 'Lastbook could not save this setting. Try again.') }
+      if (n) { n.hidden = false; n.innerHTML = messageMarkup(apiMessage(r, keyedMessage('update.savePreferenceFailed', null, 'Lastbook could not save this setting. Try again.'))) }
       return;
     }
     U = { ...r, supported: true };
@@ -230,7 +254,7 @@
     try { s = await call('state') }
     catch (e) {
       if (bg) return;
-      main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b data-i18n="setup.error">Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again" data-i18n="setup.tryAgain">Try again</button></p></div></div>`;
+      main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b data-i18n="setup.error">Setup could not start.</b><p>${messageMarkup(e.translation || rawMessage(e.message, 'en'))}</p><p><button class="btn" id="again" data-i18n="setup.tryAgain">Try again</button></p></div></div>`;
       globalThis.LastbookI18n?.apply(main);
       $('#again').onclick = () => load();
       return;
@@ -285,7 +309,7 @@
     const back = sel && main.querySelector(sel);
     if (back && !back.disabled) back.focus({ preventScroll: true });
   }
-  function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = ''; srv.open = false; srv.note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
+  function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = null; srv.open = false; srv.note = null; if (v === 'manage' || v === 'choose') repair = null; render(true) }
 
   /* ---- this computer */
   function computer() {
@@ -445,36 +469,36 @@
       throw 0;
     } catch {
       n.hidden = false;
-      n.textContent = tr('setup.pickerFailed', null, 'The picker could not open. Try choosing the file or folder again.');
+      n.innerHTML = messageMarkup(keyedMessage('setup.pickerFailed', null, 'The picker could not open. Try choosing the file or folder again.'));
     }
   }
   async function useFile(path, btn, only) {
     if (btn) btn.disabled = true;
     try {
       const r = await call('use', { path, ...only });
-      if (r && r.error) throw new Error(apiErrorText(r));
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = tr('setup.aiFileWillBeUsed', null, 'The local AI file will be used. No need to download it.'); return }
+      if (r && r.error) throw Object.assign(new Error(apiErrorText(r)), { translation: apiMessage(r) });
+      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.innerHTML = messageMarkup(keyedMessage('setup.aiFileWillBeUsed', null, 'The local AI file will be used. No need to download it.')); return }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
-      const n = $('#haveNote'); n.hidden = false; n.textContent = e.message;
+      const n = $('#haveNote'); n.hidden = false; n.innerHTML = messageMarkup(e.translation || rawMessage(e.message, 'en'));
     }
   }
   async function start() {
     if (mapMissing()) { $('#mapSel')?.focus(); return }
     const b = $('#start'); b.disabled = true;
-    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message }));
+    const r = await call('start', { pack: packNeedsInstall(packById(choice.pack)) ? choice.pack : null, ai: !!choice.ai && aiFits() && !(cur() || {}).model, map: mapAdds() ? choice.map : null, address_id: addressById(selectedState())?.available !== false && addressById(selectedState()) ? selectedState() : null, folder }).catch(e => ({ error: e.message, translation: e.translation }));
     if (r && r.need_bytes) { shortfall = r; summary(); return }
-    if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.textContent = apiErrorText(r) || tr('setup.error', null, 'Setup could not start.'); return }
+    if (!r || r.error) { b.disabled = false; const n = $('#haveNote'); n.hidden = false; n.innerHTML = messageMarkup(apiMessage(r, keyedMessage('setup.error', null, 'Setup could not start.'))); return }
     S.job = r; go('job'); poll();
   }
 
   /* ---- a model server on this computer (#78): Ollama, llama.cpp. Asked only when the person presses List models. */
-  const srv = { open: false, address: '', models: null, note: '', ok: false, heading: false };
+  const srv = { open: false, address: '', models: null, note: null, ok: false, heading: false };
   function serverBox() {
     const ms = S.model_server, firstRun = !cur();
     const after = firstRun ? ' ' + tr('setup.server.afterSetup', null, 'Used once setup is done.') : '';
-    const note = srv.note ? `<p class="s-note${srv.ok ? ' ok' : ''}" id="srvNote" role="status">${esc(srv.note)}</p>` : '';
+    const note = srv.note ? `<p class="s-note${srv.ok ? ' ok' : ''}" id="srvNote" role="status">${messageMarkup(srv.note)}</p>` : '';
     const head = small => `<div class="s-row">${ico('ai', 's-ri')}<span><b>${tr('setup.server.title', null, 'Model server on this computer')}</b><small>${small}</small></span>`;
     // First-run Setup shows only a link until the person opens the chooser or has chosen a server.
     if (firstRun && !ms && !srv.open) return `<button class="s-link" id="srvOpen">${ico('ai')}${tr('setup.server.open', null, 'Use a model server on this computer')}</button>${note}`;
@@ -501,38 +525,38 @@
   function renderServer(focus) {
     const slot = $('#srvSlot'); if (!slot) return;
     slot.innerHTML = serverBox();
-    const say = (text, ok) => { srv.note = text; srv.ok = !!ok };
+    const say = (message, ok) => { srv.note = message; srv.ok = !!ok };
     const addr = () => { srv.address = ($('#srvAddr') || {}).value || srv.address; return srv.address };
     if ($('#srvOpen')) $('#srvOpen').onclick = () => { srv.open = true; srv.models = null; say(''); srv.address = srv.address || (S.model_server || {}).address || ''; renderServer('#srvAddr') };
     if ($('#srvCancel')) $('#srvCancel').onclick = () => { srv.open = false; say(''); renderServer('#srvOpen') };
     if ($('#srvAddr')) $('#srvAddr').onkeydown = e => { if (e.key === 'Enter') $('#srvList').click() };
     if ($('#srvList')) $('#srvList').onclick = async () => {
       $('#srvList').disabled = true;
-      const r = await call('server-models', { address: addr() }).catch(e => ({ error: e.message }));
+      const r = await call('server-models', { address: addr() }).catch(e => ({ error: e.message, translation: e.translation }));
       srv.models = r && r.models || null;
-      say(r && r.error ? apiErrorText(r) : r.models.length === 1
-        ? tr('setup.server.oneModelAt', { address: esc(r.address) }, 'One model at {address}.')
-        : tr('setup.server.modelsAt', { count: r.models.length, address: esc(r.address) }, '{count} models at {address}.'), !(r && r.error));
+      say(r && r.error ? apiMessage(r) : r.models.length === 1
+        ? keyedMessage('setup.server.oneModelAt', { address: r.address }, 'One model at {address}.')
+        : keyedMessage('setup.server.modelsAt', { count: r.models.length, address: r.address }, '{count} models at {address}.'), !(r && r.error));
       renderServer(srv.models ? '#srvModel' : '#srvAddr');
     };
     if ($('#srvUse')) $('#srvUse').onclick = async () => {
       $('#srvUse').disabled = true;
       const model = $('#srvModel').value;
-      const r = await call('use-server', { address: addr(), model }).catch(e => ({ error: e.message }));
-      if (r && r.error) { say(apiErrorText(r)); renderServer('#srvAddr'); return }
+      const r = await call('use-server', { address: addr(), model }).catch(e => ({ error: e.message, translation: e.translation }));
+      if (r && r.error) { say(apiMessage(r)); renderServer('#srvAddr'); return }
       S.model_server = r.model_server; srv.open = false; srv.models = null;
       say(cur()
-        ? tr('setup.server.chatNowAnswers', { model: esc(model) }, 'Chat now answers with {model}.')
-        : tr('setup.server.chatAnswersAfterSetup', { model: esc(model) }, 'Chat will answer with {model} once setup is done.'), true);
+        ? keyedMessage('setup.server.chatNowAnswers', { model }, 'Chat now answers with {model}.')
+        : keyedMessage('setup.server.chatAnswersAfterSetup', { model }, 'Chat will answer with {model} once setup is done.'), true);
       renderServer('#srvNote');
     };
     if ($('#srvStop')) $('#srvStop').onclick = async () => {
-      const r = await call('stop-server', {}).catch(e => ({ error: e.message }));
-      if (r && r.error) { say(apiErrorText(r)); renderServer('#srvNote'); return }
+      const r = await call('stop-server', {}).catch(e => ({ error: e.message, translation: e.translation }));
+      if (r && r.error) { say(apiMessage(r)); renderServer('#srvNote'); return }
       S.model_server = null;
       say(cur() && model() && cur().model
-        ? tr('setup.server.chatLocalAiAgain', null, 'Chat answers with the local AI again.')
-        : tr('setup.server.noLongerUsed', null, 'The model server is no longer used.'), true);
+        ? keyedMessage('setup.server.chatLocalAiAgain', null, 'Chat answers with the local AI again.')
+        : keyedMessage('setup.server.noLongerUsed', null, 'The model server is no longer used.'), true);
       renderServer('#srvNote');
     };
     const f = focus && $(focus); if (f) { if (focus === '#srvNote') f.tabIndex = -1; f.focus() }
@@ -590,7 +614,7 @@
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b data-i18n="setup.copyTitle">Copy for someone else</b><small data-i18n="setup.copyIntro">Puts this library on a drive, with a START-HERE.txt, so someone can set up Lastbook with no internet. Nothing of yours is copied.</small></span><button class="btn plain" id="copyOut" data-i18n="setup.copyToDrive">Copy to a drive…</button></div></div>
       <div class="s-go left">${CAN.repair ? `<button class="btn plain" id="repair">${ico('repair')}${tr('setup.checkRepair', null, 'Check and repair')}</button>` : ''}
         <button class="s-link" id="otherLib">${ico('folder')}${tr('setup.openAnotherLibraryFolder', null, 'Open another library folder')}</button></div>
-      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>
+      <p class="s-note${noteOk ? ' ok' : ''}" id="haveNote"${note ? '' : ' hidden'}>${messageMarkup(note)}</p>
       ${U && U.supported ? `<h2 data-i18n="update.title">App updates</h2>${updatesBox()}` : ''}`;
     wireUpdates();
     cloudPoll(c);
@@ -601,23 +625,23 @@
     if ($('#addAi')) $('#addAi').onclick = () => { setPack(c.pack); choice.ai = true; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
-    if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', tr('setup.aiRemoved', null, 'The local AI was removed.'));   // the engine stops the AI first
+    if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', 'setup.aiRemoved', 'The local AI was removed.');   // the engine stops the AI first
     if ($('#rmOld')) $('#rmOld').onclick = () => { confirmOld = true; manageView(); $('#oldNo').focus() };
     if ($('#oldNo')) $('#oldNo').onclick = () => { confirmOld = false; manageView(); $('#rmOld').focus() };
-    if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', tr('setup.oldLibraryDeleting', null, 'The old library is being deleted.'), { path: old.path });
+    if ($('#oldYes')) $('#oldYes').onclick = () => act('delete-old', 'setup.oldLibraryDeleting', 'The old library is being deleted.', { path: old.path });
     if ($('#checkNow')) $('#checkNow').onclick = async () => {   // Check reads every file and downloads nothing.
-      const r = await call('start', { check: true }).catch(e => ({ error: e.message }));
-      if (!r || r.error) { note = apiErrorText(r) || tr('setup.check.startFailed', null, 'The check could not start.'); manageView(); return }
+      const r = await call('start', { check: true }).catch(e => ({ error: e.message, translation: e.translation }));
+      if (!r || r.error) { note = apiMessage(r, keyedMessage('setup.check.startFailed', null, 'The check could not start.')); manageView(); return }
       repair = null; S.job = r; go('job'); poll();
     };
     if ($('#copyOut')) $('#copyOut').onclick = async () => {   // #114: choose the drive, then say what will be copied before copying
       const r = await call('pick', {}).catch(() => null);
-      if (!r || !r.path) { if (!r) { note = tr('setup.pickerFailedRetry', null, 'The picker could not open. Try again.'); manageView() } return }
+      if (!r || !r.path) { if (!r) { note = keyedMessage('setup.pickerFailedRetry', null, 'The picker could not open. Try again.'); manageView() } return }
       copyTo = r; go('copy');
     };
     if ($('#repair')) $('#repair').onclick = async () => {
-      const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message }));
-      if (!r || r.error) { note = apiErrorText(r) || tr('setup.repairFailed', null, 'Repair could not start.'); manageView(); return }
+      const r = await call('start', { repair: true, ai: !!c.model }).catch(e => ({ error: e.message, translation: e.translation }));
+      if (!r || r.error) { note = apiMessage(r, keyedMessage('setup.repairFailed', null, 'Repair could not start.')); manageView(); return }
       repair = { fixed: false, sure: true }; S.job = r; go('job'); poll();
     };
     renderServer();
@@ -634,12 +658,12 @@
       <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b>${esc(home(r.path || ''))}</b><small>${r.free_bytes != null ? size(r.free_bytes) + ' free there' : ''}</small></span></div></div>
       <p class="s-note" data-i18n="setup.copyNotCopied">Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.</p>
       <p class="s-two"><button class="btn big" id="copyGo" data-i18n="common.copy">Copy</button> <button class="btn big plain" id="copyBack" data-i18n="nav.back">Back</button></p>
-      <p class="s-note" id="haveNote"${note ? '' : ' hidden'}>${esc(note)}</p>`;
+      <p class="s-note" id="haveNote"${note ? '' : ' hidden'}>${messageMarkup(note)}</p>`;
     $('#copyBack').onclick = () => go('manage');
     $('#copyGo').onclick = async () => {
       $('#copyGo').disabled = true;
-      const x = await call('start', { copy_to: r.path }).catch(e => ({ error: e.message }));
-      if (!x || x.error) { note = apiErrorText(x) || tr('setup.copyFailedStart', null, 'The copy could not start.'); copyView(); return }
+      const x = await call('start', { copy_to: r.path }).catch(e => ({ error: e.message, translation: e.translation }));
+      if (!x || x.error) { note = apiMessage(x, keyedMessage('setup.copyFailedStart', null, 'The copy could not start.')); copyView(); return }
       repair = null; S.job = x; go('job'); poll();
     };
     globalThis.LastbookI18n?.apply(main);
@@ -663,12 +687,12 @@
       : [files ? tr('setup.check.filesDamaged', { count: files }, '{count} damaged or missing') : '', ai ? tr('setup.check.aiMismatch', null, 'the local AI file did not match') : '', map ? tr('setup.check.mapDamaged', null, 'the detailed map is damaged') : ''].filter(Boolean).join(' · ') || tr('setup.check.everyFile', null, 'every file as published');
     return tr('setup.check.lastChecked', { when: esc(when), what: esc(what) }, 'Last checked {when} · {what}');
   }
-  async function act(path, done, body) {
+  async function act(path, doneKey, doneFallback, body) {
     const r = await call(path, body || {}).catch(e => ({ error: e.status === 404 ? tr('setup.cannotDoThat', null, 'This Lastbook cannot do that yet.') : e.message }));
     confirmRemove = confirmOld = false;
     noteOk = !(r && r.error);
-    if (r && r.error) note = apiErrorText(r);
-    else { note = done; S = await call('state').catch(() => S) }
+    if (r && r.error) note = apiMessage(r);
+    else { note = keyedMessage(doneKey, null, doneFallback); S = await call('state').catch(() => S) }
     manageView();
     const n = $('#haveNote'); if (n) { n.tabIndex = -1; n.focus() }
   }
@@ -705,11 +729,28 @@
   let shapeKey = '', lastAct = null;   // lastAct: the button just pressed, so focus lands on what replaced it
 
   function errorBox(j) {
-    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
+    const textLocales = new Map();
+    const tr = (k, p, f) => {
+      const result = globalThis.LastbookI18n?.resolve?.(k, p);
+      const base = result?.text ?? (typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f);
+      const text = (!p || base == null) ? base : String(base).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m));
+      textLocales.set(text, result?.locale || 'en');
+      return text;
+    };
+    const tagged = text => `<span lang=\"${esc(textLocales.get(text) || 'en')}\">${text ?? ''}</span>`;
+    const errorMessage = value => {
+      const key = value && (value.key || value.error_key);
+      if (key) {
+        const source = value.params || value.error_params || {};
+        const params = Object.fromEntries(Object.entries(source).map(([name, item]) => [name, esc(item)]));
+        return tr(key, params, esc(value.message || value.error || ''));
+      }
+      return esc(errText(value) || '');
+    };
     const e = j.error, code = errCode(e) || j.code, c = cur();
     const failedModel = (j.items || []).some(it => it.kind === 'model' && it.state === 'failed');
     const blockedModel = failedModel && (code === 'unreachable' || (code === 'network' && (j.items || []).some(it => it.kind === 'model' && it.state === 'failed' && !it.bytes_done)));
-    const safe = c ? tr('setup.libraryUntouched', null, 'Your library is untouched and still works.') : tr('setup.nothingElseChanged', null, 'Nothing else on this computer was changed.');
+    const safeHtml = c ? trMarkup('setup.libraryUntouched', null, 'Your library is untouched and still works.') : trMarkup('setup.nothingElseChanged', null, 'Nothing else on this computer was changed.');
     const d = diskFor(j.folder || folder);
     const T = {
       found_mismatch: (() => {   // a file of the person's own that did not match: nothing was downloaded, and their file is left alone
@@ -726,20 +767,20 @@
           : tr('setup.unreachable.libraryHint', null, 'It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, then choose it with Choose again and “Choose a library zip or AI model file”.'), 'retry'],
       server: [tr('setup.serverBusy', null, 'The download server stayed busy.'), tr('setup.serverBusyHint', null, 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.'), 'retry'],
       checksum: [tr('setup.damagedTwice', null, 'The download came out damaged twice, so it was not used.'), tr('setup.damagedHint', null, 'Retry to download it once more.'), 'retry'],
-      unpack: [e && e.key ? esc(errText(e)) : tr('setup.unpackFailed', null, 'Unpacking did not finish.'), tr('setup.unpackHint', null, 'Check there is room on the disk, then retry.'), 'retry'],
-      activate: [e && e.key ? esc(errText(e)) : tr('setup.switchFailed', null, 'The new library is ready but could not be switched in.'), tr('setup.switchHint', null, 'Retry, or close Lastbook and open it again.'), 'retry'],
-      copy: [tr('setup.copyStopped', null, 'The copy stopped.'), esc(errText(e) || tr('setup.copyAgainHint', null, 'Copy again to the same place to carry on.')), 'retry'],
+      unpack: [e && (e.key || e.error_key) ? errorMessage(e) : tr('setup.unpackFailed', null, 'Unpacking did not finish.'), tr('setup.unpackHint', null, 'Check there is room on the disk, then retry.'), 'retry'],
+      activate: [e && (e.key || e.error_key) ? errorMessage(e) : tr('setup.switchFailed', null, 'The new library is ready but could not be switched in.'), tr('setup.switchHint', null, 'Retry, or close Lastbook and open it again.'), 'retry'],
+      copy: [tr('setup.copyStopped', null, 'The copy stopped.'), errorMessage(e) || tr('setup.copyAgainHint', null, 'Copy again to the same place to carry on.'), 'retry'],
       cancelled: j.copy ? [tr('setup.copyCancelled', null, 'The copy was cancelled.'), tr('setup.copyCancelledHint', null, 'What was copied is still on the drive: copy again to the same place to carry on.'), 'back'] : [tr('setup.downloadCancelled', null, 'The download was cancelled.'), tr('setup.startAgainReady', null, 'Start again when you are ready.'), 'back'],
-    }[code] || [esc(errText(e) || tr('app.errorGeneric', null, 'Something went wrong.')), tr('setup.retryOrChoose', null, 'Retry, or go back and choose again.'), 'retry'];
-    return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
+    }[code] || [errorMessage(e) || tr('app.errorGeneric', null, 'Something went wrong.'), tr('setup.retryOrChoose', null, 'Retry, or go back and choose again.'), 'retry'];
+    return `<div class="s-err" role="alert">${ico('warn')}<div><b>${tagged(T[0])}</b><p>${tagged(T[1])}${code === 'found_mismatch' && !c ? '' : ' ' + safeHtml}</p>
       ${code === 'unreachable' && e && e.name ? facts(e) : ''}
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}${tr('setup.retry', null, 'Retry')}</button>` : T[2] === tr('setup.downloadNoun', null, 'download') ? `<button class="btn" data-act="retry">${ico('down')}${tr('setup.downloadIt', null, 'Download it instead?')}</button>` : ''}${blockedModel ? `<button class="btn plain" data-act="model-file">${tr('setup.chooseAiModelFile', null, 'Choose an AI model file')}</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">${tr('setup.chooseAgain', null, 'Choose again')}</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}${tagged(tr('setup.retry', null, 'Retry'))}</button>` : T[2] === tr('setup.downloadNoun', null, 'download') ? `<button class="btn" data-act="retry">${ico('down')}${tagged(tr('setup.downloadIt', null, 'Download it instead?'))}</button>` : ''}${blockedModel ? `<button class="btn plain" data-act="model-file">${tagged(tr('setup.chooseAiModelFile', null, 'Choose an AI model file'))}</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">${tagged(tr('setup.chooseAgain', null, 'Choose again'))}</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
-    const row = (key, fallback, v) => `<dt>${tr(key, null, fallback)}</dt><dd>${v}</dd>`;
+    const row = (key, fallback, v) => `<dt>${trMarkup(key, null, fallback)}</dt><dd>${v}</dd>`;
     const bytes = globalThis.LastbookI18n?.number?.(Number(e.size)) ?? Number(e.size).toLocaleString();
-    return `<dl class="s-facts">${row('setup.facts.file', 'File', `<code>${esc(e.name)}</code>`)}${e.size ? row('setup.facts.size', 'Size', `${size(e.size)} (${tr('setup.facts.bytes', { count: bytes }, '{count} bytes')})`) : ''}${e.url ? row('setup.facts.address', 'Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('setup.facts.sha256', 'SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
+    return `<dl class="s-facts">${row('setup.facts.file', 'File', `<code>${esc(e.name)}</code>`)}${e.size ? row('setup.facts.size', 'Size', `${size(e.size)} (${trMarkup('setup.facts.bytes', { count: bytes }, '{count} bytes')})`) : ''}${e.url ? row('setup.facts.address', 'Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('setup.facts.sha256', 'SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
   }
   function itemHTML(it, j) {
     const FAILED_AT = { checksum: 'verifying', found_mismatch: 'verifying', unpack: 'unpacking', activate: 'activating' };
@@ -906,24 +947,34 @@
     const fixed = repair && (r ? !!r.repaired : repair.fixed), checked = repair && !fixed, unsure = checked && !r && !repair.sure;   // unsure: opened again late in a repair
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? tr('setup.checked', null, 'Checked') : checked ? tr('common.ok', null, 'All good') : fixed ? tr('setup.repaired', null, 'Repaired') : tr('setup.ready', null, 'Ready')}</h1>
-      <p class="lead">${unsure ? tr('setup.checkedRepaired', null, 'The library was checked and is complete. Anything that was damaged was downloaded again.') : checked ? tr('setup.checkedComplete', null, 'The library was checked and is complete.') : fixed ? tr('setup.damagedAside', null, 'A damaged part was downloaded again. The damaged copy is kept aside; you can delete it in Library and local AI.') : got ? tr('setup.installedItems', { items: got }, 'Installed: {items}.') : j.items.some(i => i.id === 'library') ? tr('setup.libraryReadyOpen', null, 'The library you chose is ready to open.') : tr('setup.libraryInstalled', null, 'The library is installed.')}</p>
+      <p class="lead">${unsure ? tr('setup.checkedRepaired', null, 'The library was checked and is complete. Anything that was damaged was downloaded again.') : checked ? tr('setup.checkedComplete', null, 'The library was checked and is complete.') : fixed ? repairedMarkup(r || {}) : got ? tr('setup.installedItems', { items: got }, 'Installed: {items}.') : j.items.some(i => i.id === 'library') ? tr('setup.libraryReadyOpen', null, 'The library you chose is ready to open.') : tr('setup.libraryInstalled', null, 'The library is installed.')}</p>
       <button class="btn big" id="open">${tr('setup.openLibrary', null, 'Open the library')}</button><p class="s-note" id="openNote" hidden></p></div>`;
     live.textContent = checked ? tr('setup.libraryChecked', null, 'The library was checked.') : fixed ? tr('setup.repairedReady', null, 'Repaired. Ready to open.') : tr('setup.installedReady', null, 'Installed. Ready to open.');
     $('#open').onclick = async () => {
       const b = $('#open'); b.disabled = true; b.textContent = tr('setup.openingLibrary', null, 'Opening your library…');
-      const r = await call('finish', {}).catch(e => ({ error: e.message }));   // on {ok} the app relaunches itself into the library
-      if (!r || r.error) { b.disabled = false; b.textContent = tr('setup.openLibrary', null, 'Open the library'); const n = $('#openNote'); n.hidden = false; n.textContent = apiErrorText(r) || tr('setup.libraryDidNotOpen', null, 'The library did not open. Try again.') }
+      const r = await call('finish', {}).catch(e => ({ error: e.message, translation: e.translation }));   // on {ok} the app relaunches itself into the library
+      if (!r || r.error) { b.disabled = false; b.textContent = tr('setup.openLibrary', null, 'Open the library'); const n = $('#openNote'); n.hidden = false; n.innerHTML = messageMarkup(apiMessage(r, keyedMessage('setup.libraryDidNotOpen', null, 'The library did not open. Try again.'))) }
       else live.textContent = tr('setup.openingLibrary', null, 'Opening your library…');
     };
   }
 
   /* what Repair did: the whole library downloaded again (the damaged copy kept aside), the AI file replaced, the map fetched again */
+  function repairParts(r) {
+    const ai = r.model_ok === false, map = r.map_ok === false;
+    const lib = r.pack_replaced != null ? !!r.pack_replaced : (r.damaged || 0) - ai - map > 0;
+    return [
+      lib ? ['setup.repairSummaryLibrary', null, 'The library was downloaded again because some of its files were damaged. The damaged copy was kept aside; you can delete it in Library and local AI.'] : null,
+      ai ? (lib ? ['setup.repairSummaryAiWithLibrary', null, 'The local AI file was downloaded again too.'] : ['setup.repairSummaryAiOnly', null, 'The local AI file was damaged, so it was downloaded again and put in its place.']) : null,
+      map ? ['setup.repairSummaryMap', null, 'The detailed map was downloaded again.'] : null,
+    ].filter(Boolean);
+  }
   function repairedWords(r) {
-    const ai = r.model_ok === false, map = r.map_ok === false, lib = r.pack_replaced != null ? !!r.pack_replaced : (r.damaged || 0) - ai - map > 0;
-    const said = [lib ? 'The library was downloaded again, because some of its files were damaged. The damaged copy is kept aside; you can delete it in Library and local AI.' : '',
-                  ai ? (lib ? 'The local AI file was downloaded again too.' : 'The local AI file was damaged, so it was downloaded again and put in its place.') : '',
-                  map ? 'The detailed map was downloaded again.' : ''].filter(Boolean).join(' ');
-    return said || 'A damaged part was downloaded again.';
+    const parts = repairParts(r);
+    return parts.length ? parts.map(([key, params, fallback]) => tr(key, params, fallback)).join(' ') : tr('setup.repairSummaryOther', null, 'A damaged part was downloaded again.');
+  }
+  function repairedMarkup(r) {
+    const parts = repairParts(r);
+    return parts.length ? parts.map(([key, params, fallback]) => trMarkup(key, params, fallback)).join(' ') : trMarkup('setup.repairSummaryOther', null, 'A damaged part was downloaded again.');
   }
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   /* what Repair would do for what the check found: a damaged library file means the whole library again; the AI file is replaced in place */
@@ -947,8 +998,8 @@
     call('state').then(x => { S = x }).catch(() => { });   // the new "Last checked" date
     $('#back').onclick = async () => { S = await call('state').catch(() => S); go('manage') };
     if ($('#doRepair')) $('#doRepair').onclick = async () => {
-      const x = await call('start', { repair: true, ai: !!(S.current && S.current.model) }).catch(e => ({ error: e.message }));
-      if (!x || x.error) { note = apiErrorText(x) || tr('setup.repairFailed', null, 'Repair could not start.'); go('manage'); return }
+      const x = await call('start', { repair: true, ai: !!(S.current && S.current.model) }).catch(e => ({ error: e.message, translation: e.translation }));
+      if (!x || x.error) { note = apiMessage(x, keyedMessage('setup.repairFailed', null, 'Repair could not start.')); go('manage'); return }
       repair = { fixed: false, sure: true }; S.job = x; go('job'); poll();
     };
   }

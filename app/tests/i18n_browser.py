@@ -607,6 +607,44 @@ class Browser(unittest.TestCase):
             page.evaluate("location.hash = '#/wiki/mdwiki_fixture/Some_Article'")
             expect(page.locator('.zn')).to_have_text('Enciclopedia médica (MDWiki) ·')
 
+    def test_map_cluster_error_messages_keep_the_resolved_locale(self):
+        self.configure_setup(current=DATA)
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        points = {'points': [{'lat': 37.7749, 'lon': -122.4194, 'count': 2, 'kinds': {'hospital': 2},
+                              'cls': 'hospital', 'bbox': [-122.421, 37.773, -122.418, 37.776]}], 'truncated': False}
+        cases = [
+            ('es-419', 'es-419', '2 lugares aquí', 'No se pudo cargar la lista. Acerca el mapa para ver los lugares uno a uno.'),
+            ('de', 'en', '2 places here', 'Couldn’t load the list. Zoom in to see individual places.'),
+            ('zh-Hans', 'en', '2 places here', 'Couldn’t load the list. Zoom in to see individual places.'),
+        ]
+        for locale, expected_locale, title, failure in cases:
+            with self.subTest(locale=locale):
+                self.language_file.write_text(json.dumps({'language': locale}), encoding='utf-8')
+                with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+                    page.route('**/api/map/info', lambda route: route.fulfill(
+                        status=200, content_type='application/json', body=json.dumps(info)))
+                    page.route('**/api/map/pins*', lambda route: route.fulfill(
+                        status=200, content_type='application/json', body=json.dumps(points)))
+                    page.route('**/api/map/near*', lambda route: route.fulfill(
+                        status=200, content_type='application/json', body='[]'))
+                    page.route('**/api/map/members*', lambda route: route.fulfill(
+                        status=503, content_type='application/json', body='not-json'))
+                    page.goto(origin + '/#/map?lat=37.7749&lon=-122.4194&z=17&layers=hospital')
+                    expect(page.locator('html')).to_have_attribute('lang', locale)
+                    page.wait_for_load_state('networkidle')
+                    expect(page.locator('#mstatus')).to_contain_text('2')
+                    canvas = page.locator('#mapc')
+                    box = canvas.bounding_box()
+                    with page.expect_response(lambda response: '/api/map/members?' in response.url):
+                        page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                    heading = page.locator('#card h3 span')
+                    expect(heading).to_have_text(title)
+                    expect(heading).to_have_attribute('lang', expected_locale)
+                    failure_copy = page.locator('#card p span')
+                    expect(failure_copy).to_have_text(failure)
+                    expect(failure_copy).to_have_attribute('lang', expected_locale)
+
     def test_map_panels_use_the_selected_interface_language(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
@@ -1036,6 +1074,235 @@ class Browser(unittest.TestCase):
                         page.reload(wait_until='domcontentloaded')
                         expect(guides).to_be_visible()
                         self.assertTrue(page.evaluate('!!window.LastbookI18n'))
+
+
+    def test_gps_marker_card_retranslates_after_language_change(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("Object.defineProperty(window, 'isSecureContext', {configurable: true, value: true}); Object.defineProperty(navigator, 'geolocation', {configurable: true, value: {getCurrentPosition: ok => ok({coords: {latitude: 37.7749, longitude: -122.4194}})}})")
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'layers': [], 'bounds': [-125, 24, -66, 50], 'datasets': []})))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map')
+            page.locator('#gps').click()
+            canvas = page.locator('#mapc')
+            box = canvas.bounding_box()
+            page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2 - 18)
+            expect(page.locator('#card h3')).to_have_text('You are here (approx.)')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#card h3 span[lang="es-419"]')).to_have_text('Estás aquí (aprox.)')
+
+    def test_linked_map_pin_kind_retranslates_after_language_change(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'layers': [], 'bounds': [-125, 24, -66, 50], 'datasets': []})))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map?lat=37.7749&lon=-122.4194&z=15&pin=Test')
+            canvas = page.locator('#mapc')
+            box = canvas.bounding_box()
+            page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2 - 18)
+            expect(page.locator('#card .kind span[lang="es-419"]')).to_have_text('Lugar vinculado')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('en');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#card .kind span[lang="en"]')).to_have_text('Linked place')
+
+    def test_saved_chat_errors_and_stopped_answers_retranslate(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        stopped_spanish = 'Se detuvo.'
+        chat = {'id': 'saved-locale-chat', 'title': 'Question', 'updated': '2026-11-25T12:00:00Z', 'messages': [
+            {'role': 'user', 'content': 'Question'},
+            {'role': 'assistant', 'content': '', 'error': 'La IA local necesita aproximadamente 20 GB de memoria.'},
+            {'role': 'user', 'content': 'Question two'},
+            {'role': 'assistant', 'content': 'Respuesta parcial.\n\n(' + stopped_spanish + ')', 'stopped': True, 'sources': []},
+        ]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.goto(origin + '/#/ask/saved-locale-chat')
+            expect(page.locator('#m1 .ans-error b span[lang="es-419"]')).to_have_text('La IA local necesita aproximadamente 20 GB de memoria.')
+            expect(page.locator('#m3 .answer')).to_have_text('Respuesta parcial.')
+            expect(page.locator('#m3 .answer')).not_to_contain_text(stopped_spanish)
+            expect(page.locator('#m3 .ans-stopped span[lang="es-419"]')).to_have_text(stopped_spanish)
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('en');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#m1 .ans-error b span[lang="en"]')).to_have_text('The local AI needs about 20 GB of memory.')
+            expect(page.locator('#m3 .ans-stopped span[lang="en"]')).to_have_text('Stopped.')
+            self.assertEqual(page.locator('#chatSide').get_attribute('lang'), 'en')
+            with page.expect_download() as english_export:
+                page.get_by_role('button', name='Export chat').click()
+            english_markdown = Path(english_export.value.path()).read_text(encoding='utf-8')
+            self.assertIn('Chat: Question', english_markdown)
+            self.assertIn('The local AI needs about 20 GB of memory.', english_markdown)
+            self.assertIn('## Question', english_markdown)
+            self.assertIn('## Answer', english_markdown)
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#m1 .ans-error b span[lang="es-419"]')).to_have_text('La IA local necesita aproximadamente 20 GB de memoria.')
+            with page.expect_download() as exported:
+                page.get_by_role('button', name='Exportar chat').click()
+            markdown = Path(exported.value.path()).read_text(encoding='utf-8')
+            self.assertIn('Respuesta parcial.\n\n(Se detuvo.)', markdown)
+            self.assertNotIn('Respuesta parcial.\n\n(Stopped.)', markdown)
+
+    def test_setup_error_fallback_copy_is_tagged_english(self):
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        state = {'mode': 'setup', 'current': None, 'hardware': {'disks': []}, 'job': {
+            'state': 'failed', 'error': {'code': 'unreachable', 'host': 'download.example'},
+            'items': [], 'folder': str(DATA), 'repair': False,
+        }}
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/setup/state', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(state)))
+            page.route('**/api/setup/updates', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'supported': False})))
+            page.goto(origin + '/ui/setup.html')
+            expect(page.locator('.s-err b span[lang="en"]')).to_have_text('Lastbook can’t reach download.example.')
+            expect(page.locator('.s-err > div > p > span[lang="en"]').first).to_contain_text('It may be down for a while')
+            expect(page.locator('.s-err button[data-act="retry"] span[lang="de"]')).to_have_text('Erneut versuchen')
+
+    def test_setup_api_error_keeps_its_key_when_the_language_changes(self):
+        self.configure_setup()
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.route('**/api/setup/server-models', lambda route: route.abort())
+            page.goto(origin)
+            page.locator('#srvOpen').click()
+            page.locator('#srvAddr').fill('127.0.0.1:11434')
+            page.locator('#srvList').click()
+            expect(page.locator('#srvNote span[lang="en"]')).to_have_text(
+                'Lastbook did not answer. Close it and open it again.')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#srvNote span[lang="es-419"]')).to_have_text(
+                'Lastbook no respondió. Ciérralo y ábrelo de nuevo.')
+
+    def test_setup_keyed_unpack_error_has_resolved_language(self):
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        state = {'mode': 'setup', 'current': None, 'hardware': {'disks': []}, 'job': {
+            'state': 'failed', 'error': {'code': 'unpack', 'key': 'setup.err.cannotPlaceMap',
+                                        'params': {'error': 'Permission denied'}},
+            'items': [{'id': 'map', 'kind': 'map', 'state': 'failed', 'error': {
+                'code': 'unpack', 'key': 'setup.err.cannotPlaceMap', 'params': {'error': 'Permission denied'}}}],
+            'folder': str(DATA), 'repair': False,
+        }}
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/setup/state', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(state)))
+            page.route('**/api/setup/updates', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'supported': False})))
+            page.goto(origin + '/ui/setup.html')
+            headline = page.locator('.s-err b span')
+            expect(headline).to_contain_text('Lastbook no pudo poner el mapa nuevo en su lugar')
+            self.assertEqual(headline.get_attribute('lang'), 'es-419')
+
+    def test_saved_video_moment_draft_survives_language_change(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"en"}', encoding='utf-8')
+        moment = {'key': 'm:vida:120', 'kind': 'video-moment', 'videoId': 'vida',
+                  'videoTitle': 'Video title', 'time': 120, 'title': 'Saved title'}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("""(() => {
+              localStorage.setItem('sg.saved', JSON.stringify([%s]));
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""" % json.dumps(moment))
+            page.goto(origin + '/#/saved')
+            page.locator('[data-moment-edit]').click()
+            page.locator('#momentName').fill('Draft title')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#momentName')).to_have_value('Draft title')
+            page.locator('form.moment-form').evaluate('form => form.requestSubmit()')
+            expect(page.locator('[data-moment-edit]')).to_have_count(1)
+            self.assertEqual(page.evaluate("JSON.parse(localStorage.getItem('sg.saved'))[0].title"), 'Draft title')
+
+    def test_chat_sidebar_landmark_label_translates_and_sets_language(self):
+        self.configure_setup(current=DATA)
+        for locale, label in (('de', 'Unterhaltungen'), ('zh-Hans', '对话')):
+            with self.subTest(locale=locale):
+                self.language_file.write_text(json.dumps({'language': locale}), encoding='utf-8')
+                with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+                    page.goto(origin + '/#/ask')
+                    sidebar = page.locator('#chatSide')
+                    expect(sidebar).to_have_attribute('aria-label', label)
+                    expect(sidebar).to_have_attribute('lang', locale)
 
 
 if __name__ == '__main__':

@@ -460,6 +460,7 @@ function searchPlaceholder() {
 }
 new ResizeObserver(searchPlaceholder).observe($('#topQ'));
 let renderedLocale = globalThis.LastbookI18n?.locale || 'en';
+let momentDraftForLanguageRefresh = null;
 function snapshotForLanguageChange() {
   const fields = $$('#main input,#main textarea,#main select').map((el, index) => ({
     index, id: el.id, tag: el.tagName, type: el.type, value: el.value,
@@ -475,8 +476,11 @@ function snapshotForLanguageChange() {
   }));
   const scrollables = $$('#main [id]').filter(el => el.scrollTop || el.scrollLeft)
     .map(el => ({ id: el.id, top: el.scrollTop, left: el.scrollLeft }));
+  const momentForm = $('#momentEditor .moment-form');
+  const momentDraft = momentForm ? { key: momentForm.dataset.momentKey || null,
+    time: Number(momentForm.dataset.momentTime), title: $('#momentName', momentForm)?.value || '' } : null;
   return {
-    href: here(), y: scrollY, topSearch: $('#topQ').value, fields, media, scrollables,
+    href: here(), y: scrollY, topSearch: $('#topQ').value, fields, media, scrollables, momentDraft,
     focusId: active && active.id,
     focusIndex: focusables.indexOf(active),
   };
@@ -524,7 +528,9 @@ async function refreshCurrentLanguage() {
     translateRendered();
     restoreAfterLanguageChange(state);
   } else {
-    await route();
+    momentDraftForLanguageRefresh = state.momentDraft;
+    try { await route() }
+    finally { momentDraftForLanguageRefresh = null }
     restoreAfterLanguageChange(state);
   }
 }
@@ -976,13 +982,13 @@ function wireMoments({ video = null, player = null, available = null, start = nu
     const key = editing && editing.key;
     editing = null; editor.replaceChildren(); focusRow(key);
   };
-  const edit = (item, seconds) => {
+  const edit = (item, seconds, draftTitle) => {
     if (player) player.pause();
     const time = item ? item.time : Math.floor(seconds);
     editing = { key: item ? item.key : null, time };
-    editor.innerHTML = `<form class="moment-form"><p class="moment-form-title">${item ? tr('moment.renameTitle', null, 'Rename moment') : tr('moment.saveTitle', null, 'Save moment')} <span class="moment-time">${clock(time)}</span></p>
+    editor.innerHTML = `<form class="moment-form" data-moment-key="${esc(editing.key || '')}" data-moment-time="${time}"><p class="moment-form-title">${item ? tr('moment.renameTitle', null, 'Rename moment') : tr('moment.saveTitle', null, 'Save moment')} <span class="moment-time">${clock(time)}</span></p>
       <label for="momentName">${tr('moment.name', null, 'Name')} <span class="muted">${tr('moment.optional', null, '(optional)')}</span></label>
-      <input id="momentName" type="text" maxlength="120" autocomplete="off" placeholder="${tr('moment.placeholder', null, "For example, tools needed")}" value="${esc(item ? item.title : '')}">
+      <input id="momentName" type="text" maxlength="120" autocomplete="off" placeholder="${tr('moment.placeholder', null, "For example, tools needed")}" value="${esc(draftTitle === undefined ? (item ? item.title : '') : draftTitle)}">
       <div class="moment-form-actions"><button class="btn" type="submit">${item ? tr('moment.saveChanges', null, 'Save changes') : tr('moment.saveTitle', null, 'Save moment')}</button><button class="btn plain" type="button" id="cancelMoment">${tr('common.cancel', null, 'Cancel')}</button></div></form>`;
     say('');
     $('#cancelMoment', editor).onclick = close;
@@ -1045,6 +1051,13 @@ function wireMoments({ video = null, player = null, available = null, start = nu
     } catch (e) { say(e.message, true) }
   };
   draw();
+  if (momentDraftForLanguageRefresh) {
+    const draft = momentDraftForLanguageRefresh;
+    try {
+      const item = draft.key ? read().find(x => x.key === draft.key) : null;
+      if (!draft.key || item) edit(item, draft.time, draft.title);
+    } catch (e) { say(e.message, true) }
+  }
 }
 
 /* ------------------------------------------------------------- reader -- */

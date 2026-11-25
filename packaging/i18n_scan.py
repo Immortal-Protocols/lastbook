@@ -59,7 +59,7 @@ PYTHON_SURFACES = {
 
 CONTENT = {
     'Lastbook', 'LastbookData', 'Lastbook videos', 'Español (Latinoamérica)',
-    'English', 'US', '3D', 'CC', 'PDF', 'AI', 'ZIP', 'GB', 'SHA-256',
+    'English', 'Deutsch', '简体中文', 'US', '3D', 'CC', 'PDF', 'AI', 'ZIP', 'GB', 'SHA-256',
     'Almonds', 'Walnuts', 'Pecans', 'Pistachios', 'Cherries', 'Peaches',
     'Apples', 'Pears', 'Prunes', 'Nectarines', 'Plums', 'Apricots',
     'Pomegranates', 'Avocados', 'Olives', 'Citrus', 'Oranges', 'Grapes',
@@ -67,7 +67,7 @@ CONTENT = {
     'Other tree crops', 'WHO', 'FEMA', 'CDC', 'EPA', 'USDA', 'NOAA',
     'UNICEF', 'MSF', 'Small', 'Medium', 'Large',
     'Where There Is No Doctor', 'National Center for Home Food Preservation',
-    'Appropedia', 'Wikipedia',
+    'Appropedia', 'Wikipedia', '© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth',
 }
 
 TECHNICAL_EXACT = {
@@ -78,7 +78,7 @@ TECHNICAL_EXACT = {
     'LastbookData.setup', 'application/json', 'text/html',
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
     'Could not access the desktop language preference', 'Contents',
-    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$',
+    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$', 'SPUStandardUpdaterController', 'SystemRoot', 'NotFound', 'WindowsPowerShell',
     '(pointer: coarse)',
 }
 
@@ -88,11 +88,7 @@ TECHNICAL_PREFIX = (
     'const ', 'return ', 'typeof ', 'window.', 'document.', 'class ',
 )
 
-LOG_CONTEXT = (
-    'console.', 'logger.', 'log(', '_log(', 'print(',
-    'raise RuntimeError', 'raise ValueError', 'raise OSError',
-)
-LOG_CALLS = {'debug', 'error', 'info', 'log', 'print', 'warning', '_log'}
+LOG_CALLS = {'debug', 'error', 'info', 'log', 'print', 'warning', '_log', 'stop', 'ValueError', 'RuntimeError', 'OSError', 'end_page'}
 
 SVG_RE = re.compile(r'^M-?\d')
 KEYISH = re.compile(r'^[A-Za-z][A-Za-z0-9_.-]{0,40}$')
@@ -107,7 +103,7 @@ TOKEN = re.compile(
     re.I,
 )
 DISPLAY_PRE = re.compile(
-    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|'
+    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|message\(|'
     r'setUiTitle|aria-label|placeholder|confirm\(|alert\(|toast\(|show_error|'
     r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|setPrompt_|GenericName|'
     r'Comment=|Name=|\.Text\s*=|why\s*=|message\s*[:=]|[\'"]error[\'"]\s*:|Failed\(|_fail\(|live\.textContent|'
@@ -142,7 +138,7 @@ def already_wired(pre: str) -> bool:
         return True
     if _inside_named_call(pre, {'setUiTitle', 'labelPair', 'backButton'}):
         return True
-    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT)\s*=\s*$", tail):
+    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT|NO_RUNTIME)\s*=\s*\(?\s*$", tail):
         return True
     return False
 
@@ -221,28 +217,27 @@ def _inside_translation_call(pre: str) -> bool:
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
-    """Recognize literal fallback text inside the keyed setup error helpers."""
+    """Recognize literal fallbacks paired with an explicit translation key."""
     source = pre[-2000:] + post[:1000]
-    # why_part takes its catalogue key as the first argument.
     if re.search(r"why_part\s*\(\s*['\"]setup\.", source):
         return True
-    # Failed stores the key after its fallback text. Keep the lookahead local
-    # to the current call and require a catalogue key to avoid hiding raw errors.
+    if re.search(r"title_key['\"]?\s*:\s*['\"]setup\.copyJobTitle", source):
+        return True
     if re.search(r"(?:Failed|Refused|_fail|_refuse_carried_back)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"](?:setup|update)\.", source):
         return True
-    # Update state records carry a translation key next to the English fallback;
-    # web/update.js renders that key for the selected locale.
     if re.search(r"_set\s*\([\s\S]{0,1200}?\bmessage_key\s*=\s*['\"]update\.", source):
         return True
-    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"]update\.", source):
+    if re.search(r"\bkey\s*=\s*['\"]update\.[A-Za-z0-9_.-]+['\"]", pre[-1600:]) and re.search(r"message_key\s*=\s*key", post[:1600]):
         return True
-    # Some errors are stored as adjacent `error` / `key` fields and translated
-    # by the UI consumer. Treat only that explicit keyed record as a fallback.
+    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"](?:setup|update|hardware)\.", source):
+        return True
     return bool(re.search(r"note\[['\"]error['\"]\]\s*=\s*['\"][\s\S]{0,600}?note\[['\"]key['\"]\]\s*=\s*['\"]setup\.", source))
 
 
 def looks_technical(s: str) -> bool:
     if s in TECHNICAL_EXACT:
+        return True
+    if re.fullmatch(r'[A-Za-z0-9_.-]+\.py --[A-Za-z0-9_-]+', s):
         return True
     if re.fullmatch(r'[A-Z][A-Za-z0-9]*(?:Enabled|Preconnect|Prefetch)', s):
         return True
@@ -327,9 +322,13 @@ def looks_ui(s: str) -> bool:
 def display_context(pre: str) -> bool:
     # The installer helper label() is a visible WinForms sink. Require the
     # literal to be its immediate first argument so a nearby helper definition
-    # cannot misclassify a font name such as "Segoe UI" as interface text.
-    return bool(DISPLAY_PRE.search(pre[-240:]) or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]))
-
+    # cannot misclassify a font name such as "Segoe UI". ZIMS is a data array
+    # rendered as encyclopedia cards and result labels, so its literals are UI
+    # even though the strings do not sit beside an HTML assignment.
+    recent = pre[-2000:]
+    zims = re.search(r'\b(?:const|let|var)\s+ZIMS\s*=\s*\[', recent)
+    in_zims = bool(zims and ';' not in recent[zims.end():])
+    return bool(DISPLAY_PRE.search(pre[-240:]) or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or in_zims)
 
 def classify(s: str, pre: str, post: str = '') -> str:
     # Wiring comes only from the source before this literal. Display and
@@ -349,13 +348,15 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
-    if any(c in context[-260:] for c in LOG_CONTEXT) or _inside_named_call(pre, LOG_CALLS):
+    # Only the current literal's enclosing call makes it a log. A nearby print
+    # in the same function must not hide a later MessageBox or other display sink.
+    if _inside_named_call(pre, LOG_CALLS):
         return 'technical'
     if s in CONTENT:
         return 'content'
     if looks_technical(s):
         return 'technical'
-    if looks_ui(s) and display_context(context):
+    if looks_ui(s) and display_context(pre):
         return 'chrome'
     # Flattened `${...}` templates are user-visible even when the prefix is only `return`.
     if looks_ui(s) and '{…}' in s:
@@ -602,6 +603,8 @@ class _MarkupStrings(HTMLParser):
                 break
 
     def handle_data(self, data):
+        if any(tag in {'script', 'style', 'noscript'} for tag, _markers in self.tags):
+            return
         value = data.strip()
         if value:
             wired = bool(self.tags and 'data-i18n' in self.tags[-1][1])
@@ -671,6 +674,17 @@ def scan_web():
         if not path.is_file():
             continue
         text = path.read_text(encoding='utf-8')
+        if name.endswith('.html'):
+            parser = _MarkupStrings(f'web/{name}')
+            parser.feed(text)
+            parser.close()
+            for value, pre in parser.strings:
+                if not value or len(value) > 2000:
+                    continue
+                line = text[:text.find(value)].count('\n') + 1 if value in text else 1
+                hits.append({'surface': f'web/{name}', 'line': line, 'text': value,
+                             'class': classify(value, pre)})
+            continue
         it = iter_js_strings(text)
         for pos, s, pre in it:
             if not s or len(s) > 2000:
@@ -696,7 +710,7 @@ def scan_python():
             # These short labels are values in the Linux navigation table;
             # the corresponding key map sends them through native_t later.
             go_values = set()
-            if rel == 'app/shell_linux.py':
+            if rel in ('app/shell_linux.py', 'app/shell_macos.py'):
                 go_match = re.search(r'\bGO\s*=\s*\[(.*?)\]', text, re.S)
                 key_match = re.search(r'go_names\s*=\s*\{(.*?)\}', text, re.S)
                 if go_match and key_match and 'native_t(go_names.get(name' in text:
@@ -706,9 +720,12 @@ def scan_python():
             for pos, s, pre, body in iter_py_strings(text):
                 if not s or len(s) > 300:
                     continue
+                pre = body[max(0, pos - 200):pos]
                 end = _skip_string(body, pos)
-                post = body[pos:min(len(body), end + 600)]
+                post = body[pos:min(len(body), end + 1000)]
                 line = body[:pos].count('\n') + 1
+                if rel == 'engine/update.py':
+                    pre = body[max(0, pos - 2000):pos]
                 kind = 'wired' if s in go_values else classify(s, pre, post)
                 hits.append({'surface': surface, 'file': rel, 'line': line,
                              'text': s, 'class': kind})

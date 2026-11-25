@@ -942,7 +942,7 @@
   "setup.chooseAgain": "Choose again",
   "setup.chooseAiModelFile": "Choose an AI model file",
   "setup.chooseExistingFolder": "Choose an existing library folder",
-  "setup.chooseIntro": "Choose your state and library. Lastbook downloads them for offline use.",
+  "setup.chooseIntro": "Choose your library. Lastbook downloads it for offline use; a state map is optional.",
   "setup.chooseState": "Choose state",
   "setup.chooseStateContinue": "Choose your state to continue",
   "setup.chooseYourState": "Choose your state",
@@ -1529,5 +1529,11 @@
   "videos.row.water": "Water & sanitation",
   "videos.rowNote.courses": "University lectures (MIT and others)",
   "videos.rowNote.hobbyist": "Hobbyist channel",
-  "videos.rowNote.primitive": "Hobbyist channel — no narration"
+  "videos.rowNote.primitive": "Hobbyist channel — no narration",
+  "setup.skipMapNoAddress": "No street-address search. You can add it later from Settings.",
+  "setup.skipMapNoLocal": "No local map. You can add one later from Settings.",
+  "setup.skipMapNoAddressLabel": "No street-address search",
+  "setup.skipMapNoLocalLabel": "No local map",
+  "setup.skipMapForNow": "— skip for now",
+  "setup.err.setupFolderLinkOrSpecial": "The setup folder contains a link or special file. Choose a different library folder."
 }

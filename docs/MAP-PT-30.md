@@ -69,17 +69,18 @@ the same way.
 
 ## What the build holds
 
-Built on 22 November 2026 from the sources above. A full `fetch`, `build`, `check` takes about 12 minutes,
-most of it downloading; the build itself runs in about 40 seconds, most of that reading the 1.7 GB country
-extract to cut it.
+Built on 22 November 2026 from the sources above, and rebuilt on 24 November 2026 with the pt-1 and
+house-label corrections described under "The pt-1 rule" (every count unchanged). A full `fetch`, `build`,
+`check` takes about 12 minutes, most of it downloading; the build itself runs in about 40 seconds, most of
+that reading the 1.7 GB country extract to cut it.
 
 | File | Size | SHA-256 (this build) | Holds |
 |---|---|---|---|
-| `derived/geo/national.sqlite` | 33.3 MB | `46f02fa3…30c1` | 51,294 road features plus water, land, rail, buildings and places from OpenStreetMap, cut to the region box; 2,705 help and supply points across 35 classes |
-| `derived/geo/map.sqlite` | 0.03 MB | `a32eeace…d7ca` | empty map tables with the source and bounds metadata, as in a US state map |
-| `derived/geo/places.sqlite` | 2.0 MB | `668a5476…1778` | 11 municípios and 54 freguesias from the CAOP, 25 postcode areas (the CP4 prefixes) and 10,483 street names from the addresses, 959 named OpenStreetMap places and 1,256 named points |
-| `derived/geo/addresses/PT-30.sqlite` | 12.4 MB | `25a8404c…1a70` | 88,218 indexed addresses, `meta.norm = pt-1` |
-| `map-set.json` | 189 B | `0be38861…2c26` | the file list and sizes, as every map set carries |
+| `derived/geo/national.sqlite` | 33.3 MB | `d54ed9ec…e6d6` | 51,294 road features plus water, land, rail, buildings and places from OpenStreetMap, cut to the region box; 2,705 help and supply points across 35 classes |
+| `derived/geo/map.sqlite` | 0.03 MB | `401df1ab…19cd` | empty map tables with the source and bounds metadata, as in a US state map |
+| `derived/geo/places.sqlite` | 2.0 MB | `8dcb17a9…f1ed` | 11 municípios and 54 freguesias from the CAOP, 25 postcode areas (the CP4 prefixes) and 10,483 street names from the addresses, 959 named OpenStreetMap places and 1,256 named points |
+| `derived/geo/addresses/PT-30.sqlite` | 12.4 MB | `595b0dad…d0e5` | 88,218 indexed addresses, `meta.norm = pt-1` |
+| `map-set.json` | 189 B | `a873469b…d331` | the file list and sizes, as every map set carries |
 
 Full checksums are in `data/build.json`, which also records every source (URL, dated file name, data date, licence,
 size, SHA-256).
@@ -95,8 +96,12 @@ collapses spaces, expands the leading street type (`R`→`rua`, `CAM`→`caminho
 `avenida`, `TV`→`travessa`, `BC`→`beco`, `LG`→`largo`, `ER`→`estrada regional`, and the rest of the ~30 types
 the Madeira rows carry) and the name abbreviations in any position (`S`→`sao`, `STA`→`santa`, `STO`→`santo`,
 `D`/`DA`/`DO`→`de`, `DR`→`doutor`, `CMDT`→`comandante`). `R DE SANTA MARIA`, `Rua de Santa Maria` and
-`r de santa maria` then share one key, as do `CAM S JOSE` and `Caminho São José`. The rule lives in the builder
-and travels to the runtime with the index; nothing in the US search path changes.
+`r de santa maria` then share one key, as do `CAM S JOSE` and `Caminho São José`. Separated accents compose
+first (NFC), so a Mac or iOS paste of `São` with the tilde as its own character folds the same way, as `de-1`
+does. The house label keeps the register's spelling: a plain numeral carrying a non-zero digit loses its
+leading zero (`007` becomes `7`), while composite labels (`0E`, `013A`, `5 1J`) and an all-zero label
+(`000`) stay as written, so what a door shows is what a query finds. The
+rule lives in the builder and travels to the runtime with the index; nothing in the US search path changes.
 
 The expansions do real matching work: the register's `ER 222` rows (626 of them) share a key with
 OpenStreetMap's `Estrada Regional 222`, and `ESTR S JOÃO` with `Estrada São João`.
@@ -124,7 +129,7 @@ These are properties of the INE register worth knowing before using the index:
   still appear in the place finder, which is the way to find them today.
 - **The street field sometimes carries a building descriptor**: `AV ARRIAGA CONJUNTO MONUMENTAL INFANTE` is one
   street (31 rows, all with number 75). And the house field carries floor and door forms on the rows the index
-  keeps (`5 1J`, `5A`, `11 B`) — both are kept verbatim; the future search rule reads the number it leads with.
+  keeps (`5 1J`, `5A`, `11 B`, `0E`) — both are kept verbatim; the future search rule reads the number it leads with.
 - **Some central streets share one geocoded point** across what look like distinct doors (`AV ARRIAGA`
   501/506/508 all carry −16.91222, 32.64674), and some numbers look postal rather than real (a central avenue
   numbered 501+). The register is what it is; the index reproduces it and the doc says so.
@@ -143,13 +148,18 @@ These are properties of the INE register worth knowing before using the index:
 `check` runs without the network and exits non-zero on any failure: SHA-256 of every output as built, SQLite
 integrity, road and help-point counts, every help point inside the box plus the 0.15° margin, the address
 arithmetic (88,218 indexed + 42,053 without a number = the 130,271 REGIONS-PT.md measured), every address
-inside the official box with a 9000–9400 postcode, the pt-1 keys against the rule on a 500-row sample, and
+inside the official box with a 9000–9400 postcode, the pt-1 keys against the rule on a 500-row sample, the
+house labels against the register's forms (nothing reduced to a fragment, no plain numeral still padded), and
 the place finder answering for a município, a freguesia and a postcode. The place finder was also exercised
 through the running server in `--data` mode ("Funchal", "Câmara de Lobos", "9000").
 
 Address fixtures for the future runtime path — each is a register row whose point sits on the OpenStreetMap
 road of the same name in the built map, within 10–35 m of it (proximity queries against `national.sqlite`,
-22 November 2026), so no claim rests on one dataset:
+22 November 2026), so no claim rests on one dataset. The same expectations live as
+`app/tests/fixtures/pt_30_queries.json` with the contract tests in `app/tests/test_build_region_pt_30.py`,
+in the `de_be_queries.json` form (#433): twelve verbatim rows of this index, the queries with their lookups, and
+the rule that derives every expected answer from the rows, so `FixtureContractTests` fails if a row, a lookup
+or an expectation stops following from what the file states:
 
 | Query | Should find | Why it also tests the rule |
 |---|---|---|

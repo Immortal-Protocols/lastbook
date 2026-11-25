@@ -15,9 +15,12 @@ Versions are the pins in `packaging/requirements*.txt`, `packaging/llm/*.sh`, `p
 | Component | Version | Licence | Source | Checked |
 |---|---|---|---|---|
 | Nunito (`web/Nunito-Variable.woff2`, the Ask page's headings; the same file as `website-next/fonts/`), copied into the app with `web/` | variable, as in `website-next/fonts/` | SIL Open Font License 1.1 | https://github.com/googlefonts/nunito | Checked: `web/Nunito-OFL.txt` |
-| pypdfium2 (`engine/vendor-macos/` on Mac; installed from PyPI for the Windows build) | 5.14.0 | Apache-2.0 or BSD-3-Clause; data files CC-BY-4.0 | https://github.com/pypdfium2-team/pypdfium2 | Checked: `pypdfium2-5.14.0.dist-info/licenses/` |
-| PDFium, inside pypdfium2's `libpdfium.dylib` | as built by pdfium-binaries | BSD-3-Clause (The PDFium Authors) | https://pdfium.googlesource.com/pdfium, https://github.com/bblanchon/pdfium-binaries | Checked: `BUILD_LICENSES/pdfium.txt`, `pdfium-binaries.txt` |
-| Libraries built into PDFium: abseil, agg 2.3, fast_float, FreeType, ICU, Little CMS, libjpeg-turbo, OpenJPEG, libpng, LLVM libc, simdutf, zlib | as built | Each under its own licence (Apache-2.0, BSD-style, FreeType/FTL, Unicode, MIT, IJG, zlib and others) | see each file | Checked: the full texts are in `engine/vendor-macos/pypdfium2-5.14.0.dist-info/licenses/data/darwin_arm64/BUILD_LICENSES/` |
+| pypdfium2 (Mac source fallback and app bundle) | 5.15.2 | Apache-2.0 or BSD-3-Clause. Data files CC-BY-4.0 | https://github.com/pypdfium2-team/pypdfium2/releases/tag/5.15.2 | Checked: `engine/vendor-macos/pypdfium2-5.15.2.dist-info/licenses/` |
+| PDFium and its bundled libraries (Mac) | 159.0.8149.0 | BSD-3-Clause (The PDFium Authors). Each bundled library has its own licence | https://pdfium.googlesource.com/pdfium | Checked: `engine/vendor-macos/pypdfium2-5.15.2.dist-info/licenses/BUILD_LICENSES/` |
+
+The Mac source fallback comes from the `pypdfium2-5.15.2-py3-none-macosx_13_0_arm64.whl` wheel. Its SHA-256 is
+`e71fe832e94421ac3c28d6a6ed4a9e61f22417089652d339f391c4ffc2a44c35`. The wheel records PDFium's origin as
+`sourcebuild-toolchained` in `pypdfium2_raw/version.json`.
 
 ## Bundled into the apps by the build
 
@@ -33,6 +36,8 @@ Versions are the pins in `packaging/requirements*.txt`, `packaging/llm/*.sh`, `p
 | Beautiful Soup 4 | 4.15.0 | MIT | https://www.crummy.com/software/BeautifulSoup/ | Checked: package metadata |
 | soupsieve (used by Beautiful Soup) | 3.0.4 | MIT | https://github.com/facelessuser/soupsieve | Checked: package metadata |
 | PyObjC: pyobjc-core, Cocoa, WebKit (Mac) | 13.0 | MIT | https://github.com/ronaldoussoren/pyobjc | Checked: package metadata |
+| pypdfium2 (Windows) | 5.14.0 | Apache-2.0 or BSD-3-Clause. Data files CC-BY-4.0 | https://github.com/pypdfium2-team/pypdfium2 | Checked: `pypdfium2-5.14.0.dist-info/licenses/` |
+| PDFium and its bundled libraries (Windows) | build from pdfium-binaries | BSD-3-Clause (The PDFium Authors). Each bundled library has its own licence | https://pdfium.googlesource.com/pdfium, https://github.com/bblanchon/pdfium-binaries | Checked: wheel licences under `BUILD_LICENSES/` |
 | onnxruntime (Windows) | 1.31.1 | MIT; its bundled components are listed in its `ThirdPartyNotices.txt` | https://github.com/microsoft/onnxruntime | Checked: metadata and notices of 1.31.0 |
 | Hugging Face tokenizers (Windows) | 0.23.3 | Apache-2.0; the Rust crates built into it are listed in its SBOM (`dist-info/sboms`) | https://github.com/huggingface/tokenizers | Checked: package metadata |
 | pythonnet (Windows) | 3.2.1 | MIT | https://github.com/pythonnet/pythonnet | Upstream |

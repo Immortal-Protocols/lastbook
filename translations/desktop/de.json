@@ -156,5 +156,11 @@
   "videos.rowNote.hobbyist": "Hobbykanal",
   "videos.rowNote.primitive": "Hobbykanal ohne Kommentare",
   "videos.speed": "Wiedergabegeschwindigkeit",
-  "videos.speedNormal": "Normal"
+  "videos.speedNormal": "Normal",
+  "setup.skipMapNoAddress": "Die Adresssuche ist nicht verfügbar. Sie lässt sich später in den Einstellungen hinzufügen.",
+  "setup.skipMapNoLocal": "Es ist keine lokale Karte vorhanden. Sie lässt sich später in den Einstellungen hinzufügen.",
+  "setup.skipMapNoAddressLabel": "Keine Adresssuche",
+  "setup.skipMapNoLocalLabel": "Keine lokale Karte",
+  "setup.skipMapForNow": "— vorerst überspringen",
+  "setup.err.setupFolderLinkOrSpecial": "Der Setup-Ordner enthält einen Link oder eine spezielle Datei. Wählen Sie einen anderen Bibliotheksordner."
 }

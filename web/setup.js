@@ -14,6 +14,17 @@
     return fallback;
   };
   globalThis.lastbookTr = tr;
+  function tHtml(key, params, fallback) {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    const text = result?.text ?? tr(key, params, fallback);
+    return `<span lang="${esc(result?.locale || 'en')}">${esc(text ?? '')}</span>`;
+  }
+  function trMarkup(key, params, fallback) {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    const text = result?.text ?? tr(key, params, fallback), locale = result?.locale || 'en';
+    const direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(text ?? '')}</span>`;
+  }
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
@@ -662,13 +673,13 @@
       copy: ['The copy stopped.', esc(errText(e) || 'Copy again to the same place to carry on.'), 'retry'],
       cancelled: j.check ? ['The check was cancelled.', 'Nothing was changed or downloaded.', 'back'] : j.copy ? ['The copy was cancelled.', 'What was copied is still on the drive: copy again to the same place to carry on.', 'back'] : ['The download was cancelled.', 'Start again when you are ready.', 'back'],
     }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
-    return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
+    return `<div class="s-err" role="alert">${ico('warn')}<div><b><span lang="en">${T[0]}</span></b><p><span lang="en">${T[1]}</span>${code === 'found_mismatch' && !c ? '' : ' <span lang="en">' + safe + '</span>'}</p>
       ${code === 'unreachable' && e && e.name ? facts(e) : ''}
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}${tHtml('setup.retry', null, 'Retry')}</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}${tHtml('setup.downloadIt', null, 'Download it instead?')}</button>` : ''}${blockedModel ? `<button class="btn plain" data-act="model-file">${tHtml('setup.chooseAiModelFile', null, 'Choose an AI model file')}</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">${tHtml('setup.chooseAgain', null, 'Choose again')}</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
-    const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+    const row = (k, v) => `<dt><span lang="en">${k}</span></dt><dd>${v}</dd>`;
     return `<dl class="s-facts">${row('File', `<code>${esc(e.name)}</code>`)}${e.size ? row('Size', `${size(e.size)} (${esc(Number(e.size).toLocaleString('en-US'))} bytes)`) : ''}${e.url ? row('Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
   }
   function itemHTML(it, j) {
@@ -817,7 +828,7 @@
     const fixed = repair && (r ? !!r.repaired : repair.fixed), checked = repair && !fixed, unsure = checked && !r && !repair.sure;   // unsure: opened again late in a repair
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? 'Checked' : checked ? 'All good' : fixed ? 'Repaired' : 'Ready'}</h1>
-      <p class="lead">${unsure ? 'The library was checked and is complete. Anything that was damaged was downloaded again.' : checked ? 'The library was checked and is complete.' : fixed ? repairedWords(r || {}) : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? 'The library you chose is ready to open.' : 'The library is installed.'}</p>
+      <p class="lead">${unsure ? 'The library was checked and is complete. Anything that was damaged was downloaded again.' : checked ? 'The library was checked and is complete.' : fixed ? repairedMarkup(r || {}) : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? 'The library you chose is ready to open.' : 'The library is installed.'}</p>
       <button class="btn big" id="open">Open the library</button><p class="s-note" id="openNote" hidden></p></div>`;
     live.textContent = checked ? 'The library was checked.' : fixed ? 'Repaired. Ready to open.' : 'Installed. Ready to open.';
     $('#open').onclick = async () => {
@@ -829,12 +840,21 @@
   }
 
   /* what Repair did: the whole library downloaded again (the damaged copy kept aside), the AI file replaced, the map fetched again */
-  function repairedWords(r) {
+  function repairParts(r) {
     const ai = r.model_ok === false, map = r.map_ok === false, lib = r.pack_replaced != null ? !!r.pack_replaced : (r.damaged || 0) - ai - map > 0;
-    const said = [lib ? 'The library was downloaded again, because some of its files were damaged. The damaged copy is kept aside; you can delete it in Library and local AI.' : '',
-                  ai ? (lib ? 'The local AI file was downloaded again too.' : 'The local AI file was damaged, so it was downloaded again and put in its place.') : '',
-                  map ? 'The detailed map was downloaded again.' : ''].filter(Boolean).join(' ');
-    return said || 'A damaged part was downloaded again.';
+    return [
+      lib ? ['setup.repairSummaryLibrary', null, 'The library was downloaded again because some of its files were damaged. The damaged copy was kept aside; you can delete it in Library and local AI.'] : null,
+      ai ? (lib ? ['setup.repairSummaryAiWithLibrary', null, 'The local AI file was downloaded again too.'] : ['setup.repairSummaryAiOnly', null, 'The local AI file was damaged, so it was downloaded again and put in its place.']) : null,
+      map ? ['setup.repairSummaryMap', null, 'The detailed map was downloaded again.'] : null,
+    ].filter(Boolean);
+  }
+  function repairedWords(r) {
+    const parts = repairParts(r);
+    return parts.length ? parts.map(([key, params, fallback]) => tr(key, params, fallback)).join(' ') : tr('setup.repairSummaryOther', null, 'A damaged part was downloaded again.');
+  }
+  function repairedMarkup(r) {
+    const parts = repairParts(r);
+    return parts.length ? parts.map(([key, params, fallback]) => trMarkup(key, params, fallback)).join(' ') : trMarkup('setup.repairSummaryOther', null, 'A damaged part was downloaded again.');
   }
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   /* what Repair would do for what the check found: a damaged library file means the whole library again; the AI file is replaced in place */

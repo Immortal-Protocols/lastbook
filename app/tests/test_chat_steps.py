@@ -225,11 +225,11 @@ class El {
   after(n) { if (n.parent) n.parent.removeChild(n); const s = this.parent.childNodes; n.parent = this.parent; s.splice(s.indexOf(this) + 1, 0, n) }
   remove() { this.parent.removeChild(this) }
 }
-const doc = { createElement: t => new El(t) };
+const doc = { createElement: t => new El(t), addEventListener() {} };
 const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const tr = (_key, _params, fallback) => fallback;', 'const clock = t => String(t);',
-  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};'].join('\n');
-const src = chat.replace('return { page, count };', 'return { page, count, patchStream };');
-if (src === chat) throw new Error('chat.js no longer ends with return { page, count }');
+  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};', 'globalThis.document = { addEventListener() {} };'].join('\n');
+const src = chat.replace(/return \{ page, count(?:, refreshLanguage)? \};/, 'return { page, count, patchStream };');
+if (src === chat) throw new Error('chat.js no longer returns its chat API');
 const { patchStream } = new Function(stubs + '\n' + src + '\nreturn Chat;')();
 // Each step: a change to the message, then one patch, then what the message holds.
 const el = new El('div'), m = { role: 'assistant', content: '', state: 'thinking', steps: [], sources: [], running: true };
@@ -555,16 +555,16 @@ class El {
   closest(sel) { for (let n = this; n && n.nodeType === 1; n = n.parent) if (n.matches(sel)) return n; return null }
   scrollIntoView() {}
 }
-const doc = { createElement: t => new El(t) };
+const doc = { createElement: t => new El(t), addEventListener() {} };
 const host = new El('div');
 host.innerHTML = '<div class="chat-main"><div class="chat-log" id="chatLog"></div></div>';
 const $ = (s, r) => (r || host).querySelector(s);
 const $$ = (s, r) => [...(r || host).querySelectorAll(s)];
 const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const tr = (_key, _params, fallback) => fallback;', 'const clock = t => String(t);',
-  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};'].join('\n');
-const src = chat.replace('return { page, count };',
+  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};', 'globalThis.document = { addEventListener() {} };'].join('\n');
+const src = chat.replace(/return \{ page, count(?:, refreshLanguage)? \};/,
   'return { page, count, renderLog, setChat(c) { cur = c }, typeOf(i) { return (cur.messages[i] && cur.messages[i].srcType) || ""; } };');
-if (src === chat) throw new Error('chat.js no longer ends with return { page, count }');
+if (src === chat) throw new Error('chat.js no longer returns its chat API');
 globalThis.__lbDoc = doc; globalThis.__lbQ = $; globalThis.__lbQQ = $$;
 const api = new Function(stubs + '\nconst document = globalThis.__lbDoc, $ = globalThis.__lbQ, $$ = globalThis.__lbQQ;\n' + src + '\nreturn Chat;')();
 

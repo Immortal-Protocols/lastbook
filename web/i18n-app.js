@@ -52,6 +52,7 @@
   function activate(saved) {
     selection = saved || 'en';
     engine.usePreferredLocales(selection);
+    document.documentElement.lang = engine.locale || 'en';
     apply();
     document.dispatchEvent(new Event('lastbook:languagechange'));
   }

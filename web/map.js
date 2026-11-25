@@ -90,6 +90,9 @@ const MapView = (() => {
     const locale = result.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
     return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result.text ?? '')}</span>`;
   };
+  const markName = mark => mark?.nameKey ? message(mark.nameKey, mark.nameParams || null, mark.nameFallback || '').text : (mark?.name || '');
+  const markNameHtml = mark => mark?.nameKey ? messageHtml(message(mark.nameKey, mark.nameParams || null, mark.nameFallback || '')) : escH(mark?.name || '');
+  const markKindHtml = mark => mark?.kindKey ? messageHtml(message(mark.kindKey, mark.kindParams || null, mark.kindFallback || '')) : mark?.kind ? escH(mark.kind) : messageHtml(message('map.place', null, 'Place'));
   const layerMessage = layer => layer.id
     ? message('map.layer.' + layer.id, null, layer.label)
     : { text: layer.label || '', locale: 'en' };
@@ -157,7 +160,7 @@ const MapView = (() => {
     st = { lat: isFinite(lat) ? lat : place ? place.lat : 39, lon: isFinite(lon) ? lon : place ? place.lon : -98, z: isFinite(z) ? Math.max(MINZ, Math.min(MAXZ, z)) : place ? place.z : 4,
       on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, hover: null,
       dem: new Map(), demPending: new Set(), demNone: new Map(), style: load('mapStyle', { relief: true, contours: true }) };
-    if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kind: 'Linked place' };
+    if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kindKey: 'map.linkedPlace', kindFallback: 'Linked place' };
     const cv = $('mapc');
     st.cv = cv; st.ctx = cv.getContext('2d');
     fetch('/ui/geographic-context.json').then(r => r.json()).then(d => { geography = d; draw() }).catch(() => { });
@@ -181,7 +184,7 @@ const MapView = (() => {
     document.addEventListener('fullscreenchange', st.onFull = () => { const f = document.fullscreenElement === $('mapwrap'); if (!f) $('mapwrap')?.classList.remove('max'); syncFull() });
     $('sethome').onclick = () => { save('mapHome', { lat: st.lat, lon: st.lon, z: Math.round(st.z) }); toastMap('Saved as your area on this device'); draw() };
     const gps = $('gps');
-    if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, name: 'You are here (approx.)' }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap('Location unavailable: ' + e.message), { timeout: 15000 });
+    if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, nameKey: 'map.youAreHere', nameFallback: 'You are here (approx.)' }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap('Location unavailable: ' + e.message), { timeout: 15000 });
     $('pf').onsubmit = e => { e.preventDefault(); findPlace($('pq').value.trim()) };
     $('pq').addEventListener('input', () => { if (!$('pq').value) $('pres').hidden = true });
     $('layers-btn').onclick = () => { const p = $('layers'), open = p.hidden; p.hidden = !open; $('layers-btn').setAttribute('aria-expanded', open); $('pres').hidden = true; if (open) { $('card').hidden = true; renderLayers() } };
@@ -330,9 +333,9 @@ const MapView = (() => {
     if (hit === st.hover) { if (hit) placeTip(x, y); return }
     st.hover = hit; const tip = $('tip'); if (!tip) return;
     if (!hit) return hideTip();
-    tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${hit.count.toLocaleString()} places</b>${breakdown(hit)}<small>${st.z >= 16 ? 'Click to list them' : 'Click to zoom in'}</small>`
-      : hit.count > 1 ? `<b>${hit.count} records at one spot</b><small>${escH(layerOf(hit.cls).label)} · click to list them</small>`
-      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${escH(hit.place ? hit.kind || 'Place' : layerOf(hit.cls).label)}${hit.records > 1 ? ` · ${hit.records} records · click to list` : ''}</small>`;
+    tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${messageHtml(message('map.placesHere', { count: hit.count }, '{count} places here'))}</b>${breakdown(hit)}<small>${st.z >= 16 ? messageHtml(message('map.clickToList', null, 'Click to list them')) : messageHtml(message('map.clickToZoom', null, 'Click to zoom in'))}</small>`
+      : hit.count > 1 ? `<b>${messageHtml(message('map.recordsAtSpot', { count: hit.count }, '{count} records at one spot'))}</b><small>${messageHtml(message('map.layer.' + (layerOf(hit.cls).id || hit.cls), null, layerOf(hit.cls).label))} · ${messageHtml(message('map.clickToListLower', null, 'click to list them'))}</small>`
+      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${hit.place ? markKindHtml(hit) : escH(layerOf(hit.cls).label)}${hit.records > 1 ? ` · ${hit.records} records · click to list` : ''}</small>`;
     tip.hidden = false; placeTip(x, y);
   }
   function breakdown(p) {
@@ -528,8 +531,9 @@ const MapView = (() => {
       const [mx, my] = px(st.mark.lat, st.mark.lon, V);
       g.beginPath(); g.moveTo(mx, my); g.bezierCurveTo(mx - 3, my - 9, mx - 10, my - 13, mx - 10, my - 21); g.arc(mx, my - 21, 10, Math.PI, 0); g.bezierCurveTo(mx + 10, my - 13, mx + 3, my - 9, mx, my);
       g.fillStyle = '#1565c0'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke(); g.beginPath(); g.arc(mx, my - 21, 4, 0, 7); g.fillStyle = '#fff'; g.fill();
-      if (st.mark.name) { g.font = '700 13px -apple-system,Segoe UI,sans-serif'; g.textAlign = 'left'; g.lineWidth = 4; g.strokeStyle = C.halo; g.strokeText(st.mark.name, mx + 14, my - 20); g.fillStyle = '#0d3c78'; g.fillText(st.mark.name, mx + 14, my - 20); g.textAlign = 'center' }
-      st.hits.push({ ...st.mark, place: true, count: 1, sx: mx, sy: my - 18, r: 12, labelWidth: st.mark.name ? st.mark.name.length * 7.5 : 0 });
+      const name = markName(st.mark);
+      if (name) { g.font = '700 13px -apple-system,Segoe UI,sans-serif'; g.textAlign = 'left'; g.lineWidth = 4; g.strokeStyle = C.halo; g.strokeText(name, mx + 14, my - 20); g.fillStyle = '#0d3c78'; g.fillText(name, mx + 14, my - 20); g.textAlign = 'center' }
+      st.hits.push({ ...st.mark, name, place: true, count: 1, sx: mx, sy: my - 18, r: 12, labelWidth: name ? name.length * 7.5 : 0 });
     }
     // home marker
     const home = load('mapHome', HOME); if (home) { const [hx, hy] = px(home.lat, home.lon, V); if (hx > -10 && hx < w + 10 && hy > -10 && hy < h + 10) { g.beginPath(); g.arc(hx, hy, 6, 0, 7); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#1b5e20'; g.stroke() } }
@@ -783,8 +787,8 @@ const MapView = (() => {
     const tx = sheet ? w / 2 : (cr + 24 + w - 60) / 2, ty = sheet ? Math.max(70, ct / 2 + 20) : h / 2;
     pan(tx - x, ty - y); st.listAt = 1; settle(true);  // the nearby list stays put while the map makes room
   }
-  function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
-  function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || 'Place')}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">Remove marker</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
+  function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; st.cardState = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
+  function showPlace(p) { st.cardState = { type: 'place', p }; openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${markKindHtml(p)}</div><h3>${markNameHtml(p)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">Remove marker</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
     const id = 'el' + Math.random().toString(36).slice(2, 8);
@@ -797,6 +801,7 @@ const MapView = (() => {
     el.querySelector('[data-a=zoom]')?.addEventListener('click', () => { go(p.lat, p.lon, Math.max(st.z, 16)); reveal(p.lat, p.lon) });
   }
   function showDetail(p, back) {
+    st.cardState = { type: 'detail', p, back };
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
     const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
@@ -811,8 +816,11 @@ const MapView = (() => {
   async function showMembers(p) {
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
     st.sel = { lat: p.lat, lon: p.lon }; draw();
-    const title = p.spot ? `${Math.max(p.count, p.records || 0)} records at one spot` : `${p.count.toLocaleString()} places here`;
-    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : 'Group'}</div><h3>${escH(title)}</h3><p class="muted">Loading…</p>`);
+    const titleKey = p.spot ? 'map.recordsAtOneSpot' : 'map.placesHere';
+    const titleParams = { count: p.spot ? Math.max(p.count, p.records || 0) : p.count };
+    const titleFallback = p.spot ? '{count} records at one spot' : '{count} places here';
+    const title = message(titleKey, titleParams, titleFallback), titleHtml = messageHtml(title);
+    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : messageHtml(message('map.groupLabel', null, 'Group'))}</div><h3>${titleHtml}</h3><p class="muted">${messageHtml(message('map.loading', null, 'Loading…'))}</p>`);
     reveal(p.lat, p.lon);
     try {
       const q = new URLSearchParams({ west: b[0] - pad, south: b[1] - pad, east: b[2] + pad, north: b[3] + pad, lat: p.lat, lon: p.lon, kinds: Object.keys(p.kinds || { [p.cls]: 1 }).join(',') });
@@ -820,14 +828,14 @@ const MapView = (() => {
       if (st !== state || serial !== st.serial.members) return;
       const items = r.items || [], names = new Set(items.map(m => m.name));
       if (items.length === 1) return showDetail(items[0]);
-      const head = p.spot && names.size === 1 && items[0]?.name ? items[0].name : title;
-      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : 'Group'}</div><h3>${escH(head)}</h3>${breakdown(p)}
+      const head = p.spot && names.size === 1 && items[0]?.name ? messageHtml({ text: items[0].name, locale: 'en' }) : titleHtml;
+      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : messageHtml(message('map.groupLabel', null, 'Group'))}</div><h3>${head}</h3>${breakdown(p)}
         <p class="muted small">${r.total > items.length ? `Showing the ${items.length} nearest of ${r.total.toLocaleString()}${r.capped ? '+' : ''}. Zoom in to see the rest.` : `${items.length} record${items.length === 1 ? '' : 's'}`}</p>
         <div class="members">${items.map((m, i) => `<button data-i="${i}">${sym(layerOf(m.cls), 20)}<span><b>${escH(unnamed(m))}</b><small>${escH([m.summary || layerOf(m.cls).label, m.detail?.WeekOfPlantStart ? 'stocked ' + m.detail.WeekOfPlantStart : ''].filter(Boolean).join(' · '))}</small></span></button>`).join('')}</div>
         <div class="acts"><button data-a="zoom">Zoom here</button></div>`);
       el.querySelectorAll('.members button').forEach(bt => bt.onclick = () => showDetail(items[+bt.dataset.i], { title, p }));
       el.querySelector('[data-a=zoom]').onclick = () => fit(b);
-    } catch { if (st === state) openCard(`<h3>${escH(title)}</h3><p>Couldn’t load the list. Zoom in to see individual places.</p>`) }
+    } catch { if (st === state) openCard(`<h3>${titleHtml}</h3><p>${messageHtml(message('map.listFailed', null, 'Couldn’t load the list. Zoom in to see individual places.'))}</p>`) }
   }
 
   // ------------------------------------------------------------------ data ----
@@ -915,5 +923,38 @@ const MapView = (() => {
       if (r.length === 1) pick(r[0]);
     } catch { if (st === state) box.innerHTML = `<p class="muted small">${messageHtml(message('map.finderUnavailable', null, 'Place finder unavailable.'))}</p>` }
   }
-  return { page, stop };
+  async function refreshLanguage(main) {
+    if (!st) return;
+    const old = {
+      lat: st.lat, lon: st.lon, z: st.z, on: [...st.on], mark: st.mark, sel: st.sel, card: st.cardState,
+      layersOpen: !$('layers').hidden, search: $('pq').value, searchOpen: !$('pres').hidden,
+      max: $('mapwrap').classList.contains('max') || !!document.fullscreenElement,
+      terrain3d: typeof Terrain3D !== 'undefined' && Terrain3D.isOpen(), toolsTop: main.querySelector('.maptools').scrollTop,
+    };
+    const q = new URLSearchParams({ lat: old.lat, lon: old.lon, z: old.z, layers: old.on.join(',') });
+    stop();
+    await page(main, q);
+    if (!st) return;
+    st.mark = old.mark; st.sel = old.sel; draw();
+    if (old.max) { $('mapwrap').classList.add('max'); syncFull() }
+    if (old.layersOpen) { $('layers').hidden = false; $('layers-btn').setAttribute('aria-expanded', 'true'); renderLayers() }
+    main.querySelector('.maptools').scrollTop = old.toolsTop;
+    if (old.search) { $('pq').value = old.search; if (old.searchOpen) await findPlace(old.search) }
+    if (old.card) {
+      if (old.card.type === 'place') showPlace(old.card.p);
+      else if (old.card.type === 'detail') showDetail(old.card.p, old.card.back);
+      else if (old.card.type === 'members') await showMembers(old.card.p);
+    }
+    if (old.terrain3d && typeof Terrain3D !== 'undefined') {
+      const cv = $('mapc');
+      Terrain3D.open($('mapwrap'), { lat: st.lat, lon: st.lon, z: st.z, w: cv.clientWidth, h: cv.clientHeight,
+        texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y), getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
+        geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon) });
+    }
+  }
+  document.addEventListener('lastbook:languagechange', () => {
+    const main = document.getElementById('main');
+    if (st && main) void refreshLanguage(main);
+  });
+  return { page, stop, refreshLanguage };
 })();

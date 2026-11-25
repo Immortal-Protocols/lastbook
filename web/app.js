@@ -421,7 +421,12 @@ function searchPlaceholder() {
   } else q.placeholder = short ? 'Search' : 'Search the library';
 }
 new ResizeObserver(searchPlaceholder).observe($('#topQ'));
-document.addEventListener('lastbook:languagechange', () => { railTitles(); searchPlaceholder() });
+document.addEventListener('lastbook:languagechange', () => {
+  railTitles(); searchPlaceholder();
+  const page = parse().parts[0] || 'videos';
+  if (page === 'map') void MapView.refreshLanguage(main);
+  else if (page === 'ask') Chat.refreshLanguage();
+});
 // At 900 and wider a page's .dock controls (view switch, Save, Ask) sit in the toolbar; narrower they stay in the page.
 const docks = () => wide.matches || (!MAC && innerWidth >= 640);
 function dock() {

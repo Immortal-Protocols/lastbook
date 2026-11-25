@@ -448,6 +448,7 @@ function refresh() {
     const k = K.known[code];
     if (!k) warn.push(code + ' is not in our list of countries and territories: check that it is the ISO 3166-1 alpha-2 code of the place (it is the file name).');
     else {
+      if (k.more) warn.push('You are submitting to ' + k.name + ', which has more than 4 languages. The list keeps at most 4 main languages, so which ones to list needs a reviewer\'s decision: your submission may take longer than usual to be approved.');
       if (data.country && data.country.toLowerCase() !== k.name.toLowerCase()) warn.push('In our list, ' + code + ' is ' + k.name + ', not ' + data.country + '.');
       const want = k.languages.map(l => l.code).filter(Boolean), have = data.languages;
       if (want.length && (want.some(c => !have.includes(c)) || have.some(c => !want.includes(c))))
@@ -478,7 +479,7 @@ addService();
 def build_submit():
     rl = ''.join(f'<li>{x}</li>' for x in rule_list())
     cd = coverage_data()
-    known = {c: {'name': d['name'], 'languages': d['want']} for c, d in cd.items()}
+    known = {c: {'name': d['name'], 'languages': d['want'], 'more': d['more']} for c, d in cd.items()}
     tables = {}
     for f in sorted(DATA.glob('*.json')):
         d = json.loads(f.read_text(encoding='utf-8'))

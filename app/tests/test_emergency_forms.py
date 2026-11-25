@@ -140,6 +140,9 @@ class Coverage(unittest.TestCase):
         self.assertIn('"tables"', page)                    # the existing tables are embedded, to load and add to
         self.assertIn('is not in our list of countries and territories', page)
         self.assertIn('Wikipedia lists for', page)
+        self.assertIn('may take longer than usual to be approved', page)   # the five countries with more than four languages
+        blob = json.loads(page[page.index('id="known">') + 11:page.index('</script>', page.index('id="known">'))])
+        self.assertEqual(sorted(c for c, k in blob['known'].items() if k['more']), ['BO', 'ET', 'ML', 'ZA', 'ZW'])
 
     def test_coverage_names_what_was_checked_and_leaves_the_rest_open(self):
         """A country with more than four languages must not be called fully covered."""

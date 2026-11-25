@@ -159,9 +159,9 @@ const MapView = (() => {
       <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
-      <section class="panel"><h2>Nearest to the map center</h2><p class="small muted" style="margin:0 0 4px">For the layers you have on. Straight-line distance, not by road.</p><div class="nearres" id="near" aria-live="polite"></div></section>
-      <section class="panel"><h2>Your area</h2><p class="small muted" style="margin:0 0 8px">The home button returns here. Saved on this device only.</p><button class="btn plain" id="sethome">Make the map center my area</button>${navigator.geolocation && isSecureContext ? ' <button class="btn plain" id="gps">Use my location</button>' : ''}</section>
-      <section class="panel"><h2>What this map covers</h2><ul class="list small" id="mdata"><li class="muted">Loading…</li></ul></section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.nearestToCenter', null, 'Nearest to the map center') || 'Nearest to the map center')}</h2><p class="small muted" style="margin:0 0 4px">${escH(globalThis.lastbookTr?.('map.nearbyLayersNote', null, 'For the layers you have on. Straight-line distance, not by road.') || 'For the layers you have on. Straight-line distance, not by road.')}</p><div class="nearres" id="near" aria-live="polite"></div></section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.yourArea', null, 'Your area') || 'Your area')}</h2><p class="small muted" style="margin:0 0 8px">${escH(globalThis.lastbookTr?.('map.homeButtonNote', null, 'The home button returns here. Saved on this device only.') || 'The home button returns here. Saved on this device only.')}</p><button class="btn plain" id="sethome">${escH(globalThis.lastbookTr?.('map.makeCenterMyArea', null, 'Make the map center my area') || 'Make the map center my area')}</button>${navigator.geolocation && isSecureContext ? ` <button class="btn plain" id="gps">${escH(globalThis.lastbookTr?.('map.useMyLocation', null, 'Use my location') || 'Use my location')}</button>` : ''}</section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.coverageHeading', null, 'What this map covers') || 'What this map covers')}</h2><ul class="list small" id="mdata"><li class="muted">${escH(globalThis.lastbookTr?.('map.loading', null, 'Loading…') || 'Loading…')}</li></ul></section>
     </div></div>`;
     // The map fills the window. With the tools beside it, the page ends where the window does, at the page's own bottom margin (so the
     // page itself never scrolls); with the tools below, the map leaves room for the tab bar and a margin.
@@ -284,14 +284,14 @@ const MapView = (() => {
       return;
     }
     box.innerHTML = `<div class="layers-head"><b>${tr('map.showOnMap', null, 'Show on map')}</b><button class="x" aria-label="${escH(tr('map.closeLayers', null, 'Close layers'))}">×</button></div>
-      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${escH(tPreset(n))}</button>`).join('')}<button data-p="">None</button></div>`}
+      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${escH(tPreset(n))}</button>`).join('')}<button data-p="">${escH(tr('map.preset.none', null, 'None'))}</button></div>`}
       <fieldset class="style"><legend>${escH(tr('map.styleLegend', null, 'Map style'))}</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>${escH(tr('map.style.aerialUsgs', null, 'Aerial photos (USGS / USDA)'))}</span></label>`}
         <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>${escH(tr('map.style.relief', null, 'Shaded relief (hills & valleys)'))}</span></label>
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>${escH(tr('map.style.contours', null, 'Contour lines (from zoom 11)'))}</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>${escH(tr('map.style.crops', null, 'Orchard & vineyard areas (coloured)'))}</span></label>`}</fieldset>
       ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${escH(tGroup(g, gl))}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(tLayer(l))}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
-      ${st.have && !st.have.size ? '' : '<p class="small muted" style="margin:6px 2px 0">Numbers are places in the current view.</p>'}`;
+      ${st.have && !st.have.size ? '' : `<p class="small muted" style="margin:6px 2px 0">${escH(tr('map.currentViewNumbers', null, 'Numbers are places in the current view.'))}</p>`}`;
     box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') };
     box.querySelectorAll('label.ly input').forEach(i => i.onchange = () => { i.checked ? st.on.add(i.value) : st.on.delete(i.value); layersChanged() });
     box.querySelectorAll('[data-style]').forEach(i => i.onchange = () => { if (i.dataset.style === 'aerial') return setPhoto(i.checked); st.style[i.dataset.style] = i.checked; save('mapStyle', st.style); draw() });

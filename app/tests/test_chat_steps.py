@@ -22,7 +22,8 @@ const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
-  'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
+  'const clock = t => String(t);', "const here = () => '#/ask';",
+  "const tr = (_key, params, fallback) => typeof fallback === 'string' ? fallback.replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}') : fallback;"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcCards = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcCards;')();
 process.stdout.write(JSON.stringify(JSON.parse(process.argv[3]).map(s => srcCards([s], false))));
@@ -33,6 +34,7 @@ const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
+  'const tr = (_key, _params, fallback) => fallback;',
   'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcFilter = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcFilter;')();

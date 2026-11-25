@@ -269,7 +269,8 @@ document.addEventListener('click', e => {
   if (a && !location.hash.startsWith('#/wiki/') && navAt > 0 && navStack[navAt - 1] === a.getAttribute('href')) { e.preventDefault(); history.back() }
 });
 function errorBox(e, what) {
-  return `<div class="err" role="alert"><b>${esc(what || tr('app.errorGeneric', null, 'Something went wrong.'))}</b><br>${esc(e.message || e)}
+  const message = e && (e.error_key || e.key) ? tr(e.error_key || e.key, e.error_params || e.params || null, e.message || e.error || '') : e && (e.message || e.error) || e;
+  return `<div class="err" role="alert"><b>${esc(what || tr('app.errorGeneric', null, 'Something went wrong.'))}</b><br>${esc(message)}
   <br><span class="small" data-i18n="app.errorReload">If this keeps happening, close Lastbook and open it again.</span></div>`;
 }
 // The window title, and on reading pages the toolbar's title and the line under it.
@@ -315,6 +316,7 @@ function parse() {
 const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about', contribute: 'contribute' };
 let leaving = null;  // cleanup hook for the current view (player, chat stream…)
 async function route() {
+  searchSeq++;   // invalidate asynchronous results from the view being left
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
   const { parts, q } = parse();
   const h = here();
@@ -659,8 +661,8 @@ async function topicPage(id, open) {
       ${vids.length ? secHead(tr('guide.videosForThis', null, 'Videos for this'), tr('guide.pickedVideos', { count: vids.length }, '{count} picked videos')) + rail(vids.map(v => vcard(v)).join('')) : ''}
       ${sec('prep', 'Get ready before it happens', t.prepare)}
       ${sec('book', tr('guide.goDeeper', null, 'Go deeper: full manuals & articles'), t.learn)}
-      ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>Not in this library</span></summary><div class="body"><p class="muted small" style="margin-top:0">Looked for but not found when this guide was put together (October 2026):</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
-      ${related.length ? `<h2>Related guides</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${esc(shortName(r.id) || r.title)}</a>`).join('')}</div>` : ''}
+      ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>${tr('guide.notInLibrary', null, 'Not in this library')}</span></summary><div class="body"><p class="muted small" style="margin-top:0">${tr('guide.gapsNotFound', null, 'Looked for but not found when this guide was put together (October 2026):')}</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
+      ${related.length ? `<h2>${tr('guide.related', null, 'Related guides')}</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${esc(shortName(r.id) || r.title)}</a>`).join('')}</div>` : ''}
     </div><aside class="gside" aria-label="${tr('guide.safety', null, "Safety")}"></aside></div>`;
   // On wide screens the safety box sits beside the choices so it stays visible.
   const side = $('.gside', main), nar = $('.gnarrow', main);
@@ -773,7 +775,7 @@ async function watch(id, t, from) {
   <div class="watch">
     <div>
       <div class="player"><video id="vid" controls preload="metadata" playsinline src="${fileUrl(d.path)}${start !== null ? '#t=' + start : ''}"></video></div>
-      <div class="video-speed"><label for="videoSpeed">Playback speed</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+      <div class="video-speed"><label for="videoSpeed">${tr('videos.speed', null, 'Playback speed')}</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>${tr('videos.speedNormal', null, 'Normal')}</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">${esc(tr('videos.storedRemote', { name: d.remote }, 'Stored on the remote drive “{name}”. It plays only while that computer is reachable.'))}</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
@@ -1116,8 +1118,14 @@ async function reader(id, page, from, view) {
 }
 
 /* --------------------------------------------------------------- wiki -- */
-const ZIMNAMES = { mdwiki: 'Medical encyclopedia (MDWiki)', wikipedia: tr('wiki.wikipedia', null, 'Wikipedia (text only)'), wikibooks: tr('wiki.wikibooks', null, 'Wikibooks — how-to textbooks'), appropedia: tr('wiki.appropedia', null, 'Appropedia — appropriate technology') };
-const zimLabel = name => { for (const k in ZIMNAMES) if (name.startsWith(k)) return ZIMNAMES[k]; return name };
+const zimLabel = name => {
+  // Resolve translated names when used: a page restored from BFCache may see a
+  // different language preference than the one active when this script loaded.
+  const names = { mdwiki: tr('wiki.mdwiki', null, 'Medical encyclopedia (MDWiki)'), wikipedia: tr('wiki.wikipedia', null, 'Wikipedia (text only)'),
+    wikibooks: tr('wiki.wikibooks', null, 'Wikibooks — how-to textbooks'), appropedia: tr('wiki.appropedia', null, 'Appropedia — appropriate technology') };
+  for (const k in names) if (name.startsWith(k)) return names[k];
+  return name;
+};
 async function wiki(path, from, y) {
   const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
   const [zim, ...rest] = path.split('/');
@@ -1277,10 +1285,14 @@ function lookOf(fd) {
   r.setProperty('--lb-link', getComputedStyle(probe).color); probe.remove();
   for (const [k, v] of [['--lb-ink', '--ink'], ['--lb-ink2', '--ink2'], ['--lb-line', '--line2'], ['--lb-font', '--font'], ['--lb-display', '--display']]) { const x = cs.getPropertyValue(v).trim(); if (x) r.setProperty(k, x) }
 }
-const ZIMS = [['mdwiki_en_all_maxi_2025-11.zim', 'Medical encyclopedia', 'MDWiki: plain-language articles on conditions, medicines and first aid.', 'health'],
-['wikibooks_en_all_maxi_2026-04.zim', 'Wikibooks', tr('wiki.wikibooksAbout', null, 'Open textbooks and how-to manuals, from cooking to electronics.'), 'book'],
-['appropedia_en_all_maxi_2026-02.zim', 'Appropedia', tr('wiki.appropediaAbout', null, 'Appropriate technology: water, sanitation, energy and building projects.'), 'repair'],
-['wikipedia_en_all_nopic_2026-06.zim', 'Wikipedia', tr('wiki.wikipediaAbout', null, 'The full English encyclopedia, text only (no pictures).'), 'wiki']];
+const ZIMS = [
+  ['mdwiki_en_all_maxi_2025-11.zim', () => tr('wiki.medical', null, 'Medical encyclopedia'), () => tr('wiki.mdwikiAbout', null, 'MDWiki: plain-language articles on conditions, medicines and first aid.'), 'health'],
+  ['wikibooks_en_all_maxi_2026-04.zim', () => tr('wiki.wikibooks', null, 'Wikibooks — how-to textbooks'), () => tr('wiki.wikibooksAbout', null, 'Open textbooks and how-to manuals, from cooking to electronics.'), 'book'],
+  ['appropedia_en_all_maxi_2026-02.zim', () => tr('wiki.appropedia', null, 'Appropedia — appropriate technology'), () => tr('wiki.appropediaAbout', null, 'Appropriate technology: water, sanitation, energy and building projects.'), 'repair'],
+  ['wikipedia_en_all_nopic_2026-06.zim', () => tr('wiki.wikipedia', null, 'Wikipedia (text only)'), () => tr('wiki.wikipediaAbout', null, 'The full English encyclopedia, text only (no pictures).'), 'wiki'],
+];
+const zimTitle = z => z[1]();
+const zimAbout = z => z[2]();
 const zimsHere = async () => { const here = (await libInfo()).zims; return here ? ZIMS.filter(z => here.includes(z[0])) : ZIMS };
 async function encyclopedias(q) {
   setUiTitle('wiki.title', tr('wiki.title', null, 'Encyclopedias'));
@@ -1288,7 +1300,7 @@ async function encyclopedias(q) {
   if (!zims.length) { main.innerHTML = `<h1>${tr('wiki.title', null, 'Encyclopedias')}</h1><p class="lead">${tr('wiki.noneHere', null, 'This download has no encyclopedias.')}</p>`; return }
   main.innerHTML = `<h1>${tr('wiki.title', null, 'Encyclopedias')}</h1><p class="lead">${['', tr('wiki.one', null, 'One complete encyclopedia'), tr('wiki.two', null, 'Two complete encyclopedias'), tr('wiki.three', null, 'Three complete encyclopedias'), tr('wiki.four', null, 'Four complete encyclopedias')][zims.length]}. ${tr('wiki.communitySafetyNotice', null, 'Community-written: good for background — use the guides’ manuals for safety-critical steps.')}</p>
   <div style="margin:16px 0">${searchBox('zq', q, 'e.g. tetanus, solar panel, sourdough')}</div><div id="zres"></div>
-  ${secHead(tr('wiki.openOne', null, 'Open one'))}<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/encyclopedias')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>`;
+  ${secHead(tr('wiki.openOne', null, 'Open one'))}<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/encyclopedias')}"><span class="ico">${ico(z[3])}</span><b>${esc(zimTitle(z))}</b><small>${esc(zimAbout(z))}</small></a>`).join('')}</div>`;
   $('#zqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/encyclopedias?q=' + encodeURIComponent($('#zq').value.trim()) });
   if (q) zimResults(q, $('#zres'), 40);
 }
@@ -1309,6 +1321,28 @@ async function zimResults(q, el, max = 8, heading = '') {
 // A guide word only has to start with a search word, so she, her and his would find shelter, here and hissing.
 const QSTOP = new Set('a an and are can do does for from get got have how i if in is it its me my need no not of on or our so that the this to was we what when where which who why will with without you your won don can t s she her hers his him'.split(' '));
 // Words are split, folded and matched by web/words.js (loaded first), so accents, Chinese and other scripts work.
+const SEARCH_EXAMPLE_QUERIES = [
+  ['search.ex.boilWater', 'boil water'],
+  ['search.ex.cutBleeding', 'cut won’t stop bleeding'],
+  ['search.ex.fridgePower', 'fridge after power cut'],
+  ['search.ex.burn', 'burn'],
+  ['search.ex.toilet', 'toilet not working'],
+  ['search.ex.smellGas', 'smell gas'],
+  ['search.ex.cleanWater', 'clean drinking water'],
+  ['search.ex.brokenLeg', 'broken leg'],
+  ['search.ex.carbonMonoxide', 'carbon monoxide'],
+  ['search.ex.keepFoodCold', 'keep food cold'],
+  ['search.ex.hamRadio', 'ham radio license'],
+  ['search.ex.plantPotatoes', 'plant potatoes'],
+  ['search.ex.sharpenKnife', 'sharpen a knife'],
+  ['search.ex.diarrheaChild', 'diarrhea in a child'],
+];
+function searchContentQuery(q) {
+  const normalized = String(q || '').normalize('NFC').trim().toLowerCase();
+  const match = SEARCH_EXAMPLE_QUERIES.find(([key, english]) =>
+    String(tr(key, null, english)).normalize('NFC').trim().toLowerCase() === normalized);
+  return match ? match[1] : q;
+}
 function topicMatches(q) {
   return typeof SearchWords === 'undefined' ? [] : SearchWords.rankTopics(q, TOPICS, QSTOP);
 }
@@ -1342,22 +1376,23 @@ async function searchPage(q, kind) {
 }
 function askOffer(q) {
   const el = $('#sask'); if (!el) return;
-  el.innerHTML = q && q.split(/\s+/).length >= 2 ? `<a class="ghit" href="#/ask?q=${encodeURIComponent(q)}" style="--tc:var(--accent)"><span class="ico">${ico('ask')}</span><span><b>Ask the library: “${esc(q)}”</b><small>Get a written answer with the exact pages it came from</small></span></a>` : '';
+  el.innerHTML = q && q.split(/\s+/).length >= 2 ? `<a class="ghit" href="#/ask?q=${encodeURIComponent(q)}" style="--tc:var(--accent)"><span class="ico">${ico('ask')}</span><span><b>${esc(tr('search.askQuoted', { query: q }, 'Ask the library: “{query}”'))}</b><small>${esc(tr('search.askHint', null, 'Get a written answer with the exact pages it came from'))}</small></span></a>` : '';
 }
 async function results(q, kind) {
   const seq = ++searchSeq, out = $('#sout');
+  const contentQuery = searchContentQuery(q);
   if (!q) {
     out.innerHTML = `<p class="muted" style="margin-top:18px">Use the words you’d use with a friend. For example:</p><div class="chips wrapchips">${[tr('search.ex.cleanWater', null, 'clean drinking water'), tr('search.ex.brokenLeg', null, 'broken leg'), tr('search.ex.carbonMonoxide', null, 'carbon monoxide'), tr('search.ex.keepFoodCold', null, 'keep food cold'), tr('search.ex.hamRadio', null, 'ham radio license'), tr('search.ex.plantPotatoes', null, 'plant potatoes'), tr('search.ex.sharpenKnife', null, 'sharpen a knife'), tr('search.ex.diarrheaChild', null, 'diarrhea in a child')].map(x => `<a class="chip" href="#/search?q=${encodeURIComponent(x)}">${esc(x)}</a>`).join('')}</div>`;
     return;
   }
-  const g = kind === 'all' ? topicMatches(q) : [];
+  const g = kind === 'all' ? topicMatches(contentQuery) : [];
   out.innerHTML = `${g.length ? `<h2>${tr('search.startWithGuide', null, 'Start with a guide')}</h2>${g.map(({ t, c }) => `<a class="ghit" href="#/t/${t.id}${c ? '/' + c.id : ''}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><span><b>${esc(shortName(t.id) || t.title)}${c ? ' — ' + esc(c.label) : ''}</b><small>${tr('search.pickedPagesSafety', null, 'Picked pages with exact page numbers and safety limits')}</small></span></a>`).join('')}` : ''}
     <div id="spass"></div><div id="svid"></div><div id="sres"></div><div id="szim"></div>`;
-  if (kind === 'wiki') return zimResults(q, $('#szim'), 40);
+  if (kind === 'wiki') return zimResults(contentQuery, $('#szim'), 40);
   // Each part answers whether it found anything; "nothing matched" shows once, only when none did.
-  const parts = kind === 'all' || kind === 'read' ? [passages(q, seq)] : [];
-  const reqs = [api('/api/find?q=' + encodeURIComponent(q) + '&kind=' + (kind === 'video' ? 'video' : 'read'))];
-  if (kind === 'all') reqs.push(api('/api/find?q=' + encodeURIComponent(q) + '&kind=video').catch(() => null));
+  const parts = kind === 'all' || kind === 'read' ? [passages(contentQuery, seq)] : [];
+  const reqs = [api('/api/find?q=' + encodeURIComponent(contentQuery) + '&kind=' + (kind === 'video' ? 'video' : 'read'))];
+  if (kind === 'all') reqs.push(api('/api/find?q=' + encodeURIComponent(contentQuery) + '&kind=video').catch(() => null));
   $('#sres').innerHTML = `<p class="loading">${esc(tr('search.searching', null, 'Searching…'))}</p>`;
   const found = (async () => {
     try {
@@ -1370,10 +1405,10 @@ async function results(q, kind) {
         ${d.expanded.length ? `<p class="small muted">${esc(tr('search.alsoLookedFor', { terms: d.expanded.slice(0, 10).join(', ') }, 'Also looked for: {terms}'))}${d.mode === 'some words' ? ' · ' + esc(tr('search.someWords', null, 'showing pages with some of your words')) : ''}</p>` : ''}
         <div class="results">${d.results.map(resultCard).join('')}</div>` : '';
       return d.results.length + vids.length > 0;
-    } catch (e) { if (seq === searchSeq) $('#sres').innerHTML = errorBox(e, tr('search.notResponding', null, 'Search isn’t responding.')) + '<p class="small muted">The library may be busy rebuilding its index. Try again in a minute.</p>'; return true }
+    } catch (e) { if (seq === searchSeq) $('#sres').innerHTML = errorBox(e, tr('search.notResponding', null, 'Search isn’t responding.')) + `<p class="small muted">${esc(tr('search.indexBusy', null, 'The library may be busy rebuilding its index. Try again in a minute.'))}</p>`; return true }
   })();
   parts.push(found);
-  if (kind === 'all') parts.push(found.then(() => seq === searchSeq && zimResults(q, $('#szim'), 6, tr('search.inEncyclopedias', null, 'In the encyclopedias'))));
+  if (kind === 'all') parts.push(found.then(() => seq === searchSeq && zimResults(contentQuery, $('#szim'), 6, tr('search.inEncyclopedias', null, 'In the encyclopedias'))));
   const any = (await Promise.all(parts)).some(Boolean);
   if (seq === searchSeq && !g.length && !any) { $('#sres').innerHTML = emptySearch(q); offerNote(q) }
 }
@@ -1419,7 +1454,7 @@ async function offerNote(q) {
 }
 function resultCard(r) {
   const base = { src: r };
-  return `<article class="result"><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
+  return `<article class="result" lang="${esc(r.language || r.lang || 'en')}"><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
     <div class="rsrc">${srcText(r)} · ${esc(r.trust)}</div>
     ${r.hits.slice(0, 2).map(h => `<a class="hit" href="${hrefFor({ ...base, page: h.page })}">${h.page ? `<b>${esc(tr('reader.pagePrefix', { page: h.page }, 'Page {page}'))}:</b> ` : ''}${h.snippet}</a>`).join('')}</article>`;
 }
@@ -1438,7 +1473,7 @@ async function library() {
   </div>
   ${secHead(`<span data-i18n="home.learnSkill">Learn a skill</span>`, `<span data-i18n="library.learnLead">Step-by-step routes that start simple</span>`)}
   <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))} · ${tr('guide.stepCount', { count: (t.route || []).length }, '{count} steps')}</small></a>`).join('')}</div>
-  ${zims.length ? secHead(`<span data-i18n="wiki.title">Encyclopedias</span>`, `<span data-i18n="library.encyclopediasLead">Complete offline copies</span>`, `<a href="#/encyclopedias" data-i18n="library.searchThem">Search them</a>`) + `<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/library')}"><span class="ico">${ico(z[3])}</span><b>${esc(z[1])}</b><small>${esc(z[2])}</small></a>`).join('')}</div>` : ''}
+  ${zims.length ? secHead(`<span data-i18n="wiki.title">Encyclopedias</span>`, `<span data-i18n="library.encyclopediasLead">Complete offline copies</span>`, `<a href="#/encyclopedias" data-i18n="library.searchThem">Search them</a>`) + `<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/library')}"><span class="ico">${ico(z[3])}</span><b>${esc(zimTitle(z))}</b><small>${esc(zimAbout(z))}</small></a>`).join('')}</div>` : ''}
   ${secHead(`<span data-i18n="library.browseSubject">Browse by subject</span>`, `<span data-i18n="library.browseLead">Every manual, saved web page and video</span>`)}<div id="shelves"><p class="loading" data-i18n="common.loading">Loading…</p></div>
   <p style="margin-top:20px"><a href="#/about" data-i18n="library.aboutLink">About this library and its sources</a>${IN_WINDOW ? ' · <a href="/ui/setup.html#manage">Library and local AI</a>' : ''}</p>`;
   if (await notesHere()) api('/api/not-found').then(d => {
@@ -1517,7 +1552,7 @@ async function notFoundPage(confirmAll) {
   let notes;
   try { notes = (await api('/api/not-found')).notes } catch (e) {
     main.innerHTML = `<h1>${esc(tr('library.notFound', null, 'Things I couldn’t find'))}</h1>${errorBox(e)}`; return }
-  const day = s => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) };
+  const day = s => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : (i18n?.date?.(d, { day: 'numeric', month: 'long', year: 'numeric' }) ?? d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })) };
   const li = n => { const t = n.guide && topicById(n.guide);
     return `<li class="row nf"><span class="k">${ico('search')}</span><span><b>“${esc(n.words)}”</b><small>${t ? esc(tr('notes.fromGuide', { guide: shortName(t.id) || t.title }, 'From the {guide} guide')) + ' · ' : ''}${esc(day(n.at))}</small></span><button class="btn plain" data-del="${esc(n.id)}" aria-label="${esc(tr('notes.deleteNamed', { words: n.words }, 'Delete the note “{words}”'))}">${esc(tr('notes.delete', null, 'Delete'))}</button></li>` };
   main.innerHTML = `<h1>${esc(tr('library.notFound', null, 'Things I couldn’t find'))}</h1><p class="lead">${esc(tr('notes.lead', null, 'Notes you chose to keep when a search found nothing. They stay on this computer, and nothing is sent anywhere.'))}</p>
@@ -1567,7 +1602,7 @@ async function localAI(action) {
   setTimeout(() => { if (location.hash.startsWith('#/about')) route() }, 400);
 }
 function contributePage() {
-  setTitle('Contribute to Lastbook');
+  setTitle(tr('contribute.title', null, 'Contribute to Lastbook'));
   main.innerHTML = `<section class="contribute">
     <h1 data-i18n="contribute.title">Contribute to Lastbook</h1>
     <p class="lead" data-i18n="contribute.welcome">We’re building Lastbook together. We need you.</p>
@@ -1600,7 +1635,7 @@ function contributePage() {
       status.dataset.i18n = 'contribute.copiedMessage';
       status.textContent = tr('contribute.copiedMessage', null, 'Prompt copied.');
       $('#copy-contrib').dataset.i18n = 'contribute.copied';
-      $('#copy-contrib').textContent = 'Copied';
+      $('#copy-contrib').textContent = tr('contribute.copied', null, 'Copied');
       translateRendered();
     } catch {
       prompt.focus();

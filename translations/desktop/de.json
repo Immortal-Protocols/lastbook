@@ -109,7 +109,7 @@
   "setup.err.setupFolderLinkOrSpecial": "Der Setup-Ordner enthält einen Link oder eine spezielle Datei. Wählen Sie einen anderen Bibliotheksordner.",
   "setup.addLocalAi": "Hinzufügen",
   "setup.thisComputerDisk": "dieser Computer",
-  "chat.exportTitle": "Chat: {title}",
+  "chat.exportTitle": "Chatverlauf: {title}",
   "chat.exportedFrom": "Aus Lastbook (Offline-Bibliothek) exportiert am {date}",
   "chat.exportNotice": "Die Antworten wurden von einem lokalen KI-Modell anhand der Dokumente der Bibliothek erstellt. Prüfen Sie die verlinkten Seiten; holen Sie bei ernsten Anliegen geschulte Hilfe.",
   "chat.exportQuestion": "Frage",

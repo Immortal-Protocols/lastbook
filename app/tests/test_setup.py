@@ -4550,19 +4550,24 @@ console.log(JSON.stringify({computerHTML, mismatchHTML, spaceHTML, attack, escap
 
 @unittest.skipUnless(shutil.which('node'), 'needs Node')
 class PackSummaryTranslation(unittest.TestCase):
-    def test_small_pack_summary_uses_catalogue_translation_and_keeps_legacy_fallback(self):
+    def test_small_pack_summary_localizes_keyless_v1_but_keeps_unknown_pack_fallback(self):
         script = r"""
 const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const maps = () => [], selectedState = () => null;
 const tr = (key, _params, fallback) => key === 'setup.packSummary.small' ? 'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.' : fallback;
 eval(section('  function packSummary(', '  const packDl ='));
-console.log(JSON.stringify({translated: packSummary({id: 'small', summary_key: 'setup.packSummary.small', summary: 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'}), legacy: packSummary({id: 'small', summary: 'Legacy summary'})}));
+console.log(JSON.stringify({
+  translated: packSummary({id: 'small', summary_key: 'setup.packSummary.small', summary: 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'}),
+  legacySmall: packSummary({id: 'small', summary: 'Legacy summary'}),
+  unknown: packSummary({id: 'other', summary: 'Legacy summary'})
+}));
 """
         run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
         got = json.loads(run.stdout)
         self.assertEqual(got['translated'], 'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
-        self.assertEqual(got['legacy'], 'Legacy summary')
+        self.assertEqual(got['legacySmall'], 'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+        self.assertEqual(got['unknown'], 'Legacy summary')
 
 
     def test_medium_pack_summary_uses_translation_and_selected_map(self):

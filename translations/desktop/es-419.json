@@ -376,7 +376,7 @@
   "chat.modelReasoning": "El razonamiento propio del modelo: no sale de la biblioteca",
   "chat.couldntCopy": "No se pudo copiar",
   "chat.answerPrefix": "Respuesta: {text}",
-  "chat.exportTitle": "Chat: {title}",
+  "chat.exportTitle": "Conversación: {title}",
   "chat.exportedFrom": "Exportado desde Lastbook (biblioteca sin conexión) el {date}",
   "chat.exportNotice": "Las respuestas se escribieron con un modelo de IA local a partir de los documentos de la biblioteca. Revisa las páginas vinculadas; pide ayuda a personal capacitado para temas serios.",
   "chat.exportQuestion": "Pregunta",

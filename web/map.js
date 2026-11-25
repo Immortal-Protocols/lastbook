@@ -118,7 +118,17 @@ const MapView = (() => {
     spring: 'map.caveat.spring', drinking_water: 'map.caveat.tap'
   };
   const PRESET_KEY = { Emergency: 'map.preset.emergency', Water: 'map.preset.water', Supplies: 'map.preset.supplies', 'Food trees': 'map.preset.foodTrees', Resources: 'map.preset.resources', All: 'map.preset.all' };
-  const tLayer = l => l && l.id ? tr('map.layer.' + l.id, null, l.label) : (l && l.label) || '';
+  const layerText = l => {
+    if (!l) return { text: '', locale: 'en' };
+    const key = l.id ? 'map.layer.' + l.id : null;
+    const result = key && globalThis.LastbookI18n?.resolve?.(key);
+    return result || { text: l.label || '', locale: 'en' };
+  };
+  const tLayer = l => layerText(l).text;
+  const tLayerHtml = l => {
+    const result = layerText(l), direction = globalThis.LastbookI18n?.direction?.(result.locale);
+    return `<span lang="${escH(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result.text)}</span>`;
+  };
   const tGroup = (id, en) => tr('map.group.' + id, null, en);
   const tField = k => tr(FIELD_KEY[k] || ('map.field.' + k), null, FIELD[k]);
   const tCaveat = k => CAVEAT[k] ? tr(CAVEAT_KEY[k] || ('map.caveat.' + k), null, CAVEAT[k]) : '';
@@ -159,9 +169,9 @@ const MapView = (() => {
       <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
-      <section class="panel"><h2>Nearest to the map center</h2><p class="small muted" style="margin:0 0 4px">For the layers you have on. Straight-line distance, not by road.</p><div class="nearres" id="near" aria-live="polite"></div></section>
-      <section class="panel"><h2>Your area</h2><p class="small muted" style="margin:0 0 8px">The home button returns here. Saved on this device only.</p><button class="btn plain" id="sethome">Make the map center my area</button>${navigator.geolocation && isSecureContext ? ' <button class="btn plain" id="gps">Use my location</button>' : ''}</section>
-      <section class="panel"><h2>What this map covers</h2><ul class="list small" id="mdata"><li class="muted">Loading…</li></ul></section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.nearestToCenter', null, 'Nearest to the map center') || 'Nearest to the map center')}</h2><p class="small muted" style="margin:0 0 4px">${escH(globalThis.lastbookTr?.('map.nearbyLayersNote', null, 'For the layers you have on. Straight-line distance, not by road.') || 'For the layers you have on. Straight-line distance, not by road.')}</p><div class="nearres" id="near" aria-live="polite"></div></section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.yourArea', null, 'Your area') || 'Your area')}</h2><p class="small muted" style="margin:0 0 8px">${escH(globalThis.lastbookTr?.('map.homeButtonNote', null, 'The home button returns here. Saved on this device only.') || 'The home button returns here. Saved on this device only.')}</p><button class="btn plain" id="sethome">${escH(globalThis.lastbookTr?.('map.makeCenterMyArea', null, 'Make the map center my area') || 'Make the map center my area')}</button>${navigator.geolocation && isSecureContext ? ` <button class="btn plain" id="gps">${escH(globalThis.lastbookTr?.('map.useMyLocation', null, 'Use my location') || 'Use my location')}</button>` : ''}</section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.coverageHeading', null, 'What this map covers') || 'What this map covers')}</h2><ul class="list small" id="mdata"><li class="muted">${escH(globalThis.lastbookTr?.('map.loading', null, 'Loading…') || 'Loading…')}</li></ul></section>
     </div></div>`;
     // The map fills the window. With the tools beside it, the page ends where the window does, at the page's own bottom margin (so the
     // page itself never scrolls); with the tools below, the map leaves room for the tab bar and a margin.
@@ -284,14 +294,14 @@ const MapView = (() => {
       return;
     }
     box.innerHTML = `<div class="layers-head"><b>${tr('map.showOnMap', null, 'Show on map')}</b><button class="x" aria-label="${escH(tr('map.closeLayers', null, 'Close layers'))}">×</button></div>
-      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${escH(tPreset(n))}</button>`).join('')}<button data-p="">None</button></div>`}
+      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${escH(tPreset(n))}</button>`).join('')}<button data-p="">${escH(tr('map.preset.none', null, 'None'))}</button></div>`}
       <fieldset class="style"><legend>${escH(tr('map.styleLegend', null, 'Map style'))}</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>${escH(tr('map.style.aerialUsgs', null, 'Aerial photos (USGS / USDA)'))}</span></label>`}
         <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>${escH(tr('map.style.relief', null, 'Shaded relief (hills & valleys)'))}</span></label>
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>${escH(tr('map.style.contours', null, 'Contour lines (from zoom 11)'))}</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>${escH(tr('map.style.crops', null, 'Orchard & vineyard areas (coloured)'))}</span></label>`}</fieldset>
       ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${escH(tGroup(g, gl))}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(tLayer(l))}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
-      ${st.have && !st.have.size ? '' : '<p class="small muted" style="margin:6px 2px 0">Numbers are places in the current view.</p>'}`;
+      ${st.have && !st.have.size ? '' : `<p class="small muted" style="margin:6px 2px 0">${escH(tr('map.currentViewNumbers', null, 'Numbers are places in the current view.'))}</p>`}`;
     box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') };
     box.querySelectorAll('label.ly input').forEach(i => i.onchange = () => { i.checked ? st.on.add(i.value) : st.on.delete(i.value); layersChanged() });
     box.querySelectorAll('[data-style]').forEach(i => i.onchange = () => { if (i.dataset.style === 'aerial') return setPhoto(i.checked); st.style[i.dataset.style] = i.checked; save('mapStyle', st.style); draw() });
@@ -844,7 +854,7 @@ const MapView = (() => {
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
     st.sel = { lat: p.lat, lon: p.lon }; draw();
     const title = p.spot ? tr('map.recordsAtOneSpot', { count: Math.max(p.count, p.records || 0) }, '{count} records at one spot') : tr('map.placesHere', { count: p.count }, '{count} places here');
-    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(title)}</h3><p class="muted">${escH(tr('map.loading', null, 'Loading…'))}</p>`);
+    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? tLayerHtml(layerOf(p.cls)) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(title)}</h3><p class="muted">${escH(tr('map.loading', null, 'Loading…'))}</p>`);
     reveal(p.lat, p.lon);
     try {
       const q = new URLSearchParams({ west: b[0] - pad, south: b[1] - pad, east: b[2] + pad, north: b[3] + pad, lat: p.lat, lon: p.lon, kinds: Object.keys(p.kinds || { [p.cls]: 1 }).join(',') });
@@ -853,7 +863,7 @@ const MapView = (() => {
       const items = r.items || [], names = new Set(items.map(m => m.name));
       if (items.length === 1) return showDetail(items[0]);
       const head = p.spot && names.size === 1 && items[0]?.name ? items[0].name : title;
-      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(head)}</h3>${breakdown(p)}
+      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? tLayerHtml(layerOf(p.cls)) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(head)}</h3>${breakdown(p)}
         <p class="muted small">${r.total > items.length ? tr('map.recordsNearest', { shown: items.length, total: r.total.toLocaleString(), plus: r.capped ? '+' : '' }, 'Showing the {shown} nearest of {total}{plus}. Zoom in to see the rest.') : tr('map.recordsCount', { count: items.length }, '{count} records')}</p>
         <div class="members">${items.map((m, i) => `<button data-i="${i}">${sym(layerOf(m.cls), 20)}<span><b>${escH(unnamed(m))}</b><small>${escH([m.summary || layerOf(m.cls).label, m.detail?.WeekOfPlantStart ? 'stocked ' + m.detail.WeekOfPlantStart : ''].filter(Boolean).join(' · '))}</small></span></button>`).join('')}</div>
         <div class="acts"><button data-a="zoom">${tr('map.zoomHere', null, 'Zoom here')}</button></div>`);
@@ -890,7 +900,7 @@ const MapView = (() => {
   function countLine() {
     let n = 0; for (const p of st.pins) if (inView(p)) n += p.count;
     renderLayers();
-    statusLine(n ? tr('map.placesInView', { count: n.toLocaleString(), extra: st.truncated ? tr('map.cappedPlacesInView', null, ' (busiest shown — zoom in for all)') : '' }, '{count} places in view{extra}') : tr('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.'));
+    statusLine(n ? tr('map.placesInView', { count: n, extra: st.truncated ? tr('map.cappedPlacesInView', null, ' (busiest shown — zoom in for all)') : '' }, '{count} places in view{extra}') : tr('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.'));
   }
   async function nearby() {
     if (!st) return;

@@ -36,6 +36,7 @@
   const apply = (scope = document, paramsFor) => applyI18n(scope, engine, paramsFor === undefined ? paramsFrom : paramsFor);
   window.LastbookI18n = Object.freeze({
     apply,
+    resolve(key, params) { return engine.resolve(key, params); },
     t(key, params) { return engine.t(key, params); },
     number(value, options) { return engine.number(value, options); },
     date(value, options) { return engine.date(value, options); },
@@ -55,8 +56,8 @@
   function activate(saved) {
     selection = saved || 'en';
     engine.usePreferredLocales(selection);
-    // UI rendered through tr() inherits the document language, including
-    // unmarked dynamic text. Keep the document metadata in sync for assistive tech.
+    // Dynamic UI text inherits the selected language. Rendered fallback text
+    // must carry its own lang when it comes from a different catalogue.
     document.documentElement.lang = engine.locale || 'en';
     apply();
     document.dispatchEvent(new Event('lastbook:languagechange'));

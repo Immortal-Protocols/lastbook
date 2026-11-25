@@ -140,9 +140,9 @@ class Browser(unittest.TestCase):
         self.tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
         self.language_file = self.tmp / bridge.ui_language.FILENAME
 
-    def configure_setup(self, current=None, library=DATA):
+    def configure_setup(self, current=None, library=DATA, setup_manifest=None):
         return server.setup_api.configure(mode='manage' if current else 'first-run', current=current,
-                                          settings_dir=self.tmp, default_parent=self.tmp, manifest=Manifest(remote=None),
+                                          settings_dir=self.tmp, default_parent=self.tmp, manifest=setup_manifest or Manifest(remote=None),
                                           pick_folder=lambda files=False: str(library))
 
     @contextlib.contextmanager
@@ -295,17 +295,22 @@ class Browser(unittest.TestCase):
 
     def test_setup_polling_and_a_completed_action_preserve_the_selector(self):
         setup = self.configure_setup()
-        setup.job = {'state': 'downloading', 'items': []}
+        setup.job = {'state': 'downloading', 'items': [
+            {'id': 'small', 'kind': 'pack', 'title': 'Library', 'state': 'downloading',
+             'bytes_done': 20, 'bytes_total': 100},
+        ]}
         with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
             pause = http.holds[('POST', '/api/setup/pause')] = threading.Event()
             with page.expect_response('**/api/setup/job'):
                 page.goto(origin)
                 expect(page.get_by_role('button', name='Pause')).to_be_visible()
+            expect(page.locator('.s-steps li')).to_have_text(['Download', 'Check', 'Unpack', 'Finish'])
             page.get_by_role('button', name='Pause').click()
             select = page.get_by_label('Interface language')
             select.focus()
             with setup.lock:
                 setup.job['state'] = 'paused'
+                setup.job['items'][0]['state'] = 'paused'
             pause.set()
             expect(page.get_by_role('button', name='Resume')).to_be_visible()
             expect(select).to_be_focused()
@@ -313,6 +318,222 @@ class Browser(unittest.TestCase):
             page.get_by_role('button', name='Save language').click()
             expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
             expect(page.get_by_role('button', name='Reanudar')).to_be_visible()
+            expect(page.locator('.s-steps li')).to_have_text(['Descargar', 'Comprobar', 'Descomprimir', 'Terminar'])
+            expect(page.locator('.s-state')).to_have_text('En pausa')
+
+    def test_spanish_search_example_finds_english_library_content(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/page/**', lambda route: route.fulfill(status=404, body=''))
+            page.goto(origin + '/#/search?q=hervir%20agua')
+            expect(page.locator('#searchQ')).to_have_value('hervir agua')
+            expect(page.locator('.results .result')).to_have_count(1)
+            expect(page.locator('.results .result h3')).to_contain_text('pdfsmall')
+            expect(page.locator('#sask')).to_contain_text('Pregunta a la biblioteca: “hervir agua”')
+            expect(page.locator('#sask')).to_contain_text('Recibe una respuesta escrita basada en las páginas exactas de la biblioteca.')
+            self.assertIsNone(page.locator('.results .result').get_attribute('lang'))
+            tagged = page.evaluate("""() => {
+                const box = document.createElement('div');
+                box.innerHTML = resultCard({title:'Documento', hits:[], trust:'', language:'es-MX'});
+                return box.firstElementChild.getAttribute('lang');
+            }""")
+            self.assertEqual(tagged, 'es-MX')
+
+    def test_chat_dynamic_text_tags_the_language_that_supplied_it(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/assistant/status', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'online': False, 'local': {'state': 'absent'}})))
+            page.goto(origin + '/#/ask?about=topic:water')
+            expect(page.locator('html')).to_have_attribute('lang', 'de')
+            expect(page.locator('#chatStatus span[lang="en"]').first).to_have_text('No local AI added')
+            expect(page.locator('.starter span[lang="en"]').first).to_have_text('What should I do first?')
+            self.assertEqual(page.locator('.starter').first.get_attribute('data-start'), 'What should I do first?')
+
+    def test_chat_source_filters_use_neutral_spanish_labels(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        chat = {
+            'id': 'source-filter-chat', 'title': 'Question', 'updated': '2026-11-17T12:00:00Z',
+            'messages': [
+                {'role': 'user', 'content': 'Question'},
+                {'role': 'assistant', 'content': 'Answer.', 'cited': [
+                    {'key': 'S1', 'kind': 'page', 'doc_id': 'manual', 'title': 'Manual'},
+                    {'key': 'S2', 'kind': 'video', 'doc_id': 'video', 'title': 'Video', 't': 12},
+                ], 'steps': []},
+            ],
+        }
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/source-filter-chat')
+            expect(page.locator('.srcfilter button')).to_have_text(['Todas 2', 'Páginas 1', 'Videos 1'])
+            expect(page.locator('.srcfilter button span[lang="es-419"]')).to_have_count(3)
+
+    def test_chat_language_refresh_preserves_focus_and_open_disclosures(self):
+        self.configure_setup(current=DATA)
+        saved_chat = {
+            'id': 'saved-chat', 'title': 'Saved chat', 'updated': '2026-11-17T12:00:00Z',
+            'messages': [
+                {'role': 'user', 'content': 'Question'},
+                {'role': 'assistant', 'content': 'Answer from a page.',
+                 'cited': [], 'consulted': [{'key': 'S1', 'kind': 'page', 'doc_id': 'manual', 'title': 'Manual'}],
+                 'steps': [{'name': 'found', 'count': 1}]},
+            ],
+        }
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([saved_chat])) + ");")
+            page.goto(origin + '/#/ask/saved-chat')
+            expect(page.locator('details.also')).to_have_count(2)
+            expect(page.locator('#chatIn')).to_be_focused()  # wait for the first page's normal autofocus
+            page.locator('details.also').first.evaluate('(el) => { el.open = true; }')
+            page.locator('#newChat2').focus()
+            page.wait_for_timeout(100)  # let any queued initial-focus callback run before testing refresh state
+            page.locator('#newChat2').focus()
+            self.assertEqual(page.evaluate('document.activeElement.id'), 'newChat2')
+            page.evaluate("""() => {
+                const current = window.LastbookI18n;
+                window.LastbookI18n = Object.freeze({
+                    apply: current.apply, resolve: current.resolve, t: current.t,
+                    number: current.number, date: current.date, direction: current.direction,
+                    get locale() { return 'de'; },
+                });
+                document.documentElement.lang = 'de';
+                document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            page.wait_for_timeout(150)
+            expect(page.locator('html')).to_have_attribute('lang', 'de')
+            expect(page.locator('#newChat2')).to_be_focused()
+            self.assertTrue(page.locator('details.also').first.evaluate('(el) => el.open'))
+
+    def test_single_map_place_uses_singular_translation(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': []})))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'points': [{'lat': 39, 'lon': -98, 'count': 1, 'cls': 'hospital', 'kinds': {'hospital': 1}}], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='{}'))
+            page.goto(origin + '/#/map')
+            expect(page.locator('#mstatus')).to_have_text('1 lugar a la vista')
+
+    def test_small_pack_summary_uses_the_selected_interface_language(self):
+        from engine.setup import manifest as setup_manifest
+
+        bundled = setup_manifest.validate({'version': 1, 'packs': [{
+            'id': 'small', 'title': 'Small',
+            'summary': 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.',
+            'summary_key': 'setup.packSummary.small', 'available': False, 'files': [],
+        }], 'models': []})
+        self.assertIsNotNone(bundled)
+        self.configure_setup(setup_manifest=Manifest(bundled=bundled, remote=None))
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/ui/setup.html')
+            expect(page.locator('[data-pack-summary="small"]')).to_have_text(
+                'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+
+    def test_static_update_notice_is_translated(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/update/notice', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notify': True, 'available': '1.2.0', 'checking': False})))
+            page.goto(origin + '/#/guides')
+            expect(page.locator('#sideUpdate')).to_be_visible()
+            expect(page.locator('#sideUpdate span')).to_have_text('Hay una actualización disponible')
+
+    def test_bfcache_refresh_translates_encyclopedia_label(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("addEventListener('pageshow', event => { if (event.persisted) window.restoredFromCache = true })")
+            page.route('**/api/library', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'zims': ['mdwiki_en_all_maxi_2025-11.zim']})))
+            page.route('**/zim/**', lambda route: route.fulfill(status=200, content_type='text/html', body='<html><body>Article</body></html>'))
+            article = origin + '/#/wiki/wikipedia_fixture/Some_Article'
+            page.goto(article)
+            expect(page.locator('.zn')).to_have_text('Wikipedia (text only) ·')
+            page.goto(origin + '/ui/setup.html#manage')
+            select = page.get_by_label('Interface language')
+            expect(select).to_be_visible()
+            select.select_option('es-419')
+            page.get_by_role('button', name='Save language').click()
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
+            page.evaluate('history.back()')
+            page.wait_for_url('**/#/wiki/wikipedia_fixture/Some_Article', wait_until='commit')
+            expect(page.locator('html')).to_have_attribute('lang', 'es-419')
+            self.assertTrue(page.evaluate('window.restoredFromCache'))
+            expect(page.locator('.zn')).to_have_text('Wikipedia (solo texto) ·')
+            page.evaluate("location.hash = '#/encyclopedias'")
+            mdwiki = page.locator('#main .cards2 .card').first
+            expect(mdwiki.locator('b')).to_have_text('Enciclopedia médica')
+            expect(mdwiki.locator('small')).to_have_text(
+                'MDWiki: artículos en lenguaje claro sobre enfermedades, medicamentos y primeros auxilios.')
+            page.evaluate("location.hash = '#/wiki/mdwiki_fixture/Some_Article'")
+            expect(page.locator('.zn')).to_have_text('Enciclopedia médica (MDWiki) ·')
+
+    def test_map_panels_use_the_selected_interface_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/map')
+            expect(page.locator('.maptools h2')).to_have_text([
+                'Más cercanos al centro del mapa', 'Tu zona', 'Cobertura de este mapa'])
+            expect(page.locator('.maptools section.panel:nth-of-type(1) p')).to_have_text(
+                'Según las capas activadas. Distancia en línea recta, no por carretera.')
+            expect(page.locator('.maptools section.panel:nth-of-type(2) p')).to_have_text(
+                'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
+            expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
+
+    def test_chat_guide_label_uses_the_selected_interface_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask')
+            expect(page.locator('.ask-learn small')).to_have_text(['Guía paso a paso'] * 3)
+
+    def test_selected_interface_language_formats_chat_and_note_dates(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', JSON.stringify([{id:'old', title:'Saved chat', updated:'2026-11-17T12:00:00Z', messages:[{role:'user',content:'Question'}]}]))")
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li a small').first).to_contain_text('17 nov')
+            page.route('**/api/not-found', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notes': [{'id': 'note-1', 'words': 'water filter', 'at': '2026-11-17', 'guide': None}]})))
+            page.goto(origin + '/#/not-found')
+            expect(page.locator('.row.nf small')).to_contain_text('17 de noviembre de 2026')
+
+    def test_search_results_arriving_after_route_change_do_not_touch_old_dom(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script(r"""window.auditSearchRequests = [];
+                const realFetch = window.fetch.bind(window);
+                window.fetch = (resource, init) => {
+                    const url = typeof resource === 'string' ? resource : resource.url;
+                    if (url.includes('/api/find?') || url.includes('/api/retrieve?')) {
+                        window.auditSearchRequests.push(url);
+                        return new Promise((resolve, reject) => setTimeout(
+                            () => realFetch(resource, init).then(resolve, reject), 500));
+                    }
+                    return realFetch(resource, init);
+                };""")
+            page.goto(origin + '/#/guides')
+            expect(page.locator('h1')).to_have_text('What do you need?')
+            page.evaluate("location.hash = '#/search?q=zzqzxqwv'")
+            page.wait_for_function('window.auditSearchRequests.length >= 2')
+            page.evaluate("location.hash = '#/guides'")
+            expect(page.locator('h1')).to_have_text('What do you need?')
+            page.wait_for_timeout(700)
 
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()

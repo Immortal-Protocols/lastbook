@@ -578,7 +578,7 @@ def handle_battery(h):
     gets 403, because a laptop's battery is nobody else's business."""
     from engine.setup.api import _send_json
     if h.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
-        return _send_json(h, {'error': 'The battery is only shown on this computer.'}, 403)
+        return _send_json(h, {'error': 'The battery is only shown on this computer.', 'error_key': 'hardware.batteryLocalOnly'}, 403)
     return _send_json(h, battery())
 
 

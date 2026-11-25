@@ -8,6 +8,15 @@ function tr(key, params, fallback) {
   return fallback;
 }
 globalThis.lastbookTr = tr;
+function trResult(key, params, fallback) {
+  const result = globalThis.LastbookI18n?.resolve?.(key, params);
+  return result || { text: tr(key, params, fallback), locale: 'en' };
+}
+function localizedHtml(result) {
+  const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+  return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+}
+function trHtml(key, params, fallback) { return localizedHtml(trResult(key, params, fallback)); }
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
   const STARTERS = [
@@ -24,18 +33,34 @@ const Chat = (() => {
   // The ink drawings are the website's own (website-next/img/ink/), copied flat into web/ because builds ship web/ without folders.
   const HOME = [['water', 'water'], ['hurt', 'aid'], ['food', 'food'], ['power', 'power'], ['comms', 'radio'], ['grow', 'garden']];
   const LEARN = [['grow', 'garden'], ['health', 'carer'], ['energy', 'lantern']];
-  const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
-    video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
-    topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
-  const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
+  const ABOUT_STARTERS = { doc: ['chat.explainPage', 'chat.pageWarnings', 'chat.videoForThis'],
+    video: ['chat.summariseVideo', 'chat.videoSafety', 'chat.findManual'],
+    topic: ['chat.doFirst', 'chat.importantWarnings', 'chat.whichVideo'] };
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
-  const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
+  const STAGES = ['search', 'read', 'write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
+  function stateHtml(state) {
+    switch (state) {
+      case 'starting': return trHtml('chat.state.starting', null, 'Starting the local AI…');
+      case 'thinking': return trHtml('chat.state.thinking', null, 'Thinking…');
+      case 'searching': return trHtml('chat.state.searching', null, 'Searching the library…');
+      case 'reading': return trHtml('chat.state.reading', null, 'Reading the pages it found…');
+      case 'writing': return trHtml('chat.state.writing', null, 'Writing the answer…');
+      default: return trHtml('chat.working', null, 'Working…');
+    }
+  }
+  function stageHtml(key) {
+    switch (key) {
+      case 'search': return trHtml('chat.stage.search', null, 'Search');
+      case 'read': return trHtml('chat.stage.read', null, 'Read');
+      default: return trHtml('chat.stage.write', null, 'Write');
+    }
+  }
   // The stage the answer is at, and how far the local AI has loaded (null: no figure, so the bar sweeps).
   const stage = m => ({ at: STAGE_AT[m.state] ?? 0, pct: m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null });
   const stageClass = (i, at) => i < at ? 'done' : i === at ? 'now' : '';
   function progress(m) {
     const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
-    const stages = STAGES.map((name, i) => { const key = 'chat.stage.' + name.toLowerCase(); return `<li class="${i < at ? 'done' : i === at ? 'now' : ''}" data-i18n="${key}">${tr(key, null, name)}</li>`; }).join('');
+    const stages = STAGES.map((key, i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${stageHtml(key)}</li>`).join('');
     return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
   }
   let chats = load(), live = {};   // live[chatId] = {abort, state, steps}
@@ -55,7 +80,7 @@ const Chat = (() => {
 
   /* ---------------------------------------------------------------- page -- */
   let root = null, cur = null, aboutCtx = null;
-  async function page(main, parts, q) {
+  async function page(main, parts, q, options = {}) {
     root = main;
     const id = parts[0];
     cur = id ? byId(id) : null;
@@ -70,7 +95,7 @@ const Chat = (() => {
         <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}<span data-i18n="chat.new">New chat</span></a>
         <ul class="cs-list" id="csList"></ul>
         <div class="cs-privacy">
-          <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
+          <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> ${tr('chat.keepHistory', null, 'Keep chat history on this device')}</label>
           <p class="small muted" data-i18n="chat.stayOnDevice">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
           <button class="btn plain" id="clearChats" data-i18n="chat.deleteAll">Delete all chats</button>
         </div>
@@ -115,7 +140,7 @@ const Chat = (() => {
     statusLine();
     const initial = q.get('q');
     if (initial && !cur) { history.replaceState(null, '', '#/ask'); send(initial) }
-    else if (matchMedia('(hover:hover)').matches) setTimeout(() => ta.focus({ preventScroll: true }), 60);
+    else if (!options.preserveFocus && matchMedia('(hover:hover)').matches) setTimeout(() => ta.focus({ preventScroll: true }), 60);
     const y = scrolls[here()];
     if (y != null) requestAnimationFrame(() => scrollTo(0, y)); else if (cur && cur.messages.length) scrollEnd(true); else scrollTo(0, 0);   // a new chat opens at its top
   }
@@ -125,32 +150,37 @@ const Chat = (() => {
   // The optional local AI (desktop app): [ready?, the line to show]. The server version has no s.local.
   function localLine(l) {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
+    const translated = (key, params, fallback) => trResult(key, params, fallback);
+    const english = text => ({ text, locale: 'en' });
     return ({
-      ready: [true, tr('chat.ready', null, 'Local AI ready')],
-      stopped: [true, tr('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
-      loading: [true, tr('chat.state.startingPct', { pct: l.pct ? ' ' + l.pct + '%' : '…' }, 'Starting the local AI{pct}')],
-      checking: [false, tr('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
-      measuring: [false, tr('chat.checkingMemory', null, 'Checking this computer’s memory…')],
-      absent: [false, tr('chat.notAdded', null, 'No local AI added')],
-      wrong: [false, l.message || tr('chat.wrongFile', null, 'The local AI file is not the right one.')],
-      too_big: [false, l.message || tr('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
-      off: [false, tr('chat.isOff', null, 'Local AI is off')],
-      error: [false, l.message || tr('chat.startFailed', null, 'The local AI could not start.')],
-    })[l.state] || [false, l.message || tr('chat.unavailable', null, 'Local AI unavailable')];
+      ready: [true, translated('chat.ready', null, 'Local AI ready')],
+      stopped: [true, translated('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
+      loading: [true, translated('chat.state.startingPct', { pct: l.pct ? ' ' + l.pct + '%' : '…' }, 'Starting the local AI{pct}')],
+      checking: [false, translated('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
+      measuring: [false, translated('chat.checkingMemory', null, 'Checking this computer’s memory…')],
+      absent: [false, translated('chat.notAdded', null, 'No local AI added')],
+      wrong: [false, l.message ? english(l.message) : translated('chat.wrongFile', null, 'The local AI file is not the right one.')],
+      too_big: [false, l.message ? english(l.message) : translated('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
+      off: [false, translated('chat.isOff', null, 'Local AI is off')],
+      error: [false, l.message ? english(l.message) : translated('chat.startFailed', null, 'The local AI could not start.')],
+    })[l.state] || [false, l.message ? english(l.message) : translated('chat.unavailable', null, 'Local AI unavailable')];
   }
   let polling = null;
   async function statusLine() {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
-    const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">${esc(tr('chat.stillIndexing', { count: (ix.chunks || 0).toLocaleString() }, 'still indexing ({count} passages so far)'))}</span>` : '';
+    const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">${trHtml('chat.stillIndexing', { count: (ix.chunks || 0).toLocaleString() }, 'still indexing ({count} passages so far)')}</span>` : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : tr('chat.searchReadingStill', null, ' — search and reading still work')}</span>`;
+      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span>${localizedHtml(line)}${ok ? still : trHtml('chat.searchReadingStill', null, ' — search and reading still work')}`;
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>${tr('chat.ready', null, 'Local AI ready')}${still}`
-        : `<span class="dotoff"></span><span>${esc(tr('chat.assistantOffline', null, 'Assistant offline'))}<span class="long">${esc(tr('chat.searchBrowsingStill', null, ' — search and browsing still work'))}</span></span>`;
+      el.innerHTML = s.online ? `<span class="dotok"></span>${trHtml('chat.ready', null, 'Local AI ready')}${still}`
+        : `<span class="dotoff"></span><span>${trHtml('chat.assistantOffline', null, 'Assistant offline')}<span class="long">${trHtml('chat.searchBrowsingStill', null, ' — search and browsing still work')}</span></span>`;
     }
-    const sb = $('#sendBtn'); if (sb) sb.title = s.online ? tr('chat.send', null, 'Send') : tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
+    const sb = $('#sendBtn'); if (sb) {
+      const label = s.online ? trResult('chat.send', null, 'Send') : trResult('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
+      sb.title = label.text; sb.lang = label.locale;
+    }
     setupCard(s);
     clearTimeout(polling);
     if (l && /checking|measuring|loading/.test(l.state) && $('#chatStatus')) polling = setTimeout(statusLine, 1000);
@@ -191,7 +221,7 @@ const Chat = (() => {
   }
   function renderSide() {
     const el = $('#csList'); if (!el) return;
-    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${tr('chat.questions', { count: c.messages.filter(m => m.role === 'user').length })}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="${esc(tr('chat.deleteThis', null, 'Delete this chat'))}">×</button></li>`).join('')
+    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${(globalThis.LastbookI18n?.date?.(new Date(c.updated), { month: 'short', day: 'numeric' }) ?? new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${tr('chat.questions', { count: c.messages.filter(m => m.role === 'user').length })}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="${esc(tr('chat.deleteThis', null, 'Delete this chat'))}">×</button></li>`).join('')
       : `<li class="muted small" style="padding:8px 4px">${esc(tr('chat.noneYet', null, 'No chats yet.'))}</li>`;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
@@ -221,7 +251,7 @@ const Chat = (() => {
         <div class="ce-mark">${ico('ask')}</div>
         <h1 data-i18n="nav.chat">Chat</h1>
         <p class="lead" data-i18n="chat.emptyLead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
-        <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
+        <div class="starters">${st.map(key => { const item = trResult(key, null, key); return `<button class="starter" ${tcStyle('ask')} data-start="${esc(item.text)}"><span class="ico">${ico('ask')}</span>${localizedHtml(item)}</button>`; }).join('')}</div>
         <p class="small muted" style="margin-top:18px" data-i18n="chat.emptyNote">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
       globalThis.LastbookI18n?.apply(log);
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
@@ -238,7 +268,7 @@ const Chat = (() => {
       <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
         <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
       <div class="ask-learn-head"><h2 class="ask-h" data-i18n="chat.keepLearning">${tr('chat.keepLearning', null, 'Keep learning')}</h2><a href="#/library" data-i18n="chat.allSkills">${tr('chat.allSkills', null, 'All skills')}</a></div>
-      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small>Step-by-step guide</small></span></a>`).join('')}</div>`;
+      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small data-i18n="guide.stepByStep">${tr('guide.stepByStep', null, 'Step-by-step guide')}</small></span></a>`).join('')}</div>`;
   }
   // The page itself never scrolls while a chat is empty: in a window too short for every suggestion (or with lines wrapped narrow beside
   // the chats column), the last ones go, a row at a time down to one row, then the note under them, the introduction and the mark.
@@ -319,12 +349,12 @@ const Chat = (() => {
     if (!work) {   // the same parts progress() writes, made here when the message has none yet
       work = doc.createElement('div'); work.className = 'working';
       const ol = doc.createElement('ol'); ol.className = 'wk-stages'; ol.setAttribute('aria-hidden', 'true');
-      for (const t of STAGES) { const li = doc.createElement('li'); li.textContent = t; ol.append(li) }
+      for (const key of STAGES) { const li = doc.createElement('li'); li.innerHTML = stageHtml(key); ol.append(li) }
       const bar = doc.createElement('span'); bar.className = 'wk-bar'; bar.setAttribute('aria-hidden', 'true'); bar.append(doc.createElement('span'));
       work.append(doc.createElement('b'), ol, bar);
       el.prepend(work);
     }
-    const label = esc(STATES[m.state] || 'Working…') + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
+    const label = stateHtml(m.state) + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
     if (b.lbHtml !== label) { b.innerHTML = label; b.lbHtml = label }
     // The stage list and the bar keep their elements, so the spinner and the bar's sweep carry on.
     [...kid(work, 'wk-stages').children].forEach((li, k) => { const c = stageClass(k, at); if (li.className !== c) li.className = c });
@@ -353,7 +383,7 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${esc(tr('chat.state.' + m.state, null, STATES[m.state] || tr('chat.working', null, 'Working…')))}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${stateHtml(m.state)}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
@@ -404,7 +434,7 @@ const Chat = (() => {
     return `#/read/${encodeURIComponent(s.doc_id)}?${s.page ? 'p=' + s.page + '&' : ''}from=${encodeURIComponent(here())}`;
   }
   // What a source is, for the filter above an answer's sources: a page (manuals, PDFs, saved pages), a video, an encyclopedia article or a place on the map.
-  const SRC_TYPES = [['page', 'Pages'], ['video', 'Videos'], ['wiki', 'Encyclopedias'], ['place', 'Places']];
+  const SRC_TYPE_KEYS = { page: 'pages', video: 'videos', wiki: 'encyclopedias', place: 'places' };
   const srcType = s => s.kind === 'video' ? 'video' : s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'place' : 'page';
   function srcCards(list, compact, type) {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
@@ -422,11 +452,11 @@ const Chat = (() => {
   // Buttons that show one type of source at a time, with how many of each. Only when the sources are of two types or more.
   function srcFilter(list, type, i) {
     const n = {}; for (const s of list) n[srcType(s)] = (n[srcType(s)] || 0) + 1;
-    const types = SRC_TYPES.filter(([t]) => n[t]);
+    const types = Object.keys(SRC_TYPE_KEYS).filter(t => n[t]);
     if (types.length < 2) return '';
     const on = type || '';
-    const btn = (t, label, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${label} <small>${count}</small></button>`;
-    return `<div class="srcfilter" role="group" aria-label="Show sources by type"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'All', list.length)}${types.map(([t, label]) => btn(t, label, n[t])).join('')}</div>`;
+    const btn = (t, key, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${trHtml('chat.sourceType.' + key, null, key)} <small>${count}</small></button>`;
+    return `<div class="srcfilter" role="group" aria-label="${tr('chat.sourcesByType', null, 'Show sources by type')}"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'all', list.length)}${types.map(t => btn(t, SRC_TYPE_KEYS[t], n[t])).join('')}</div>`;
   }
   // Show only the cards of one type (or all of them, for ''), in the cards that follow this filter.
   function showType(filter, type) {
@@ -486,7 +516,7 @@ const Chat = (() => {
         close();
         if (out.includes('<div class="sec-')) out += '</div>';
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? tr('chat.notInLibrary', null, 'Not found in the library') : sec === 'disagree' ? 'Sources disagree' : tr('chat.modelReasoning', null, 'The model’s own reasoning — not from the library')}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? trHtml('chat.notInLibrary', null, 'Not found in the library') : sec === 'disagree' ? trHtml('chat.sourcesDisagree', null, 'Sources disagree') : trHtml('chat.modelReasoning', null, 'The model’s own reasoning — not from the library')}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
@@ -508,7 +538,7 @@ const Chat = (() => {
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast(tr('chat.copied', null, 'Copied')), () => toast(tr('chat.couldntCopy', null, 'Couldn’t copy'))) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
-        toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${new Date().toLocaleDateString()}` }, null);
+        toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${(globalThis.LastbookI18n?.date?.(new Date()) ?? new Date().toLocaleDateString())}` }, null);
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
@@ -525,7 +555,7 @@ const Chat = (() => {
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${new Date().toLocaleString()}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
+    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${(globalThis.LastbookI18n?.date?.(new Date(), { dateStyle: 'medium', timeStyle: 'short' }) ?? new Date().toLocaleString())}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
     for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
@@ -563,7 +593,7 @@ const Chat = (() => {
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
       const st = await getStatus();
-      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && tr('chat.modelServerNotAnswering', { address: esc(st.server.address) }, 'The model server at {address} is not answering. Check that it is running.') });
+      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1]?.text : st.server && tr('chat.modelServerNotAnswering', { address: esc(st.server.address) }, 'The model server at {address} is not answering. Check that it is running.') });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error(tr('chat.serverRefused', { detail: r.status }, 'The server refused the question ({detail})'));
       const rd = r.body.getReader(), dec = new TextDecoder();

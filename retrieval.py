@@ -64,7 +64,17 @@ class Embedder:
     def __init__(self, gpu=False):
         so = ort.SessionOptions()
         so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
-        self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=embed_providers(ort.get_available_providers(), gpu))
+        providers = embed_providers(ort.get_available_providers(), gpu)
+        self.sess = None
+        if providers[0] == 'CUDAExecutionProvider':
+            try:
+                if hasattr(ort, 'preload_dlls'):  # onnxruntime-gpu >= 1.21: finds the CUDA and cuDNN libraries of the pip nvidia-* wheels (needed on Windows)
+                    ort.preload_dlls()
+                self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=providers)
+            except Exception as e:
+                print(f'GPU session could not start ({type(e).__name__}: {e}); building on the CPU', flush=True)
+        if self.sess is None:
+            self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=['CPUExecutionProvider'])
         self.provider = self.sess.get_providers()[0]
         if gpu:
             print(f'embedding with {self.provider}', flush=True)

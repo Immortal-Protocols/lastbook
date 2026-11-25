@@ -1,6 +1,6 @@
 """Meaning-based search (retrieval.Index.semantic): per-document filtering. Small made-up index, no real library, no model.
 Never packaged."""
-import os, sys, tempfile, unittest
+import io, os, sys, tempfile, unittest
 from pathlib import Path
 from unittest import mock
 
@@ -95,13 +95,17 @@ class EmbedProviders(unittest.TestCase):
             self.assertEqual(self.pick(self.BOTH, True, v), ['CPUExecutionProvider'])
         self.assertEqual(self.pick(self.BOTH, True, ''), self.BOTH)
 
-    def test_embedder_passes_the_choice_to_onnxruntime(self):
-        seen = {}
+    def embedder(self, gpu, cuda_fails=False):
+        """Build an Embedder against a stubbed onnxruntime. Returns it, the provider lists asked for, the stub and stdout."""
+        asked = []
 
         class Sess:
             def __init__(self, path, so, providers):
-                seen['providers'] = providers
-            def get_providers(self): return seen['providers']
+                asked.append(providers)
+                if cuda_fails and 'CUDAExecutionProvider' in providers:
+                    raise RuntimeError('cudnn64_9.dll not found')
+                self.providers = providers
+            def get_providers(self): return self.providers
             def get_inputs(self): return []
 
         class Tok:
@@ -109,10 +113,30 @@ class EmbedProviders(unittest.TestCase):
             def enable_padding(self): pass
 
         fake_ort = mock.Mock(SessionOptions=mock.Mock, InferenceSession=Sess, get_available_providers=lambda: self.BOTH)
-        with mock.patch.object(retrieval, 'ort', fake_ort, create=True),                 mock.patch.object(retrieval, 'Tokenizer', mock.Mock(from_file=lambda p: Tok()), create=True):
+        with mock.patch.object(retrieval, 'ort', fake_ort, create=True), \
+                mock.patch.object(retrieval, 'Tokenizer', mock.Mock(from_file=lambda p: Tok()), create=True), \
+                mock.patch.dict(os.environ), mock.patch('sys.stdout', new_callable=io.StringIO) as out:
             os.environ.pop('LASTBOOK_EMBED_DEVICE', None)
-            self.assertEqual(retrieval.Embedder(gpu=True).provider, 'CUDAExecutionProvider')
-            self.assertEqual(retrieval.Embedder().provider, 'CPUExecutionProvider')
+            return retrieval.Embedder(gpu=gpu), asked, fake_ort, out.getvalue()
+
+    def test_embedder_passes_the_choice_to_onnxruntime(self):
+        self.assertEqual(self.embedder(True)[0].provider, 'CUDAExecutionProvider')
+        self.assertEqual(self.embedder(False)[0].provider, 'CPUExecutionProvider')
+
+    def test_cuda_libraries_are_preloaded_only_for_the_gpu(self):
+        _, _, ort, out = self.embedder(True)
+        ort.preload_dlls.assert_called_once_with()
+        self.assertIn('embedding with CUDAExecutionProvider', out)
+        _, _, ort, out = self.embedder(False)
+        ort.preload_dlls.assert_not_called()
+        self.assertEqual(out, '')  # the running app prints nothing
+
+    def test_gpu_session_failure_falls_back_to_cpu(self):
+        emb, asked, _, out = self.embedder(True, cuda_fails=True)
+        self.assertEqual(asked, [self.BOTH, ['CPUExecutionProvider']])
+        self.assertEqual(emb.provider, 'CPUExecutionProvider')
+        self.assertIn('GPU session could not start (RuntimeError: cudnn64_9.dll not found); building on the CPU', out)
+        self.assertIn('embedding with CPUExecutionProvider', out)
 
 
 if __name__ == '__main__':

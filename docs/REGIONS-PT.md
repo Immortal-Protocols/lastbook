@@ -45,8 +45,8 @@ is built on them.
 
 ## What a region is
 
-The proposal is ten regions: the seven continental NUTS II, the Azores split into two regions that follow the two
-address groups the INE dataset already uses, and Madeira. A continental NUTS II is the level closest to a US state in
+The proposal is nine regions: the seven continental NUTS II, the Azores as one region whose two INE address
+groups ride together (the shape settled on #31, 25 November 2026), and Madeira. A continental NUTS II is the level closest to a US state in
 what runs there: the CCDRs (comissões de coordenação e desenvolvimento regional) manage territory, regional planning and
 civil-protection coordination, and the two autonomous regions have their own governments.
 
@@ -54,14 +54,14 @@ Each box was widened by 0.15° and rounded **outward** to 0.01° — the west an
 edges ceiled — the same margin `map_sets.state` uses for US states. The first revision read the polygon bounds from
 Eurostat GISCO's NUTS 2024 boundaries (1:3 million GeoJSON, `NUTS_RG_03M_2024_4326_LEVL_2.geojson`; the coordinates
 are ETRS89, which differs from WGS 84 by far less than the 0.01° rounding). Every polygon box has since been
-re-measured from the official CAOP 2025 polygons — Madeira on 22 November, the seven continental regions on
-25 November — and the GISCO numbers stay in the cross-checks as the measure the first revision was verified against.
+re-measured from the official CAOP 2025 polygons — Madeira on 22 November, the seven continental regions and
+the Azores on 25 November — and the GISCO numbers stay in the cross-checks as the measure the first revision was verified against.
 
-Eight of the ten boxes now carry CAOP polygon bounds. The two Azores boxes cannot come from a
-polygon, because GISCO has no sub-regional NUTS for the islands, so they come from the INE address dataset's own two
-groups of address points (marked in the table). The inputs are the CAOP 2025 geopackages for the polygon boxes and the
-counted address rows described in "Addresses measured" for the island boxes, so every number here is recomputable from
-those datasets with the rule stated.
+All nine boxes now carry CAOP polygon bounds, the Azores included: the official CAOP 2025 RAA geopackages —
+one per island group, the western on UTM zone 25N and the central+eastern on zone 26N — fix the one Azores
+region's box, and both INE groups' address points ride inside it (see "Addresses measured"). The inputs are the
+CAOP 2025 geopackages for the polygon boxes and the counted address rows described in "Addresses measured", so
+every number here is recomputable from those datasets with the rule stated.
 
 As a check, the outer edges match Portugal's known extreme points: Cabo da Roca in the west (-9.50°), the eastern border
 with Spain (-6.21°), Melgaço and Castro Laboreiro in the north (42.15°), and Cabo de Santa Maria near Faro in the south
@@ -76,8 +76,7 @@ with Spain (-6.21°), Melgaço and Castro Laboreiro in the north (42.15°), and 
 | `pt-1c` | PT1C | Alentejo | -8.9129, 37.3189, -6.9315, 39.6637 | -9.07, 37.16, -6.78, 39.82 | CAOP 2025 polygon |
 | `pt-1d` | PT1D | Oeste e Vale do Tejo | -9.5170, 38.7315, -7.8090, 39.8387 | -9.67, 38.58, -7.65, 39.99 | CAOP 2025 polygon |
 | `pt-15` | PT15 | Algarve | -8.9975, 36.9617, -7.3933, 37.5291 | -9.15, 36.81, -7.24, 37.68 | CAOP 2025 polygon |
-| `pt-20w` | PT20 (west) | Açores: Corvo e Flores | -31.2660, 39.3749, -31.1104, 39.6766 | -31.42, 39.22, -30.96, 39.83 | INE address points (group `AC25`) |
-| `pt-20e` | PT20 (east) | Açores: restantes ilhas | -28.8250, 36.9295, -25.0138, 39.0954 | -28.98, 36.77, -24.86, 39.25 | INE address points (group `AC26`) |
+| `pt-20` | PT20 | Região Autónoma dos Açores | -31.2688, 36.9276, -25.0132, 39.7262 | -31.42, 36.77, -24.86, 39.88 | CAOP 2025 polygon |
 | `pt-30` | PT30 | Região Autónoma da Madeira | -17.2659, 30.0288, -15.8537, 33.1282 | -17.42, 29.87, -15.70, 33.28 | CAOP 2025 polygon |
 
 Cross-checks between the two datasets:
@@ -99,11 +98,13 @@ Cross-checks between the two datasets:
   **15 m from OSM's node for the Farol de Gonçalo Velho**, the lighthouse on Santa Maria's south-eastern point — a real
   Santo Espírito address near the island's tip, not an islet in the sea and
   not a geocoding error. The GISCO 03M polygon's south edge lands about 0.001° north of the lighthouse, which is
-  polygon simplification, not disagreement about where Santa Maria ends.
-- **The proposal's boxes do not include the Formigas.** The `pt-20e` box's eastern edge is -24.86°, and the islets sit
+  polygon simplification, not disagreement about where Santa Maria ends. The official CAOP polygon's south edge
+  (36.927630) reaches 0.0019° past the row, so the lighthouse point sits inside the published box — the detailed
+  geometry carries the tip the generalisation trimmed.
+- **The proposal's box does not include the Formigas.** The `pt-20` box's eastern edge is -24.86°, and the islets sit
   at about -24.71°, so they fall outside it (they fall outside GISCO's own PT20 polygon too). The islets carry no
   addressable settlement, so a street map loses nothing practical; if the maintainers want the reserve inside the
-  map's coverage, `pt-20e`'s eastern edge would widen to about -24.70°.
+  map's coverage, `pt-20`'s eastern edge would widen to about -24.70°.
 
 Notes:
 
@@ -111,12 +112,15 @@ Notes:
   Metropolitana de Lisboa: Grande Lisboa (PT1A) north of the Tejo and Península de Setúbal (PT1B) south of it. Both are
   small (the whole old AML is 3,015 km²) but hold about three million people, so they are separate regions rather than
   one.
-- **The Azores split.** The NUTS polygon of the Azores (PT20) spans 6.3° of longitude, almost all ocean, because Corvo
+- **The Azores as one region.** The NUTS polygon of the Azores (PT20) spans 6.3° of longitude, almost all ocean, because Corvo
   and Flores sit about 240 km north-west of the central group (the published Flores and Horta airport coordinates,
-  eAIP LPFL and LPHR, give 242 km in a straight line). The INE address dataset already splits the same two groups (its
-  ids are `pt.ine.add.AC25…` for Corvo and Flores and `…AC26…` for the rest), so the proposal keeps that split and
-  `pt-20w`'s box is the address group's own box, not a NUTS one. GISCO's PT20 box and the address groups' boxes agree
-  at every edge. The eastern group's southern edge (36.93° N) is a real address at the south-eastern tip of Santa
+  eAIP LPFL and LPHR, give 242 km in a straight line). The INE address dataset splits the same two groups (its
+  ids are `pt.ine.add.AC25…` for Corvo and Flores and `…AC26…` for the rest), and the first proposal had kept
+  that split; one install for the whole autonomous region is easier to find (#31, 25 November 2026), so both
+  groups now ride in the one `pt-20` region and its box comes from the official CAOP RAA polygons. The grouping
+  stays documented here: AC25's rows (2,374) and AC26's (108,523) are counted separately in "Addresses measured",
+  and a western sub-box could be cut from the CAOP western geopackage if a future address index ever wants it.
+  The eastern group's southern edge (36.93° N) is a real address at the south-eastern tip of Santa
   Maria — 15 m from OSM's Farol de Gonçalo Velho node, in the Santo Espírito parish — not the Formigas, whose
   published bounds lie north-east of Santa Maria.
 - **Madeira includes the Selvagens Islands**, a nature reserve whose municipality is Funchal. One address row sits at
@@ -131,7 +135,7 @@ collides and a bare prefix is safe — but the app's own machinery still matters
 `engine/setup/install.py` keeps only address indexes named `[A-Z]{2}.sqlite` or `.json` on a library upgrade, so an
 index named `PT11.sqlite` would be left behind without a message (read in this repository on 20 November 2026; the
 same problem REGIONS-ES.md records for `ES-MD`). The proposal writes the codes lower-case with a hyphen (`pt-11`,
-`pt-20w`), after the `eu-<iso>` style the European country sets use, and leaves the final shape to the maintainers.
+`pt-20`), after the `eu-<iso>` style the European country sets use, and leaves the final shape to the maintainers.
 
 ## Sources, layer by layer
 
@@ -200,7 +204,7 @@ WHERE country = 'PT';
   collision risk: the builder's `state = address_levels[1].value.upper()[:2]` turns MAIA into `MA` (Massachusetts),
   ALMADA into `AL` (Alabama) and COIMBRA into `CO` (Colorado). A region
   cut must come from the postcode or the box, never from this field.
-- **Coverage by region.** The INE CSV's rows were counted against the ten region boxes at **full precision** — the
+- **Coverage by region.** The INE CSV's rows were counted against the nine region boxes at **full precision** — the
   CAOP polygon bounds and the address groups' own exact extremes, not the four-decimal figures printed in the table
   (counting against those printed figures drops three rows in each island group, whose true extremes carry more
   decimals; an earlier revision of this proposal made exactly that mistake, and the counts below supersede it). The
@@ -208,10 +212,10 @@ WHERE country = 'PT';
   regions' bounding boxes overlap over large areas (the Norte and Centro boxes alone share a 2°-by-0.3° band).
   Per-box counts, for scale only, with double counting: Norte 1,957,747; Centro 1,414,055; Oeste e Vale do Tejo
   1,422,122; Grande Lisboa 1,163,567; Península de Setúbal 1,067,495; Alentejo 692,635; Algarve 393,246; Madeira
-  130,271; Azores east 108,523; Corvo and Flores 2,374. The three island counts equal their source groups exactly,
-  and the seven CAOP continental boxes contain every mainland row — the first revision's GISCO boxes left 1,540
-  mainland rows outside them, all labelled geocoding outliers. The 36.93° N row above is not one of those — it
-  supplies the southern edge of the `pt-20e` box itself. Unlike
+  130,271; the Azores 110,897 (both groups: AC26 108,523 + AC25 2,374). The island counts equal their source groups
+  exactly, and the nine CAOP boxes contain every mainland row — the first revision's GISCO boxes left 1,540 of
+  them outside, all labelled geocoding outliers. The 36.93° N row above is not one of those — the CAOP polygon's
+  south edge reaches past it, so the Farol de Gonçalo Velho point sits inside the published Azores box. Unlike
   Spain — whose province-coded postcodes cut exactly — **a per-region address index for Portugal cannot be cut by
   box**; it needs a municipality→region table from the INE municipality register, or per-municipality cuts keyed on
   the address rows' own city field.
@@ -332,10 +336,11 @@ other proposals.
 4. **Postcodes.** The CTT dictionary's terms were not verified today (expected to mirror the Correos case in
    REGIONS-ES.md). Postcode *areas* are not proposed; the per-address postcode in the CC BY 4.0 INE data is what
    address search needs.
-5. **The Azores split.** Whether `pt-20w` / `pt-20e` are acceptable codes, and whether Corvo and Flores (2,374
-   addresses, no large settlements) deserve their own map set or should ride with `pt-20e`'s set and a wider box. The
-   boxes as proposed leave out the Formigas reserve (see the cross-checks above); widening `pt-20e` eastward to about
-   -24.70° would include it, at no practical gain for a street map.
+5. **The Azores split — settled on #31, 25 November 2026.** One region, `pt-20`, covering both INE island
+   groups: the maintainers preferred one Azores download, and [MAP-PT-20.md](MAP-PT-20.md) verifies the build.
+   The group split stays documented in "Addresses measured" and the notes above. The box as built still leaves
+   out the Formigas reserve (see the cross-checks above); widening `pt-20` eastward to about -24.70° would
+   include it, at no practical gain for a street map.
 6. **New crop kinds.** Vineyards and olive groves are large land uses in Portugal (35,746 vineyard ways and 46,597
    orchard ways, of which 4,975 carry `trees=olive_trees`); whether
    the crops layer grows kinds beyond orchards, vineyards and berries is the maintainers' decision, the same one
@@ -377,14 +382,25 @@ other proposals.
   and west, south and east agree with GISCO by at most 0.0031°. All 130,271 address rows sit inside the official box, and
   the address count reproduces exactly. The pilot's builder, `tools/build_region_pt_30.py`, cuts the Geofabrik
   country extract to this box and passes it to the repository's own `tools/build_map.py` unchanged.
-- **Updated on 25 November 2026:** the seven continental boxes, re-measured from the official CAOP 2025 polygons the
-  same way Madeira was. `CAOP_Continente_2025-gpkg.zip` (111,647,845 bytes, SHA-256
+- **Updated on 25 November 2026:** the seven continental boxes and the Azores, re-measured from the official
+  CAOP 2025 polygons the same way Madeira was — and the Azores also became one region (`PT-20`) on #31, with
+  [MAP-PT-20.md](MAP-PT-20.md) verifying the build. The mainland zip `CAOP_Continente_2025-gpkg.zip`
+  (111,647,845 bytes, SHA-256
   `87cd67f4b1fbadf23d9324e6fb231ff05531e4db347af36ccc7c6cbabe3ecd1d`) holds one geopackage,
-  `Continente_CAOP2025.gpkg`, in ETRS89 / Portugal TM06 (EPSG:3763; projection parameters read from the file's own
-  WKT), with the seven NUTS II polygons carrying about 319,000 vertices in total. Every vertex was converted to
-  lon/lat. Against the GISCO 1:3M bounds, all but three of the 28 edges agree within 0.01° (the exceptions are the
-  Atlantic-coast edges listed in the cross-checks above). The CAOP boxes contain all 5,669,971 mainland address rows,
-  and the per-box counts and the overlap total in "Addresses in Overture, measured" were recomputed against them.
+  `Continente_CAOP2025.gpkg`, in ETRS89 / Portugal TM06 (EPSG:3763; projection parameters read from the file's
+  own WKT), with the seven NUTS II polygons carrying about 319,000 vertices in total. Against the GISCO 1:3M
+  bounds, all but three of the 28 continental edges agree within 0.01° (the exceptions are the Atlantic-coast
+  edges listed in the cross-checks above), and the CAOP boxes contain all 5,669,971 mainland address rows. The
+  Azores zip `CAOP_RAA_2025-gpkg.zip` (15,909,724 bytes, SHA-256
+  `b0e3b4fe5544647eb4593e0222c6430fae7e50c97f953d8ceae10707c4df9dcf`) carries one geopackage per island group —
+  the western on EPSG:5014 (UTM zone 25N), the central+eastern on EPSG:5015 (zone 26N), each projection read
+  from its own file's WKT — and the two polygons' extents union into the region box: every edge agrees with
+  GISCO's PT20 box within 0.0029°, and the detailed south edge reaches 0.0019° past the register's southernmost
+  row, the Farol de Gonçalo Velho point on Santa Maria — inside the published box, where the simplified GISCO
+  edge had left it just outside. All 110,897 Azores address rows (AC25 and AC26 together) sit inside the official
+  box, and every count in "Addresses in Overture, measured" was recomputed against the new boxes. The Azores
+  builder is `tools/build_region_pt_20.py`, and the region rows of
+  [regions-pt-proposed.json](regions-pt-proposed.json) carry the CAOP figures throughout.
 - **Not checked:** the INE INSPIRE portal (under
   maintenance on the day); COS 2018 (site did not resolve); APA/SNIAmb hydrography and dam inventories (did not
   respond); the MDT-DGT products and licence; the INE municipality register; the ISO 3166-2:PT codes against the ISO

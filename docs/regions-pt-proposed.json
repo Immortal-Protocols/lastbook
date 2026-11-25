@@ -1,9 +1,9 @@
 {
-  "about": "Proposed region definitions for detailed maps of Portugal: seven continental NUTS II, the Azores split into two regions that follow the INE address dataset's own two groups (Corvo and Flores are about 240 km west of the rest (242 km straight-line between the published Flores and Horta airport coordinates)), and Madeira. See docs/REGIONS-PT.md. Boxes carry full-precision inputs (CAOP 2025 polygon bounds for the mainland regions and Madeira; the two Azores boxes from the INE address groups' exact extremes) with the 0.15° outward margin floored/ceiled to 0.01°. The first revision read the polygon bounds from GISCO; every polygon box was since re-measured from the CAOP (Madeira 2026-11-22, the mainland 2026-11-25) and the GISCO numbers stay in the cross-checks.",
+  "about": "Proposed region definitions for detailed maps of Portugal: seven continental NUTS II, the Azores as one region whose two INE address groups ride together (the shape settled on #31, 25 November 2026; Corvo and Flores are about 240 km west of the rest — 242 km straight-line between the published Flores and Horta airport coordinates), and Madeira. See docs/REGIONS-PT.md. Boxes carry full-precision inputs (CAOP 2025 polygon bounds throughout — the mainland and Madeira from the checks of 22 and 25 November, the Azores from the official RAA polygons' exact extent) with the 0.15° outward margin floored/ceiled to 0.01°. The first revision read the polygon bounds from GISCO; every polygon box was since re-measured from the CAOP (Madeira 2026-11-22, the mainland and the Azores 2026-11-25) and the GISCO numbers stay in the cross-checks.",
   "status": "proposal",
   "checked": "2026-11-20",
   "codes": {
-    "proposal": "Lower-case with a hyphen, after the eu-<iso> style: pt-11, pt-19, pt-1a, pt-1b, pt-1c, pt-1d and pt-15 on the mainland, pt-20w/pt-20e for the Azores split, pt-30.",
+    "proposal": "Lower-case with a hyphen, after the eu-<iso> style: pt-11, pt-19, pt-1a, pt-1b, pt-1c, pt-1d and pt-15 on the mainland, pt-20 for the Azores, pt-30.",
     "why": "NUTS codes for Portugal contain digits (PT11, PT1A), so no two-letter US code collides. The hyphen keeps them apart from US codes at a glance, as CA-ON does in REGIONS.md. Note carry_over() in engine/setup/install.py keeps only [A-Z]{2} address indexes on upgrade, so any hyphenated code needs that pattern extended (see REGIONS-ES.md's ES-MD note).",
     "verified": "The NUTS 2021/2024 codes were read from GISCO's NUTS 2024 1:3M GeoJSON (opened). ISO 3166-2:PT (districts) was not checked against the ISO site."
   },
@@ -204,44 +204,27 @@
       "bbox_source": "CAOP 2025 (Continente) NUTS II polygon bounds, converted vertex by vertex from EPSG:3763"
     },
     {
-      "code": "pt-20w",
-      "name": "Açores: Corvo e Flores",
+      "code": "pt-20",
+      "name": "Região Autónoma dos Açores",
       "country": "Portugal",
       "country_iso": "PT",
-      "admin_level": "autonomous region, western island group",
-      "nuts": "PT20 (west part)",
-      "ine_address_group": "AC25",
+      "admin_level": "autonomous region",
+      "nuts": "PT20",
+      "ine_address_groups": [
+        "AC25",
+        "AC26"
+      ],
       "bbox": {
-        "west": -31.265879650014835,
-        "south": 39.37487973166605,
-        "east": -31.110377979802912,
-        "north": 39.676565809244984,
+        "west": -31.268816,
+        "south": 36.92763,
+        "east": -25.013179,
+        "north": 39.726185,
         "margin_west": -31.42,
-        "margin_south": 39.22,
-        "margin_east": -30.96,
-        "margin_north": 39.83
-      },
-      "bbox_source": "INE address points (group AC25)"
-    },
-    {
-      "code": "pt-20e",
-      "name": "Açores: restantes ilhas",
-      "country": "Portugal",
-      "country_iso": "PT",
-      "admin_level": "autonomous region, central and eastern island groups",
-      "nuts": "PT20 (east part)",
-      "ine_address_group": "AC26",
-      "bbox": {
-        "west": -28.82501191957249,
-        "south": 36.92954860017521,
-        "east": -25.01379791719334,
-        "north": 39.095417419008164,
-        "margin_west": -28.98,
         "margin_south": 36.77,
         "margin_east": -24.86,
-        "margin_north": 39.25
+        "margin_north": 39.88
       },
-      "bbox_source": "INE address points (group AC26)"
+      "bbox_source": "CAOP 2025 (RAA) NUTS II polygon bounds, both island-group geopackages, converted vertex by vertex from EPSG:5014/EPSG:5015 (see MAP-PT-20.md)"
     },
     {
       "code": "pt-30",

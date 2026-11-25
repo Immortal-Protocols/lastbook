@@ -70,6 +70,11 @@ class InstallerSource(unittest.TestCase):
         self.assertEqual(self._locale(['fr'], 0x0409), 'en')
         self.assertEqual(self._locale({'bad': 'shape'}, 0x0409), 'en')
 
+    def test_valid_non_object_preference_falls_back_to_windows_language(self):
+        for preference in ([], None, 17, 'de'):
+            with self.subTest(preference=preference):
+                self.assertEqual(self._locale(preference, 0x0407), 'de')
+
     def test_windows_ui_language_selects_supported_catalog(self):
         self.assertEqual(self._locale('fr', 0x0407), 'de')
         self.assertEqual(self._locale('fr', 0x0804), 'zh-Hans')

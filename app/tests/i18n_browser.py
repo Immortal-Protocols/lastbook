@@ -410,6 +410,19 @@ class Browser(unittest.TestCase):
             }""")
             self.assertEqual(actual, [None, None, 'es-MX'])
 
+    def test_no_results_copy_uses_the_resolved_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/find*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'results': [], 'expanded': [], 'mode': 'all'})))
+            page.route('**/api/retrieve*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'results': []})))
+            page.goto(origin + '/#/search?q=CodexAuditNoResults')
+            expect(page.locator('#sres .empty b span[lang="en"]')).to_have_text('No results for “CodexAuditNoResults”')
+            expect(page.locator('#sres .empty p span[lang="en"]')).to_have_text(
+                'Try fewer words, or another word for the same thing.')
+
     def test_small_pack_summary_uses_the_selected_interface_language(self):
         from engine.setup import manifest as setup_manifest
 

@@ -17,7 +17,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path[:0] = [str(HERE.parent), str(ROOT)]
 from engine.setup import api, download, hardware, install, manifest  # noqa: E402
-from app.tests import shorttemp  # noqa: E402
+from app.tests import multipart_fixture, shorttemp  # noqa: E402
 
 ALLOWED = {'127.0.0.1'}     # an address, not 'localhost': Windows tries ::1 first, which the test server does not listen on
 MiB = 1024 * 1024
@@ -1246,6 +1246,67 @@ class Unpacking(Base):
         self.assertEqual((lib / 'derived' / 'geo' / 'map.sqlite').stat().st_size, MiB)
 
 
+class SplitPacks(Base):
+    def split_manifest(self):
+        folder = self.tmp / 'fixture'
+        catalog = multipart_fixture.write_fixture(folder)
+        pack = catalog['packs'][0]
+        parts = pack['parts']
+        for file in pack['files'] + parts:
+            name = file['name']
+            file['url'] = f'{self.base}/{name}'
+            self.files.data[name] = (folder / name).read_bytes()
+        self.zip = self.files.data['Lastbook-Small.zip']
+        (self.tmp / 'Lastbook-Small.zip').write_bytes(self.zip)
+        bundled = manifest.validate(catalog, ALLOWED, bundled=True)
+        return manifest.Manifest(bundled=bundled, remote=None, allowed=ALLOWED, context=self.ctx), parts
+
+    def test_only_bundled_catalog_can_supply_parts(self):
+        catalog, parts = self.split_manifest()
+        fetched = manifest.validate(catalog.current, ALLOWED)
+        self.assertNotIn('parts', fetched['packs'][0])
+        self.assertNotIn('parts', catalog.public()['packs'][0])
+        invalid = {**catalog.current, 'packs': [{**catalog.current['packs'][0], 'parts': parts[::-1][1:]}]}
+        self.assertIsNone(manifest.validate(invalid, ALLOWED, bundled=True))
+
+    def test_resumes_split_pack_after_a_missing_part(self):
+        catalog, parts = self.split_manifest()
+        original = 'Lastbook-Small.zip'
+        del self.files.data[original]
+        absent = parts[-1]['name']
+        tail = self.files.data.pop(absent)
+        s = self.setup(manifest=catalog)
+        s.start('small')
+        self.assertEqual(self.wait(s)['error']['code'], 'network')
+        work = self.parent / 'LastbookData.setup' / 'downloads' / 'pack-parts'
+        first, second = (work / part['name'] for part in parts[:2])
+        self.assertEqual(first.read_bytes(), self.zip[:parts[0]['size']])
+        good = second.read_bytes()
+        second.write_bytes(bytes([good[0] ^ 1]) + good[1:])
+        self.files.data[absent] = tail
+        del self.files.data[first.name]  # the verified saved part must be reusable even if its URL is unavailable
+
+        self.files.log.clear()
+        restarted = self.setup(manifest=catalog)
+        restarted.retry()
+        job = self.wait(restarted)
+        self.assertEqual(job['state'], 'done', job)
+        library, note = api.startup(self.settings)
+        self.assertFalse(note.get('error'))
+        self.assertNotIn(first.name, [request[0] for request in self.files.log])
+        self.assertEqual((library / 'library-data' / 'example.txt').read_bytes(), b'A small offline library.\n')
+
+    def test_original_zip_import_still_works_with_a_split_pack(self):
+        catalog, _ = self.split_manifest()
+        self.files.data.clear()
+        source = self.tmp / 'Lastbook-Small.zip'
+        s = self.setup(manifest=catalog)
+        s.use(str(source))
+        job = self.wait(s)
+        self.assertEqual(job['state'], 'done', job)
+        self.assertEqual(source.read_bytes(), self.zip)
+
+
 class Jobs(Base):
     def test_first_run_end_to_end(self):
         s = self.setup()
@@ -1848,6 +1909,12 @@ class Jobs(Base):
 
 
 class Switching(Base):
+    def setUp(self):
+        super().setUp()
+        p = mock.patch.object(install, 'RENAME_WAITS', (0,))       # a rename refused for good is not waited on here
+        p.start()
+        self.addCleanup(p.stop)
+
     def lib(self, where, marker):
         (where / 'library-data').mkdir(parents=True)
         (where / 'library-data' / 'catalog.json').write_text(marker)
@@ -1992,6 +2059,384 @@ class Switching(Base):
         self.assertEqual((aside[0] / 'library-data' / 'catalog.json').read_text(), 'old')
         self.assertEqual((new / 'models' / 'model.gguf').read_bytes(), b'model')
 
+    def with_files(self):
+        shutil.rmtree(self.parent, ignore_errors=True)
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        (cur / 'models').mkdir()
+        (cur / 'models' / 'model.gguf').write_bytes(self.model)
+        (cur / 'derived' / 'geo' / 'addresses').mkdir(parents=True)
+        (cur / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').write_bytes(b'addr')
+        return cur, self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')
+
+    def fail_replace(self, when):
+        real = os.replace
+
+        def flaky(a, b, *x, **k):
+            if when(Path(a), Path(b)):
+                raise OSError('busy')
+            return real(a, b, *x, **k)
+        return mock.patch.object(os, 'replace', flaky)
+
+    def stranded(self):
+        """A failed switch whose model was carried into the staged library and could not go back."""
+        cur, new = self.with_files()
+        (new / 'models').mkdir()
+        os.replace(cur / 'models' / 'model.gguf', new / 'models' / 'model.gguf')
+        return cur, new
+
+    def failed_switch_settings(self):
+        work = self.parent / 'LastbookData.setup'
+        self.settings.mkdir(parents=True, exist_ok=True)
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        return work
+
+    def test_work_folder_is_kept_when_the_switch_failed(self):
+        cur, new = self.with_files()
+        work = self.failed_switch_settings()
+        (work / 'marker').write_text('x')
+        jf = api._job_file(self.settings)
+        jf.parent.mkdir(parents=True, exist_ok=True)
+        jf.write_text(json.dumps({'state': 'done'}))
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'It broke.'})
+        self.assertTrue((work / 'marker').exists())
+        self.assertFalse(jf.exists())
+
+    def test_a_failed_switch_sets_its_unpacked_library_aside(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': f'Could not move it. The file {new / "models" / "model.gguf"} is still there.'}
+        api.opened(self.settings, cur, note)
+        self.assertFalse((work / 'unpack').exists())       # the next job unpacks into a fresh folder, not over these files
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0] / 'LastbookData' / 'models' / 'model.gguf'), note['error'])     # the message points at where the files are now
+
+    def test_a_model_a_failed_switch_left_survives_choosing_another_pack(self):
+        """#86 empties the unpack folder when another pack comes next. A model a failed switch left there must not go with it."""
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'Could not move it.'})
+        api._fresh_unpack(work / 'unpack', {'pack': 'another', 'revision': 1, 'files': []})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_model_survives_another_pack_when_the_unpack_folder_cannot_be_set_aside(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack'):     # a pack file still open on Windows, say
+            api.opened(self.settings, cur, note)
+        self.assertFalse((new / 'library-data' / 'catalog.json').exists())     # nothing a next unpack could take as already there
+        api._fresh_unpack(work / 'unpack', {'pack': 'another', 'revision': 1, 'files': []})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0]), note['error'])
+
+    def test_address_indexes_survive_when_the_unpack_folder_cannot_be_set_aside(self):
+        """Maintainer on #195: the fallback kept only models, and deleted address indexes the switch had carried."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack'):
+            api.opened(self.settings, cur, note)
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').read_bytes(), b'addr')
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0]), note['error'])
+
+    def test_a_model_that_cannot_be_set_aside_is_left_where_it_is(self):
+        """Maintainer on #195: when the model could not move either, it was deleted and the message still said it was kept."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack' or 'models' in a.parts):
+            api.opened(self.settings, cur, note)
+        self.assertEqual((new / 'models' / 'model.gguf').read_bytes(), self.model)     # the last copy stays
+        self.assertIn(str(new / 'models'), note['error'])                               # and the message says where it is
+        self.assertFalse((new / 'library-data' / 'catalog.json').exists())             # the pack's own files still go
+        for k in (p for p in work.iterdir() if p.name.startswith('kept-')):
+            self.assertFalse((k / 'LastbookData' / 'models').exists())                 # nothing claims it is somewhere else
+            self.assertEqual((k / 'LastbookData' / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').read_bytes(), b'addr')
+
+    def test_a_file_still_open_is_left_and_named_when_the_rest_is_dropped(self):
+        """Maintainer on #195: a regular file Windows still has open made the fallback's unlink raise. It stays and is named."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        (new / 'pack.json').write_text('{}')
+        locked = {new / 'pack.json'}
+        real = os.unlink
+
+        def unlink(p, *a, **k):
+            if Path(p) in locked:
+                raise PermissionError(32, 'The process cannot access the file because it is being used by another process', str(p))
+            return real(p, *a, **k)
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack' or 'models' in a.parts), mock.patch.object(os, 'unlink', unlink):
+            api.opened(self.settings, cur, note)       # does not raise
+        self.assertEqual((new / 'models' / 'model.gguf').read_bytes(), self.model)     # the person's files are kept
+        for p in locked:
+            self.assertTrue(p.exists())
+            self.assertIn(str(p), note['error'])        # and the message names what could not be removed
+
+    def test_a_model_left_in_the_unpack_folder_survives_another_pack(self):
+        """A model that could not be set aside stays in the unpack folder; the next pack's unpack must not empty it away."""
+        cur, new = self.with_files()
+        install.carry_over(cur, new)
+        work = self.failed_switch_settings()
+        note = {'target': str(cur), 'old': None, 'error': 'Could not move it.'}
+        with self.fail_replace(lambda a, b: a == work / 'unpack' or 'models' in a.parts):
+            api.opened(self.settings, cur, note)
+        api._fresh_unpack(work / 'unpack', {'pack': 'another', 'revision': 1, 'files': []})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-') and (p / 'LastbookData' / 'models').exists()]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertEqual([p.name for p in (work / 'unpack').iterdir()], ['unpacked-from.json'])
+
+    def test_a_later_successful_setup_keeps_what_a_failed_switch_set_aside(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'Could not move it.'})
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')][0]
+        (work / 'downloads').mkdir()
+        (work / 'downloads' / 'pack.zip').write_text('zip')     # what the next job made
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None})
+        self.assertTrue((kept / 'LastbookData' / 'models' / 'model.gguf').is_file())   # the message said it was kept there
+        self.assertFalse((work / 'downloads').exists())
+
+    def kept_after_failed_switch(self):
+        cur, new = self.stranded()
+        work = self.failed_switch_settings()
+        api.opened(self.settings, cur, {'target': str(cur), 'old': None, 'error': 'Could not move it.'})
+        (cur / 'pack.json').write_text('{"name": "old"}')       # so the Small library is downloaded next
+        return cur, [p for p in work.iterdir() if p.name.startswith('kept-')][0] / 'LastbookData' / 'models' / 'model.gguf'
+
+    def test_kept_files_survive_another_job_cancelled_part_way(self):
+        """wonderdawg on #195: a job started and cancelled while a failed switch's files are kept leaves them."""
+        cur, kept = self.kept_after_failed_switch()
+        hold = self.files.hold['Lastbook-Small.zip'] = Hold(10)
+        s = self.setup('manage', current=cur)
+        s.start('small', False)
+        self.assertTrue(hold.reached.wait(10))
+        self.assertEqual(s.cancel()['error']['code'], 'cancelled')
+        hold.release.set()
+        self.assertEqual(kept.read_bytes(), self.model)
+
+    def test_kept_files_survive_another_job_and_its_switch(self):
+        """...and so does one that finishes, through its switch at the next start and the clean-up after it."""
+        cur, kept = self.kept_after_failed_switch()
+        s = self.setup('manage', current=cur)
+        s.start('small', False)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual(kept.read_bytes(), self.model)
+        lib, note = api.startup(self.settings)
+        self.assertNotIn('error', note)
+        api.opened(self.settings, lib, note)
+        self.assertEqual(kept.read_bytes(), self.model)
+
+    def test_switch_that_stopped_after_the_old_library_moved_aside_is_finished_at_next_start(self):
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        d = install.stage_switch(pend, new, cur)
+        old = install.old_name(cur)
+        d['old'] = str(old)
+        install._write_json(pend, d)                       # what was written before the rename
+        install.carry_over(cur, new)
+        os.replace(cur, old)                               # ...and the process stopped here, before the new library went in
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(self.parent / 'LastbookData.setup')}))
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue((cur / 'models' / 'model.gguf').is_file())
+        self.assertTrue((cur / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').is_file())
+        self.assertEqual(note['old'], str(old))
+        self.assertTrue(old.is_dir())
+
+    def stopped_after_the_old_library_moved_aside(self):
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        d = install.stage_switch(pend, new, cur)
+        old = install.old_name(cur)
+        d['old'] = str(old)
+        install._write_json(pend, d)                       # what was written before the renames
+        install.carry_over(cur, new)
+        os.replace(cur, old)
+        self.failed_switch_settings()
+        return cur, new, pend, old
+
+    def test_switch_that_stopped_after_the_new_library_went_in_is_kept_at_next_start(self):
+        """Review of #195 with #313: both renames were made, but the process stopped before the record said 'switched'. The
+        next start keeps the switch and the recorded old library: no new name for it, and no retries of a switch already made."""
+        cur, new, pend, old = self.stopped_after_the_old_library_moved_aside()
+        os.replace(new, cur)                               # ...and the process stopped here, before the record was written
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue((cur / 'models' / 'model.gguf').is_file())
+        self.assertNotIn('error', note)
+        self.assertNotIn('again', note)
+        self.assertEqual(note['old'], str(old))
+        saved = json.loads(pend.read_text())
+        self.assertTrue(saved['switched'])
+        self.assertEqual(saved['old'], str(old))           # the recorded old library, not a fresh name
+        self.assertNotIn('attempts', saved)
+        api.opened(self.settings, lib, note)
+        self.assertFalse(pend.exists())
+        self.assertEqual(json.loads((self.settings / 'setup.json').read_text())['old'], [str(old)])
+        self.assertEqual((old / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertEqual([p for p in self.parent.iterdir() if p.name.startswith('LastbookData.old-')], [old])
+
+    def test_a_missing_staged_library_without_its_recorded_old_one_is_not_taken_as_switched(self):
+        """The staged library being gone is not enough: with no recorded old library on disk, nothing says the switch was made."""
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        d = install.stage_switch(pend, new, cur)
+        d['old'] = str(install.old_name(cur))              # recorded, but never moved there
+        install._write_json(pend, d)
+        shutil.rmtree(new)
+        self.failed_switch_settings()
+        lib, note = api.startup(self.settings)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertIn('error', note)
+        self.assertIsNone(note['old'])
+        self.assertNotIn('switched', json.loads(pend.read_text()))
+
+    def test_old_library_that_cannot_be_put_back_for_a_moment_is_put_back_at_the_next_start(self):
+        """Stopped with the old library aside, and the rename putting it back refused once: the record stays, and the next start
+        puts it back and makes the switch."""
+        cur, new, pend, old = self.stopped_after_the_old_library_moved_aside()
+        with self.fail_replace(lambda a, b: a == old and b == cur):
+            lib, note = api.startup(self.settings)
+        self.assertIsNone(lib)
+        self.assertIn(str(old), note['error'])
+        self.assertFalse(cur.exists())
+        self.assertEqual((old / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertTrue((old / 'models' / 'model.gguf').is_file())     # carried back before the rename that failed
+        self.assertEqual(json.loads(pend.read_text())['old'], str(old))
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertNotIn('error', note)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue((cur / 'models' / 'model.gguf').is_file())
+        self.assertTrue((cur / 'derived' / 'geo' / 'addresses' / 'NJ.sqlite').is_file())
+        self.assertEqual(note['old'], str(old))
+        self.assertEqual((old / 'library-data' / 'catalog.json').read_text(), 'old')
+
+    def test_refused_switch_with_a_typographic_path_on_an_ascii_console_is_kept_for_the_next_start(self):
+        """#313 with the say() fix: a refusal naming a file under a folder called with ’ is printed on a console that takes
+        only ASCII without raising, so the attempt is still recorded and the switch kept for the next start."""
+        self.parent = self.tmp / 'Person’s place'
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        install.stage_switch(pend, new, cur)
+        self.failed_switch_settings()
+        staged_model = new / 'models' / 'model.gguf'
+        real = os.replace
+
+        def replace(a, b):
+            a = Path(a)
+            if a == cur or a == staged_model:     # the library is in use, and so is the model once it has been carried in
+                raise PermissionError(13, 'in use')
+            return real(a, b)
+        console = io.TextIOWrapper(io.BytesIO(), encoding='ascii', errors='strict')
+        with mock.patch.object(install.os, 'replace', replace), mock.patch.object(sys, 'stdout', console):
+            lib, note = api.startup(self.settings)
+            console.flush()
+            printed = console.buffer.getvalue().decode('ascii')
+        self.assertEqual(lib, cur)
+        self.assertTrue(note.get('again'))
+        self.assertIn(str(staged_model), note['error'])                 # the person's message keeps the real path
+        self.assertIn('setup: switch failed:', printed)
+        self.assertIn('Person?s place', printed)
+        saved = json.loads(pend.read_text())
+        self.assertEqual(saved['attempts'], 1)
+        self.assertEqual(staged_model.read_bytes(), self.model)
+
+    def test_a_work_folder_that_is_a_link_is_not_followed(self):
+        """Codex on #195: cleaning a work folder that links to the library must not empty the library."""
+        cur, new = self.with_files()
+        shutil.rmtree(self.parent / 'LastbookData.setup')
+        work = self.parent / 'LastbookData.setup'
+        work.symlink_to(cur, target_is_directory=True)
+        self.failed_switch_settings()
+        jf = api._job_file(self.settings)
+        jf.parent.mkdir(parents=True, exist_ok=True)
+        jf.write_text(json.dumps({'state': 'done'}))
+        api.opened(self.settings, cur, None)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertEqual((cur / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_stopped_first_install_into_an_empty_folder_keeps_the_new_model(self):
+        """Codex on #195: the folder set aside was empty, not a library: nothing was carried, so nothing goes back into it."""
+        shutil.rmtree(self.parent, ignore_errors=True)
+        cur = self.parent / 'LastbookData'
+        cur.mkdir(parents=True)
+        new = self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')
+        (new / 'models').mkdir()
+        (new / 'models' / 'model.gguf').write_bytes(self.model)
+        pend = api._pending_file(self.settings)
+        d = install.stage_switch(pend, new, cur)
+        old = install.old_name(cur)
+        d['old'] = str(old)
+        install._write_json(pend, d)
+        os.replace(cur, old)                               # ...and the process stopped here
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(self.parent / 'LastbookData.setup')}))
+        lib, note = api.startup(self.settings)
+        self.assertEqual(lib, cur)
+        self.assertEqual((cur / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    @unittest.skipUnless(hasattr(install, 'SWITCH_ATTEMPTS'),
+                         'needs #313 applied first: a refused switch is retried at the next starts')
+    def test_two_refused_starts_keep_the_upgrade_and_the_third_sets_it_aside(self):
+        """wonderdawg on #195: apply #313, then this. The first two refused starts leave unpack/ and pending.json,
+        so the upgrade can be tried again. The third sets those files aside in work/kept-<time>/, the model included,
+        and the error names that folder."""
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        install.stage_switch(pend, new, cur)
+        work = self.failed_switch_settings()
+        staged_model = new / 'models' / 'model.gguf'
+        real = os.replace
+
+        def replace(a, b):
+            a = Path(a)
+            if a == cur or a == staged_model:     # the library is in use, and so is the model once it has been carried in
+                raise PermissionError(13, 'The process cannot access the file because it is being used by another process')
+            return real(a, b)
+
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), mock.patch.object(install.os, 'replace', replace):
+            for attempt in (1, 2):
+                lib, note = api.startup(self.settings)
+                self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'old')
+                self.assertTrue(note.get('again'))
+                self.assertNotIn('kept-', note['error'])
+                api.opened(self.settings, lib, note)
+                self.assertTrue((work / 'unpack').is_dir())                 # still the staged upgrade, ready to retry
+                self.assertTrue(pend.is_file())
+                saved = json.loads(pend.read_text())
+                self.assertEqual(saved['attempts'], attempt)
+                self.assertEqual(saved['new'], str(new))
+                self.assertEqual(staged_model.read_bytes(), self.model)     # carried in, and not put back
+                self.assertFalse((cur / 'models' / 'model.gguf').exists())
+                self.assertFalse(any(p.name.startswith('kept-') for p in work.iterdir()))
+            lib, note = api.startup(self.settings)
+            self.assertFalse(note.get('again'))
+            self.assertFalse(pend.exists())                                 # given up: the record goes
+            self.assertEqual(staged_model.read_bytes(), self.model)         # the files are still in unpack until opened()
+            api.opened(self.settings, lib, note)
+        kept = [p for p in work.iterdir() if p.name.startswith('kept-')]
+        self.assertEqual(len(kept), 1)
+        self.assertFalse((work / 'unpack').exists())
+        self.assertEqual((kept[0] / 'LastbookData' / 'models' / 'model.gguf').read_bytes(), self.model)
+        self.assertIn(str(kept[0]), note['error'])                          # the person is told where the files are
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+
     def test_ai_only_in_manage_mode(self):
         cur = self.lib(self.parent / 'LastbookData', '{}')
         (cur / 'pack.json').write_text('{"name": "small"}')
@@ -2001,6 +2446,169 @@ class Switching(Base):
         self.assertEqual(self.wait(s)['state'], 'done')
         self.assertEqual(self.marked, [(str(cur / 'models' / 'model.gguf'), sha(self.model))])
         self.assertEqual(s.start('small', True)['code'], 'nothing')
+
+    def in_use(self, src, times):
+        """os.replace refusing to move `src` the first `times` tries, as Windows does while the old app still has files open."""
+        real, left = os.replace, [times]
+
+        def replace(a, b):
+            if Path(a) == src and left[0]:
+                left[0] -= 1
+                raise PermissionError(13, 'The process cannot access the file because it is being used by another process')
+            return real(a, b)
+        return mock.patch.object(install.os, 'replace', replace)
+
+    def test_rename_refused_for_a_moment_is_retried(self):
+        """#311: the old app may still be closing; a rename it holds up goes through a moment later."""
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        new = self.lib(self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData', 'new')
+        with mock.patch.object(install, 'RENAME_WAITS', (0, 0, 0)), self.in_use(cur, 2):
+            old = install.switch(new, cur)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertEqual((old / 'library-data' / 'catalog.json').read_text(), 'old')
+
+    def staged(self):
+        cur = self.lib(self.parent / 'LastbookData', 'old')
+        work = self.parent / 'LastbookData.setup'
+        new = self.lib(work / 'unpack' / 'LastbookData', 'new')
+        install.stage_switch(api._pending_file(self.settings), new, cur)
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        api._job_file(self.settings).write_text(json.dumps({'state': 'done'}))
+        return cur, new
+
+    def test_refused_switch_is_kept_for_the_next_start(self):
+        """#311: a switch refused at the restart is tried again at the next start, and its unpack is kept for it."""
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertIn('error', note)
+        self.assertEqual(json.loads(api._pending_file(self.settings).read_text())['attempts'], 1)
+        api.opened(self.settings, lib, note)
+        self.assertTrue(install.is_library(new))
+        self.assertTrue(api._pending_file(self.settings).is_file())
+        lib, note = api.startup(self.settings)         # the next start: nothing holds the library now
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertNotIn('error', note)
+        api.opened(self.settings, lib, note)
+        self.assertFalse(api._pending_file(self.settings).exists())
+        self.assertFalse(new.exists())
+
+    def test_refused_switch_leaves_setup_to_manage_the_old_library(self):
+        """A switch kept for the next start does not leave the finished job behind: setup opens on the library in use, not on
+        'Installed', while the unpack and the pending switch stay for the retry."""
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        self.assertFalse(api._job_file(self.settings).exists())
+        self.assertTrue(install.is_library(new))
+        self.assertTrue(api._pending_file(self.settings).is_file())
+
+    def job_after(self, deferred, installed='small', ai=True):
+        cur, new = self.staged()
+        (cur / 'pack.json').write_text(json.dumps({'name': installed}))
+        if deferred:
+            with self.in_use(cur, 99):
+                lib, note = api.startup(self.settings)
+            api.opened(self.settings, lib, note)
+        s = self.setup('manage', current=cur)
+        s.start('small', ai)            # with 'small' installed: only the AI; otherwise the Small library is downloaded
+        self.assertEqual(self.wait(s)['state'], 'done')
+        return cur, new, s
+
+    def test_an_ai_job_keeps_a_deferred_switch_through_the_next_start(self):
+        """Adding the AI while a refused switch waits leaves the switch and its unpack: the next start makes it, AI and all."""
+        cur, new, s = self.job_after(deferred=True)
+        self.assertTrue(api._pending_file(self.settings).is_file())
+        self.assertTrue(install.is_library(new))
+        lib, note = api.startup(self.settings)
+        self.assertNotIn('error', note)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue((lib / 'models' / 'model.gguf').is_file())
+        api.opened(self.settings, lib, note)
+        self.assertFalse(api._pending_file(self.settings).exists())
+
+    def test_a_library_download_drops_a_deferred_switch(self):
+        """A library download rewrites the unpack the refused switch would use: that switch goes, and the new one is staged."""
+        cur, new, s = self.job_after(deferred=True, installed='old', ai=False)
+        self.assertNotIn('attempts', json.loads(api._pending_file(self.settings).read_text()))
+
+    def test_a_new_job_leaves_a_switch_staged_as_usual(self):
+        """A switch staged as usual (not yet tried) is left to the restart."""
+        self.job_after(deferred=False)
+        self.assertTrue(api._pending_file(self.settings).exists())
+
+    def test_cancelling_an_ai_job_keeps_a_deferred_switch_through_the_next_start(self):
+        """wonderdawg on #313: cancelling a job that adds only the AI leaves the refused switch and its unpack for the next start."""
+        cur, new = self.staged()
+        (cur / 'pack.json').write_text('{"name": "small"}')
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        hold = self.files.hold['model.gguf'] = Hold(10)
+        s = self.setup('manage', current=cur)
+        s.start('small', True)
+        self.assertTrue(hold.reached.wait(10))
+        self.assertEqual(s.cancel()['error']['code'], 'cancelled')
+        hold.release.set()
+        self.assertTrue(api._pending_file(self.settings).is_file())
+        self.assertTrue(install.is_library(new))
+        lib, note = api.startup(self.settings)
+        self.assertNotIn('error', note)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
+
+    def deferred(self):
+        cur, new = self.staged()
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        return cur, new
+
+    def test_choosing_another_library_drops_a_deferred_switch(self):
+        """Codex on #313: choosing another installed library is not undone at the restart by the refused switch, and the
+        staged unpack nothing will use any more goes."""
+        cur, new = self.deferred()
+        other = self.lib(self.parent / 'Other' / 'LastbookData', 'other')
+        s = self.setup('manage', current=cur)
+        self.assertEqual(s.use(str(other))['state'], 'done')
+        self.assertFalse(api._pending_file(self.settings).exists())
+        self.assertFalse((self.parent / 'LastbookData.setup' / 'unpack').exists())
+        self.assertEqual(api.startup(self.settings), (None, None))
+
+    def test_choosing_the_switch_target_keeps_a_deferred_switch(self):
+        """With another library open, choosing the one the refused switch upgrades keeps the switch and its unpack."""
+        cur, new = self.deferred()
+        other = self.lib(self.parent / 'Other' / 'LastbookData', 'other')
+        s = self.setup('manage', current=other)
+        self.assertEqual(s.use(str(cur))['state'], 'done')
+        self.assertTrue(api._pending_file(self.settings).is_file())
+        self.assertTrue(install.is_library(new))
+
+    def test_retried_switch_carries_the_latest_ai_setting(self):
+        """The AI's on/off setting copied at a refused switch is copied again at the retry: what the person set since wins."""
+        cur, new = self.staged()
+        state = cur / 'derived' / 'llm' / 'state.json'
+        state.parent.mkdir(parents=True)
+        state.write_text('{"enabled": true}')
+        with self.in_use(cur, 99):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        state.write_text('{"enabled": false}')         # changed in the old library, still the one in use
+        lib, note = api.startup(self.settings)
+        self.assertNotIn('error', note)
+        self.assertEqual((lib / 'derived' / 'llm' / 'state.json').read_text(), '{"enabled": false}')
+
+    def test_refused_switch_is_dropped_after_three_starts(self):
+        cur, new = self.staged()
+        for attempt in (1, 2, 3):
+            with self.in_use(cur, 99):
+                lib, note = api.startup(self.settings)
+            self.assertIn('error', note)
+            self.assertEqual(api._pending_file(self.settings).exists(), attempt < 3)
+            api.opened(self.settings, lib, note)
+        self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
+        self.assertFalse(new.exists())          # given up: cleared as before
 
 
 class PackCompare(unittest.TestCase):
@@ -3422,6 +4030,32 @@ class Maps(Base):
         self.assertIn('error', note)
         self.assertEqual((cur / 'derived/geo/map.sqlite').read_bytes(), b'old')
 
+    def test_a_console_that_cannot_show_the_message_still_records_the_error(self):
+        """A console in a non-UTF-8 locale, or a legacy Windows code page, cannot print the \u2019 in setup's own
+        wording. The diagnostic line must not take the error down with it: the note still carries the message."""
+        cur = self.parent / 'LastbookData'
+        (cur / 'library-data').mkdir(parents=True)
+        (cur / 'library-data/catalog.json').write_text('{}')
+        (cur / 'derived/geo').mkdir(parents=True)
+        (cur / 'derived/geo/map.sqlite').write_bytes(b'old')
+        work = self.parent / 'LastbookData.setup'
+        new = work / 'unpack-map' / 'LastbookData'
+        (new / 'derived/geo').mkdir(parents=True)
+        (new / 'map-set.json').write_text(json.dumps({'name': 'CA', 'files': {'derived/geo/map.sqlite': 999}}))
+        (new / 'derived/geo/map.sqlite').write_bytes(b'short')
+        self.settings.mkdir(parents=True)
+        install.stage_switch(api._pending_file(self.settings), new, cur, kind='map')
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        out = io.TextIOWrapper(io.BytesIO(), encoding='ascii', newline='')
+        with mock.patch.object(sys, 'stdout', out):
+            lib, note = api.startup(self.settings)
+        self.assertIn('\u2019', note['error'])                     # the person's wording is kept whole
+        self.assertEqual((cur / 'derived/geo/map.sqlite').read_bytes(), b'old')
+        out.flush()
+        shown = out.buffer.getvalue().decode('ascii')
+        self.assertIn('setup: map switch failed:', shown)       # and the line is still printed, just with ? in it
+        self.assertIn('?', shown)
+
     def test_space_counts_the_map(self):
         mf, _ = self.map_manifest()
         s = self.setup(manifest=mf)
@@ -3489,6 +4123,16 @@ class AddressIndexes(Maps):
         library, _ = api.startup(self.settings)
         self.assertEqual((library / 'derived/geo/addresses/CA.sqlite').read_bytes(), payload)
         self.assertEqual(self.setup('manage', current=library, manifest=mf).current_info()['address_indexes'], ['CA'])
+
+    def test_first_run_without_a_map_downloads_only_the_pack(self):   # #267: setup's "No local map" sends map and address_id as null
+        mf, _ = self.address_manifest()
+        setup = self.setup(manifest=mf)
+        job = setup.start('small', map_id=None, address_id=None)
+        self.assertEqual([item['kind'] for item in job['items']], ['pack'])
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, _ = api.startup(self.settings)
+        info = self.setup('manage', current=library, manifest=mf).current_info()
+        self.assertEqual((info['map'], info['address_indexes']), ('base', []))
 
     def test_existing_map_downloads_only_missing_index(self):
         mf, payload = self.address_manifest()
@@ -3837,7 +4481,7 @@ class Through(Base):
 
 
 @unittest.skipUnless(shutil.which('node'), 'needs Node')
-class ModelRecoveryScreen(unittest.TestCase):
+class ModelRecoveryScreen(unittest.TestCase):  # upstream, kept through rebase
     """The real setup error renderer and picker dispatch, without a server or browser dependency."""
     def screen(self, kind='model', done=0, code='network', action=False, cancel=False):
         script = r"""
@@ -3923,6 +4567,86 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
         self.assertIn('<dt>SHA-256</dt>', html)
         self.assertNotIn('data-act="model-file"', html)
         self.assertIn('Choose a library zip or AI model file', html)
+
+
+@unittest.skipUnless(shutil.which('node'), 'Node is not installed')
+class SkipMap(unittest.TestCase):
+    """#267: setup can finish without a state map on Small (no state map) and All (every state's), not on Medium (California's).
+
+    The fixture uses the validated-manifest shape: validate() keeps a published packs[].map only when it
+    names a map, so entries that omit it all arrive as None (engine/setup/manifest.py). The skip option
+    must still describe each pack's actual result."""
+    def run_helpers(self, pack, picked, current=None):
+        source = (ROOT / 'web/setup.js').read_text(encoding='utf-8')
+        start = source.index('  const packs =')
+        helpers = source[start:source.index('  const packDl =', start)]
+        state = {'manifest': {'packs': [{'id': 'small', 'map': None}, {'id': 'medium', 'map': None}, {'id': 'all', 'map': None}],
+                              'maps': [{'id': 'CA', 'title': 'California'}], 'address_indexes': [{'id': 'CA', 'available': True}]},
+                 'current': current}
+        script = (f'const S = {json.dumps(state)};\nconst choice = {json.dumps({"pack": pack, "ai": False, "map": picked})};\n' + helpers +
+                  '\nconsole.log(JSON.stringify({offered: canSkipMap(), skipped: skippedMap(), missing: mapMissing(), state: selectedState(),'
+                  ' map: mapAdds() ? mapAdds().id : null, address: addressAdds() ? addressAdds().id : null}))')
+        run = subprocess.run(['node', '-e', script], text=True, capture_output=True, check=True)
+        return json.loads(run.stdout)
+
+    def run_switch(self, from_pack, to_pack, picked):
+        source = (ROOT / 'web/setup.js').read_text(encoding='utf-8')
+        start = source.index('  const packs =')
+        helpers = source[start:source.index('  const packDl =', start)]
+        state = {'manifest': {'packs': [{'id': 'small', 'map': None}, {'id': 'medium', 'map': None}, {'id': 'all', 'map': None}],
+                              'maps': [{'id': 'CA', 'title': 'California'}], 'address_indexes': [{'id': 'CA', 'available': True}]},
+                 'current': None}
+        script = (f'const S = {json.dumps(state)};\nconst choice = {json.dumps({"pack": from_pack, "ai": False, "map": picked})};\n' + helpers +
+                  f'\nsetPack({json.dumps(to_pack)});' +
+                  '\nconsole.log(JSON.stringify({kept: choice.map, offered: canSkipMap(), skipped: skippedMap(), missing: mapMissing(), state: selectedState(),'
+                  ' map: mapAdds() ? mapAdds().id : null, address: addressAdds() ? addressAdds().id : null}))')
+        run = subprocess.run(['node', '-e', script], text=True, capture_output=True, check=True)
+        return json.loads(run.stdout)
+
+    def test_small_without_a_map(self):
+        self.assertEqual(self.run_helpers('small', None), {'offered': True, 'skipped': False, 'missing': True, 'state': '', 'map': None, 'address': None})
+        self.assertEqual(self.run_helpers('small', 'none'), {'offered': True, 'skipped': True, 'missing': False, 'state': '', 'map': None, 'address': None})
+
+    def test_all_without_address_search(self):
+        self.assertEqual(self.run_helpers('all', 'none'), {'offered': True, 'skipped': True, 'missing': False, 'state': '', 'map': None, 'address': None})
+
+    def test_medium_keeps_its_own_map(self):   # "none" left over from Small: Medium still has California, as before
+        self.assertEqual(self.run_helpers('medium', 'none'), {'offered': False, 'skipped': False, 'missing': False, 'state': 'CA', 'map': None, 'address': 'CA'})
+
+    def test_a_chosen_state_is_unchanged(self):
+        self.assertEqual(self.run_helpers('small', 'CA'), {'offered': True, 'skipped': False, 'missing': False, 'state': 'CA', 'map': 'CA', 'address': 'CA'})
+
+    def test_library_with_a_map_offers_no_skip(self):   # Library and local AI: a Small library that already has a state map keeps it
+        current = {'pack': 'small', 'map': 'CA', 'address_indexes': ['CA']}
+        self.assertEqual(self.run_helpers('small', None, current), {'offered': False, 'skipped': False, 'missing': False, 'state': 'CA', 'map': None, 'address': None})
+
+    def test_switching_from_all_to_small_drops_the_skip(self):   # "no address search" must not become "no local map" by itself
+        self.assertEqual(self.run_switch('all', 'small', 'none'),
+                         {'kept': None, 'offered': True, 'skipped': False, 'missing': True, 'state': '', 'map': None, 'address': None})
+
+    def test_switching_from_small_to_all_drops_the_skip(self):   # "no local map" must not become "no address search" by itself
+        self.assertEqual(self.run_switch('small', 'all', 'none'),
+                         {'kept': None, 'offered': True, 'skipped': False, 'missing': True, 'state': '', 'map': None, 'address': None})
+
+    def test_switching_to_medium_drops_the_skip(self):   # the drop is harmless there: Medium resolves California either way
+        self.assertEqual(self.run_switch('small', 'medium', 'none'),
+                         {'kept': None, 'offered': False, 'skipped': False, 'missing': False, 'state': 'CA', 'map': None, 'address': 'CA'})
+
+    def test_switching_packs_keeps_a_chosen_state(self):
+        self.assertEqual(self.run_switch('small', 'all', 'CA'),
+                         {'kept': 'CA', 'offered': True, 'skipped': False, 'missing': False, 'state': 'CA', 'map': None, 'address': 'CA'})
+
+    def test_same_pack_keeps_the_skip(self):   # re-entering choose for the same pack changes nothing
+        self.assertEqual(self.run_switch('small', 'small', 'none'),
+                         {'kept': 'none', 'offered': True, 'skipped': True, 'missing': False, 'state': '', 'map': None, 'address': None})
+
+    def test_validated_manifest_nulls_an_omitted_pack_map(self):   # the shape above is what validate() really outputs
+        file = {'name': 'small.zip', 'url': 'https://127.0.0.1/small.zip', 'size': 10, 'sha256': '0' * 64}
+        raw = {'version': 1, 'packs': [{'id': 'small', 'title': 'Small', 'files': [file]},
+                                       {'id': 'medium', 'title': 'Medium', 'files': [file], 'map': 'CA'}]}
+        packs = {p['id']: p for p in manifest.validate(raw, allowed=ALLOWED)['packs']}
+        self.assertIsNone(packs['small']['map'])
+        self.assertEqual(packs['medium']['map'], 'CA')
 
 
 @unittest.skipUnless(os.environ.get('LASTBOOK_FULL_DISK') == '1' and sys.platform == 'darwin', 'LASTBOOK_FULL_DISK=1 on a Mac')
@@ -4142,6 +4866,86 @@ class ModelServer(Base):
         self.assertEqual(api.ROUTES[('POST', 'server-models')](s, {'address': self.where})['models'], ['small-9b', 'other'])
         self.assertEqual(api.ROUTES[('POST', 'use-server')](s, {'address': self.where, 'model': 'other'})['model_server']['model'], 'other')
         self.assertEqual(api.ROUTES[('POST', 'stop-server')](s, {}), {'model_server': None})
+class ManifestRace(Base):
+    """Running from source there is no bundled manifest: the first state() must not answer with an empty list while the fetch runs."""
+
+    EMPTY = {'version': 1, 'published': '', 'packs': [], 'models': [], 'maps': []}
+
+    def empty_setup(self, fetch):
+        mf = manifest.Manifest(bundled=dict(self.EMPTY), remote='https://127.0.0.1/manifest-v1.json', allowed=ALLOWED, context=self.ctx)
+        with mock.patch.object(download, 'fetch_small', fetch):
+            return self.setup(manifest=mf)
+
+    def test_first_state_waits_for_the_fetch(self):
+        data = json.dumps(self.manifest().current).encode()
+
+        def slow(*a, **k):
+            time.sleep(0.4)
+            return data
+        s = self.empty_setup(slow)
+        with mock.patch.object(download, 'fetch_small', slow):
+            st = s.state()
+        self.assertEqual([p['id'] for p in st['manifest']['packs']], ['small', 'all'])
+
+    def test_failed_fetch_is_tried_again_by_a_later_state(self):
+        data = json.dumps(self.manifest().current).encode()
+        calls = []
+
+        def flaky(*a, **k):
+            calls.append(1)
+            return None if len(calls) == 1 else data
+        s = self.empty_setup(flaky)
+        with mock.patch.object(download, 'fetch_small', flaky), mock.patch.object(manifest, 'RETRY_S', 0):
+            self.assertEqual(s.state()['manifest']['packs'], [])
+            self.assertEqual([p['id'] for p in s.state()['manifest']['packs']], ['small', 'all'])
+
+    def test_a_bundled_manifest_never_waits(self):
+        mf = self.manifest()
+        mf.remote = 'https://127.0.0.1/manifest-v1.json'
+
+        def slow(*a, **k):
+            time.sleep(2)
+        s = self.setup(manifest=mf)
+        with mock.patch.object(download, 'fetch_small', slow):
+            t0 = time.time()
+            s.state()
+        self.assertLess(time.time() - t0, 1.0)
+
+    def test_concurrent_calls_start_one_fetch(self):
+        calls = []
+        real = threading.Thread
+
+        def slow_thread(*a, **k):
+            time.sleep(0.2)          # the window between "no fetch yet" and the fetch being recorded
+            return real(*a, **k)
+
+        def fetch(*a, **k):
+            calls.append(1)
+            time.sleep(0.5)
+        mf = manifest.Manifest(bundled=dict(self.EMPTY), remote='https://127.0.0.1/manifest-v1.json', allowed=ALLOWED, context=self.ctx)
+        with mock.patch.object(download, 'fetch_small', fetch), mock.patch.object(manifest.threading, 'Thread', slow_thread), \
+                mock.patch.object(manifest, 'WAIT_S', 3):
+            ts = [real(target=mf.fetch_once) for _ in range(3)]
+            [t.start() for t in ts]
+            [t.join(10) for t in ts]
+        self.assertEqual(len(calls), 1)
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs node on PATH')
+class SetupScreen(unittest.TestCase):
+    """web/setup.js run in Node with a fake page (app/tests/setup_js_test.mjs)."""
+
+    def test_screen_asks_again_while_the_list_is_empty(self):
+        r = subprocess.run([shutil.which('node'), str(HERE / 'setup_js_test.mjs')], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_background_ask_keeps_keyboard_focus_in_a_real_browser(self):
+        """app/tests/setup_focus_browser_test.mjs: setup.html in headless Chrome or Chromium; skipped when neither is found."""
+        r = subprocess.run([shutil.which('node'), str(HERE / 'setup_focus_browser_test.mjs')], capture_output=True, text=True, timeout=90)
+        if r.returncode == 2:
+            self.skipTest(r.stdout.strip())
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 2 and sys.argv[1] == '--child':

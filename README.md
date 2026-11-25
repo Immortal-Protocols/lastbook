@@ -13,9 +13,9 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 
 | Platform | Version | Status |
 |---|---|---|
-| macOS (Apple Silicon, macOS 14 or later) | 1.1.17 | Live on lastbook.org, signed and notarized |
-| Windows (64-bit, Windows 10 or later) | 1.1.17 | Live on lastbook.org, Authenticode signed |
-| Linux (Ubuntu 24.04 or 26.04 LTS, x86_64) | 1.1.17 | Ubuntu packages; installation instructions below |
+| macOS (Apple Silicon, macOS 14 or later) | 1.1.18 | Live on lastbook.org, signed and notarized |
+| Windows (64-bit, Windows 10 or later) | 1.1.18 | Live on lastbook.org, Authenticode signed |
+| Linux (Ubuntu 24.04 or 26.04 LTS, x86_64) | 1.1.18 | Ubuntu packages; installation instructions below |
 
 ## iPad (development preview, source only)
 
@@ -27,11 +27,11 @@ A native iPad app (Videos, Map and Chat, offline, with optional on-device AI) is
 ## Install on Linux
 
 The Linux packages target **Ubuntu 24.04 LTS and Ubuntu 26.04 LTS on Intel/AMD x86_64 computers**, one package for each. Download
-[Lastbook for Ubuntu 24.04](https://downloads.lastbook.org/Lastbook_1.1.17_amd64.deb) (or [for Ubuntu 26.04](https://downloads.lastbook.org/Lastbook_1.1.17_ubuntu26.04_amd64.deb)), then install it with apt so Ubuntu resolves its dependencies.
+[Lastbook for Ubuntu 24.04](https://downloads.lastbook.org/Lastbook_1.1.18_amd64.deb) (or [for Ubuntu 26.04](https://downloads.lastbook.org/Lastbook_1.1.18_ubuntu26.04_amd64.deb)), then install it with apt so Ubuntu resolves its dependencies.
 
 ```bash
-sudo apt install ./Lastbook_1.1.17_amd64.deb                  # Ubuntu 24.04
-sudo apt install ./Lastbook_1.1.17_ubuntu26.04_amd64.deb      # Ubuntu 26.04
+sudo apt install ./Lastbook_1.1.18_amd64.deb                  # Ubuntu 24.04
+sudo apt install ./Lastbook_1.1.18_ubuntu26.04_amd64.deb      # Ubuntu 26.04
 ```
 
 Open Lastbook from the application menu. First-run setup downloads your chosen library, state map and optional local AI.
@@ -241,9 +241,9 @@ bash packaging/linux/build_app_linux.sh
 
 The package uses the system Python and pinned wheels from `packaging/linux/requirements_linux.txt`, built for that Python
 only, so each release gets its own package. On 24.04 (Python 3.12) the app build creates
-`derived/app-build/linux/<timestamp>/Lastbook_1.1.17_amd64.deb`; on 26.04 (Python 3.14) it creates
-`Lastbook_1.1.17_ubuntu26.04_amd64.deb`, with the version `1.1.17+ubuntu26.04`, which apt takes as newer than the 24.04 package; on Debian 13 (Python 3.13) it creates
-`Lastbook_1.1.17_debian13_amd64.deb`, with the version `1.1.17+debian13`.
+`derived/app-build/linux/<timestamp>/Lastbook_1.1.18_amd64.deb`; on 26.04 (Python 3.14) it creates
+`Lastbook_1.1.18_ubuntu26.04_amd64.deb`, with the version `1.1.18+ubuntu26.04`, which apt takes as newer than the 24.04 package; on Debian 13 (Python 3.13) it creates
+`Lastbook_1.1.18_debian13_amd64.deb`, with the version `1.1.18+debian13`.
 It bundles the local AI runner when `derived/llm/bin-linux/lastbook-llm` exists. `packaging/linux/smoke_deb.sh` checks
 the package in a fresh container of the same release.
 Linux integration-test helpers live under `app/tests/linux_*`; set `LASTBOOK_TEST_HOST` to a Windows SSH host with WSL2
@@ -258,7 +258,12 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
   (a newer copy is fetched from `downloads.lastbook.org` when setup opens and used only if it validates).
 - **State maps** are one US state's detailed map set, built by `packaging/build_packs.py map <ST>` and published by
   `packaging/state_maps.py`, with per-state address indexes from `packaging/address_indexes.py`. A state map replaces the
-  library's map set; it never merges with it. Medium already holds California and All the whole US.
+  library's map set; it never merges with it. Medium already holds California and All the whole US. A European
+  country's map set is built the same way (`map eu-<iso>`, entry kind `country`; the country's box is its Geofabrik
+  extract's bounding box, from `packaging/europe-countries.json`), but publishing is opt-in:
+  `packaging/country-publication.json` is empty because the detail layers are still US-only, and
+  `packaging/state_maps.py` refuses a country whose built set has no detailed roads, help and water points, terrain,
+  buildings, crops or OpenStreetMap place names inside its box. Address indexes stay US-only.
 - **The local AI** is optional: Gemma 4 26B A4B (Unsloth's `gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`, about 17 GB). The file
   name, size, SHA-256 and Hugging Face revision are pinned in `llm_local.py`. Setup offers it only where the measured fit
   says it fits (about 18 GB of memory for model and context, plus a reserve) and says why in plain words when it does not.
@@ -287,7 +292,8 @@ before running them. Their disposable test distro is named `LastbookTest`, with 
 See [the contributor test instructions](CONTRIBUTING.md#test) for the unit test command and platform requirements.
 
 `packaging/test_pack_tools.py SAMPLE WORK` checks the pack tools against a pack sample
-(`build_packs.py build <pack> --sample N`). The `mac_*` and `win_*`
+(`build_packs.py build <pack> --sample N`). `python3 -B packaging/test_state_maps.py` checks the country-publishing
+guard without source data. The `mac_*` and `win_*`
 scripts in `app/tests/` drive a real build against a real data folder, and their paths are placeholders
 (`/path/to/lastbook`, `C:\Users\you\app-test`) to set for your own machine.
 

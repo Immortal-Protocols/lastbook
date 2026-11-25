@@ -26,6 +26,7 @@ if not FROZEN:
     sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parents[1])]
 LOG_LIMIT = 5 * 1024 * 1024
 LOG_BACKUPS = 3
+OLD_WAIT_MS = 30_000      # how long a relaunched app waits for the old copy to end (Windows)
 
 
 DATA_NAME = 'LastbookData'
@@ -244,11 +245,33 @@ def relaunch():
     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} setup finished: starting again', flush=True)
     if sys.platform == 'win32':
         import subprocess
+        os.environ['LASTBOOK_AFTER_PID'] = str(os.getpid())     # the new copy waits for this one to end: see wait_for_old
         subprocess.Popen(argv, close_fds=True, creationflags=0x00000008 | 0x00000200)   # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
         os._exit(0)
     if sys.platform.startswith('linux') and 'shell_linux' in sys.modules:
         sys.modules['shell_linux'].before_exec()
     os.execv(argv[0], argv)     # same process, same Dock icon; pipes to helpers close on exec, so they end
+
+
+def wait_for_old():
+    """On Windows relaunch starts the new copy before the old one has ended, and Windows will not rename a library the old one
+    still has files open in, so setup's switch waits for it first. Bounded: an old copy that hangs does not stop the app
+    starting. Elsewhere relaunch is the same process (execv): nothing to wait for."""
+    pid = os.environ.pop('LASTBOOK_AFTER_PID', '')
+    if sys.platform != 'win32' or not pid.isdigit():
+        return
+    import ctypes
+    k = ctypes.WinDLL('kernel32', use_last_error=True)
+    k.OpenProcess.restype = ctypes.c_void_p
+    k.OpenProcess.argtypes = (ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong)
+    k.WaitForSingleObject.argtypes = (ctypes.c_void_p, ctypes.c_ulong)
+    k.CloseHandle.argtypes = (ctypes.c_void_p,)
+    h = k.OpenProcess(0x00100000, False, int(pid))      # SYNCHRONIZE; no handle when it has already gone
+    if h:
+        try:
+            k.WaitForSingleObject(h, OLD_WAIT_MS)
+        finally:
+            k.CloseHandle(h)
 
 
 def setup_finished(folder):
@@ -374,6 +397,7 @@ def main():
         if not shell_linux.claim(str(app_folders()[1])):     # already open: that window comes to the front instead
             return 0
     note = None
+    wait_for_old()
     given = a.data or os.environ.get('LASTBOOK_DATA')    # a folder named outright is opened as it is: only its own staged switch is made
     from engine.setup import api as setup_api
     lib, note = setup_api.startup(app_folders()[0], only=Path(given) if given else None)   # before anything is open
@@ -395,6 +419,8 @@ def main():
     os.environ.setdefault('LASTBOOK_LOCAL_AI', '1')   # the optional local AI (llm_local.py), used when its model file is found
     open_log(data)
     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} start pid={os.getpid()} args={sys.argv[1:]} data={data}', flush=True)
+    if note and note.get('error'):      # startup ran before the log was open: what it said went nowhere
+        print('setup: the staged switch:', note['error'], flush=True)
     if sys.platform == 'win32':
         import ctypes
         ctypes.windll.kernel32.SetErrorMode(0x0003)     # SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX: a crash here goes to nobody, and processes started from here inherit that

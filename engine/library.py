@@ -128,11 +128,11 @@ def extract(r):
   except Exception as e:
    # A failed refresh must not remove usable cached pages from the rebuilt index.
    try:
-    m=json.loads(meta.read_text(encoding='utf-8'))
-    if m.get('sha256')==r.get('sha256'):
+    m=json.loads(meta.read_text(encoding='utf-8'));details=m.get('details',{})
+    if isinstance(details,dict) and m.get('sha256')==r.get('sha256'):
      pages=textpath.read_text(encoding='utf-8').split('\n\f\n')
      if any(page.strip() for page in pages):
-      r.update(m.get('details',{}));r['text_path']=textpath.relative_to(ROOT).as_posix()
+      r.update(details);r['text_path']=textpath.relative_to(ROOT).as_posix()
       return r,pages,str(e)
    except (OSError,ValueError,TypeError,AttributeError):pass  # missing or unreadable cache
    return r,[],str(e)

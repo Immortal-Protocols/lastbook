@@ -232,6 +232,44 @@ class LibraryExtraction(unittest.TestCase):
             self.assertEqual([r['doc_id'] for r in library.search(query)], ['video-example'])
         self.assertEqual(summary['extraction_errors'], [])
 
+    def test_missing_caption_rejects_non_object_details_without_changing_record(self):
+        cases = (None, 12, 'invalid details', [],
+                 [['title', 'Stale title'], ['notes', 'Stale notes.']],
+                 [['title', 'Stale title'], ['notes', 'Stale notes.'], ['invalid']])
+        for details in cases:
+            with self.subTest(details=details):
+                self.textpath.unlink(missing_ok=True)
+                self.metapath.unlink(missing_ok=True)
+                path = self.caption('Previously available caption 12.')
+                original, _ = self.build()
+                metadata = json.loads(self.metapath.read_text(encoding='utf-8'))
+                metadata['details'] = details
+                self.metapath.write_text(json.dumps(metadata), encoding='utf-8')
+                before = (self.textpath.read_bytes(), self.metapath.read_bytes())
+                path.unlink()
+
+                record, pages, error = library.extract(dict(self.record))
+                self.assertEqual(record, self.record)
+                self.assertEqual(pages, [])
+                self.assertIsNotNone(error)
+                self.assertIn(path.name, error)
+                record, summary = self.build()
+                self.assertEqual(record, {k: v for k, v in original.items() if k != 'text_path'})
+                self.assertEqual(library.search('12'), [])
+                self.assertEqual(summary['indexed_units'], 0)
+                self.assertEqual(len(summary['extraction_errors']), 1)
+                self.assertIn(path.name, summary['extraction_errors'][0]['error'])
+                self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes()), before)
+
+                self.caption('Previously available caption 12.')
+                record, summary = self.build()
+                self.assertEqual(record, original)
+                self.assertEqual([r['title'] for r in library.search('12')], [original['title']])
+                self.assertEqual(summary['extraction_errors'], [])
+                self.assertEqual(self.textpath.read_bytes(), before[0])
+                metadata['details'] = {}
+                self.assertEqual(json.loads(self.metapath.read_text(encoding='utf-8')), metadata)
+
     def test_caption_permission_error_keeps_the_cached_extract(self):
         self.caption('Previously available caption.')
         self.extract()

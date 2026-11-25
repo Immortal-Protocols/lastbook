@@ -244,6 +244,51 @@ def official_points():
             yield cls, name_of(feature['properties']), lon, lat
 
 
+def in_berlin():
+    """A test inside(lon, lat) for Berlin's boundary: the union of its twelve districts from the Geoportal.
+
+    The extract and the map's box also hold a strip of Brandenburg. Brandenburg surrounds Berlin and reaches far beyond
+    the 0.15° margin that check allows around the box, so a point outside this boundary is in Brandenburg."""
+    rings = []
+    for feature in features('districts'):
+        geometry = feature['geometry']
+        polygons = geometry['coordinates'] if geometry['type'] == 'MultiPolygon' else [geometry['coordinates']]
+        for ring in (ring for polygon in polygons for ring in polygon):
+            xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+            rings.append((min(xs), min(ys), max(xs), max(ys), [(p[0], p[1]) for p in ring]))
+
+    def inside(lon, lat):
+        # Even-odd over every ring: the districts do not overlap, and a hole in one counts as outside.
+        crossings = False
+        for west, south, east, north, ring in rings:
+            if west <= lon <= east and south <= lat <= north:
+                for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1]):
+                    if (y0 > lat) != (y1 > lat) and lon < (x1 - x0) * (lat - y0) / (y1 - y0) + x0:
+                        crossings = not crossings
+        return crossings
+    return inside
+
+
+def region_of(inside, lon, lat):
+    return 'Berlin' if inside(lon, lat) else 'Brandenburg'
+
+
+def replace_official(db, inside):
+    """Puts the Geoportal's records in place of OpenStreetMap's points of the OFFICIAL classes inside Berlin.
+
+    The Geoportal lists Berlin's facilities only, so OpenStreetMap's beyond the city boundary (a hospital in Woltersdorf,
+    the pharmacies of Teltow) stay. Returns how many OpenStreetMap points each class gave up."""
+    marks = ','.join('?' * len(OFFICIAL))
+    replaced = [(row_id, cls) for row_id, cls, lon, lat in db.execute(
+        f'SELECT id,cls,lon,lat FROM poi WHERE cls IN ({marks})', OFFICIAL) if inside(lon, lat)]
+    db.executemany('DELETE FROM poi WHERE id=?', [(row_id,) for row_id, _ in replaced])
+    db.executemany('INSERT INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)', official_points())
+    counts = {}
+    for _, cls in replaced:
+        counts[cls] = counts.get(cls, 0) + 1
+    return counts
+
+
 def build_map(fetched, geo):
     """OpenStreetMap through the existing map builder into national.sqlite; map.sqlite stays empty, as in a US state map."""
     osm = fetched['files']['osm.gpkg.zip']
@@ -263,13 +308,13 @@ def build_map(fetched, geo):
         db.executemany('INSERT OR REPLACE INTO meta VALUES (?,?)', [
             ('source', f"OpenStreetMap contributors, via Geofabrik {osm['name']} (ODbL 1.0)"),
             ('data_as_of', osm['data_as_of'] or ''), ('bounds', ','.join(map(str, BBOX)))])
-        replaced = dict(db.execute(f"SELECT cls,count(*) FROM poi WHERE cls IN ({','.join('?' * len(OFFICIAL))}) GROUP BY cls", OFFICIAL))
-        db.execute(f"DELETE FROM poi WHERE cls IN ({','.join('?' * len(OFFICIAL))})", OFFICIAL)
-        rows = [('water_well', name, lon, lat) for name, lon, lat in wells] + list(official_points())
-        db.executemany('INSERT INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)', rows)
+        replaced = replace_official(db, in_berlin())
+        db.executemany('INSERT INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)',
+                       [('water_well', name, lon, lat) for name, lon, lat in wells])
         db.execute("INSERT OR REPLACE INTO meta VALUES ('help_points', ?)", (
-            'hospital, pharmacy, fire_station, police: Geoportal Berlin (dl-de/zero-2.0), replacing OpenStreetMap; '
-            'water_well (street pumps) and all other classes: OpenStreetMap (ODbL 1.0)',))
+            'hospital, pharmacy, fire_station, police inside Berlin: Geoportal Berlin (dl-de/zero-2.0), replacing '
+            'OpenStreetMap; those beyond the city boundary, water_well (street pumps) and all other classes: '
+            'OpenStreetMap (ODbL 1.0)',))
         db.execute("INSERT OR REPLACE INTO meta VALUES ('region', ?)", (REGION,))
         db.commit()
         db.execute('VACUUM')
@@ -374,19 +419,23 @@ def build_places(fetched, geo):
             lon, lat = points[len(points) // 2]
             rows.append((street, 'street', f'{where}, Berlin' if where else 'Berlin', lat, lon, 3, 'Geoportal Berlin'))
         add('street', rows)
-        # national.sqlite holds the official help points in place of OpenStreetMap's (build_map), so they are taken from
-        # their own records here, labelled Geoportal Berlin; the points of every other class there are OpenStreetMap's.
+        # national.sqlite holds the official help points in place of OpenStreetMap's inside Berlin (build_map), so they
+        # are taken from their own records here, labelled Geoportal Berlin; every other point there is OpenStreetMap's.
+        # Each OpenStreetMap row names where it is: the extract reaches a few kilometres into Brandenburg.
+        official = list(official_points())
         add('official_point', [(name, cls.replace('_', ' '), 'Berlin (Geoportal)', lat, lon, 4, 'Geoportal Berlin')
-                               for cls, name, lon, lat in official_points() if name])
+                               for cls, name, lon, lat in official if name])
+        official = set(official)
+        inside = in_berlin()
         national = sqlite3.connect(f"file:{geo / 'national.sqlite'}?mode=ro", uri=True)
-        add('osm_point', [(name, cls.replace('_', ' '), 'Berlin (OpenStreetMap)', lat, lon, 4, 'OpenStreetMap')
+        add('osm_point', [(name, cls.replace('_', ' '), f'{region_of(inside, lon, lat)} (OpenStreetMap)', lat, lon, 4, 'OpenStreetMap')
                           for cls, name, lon, lat in national.execute(
-                              f"SELECT cls,name,lon,lat FROM poi WHERE name IS NOT NULL AND name<>'' AND cls NOT IN ({','.join('?' * len(OFFICIAL))})",
-                              OFFICIAL)])
+                              "SELECT cls,name,lon,lat FROM poi WHERE name IS NOT NULL AND name<>''")
+                          if (cls, name, lon, lat) not in official])
         rows = []
         for cls, name, geom in national.execute("SELECT cls,name,geom FROM feat WHERE layer='place' AND name IS NOT NULL"):
             _, _, x, y = struct.unpack_from('<iiii', geom)
-            rows.append((name, cls, 'Berlin (OpenStreetMap)', y / 1e6, x / 1e6, 1, 'OpenStreetMap'))
+            rows.append((name, cls, f'{region_of(inside, x / 1e6, y / 1e6)} (OpenStreetMap)', y / 1e6, x / 1e6, 1, 'OpenStreetMap'))
         add('osm_place', rows)
         national.close()
         db.execute("INSERT INTO place_fts(place_fts) VALUES ('rebuild')")
@@ -488,6 +537,9 @@ def check(data=DATA):
                           (west - .15, east + .15, south - .15, north + .15)).fetchone()[0]
     expect(outside == 0, f'every help point within Berlin plus the 0.15° margin ({outside} outside)')
     nat.close()
+    inside = in_berlin()
+    beyond = [name for _, name, lon, lat in official_points() if not inside(lon, lat)]
+    expect(not beyond, f'every Geoportal help point inside the city boundary ({len(beyond)} beyond it{": " + ", ".join(map(str, beyond[:3])) if beyond else ""})')
     addr = sqlite3.connect(f"file:{geo / 'addresses' / (REGION + '.sqlite')}?mode=ro", uri=True)
     n, bad_zip, outside, border = addr.execute(
         "SELECT count(*), sum(zip NOT GLOB '[0-9][0-9][0-9][0-9][0-9]'), sum(lon NOT BETWEEN ? AND ? OR lat NOT BETWEEN ? AND ?),"
@@ -512,11 +564,16 @@ def check(data=DATA):
         hit = places.execute('SELECT count(*) FROM place_fts f JOIN place p ON p.id=f.rowid WHERE place_fts MATCH ? AND p.name=? AND p.kind=?',
                              (f'"{name}"', name, kind)).fetchone()[0]
         expect(hit > 0, f'place finder has {kind} "{name}"')
-    kinds = [cls.replace('_', ' ') for cls in OFFICIAL]
-    official, other = places.execute(f"SELECT count(*), count(*) - count(CASE WHEN source='Geoportal Berlin' THEN 1 END) FROM place "
-                                     f"WHERE kind IN ({','.join('?' * len(kinds))})", kinds).fetchone()
-    expect(official >= 800 and not other, f'place finder labels its {official:,} official help points Geoportal Berlin ({other} labelled otherwise)')
+    kinds = {cls.replace('_', ' ') for cls in OFFICIAL}
+    rows = places.execute('SELECT name,kind,detail,source,lon,lat FROM place').fetchall()
     places.close()
+    official = [row for row in rows if row[1] in kinds and inside(row[4], row[5])]
+    other = sum(row[3] != 'Geoportal Berlin' for row in official)
+    expect(len(official) >= 800 and not other,
+           f'place finder labels its {len(official):,} official help points in Berlin Geoportal Berlin ({other} labelled otherwise)')
+    # A row beyond the boundary is in Brandenburg (see in_berlin): it may stay on the map, but must not claim Berlin.
+    claims = [row[0] for row in rows if not inside(row[4], row[5]) and ('Berlin' in row[2] or row[3] == 'Geoportal Berlin')]
+    expect(not claims, f'place finder names Berlin only inside the city boundary ({len(claims)} rows beyond it do{": " + ", ".join(claims[:3]) if claims else ""})')
     if not failures:
         print('all checks passed (data only; German address search in the app is not checked here, see #79)')
     return failures

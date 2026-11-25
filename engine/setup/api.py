@@ -10,9 +10,11 @@ Only requests from this computer get an answer (the bridge's, or loopback): a ph
 """
 import errno
 import hashlib
+import io
 import json
 import os
 import shutil
+import stat
 import sys
 import threading
 import time
@@ -270,6 +272,7 @@ class Setup:
         work = _work_for(target)
         ids = lambda key: (plan.get(key) or {}).get('id')
         pack = self.manifest.pack(ids('pack')) if plan.get('pack') else None
+        pack = _pack_download(pack, work, {}, keep_original=not (plan.get('pack') or {}).get('split_archive'))
         mp = self.manifest.map(ids('map')) if plan.get('map') else None
         model = self.manifest.model(ids('model')) if plan.get('model') else None
         addresses = self.manifest.address_index(ids('addresses')) if plan.get('addresses') else None
@@ -336,8 +339,13 @@ class Setup:
     @staticmethod
     def _on_disk(plan, it):
         """Bytes of this item already downloaded, from the files themselves."""
+        folder = Path(plan['work']) / 'downloads'
+        split = False
         if it['kind'] == 'pack' and plan.get('pack'):
             plan_files = plan['pack']['files']
+            split = bool(plan['pack'].get('split_archive'))
+            if split:
+                folder = _pack_parts_folder(Path(plan['work']))
         elif it['kind'] == 'map' and plan.get('map'):
             plan_files = plan['map']['files']
         elif it['kind'] == 'addresses' and plan.get('addresses'):
@@ -346,11 +354,13 @@ class Setup:
             plan_files = [{'name': plan['model']['file']}] if plan.get('model') else []
         n = 0
         for f in plan_files:
-            for p in (Path(plan['work']) / 'downloads' / f['name'], Path(plan['work']) / 'downloads' / (f['name'] + '.part')):
+            sizes = [0]
+            for p in (folder / f['name'], folder / (f['name'] + '.part')):
                 try:
-                    n += p.stat().st_size
+                    sizes.append(p.stat().st_size)
                 except OSError:
                     pass
+            n += min(f['size'], max(sizes)) if split else sum(sizes)
         return n
 
     def _save_job(self):
@@ -360,6 +370,11 @@ class Setup:
             return
         f = _job_file(self.settings_dir)
         f.parent.mkdir(parents=True, exist_ok=True)
+        plan = job.get('plan') or {}
+        pack = plan.get('pack') or {}
+        if pack.get('split_archive'):
+            # An interrupted job gets its file pins from the bundled manifest again.
+            job = {**job, 'plan': {**plan, 'pack': {'id': pack['id'], 'split_archive': pack['split_archive']}}}
         install._write_json(f, job)
 
     # --------------------------------------------------------------------------------------------------- the state --
@@ -602,7 +617,7 @@ class Setup:
         with self.lock:
             if not self.job:
                 return None
-            job = {k: v for k, v in json.loads(json.dumps(self.job)).items() if k != 'plan'}
+            job = json.loads(json.dumps({k: v for k, v in self.job.items() if k != 'plan'}))
         now = time.time()
         for it in job['items']:      # retry_at becomes seconds from now, shown only while that wait is still ahead
             at = it.pop('retry_at', None)
@@ -685,9 +700,16 @@ class Setup:
             for f in self.found():
                 if f.get('size_ok') and f['name'] not in srcs and f['kind'] in ('pack', 'model', 'map', 'addresses'):
                     srcs[f['name']] = f['path']
-            names = ([f['name'] for f in pack['files']] if pack else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else [])
+            pack = _pack_download(pack, work, srcs)
+            split_files = pack['files'] if pack and pack.get('split_archive') else []
+            names = ([f['name'] for f in pack['files']] if pack and not split_files else []) + ([model['file']] if model else []) + ([f['name'] for f in mp['files']] if mp else []) + ([f['name'] for f in addresses['files']] if addresses else [])
             have = set(srcs)
-            need = install.need_bytes(pack, model, have) + _map_need(mp, have) + _map_need(addresses, have)
+            if split_files:
+                have_parts = self._on_disk({'pack': pack, 'work': work}, {'kind': 'pack'})
+                need = install.need_bytes(None, model, have) + pack['download_bytes'] + pack['installed_bytes'] - have_parts
+            else:
+                need = install.need_bytes(pack, model, have)
+            need += _map_need(mp, have) + _map_need(addresses, have)
             preserve_map = bool(pack and cur.get('pack') == pack['id'] and target == self.current and not mp and cur.get('map') not in (None, 'base'))
             if preserve_map:
                 need += cur['map_bytes']
@@ -752,6 +774,7 @@ class Setup:
             parent, target = self.current.parent, self.current
             work = _work_for(target)
             srcs = {f['name']: f['path'] for f in self.found() if f.get('size_ok') and f['kind'] in ('pack', 'model', 'map')}
+            pack = _pack_download(pack, work, srcs)
             items = [{'id': pack['id'], 'kind': 'pack', 'title': pack['title'], 'state': 'waiting', 'bytes_done': 0,
                       'bytes_total': pack['installed_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None}]
             if model:
@@ -974,9 +997,32 @@ class Setup:
         return bad
 
     def _run(self):
+        if self._stages(self.job):
+            self._drop_deferred_switch()
         self.control = download.Control()
         self.thread = threading.Thread(target=self._work, args=(self.control,), daemon=True, name='setup-job')
         self.thread.start()
+
+    def _drop_deferred_switch(self, keep_for=None):
+        """A switch refused at a restart and kept for the next (its pending file counts `attempts`) is dropped when a job would
+        replace what it uses (a library or map download rewrites the unpack and the pending file), or when the person chooses
+        another library (keep_for: the one chosen; its staged unpack goes too, as nothing will use it). A job adding only the
+        AI or addresses keeps it, and so does a switch staged as usual."""
+        pend = _pending_file(self.settings_dir)
+        try:
+            d = json.loads(pend.read_text(encoding='utf-8'))
+            if 'attempts' in d and not (keep_for and install._real(d['target']) == install._real(keep_for)):
+                pend.unlink()
+                if keep_for:
+                    shutil.rmtree(_work_for(Path(d['target'])) / 'unpack', ignore_errors=True)
+        except (OSError, ValueError, TypeError):
+            pass
+
+    @staticmethod
+    def _stages(job):
+        """A library or map download stages a switch (the unpack and the pending file); a job adding only the AI or addresses
+        does not, and leaves a switch already staged alone."""
+        return bool(job['plan'].get('pack') or job['plan'].get('map'))
 
     def pause(self):
         with self.lock:
@@ -1039,10 +1085,11 @@ class Setup:
                 self._save_job()
             elif job['state'] != 'done' or job['plan'].get('switch'):     # a staged library not yet switched to can still be dropped
                 self._clean(job)
-                try:
-                    _pending_file(self.settings_dir).unlink()
-                except OSError:
-                    pass
+                if self._stages(job):
+                    try:
+                        _pending_file(self.settings_dir).unlink()
+                    except OSError:
+                        pass
                 job['state'] = 'failed'
                 job['error'] = {'code': 'cancelled', 'message': 'Cancelled. Nothing was changed.'}
                 for it in job['items']:
@@ -1059,7 +1106,12 @@ class Setup:
     def _clean(self, job):
         """What the job made in its work folder goes; the person's own files and any library stay."""
         work = Path(job['plan']['work'])
-        for sub in ('downloads', 'unpack', 'unpack-map', 'unpack-addresses'):
+        try:
+            _check_pack_paths(work)
+        except (download.Failed, OSError):
+            return  # Cancel still completes when the work folder is linked or its drive is unavailable.
+        subs = ('downloads', 'unpack', 'unpack-map', 'unpack-addresses') if self._stages(job) else ('downloads', 'unpack-addresses')
+        for sub in subs:
             shutil.rmtree(work / sub, ignore_errors=True)
 
     def use(self, path, library_only=False):
@@ -1091,6 +1143,7 @@ class Setup:
             with self.lock:
                 if self.job and self.job['state'] in ACTIVE:
                     return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
+                self._drop_deferred_switch(keep_for=lib)
                 self.job = {'id': uuid.uuid4().hex[:12], 'state': 'done', 'error': None, 'started': _now(), 'folder': str(lib),
                             'items': [{'id': 'library', 'kind': 'pack', 'title': lib.name, 'state': 'done', 'bytes_done': 0, 'bytes_total': 0,
                                        'rate_bps': 0, 'eta_s': None, 'error': None}],
@@ -1243,7 +1296,7 @@ class Setup:
                 it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', err, 0, None
             self.job['state'], self.job['error'] = 'failed', err
             self._save_quietly()
-        print(f'setup: failed ({code}): {message}', flush=True)
+        install.say(f'setup: failed ({code}): {message}')
 
     def _save_quietly(self):
         try:
@@ -1258,6 +1311,8 @@ class Setup:
         try:
             work = Path(plan['work'])
             if not plan.get('copy') and not plan.get('check_only'):     # a copy writes only to its drive, a check nothing at all
+                if (plan.get('pack') or {}).get('split_archive'):
+                    _check_pack_paths(work, work / 'downloads', _pack_parts_folder(work), work / 'unpack')
                 (work / 'downloads').mkdir(parents=True, exist_ok=True)
             elif plan.get('check_only') and 'map_damaged' not in plan:   # Check now: a state map against its map-set.json, from the files as they are now
                 plan['map_damaged'] = _separate_map(Path(plan['target'])) and _map_damaged(Path(plan['target']), 'check')
@@ -1312,10 +1367,11 @@ class Setup:
             traceback.print_exc()
             self._fail(it, 'activate', f'Setup stopped on an internal error ({type(e).__name__}).')
 
-    def _get_file(self, it, f, plan, work, control, offset):
+    def _get_file(self, it, f, plan, work, control, offset, *, part=False):
         """The file, checked against its SHA-256: one already on this computer, or a download. Returns its path."""
         tracker = _Item(it)
-        name, src = f['name'], plan['sources'].get(f['name'])
+        name = f['name']
+        src = None if part else plan['sources'].get(name)
         if src and os.path.isfile(src) and name in plan.setdefault('verified', []):
             return src, False
         explicit_use = bool(plan.get('explicit'))
@@ -1335,7 +1391,17 @@ class Setup:
                 raise download.Failed('found_mismatch', f'The {name} in {folder} doesn’t match the published file, so it was not used. '
                                                         'It was left as it is. Download it instead?', file=src)
             print(f'setup: {src} does not match; downloading instead', flush=True)
-        dest = work / 'downloads' / name
+        dest = (_pack_parts_folder(work) if part else work / 'downloads') / name
+        if part:
+            _check_pack_paths(*(dest.with_name(name + suffix) for suffix in ('', '.part', '.part.json', '.part.json.tmp')))
+            if dest.is_file():
+                if it['state'] != 'verifying':
+                    self._set(it, 'verifying')
+                if dest.stat().st_size == f['size'] and _sha256(
+                    dest, control, lambda d, t: tracker.progress(offset + d, it['bytes_total'], 'verifying')
+                ) == f['sha256']:
+                    return dest, True
+                dest.unlink()
         if not dest.exists():       # room for what is still to come (the space check at start counted a file already here as had)
             try:
                 still = f['size'] - os.path.getsize(str(dest) + '.part')
@@ -1346,7 +1412,8 @@ class Setup:
                 raise download.Failed('no_space', f'Downloading {name} needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.',
                                       need_bytes=still, free_bytes=free)
         while True:
-            self._set(it, 'downloading')
+            if not part or it['state'] != 'downloading':
+                self._set(it, 'downloading')
             d = download.Download(f['url'], dest, f['size'], f['sha256'], control,
                                   lambda done, total, phase: tracker.progress(offset + done, it['bytes_total'], phase),
                                   allowed=self.allowed, context=self.context, waiting=tracker.waiting)
@@ -1382,21 +1449,27 @@ class Setup:
             with self.lock:
                 it['bytes_total'], it['bytes_done'] = pack['download_bytes'], 0
         staged = work / 'unpack'
-        _fresh_unpack(staged, {'pack': pack['id'], 'revision': pack.get('revision'), 'files': [f['sha256'] for f in pack['files']]})
+        if pack.get('split_archive'):
+            _check_pack_paths(staged / 'unpacked-from.json', staged / 'unpacked-from.json.tmp')
+        archive_hashes = [pack['split_archive']] if pack.get('split_archive') else [f['sha256'] for f in pack['files']]
+        _fresh_unpack(staged, {'pack': pack['id'], 'revision': pack.get('revision'), 'files': archive_hashes})
         got, offset = [], 0
+        split = bool(pack.get('split_archive'))
+        if split:
+            with self.lock:
+                it['bytes_total'] = pack['download_bytes']
+                it['bytes_done'] = self._on_disk(plan, it)
         for f in pack['files']:
-            path, ours = self._get_file(it, f, plan, work, control, offset)
+            path, ours = self._get_file(it, f, plan, work, control, offset, part=split)
             got.append((path, ours))
             offset += f['size']
-        tracker = _Item(it)
         self._set(it, 'unpacking', bytes_done=0, bytes_total=pack['installed_bytes'])
-        total = sum(install.check_zip(path, pack['installed_bytes'])[1] for path, _ in got)   # every member checked before any is written
-        still = max(total - _tree_size(staged), 0)
-        free, _ = hardware.disk_of(work)
-        if free < still + 512 * 2 ** 20:
-            raise download.Failed('no_space', f'Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.')
-        for path, _ in got:
-            lib = install.unpack(path, staged, pack['installed_bytes'], control, lambda d, t: tracker.progress(d, t, 'unpacking'))
+        paths = [path for path, _ in got]
+        if split:
+            with io.BufferedReader(install.SplitZip(paths, (f['size'] for f in pack['files']))) as archive:
+                lib = self._unpack_pack(it, staged, pack['installed_bytes'], control, [archive])
+        else:
+            lib = self._unpack_pack(it, staged, pack['installed_bytes'], control, paths)
         if pack.get('revision'):
             metadata = json.loads((lib / 'pack.json').read_text(encoding='utf-8'))
             if metadata.get('content_revision') != pack['revision']:
@@ -1409,6 +1482,17 @@ class Setup:
         for path, ours in got:
             if ours:
                 os.unlink(path)
+
+    def _unpack_pack(self, it, staged, installed_bytes, control, archives):
+        tracker = _Item(it)
+        total = sum(install.check_zip(z, installed_bytes)[1] for z in archives)    # all members checked before any is written
+        still = max(total - _tree_size(staged), 0)
+        free, _ = hardware.disk_of(staged.parent)
+        if free < still + 512 * 2 ** 20:
+            raise download.Failed('no_space', f'Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.')
+        for z in archives:
+            lib = install.unpack(z, staged, installed_bytes, control, lambda d, t: tracker.progress(d, t, 'unpacking'))
+        return lib
 
     def _do_map(self, it, plan, work, control):
         """A state map: download, check, unpack (map files only) into unpack-map/. With a pack, it replaces the staged library's own
@@ -1552,13 +1636,41 @@ def path_too_deep(target, windows=None):
     return windows and len(str(target)) + 1 + LONGEST_INSIDE > WINDOWS_MAX_PATH
 
 
+def _pack_parts_folder(work):
+    return work / 'downloads' / 'pack-parts'
+
+
+def _pack_download(pack, work, sources, *, keep_original=False):
+    if not pack or not pack.get('parts'):
+        return pack
+    original = pack['files'][0]
+    name = original['name']
+    plan = {k: v for k, v in pack.items() if k != 'parts'}
+    downloads = work / 'downloads'
+    if keep_original or name in sources or (downloads / name).is_file() or (downloads / (name + '.part')).is_file():
+        return plan
+    return {**plan, 'files': pack['parts'], 'split_archive': original['sha256']}
+
+
+def _check_pack_paths(*paths):
+    for path in paths:
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        reparse = getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        hardlink = stat.S_ISREG(info.st_mode) and info.st_nlink > 1
+        if reparse or hardlink or not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
+            raise download.Failed('folder', 'The setup folder contains a link or special file. Choose a different library folder.')
+
+
 def _map_damaged(target, what):
     """True when the library's state map does not match its map-set.json (it came from its own download, not the pack's)."""
     try:
         install.check_map(target)
         return False
     except install.Refused as e:
-        print(f'setup: {what}:', e.message, flush=True)
+        install.say(f'setup: {what}:', e.message)
         return True
 
 
@@ -1599,10 +1711,17 @@ def _fresh_unpack(staged, stamp):
     only once the folder is empty: a file that cannot be removed (still open on Windows) stops setup instead of being reused."""
     note = Path(staged) / 'unpacked-from.json'
     try:
-        same = json.loads(note.read_text(encoding='utf-8')) == stamp
+        # Allow whitespace and Windows newlines while bounding a receipt read from the install drive.
+        limit = max(4096, 2 * len(json.dumps(stamp, indent=1)))
+        with note.open('rb') as stream:
+            raw = stream.read(limit + 1)
+        same = len(raw) <= limit and json.loads(raw) == stamp
     except (OSError, ValueError):
         same = False
     if not same and Path(staged).exists():
+        if _set_aside(staged, _kept_name(Path(staged).parent)):     # a model a failed switch left here: kept, never emptied away
+            raise install.Refused('unpack', 'Lastbook could not set your files aside from the previous download. '
+                                            'Close anything that may be using them, then try again.')
         try:
             note.unlink(missing_ok=True)
             shutil.rmtree(staged)
@@ -1644,7 +1763,7 @@ def _pending_file(settings_dir):
 
 def startup(settings_dir, only=None):
     """app/main.py calls this first: a staged switch is made now, before the engine opens anything. Returns the library to open
-    (or None to look as usual) and a note: {target, old, model_file, error}."""
+    (or None to look as usual) and a note: {target, old, model_file, error, again: a refused switch kept for the next start}."""
     settings_dir = Path(settings_dir)
     try:
         s = json.loads((settings_dir / 'setup.json').read_text(encoding='utf-8'))
@@ -1667,6 +1786,83 @@ def startup(settings_dir, only=None):
         return None, None
 
 
+def _keep_unpacked(work, note):
+    """A failed switch leaves the staged library, which may hold the person's model. Set it aside as kept-<time>, so the next
+    job unpacks fresh and _fresh_unpack never empties a folder with the model in it."""
+    if work.is_symlink():
+        return
+    staged = work / 'unpack'
+    kept = _kept_name(work)
+    try:
+        os.replace(staged, kept)
+    except OSError:     # something in it is still open: set aside only the person's files, and drop the rest so none is reused
+        stuck = _set_aside(staged, kept)     # what could not move is the last copy: it stays where it is, and the message says so
+        blocked = _drop_except(staged, stuck)       # #86's note goes too: a file still open stops the next job instead of being reused
+        if stuck:
+            note['error'] = str(note['error']) + ' Your files could not be moved and are still in ' + ', '.join(map(str, stuck)) + '.'
+        if blocked:
+            note['error'] = str(note['error']) + ' These files are still open and were left in place: ' + ', '.join(map(str, blocked)) + '.'
+        if not any(p.exists() for p in (kept / DATA_NAME / part for part in _PERSONS_FILES)):
+            shutil.rmtree(kept, ignore_errors=True)
+            return
+    else:
+        note['error'] = str(note['error']).replace(str(staged), str(kept))
+    note['error'] = str(note['error']) + f' What was unpacked is kept in {kept}.'
+
+
+_PERSONS_FILES = (Path('models'), Path('derived', 'geo', 'addresses'))     # what install.carry_over moves into a new library
+
+
+def _kept_name(work):
+    return Path(work) / time.strftime('kept-%Y%m%d-%H%M%S')
+
+
+def _set_aside(staged, kept):
+    """Moves the person's files from the library in `staged` into `kept`. Returns the folders that could not move."""
+    stuck = []
+    for part in _PERSONS_FILES:
+        src = Path(staged) / DATA_NAME / part
+        if src.is_dir():
+            try:
+                (kept / DATA_NAME / part).parent.mkdir(parents=True, exist_ok=True)
+                os.replace(src, kept / DATA_NAME / part)
+            except OSError:
+                stuck.append(src)
+    return stuck
+
+
+def _drop_except(p, keep, blocked=None):
+    """Deletes `p`, except the folders in `keep` (and the folders that hold them). A file that cannot be removed (still open on
+    Windows) is left where it is; returns those paths, so the message can name them."""
+    blocked = [] if blocked is None else blocked
+    if p in keep:
+        return blocked
+    if p.is_dir() and not p.is_symlink() and any(p in k.parents for k in keep):
+        for c in p.iterdir():
+            _drop_except(c, keep, blocked)
+    elif p.is_dir() and not p.is_symlink():
+        shutil.rmtree(p, onerror=lambda f, path, e: blocked.append(Path(path)))
+    else:
+        try:
+            p.unlink(missing_ok=True)
+        except OSError:
+            blocked.append(p)
+    return blocked
+
+
+def _clear_work(work, s):
+    """A setup that worked: what jobs made goes. A folder a failed switch set aside stays: it may hold the person's model."""
+    if work.is_symlink():     # never follow it: it may point at a library (rmtree refused it before, too)
+        s.pop('work', None)
+        return
+    for p in (work.iterdir() if work.is_dir() else ()):
+        if not p.name.startswith('kept-'):
+            shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
+    if not any(work.glob('kept-*')):
+        shutil.rmtree(work, ignore_errors=True)
+        s.pop('work', None)
+
+
 def opened(settings_dir, data, note):
     """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder."""
     settings_dir = Path(settings_dir)
@@ -1683,15 +1879,22 @@ def opened(settings_dir, data, note):
             print('setup: mark_checked:', type(e).__name__, e, flush=True)
     if note and note.get('old') and note['old'] not in s.get('old', []):
         s.setdefault('old', []).append(note['old'])
-    if work:
+    if work and note and note.get('again'):      # a switch kept for the next start keeps its pending file and its unpack;
+        try:                                     # its finished job goes, so setup manages the library in use meanwhile
+            _job_file(settings_dir).unlink()
+        except OSError:
+            pass
+    elif work:
         install.confirm(_pending_file(settings_dir))
         try:
             job = json.loads(_job_file(settings_dir).read_text(encoding='utf-8'))
         except (OSError, ValueError):
             job = None
         if note or (isinstance(job, dict) and job.get('state') == 'done' and not job.get('check')):   # a check installed nothing
-            shutil.rmtree(work, ignore_errors=True)
-            s.pop('work', None)
+            if note and note.get('error'):
+                _keep_unpacked(work, note)
+            else:
+                _clear_work(work, s)
             try:
                 _job_file(settings_dir).unlink()
             except OSError:

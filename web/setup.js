@@ -80,12 +80,14 @@
   let view = 'choose';
   const CLOUD_POLL_MS = 3000, CLOUD_POLLS = 20;   // the iCloud count runs in the engine's background: ask again for about a minute
   let cloudPolls = 0, cloudT = null, cloudFor = '';   // one timer for the open library (cloudFor), at most CLOUD_POLLS asks
-  let choice = { pack: null, ai: false, map: null };   // map: the selected state code
+  let choice = { pack: null, ai: false, map: null };   // map: the selected state code, or 'none' to skip the map
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
   let confirmCancel = false, confirmRemove = false, confirmOld = false;
   let note = '', noteOk = false;
+  let emptyTries = 0;     // times state was asked again because the manifest came back with no libraries
+  let shown = '';         // the state answer the screen last drew: a background answer the same as it draws nothing
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something; {sure}: this page saw it from the start
   let U = null;           // GET updates: {supported, notify}. null (an engine without it, or the server version's {supported: false}): no control
 
@@ -128,21 +130,24 @@
   const mapName = id => id === 'us' ? 'the whole US' : (mapById(id) || {}).title || id;
   /* the detailed map the library will have once the chosen pack is in: the person's state map, or the one the pack carries */
   const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
-  const packMap = id => { const p = packById(id) || {}; return 'map' in p ? p.map || null : PACK_MAP[id] || null };
+  const packMap = id => { const p = packById(id) || {}; return p.map || PACK_MAP[id] || null };   // validate() nulls an omitted packs[].map, so a null falls back to what the pack carries
   const mapNow = () => { const c = cur() || {}; return choice.pack && choice.pack !== c.pack ? packMap(choice.pack) : (c.map && c.map !== 'base' ? c.map : packMap(c.pack)) };
-  const selectedState = () => choice.map || (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
+  const canSkipMap = () => { const n = mapNow(); return !n || n === 'us' };   // Small carries no state map, All carries every one; Medium carries its own
+  const skippedMap = () => choice.map === 'none' && canSkipMap();   // the person chose no local map; add one later from Settings
+  const setPack = id => { if (id !== choice.pack && choice.map === 'none') choice.map = null; choice.pack = id };   // 'none' means something different per pack, so a switch drops it and the person chooses again
+  const selectedState = () => skippedMap() ? '' : ((choice.map !== 'none' && choice.map) || (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '');
   const addresses = () => (S.manifest && S.manifest.address_indexes) || [];
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
-  const mapMissing = () => !selectedState();
-  const mapAdds = () => choice.map && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const mapMissing = () => !selectedState() && !skippedMap();
+  const mapAdds = () => choice.map && choice.map !== 'none' && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
   function packSummary(p) {
     const state = p.id === 'medium' ? selectedState() : '';
     const map = maps().length && state ? mapName(state) : 'California';
     const text = p.summary_key
       ? tr(p.summary_key, p.id === 'medium' ? { map } : null, p.summary || '')
       : (p.summary || '');
-    if (p.id !== 'medium' || p.summary_key || !maps().length) return text;
+    if (p.id !== 'medium' || p.summary_key || !maps().length || skippedMap()) return text;
     // Older manifests have no catalogue key; preserve their summary while replacing the bundled map name.
     return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : tr('setup.yourState', null, 'your state')));
   }
@@ -184,15 +189,25 @@
     return { dl, need };
   }
 
-  async function load() {
-    const upd = call('updates').catch(() => null);   // alongside state: a missing route only hides the control
-    try { S = await call('state') }
+  async function load(bg) {
+    const was = view;
+    const upd = bg ? null : call('updates').catch(() => null);   // alongside state: a missing route only hides the control. Not asked again in the background
+    let s;
+    try { s = await call('state') }
     catch (e) {
+      if (bg) return;
       main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b data-i18n="setup.error">Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again" data-i18n="setup.tryAgain">Try again</button></p></div></div>`;
       globalThis.LastbookI18n?.apply(main);
-      $('#again').onclick = load;
+      $('#again').onclick = () => load();
       return;
     }
+    if (bg && view === 'job') return;   // a job started while this was asked: the answer is older than it
+    const same = bg && JSON.stringify(s) === shown;
+    shown = JSON.stringify(s);
+    S = s;
+    // The person moved on while this was asked (Copy, say), or is on a screen without the lists: the newer lists wait for
+    // when they come back, and the screen they are on stays.
+    if (bg && (view !== was || (view !== 'manage' && view !== 'choose'))) { askAgain(); return }
     const rf = (S.recommend || {}).folder;
     folder = folder || (cur() && cur().folder) || S.default_folder || (rf ? asData(rf) : '');
     if (!choice.pack) {
@@ -202,14 +217,19 @@
       choice.ai = !!rec.ai && aiFits();
       if (cur()) { choice.pack = cur().pack; choice.ai = !!cur().model }
     }
-    const u = await upd;
-    U = u && !u.error ? u : null;
+    if (!bg) { const u = await upd; U = u && !u.error ? u : null }   // a background answer keeps what the first load found, with no second wait
     const j = S.job;
     if (j && j.state && j.state !== 'done' && !(j.state === 'failed' && errCode(j.error) === 'cancelled')) view = 'job';
     else if (j && j.state === 'done') view = (j.copy || j.check) && cur() ? 'manage' : 'done';   // a finished copy, or Check now: back to Library and local AI
     else if (cur() || S.mode === 'manage' || MANAGE_ASKED) view = cur() ? 'manage' : 'choose';
     $('#sBack').hidden = !cur();
-    render(true);
+    if (!bg) render(true);
+    else if (!same) keepFocus(() => render(false));   // a background answer updates the screen without moving focus or scrolling
+    askAgain();
+  }
+  // From source there is no bundled manifest: the engine may still be fetching it. Ask again while the list is empty.
+  function askAgain() {
+    if (!packs().length && view !== 'job' && emptyTries++ < 8) setTimeout(() => { if (!packs().length && view !== 'job') load(true).then(() => { if (view === 'job') poll() }) }, 2500);
   }
 
   /* ------------------------------------------------------------ views */
@@ -222,6 +242,14 @@
     else if (view === 'done') doneView();
     else if (view === 'copy') copyView();
     if (focus && !languageHasFocus()) { const h = main.querySelector('h1'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }) } scrollTo(0, 0) }
+  }
+  function keepFocus(draw) {   // the control that had focus has it again after the redraw, so a keyboard user stays where they were
+    const a = document.activeElement, inMain = a && a !== main && main.contains(a);
+    const sel = !inMain ? '' : a.id ? '#' + CSS.escape(a.id) : a.dataset && a.dataset.act ? `[data-act="${CSS.escape(a.dataset.act)}"]`
+      : a.name ? `[name="${CSS.escape(a.name)}"][value="${CSS.escape(a.value)}"]` : '';
+    draw();
+    const back = sel && main.querySelector(sel);
+    if (back && !back.disabled) back.focus({ preventScroll: true });
   }
   function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = ''; srv.open = false; srv.note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
 
@@ -273,7 +301,7 @@
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span data-i18n="setup.settingsTitle">Library and local AI</span></button>` : ''}
       ${c ? '<h1 data-i18n="setup.changeLibrary">Change the library</h1>' : '<h1 data-i18n="setup.title">Set up Lastbook</h1>'}
-      ${c ? '' : '<p class="lead" data-i18n="setup.chooseIntro">Choose your state and library. Lastbook downloads them for offline use.</p>'}
+      ${c ? '' : '<p class="lead" data-i18n="setup.chooseIntro">Choose your library. Lastbook downloads it for offline use; a state map is optional.</p>'}
       ${computer()}
       ${c ? '' : recommendLine()}
       ${found ? `<h2>Found on this computer</h2><div class="s-founds">${found}</div>` : ''}
@@ -290,7 +318,7 @@
         <button class="s-link" id="haveFile">Choose a library zip or AI model file</button>
       </div>
       <p class="s-note" id="haveNote" hidden></p>`;
-    main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { choice.pack = r.value; shortfall = null; mapSection(); summary() });
+    main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { setPack(r.value); shortfall = null; mapSection(); summary() });
     const box = $('#aiBox'); if (box && !box.disabled) box.onchange = () => { choice.ai = box.checked; shortfall = null; summary() };
     main.querySelectorAll('[data-use]').forEach(b => b.onclick = () => useFile((S.found || [])[+b.dataset.use].path, b));
     $('#start').onclick = start;
@@ -323,13 +351,13 @@
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
+    let hint = skippedMap() ? (now === 'us' ? 'No street-address search. You can add it later from Settings.' : 'No local map. You can add one later from Settings.') : !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
     if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your state map is already included.') + ' Street-address search is not available for this state yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
       ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your state for offline street-address search.</p>' : ''}
       <label class="s-maplabel" for="mapSel">Choose your state</label>
-      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected ? '' : ' selected'}>Select a state</option>${opts}</select>
+      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected || skippedMap() ? '' : ' selected'}>Select a state</option>${canSkipMap() ? `<option value="none"${skippedMap() ? ' selected' : ''}>${now === 'us' ? 'No street-address search' : 'No local map'} — skip for now</option>` : ''}${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;
     $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
   }
@@ -520,10 +548,10 @@
     wireUpdates();
     cloudPoll(c);
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
-    if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
-    if ($('#upgrade')) $('#upgrade').onclick = () => { choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
+    if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { setPack(c.pack); choice.ai = !!c.model; go('choose') };
+    if ($('#upgrade')) $('#upgrade').onclick = () => { setPack(bigger[0].id); choice.ai = !!c.model; go('choose') };
     if ($('#mapCh')) $('#mapCh').onclick = () => { choice.pack = c.pack; choice.ai = !!c.model; choice.map = null; go('choose'); const m = $('#mapSel'); if (m) m.focus() };
-    if ($('#addAi')) $('#addAi').onclick = () => { choice.pack = c.pack; choice.ai = true; go('choose') };
+    if ($('#addAi')) $('#addAi').onclick = () => { setPack(c.pack); choice.ai = true; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
     if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', 'The local AI was removed.');   // the engine stops the AI first

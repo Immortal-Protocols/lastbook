@@ -137,25 +137,66 @@ FIRST = {
 # for them found nothing: [guide, choice] that comes first.
 ALREADY_COVERED = {
     'pets': ['food', 'special'], 'propane': ['power', 'gas'], 'propane tank': ['power', 'gas'], 'dental': ['health', None],
+    'respirator': ['disaster', 'smoke'], 'N95 respirator': ['disaster', 'smoke'], 'greenhouse': ['repair', 'build'],
+    'toothpaste': ['health', None], 'bandage': ['hurt', None], 'gauze': ['hurt', None], 'goggles': ['repair', None],
+    'antenna': ['comms', None], 'documents': ['disaster', None], 'important documents': ['disaster', None],
+    'bruise': ['hurt', 'bone'], 'sling': ['hurt', 'bone'], 'stretcher': ['hurt', 'nohelp'], 'stinger': ['hurt', 'sting'],
+    'graze': ['hurt', 'closing'], 'spoilage': ['preserve', 'jarcheck'], 'distillation': ['water', 'chemical'],
+    'honing': ['repair', 'dull'],
+    'fermentation': ['preserve', None], 'kombucha': ['preserve', None], 'radiological': ['disaster', None],
 }
 # An emergency that happens to mention a new word still opens the urgent choice first, not the routine one the word was added to.
 URGENT_FIRST = {
     'child unconscious after pet food': ['hurt', 'breathing'], 'child swallowed pet food': ['hurt', 'poison'],
+    'child not breathing respirator': ['hurt', 'breathing'], 'child swallowed toothpaste': ['hurt', 'poison'],
+    'bleeding through the bandage': ['hurt', 'bleeding'], 'bleeding wont stop bandage soaked': ['hurt', 'bleeding'],
+    'unconscious bleeding bandage': ['hurt', 'breathing'], 'bandage a burn': ['hurt', 'burn'], 'duct tape wound': ['hurt', 'bleeding'],
+    'bruise on head after fall': ['hurt', 'head'], 'head injury bruise': ['hurt', 'head'], 'bruised and bleeding': ['hurt', 'bleeding'],
+    'graze bleeding heavily': ['hurt', 'bleeding'], 'bleeding stinger': ['hurt', 'bleeding'], 'stinger throat swelling': ['hurt', 'breathing'],
+    'stretcher neck injury': ['hurt', 'head'], 'carry on stretcher not breathing': ['hurt', 'breathing'],
+    'pain in left arm and chest': ['hurt', 'sudden'],
 }
 # Searches the new words must not disturb: [guide, choice] that comes first.
 UNDISTURBED = {
     'bus': ['disaster', 'no-car'], 'no bus': ['disaster', 'no-car'], 'bar soap': ['sanitation', 'hands'],
     'heat wave': ['shelter', 'heat'], 'grill': ['food', 'cook'], 'canned food': ['food', 'cook'],
+    # Everyday phrases that opened the wrong guide or none: "no electricity" opened Burn or scald, "high fever" the
+    # high-rise fire choice, and "bathroom" and "no cell service" found nothing. The rest are guards. The word is on
+    # the long outage choice only: on "The power just went out" as well, "electric shock from a downed power line"
+    # left the damaged home choice (test_topic_search_emergency).
+    'no electricity': ['power', 'long-outage'], 'electricity': ['power', 'long-outage'],
+    'no electricity for days': ['power', 'long-outage'], 'electricity burn': ['hurt', 'burn'], 'electric shock': ['hurt', 'burn'],
+    'high fever': ['health', 'start'], 'baby has a high fever': ['health', 'start'], 'high blood pressure': ['health', 'chronic'],
+    'bathroom': ['sanitation', None], 'where to go to the bathroom': ['sanitation', None], 'bat bite': ['hurt', 'animal-bite'],
+    'no cell service': ['comms', 'phones-down'], 'radio reception': ['comms', 'alerts-radio'], 'service dog': ['hurt', 'animal-bite'],
     'cut': ['hurt', 'bleeding'], 'well': ['land', 'water-source'], 'storm': ['disaster', 'flood'],
+    # Words used in Britain, Australia, India and elsewhere for things the guides already cover. The last five are guards.
+    'petrol': ['power', 'generator'], 'kerosene': ['shelter', 'co'], 'paraffin': ['shelter', 'co'], 'aircon': ['shelter', 'heat'],
+    'powerbank': ['power', 'batteries-solar'], 'cooker': ['food', 'cook'], 'hob': ['food', 'cook'], 'mobile': ['comms', None],
+    'the loo wont flush': ['sanitation', 'noflush'], 'mobile phone': ['comms', 'phones-down'], 'smell gas': ['power', 'gas'],
+    'looks bent': ['hurt', 'bone'], 'collected rainwater': ['land', None], 'kerosene heater': ['shelter', 'co'],
     'ice': ['water', 'inhome'], 'micro-hydro': ['energy', None], 'wind': ['disaster', 'hurricane'],
     'winter storm': ['shelter', 'cold'], 'furnace smells like gas': ['power', 'gas'], 'gas furnace': ['power', 'gas'],
     'lost in the forest': ['comms', 'signal'],
     'baby formula': ['food', 'special'], 'food allergies': ['food', 'outage'], 'spoiled food': ['food', 'outage'],
+    # "pack" starts "package", so packing searches opened the suspicious package choice. The packing choice cites the
+    # two readings on what to take from the guide's own preparation list. Its words are phrases, counted only when
+    # the rest of the search is everyday words, so a search about something else keeps its guide. The rest are guards.
+    'what to pack': ['disaster', 'pack'], 'pack a bag': ['disaster', 'pack'], 'packing': ['disaster', 'pack'],
+    'go bag': ['disaster', 'pack'], 'what to pack to evacuate': ['disaster', 'pack'],
+    'flood packing': ['disaster', 'flood'], 'ice pack': ['disaster', 'explosion'], 'pack wound': ['hurt', 'bleeding'],
+    'what to pack for a hurricane': ['disaster', 'hurricane'], 'sleeping bag': ['disaster', None],
+    'suspicious package': ['disaster', 'explosion'], 'unattended package': ['disaster', 'explosion'],
+    'take shelter': ['disaster', 'shelter-in-place'],
     'pet food': ['food', 'outage'],
     'dentist': ['health', None], 'toothache': ['health', 'teeth'],
     'cold frame': ['repair', 'build'], 'freezing': ['shelter', 'cold'],
     'fire alarm': ['disaster', 'home-fire'], 'smoke alarm': ['disaster', 'home-fire'], 'smoke': ['disaster', 'smoke'],
     'fires after an earthquake': ['disaster', 'earthquake-after'],
+    # Words from readings the throw-out choice already cites (refreezing thawed food, dented cans). The last four are guards.
+    'refreeze': ['food', 'throwout'], 'can i refreeze': ['food', 'throwout'], 'defrosted chicken': ['food', 'throwout'],
+    'dented can': ['food', 'throwout'], 'thaw frozen pipes': ['water', 'inhome'], 'freezer thawed': ['food', 'outage'],
+    'frostbite thawed': ['hurt', 'heatcold'], 'swollen can': ['food', 'throwout'],
     'shed': ['repair', None], 'generator load': ['power', 'generator'], 'air quality': ['shelter', 'smoke'],
 }
 # A search that names a sign of a life-threatening emergency shows that choice, even if another choice in the guide
@@ -173,7 +214,16 @@ URGENT = {
 }
 # A breathing emergency after a sting must not open routine sting care.
 NOT_STING = ["bee sting can't breathe", 'bee sting cannot breathe', 'bee sting unconscious', 'wasp sting unconscious']
-TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *FIRST, *ALREADY_COVERED, *URGENT_FIRST, *UNDISTURBED, *URGENT, *EVERYDAY, *LISTED, *NOT_STING})
+# A search starts a word, so "pain" also finds "paint" in the garden soil hint ("lead paint"). Pain opens a medical guide
+# first, and paint still opens the soil choice.
+PAIN_NOT_PAINT = {
+    'pain': ['health', 'start'], 'stomach pain': ['health', 'start'], 'back pain': ['health', 'start'],
+    'left arm pain': ['health', 'start'], 'jaw pain': ['health', 'start'], 'severe pain': ['health', 'start'],
+    'child in pain': ['health', 'start'], 'chest pain': ['hurt', 'sudden'], 'burn pain': ['hurt', 'burn'],
+    'paint': ['grow', 'soil-unknown'], 'lead paint': ['grow', 'soil-unknown'], 'peeling paint': ['grow', 'soil-unknown'],
+    'swallowed paint': ['hurt', 'poison'],
+}
+TOPS = sorted({*SAME_AS, *SAME_AS.values(), *SAME_GUIDE, *SAME_GUIDE.values(), *FIRST, *ALREADY_COVERED, *URGENT_FIRST, *UNDISTURBED, *URGENT, *EVERYDAY, *LISTED, *NOT_STING, *PAIN_NOT_PAINT})
 
 # Words used in Thailand and Denmark. Emergency numbers find what 911 finds; haze, PM2.5 and cloudburst sit in a
 # guide's keywords only and open the guide their US word opens. Thailand's fire number, 199, is left out: a fire
@@ -338,6 +388,16 @@ HEART_ORDINARY = {
     'water heater stopped': ['water', 'inhome'],
 }
 TOPS = sorted({*TOPS, *HEART_URGENT, *HEART_ORDINARY})
+# "cell service" is a phrase of the phones-down choice, so it counts only when the rest of the search is everyday
+# words. A search that also asks about something else keeps every row it had: query -> all the rows shown, in order.
+CELL_SERVICE_ROWS = {
+    'no cell service': [['comms', 'phones-down']], 'lost cell service at home': [['comms', 'phones-down']],
+    'no cell service cant call 911': [['comms', 'phones-down'], ['hurt', None]],
+    'cant call 911': [['comms', 'phones-down'], ['hurt', None]],
+    'no cell service how do i call for help': [['comms', 'phones-down'], ['hurt', 'nohelp']],
+    'solar cell': [['power', 'batteries-solar']], 'cell phone battery': [['power', 'batteries-solar']],
+}
+TOPS = sorted({*TOPS, *CELL_SERVICE_ROWS})
 
 # Another form of a word a guide already has: a plural, -ed or -ing. Alone, each found nothing, because a typed word
 # must start a guide's word and "tourniquets" is longer than "tourniquet". A search for the first must give the same
@@ -406,6 +466,30 @@ SLIDES_UNDISTURBED = {
     'back labour poisoned': ['hurt', 'head'],
 }
 TOPS = sorted({*TOPS, *SLIDES_AND_ERUPTIONS, *SLIDES_UNDISTURBED})
+
+# Three short words that start a longer word, from the list in #333 and the benchmark in #430: "rat" starts
+# "rattlesnake" in the snakebite hint, and "out" starts "outage" in the fridge-and-freezer choice. Phrases on the
+# choice that answers each search fix them without touching the matching: [guide, choice] that comes first.
+OUT_AND_RAT = {
+    'rat bite': ['hurt', 'animal-bite'], 'rat bites': ['hurt', 'animal-bite'],
+    'bitten by a rat': ['hurt', 'animal-bite'], 'rodent bite': ['hurt', 'animal-bite'],
+    'out of formula': ['food', 'special'], 'out of baby formula': ['food', 'special'],
+    'running out of formula': ['food', 'special'], 'running low on formula': ['food', 'special'],
+    'out of insulin': ['health', 'chronic'], 'ran out of insulin': ['health', 'chronic'],
+    'running out of insulin': ['health', 'chronic'], 'running low on insulin': ['health', 'chronic'],
+    'out of my prescriptions': ['health', 'chronic'], 'ran out of my medication': ['health', 'chronic'],
+}
+# Searches those phrases must not disturb. "out of" is everyday wording for running low on anything, and the fridge
+# choice is still the right answer for food; a snake bite is still a snake bite; rats in the rubbish are sanitation.
+OUT_AND_RAT_UNDISTURBED = {
+    'out of food': ['food', 'outage'], 'running out of food': ['food', 'outage'],
+    'out of water': ['hurt', 'diarrhea'], 'ran out of water': ['hurt', 'diarrhea'],
+    'out of gas': ['power', 'first-hours'], 'power outage': ['shelter', 'co'],
+    'snake bite': ['hurt', 'snakebite'], 'rattlesnake': ['hurt', 'snakebite'],
+    'rats': ['sanitation', 'garbage'],   # "rat poison" is not pinned here: #331 moves it to the poison choice
+    'formula': ['food', 'special'], 'insulin': ['health', 'chronic'],
+}
+TOPS = sorted({*TOPS, *OUT_AND_RAT, *OUT_AND_RAT_UNDISTURBED})
 
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
@@ -551,7 +635,7 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, us=us, segmenter=r['segmenter']):
                     self.assertTrue(top[q])
                     self.assertEqual(top[q][0][0], top[us][0][0])
-            for q, first in [*FIRST.items(), *ALREADY_COVERED.items(), *URGENT_FIRST.items(), *UNDISTURBED.items()]:
+            for q, first in [*FIRST.items(), *ALREADY_COVERED.items(), *URGENT_FIRST.items(), *UNDISTURBED.items(), *PAIN_NOT_PAINT.items()]:
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][0], first)
 
@@ -645,6 +729,13 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [PREGNANT])
 
+    def test_cell_service_keeps_the_other_rows(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, rows in CELL_SERVICE_ROWS.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q], rows)
+
     def test_labor_and_labour_alike(self):
         # Every phrase spelled one way has its twin in the other spelling.
         for field in ('phrases', 'weak'):
@@ -691,6 +782,13 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q], [])
 
+
+    def test_out_of_and_rat_reach_the_choice_that_answers_them(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in {**OUT_AND_RAT, **OUT_AND_RAT_UNDISTURBED}.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
 
     def test_avalanche_landslide_and_volcano(self):
         for r in self.modes:

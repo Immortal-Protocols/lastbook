@@ -148,6 +148,35 @@ class AddressSearchTests(unittest.TestCase):
                 self.assertEqual(result[0]['detail'], 'St. Louis, MO, 63101')
         self.assertEqual(find_addresses('10 Oak Ave Saint Louis Park MO', self.geo), [])
 
+    def test_diagonal_directions_match_full_and_abbreviated_names(self):
+        directions = (('NE', 'Northeast'), ('NW', 'Northwest'), ('SE', 'Southeast'), ('SW', 'Southwest'))
+        rows = []
+        for number, (short, full) in enumerate(directions, 100):
+            rows.extend([
+                (str(number), f'{full} 9th Street', 'Example', 'WA', '98000', 0.0, 0.0),
+                (str(number + 100), f'9th Street {short}', 'Example', 'WA', '98000', 0.0, 0.0),
+                (str(number + 200), f'{short} 9th Street', 'Example', 'WA', '98000', 0.0, 0.0),
+                (str(number + 300), f'9th Street {full}', 'Example', 'WA', '98000', 0.0, 0.0),
+            ])
+        self.write_state('WA', rows)
+        for number, (short, full) in enumerate(directions, 100):
+            for query, name in (
+                    (f'{number} {short} Ninth St WA', f'{number} {full} 9th Street'),
+                    (f'{number} {full} Ninth St WA', f'{number} {full} 9th Street'),
+                    (f'{number + 100} Ninth St {short} WA', f'{number + 100} 9th Street {short}'),
+                    (f'{number + 100} Ninth St {full} WA', f'{number + 100} 9th Street {short}'),
+                    (f'{number + 200} {short} Ninth St WA', f'{number + 200} {short} 9th Street'),
+                    (f'{number + 200} {full} Ninth St WA', f'{number + 200} {short} 9th Street'),
+                    (f'{number + 300} Ninth St {short} WA', f'{number + 300} 9th Street {full}'),
+                    (f'{number + 300} Ninth St {full} WA', f'{number + 300} 9th Street {full}')):
+                with self.subTest(query=query):
+                    result = find_addresses(query, self.geo)
+                    self.assertEqual([row['name'] for row in result], [name])
+        self.assertEqual(find_addresses('100 NW Ninth St WA', self.geo), [])
+        self.assertEqual(find_addresses('101 NE Ninth St WA', self.geo), [])
+        self.assertEqual(find_addresses('999 NE Ninth St WA', self.geo), [])
+        self.assertEqual(find_addresses('100 NE Ninth St WA 99999', self.geo), [])
+
     def test_plain_zip_remains_place_query(self):
         self.assertFalse(is_address_query('48375'))
         self.assertFalse(is_address_query('Novi MI'))

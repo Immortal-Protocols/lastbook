@@ -42,6 +42,7 @@
   "chemical",
   "shelter in place",
   "radiation",
+  "radiological",
   "nuclear",
   "nuke",
   "missiles",
@@ -49,7 +50,7 @@
   "bombing",
   "explosions",
   "dirty bomb",
-  "go bag",
+  "go bag", "documents",
   "kit",
   "family plan",
   "high-rise",
@@ -171,7 +172,7 @@
   {
    "id": "smoke",
    "label": "Wildfire smoke is making the air bad",
-   "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate",
+   "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate, N95 respirator",
    "read": [
     {
      "doc": "a90ff7e6f3cf01",
@@ -547,6 +548,27 @@
      "page": 75,
      "label": "CERT: nuclear power plant emergency",
      "note": "Follow local instructions, sheltering vs evacuating, closing air intakes, and showering and bagging clothes after exposure."
+    }
+   ]
+  },
+  {
+   "id": "pack",
+   "label": "What to pack for an evacuation",
+   "hint": "Checklist, the 5 Ps",
+   "phrases": ["pack", "packing", "go bag", "bug out bag", "grab bag"],
+   "context": ["bag", "bags", "evacuate", "evacuating", "leave", "leaving", "emergency", "hurry", "quickly", "list", "family", "kids", "car"],
+   "read": [
+    {
+     "doc": "2848f4bffb8109",
+     "page": 7,
+     "label": "The Five Ps of evacuation and a go-bag",
+     "note": "People, Prescriptions, Papers, Personal needs, Priceless items, and storing important documents safely."
+    },
+    {
+     "doc": "db4d9783fca34b",
+     "page": 2,
+     "label": "FEMA 2024 emergency supply kit checklist",
+     "note": "Basic kit items — water, food, radio with NOAA alerts, flashlight, whistle, masks, plastic sheeting, utility wrench — and extras on the reverse."
     }
    ]
   }

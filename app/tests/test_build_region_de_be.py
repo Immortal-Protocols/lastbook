@@ -134,13 +134,20 @@ def geojson_point(lon, lat, **properties):
     return {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [lon, lat]}, 'properties': properties}
 
 
+# A stand-in for Berlin's districts: two squares side by side, so a shared edge is part of the test too. The points
+# below are real places; Teltow, the Woltersdorf hospital and the Teltow pharmacy lie beyond the real boundary as well.
+DISTRICTS = [{'type': 'Feature', 'properties': {'namgem': name}, 'geometry': {'type': 'MultiPolygon', 'coordinates': [
+    [[[west, 52.45], [east, 52.45], [east, 52.55], [west, 52.55], [west, 52.45]]]]}}
+    for name, west, east in (('Steglitz-Zehlendorf', 13.30, 13.38), ('Mitte', 13.38, 13.45))]
+
+
 class PlaceSourceTests(unittest.TestCase):
     """build_map puts the Geoportal's hospitals, pharmacies, fire stations and police into national.sqlite in place of
     OpenStreetMap's, so the place finder must not label everything it finds there as OpenStreetMap."""
 
     def test_each_place_names_the_source_it_came_from(self):
         layers = {'hospitals_plan': [geojson_point(13.3777, 52.5255, kkh_standort='Campus Charité Mitte')],
-                  'police': [geojson_point(13.41, 52.52, langbezeichnung='Abschnitt 32')]}
+                  'police': [geojson_point(13.41, 52.52, langbezeichnung='Abschnitt 32')], 'districts': DISTRICTS}
         with tempfile.TemporaryDirectory() as tmp:
             geo = Path(tmp)
             national = sqlite3.connect(geo / 'national.sqlite')
@@ -148,7 +155,11 @@ class PlaceSourceTests(unittest.TestCase):
                                    'CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, minz INTEGER, geom BLOB);')
             national.executemany('INSERT INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)', [   # as build_map leaves it
                 ('hospital', 'Campus Charité Mitte', 13.3777, 52.5255), ('police', 'Polizei Abschnitt 32', 13.41, 52.52),
-                ('water_well', 'Plumpe', 13.40, 52.51), ('cafe', 'Café Einstein', 13.35, 52.50)])
+                ('water_well', 'Plumpe', 13.40, 52.51), ('cafe', 'Café Einstein', 13.35, 52.50),
+                ('hospital', 'Sana Krankenhaus Woltersdorf', 13.7622, 52.4475)])     # beyond the boundary: OpenStreetMap's
+            national.executemany("INSERT INTO feat(layer,cls,name,geom) VALUES ('place',?,?,?)", [
+                (cls, name, struct.pack('<iiii', 0, 0, round(lon * 1e6), round(lat * 1e6)))
+                for cls, name, lon, lat in (('suburb', 'Lichterfelde', 13.31, 52.46), ('town', 'Teltow', 13.2645, 52.4016))])
             national.commit()
             national.close()
             with mock.patch.object(builder, 'features', lambda key: layers.get(key, [])):
@@ -159,9 +170,43 @@ class PlaceSourceTests(unittest.TestCase):
         self.assertEqual(found, [
             ('Café Einstein', 'cafe', 'Berlin (OpenStreetMap)', 'OpenStreetMap'),
             ('Campus Charité Mitte', 'hospital', 'Berlin (Geoportal)', 'Geoportal Berlin'),     # once, from its record
+            ('Lichterfelde', 'suburb', 'Berlin (OpenStreetMap)', 'OpenStreetMap'),
+            ('Mitte', 'district (Bezirk)', 'Berlin', 'Geoportal Berlin'),
             ('Plumpe', 'water well', 'Berlin (OpenStreetMap)', 'OpenStreetMap'),
             ('Polizei Abschnitt 32', 'police', 'Berlin (Geoportal)', 'Geoportal Berlin'),
+            ('Sana Krankenhaus Woltersdorf', 'hospital', 'Brandenburg (OpenStreetMap)', 'OpenStreetMap'),
+            ('Steglitz-Zehlendorf', 'district (Bezirk)', 'Berlin', 'Geoportal Berlin'),
+            ('Teltow', 'town', 'Brandenburg (OpenStreetMap)', 'OpenStreetMap'),     # a place on each side of the boundary
         ])
+
+
+class BoundaryTests(unittest.TestCase):
+    """The Geoportal lists Berlin's facilities only: its records replace OpenStreetMap's points inside the city
+    boundary, and the hospitals and pharmacies just beyond it, which the extract also holds, stay on the map."""
+
+    def test_official_records_replace_openstreetmap_only_inside_berlin(self):
+        layers = {'hospitals_plan': [geojson_point(13.3777, 52.5255, kkh_standort='Campus Charité Mitte')],
+                  'pharmacies': [geojson_point(13.40, 52.51, aponame='Apotheke am Markt')], 'districts': DISTRICTS}
+        db = sqlite3.connect(':memory:')
+        db.execute('CREATE TABLE poi(id INTEGER PRIMARY KEY, cls TEXT, name TEXT, lon REAL, lat REAL)')
+        db.executemany('INSERT INTO poi(cls,name,lon,lat) VALUES (?,?,?,?)', [
+            ('hospital', 'Charité (OSM)', 13.3776, 52.5254), ('pharmacy', 'Apotheke (OSM)', 13.4001, 52.5101),
+            ('hospital', 'Sana Krankenhaus Woltersdorf', 13.7622, 52.4475), ('pharmacy', 'Teltow Apotheke', 13.249, 52.4037),
+            ('cafe', 'Café Einstein', 13.35, 52.50)])
+        with mock.patch.object(builder, 'features', lambda key: layers.get(key, [])):
+            replaced = builder.replace_official(db, builder.in_berlin())
+        self.assertEqual(replaced, {'hospital': 1, 'pharmacy': 1})
+        self.assertEqual(sorted(name for name, in db.execute('SELECT name FROM poi')), [
+            'Apotheke am Markt', 'Café Einstein', 'Campus Charité Mitte', 'Sana Krankenhaus Woltersdorf', 'Teltow Apotheke'])
+
+    def test_the_boundary_is_the_union_of_the_districts(self):
+        with mock.patch.object(builder, 'features', lambda key: DISTRICTS if key == 'districts' else []):
+            inside = builder.in_berlin()
+        self.assertTrue(inside(13.31, 52.46))       # in the first square
+        self.assertTrue(inside(13.44, 52.54))       # in the second
+        self.assertTrue(inside(13.3801, 52.50))     # just past the shared edge
+        self.assertFalse(inside(13.2645, 52.4016))  # Teltow
+        self.assertFalse(inside(13.46, 52.50))      # just past the outer edge
 
 
 class RebuildTests(unittest.TestCase):

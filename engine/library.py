@@ -115,9 +115,12 @@ def extract(r):
  if kind=='zim':return r,[],None
  ocr=ROOT/'ocr'/f'{uid}.json'
  if kind=='pdf' and ocr.exists():
-  data=json.loads(ocr.read_text(encoding='utf-8'))
-  if data.get('sha256')==r.get('sha256') and sum(len(p.get('text','')) for p in data.get('pages',[]))>100:
-   pages=[p.get('text','') for p in data['pages']]
+  try:
+   data=json.loads(ocr.read_text(encoding='utf-8'))
+   pages=[p.get('text','') for p in data.get('pages',[])] if data.get('sha256')==r.get('sha256') else []
+   if not all(isinstance(p,str) for p in pages):pages=[]
+  except (OSError,ValueError,TypeError,AttributeError):pages=[]  # use the original when the OCR cache is unreadable
+  if sum(len(p) for p in pages)>100:
    r.update(pages=len(pages),searchability='OCR text: verify against original page',ocr_path=ocr.relative_to(ROOT).as_posix())
    textpath.write_text('\n\f\n'.join(pages),encoding='utf-8');r['text_path']=textpath.relative_to(ROOT).as_posix()
    return r,pages,None

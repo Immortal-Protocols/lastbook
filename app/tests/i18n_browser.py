@@ -712,6 +712,20 @@ class Browser(unittest.TestCase):
             expect(page.locator('#main .result')).to_have_count(0)
             self.assertEqual(page_errors, [])
 
+    def test_english_no_results_fallback_is_tagged(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/find*', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'results': [], 'expanded': [], 'mode': 'all'})))
+            page.route('**/api/retrieve*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'results': []})))
+            page.goto(origin + '/#/search?q=zzqzxqwv')
+            expect(page.locator('.empty b span[lang="en"]')).to_have_text('No results for “zzqzxqwv”')
+            expect(page.locator('.empty p span[lang="en"]')).to_have_text(
+                'Try fewer words, or another word for the same thing.')
+
     def test_topic_card_fallbacks_are_tagged_as_english(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"de"}', encoding='utf-8')

@@ -1452,7 +1452,7 @@ async function passages(q, seq) {
     return true;
   } catch { return false }
 }
-const emptySearch = q => `<div class="empty"><span class="e-ico">${ico('search')}</span><b>${esc(tr('search.noResults', { query: q }, 'No results for “{query}”'))}</b><p>${esc(tr('search.tryFewer', null, 'Try fewer words, or another word for the same thing.'))}</p><div id="noteOffer"></div></div>`;
+const emptySearch = q => `<div class="empty"><span class="e-ico">${ico('search')}</span><b>${trLang('search.noResults', { query: q }, 'No results for “{query}”')}</b><p>${trLang('search.tryFewer', null, 'Try fewer words, or another word for the same thing.')}</p><div id="noteOffer"></div></div>`;
 /* Things I couldn't find (#116, engine/notes.py): when a search finds nothing, the person may keep a note of it, on this computer
    only. Nothing is kept unless they press the button. The engine answers only this computer, so elsewhere nothing is offered. */
 let notesOpen = null;

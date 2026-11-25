@@ -1044,13 +1044,52 @@ class Setup:
     def retry(self):
         with self.lock:
             if self.job and self.job['state'] == 'failed':
-                self.job['state'], self.job['error'] = 'waiting', None
-                self.job['plan']['retried'] = {}
-                for it in self.job['items']:
-                    if it['state'] != 'done':
-                        it['state'], it['error'] = 'waiting', None
+                self._go_again()
+        return self.public_job()
+
+    def _go_again(self):
+        self.job['state'], self.job['error'] = 'waiting', None
+        self.job['plan']['retried'] = {}
+        for it in self.job['items']:
+            if it['state'] != 'done':
+                it['state'], it['error'] = 'waiting', None
+        self._save_job()
+        self._run()
+
+    def download_again(self):
+        """Download again: offered only when a large zip that still did not match after its repair was kept (checksum, kept).
+        Retry checks it again from the disk, and some damage cannot be found that way: a changed byte in a member's local header
+        that its CRC-32 does not cover, such as its time. The kept download of that one file (.part and its .json) is deleted
+        and the job goes on as Retry does, so the file is downloaded whole again. Nothing else in the work folder, and no library,
+        is touched. After any other failure this does nothing, so a partial download that can resume is never thrown away."""
+        with self.lock:
+            job = self.job
+            err = (job or {}).get('error') or {}
+            if not job or job['state'] != 'failed' or err.get('code') != 'checksum' or err.get('kept') is not True:
+                return self.public_job()
+            name = err.get('name')
+            if name not in _plan_files(job['plan']):      # only a file this job downloads, and only where it downloads it
+                return self.public_job()
+            work = Path(job['plan']['work'])
+            folders = (work / 'downloads', _pack_parts_folder(work))
+            staged = [folder / (name + suffix) for folder in folders for suffix in ('.part', '.part.json', '.part.json.tmp')]
+            try:
+                _check_pack_paths(work, *folders, *staged)
+                for p in staged:
+                    try:
+                        p.unlink()
+                    except FileNotFoundError:
+                        pass
+            except download.Failed as e:
+                job['error'] = {'code': e.code, 'message': e.message}
                 self._save_job()
-                self._run()
+                return self.public_job()
+            except OSError as e:
+                job['error'] = {'code': 'folder', 'message': f'Lastbook could not delete the kept download of {name} ({type(e).__name__}: {e.strerror or e}).'}
+                self._save_job()
+                return self.public_job()
+            print(f'setup: {name}: the kept download was deleted; downloading it again whole', flush=True)
+            self._go_again()
         return self.public_job()
 
     def cancel(self):
@@ -1428,6 +1467,8 @@ class Setup:
             except download.Failed as e:
                 if e.code == 'unreachable':       # what the person needs to get the file another way, then choose it (use)
                     e.extra.update(name=name, size=f['size'], url=f['url'], sha256=f['sha256'])
+                elif e.code == 'checksum' and e.extra.get('kept'):   # which file Download again deletes, and its size for the screen
+                    e.extra.update(name=name, size=f['size'])
                 raise
 
     def _do_pack(self, it, plan, work, control):
@@ -1650,6 +1691,12 @@ def _pack_download(pack, work, sources, *, keep_original=False):
     if keep_original or name in sources or (downloads / name).is_file() or (downloads / (name + '.part')).is_file():
         return plan
     return {**plan, 'files': pack['parts'], 'split_archive': original['sha256']}
+
+
+def _plan_files(plan):
+    """The names of the files a job's plan downloads: its pack's (the zip or its parts), map's, address index's and model's."""
+    names = {f['name'] for key in ('pack', 'map', 'addresses') for f in ((plan.get(key) or {}).get('files') or [])}
+    return names | ({plan['model']['file']} if plan.get('model') else set())
 
 
 def _check_pack_paths(*paths):
@@ -1958,6 +2005,7 @@ ROUTES = {
     ('POST', 'resume'): lambda s, b: s.resume(),
     ('POST', 'cancel'): lambda s, b: s.cancel(),
     ('POST', 'retry'): lambda s, b: s.retry(),
+    ('POST', 'download-again'): lambda s, b: s.download_again(),
     ('POST', 'use'): lambda s, b: s.use(b.get('path'), library_only=b.get('library') is True),
     ('POST', 'finish'): lambda s, b: s.finish(),
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),

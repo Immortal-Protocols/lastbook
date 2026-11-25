@@ -77,7 +77,7 @@
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
-  let confirmCancel = false, confirmRemove = false, confirmOld = false;
+  let confirmCancel = false, confirmRemove = false, confirmOld = false, confirmAgain = false;   // confirmAgain: Download again, asked once more
   let note = '', noteOk = false;
   let emptyTries = 0;     // times state was asked again because the manifest came back with no libraries
   let shown = '';         // the state answer the screen last drew: a background answer the same as it draws nothing
@@ -241,7 +241,7 @@
     const back = sel && main.querySelector(sel);
     if (back && !back.disabled) back.focus({ preventScroll: true });
   }
-  function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = ''; srv.open = false; srv.note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
+  function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = confirmAgain = false; note = ''; srv.open = false; srv.note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
 
   /* ---- this computer */
   function computer() {
@@ -645,7 +645,9 @@
         'It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, '
         + (blockedModel ? 'then choose it here.' : 'then choose it with Choose again and “Choose a library zip or AI model file”.'), 'retry'],
       server: ['The download server stayed busy.', 'Your internet connection is fine, and what is downloaded is kept. Retry in a while.', 'retry'],
-      checksum: ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
+      checksum: e && e.kept   // a large zip repaired member by member that still does not match: kept. Retry checks it again; Download again deletes it
+        ? ['The download still does not match its published checksum, so it was not used.', `What was downloaded is kept. Retry checks it again and fetches only the parts it finds damaged. If it fails again, Download again deletes it and downloads all ${e.size ? size(e.size) + ' of it' : 'of it'} again.`, 'kept']
+        : ['The download came out damaged twice, so it was not used.', 'Retry to download it once more.', 'retry'],
       unpack: ['Unpacking did not finish.', 'Check there is room on the disk, then retry.', 'retry'],
       activate: ['The new library is ready but could not be switched in.', 'Retry, or close Lastbook and open it again.', 'retry'],
       check: ['The check stopped.', esc(errText(e) || 'A file could not be read.') + ' Nothing was changed or downloaded.', 'retry'],
@@ -654,7 +656,9 @@
     }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
     return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
       ${code === 'unreachable' && e && e.name ? facts(e) : ''}
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+      <p class="s-acts">${T[2] === 'kept' && confirmAgain
+        ? `<span class="s-confirm"><span>Delete what was downloaded and download ${e.size ? 'all ' + size(e.size) : 'all of it'} again?</span><button class="btn danger" data-act="again-yes">Download again</button><button class="btn plain" data-act="again-no">Keep it</button></span>`
+        : `${T[2] === 'retry' || T[2] === 'kept' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${T[2] === 'kept' ? `<button class="btn plain" data-act="again">${ico('down')}Download again</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button>`}</p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
@@ -729,7 +733,7 @@
     if (!j) { go(cur() ? 'manage' : 'choose'); return }
     if (j.state === 'done') { go('done'); return }
     syncRepair(j);
-    const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
+    const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + confirmAgain + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
     const head = jobHead(j);
     if (key !== shapeKey) {
       const had = lastAct || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null);
@@ -780,6 +784,9 @@
     if (a === 'cancel') { confirmCancel = true; jobView(S.job); main.querySelector('[data-act="cancel-no"]').focus(); return }
     if (a === 'cancel-no') { confirmCancel = false; jobView(S.job); return }
     if (a === 'cancel-yes') { confirmCancel = false; a = 'cancel' }
+    if (a === 'again') { confirmAgain = true; lastAct = 'again-no'; jobView(S.job); return }    // a day of downloading is thrown away: asked once more
+    if (a === 'again-no') { confirmAgain = false; lastAct = 'again'; jobView(S.job); return }
+    if (a === 'again-yes') { confirmAgain = false; a = 'download-again' }
     b.disabled = true; lastAct = a;
     try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { }
     if (a === 'cancel') { const was = S.job && S.job.copy, wasCheck = S.job && S.job.check; S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = wasCheck ? 'The check was stopped. Nothing was changed.' : was ? 'The copy was stopped. What was copied is on the drive.' : 'The download was cancelled.'; return }
@@ -858,6 +865,7 @@
   addEventListener('keydown', e => {
     if (e.key !== 'Escape' || languageHasFocus()) return;
     if (confirmCancel) { confirmCancel = false; jobView(S.job); const b = main.querySelector('[data-act="cancel"]'); if (b) b.focus() }
+    else if (confirmAgain) { confirmAgain = false; lastAct = 'again'; jobView(S.job) }
     else if (confirmRemove || confirmOld) { const f = confirmRemove ? '#rmAi' : '#rmOld'; confirmRemove = confirmOld = false; manageView(); $(f).focus() }
   });
   /* the window comes back to the front: the job may have moved on, or a restart paused it */

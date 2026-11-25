@@ -441,7 +441,7 @@ def pick_folder(prompt, start, *, files=False):
         pick_kind = 0x1000 if files else 0x20   # FILEMUSTEXIST or PICKFOLDERS
         _com(dialog, 9, ctypes.c_uint32)(options.value | pick_kind | 0x40 | 0x800 | 0x8)  # FORCEFILESYSTEM, PATHMUSTEXIST, NOCHANGEDIR
         _com(dialog, 17, wstr)(prompt)                                                                 # SetTitle
-        _com(dialog, 18, wstr)('Choose')                                                               # SetOkButtonLabel
+        _com(dialog, 18, wstr)(native_t('native.choose', 'Choose'))                                    # SetOkButtonLabel
         folder = vp()
         if ctypes.windll.shell32.SHCreateItemFromParsingName(wstr(str(start)), None, ctypes.byref(_guid('{43826D1E-E718-42EE-BC55-A1E261C37BFE}')),
                                                              ctypes.byref(folder)) == 0:
@@ -527,7 +527,7 @@ def choose_folder(title, text):
         form.HandleCreated += lambda s, a: caption(form.Handle.ToInt64(), light)
         if form.ShowDialog() != F.DialogResult.OK:
             return
-        chosen.append(pick_folder('Choose the folder called LastbookData', downloads()) or '')
+        chosen.append(pick_folder(native_t('native.chooseLastbookData', 'Choose the folder called LastbookData'), downloads()) or '')
 
     thread = n.Threading.Thread(n.Threading.ThreadStart(body))   # WinForms and the picker need a single-threaded apartment
     thread.SetApartmentState(n.Threading.ApartmentState.STA)
@@ -1131,7 +1131,7 @@ class Shell:
         print('web view process failed:', kind, args.Reason, flush=True)
         note(kind='process-failed', what=str(kind), reason=str(args.Reason))
         if kind == Kind.BrowserProcessExited:
-            message('The window part of Lastbook stopped working, so Lastbook will close. Your library is not affected.')
+            message(native_t('native.windowProcessFailed', 'The window part of Lastbook stopped working, so Lastbook will close. Your library is not affected.'))
             self.ui(self.form.Close)
         elif self.ended_why and kind in (Kind.RenderProcessExited, Kind.FrameRenderProcessExited):
             why, self.ended_why = self.ended_why, None

@@ -41,14 +41,19 @@ def installer_locale():
         try:
             data = json.loads(path.read_text(encoding='utf-8'))
             lang = data.get('language') if isinstance(data, dict) else None
-            if lang:
+            if isinstance(lang, str) and lang in SUPPORTED_INSTALLER_LOCALES:
                 return lang
         except (OSError, ValueError):
             continue
     try:
         langid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-        if (langid & 0x3FF) == 0x0A:  # LANG_SPANISH
+        primary = langid & 0x3FF
+        if primary == 0x0A:  # LANG_SPANISH
             return 'es-419'
+        if primary == 0x07:  # LANG_GERMAN
+            return 'de'
+        if langid in (0x0804, 0x1004):  # Simplified Chinese (China or Singapore)
+            return 'zh-Hans'
     except Exception:
         pass
     return 'en'
@@ -495,7 +500,7 @@ def run_window():
     thread.Start()
     thread.Join()
     if failure:
-        message(f'Lastbook Setup could not start.\n\n{failure[0]}', 0x10)
+        message(installer_t('installer.setupCouldNotStart', 'Lastbook Setup could not start.\n\n{detail}', detail=failure[0]), 0x10)
         return FAILED
     return result[0]
 

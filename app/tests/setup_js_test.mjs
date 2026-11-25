@@ -91,4 +91,24 @@ const check = (name, ok) => { if (!ok) { bad++; console.log('FAIL', name) } else
   check('and leave the scroll position alone', scrolls === 1);
 }
 
+{   // a kept checksum failure (#122): Download again is asked once more, Keep it goes back, and yes sends download-again, not retry
+  const error = { code: 'checksum', message: 'm', kept: true, name: 'Lastbook-Small.zip', size: 8.2e9 };
+  const item = { kind: 'pack', id: 'small', title: 'Small', state: 'failed', error, bytes_done: 8.2e9, bytes_total: 8.2e9 };
+  const failed = { state: 'failed', error, items: [item], overall: {} };
+  const again = { state: 'waiting', error: null, items: [{ ...item, state: 'waiting', error: null, bytes_done: 0 }], overall: {} };
+  const p = page({ state: () => state({ job: failed }), job: again, 'download-again': again });
+  await flush();
+  const html = () => p.el('#main').innerHTML, sent = name => p.calls.some(c => c[0] === name), click = a => p.acts()[a] && p.acts()[a].onclick();
+  check('kept: Retry and Download again are offered', !!p.acts().retry && !!p.acts().again && html().includes('downloads all 8.2 GB of it again'));
+  click('again'); await flush();
+  check('Download again asks once more first', html().includes('Delete what was downloaded and download all 8.2 GB again?') && !!p.acts()['again-yes'] && !p.acts().retry);
+  check('and sends nothing yet', !sent('download-again') && !sent('retry'));
+  click('again-no'); await flush();
+  check('Keep it goes back to the choices', !!p.acts().again && !!p.acts().retry && !html().includes('Delete what was downloaded'));
+  click('again'); await flush();
+  click('again-yes'); await flush();
+  check('yes sends download-again, not retry', sent('download-again') && !sent('retry'));
+  check('and the download is shown going again', !html().includes('s-err'));
+}
+
 process.exit(bad ? 1 : 0);

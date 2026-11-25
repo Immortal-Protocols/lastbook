@@ -123,6 +123,7 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/start` `{pack, ai: true or false, folder?}` | the new `job`, or `{error, need_bytes, free_bytes}` |
 | `GET /api/setup/job` | `job` |
 | `POST /api/setup/pause`, `/resume`, `/cancel`, `/retry` | `job` |
+| `POST /api/setup/download-again` | `job`. Only after a kept checksum failure (`checksum` with `kept: true`, below): deletes that one file's kept download (`.part` and its `.json`) and goes on as `retry` does, so the file is downloaded whole again. Nothing else in the work folder, and no library, is touched. After any other failure it does nothing and answers the job as it is |
 | `POST /api/setup/use` `{path, library?}` | uses a library or file already on this computer: `job` (verify, then unpack or activate). With `library: true` (*Open another library folder* in manage mode) only an existing LastbookData, or the folder holding one, is accepted: a file or a folder of pack zips is refused (`code: not_library`) and nothing starts. The library that is open now is refused (`code: current`) |
 | `POST /api/setup/finish` | `{ok: true}`; the app then opens the library (see below) |
 | `POST /api/setup/pick` | `{path}` from the system's folder picker, or `{path: null}`: a place to install (`start {folder}`) or something to `use` (a LastbookData, a folder holding one, or a folder holding a pack zip) |
@@ -154,7 +155,7 @@ error}], error, started, folder}`, plus `repair: true` on a job started with `{r
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,
 `activating`, `done`, or `failed` (with `error`: a plain sentence and a `code`: `no_space`, `network`, `server` (the download
-server kept answering 5xx or 429 for 40 minutes, so the internet itself was up), `checksum`, `unpack`,
+server kept answering 5xx or 429 for 40 minutes, so the internet itself was up), `checksum` (with `kept: true`, and the file's published `name` and `size`, when a large zip was kept: see below), `unpack`,
 `unreachable` (the connection kept breaking on a host that never answered this download: a network that blocks or resets it, or no internet; the error carries `host`, and the file's published `name`, `size`, `url` and `sha256`), `activate`, `check` (a Check now, `start {check: true}`, could not read a file; it downloads and changes nothing), `cancelled`, and `found_mismatch`: a file already on this computer (`use`) did not match its published SHA-256; the error carries `file`, the file is left untouched and no longer offered, and `retry` downloads it instead). The job lives in the app's own settings folder (`<settings>/setup/job.json`, with a staged switch in `<settings>/setup/pending.json`; never in `LastbookData.setup`, whose contents are not obeyed: audit E3), so a restart picks it up as `paused` and resumes
 with HTTP Range from the bytes already on disk. While downloading, a broken connection is retried six times over about 90 seconds.
 A server that answers 5xx or 429 is waited on longer (5 s rising to 5 minutes, or its `Retry-After` up to 10 minutes, and
@@ -164,8 +165,10 @@ already are, as they are hashed). A corrupt download (wrong SHA-256) is deleted 
 automatically, then fails with `checksum`, except a zip of `REPAIR_MIN` (256 MiB) or more, which every pack and map is: its
 end is fetched again, each member is checked against the CRC-32 in its central directory, and only the members that fail
 are fetched again. If it then matches, it is used. If it does not, it is kept and the job fails with `checksum` and
-`kept: true`; Retry checks it again from the disk instead of downloading it. A server copy with another ETag or size by
-then is not repaired from: the file is deleted and downloaded once more, as before.
+`kept: true`; Retry checks it again from the disk instead of downloading it. Some damage cannot be found that way: a
+changed byte in a member's local header that no CRC-32 covers, such as its time. So the page also offers Download again
+(`download-again`), and asks once more before it deletes the kept download and downloads the whole file again. A server
+copy with another ETag or size by then is not repaired from: the file is deleted and downloaded once more, as before.
 
 ## Switching to the library
 

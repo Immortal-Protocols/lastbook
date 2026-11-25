@@ -4,7 +4,8 @@ Run:  python3 app/tests/setup_stub.py [port]      (default 8925)
 Then open http://127.0.0.1:8925/__stub/<scenario> to reset to a scenario, which redirects to the setup page.
 Scenarios (see SCENARIOS): mac, mac-small (AI does not fit), win, found, low-disk, paused (a restart picked up a job),
 network, server, checksum, unpack, activate (each fails once at that step; Retry then goes through), busy (the server
-answers 503 for 2 minutes, then the download goes on), manage, manage-ai, upgraded,
+answers 503 for 2 minutes, then the download goes on), checksum-kept (opens on a kept checksum failure: Retry fails the same
+way, Download again goes through), manage, manage-ai, upgraded,
 manage-notify (app update notices already on), updates-fail (saving the preference fails).
 The page itself never knows it talks to a stub.
 """
@@ -95,6 +96,10 @@ SCENARIOS = {
     'server': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'server')),
     'busy': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('downloading', 'busy')),
     'checksum': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('verifying', 'checksum')),
+    # a large zip that still did not match after its repair, kept (the engine's checksum with kept): Retry checks it again and
+    # fails the same way, as with damage the repair cannot find (a member's time); Download again deletes it and goes through
+    'checksum-kept': dict(hardware=hw(), recommend={'pack': 'medium', 'ai': False, 'why': 'Medium fits.'}, fault=('verifying', 'kept'),
+                          job={'pack': 'medium', 'ai': False, 'state': 'failed', 'done0': 1}),
     'unpack': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('unpacking', 'unpack')),
     'activate': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('activating', 'activate')),
     'manage': dict(mode='manage', hardware=hw(), current={'folder': MAC, 'pack': 'small', 'model': None, 'map': 'base'},
@@ -144,7 +149,10 @@ class Stub:
             it['bytes_done'] = int(it['bytes_total'] * j['done0'])
             if j.get('source'):
                 it.update(source=j['source'], paused_from=j['paused_from'], bytes_done=1700000000, bytes_total=8236695548)   # as the engine: unpack progress
-            self._set_all('paused')
+            if j['state'] == 'failed':
+                self._fail(it)
+            else:
+                self._set_all('paused')
 
     def state(self):
         self.tick()
@@ -287,16 +295,24 @@ class Stub:
                'checksum': 'The file was damaged twice in a row.', 'unpack': 'The library could not be unpacked.',
                'activate': 'The new library could not be switched in.',
                'hostile': X,
-               'found_mismatch': 'The Lastbook-Small.zip in Downloads doesn’t match the published file, so it was not used.'}[code]
+               'found_mismatch': 'The Lastbook-Small.zip in Downloads doesn’t match the published file, so it was not used.',
+               'kept': 'still does not match its published checksum, so it was not used. What was downloaded is kept: Retry checks '
+                       'it again, or Download again deletes it and downloads it whole.'}[code]
         if code == 'found_mismatch':      # as the engine: the person's file is left alone, no longer offered, and retry downloads it
             for f in self.found:
                 f.update(rejected=True, size_ok=False)
             it['bytes_done'] = 0
             it['source'] = 'download'
-        it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', {'code': code, 'message': msg}, 0, None
+        if code == 'kept':                # as the engine: checksum with kept, and the file's name and size
+            f = next(p for p in self.M['packs'] if p['id'] == it['id'])['files'][0]
+            err = {'code': 'checksum', 'message': f"{f['name']} {msg}", 'kept': True, 'name': f['name'], 'size': f['size']}
+        else:
+            err = {'code': code, 'message': msg, **({'file': self.found[0]['path']} if code == 'found_mismatch' else {})}
+        it['state'], it['error'], it['rate_bps'], it['eta_s'] = 'failed', dict(err), 0, None
         self.job['state'] = 'failed'
-        self.job['error'] = {'code': code, 'message': msg, **({'file': self.found[0]['path']} if code == 'found_mismatch' else {})}
-        self.fault = None   # it fails once; Retry goes through
+        self.job['error'] = err
+        if code != 'kept':
+            self.fault = None   # it fails once; Retry goes through (kept fails again on Retry, until Download again)
 
     def act(self, a):
         j = self.job
@@ -322,13 +338,22 @@ class Stub:
             for it in j['items']:
                 if it['state'] != 'done':
                     it['state'] = 'failed'
+        elif a == 'download-again' and j['state'] == 'failed' and (j['error'] or {}).get('kept'):
+            self.fault = None                  # as the engine: the kept download is deleted, and the whole file comes again
+            for it in j['items']:
+                if it['state'] == 'failed':
+                    it['state'], it['error'], it['bytes_done'] = 'waiting', None, 0
+            j['state'], j['error'] = 'waiting', None
+            self.last = time.time()
+            self.phase_t = 0
         elif a == 'retry' and j['state'] == 'failed':
+            kept = (j['error'] or {}).get('kept')
             j['error'] = None
             for it in j['items']:
                 if it['state'] == 'failed':
                     it['state'], it['error'] = 'waiting', None
-                    if self.s.get('fault', ('',))[0] == 'verifying':
-                        it['bytes_done'] = 0   # a damaged file is downloaded again
+                    if self.s.get('fault', ('',))[0] == 'verifying' and not kept:
+                        it['bytes_done'] = 0   # a damaged file is downloaded again; a kept one is checked again from the disk
             j['state'] = 'waiting'
             self.last = time.time()
             self.phase_t = 0
@@ -398,7 +423,7 @@ class H(BaseHTTPRequestHandler):
         if a == 'start':
             r = STUB.start(body)
             return self.send(400 if r.get('error') else 200, r)
-        if a in ('pause', 'resume', 'cancel', 'retry'):
+        if a in ('pause', 'resume', 'cancel', 'retry', 'download-again'):
             return self.send(200, STUB.act(a))
         if a == 'use':
             path = body.get('path', '')

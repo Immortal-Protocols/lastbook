@@ -72,5 +72,40 @@ class RepairScenario(unittest.TestCase):
             self.assertTrue(all(e is not None for _, e in s[1:]), kind)
 
 
+class ChecksumKeptScenario(unittest.TestCase):
+    def test_retry_fails_the_same_way_and_download_again_goes_through(self):
+        """checksum-kept: it opens on the kept failure, as the engine words it. Retry checks it again without downloading and fails
+        the same way; Download again starts from nothing and finishes."""
+        now = [1000.0]
+        with mock.patch.object(setup_stub.time, 'time', lambda: now[0]):
+            stub = setup_stub.Stub('checksum-kept')
+            e = stub.public()['error']
+            self.assertEqual((stub.public()['state'], e['code'], e['kept'], e['name']), ('failed', 'checksum', True, 'Lastbook-Medium.zip'))
+            self.assertEqual(e['size'], stub.public()['items'][0]['bytes_total'])
+            stub.act('retry')
+            seen = set()
+            for _ in range(30):
+                now[0] += 1
+                stub.tick()
+                seen.add(stub.public()['items'][0]['state'])
+                if stub.public()['state'] == 'failed':
+                    break
+            self.assertEqual(seen, {'verifying', 'failed'})
+            self.assertTrue(stub.public()['error']['kept'])
+            stub.act('download-again')
+            self.assertEqual((stub.public()['state'], stub.public()['items'][0]['bytes_done']), ('waiting', 0))
+            seen = []
+            for _ in range(200):
+                now[0] += 1
+                stub.tick()
+                st = stub.public()['items'][0]['state']
+                if not seen or seen[-1] != st:
+                    seen.append(st)
+                if stub.public()['state'] == 'done':
+                    break
+            self.assertEqual(seen, ['downloading', 'verifying', 'unpacking', 'activating', 'done'])
+            self.assertIsNone(stub.public()['error'])
+
+
 if __name__ == '__main__':
     unittest.main()

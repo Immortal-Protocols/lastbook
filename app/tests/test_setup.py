@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import errno, hashlib, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
+import contextlib, errno, hashlib, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -1362,6 +1362,91 @@ class ZipRepair(Base):
         self.assertEqual(len(whole()), 1)
         self.assertFalse((self.parent / 'LastbookData').exists())
 
+    def asked(self, name='Lastbook-Small.zip'):
+        """Bytes of `name` asked of the server so far: a whole file for a request without a Range."""
+        size = len(self.files.data[name])
+        return sum(size if r is None else (size - 1 if r[1] is None else r[1]) - r[0] + 1 for r in _requested(self.files.log, name))
+
+    def kept_by_a_changed_time(self, way=contextlib.nullcontext):
+        """wonderdawg's case on d67c888: one byte of a member's local-header time reaches the disk changed, and the server's copy
+        is right. Every member still matches its CRC-32, so the repair finds nothing and the zip is kept, and Retry fails the same
+        way without downloading anything whole. (Main took it as good over one connection, and downloaded it once more in pieces.)"""
+        with zipfile.ZipFile(io.BytesIO(self.zip)) as z:
+            at = next(i for i in z.infolist() if i.file_size).header_offset + 10      # the low byte of its last-modified time
+        work = api._work_for(self.parent / 'LastbookData')
+        s = self.setup()
+        with way(), flipped_write(work / 'downloads' / 'Lastbook-Small.zip.part', at=at):
+            s.start('small', False)
+            j = self.wait(s)
+        self.assertEqual((j['state'], j['error']['code'], j['error'].get('kept')), ('failed', 'checksum', True), j)
+        self.assertEqual((j['error']['name'], j['error']['size']), ('Lastbook-Small.zip', len(self.zip)))
+        got = self.asked()
+        with way():
+            s.retry()
+            j = self.wait(s)
+        self.assertEqual((j['state'], j['error'].get('kept')), ('failed', True), j)
+        self.assertLess(self.asked() - got, len(self.zip) // 2)                   # the end of the zip again, nothing whole
+        return s, work
+
+    def installed_is_the_servers(self, s):
+        """The library the job staged, switched to as on the next start, holds exactly the server's zip's files."""
+        self.assertTrue(s.finish()['ok'])
+        lib, _ = api.startup(self.settings)
+        self.assertEqual(lib, self.parent / 'LastbookData')
+        with zipfile.ZipFile(io.BytesIO(self.zip)) as z:
+            for i in z.infolist():
+                if i.file_size:
+                    self.assertEqual((lib / i.filename.split('/', 1)[1]).read_bytes(), z.read(i), i.filename)
+
+    def test_download_again_deletes_only_the_kept_download(self):
+        """Download again, after that: the kept download of the zip is deleted and nothing else in the work folder, the whole file
+        is downloaded once more, and the server's copy is the one installed."""
+        s, work = self.kept_by_a_changed_time()
+        other = work / 'downloads' / 'other.bin'
+        other.write_bytes(b'not the zip')
+        got = self.asked()
+        self.assertNotEqual(api.ROUTES[('POST', 'download-again')](s, {})['state'], 'failed')   # as the page asks for it
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual(_requested(self.files.log, 'Lastbook-Small.zip')[-1], None)    # from its first byte, with no Range
+        self.assertEqual(self.asked() - got, len(self.zip))                             # the whole file, once
+        self.assertEqual(other.read_bytes(), b'not the zip')
+        self.installed_is_the_servers(s)
+
+    def test_download_again_after_a_restart(self):
+        """The same in pieces, with Lastbook closed and opened again in between: the saved job still offers it, and the file it
+        deletes is worked out again from the manifest's names and the work folder, not taken from the saved job as a path."""
+        s, work = self.kept_by_a_changed_time(pieces)
+        again = self.setup()
+        j = again.public_job()
+        self.assertEqual((j['state'], j['error'].get('kept'), j['error'].get('name')), ('failed', True, 'Lastbook-Small.zip'), j)
+        got = self.asked()
+        with pieces():
+            again.download_again()
+            j = self.wait(again)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual(self.asked() - got, len(self.zip))
+        self.installed_is_the_servers(again)
+
+    def test_download_again_does_nothing_after_any_other_failure(self):
+        """Only a kept checksum failure, and only a file the job downloads: after a network failure, Download again leaves a
+        partial download that can resume where it is, and starts nothing. So does a kept error naming another file."""
+        self.files.data.pop('model.gguf')
+        s = self.setup()
+        s.start('small', True)
+        j = self.wait(s)
+        self.assertEqual((j['state'], j['error']['code']), ('failed', 'network'), j)
+        part = Path(s.job['plan']['work']) / 'downloads' / 'model.gguf.part'
+        part.write_bytes(b'x' * 1000)                                  # as a model download that broke part of the way
+        asked = len(self.files.log)
+        self.assertEqual(s.download_again()['error']['code'], 'network')
+        with s.lock:
+            s.job['error'] = {'code': 'checksum', 'message': 'm', 'kept': True, 'name': '../model.gguf'}
+        self.assertEqual(s.download_again()['state'], 'failed')
+        self.assertEqual(part.read_bytes(), b'x' * 1000)
+        self.assertEqual(len(self.files.log), asked)
+        self.assertFalse(s.thread and s.thread.is_alive())
+
     @unittest.skipUnless(shutil.which('node'), 'needs Node')
     def test_the_screen_says_it_is_kept(self):
         """setup.js's errorBox: a kept checksum failure says the download is kept and Retry checks it again; one without kept
@@ -1369,12 +1454,14 @@ class ZipRepair(Base):
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk', errCode = e => e && e.code,
+const esc = s => String(s == null ? '' : s), ico = () => '', size = b => (b / 1e9).toFixed(1) + ' GB', diskName = () => 'this disk', errCode = e => e && e.code,
       errText = e => e && e.message, cur = () => null, diskFor = () => null;
-let folder = '';
+let folder = '', confirmAgain = false;
 eval(section('  function errorBox(', '  function itemHTML('));
-const box = kept => { const error = {code: 'checksum', message: 'm', kept}; return errorBox({error, items: [{kind: 'pack', state: 'failed', error}]}) };
-console.log(JSON.stringify({kept: box(true), not: box(undefined)}));
+const box = kept => { const error = {code: 'checksum', message: 'm', kept, size: 66.4e9}; return errorBox({error, items: [{kind: 'pack', state: 'failed', error}]}) };
+const kept = box(true), not = box(undefined);
+confirmAgain = true;
+console.log(JSON.stringify({kept, not, asked: box(true)}));
 """
         r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
         w = json.loads(r.stdout)
@@ -1382,6 +1469,14 @@ console.log(JSON.stringify({kept: box(true), not: box(undefined)}));
         self.assertNotIn('damaged twice', w['kept'])
         self.assertIn('The download came out damaged twice', w['not'])
         self.assertIn('data-act="retry"', w['kept'])
+        # Download again, for damage the repair cannot find: said with its cost, and asked once more before anything is deleted
+        self.assertIn('Download again deletes it and downloads all 66.4 GB of it again.', w['kept'])
+        self.assertIn('data-act="again"', w['kept'])
+        self.assertNotIn('data-act="again"', w['not'])
+        self.assertIn('Delete what was downloaded and download all 66.4 GB again?', w['asked'])
+        self.assertIn('data-act="again-yes"', w['asked'])
+        self.assertIn('data-act="again-no"', w['asked'])
+        self.assertNotIn('data-act="retry"', w['asked'])
 
 
 class Unpacking(Base):

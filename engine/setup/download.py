@@ -25,7 +25,8 @@
   - A whole file that does not match its SHA-256 is deleted and the job downloads it once more, except a zip of REPAIR_MIN or
     more (every pack and map is one): its members are checked against the CRC-32s in its central directory, fetched again from
     the server, and only the members that fail are fetched again (Download._repair_zip). If it still does not match, it is
-    kept and the download fails with 'checksum' and kept: Retry checks it again from the disk.
+    kept and the download fails with 'checksum' and kept: Retry checks it again from the disk, and Download again
+    (api.Setup.download_again) deletes it so that it is downloaded whole, for damage the repair cannot find.
   - Nothing here runs unless the person started or resumed a download (or opened setup: one GET of the manifest).
 
 Tests pass their own `allowed` and `context` to reach a local test server. The product never does.
@@ -621,7 +622,8 @@ class Download:
     def _recheck(self, ctx, etag):
         """All of the file is here, and what the disk holds does not match its SHA-256. A zip of REPAIR_MIN or more is not
         thrown away on that alone: _repair_zip fetches again only its members that fail their CRC-32. Repaired, it is used. Still
-        not matching, it is kept: Failed 'checksum' with kept, and Retry checks it again from the disk. Anything else, or a zip
+        not matching, it is kept: Failed 'checksum' with kept. Retry checks it again from the disk; Download again deletes it, for
+        damage no CRC-32 covers (a byte of a local header, such as a member's time). Anything else, or a zip
         that cannot be repaired from the server, is deleted (BadChecksum: the job downloads it once more), as before."""
         name = os.path.basename(self.dest)
         print(f'setup: {name} on the disk does not match its published checksum', flush=True)
@@ -632,7 +634,7 @@ class Download:
                     print(f'setup: {name} repaired: {damaged} damaged members fetched again', flush=True)
                     return
                 raise Failed('checksum', f'{name} still does not match its published checksum, so it was not used. '
-                                         'What was downloaded is kept: Retry checks it again and fetches only what is wrong.', kept=True)
+                                         'What was downloaded is kept: Retry checks it again, or Download again deletes it and downloads it whole.', kept=True)
         self.discard()
         raise BadChecksum('The downloaded file did not match its published checksum.')
 

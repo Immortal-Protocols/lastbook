@@ -8,7 +8,10 @@ from pathlib import Path
 from unittest import mock
 
 import tools.build_region_pt_30 as builder
-from tools.build_region_pt_30 import REGION, normalize_pt
+from tools.build_region_pt_30 import NORM, REGION, address_num, normalize_pt
+
+ROOT = Path(__file__).resolve().parents[2]
+FIXTURE = json.loads((ROOT / 'app' / 'tests' / 'fixtures' / 'pt_30_queries.json').read_text(encoding='utf-8'))
 
 
 class NormalisationTests(unittest.TestCase):
@@ -24,6 +27,84 @@ class NormalisationTests(unittest.TestCase):
         ):
             with self.subTest(text=typed):
                 self.assertEqual(normalize_pt(typed), stored)
+
+    def test_the_fixture_examples_hold(self):
+        """The spellings the fixture promises are reachable, including the decomposed accents a Mac or
+        iOS paste carries: composing first (NFC) is what lets them meet the stored key, as de-1 does."""
+        for example in FIXTURE['normalization_examples']:
+            with self.subTest(text=example['input']):
+                self.assertEqual(normalize_pt(example['input']), example['expected'])
+        self.assertEqual(normalize_pt('Estrada Sa\u0303o Joa\u0303o 108'), 'estrada sao joao 108')
+
+
+class HouseNumberTests(unittest.TestCase):
+    def test_house_labels_are_stored_as_the_register_writes_them(self):
+        """A plain numeral loses its leading zero ('007' and '7' meet in one key); the register's other
+        labels ('0E', '013A', '5 1J') stay as people read them on the door, or an exact search would miss
+        them, and an all-zero label ('000') stays as written too."""
+        self.assertEqual(address_num('007'), '7')
+        self.assertEqual(address_num('221'), '221')
+        self.assertEqual(address_num('0E'), '0E')        # stripping the zero would leave the fragment E
+        self.assertEqual(address_num('013A'), '013A')    # a composite label keeps its zero
+        self.assertEqual(address_num('5 1J'), '5 1J')
+        self.assertEqual(address_num('0'), '0')
+        self.assertEqual(address_num('000'), '000')      # an all-zero label stays as written
+
+
+class FixtureContractTests(unittest.TestCase):
+    """Each expected answer must follow from the fixture rows by the rule the fixture states, so a runtime
+    that fails one of them has a real gap, not an impossible expectation."""
+
+    rows = {row['id']: row for row in FIXTURE['address_rows']}
+
+    @staticmethod
+    def place_matches(prefix, row):
+        return normalize_pt(row['city']).startswith(prefix)
+
+    def answer(self, case):
+        lookup, wanted = case['lookup'], case.get('filter', {})
+        return [key for key, row in self.rows.items()
+                if row['norm'] == lookup['norm'] and row['num'] == lookup['num']
+                and row['zip'] == wanted.get('zip', row['zip'])
+                and (not wanted.get('place_prefix') or self.place_matches(wanted['place_prefix'], row))]
+
+    def test_rows_follow_the_index_contract(self):
+        for row in self.rows.values():
+            with self.subTest(row=row['id']):
+                self.assertEqual(row['norm'], normalize_pt(row['street']))
+                self.assertEqual(row['state'], REGION)
+                self.assertRegex(row['zip'], r'^[0-9]{7}$')    # the postcode without its hyphen
+                self.assertEqual(row['district'], '')          # the register carries no district
+                num = row['num']
+                self.assertTrue(num[:1].isdigit())             # the register gate: a label starts with a digit
+                if num.isdigit() and num.strip('0'):           # a plain numeral with a non-zero digit keeps
+                    self.assertFalse(num.startswith('0'), 'a plain numeral drops its leading zero')
+                # no leading zero ('007' -> '7'); a composite label ('013A', '5 1J') and an all-zero
+                # label ('000') stay as the register writes them, exactly what address_num stores
+
+    def test_lookups_name_the_query_in_the_index_spelling(self):
+        """A query's street folds to its lookup key, so the expectation is reachable through normalize_pt."""
+        for case in FIXTURE['address_queries'] + FIXTURE['no_house_queries']:
+            with self.subTest(query=case['query']):
+                self.assertIn(case['lookup']['norm'], normalize_pt(case['query']))
+
+    def test_expected_houses_follow_from_the_rows(self):
+        for case in FIXTURE['address_queries'] + FIXTURE['no_house_queries']:
+            with self.subTest(query=case['query']):
+                self.assertEqual(self.answer(case), case['expected_fixture_ids'])
+                for key in case['expected_fixture_ids']:
+                    row = self.rows[key]
+                    if 'expected_name' in case:
+                        self.assertEqual(case['expected_name'], f"{row['street']} {row['num']}")
+                    if 'expected_detail' in case:
+                        self.assertEqual(case['expected_detail'],
+                                         ', '.join(part for part in (row['city'], row['state'], row['zip']) if part))
+
+    def test_fixture_and_builder_name_the_same_scheme(self):
+        """The index records meta norm = pt-1; a runtime reads that key to choose the rule, so fixture and
+        builder must agree on it."""
+        self.assertEqual((FIXTURE['norm'], FIXTURE['region']), (NORM, REGION))
+        self.assertEqual(FIXTURE['index_contract']['meta']['norm'], NORM)
 
 
 class RebuildRecoveryTests(unittest.TestCase):

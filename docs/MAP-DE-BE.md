@@ -43,28 +43,32 @@ stays in `data.new/` to look at, and the next build clears it).
 Postcode areas are placed at the middle of their own addresses rather than taken from the postcode polygons, which are
 CC BY 3.0 DE; that keeps the map to ODbL plus sources without an attribution duty.
 
-For the four official kinds, the Geoportal records replace OpenStreetMap's points, so each facility has one pin from
-the public register. Everything else, including street hand pumps, comes from OpenStreetMap.
+Inside Berlin, the Geoportal records replace OpenStreetMap's points of the four official kinds, so each facility has
+one pin from the public register. Everything else, including street hand pumps, comes from OpenStreetMap.
+
+The OpenStreetMap extract reaches a few kilometres past the city boundary into Brandenburg, which surrounds Berlin. Its
+points there stay on the map, so the nearest help from the city edge can be across it: from the edge of Rahnsdorf, the
+nearest hospital is in Woltersdorf, 4.3 km away. The place finder names where each row is: Berlin inside the boundary
+(the twelve districts from `alkis_bezirke`), Brandenburg beyond it, so `Teltow` reads `Brandenburg (OpenStreetMap)` and
+`Lichterfelde` reads `Berlin`.
 
 ## What the build holds
 
-Built on 23 November 2026 from the sources fetched on 17 November 2026: OpenStreetMap data of 16 November 2026
+Built on 24 November 2026 from the sources fetched on 17 November 2026: OpenStreetMap data of 16 November 2026
 (`berlin-261116-free.gpkg.zip`) and the Geoportal services as served that morning. On 17 November a full `fetch`,
-`build`, `check` took under two minutes. Row for row, every table holds what the builder in #79 writes from the same
-sources with `tools/build_map.py`'s region options, apart from the build times and one fix: the place finder's 952 named
-hospitals, pharmacies, fire stations and police stations now carry their source, Geoportal Berlin, where #79 labels
-them OpenStreetMap.
+`build`, `check` took under two minutes.
 
 | File | Size | SHA-256 (this build) | Holds |
 |---|---|---|---|
-| `derived/geo/national.sqlite` | 188.1 MB | `c2b77fa2…9d34e` | 467,739 road features plus water, land, rail, buildings and places; 21,000-odd help and supply points |
-| `derived/geo/map.sqlite` | 32 KB | `5d421123…650dd` | empty, as in a US state map; carries the map's source and date |
-| `derived/geo/places.sqlite` | 3.3 MB | `4b59f374…f30d9` | 12 districts, 97 localities, 193 postcode areas, 11,321 streets, 13,488 named points, 196 named places |
-| `derived/geo/addresses/DE-BE.sqlite` | 51.6 MB | `d06f25d7…5a4b2` | 404,303 addresses; a sidecar, as the US address indexes are |
+| `derived/geo/national.sqlite` | 188.1 MB | `14adbd46…3fd0c` | 467,739 road features plus water, land, rail, buildings and places; 21,096 help and supply points |
+| `derived/geo/map.sqlite` | 32 KB | `bd820351…da6e0` | empty, as in a US state map; carries the map's source and date |
+| `derived/geo/places.sqlite` | 3.3 MB | `f3c7a77d…59f26` | 12 districts, 97 localities, 193 postcode areas, 11,321 streets, 13,508 named points, 196 named places |
+| `derived/geo/addresses/DE-BE.sqlite` | 51.6 MB | `8f73892e…57f34` | 404,303 addresses; a sidecar, as the US address indexes are |
 | `map-set.json` | 191 B | | name `DE-BE` and the sizes of the map files |
 
-Help points: 111 hospitals, 702 pharmacies, 102 fire stations and 37 police stations from the Geoportal (replacing
-59, 685, 103 and 68 OpenStreetMap points), and 2,080 street hand pumps from OpenStreetMap.
+Help points: 111 hospitals, 702 pharmacies, 102 fire stations and 37 police stations from the Geoportal, replacing
+57, 674, 99 and 65 OpenStreetMap points inside Berlin; OpenStreetMap's 2 hospitals, 11 pharmacies, 4 fire stations and
+3 police stations just beyond the boundary stay. 2,080 street hand pumps come from OpenStreetMap.
 
 Full checksums are in `data/build.json`. They identify one build: the map and address files record their build time, so two
 builds of the same sources differ in those bytes, not in content.
@@ -82,13 +86,16 @@ builds of the same sources differ in those bytes, not in content.
   street key is `normalize_de(street)`;
 - three public buildings are in the index exactly once with their postcode and locality (Unter den Linden 77, Platz der
   Republik 1, Straße des 17. Juni 135);
-- the place finder has a locality, a district, a postcode area and a street, and labels every official help point
-  with its source, Geoportal Berlin.
+- every Geoportal help point lies inside the city boundary;
+- the place finder has a locality, a district, a postcode area and a street, labels every official help point inside
+  Berlin with its source, Geoportal Berlin, and names Berlin in no row beyond the boundary.
 
-`check` reads the files with SQL only and imports nothing from the app, so it says nothing about how the app searches
-them. `app/tests/test_build_region_de_be.py` runs offline: the `de-1` spellings, the stored house-number form, the
-fixtures' consistency, that each pump lands exactly where `tools/build_map.py` puts a point, that each place names the
-source it came from, and that a rebuild which fails, or fails its checks, leaves the previous output in place.
+`check` reads the files with SQL and the district boundaries from `source/`, and imports nothing from the app, so it
+says nothing about how the app searches them. `app/tests/test_build_region_de_be.py` runs offline: the `de-1`
+spellings, the stored house-number form, the fixtures' consistency, that each pump lands exactly where
+`tools/build_map.py` puts a point, that each place names the source it came from and, for a place on each side of the
+boundary, where it is, that the Geoportal replaces OpenStreetMap's points only inside Berlin, and that a rebuild which
+fails, or fails its checks, leaves the previous output in place.
 
 ## Try it
 

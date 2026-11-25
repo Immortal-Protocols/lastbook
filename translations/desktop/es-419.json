@@ -36,7 +36,7 @@
   "setup.settingsTitle": "Biblioteca e IA local",
   "setup.back": "Volver a la biblioteca",
   "setup.loading": "Revisando esta computadora…",
-  "setup.chooseIntro": "Elige tu estado o región y tu biblioteca. Lastbook los descarga para usarlos sin conexión.",
+  "setup.chooseIntro": "Elige tu biblioteca. Lastbook la descarga para usarla sin conexión; el mapa de tu estado o región es opcional.",
   "setup.changeLibrary": "Cambiar la biblioteca",
   "setup.error": "No se pudo iniciar la configuración inicial.",
   "setup.tryAgain": "Reintentar",
@@ -1499,5 +1499,10 @@
   "notes.countOnDevice": {
     "one": "{count} nota en esta computadora",
     "other": "{count} notas en esta computadora"
-  }
+  },
+  "setup.skipMapNoAddress": "La búsqueda por dirección no está disponible. Se puede agregar más adelante en Configuración.",
+  "setup.skipMapNoLocal": "No hay un mapa local. Se puede agregar más adelante en Configuración.",
+  "setup.skipMapNoAddressLabel": "Sin búsqueda por dirección",
+  "setup.skipMapNoLocalLabel": "Sin mapa local",
+  "setup.skipMapForNow": "— omitir por ahora"
 }

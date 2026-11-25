@@ -40,6 +40,7 @@ import struct
 import subprocess
 import sys
 import time
+import unicodedata
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -48,6 +49,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 REGION = 'PT-30'
+NORM = 'pt-1'
 BASE = ROOT / 'derived' / 'regions' / REGION
 SOURCE = BASE / 'source'
 DATA = BASE / 'data'
@@ -125,13 +127,23 @@ def download(url, path):
 # --------------------------------------------------------------- the pt-1 rule ----
 
 def normalize_pt(text):
-    """pt-1: lowercase, accents folded, spaces collapsed. The leading street type expands ('R DE
-    SANTA MARIA', 'Rua de Santa Maria' and 'r de santa maria' share one key); name abbreviations
-    expand in any position, so 'CAM S JOSE' and 'Caminho São José' share one too."""
-    folded = [w.translate(FOLD).lower() for w in text.split()]
+    """pt-1: composed (NFC), lowercased, accents folded, spaces collapsed. Composing first is what
+    folds the separated accents a Mac or iOS paste can carry ('Sa' + combining tilde), the way de-1
+    does. The leading street type expands ('R DE SANTA MARIA', 'Rua de Santa Maria' and
+    'r de santa maria' share one key); name abbreviations expand in any position, so
+    'CAM S JOSE' and 'Caminho São José' share one too."""
+    folded = [w.translate(FOLD).lower() for w in unicodedata.normalize('NFC', text).split()]
     if folded and folded[0] in STREET_TYPES_FOLDED:
         folded[0] = STREET_TYPES_FOLDED[folded[0]]
     return ' '.join(NAME_ABBREV.get(w, w) for w in folded)
+
+
+def address_num(house):
+    """The stored house label: leading zeros come off only a plain numeral ('007' becomes '7'), so
+    the register's other labels stay as people read them on the door ('0E', '5 1J' — stripping
+    their zero would leave a fragment a query can never reach). An all-zero label stays as written."""
+    stripped = house.lstrip('0')
+    return stripped if stripped.isdigit() else house
 
 
 # ------------------------------------------------------------------- fetch ----
@@ -531,14 +543,14 @@ def build_addresses(fetched, geo):
                 counts['skipped_without_number'] += 1
                 continue
             counts['kept'] += 1
-            rows.append((house.lstrip('0') or house, street, normalize_pt(street), (row['city'] or '').strip(),
+            rows.append((address_num(house), street, normalize_pt(street), (row['city'] or '').strip(),
                          REGION, (row['postcode'] or '').replace('-', ''), round(lat, 6), round(lon, 6), ''))
         db.executemany('INSERT INTO addr VALUES (?,?,?,?,?,?,?,?,?)', rows)
         db.execute('CREATE INDEX addr_norm ON addr(norm, num)')
         db.execute('CREATE INDEX addr_zip ON addr(zip)')
         info = fetched['files']['pt_addresses.csv.zip']
         db.executemany('INSERT INTO meta VALUES (?,?)', [
-            ('region', REGION), ('norm', 'pt-1'), ('count', str(counts['kept'])),
+            ('region', REGION), ('norm', NORM), ('count', str(counts['kept'])),
             ('source', 'Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)'),
             ('served', info.get('upload') or ''), ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
             ('postcodes', 'PT postcodes NNNN-NNN; stored without the hyphen'),
@@ -754,6 +766,13 @@ def check(root=None):
     expect(mismatch == 0, f'pt-1 keys match normalize_pt on a 500-row sample ({mismatch} differ)')
     avenida = addr.execute("SELECT count(*) FROM addr WHERE norm LIKE 'avenida arriaga%'").fetchone()[0]
     expect(avenida > 0, f'the abbreviated street type expands in the pt-1 key ({avenida} rows on Avenida Arriaga)')
+    # the house label is the register's own: a leading-zero strip that ate a letter ('0E' -> 'E') would leave
+    # a fragment no query reaches, and a plain numeral keeps no leading zero ('007' is stored as '7')
+    fragments, padded = addr.execute(
+        "SELECT sum(num NOT GLOB '[0-9]*'),"
+        " sum(num LIKE '0%' AND num GLOB '*[1-9]*' AND num NOT GLOB '*[^0-9]*') FROM addr").fetchone()
+    expect(not fragments, f'every house label keeps the register spelling ({fragments} reduced to a fragment)')
+    expect(not padded, f'a plain numeral label has its leading zeros off ({padded} still padded)')
     addr.close()
     places = sqlite3.connect(f"file:{geo / 'places.sqlite'}?mode=ro", uri=True)
     for name, kind in (('Funchal', 'município'), ('Porto Santo', 'município'), ('Funchal (Sé)', 'freguesia'),

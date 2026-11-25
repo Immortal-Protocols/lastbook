@@ -69,7 +69,7 @@
   {
    "id": "heat",
    "label": "It's dangerously hot and the power or AC is out",
-   "hint": "Heat wave, no air conditioning, older people or babies at home",
+   "hint": "Heat wave, no air conditioning or aircon, older people or babies at home",
    "read": [
     {
      "doc": "1c0d7a149286b5",
@@ -154,7 +154,7 @@
   {
    "id": "co",
    "label": "Using a generator, heater, grill or stove for power or heat",
-   "hint": "Power outage, space heater, camp stove, headache or dizziness indoors, carbon monoxide",
+   "hint": "Power outage, space heater, kerosene or paraffin heater, camp stove, headache or dizziness indoors, carbon monoxide",
    "read": [
     {
      "doc": "18bf4604bf28c4",

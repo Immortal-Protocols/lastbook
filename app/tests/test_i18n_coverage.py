@@ -133,6 +133,38 @@ class Coverage(unittest.TestCase):
         self.assertIsNotNone(pre, f'nested visible label was skipped: {hits!r}')
         self.assertEqual(scan.classify('Add your state’s address search', pre), 'chrome')
 
+    def test_scanner_detects_short_rendered_button_labels(self):
+        sample = '''root.innerHTML = `${canAdd ? `<button>Add</button>` : ''}`;'''
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        add = next((pre for text, pre in hits if text == 'Add'), None)
+        self.assertIsNotNone(add, f'button label was skipped: {hits!r}')
+        self.assertEqual(scan.classify('Add', add), 'chrome')
+
+        # The short word by itself is not enough to call a code value UI.
+        self.assertEqual(scan.classify('Add', 'const action = '), 'technical')
+
+    def test_scanner_detects_leading_space_ui_fragments(self):
+        sample = '''function recommendLine() {
+          const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
+          return `<p class="s-rec">Suggested: ${what}</p>`;
+        }'''
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        fragment = next((pre for text, pre in hits if text == ' with the local AI'), None)
+        self.assertIsNotNone(fragment, f'leading-space UI fragment was skipped: {hits!r}')
+        self.assertEqual(scan.classify(' with the local AI', fragment), 'chrome')
+
+        # Protocol flags stay technical after trimming for UI classification.
+        self.assertEqual(scan.classify(' --lan', 'const command = '), 'technical')
+
+    def test_scanner_detects_prose_exported_to_markdown(self):
+        sample = '''function exportChat(c) {
+          const md = `# ${c.title}\\n\\nExported from Lastbook (offline library) on ${chatDate(new Date())}.\\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\\n`;
+          new Blob([md], { type: 'text/markdown' });
+        }'''
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        exported = next((text, pre) for text, pre in hits if text.startswith('# {…}') and 'Answers were written' in text)
+        self.assertEqual(scan.classify(*exported), 'chrome')
+
     def test_translated_words_are_never_used_as_platform_or_css_values(self):
         app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
         chat = (ROOT / 'web' / 'chat.js').read_text(encoding='utf-8')

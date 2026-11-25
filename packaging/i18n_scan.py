@@ -311,9 +311,13 @@ def looks_technical(s: str) -> bool:
 
 
 def looks_ui(s: str) -> bool:
-    if len(s) < 2 or s.strip() != s:
+    s = s.strip()
+    if len(s) < 2:
         return False
-    if looks_technical(s) or s in CONTENT:
+    # A short title-case action (for example, a rendered button labelled
+    # "Add") can look like a code token to the generic technical heuristic.
+    short_label = len(s) <= 3 and s.isascii() and s.isalpha() and s[0].isupper() and not s.isupper()
+    if (looks_technical(s) and not short_label) or s in CONTENT:
         return False
     if ' ' in s or any(c in s for c in '?!…·—–'):
         return True
@@ -366,9 +370,15 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'technical'
     if s in CONTENT:
         return 'content'
-    if looks_technical(s):
+    short_label = len(s) <= 3 and s.isascii() and s.isalpha() and s[0].isupper() and not s.isupper()
+    if looks_technical(s) and not short_label:
         return 'technical'
     if looks_ui(s) and display_context(pre):
+        return 'chrome'
+    # UI text is often assembled from a phrase fragment with a leading space
+    # (" with the local AI"). Preserve that fragment instead of discarding it
+    # as a technical token just because it is nested in a JS template expression.
+    if s != s.strip() and looks_ui(s.strip()) and not looks_technical(s.strip()):
         return 'chrome'
     # Flattened `${...}` templates are user-visible even when the prefix is only `return`.
     if looks_ui(s) and '{…}' in s:

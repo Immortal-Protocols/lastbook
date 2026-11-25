@@ -41,7 +41,7 @@
     if (found) return `${ver}${failed ? ` <span class="upd-line" role="alert">${E(s.message_key ? tr(s.message_key, s.message_params, s.message) : s.message)}</span>` : ''} ${tr('update.availableVersion', { version: E(found) }, 'Version {version} is available.')}${failed ? ` ${tr('update.foundEarlier', null, '(found by an earlier check)')}` : ''}
       <span class="upd-line">${now ? tr('update.updateNowDescription', null, 'Update now asks you to confirm, installs the signed update and restarts Lastbook. Your library, settings and chats stay as they are.')
                                     : tr('update.runInstallerDescription', null, 'Run the installer to update Lastbook and keep your existing library.')}</span>
-      ${s.update_now_error ? `<span class="upd-line" role="alert">${E(tr('update.nativeError', null, s.update_now_error))}</span>` : ''}
+      ${s.update_now_error ? `<span class="upd-line" role="alert">${E(s.update_now_error)}</span>` : ''}
       <span class="upd-actions">
         ${now ? `<button class="btn" data-upd="now">${tr('update.updateNow', null, 'Update now')}</button>` : ''}
         ${s.can_open_download ? `<button class="btn${now ? ' plain' : ''}" data-upd="open">${tr('update.openDownload', null, 'Open download page')}</button>` : ''}
@@ -127,7 +127,7 @@
         setTimeout(async () => {      // the updater starts on the app's side: a failure to start comes back in state
           try {
             const s = await call('state');
-            if (s.update_now_error) { status.textContent = tr('update.nativeError', null, s.update_now_error); button.hidden = true }
+            if (s.update_now_error) { status.textContent = s.update_now_error; button.hidden = true }
           } catch { }
           button.disabled = false;
         }, 1500);

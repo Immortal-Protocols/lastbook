@@ -119,6 +119,8 @@ function setupEnvironment() {
     tr: (key, params, fallback) => typeof fallback === 'string'
       ? fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? String(params[name]) : '{' + name + '}')
       : fallback,
+    trLang: (_key, _params, fallback) => fallback,
+    trLocale: () => 'en',
     lastbookTr: (key, params, fallback) => typeof fallback === 'string'
       ? fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? String(params[name]) : '{' + name + '}')
       : fallback,

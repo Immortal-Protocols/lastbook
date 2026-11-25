@@ -22,6 +22,16 @@ function trLang(key, params, fallback) {
   const direction = globalThis.LastbookI18n?.direction?.(locale);
   return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(text)}</span>`;
 }
+function trLocale(key, params) { return globalThis.LastbookI18n?.resolve?.(key, params)?.locale || 'en' }
+const videoRowKey = (id, fallback) => id === 'guides' || fallback === 'Picked for the guides' ? 'home.videosPicked'
+  : id === 'all' || fallback === 'All videos' ? 'home.allVideos' : `videos.row.${id}`;
+const videoRowTitle = (id, fallback) => tr(videoRowKey(id, fallback), null, fallback);
+const videoRowTitleHtml = (id, fallback) => trLang(videoRowKey(id, fallback), null, fallback);
+function videoRowNoteHtml(id, fallback) {
+  const key = ({ coalcracker: 'videos.rowNote.hobbyist', corporals: 'videos.rowNote.hobbyist',
+    canterbury: 'videos.rowNote.hobbyist', primitive: 'videos.rowNote.primitive', courses: 'videos.rowNote.courses' })[id];
+  return key ? trLang(key, null, fallback) : esc(fallback);
+}
 const i18nParams = params => params ? ` data-i18n-params='${esc(JSON.stringify(params))}'` : '';
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
@@ -71,6 +81,15 @@ const SHORT_EN = { hurt: 'Injury & illness', water: 'Drinking water', power: 'Po
   disaster: 'Quake, fire, flood', comms: 'Contact & find way', grow: 'Grow food', preserve: 'Preserve food', health: 'Health care', repair: 'Repair & build', energy: 'Power systems', land: 'Land & resources' };
 const shortName = id => tr('topic.' + id, null, SHORT_EN[id] || '');
 const topicShort = t => tr('topic.short.' + t.id, null, t.short || '');
+const topicResult = (id, field, fallback) => {
+  const key = field === 'short' ? 'topic.short.' + id : 'topic.' + id;
+  return globalThis.LastbookI18n?.resolve?.(key) || {text: tr(key, null, fallback), locale: 'en'};
+};
+const topicResultHtml = result => {
+  const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+  return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+};
+const topicLabelHtml = (id, field, fallback) => topicResultHtml(topicResult(id, field, fallback));
 // chat.js and other scripts still read SHORT[id] for the short tile name.
 const SHORT = Object.fromEntries(Object.keys(SHORT_EN).map(id => [id, SHORT_EN[id]]));
 function refreshShort() { for (const id of Object.keys(SHORT_EN)) SHORT[id] = shortName(id); }
@@ -150,7 +169,11 @@ function setVprog(id, data) { const p = vprog(); p[id] = { ...(p[id] || {}), ...
 async function api(u, opts) {
   const r = await fetch(u, opts);
   let d; try { d = await r.json() } catch { throw new Error(tr('app.pageUnreadable', null, 'The library sent an unreadable reply.')) }
-  if (!r.ok || (d && d.error && !Array.isArray(d))) throw new Error(d && d.error || tr('app.serverError', { status: r.status }, 'Server error {status}'));
+  if (!r.ok || (d && (d.error || d.error_key) && !Array.isArray(d))) {
+    const key = d?.error_key;
+    throw new Error(key ? tr(key, d.error_params || null, d.error || '')
+      : d?.error || tr('app.serverError', { status: r.status }, 'Server error {status}'));
+  }
   return d;
 }
 let LIB = null;
@@ -240,7 +263,7 @@ function wireRails(root = main) {
 }
 const secHead = (title, sub, link) => `<div class="sec-head"><div><h2>${title}</h2>${sub ? `<span class="sub">${sub}</span>` : ''}</div>${link || ''}</div>`;
 function crumbs(list) {
-  return `<nav class="crumbs" aria-labelledby="crumbLabel"><span class="sr" id="crumbLabel" data-i18n="nav.currentPath">You are here</span>${list.map((c, i) => i < list.length - 1 ? `<a href="${c[1]}">${esc(c[0])}</a><span aria-hidden="true">›</span>` : `<span aria-current="page">${esc(c[0])}</span>`).join('')}</nav>`;
+  return `<nav class="crumbs" aria-labelledby="crumbLabel"><span class="sr" id="crumbLabel" data-i18n="nav.currentPath">You are here</span>${list.map((c, i) => { const label = c[0] && typeof c[0] === 'object' ? topicResultHtml(c[0]) : esc(c[0]); return i < list.length - 1 ? `<a href="${c[1]}">${label}</a><span aria-hidden="true">›</span>` : `<span aria-current="page">${label}</span>` }).join('')}</nav>`;
 }
 // A label is [message key, English text]. A plain string is still accepted: it keeps its text, and the few
 // common ones keep their translation.
@@ -250,7 +273,7 @@ function backButton(from, fallback) {
   let [key, label] = labelPair(fallback, ['nav.back', tr('nav.back', null, 'Back')]);
   const href = from?.startsWith('#') ? from : '#/';
   const m = /^#\/t\/([\w-]+)/.exec(href);
-  if (m && topicById(m[1])) [key, label] = [null, shortName(m[1]) || topicById(m[1]).title];
+  if (m && topicById(m[1])) [key, label] = [null, topicResult(m[1], 'title', topicById(m[1]).title)];
   else if (href.startsWith('#/search')) [key, label] = ['search.results', tr('search.results', null, 'Search results')];
   else if (href.startsWith('#/ask')) [key, label] = ['nav.backToChat', tr('nav.backToChat', null, 'Back to chat')];
   else if (href.startsWith('#/saved')) [key, label] = ['nav.saved', 'Saved'];
@@ -261,7 +284,8 @@ function backButton(from, fallback) {
   else if (href.startsWith('#/read')) [key, label] = ['nav.backToPage', tr('nav.backToPage', null, 'Back to page')];
   else if (href.startsWith('#/library') || href.startsWith('#/shelf') || href.startsWith('#/collection') || href.startsWith('#/encyclopedias') || href.startsWith('#/prepare')) [key, label] = ['nav.library', 'Library'];
   else if (href === '#/' || href === '#') [key, label] = ['nav.videos', 'Videos'];
-  return `<a class="back" href="${esc(href)}" data-back>${ico('back')}<span${key ? ` data-i18n="${key}"` : ''}>${esc(label)}</span></a>`;
+  const labelHtml = label && typeof label === 'object' ? topicResultHtml(label) : esc(label);
+  return `<a class="back" href="${esc(href)}" data-back>${ico('back')}<span${key ? ` data-i18n="${key}"` : ''}>${labelHtml}</span></a>`;
 }
 // Links into readers carry where you came from; refresh it at click time (sections may have opened since render).
 document.addEventListener('click', e => {
@@ -524,6 +548,8 @@ document.addEventListener('lastbook:languagechange', () => {
   renderedLocale = locale;
   void refreshCurrentLanguage();
 });
+// Apply the early desktop language hint even if i18n-app.js dispatched before this listener existed.
+applyChromeLanguage();
 // At 900 and wider a page's .dock controls (view switch, Save, Ask) sit in the toolbar; narrower they stay in the page.
 const docks = () => wide.matches || (!MAC && innerWidth >= 640);
 function dock() {
@@ -595,7 +621,7 @@ function searchBox(id, value, placeholder, buttonLabel) {
 /* --------------------------------------------------------------- home -- */
 async function home() {
   setTitle('');
-  const tile = t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))}</small></a>`;
+  const tile = t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${topicLabelHtml(t.id, 'title', t.title)}</b><small>${topicLabelHtml(t.id, 'short', t.short || '')}</small></a>`;
   const cont = await continueItems();
   const pins = (await libInfo()).pins !== false;
   const exampleChips = [[tr('search.ex.boilWater', null, 'boil water'), 'search.ex.boilWater'], [tr('search.ex.cutBleeding', null, 'cut won’t stop bleeding'), 'search.ex.cutBleeding'], [tr('search.ex.fridgePower', null, 'fridge after power cut'), 'search.ex.fridgePower'], [tr('search.ex.burn', null, 'burn'), 'search.ex.burn'], [tr('search.ex.toilet', null, 'toilet not working'), 'search.ex.toilet'], [tr('search.ex.smellGas', null, 'smell gas'), 'search.ex.smellGas']].map(([q, key]) => `<a class="chip" href="#/search?q=${encodeURIComponent(q)}" data-i18n="${key}">${esc(tr(key, null, q))}</a>`).join('');
@@ -613,7 +639,7 @@ async function home() {
   ${cont.length ? secHead(`<span data-i18n="home.pickUp">Pick up where you left off</span>`) + rail(cont.join('')) : ''}
   <div id="homeVideos"></div>
   ${secHead(`<span data-i18n="home.learnSkill">Learn a skill</span>`, `<span data-i18n="home.learnLead">Step-by-step routes for the weeks and months ahead</span>`, `<a href="#/library" data-i18n="home.allSkills">All skills</a>`)}
-  ${rail(learnTopics().map(t => `<a class="skill" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))}</small><span class="steps">${esc(tr('home.steps', { count: (t.route || []).length }, '{count} steps'))}</span></a>`).join(''), 'skills')}
+  ${rail(learnTopics().map(t => `<a class="skill" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${topicLabelHtml(t.id, 'title', t.title)}</b><small>${topicLabelHtml(t.id, 'short', t.short || '')}</small><span class="steps">${esc(tr('home.steps', { count: (t.route || []).length }, '{count} steps'))}</span></a>`).join(''), 'skills')}
   <a class="banner prep" href="#/prepare"><span class="ico">${ico('prep')}</span><span><b data-i18n="home.getReadyBanner">Get ready before it happens</b><small data-i18n="home.getReadyLead">Store water and food, plan for outages, pack kits</small></span><span class="go">${ico('right')}</span></a>`;
   $('#bigQF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/search?q=' + encodeURIComponent($('#bigQ').value.trim()) });
   const ex = $('.examples', main), exEnd = () => { ex.classList.toggle('at-end', ex.scrollLeft + ex.clientWidth >= ex.scrollWidth - 4); ex.classList.toggle('at-start', ex.scrollLeft < 4) };
@@ -661,8 +687,8 @@ async function topicPage(id, open) {
   const sec = (icon, title, items) => items && items.length ? `<details class="more"><summary>${ico(icon)}<span>${title} <span class="n">· ${items.length}</span></span></summary><div class="body"><ul class="list">${items.map(i => rowItem({ ...i, preview: true })).join('')}</ul></div></details>` : '';
   const vids = topicVideos(t);
   const related = (t.related || []).map(topicById).filter(Boolean);
-  main.innerHTML = `<div class="ghero" ${tcStyle(id)}><div class="ghero-in">${crumbs([[tr('nav.guides', null, 'Guides'), '#/guides'], [learn ? tr('home.learnSkill', null, 'Learn a skill') : tr('home.needHelpNow', null, 'Need help now'), learn ? '#/library' : '#/guides'], [shortName(id) || t.title]])}
-      <div class="row1"><span class="ico">${ico(t.id)}</span><h1>${esc(t.title)}</h1></div><p class="lead">${esc(t.intro || '')}</p>
+  main.innerHTML = `<div class="ghero" ${tcStyle(id)}><div class="ghero-in">${crumbs([[tr('nav.guides', null, 'Guides'), '#/guides'], [learn ? tr('home.learnSkill', null, 'Learn a skill') : tr('home.needHelpNow', null, 'Need help now'), learn ? '#/library' : '#/guides'], [topicResult(id, 'title', t.title)]])}
+      <div class="row1"><span class="ico">${ico(t.id)}</span><h1>${topicLabelHtml(id, 'title', t.title)}</h1></div><p class="lead">${esc(t.intro || '')}</p>
       <div class="vactions" style="margin-bottom:0">${askLink('topic:' + id, 'guide.askAboutThis', tr('guide.askAboutThis', null, 'Ask a question about this'))}</div></div></div>
     <div class="gcols" ${tcStyle(id)}><div>
       ${(t.choices || []).length ? `<p class="ask" id="askh">${learn ? tr('guide.whereStart', null, 'Where do you want to start?') : tr('guide.whatsHappening', null, 'What’s happening?')}</p><div class="situations" aria-labelledby="askh">${sits}</div>` : ''}
@@ -672,7 +698,7 @@ async function topicPage(id, open) {
       ${sec('prep', trLang('guide.getReady', null, 'Get ready before it happens'), t.prepare)}
       ${sec('book', trLang('guide.goDeeper', null, 'Go deeper: full manuals & articles'), t.learn)}
       ${(t.gaps?.missing || []).length ? `<details class="more"><summary>${ico('warn')}<span>${tr('guide.notInLibrary', null, 'Not in this library')}</span></summary><div class="body"><p class="muted small" style="margin-top:0">${tr('guide.gapsNotFound', null, 'Looked for but not found when this guide was put together (October 2026):')}</p><ul>${t.gaps.missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : ''}
-      ${related.length ? `<h2>${tr('guide.related', null, 'Related guides')}</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${esc(shortName(r.id) || r.title)}</a>`).join('')}</div>` : ''}
+      ${related.length ? `<h2>${tr('guide.related', null, 'Related guides')}</h2><div class="related">${related.map(r => `<a class="chip" href="#/t/${r.id}" ${tcStyle(r.id)}><span style="color:var(--tc)">${ico(r.id)}</span>${topicLabelHtml(r.id, 'title', r.title)}</a>`).join('')}</div>` : ''}
     </div><aside class="gside" aria-label="${tr('guide.safety', null, "Safety")}"></aside></div>`;
   // On wide screens the safety box sits beside the choices so it stays visible.
   const side = $('.gside', main), nar = $('.gnarrow', main);
@@ -705,7 +731,7 @@ async function videosHome() {
   const GCOL = { health: 'hurt', water: 'water', food: 'food', power: 'power', outdoors: 'shelter', repair: 'repair', making: 'land' };
   $('#vrows').innerHTML =
     (cont.length ? secHead(`<span data-i18n="videos.continue">Continue watching</span>`) + rail(cont.map(([id, v]) => vcard({ id, title: v.title, thumb: v.thumb, duration: v.d }, { sub: tr('home.resumeAt', { time: clock(v.t) }, 'Resume at {time}') })).join('')) : '') +
-    rows.map(r => secHead(esc(r.title), r.note ? esc(r.note) : '', `<a href="#/videos/${r.id}">${esc(tr('videos.seeAllCount', { count: r.count }, 'See all {count}'))}</a>`) +
+    rows.map(r => secHead(videoRowTitleHtml(r.id, r.title), r.note ? videoRowNoteHtml(r.id, r.note) : '', `<a href="#/videos/${r.id}">${esc(tr('videos.seeAllCount', { count: r.count }, 'See all {count}'))}</a>`) +
       rail(r.items.map(v => vcard(v, { style: tcStyle(v.guide || GCOL[r.id]) })).join(''))).join('') +
     `<p class="small muted" style="margin-top:24px" data-i18n="videos.offlineNote">Only videos already downloaded are shown. Many have no captions, so the transcript search and the assistant can’t see what’s said in them.</p>`;
   wireRails();
@@ -716,8 +742,9 @@ async function videoRow(row, q) {
   const qs = o => { const p = new URLSearchParams({ q: qq, len, sort, ...o }); for (const [k, v] of [...p]) if (!v) p.delete(k); const s = p.toString(); return base + (s ? '?' + s : '') };
   let off = 0;
   const first = await api(`/api/videos/${row}?q=${encodeURIComponent(qq)}&len=${len}&sort=${sort}&offset=0`);
-  setTitle(first.title);
-  main.innerHTML = `<div>${backButton('#/videos')}</div><h1 style="margin-top:12px">${esc(qq ? tr('videos.headingQuoted', { title: qq }, 'Videos: “{title}”') : first.title)}</h1>${first.note ? `<p class="lead">${esc(first.note)}</p>` : ''}
+  const rowTitle = videoRowTitle(row, first.title);
+  setTitle(rowTitle);
+  main.innerHTML = `<div>${backButton('#/videos')}</div><h1 style="margin-top:12px">${qq ? trLang('videos.headingQuoted', { title: qq }, 'Videos: “{title}”') : videoRowTitleHtml(row, first.title)}</h1>${first.note ? `<p class="lead">${videoRowNoteHtml(row, first.note)}</p>` : ''}
     <div class="vtools">${searchBox('vq', qq, tr('videos.searchThese', null, 'Search these videos'), ['search.go', 'Go'])}
       <label class="sr" for="vsort" data-i18n="videos.sort">Sort</label><select id="vsort">${[['', 'videos.mostUseful', 'Most useful first'], ['short', 'videos.shortestFirst', 'Shortest first'], ['new', 'videos.newestFirst', 'Newest first'], ['az', 'videos.az', 'A to Z']].map(([k, key, l]) => `<option value="${k}" ${k === sort ? 'selected' : ''} data-i18n="${key}">${tr(key, null, l)}</option>`).join('')}</select></div>
     <div class="chips" style="margin:8px 0 16px">${[['', tr('videos.anyLength', null, 'Any length')], ['short', tr('videos.under10', null, 'Under 10 min')], ['medium', tr('videos.10to30', null, '10–30 min')], ['long', tr('videos.over30', null, 'Over 30 min')]].map(([k, l]) => `<a class="chip ${k === len ? 'on' : ''}" href="${qs({ len: k })}">${l}</a>`).join('')}</div>
@@ -785,7 +812,7 @@ async function watch(id, t, from) {
   <div class="watch">
     <div>
       <div class="player"><video id="vid" controls preload="metadata" playsinline src="${fileUrl(d.path)}${start !== null ? '#t=' + start : ''}"></video></div>
-      <div class="video-speed"><label for="videoSpeed">${tr('videos.speed', null, 'Playback speed')}</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>${tr('videos.speedNormal', null, 'Normal')}</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+      <div class="video-speed"><label for="videoSpeed">${trLang('videos.speed', null, 'Playback speed')}</label><select id="videoSpeed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected lang="${esc(trLocale('videos.speedNormal'))}">${tr('videos.speedNormal', null, 'Normal')}</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
       ${d.remote ? `<p class="small muted" style="margin:6px 0 0">${esc(tr('videos.storedRemote', { name: d.remote }, 'Stored on the remote drive “{name}”. It plays only while that computer is reachable.'))}</p>` : ''}
       <h1 class="vtitle">${esc(d.title)}</h1>
       <div class="vmeta"><b>${esc(d.publisher || '')}</b><span>${fmtDur(d.duration)}</span>${d.upload_date ? `<span>${esc(d.upload_date.replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3'))}</span>` : ''}<span>${esc(d.trust)}</span></div>
@@ -1392,11 +1419,11 @@ async function results(q, kind) {
   const seq = ++searchSeq, out = $('#sout');
   const contentQuery = searchContentQuery(q);
   if (!q) {
-    out.innerHTML = `<p class="muted" style="margin-top:18px">Use the words you’d use with a friend. For example:</p><div class="chips wrapchips">${[tr('search.ex.cleanWater', null, 'clean drinking water'), tr('search.ex.brokenLeg', null, 'broken leg'), tr('search.ex.carbonMonoxide', null, 'carbon monoxide'), tr('search.ex.keepFoodCold', null, 'keep food cold'), tr('search.ex.hamRadio', null, 'ham radio license'), tr('search.ex.plantPotatoes', null, 'plant potatoes'), tr('search.ex.sharpenKnife', null, 'sharpen a knife'), tr('search.ex.diarrheaChild', null, 'diarrhea in a child')].map(x => `<a class="chip" href="#/search?q=${encodeURIComponent(x)}">${esc(x)}</a>`).join('')}</div>`;
+    out.innerHTML = `<p class="muted" style="margin-top:18px">${trLang('search.friendWords', null, 'Use the words you’d use with a friend. For example:')}</p><div class="chips wrapchips">${[tr('search.ex.cleanWater', null, 'clean drinking water'), tr('search.ex.brokenLeg', null, 'broken leg'), tr('search.ex.carbonMonoxide', null, 'carbon monoxide'), tr('search.ex.keepFoodCold', null, 'keep food cold'), tr('search.ex.hamRadio', null, 'ham radio license'), tr('search.ex.plantPotatoes', null, 'plant potatoes'), tr('search.ex.sharpenKnife', null, 'sharpen a knife'), tr('search.ex.diarrheaChild', null, 'diarrhea in a child')].map(x => `<a class="chip" href="#/search?q=${encodeURIComponent(x)}">${esc(x)}</a>`).join('')}</div>`;
     return;
   }
   const g = kind === 'all' ? topicMatches(contentQuery) : [];
-  out.innerHTML = `${g.length ? `<h2>${tr('search.startWithGuide', null, 'Start with a guide')}</h2>${g.map(({ t, c }) => `<a class="ghit" href="#/t/${t.id}${c ? '/' + c.id : ''}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><span><b>${esc(shortName(t.id) || t.title)}${c ? ' — ' + esc(c.label) : ''}</b><small>${tr('search.pickedPagesSafety', null, 'Picked pages with exact page numbers and safety limits')}</small></span></a>`).join('')}` : ''}
+  out.innerHTML = `${g.length ? `<h2>${tr('search.startWithGuide', null, 'Start with a guide')}</h2>${g.map(({ t, c }) => `<a class="ghit" href="#/t/${t.id}${c ? '/' + c.id : ''}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><span><b>${topicLabelHtml(t.id, 'title', t.title)}${c ? ' — ' + esc(c.label) : ''}</b><small>${tr('search.pickedPagesSafety', null, 'Picked pages with exact page numbers and safety limits')}</small></span></a>`).join('')}` : ''}
     <div id="spass"></div><div id="svid"></div><div id="sres"></div><div id="szim"></div>`;
   if (kind === 'wiki') return zimResults(contentQuery, $('#szim'), 40);
   // Each part answers whether it found anything; "nothing matched" shows once, only when none did.
@@ -1487,14 +1514,14 @@ async function library() {
     <a class="card" href="#/not-found" id="nfCard" hidden><span class="ico">${ico('search')}</span><b data-i18n="library.notFound">Things I couldn’t find</b><small id="nfCount" data-i18n="library.notFoundEmpty">Notes you kept when a search found nothing</small></a>
   </div>
   ${secHead(`<span data-i18n="home.learnSkill">Learn a skill</span>`, `<span data-i18n="library.learnLead">Step-by-step routes that start simple</span>`)}
-  <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(shortName(t.id) || t.title)}</b><small>${esc(topicShort(t))} · ${tr('guide.stepCount', { count: (t.route || []).length }, '{count} steps')}</small></a>`).join('')}</div>
+  <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${topicLabelHtml(t.id, 'title', t.title)}</b><small>${topicLabelHtml(t.id, 'short', t.short || '')} · ${tr('guide.stepCount', { count: (t.route || []).length }, '{count} steps')}</small></a>`).join('')}</div>
   ${zims.length ? secHead(`<span data-i18n="wiki.title">Encyclopedias</span>`, `<span data-i18n="library.encyclopediasLead">Complete offline copies</span>`, `<a href="#/encyclopedias" data-i18n="library.searchThem">Search them</a>`) + `<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/library')}"><span class="ico">${ico(z[3])}</span><b>${esc(zimTitle(z))}</b><small>${esc(zimAbout(z))}</small></a>`).join('')}</div>` : ''}
   ${secHead(`<span data-i18n="library.browseSubject">Browse by subject</span>`, `<span data-i18n="library.browseLead">Every manual, saved web page and video</span>`)}<div id="shelves"><p class="loading" data-i18n="common.loading">Loading…</p></div>
   <p style="margin-top:20px"><a href="#/about" data-i18n="library.aboutLink">About this library and its sources</a>${IN_WINDOW ? ' · <a href="/ui/setup.html#manage">Library and local AI</a>' : ''}</p>`;
   if (await notesHere()) api('/api/not-found').then(d => {
     const c = $('#nfCard'); if (!c) return;
     c.hidden = false;
-    if (d.notes.length) $('#nfCount').textContent = `${d.notes.length} note${d.notes.length > 1 ? 's' : ''} on this computer`;
+    if (d.notes.length) $('#nfCount').innerHTML = trLang('notes.countOnDevice', { count: d.notes.length }, '{count} notes on this computer');
   }).catch(() => { });
   try {
     const sh = await api('/api/shelves');
@@ -1507,7 +1534,7 @@ async function prepareHub() {
   main.innerHTML = `<h1 data-i18n="library.prepare">Prepare your household</h1>
   <p class="lead" data-i18n="library.prepareLead">Readings for getting ready before water, power or services stop — gathered from each guide. One area at a time.</p>
   <div class="notice" data-i18n="library.prepareNotice">A shopping list or cart isn’t the same as supplies you own, and reading isn’t the same as a practised plan.</div>
-  ${list.map(t => `<details class="more" ${tcStyle(t.id)}><summary><span class="prep-ico">${ico(t.id)}</span><span>${esc(shortName(t.id) || t.title)} <span class="n">· ${t.prepare.length}</span></span></summary><div class="body"><ul class="list">${t.prepare.map(i => rowItem({ ...i, preview: true })).join('')}</ul><p><a href="#/t/${t.id}">${esc(tr('library.openFullGuide', null, 'Open the full guide'))}</a></p></div></details>`).join('')}`;
+  ${list.map(t => `<details class="more" ${tcStyle(t.id)}><summary><span class="prep-ico">${ico(t.id)}</span><span>${topicLabelHtml(t.id, 'title', t.title)} <span class="n">· ${t.prepare.length}</span></span></summary><div class="body"><ul class="list">${t.prepare.map(i => rowItem({ ...i, preview: true })).join('')}</ul><p><a href="#/t/${t.id}">${esc(tr('library.openFullGuide', null, 'Open the full guide'))}</a></p></div></details>`).join('')}`;
 }
 async function shelfPage(id, kind, q) {
   const sh = (await api('/api/shelves')).find(s => s.id === id);

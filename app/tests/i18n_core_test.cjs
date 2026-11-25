@@ -21,11 +21,13 @@ const catalogs = {
     files: { "=0": "No files", one: "{count} file", other: "{count} files" },
     fallback: "English only",
     caption: "Picture {position}",
+    description: "Offline library",
   },
   "es-419": {
     greeting: "Hola, {name}",
     files: { "=0": "No hay archivos", one: "{count} archivo", other: "{count} archivos" },
     caption: "Imagen {position}",
+    description: "Biblioteca sin conexión",
   },
   "es-AR": { greeting: "Buenas, {name}" },
 };
@@ -266,6 +268,7 @@ class FakeElement {
 test("DOM adapter updates only opted-in leaf text and safe attributes", () => {
   const leaf = new FakeElement({ "data-i18n": "greeting" }, "Hello, Ana");
   const image = new FakeElement({ "data-i18n-alt": "caption" });
+  const meta = new FakeElement({ "data-i18n-content": "description" });
   const search = new FakeElement({
     "data-i18n-placeholder": "greeting", "data-i18n-title": "fallback",
   });
@@ -274,13 +277,15 @@ test("DOM adapter updates only opted-in leaf text and safe attributes", () => {
     "data-i18n": "greeting", "data-i18n-aria-label": "greeting",
   }, "Untouched", [icon]);
   const untouched = new FakeElement({}, "Library content");
-  const root = new FakeElement({}, "", [leaf, image, search, parent, untouched]);
+  const root = new FakeElement({}, "", [leaf, image, meta, search, parent, untouched]);
   const paramsFor = (element, key) => key === "greeting" ? { name: "Ana" } : { position: 4 };
   const i18n = translator("es-UY");
   applyI18n(root, i18n, paramsFor);
   assert.equal(leaf.textContent, "Hola, Ana");
   assert.equal(leaf.getAttribute("lang"), "es-419");
   assert.equal(image.getAttribute("alt"), "Imagen 4");
+  assert.equal(meta.getAttribute("content"), "Biblioteca sin conexión");
+  assert.equal(meta.getAttribute("lang"), "es-419");
   assert.equal(search.getAttribute("placeholder"), "Hola, Ana");
   assert.equal(search.getAttribute("title"), "English only");
   assert.equal(parent.textContent, "Untouched");

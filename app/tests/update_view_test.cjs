@@ -47,7 +47,7 @@ const offer = { state: 'available', version: '1.2.0', current: '1.1.15', downloa
   // Sparkle failed to start: its error, and the download page
   b = box({ ...offer, can_update_now: false, update_now_error: 'The updater could not start (RuntimeError). Use the download page instead.' });
   b.LB.mount(b.root); await tick(); await tick();
-  assert.match(b.el.innerHTML, /role="alert">The updater could not start/);
+  assert.match(b.el.innerHTML, /role="alert">The updater could not start \(RuntimeError\)\. Use the download page instead\./);
   assert.match(b.el.innerHTML, /Open download page/);
   console.log('update view: ok');
 })().catch(e => { console.error(e); process.exit(1) });

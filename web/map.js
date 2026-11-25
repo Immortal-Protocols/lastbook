@@ -125,14 +125,17 @@ const MapView = (() => {
     return result || { text: l.label || '', locale: 'en' };
   };
   const tLayer = l => layerText(l).text;
-  const tLayerHtml = l => {
+  const tLayerHtml = (l, transform = text => text) => {
     const result = layerText(l), direction = globalThis.LastbookI18n?.direction?.(result.locale);
-    return `<span lang="${escH(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result.text)}</span>`;
+    return `<span lang="${escH(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(transform(result.text))}</span>`;
   };
-  const tGroup = (id, en) => tr('map.group.' + id, null, en);
-  const tField = k => tr(FIELD_KEY[k] || ('map.field.' + k), null, FIELD[k]);
-  const tCaveat = k => CAVEAT[k] ? tr(CAVEAT_KEY[k] || ('map.caveat.' + k), null, CAVEAT[k]) : '';
-  const tPreset = n => n ? tr(PRESET_KEY[n] || n, null, n) : tr('map.preset.none', null, 'None');
+  const tHtml = (key, params, fallback) => {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    const text = result?.text ?? tr(key, params, fallback);
+    const locale = result?.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(text ?? '')}</span>`;
+  };
+  const tPresetHtml = n => tHtml(n ? PRESET_KEY[n] || n : 'map.preset.none', null, n || 'None');
   const unnamed = p => p.name || (p.detail?.reservoir_type ? p.detail.reservoir_type : tr('map.unnamed', { label: (p.label || tLayer(layerOf(p.cls)) || '').replace(/ \(.*\)/, '').replace(/^Recorded /, '') }, 'Unnamed {label}'));
 
   let askedHome = false;
@@ -294,13 +297,13 @@ const MapView = (() => {
       return;
     }
     box.innerHTML = `<div class="layers-head"><b>${tr('map.showOnMap', null, 'Show on map')}</b><button class="x" aria-label="${escH(tr('map.closeLayers', null, 'Close layers'))}">×</button></div>
-      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${escH(tPreset(n))}</button>`).join('')}<button data-p="">${escH(tr('map.preset.none', null, 'None'))}</button></div>`}
+      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${tPresetHtml(n)}</button>`).join('')}<button data-p="">${tHtml('map.preset.none', null, 'None')}</button></div>`}
       <fieldset class="style"><legend>${escH(tr('map.styleLegend', null, 'Map style'))}</legend>
         ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>${escH(tr('map.style.aerialUsgs', null, 'Aerial photos (USGS / USDA)'))}</span></label>`}
         <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>${escH(tr('map.style.relief', null, 'Shaded relief (hills & valleys)'))}</span></label>
         ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>${escH(tr('map.style.contours', null, 'Contour lines (from zoom 11)'))}</span></label>`}
         ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>${escH(tr('map.style.crops', null, 'Orchard & vineyard areas (coloured)'))}</span></label>`}</fieldset>
-      ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${escH(tGroup(g, gl))}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(tLayer(l))}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
+      ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${tHtml('map.group.' + g, null, gl)}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}${tLayerHtml(l)}<small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
       ${st.have && !st.have.size ? '' : `<p class="small muted" style="margin:6px 2px 0">${escH(tr('map.currentViewNumbers', null, 'Numbers are places in the current view.'))}</p>`}`;
     box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') };
     box.querySelectorAll('label.ly input').forEach(i => i.onchange = () => { i.checked ? st.on.add(i.value) : st.on.delete(i.value); layersChanged() });
@@ -366,14 +369,14 @@ const MapView = (() => {
     st.hover = hit; const tip = $('tip'); if (!tip) return;
     if (!hit) return hideTip();
     tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${escH(tr('map.placesHere', { count: hit.count }))}</b>${breakdown(hit)}<small>${st.z >= 16 ? tr('map.clickToList', null, 'Click to list them') : tr('map.clickToZoom', null, 'Click to zoom in')}</small>`
-      : hit.count > 1 ? `<b>${escH(tr('map.recordsAtSpot', { count: hit.count }, '{count} records at one spot'))}</b><small>${escH(tLayer(layerOf(hit.cls)))} · ${escH(tr('map.clickToListLower', null, 'click to list them'))}</small>`
-      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${escH(hit.place ? hit.kind || tr('map.place', null, 'Place') : tLayer(layerOf(hit.cls)))}${hit.records > 1 ? ` · ${escH(tr('map.recordsClickToList', { count: hit.records }, '{count} records · click to list'))}` : ''}</small>`;
+      : hit.count > 1 ? `<b>${escH(tr('map.recordsAtSpot', { count: hit.count }, '{count} records at one spot'))}</b><small>${tLayerHtml(layerOf(hit.cls))} · ${tHtml('map.clickToListLower', null, 'click to list them')}</small>`
+      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${hit.place ? escH(hit.kind || tr('map.place', null, 'Place')) : tLayerHtml(layerOf(hit.cls))}${hit.records > 1 ? ` · ${tHtml('map.recordsClickToList', { count: hit.records }, '{count} records · click to list')}` : ''}</small>`;
     tip.hidden = false; placeTip(x, y);
   }
   function breakdown(p) {
     const by = {}; for (const [k, n] of Object.entries(p.kinds || {})) { const l = layerOf(k); by[l.id || k] = by[l.id || k] || [l, 0]; by[l.id || k][1] += n }
     const e = Object.values(by).sort((a, b) => b[1] - a[1]);
-    return e.length > 1 ? `<span class="mix">${e.slice(0, 6).map(([l, n]) => `${sym(l, 14)}${n.toLocaleString()} ${escH(tLayer(l).replace(/ \(.*\)/, ''))}`).join('<br>')}</span>` : '';
+    return e.length > 1 ? `<span class="mix">${e.slice(0, 6).map(([l, n]) => `${sym(l, 14)}${n.toLocaleString()} ${tLayerHtml(l, text => text.replace(/ \(.*\)/, ''))}`).join('<br>')}</span>` : '';
   }
   function placeTip(x, y) { const tip = $('tip'), w = st.cv.clientWidth; tip.style.left = Math.min(x + 14, w - tip.offsetWidth - 6) + 'px'; tip.style.top = Math.max(6, y - tip.offsetHeight - 10) + 'px' }
   function hideTip() { if (st) st.hover = null; const t = $('tip'); if (t) t.hidden = true }
@@ -841,10 +844,10 @@ const MapView = (() => {
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
     const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
-      .map(([k, v]) => `<tr><th>${escH(tField(k))}</th><td>${escH(v)}</td></tr>`).join('');
-    const el = openCard(`${back ? `<button class="back">← ${escH(back.title)}</button>` : ''}<div class="kind">${sym(l, 20)}${escH(tLayer(l))}</div><h3>${escH(unnamed(p))}</h3>
+      .map(([k, v]) => `<tr><th>${tHtml(FIELD_KEY[k] || ('map.field.' + k), null, FIELD[k])}</th><td>${escH(v)}</td></tr>`).join('');
+    const el = openCard(`${back ? `<button class="back">← ${escH(back.title)}</button>` : ''}<div class="kind">${sym(l, 20)}${tLayerHtml(l)}</div><h3>${escH(unnamed(p))}</h3>
       ${p.records > 1 ? `<p class="muted small">${escH(tr('map.sourceRecordsAtSpot', { count: p.records }, '{count} source records at this spot'))}</p>` : ''}
-      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>${escH(tr('map.notWaterSource', null, 'Not a water source:'))}</b> ${escH(tr('map.notWaterSourceDetail', { type: (detail.reservoir_type || tr('map.wastePond', null, 'waste pond')).toLowerCase() }, 'this is a {type}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.'))}</p>` : ''}${/tailings/i.test(detail.purposes || '') ? `<p class="caveat"><b>${escH(tr('map.mineTailingsDam', null, 'Mine-tailings dam:'))}</b> ${escH(tr('map.mineTailingsDetail', null, 'it holds mine waste, not usable water. Do not drink, swim or fish here.'))}</p>` : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(tCaveat(p.cls))}</p>` : ''}${coordsBlock(p)}
+      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>${escH(tr('map.notWaterSource', null, 'Not a water source:'))}</b> ${escH(tr('map.notWaterSourceDetail', { type: (detail.reservoir_type || tr('map.wastePond', null, 'waste pond')).toLowerCase() }, 'this is a {type}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.'))}</p>` : ''}${/tailings/i.test(detail.purposes || '') ? `<p class="caveat"><b>${escH(tr('map.mineTailingsDam', null, 'Mine-tailings dam:'))}</b> ${escH(tr('map.mineTailingsDetail', null, 'it holds mine waste, not usable water. Do not drink, swim or fish here.'))}</p>` : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${tHtml(CAVEAT_KEY[p.cls] || ('map.caveat.' + p.cls), null, CAVEAT[p.cls])}</p>` : ''}${coordsBlock(p)}
       <div class="acts"><button data-a="zoom">${escH(tr('map.zoomHere', null, 'Zoom here'))}</button><button data-a="copy">${escH(tr('map.copyCoordinates', null, 'Copy coordinates'))}</button></div>`);   // no web links: the words stay, the addresses go
     if (back) el.querySelector('.back').onclick = () => showMembers(back.p);
     wireCoords(p); reveal(p.lat, p.lon);
@@ -854,7 +857,7 @@ const MapView = (() => {
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
     st.sel = { lat: p.lat, lon: p.lon }; draw();
     const title = p.spot ? tr('map.recordsAtOneSpot', { count: Math.max(p.count, p.records || 0) }, '{count} records at one spot') : tr('map.placesHere', { count: p.count }, '{count} places here');
-    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? tLayerHtml(layerOf(p.cls)) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(title)}</h3><p class="muted">${escH(tr('map.loading', null, 'Loading…'))}</p>`);
+    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? tLayerHtml(layerOf(p.cls)) : tHtml('map.groupLabel', null, 'Group')}</div><h3>${escH(title)}</h3><p class="muted">${tHtml('map.loading', null, 'Loading…')}</p>`);
     reveal(p.lat, p.lon);
     try {
       const q = new URLSearchParams({ west: b[0] - pad, south: b[1] - pad, east: b[2] + pad, north: b[3] + pad, lat: p.lat, lon: p.lon, kinds: Object.keys(p.kinds || { [p.cls]: 1 }).join(',') });
@@ -863,7 +866,7 @@ const MapView = (() => {
       const items = r.items || [], names = new Set(items.map(m => m.name));
       if (items.length === 1) return showDetail(items[0]);
       const head = p.spot && names.size === 1 && items[0]?.name ? items[0].name : title;
-      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? tLayerHtml(layerOf(p.cls)) : tr('map.groupLabel', null, 'Group')}</div><h3>${escH(head)}</h3>${breakdown(p)}
+      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? tLayerHtml(layerOf(p.cls)) : tHtml('map.groupLabel', null, 'Group')}</div><h3>${escH(head)}</h3>${breakdown(p)}
         <p class="muted small">${r.total > items.length ? tr('map.recordsNearest', { shown: items.length, total: r.total.toLocaleString(), plus: r.capped ? '+' : '' }, 'Showing the {shown} nearest of {total}{plus}. Zoom in to see the rest.') : tr('map.recordsCount', { count: items.length }, '{count} records')}</p>
         <div class="members">${items.map((m, i) => `<button data-i="${i}">${sym(layerOf(m.cls), 20)}<span><b>${escH(unnamed(m))}</b><small>${escH([m.summary || layerOf(m.cls).label, m.detail?.WeekOfPlantStart ? 'stocked ' + m.detail.WeekOfPlantStart : ''].filter(Boolean).join(' · '))}</small></span></button>`).join('')}</div>
         <div class="acts"><button data-a="zoom">${tr('map.zoomHere', null, 'Zoom here')}</button></div>`);
@@ -913,7 +916,7 @@ const MapView = (() => {
       box.classList.remove('busy');
       if (!Array.isArray(r) || !r.length) { box.innerHTML = `<p class="muted small">${escH(tr('map.nothingNearby', null, 'Nothing from your layers within about 100 miles of the map center.'))}</p>`; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
-      box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${escH(tLayer(layerOf(p.cls)))} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
+      box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${tLayerHtml(layerOf(p.cls))} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
         const p = list[+b.dataset.i]; box.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
         st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }); settle(true); b.classList.add('on');

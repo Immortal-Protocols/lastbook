@@ -147,7 +147,7 @@ class Browser(unittest.TestCase):
 
     @contextlib.contextmanager
     def page(self, origin, http, locale='en-US'):
-        context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850})
+        context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850}, accept_downloads=True)
         try:
             if hasattr(http, 'bridge'):
                 context.add_init_script(http.bridge.top_script())
@@ -325,6 +325,11 @@ class Browser(unittest.TestCase):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/search')
+            expect(page.locator('#sout > p.muted')).to_have_text(
+                'Usa las palabras que usarías al hablar con alguien. Por ejemplo:')
+            expect(page.locator('#sout > p.muted span[lang="es-419"]')).to_have_text(
+                'Usa las palabras que usarías al hablar con alguien. Por ejemplo:')
             page.route('**/api/page/**', lambda route: route.fulfill(status=404, body=''))
             page.goto(origin + '/#/search?q=hervir%20agua')
             expect(page.locator('#searchQ')).to_have_value('hervir agua')
@@ -340,6 +345,34 @@ class Browser(unittest.TestCase):
             }""")
             self.assertEqual(tagged, 'es-MX')
 
+    def test_saved_language_localizes_document_metadata_on_first_load(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/guides')
+            description = page.locator('meta[name="description"]')
+            expect(description).to_have_attribute('content',
+                'Guía de supervivencia y reconstrucción sin conexión: primeros auxilios, agua, alimentos, energía, refugio, videos, mapas y habilidades.')
+            expect(description).to_have_attribute('lang', 'es-419')
+
+    def test_missing_library_item_error_is_translated(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/read/item-no-longer-present')
+            expect(page.locator('#main')).to_contain_text('Este elemento ya no está en la biblioteca.')
+
+    def test_library_note_count_uses_catalogue_plural_and_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/not-found', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notes': [{'id': 'note-1'}, {'id': 'note-2'}]})))
+            page.goto(origin + '/#/library')
+            expect(page.locator('#nfCount')).to_have_text('2 notas en esta computadora')
+            expect(page.locator('#nfCount span[lang="es-419"]')).to_have_text('2 notas en esta computadora')
+
     def test_chat_dynamic_text_tags_the_language_that_supplied_it(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"de"}', encoding='utf-8')
@@ -351,7 +384,50 @@ class Browser(unittest.TestCase):
             expect(page.locator('html')).to_have_attribute('lang', 'de')
             expect(page.locator('#chatStatus span[lang="en"]').first).to_have_text('No local AI added')
             expect(page.locator('.starter span[lang="en"]').first).to_have_text('What should I do first?')
+            expect(page.locator('#csList li.muted.small span[lang="en"]')).to_have_text('No chats yet.')
             self.assertEqual(page.locator('.starter').first.get_attribute('data-start'), 'What should I do first?')
+
+    def test_chat_context_video_and_page_labels_use_neutral_catalogue_copy(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/doc/**', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'title': 'Reference'})))
+            page.goto(origin + '/#/ask?about=video:clip:90')
+            expect(page.locator('#ctxChip .muted span[lang="es-419"]')).to_have_text('Video en 1:30')
+            page.evaluate("location.hash = '#/ask?about=doc:manual:3'")
+            expect(page.locator('#ctxChip .muted span[lang="es-419"]')).to_have_text('Página 3')
+
+    def test_chat_home_fallback_labels_are_language_tagged(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#askMore .ask-card .ac-t span[lang="en"]').first).to_be_visible()
+            expect(page.locator('#askMore .ask-learn a b span[lang="en"]').first).to_be_visible()
+
+    def test_chat_list_recovers_from_invalid_saved_dates(self):
+        self.configure_setup(current=DATA)
+        chat = {'id': 'invalid-date', 'title': 'Saved chat', 'messages': [{'role': 'user', 'content': 'Question'}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li b')).to_have_text('Saved chat')
+            expect(page.locator('#csList li small')).to_contain_text('1 question')
+
+    def test_chat_export_survives_without_i18n_date_adapter(self):
+        self.configure_setup(current=DATA)
+        chat = {
+            'id': 'export-date-fallback', 'title': 'Saved chat', 'updated': '2026-11-17T12:00:00Z',
+            'messages': [{'role': 'user', 'content': 'Question'}, {'role': 'assistant', 'content': 'Answer.', 'cited': []}],
+        }
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/export-date-fallback')
+            page.evaluate('window.LastbookI18n = undefined')
+            with page.expect_download() as download_info:
+                page.locator('[data-act="export"]').click()
+            self.assertTrue(download_info.value.suggested_filename.endswith('.md'))
 
     def test_chat_source_filters_use_neutral_spanish_labels(self):
         self.configure_setup(current=DATA)
@@ -360,7 +436,7 @@ class Browser(unittest.TestCase):
             'id': 'source-filter-chat', 'title': 'Question', 'updated': '2026-11-17T12:00:00Z',
             'messages': [
                 {'role': 'user', 'content': 'Question'},
-                {'role': 'assistant', 'content': 'Answer.', 'cited': [
+                {'role': 'assistant', 'content': 'Answer [S1].', 'cited': [
                     {'key': 'S1', 'kind': 'page', 'doc_id': 'manual', 'title': 'Manual'},
                     {'key': 'S2', 'kind': 'video', 'doc_id': 'video', 'title': 'Video', 't': 12},
                 ], 'steps': []},
@@ -371,6 +447,8 @@ class Browser(unittest.TestCase):
             page.goto(origin + '/#/ask/source-filter-chat')
             expect(page.locator('.srcfilter button')).to_have_text(['Todas 2', 'Páginas 1', 'Videos 1'])
             expect(page.locator('.srcfilter button span[lang="es-419"]')).to_have_count(3)
+            expect(page.locator('.cite')).to_have_attribute('title', 'Fuente S1')
+            expect(page.locator('.cite')).to_have_attribute('lang', 'es-419')
 
     def test_chat_language_refresh_preserves_focus_and_open_disclosures(self):
         self.configure_setup(current=DATA)
@@ -493,6 +571,15 @@ class Browser(unittest.TestCase):
                 'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
             expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
 
+    def test_map_fallback_labels_are_tagged_as_english(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/map')
+            page.locator('#layers-btn').click()
+            expect(page.locator('.presets button span[lang="en"]').first).to_be_visible()
+            expect(page.locator('#layers fieldset legend span[lang="en"]').first).to_be_visible()
+
     def test_chat_guide_label_uses_the_selected_interface_language(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
@@ -517,23 +604,77 @@ class Browser(unittest.TestCase):
         self.configure_setup(current=DATA)
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
             page.add_init_script(r"""window.auditSearchRequests = [];
+                window.auditSearchCompleted = 0;
                 const realFetch = window.fetch.bind(window);
                 window.fetch = (resource, init) => {
                     const url = typeof resource === 'string' ? resource : resource.url;
                     if (url.includes('/api/find?') || url.includes('/api/retrieve?')) {
                         window.auditSearchRequests.push(url);
                         return new Promise((resolve, reject) => setTimeout(
-                            () => realFetch(resource, init).then(resolve, reject), 500));
+                            () => realFetch(resource, init).then(response => {
+                                window.auditSearchCompleted++;
+                                resolve(response);
+                            }, error => {
+                                window.auditSearchCompleted++;
+                                reject(error);
+                            }), 500));
                     }
                     return realFetch(resource, init);
                 };""")
+            page_errors = []
+            page.on('pageerror', lambda error: page_errors.append(str(error)))
             page.goto(origin + '/#/guides')
             expect(page.locator('h1')).to_have_text('What do you need?')
             page.evaluate("location.hash = '#/search?q=zzqzxqwv'")
             page.wait_for_function('window.auditSearchRequests.length >= 2')
             page.evaluate("location.hash = '#/guides'")
             expect(page.locator('h1')).to_have_text('What do you need?')
-            page.wait_for_timeout(700)
+            page.wait_for_function('window.auditSearchCompleted === window.auditSearchRequests.length')
+            expect(page.locator('#main .results')).to_have_count(0)
+            expect(page.locator('#main .result')).to_have_count(0)
+            self.assertEqual(page_errors, [])
+
+    def test_topic_card_fallbacks_are_tagged_as_english(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/guides')
+            expect(page.locator('.need[href="#/t/hurt"] b span[lang="en"]')).to_have_text('Injury & illness')
+            expect(page.locator('.need[href="#/t/hurt"] small span[lang="en"]')).to_have_text(
+                'First aid for bleeding, burns, breathing, injuries and sudden illness')
+
+    def test_video_speed_copy_uses_the_selected_catalogue_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/watch/vida')
+            expect(page.locator('.video-speed label span[lang="de"]')).to_have_text('Wiedergabegeschwindigkeit')
+            expect(page.locator('#videoSpeed option[value="1"]')).to_have_attribute('lang', 'de')
+            expect(page.locator('#videoSpeed option[value="1"]')).to_have_text('Normal')
+
+    def test_video_category_and_note_copy_is_translated_and_language_tagged(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/videos', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps([
+                    {'id': 'health', 'title': 'First aid & health', 'note': None, 'count': 1, 'items': []},
+                    {'id': 'coalcracker', 'title': 'Coalcracker Bushcraft', 'note': 'Hobbyist channel', 'count': 1, 'items': []},
+                ])))
+            page.goto(origin + '/#/videos')
+            expect(page.locator('#vrows .sec-head h2 span[lang="es-419"]')).to_have_text(
+                ['Salud y primeros auxilios', 'Coalcracker Bushcraft'])
+            expect(page.locator('#vrows .sec-head .sub span[lang="es-419"]')).to_have_text('Canal de aficionados')
+
+    def test_early_saved_language_hint_updates_meta_description(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/guides')
+            page.evaluate("localStorage.setItem('lastbook.ui-language', 'es-419')")
+            page.reload()
+            expect(page.locator('meta[name="description"]')).to_have_attribute(
+                'content', 'Guía de supervivencia y reconstrucción sin conexión: primeros auxilios, agua, alimentos, energía, refugio, videos, mapas y habilidades.')
 
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()

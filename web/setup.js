@@ -170,9 +170,14 @@
     const text = p.summary_key
       ? tr(p.summary_key, p.id === 'medium' ? { map } : null, p.summary || '')
       : (p.summary || '');
-    if (p.id !== 'medium' || p.summary_key || !maps().length) return text;
-    // Older manifests have no catalogue key; preserve their summary while replacing the bundled map name.
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : tr('setup.yourState', null, 'your state')));
+    if (p.id !== 'medium' || p.summary_key) return text;
+    const selectedMap = state && maps().length ? mapName(state) : tr('setup.yourState', null, 'your state');
+    // Manifests produced before summary_key was added still need a localized medium-pack description.
+    if (globalThis.LastbookI18n?.locale && globalThis.LastbookI18n.locale !== 'en') {
+      return tr('setup.packSummary.medium', { map: selectedMap }, text);
+    }
+    if (!maps().length) return text;
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + selectedMap);
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';

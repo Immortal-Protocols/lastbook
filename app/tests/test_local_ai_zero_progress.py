@@ -28,7 +28,8 @@ class LocalAiZeroProgressTests(unittest.TestCase):
         loader = LOADER.read_text(encoding="utf-8")
         source = CHAT.read_text(encoding="utf-8")
         self.assertIn("self.state, self.pct, self.message = 'loading', None, ''", loader)
-        self.assertIn("Local AI available · your first question loads it and may take a while", source)
+        english = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        self.assertEqual(english['chat.available'], 'Local AI available · your first question loads it and may take a while')
         self.assertIn("if self.proc is proc:", loader)
     def test_runner_zero_percent_event_is_retained(self):
         # Execute the real reader, rather than depending on how it spells an

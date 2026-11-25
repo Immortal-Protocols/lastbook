@@ -17,6 +17,17 @@ function localizedHtml(result) {
   return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
 }
 function trHtml(key, params, fallback) { return localizedHtml(trResult(key, params, fallback)); }
+function chatDate(value, options) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  try {
+    const formatted = globalThis.LastbookI18n?.date?.(date, options);
+    if (formatted != null) return formatted;
+    return options && ('dateStyle' in options || 'timeStyle' in options)
+      ? date.toLocaleString(undefined, options)
+      : date.toLocaleDateString(undefined, options);
+  } catch { return '' }
+}
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
   const STARTERS = [
@@ -59,7 +70,7 @@ const Chat = (() => {
   const stage = m => ({ at: STAGE_AT[m.state] ?? 0, pct: m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null });
   const stageClass = (i, at) => i < at ? 'done' : i === at ? 'now' : '';
   function progress(m) {
-    const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
+    const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
     const stages = STAGES.map((key, i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${stageHtml(key)}</li>`).join('');
     return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
   }
@@ -155,7 +166,7 @@ const Chat = (() => {
     return ({
       ready: [true, translated('chat.ready', null, 'Local AI ready')],
       stopped: [true, translated('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
-      loading: [true, translated('chat.state.startingPct', { pct: l.pct ? ' ' + l.pct + '%' : '…' }, 'Starting the local AI{pct}')],
+      loading: [true, translated('chat.state.startingPct', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Starting the local AI{pct}')],
       checking: [false, translated('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
       measuring: [false, translated('chat.checkingMemory', null, 'Checking this computer’s memory…')],
       absent: [false, translated('chat.notAdded', null, 'No local AI added')],
@@ -206,9 +217,12 @@ const Chat = (() => {
   async function describe(about) {
     const [kind, id, n] = about.split(':');
     try {
-      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: tr('guide.topicKind', null, 'Guide'), kind } }
+      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, subResult: trResult('guide.topicKind', null, 'Guide'), kind } }
       const d = await api('/api/doc/' + encodeURIComponent(id));
-      return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : tr('nav.video', null, 'Video')) : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
+      const subResult = kind === 'video'
+        ? (n ? trResult('chat.videoAt', { time: clock(+n) }, 'Video at {time}') : trResult('nav.video', null, 'Video'))
+        : trResult('reader.pagePrefix', { page: n || 1 }, 'Page {page}');
+      return { about, kind, label: d.title, subResult, href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
     } catch { return null }
   }
   function renderCtx() {
@@ -216,13 +230,18 @@ const Chat = (() => {
     const a = aboutCtx;
     if (!a) { el.hidden = true; return }
     el.hidden = false;
-    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>${esc(tr('chat.askingAbout', null, 'Asking about:'))} <b>${esc(a.label)}</b> <span class="muted">${esc(a.sub || '')}</span></span>${cur && cur.messages.length ? '' : `<button type="button" aria-label="${esc(tr('chat.dontUseContext', null, "Don’t use this as context"))}" id="ctxX">×</button>`}`;
+    const sub = a.subResult ? localizedHtml(a.subResult) : a.sub ? `<span lang="en">${esc(a.sub)}</span>` : '';
+    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>${esc(tr('chat.askingAbout', null, 'Asking about:'))} <b>${esc(a.label)}</b> <span class="muted">${sub}</span></span>${cur && cur.messages.length ? '' : `<button type="button" aria-label="${esc(tr('chat.dontUseContext', null, "Don’t use this as context"))}" id="ctxX">×</button>`}`;
     const x = $('#ctxX'); if (x) x.onclick = () => { aboutCtx = null; renderCtx(); renderLog() };
   }
   function renderSide() {
     const el = $('#csList'); if (!el) return;
-    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${(globalThis.LastbookI18n?.date?.(new Date(c.updated), { month: 'short', day: 'numeric' }) ?? new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${tr('chat.questions', { count: c.messages.filter(m => m.role === 'user').length })}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="${esc(tr('chat.deleteThis', null, 'Delete this chat'))}">×</button></li>`).join('')
-      : `<li class="muted small" style="padding:8px 4px">${esc(tr('chat.noneYet', null, 'No chats yet.'))}</li>`;
+    el.innerHTML = chats.length ? chats.map(c => {
+      const date = chatDate(c.updated, { month: 'short', day: 'numeric' });
+      const datePrefix = date ? `${esc(date)} · ` : '';
+      return `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${datePrefix}${tr('chat.questions', { count: c.messages.filter(m => m.role === 'user').length })}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="${esc(tr('chat.deleteThis', null, 'Delete this chat'))}">×</button></li>`;
+    }).join('')
+      : `<li class="muted small" style="padding:8px 4px">${trHtml('chat.noneYet', null, 'No chats yet.')}</li>`;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
     // the list fades at an edge with more chats past it, so a row cut off there reads as more to scroll to
@@ -262,11 +281,12 @@ const Chat = (() => {
     wire(log);
   }
   function homeMore() {
-    const q = Object.fromEntries(STARTERS.map(([id, en]) => [id, tr('chat.starter.' + id, null, en)])), title = id => esc((typeof shortName === 'function' ? shortName(id) : SHORT[id]) || id);
-    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>${tr('chat.runsLocal', null, 'Runs on this computer. Nothing you ask leaves it.')}</p>
+    const q = Object.fromEntries(STARTERS.map(([id, en]) => [id, trResult('chat.starter.' + id, null, en)]));
+    const title = id => localizedHtml(trResult('topic.' + id, null, (typeof shortName === 'function' ? shortName(id) : SHORT[id]) || id));
+    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>${trHtml('chat.runsLocal', null, 'Runs on this computer. Nothing you ask leaves it.')}</p>
       <h2 class="ask-h" data-i18n="chat.startWithWhatMatters">${tr('chat.startWithWhatMatters', null, 'Start with what matters')}</h2>
-      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
-        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
+      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id].text)}">
+        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b>${localizedHtml(q[id])}</span>${ico('right', 'ac-go')}</button>`).join('')}</div>
       <div class="ask-learn-head"><h2 class="ask-h" data-i18n="chat.keepLearning">${tr('chat.keepLearning', null, 'Keep learning')}</h2><a href="#/library" data-i18n="chat.allSkills">${tr('chat.allSkills', null, 'All skills')}</a></div>
       <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small data-i18n="guide.stepByStep">${tr('guide.stepByStep', null, 'Step-by-step guide')}</small></span></a>`).join('')}</div>`;
   }
@@ -383,7 +403,7 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${stateHtml(m.state)}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${stateHtml(m.state)}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
@@ -471,7 +491,11 @@ const Chat = (() => {
   function md(text, m) {
     const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
-    const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : '';
+    const cite = k => {
+      if (!keys.has(k) && m.cited) return '';
+      const title = trResult('chat.sourceKey', { key: k }, 'Source {key}');
+      return `<a class="cite" href="#src-${k}" data-key="${k}" lang="${esc(title.locale)}" title="${esc(title.text)}">${k.replace(/^S/, '')}</a>`;
+    };
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
@@ -555,7 +579,7 @@ const Chat = (() => {
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${(globalThis.LastbookI18n?.date?.(new Date(), { dateStyle: 'medium', timeStyle: 'short' }) ?? new Date().toLocaleString())}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
+    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' })}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
     for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
@@ -637,8 +661,9 @@ const Chat = (() => {
     else if (ev.type === 'reset') m.content = '';
     else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
-      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
-      else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
+      if (ev.error === 'model_unavailable') { m.offline = true; m.error = tr('chat.modelNotRunning', null, 'The local assistant model isn’t running right now.'); fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
+      else if (ev.error === 'internal') m.error = tr('chat.internalError', { reason: ev.reason || 'unknown' }, 'The assistant stopped on an internal error ({reason}).');
+      else { m.error = ev.error === 'empty' ? tr('chat.emptyResponse', null, 'The model did not produce an answer. The passages it found are listed below.') : ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
     }
     else if (ev.type === 'stopped') m.stopped = true;
   }

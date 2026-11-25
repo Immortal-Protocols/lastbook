@@ -236,7 +236,7 @@ class SpanishWording(unittest.TestCase):
             'videos.headingQuoted', 'videos.kindPrefix', 'videos.speedNormal', 'videos.10to30',
             'saved.pdf', 'app.titleSuffix', 'time.hoursMinutes', 'time.minutes', 'time.seconds',
             'map.zoom', 'library.shelfVideos',
-            'native.menu.zoom', 'common.video',
+            'native.menu.zoom', 'common.video', 'chat.sourceType.videos',
             'native.appFileDescription', 'installer.productName', 'installer.companyName', 'videos.videoCount',
             'setup.facts.sha256', 'setup.facts.bytes',
         })

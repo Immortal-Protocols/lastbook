@@ -97,5 +97,8 @@
   "setup.notifyMustBeBoolean": "notify muss true oder false sein.",
   "setup.internalError": "Die Einrichtung wurde durch einen internen Fehler gestoppt ({type}).",
   "setup.copyJobTitle": "Kopie der Bibliothek {title}",
-  "hardware.batteryLocalOnly": "Der Akkustand wird nur auf diesem Computer angezeigt."
+  "hardware.batteryLocalOnly": "Der Akkustand wird nur auf diesem Computer angezeigt.",
+  "desktop.comment": "Die Survival-Bibliothek auf diesem Computer ohne Internet durchsuchen und lesen",
+  "desktop.genericName": "Offline-Bibliothek für Krisenvorsorge",
+  "desktop.keywords": "Krisenvorsorge;Bibliothek;offline;Erste Hilfe;"
 }

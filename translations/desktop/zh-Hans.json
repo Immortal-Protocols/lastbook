@@ -97,5 +97,8 @@
   "setup.notifyMustBeBoolean": "notify 的值必须为 true 或 false。",
   "setup.internalError": "初始设置因内部错误而停止（{type}）。",
   "setup.copyJobTitle": "{title}资料库的副本",
-  "hardware.batteryLocalOnly": "仅在此设备上显示电池信息。"
+  "hardware.batteryLocalOnly": "仅在此设备上显示电池信息。",
+  "desktop.comment": "无需联网，在此计算机上搜索和阅读生存资料库",
+  "desktop.genericName": "离线生存资料库",
+  "desktop.keywords": "生存;资料库;离线;急救;"
 }

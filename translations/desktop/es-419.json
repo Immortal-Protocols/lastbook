@@ -239,7 +239,7 @@
   "search.show": "Mostrar",
   "search.askQuoted": "Pregunta a la biblioteca: “{query}”",
   "search.askHint": "Recibe una respuesta escrita basada en las páginas exactas de la biblioteca.",
-  "search.friendWords": "Usa las palabras que usarías con un amigo. Por ejemplo:",
+  "search.friendWords": "Usa las palabras que usarías al hablar con alguien. Por ejemplo:",
   "search.pickedPages": "Páginas elegidas con números de página exactos y límites de seguridad",
   "search.inManuals": "En los manuales y las páginas guardadas",
   "search.partialWords": "· se muestran páginas con algunas de tus palabras",
@@ -1489,5 +1489,15 @@
   "setup.notifyMustBeBoolean": "El valor de notify debe ser verdadero o falso.",
   "setup.internalError": "La configuración se detuvo por un error interno ({type}).",
   "setup.copyJobTitle": "Copia de la biblioteca {title}",
-  "hardware.batteryLocalOnly": "La batería solo se muestra en esta computadora."
+  "hardware.batteryLocalOnly": "La batería solo se muestra en esta computadora.",
+  "chat.sourceType.all": "Todas",
+  "chat.sourceType.encyclopedias": "Enciclopedias",
+  "chat.sourceType.pages": "Páginas",
+  "chat.sourceType.places": "Lugares",
+  "chat.sourceType.videos": "Videos",
+  "desktop.keywords": "supervivencia;biblioteca;sin conexión;primeros auxilios;",
+  "notes.countOnDevice": {
+    "one": "{count} nota en esta computadora",
+    "other": "{count} notas en esta computadora"
+  }
 }

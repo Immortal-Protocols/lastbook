@@ -214,3 +214,25 @@ class Coverage(unittest.TestCase):
         _pos, text, pre = next(item for item in scan.iter_js_strings(sample)
                                if item[1] == 'Read {title}, page {pages}')
         self.assertEqual(scan.classify(text, pre), 'wired')
+
+    def test_scanner_preserves_urls_regex_templates_attributes_and_python_concatenation(self):
+        js = "statusLine('Open https://example.org/help now');"
+        url = next((text, pre) for _pos, text, pre in scan.iter_js_strings(js) if 'https://' in text)
+        self.assertEqual(scan.classify(*url), 'chrome')
+
+        nested = 'const x = "}"; root.innerHTML = `${/}/.test(x) ? `<button>Keep going</button>` : ""}`;'
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(nested)]
+        pre = next((pre for text, pre in hits if text == 'Keep going'), None)
+        self.assertIsNotNone(pre, hits)
+        self.assertEqual(scan.classify('Keep going', pre), 'chrome')
+
+        parser = scan._MarkupStrings('web/chat.js')
+        parser.feed('<a title="Source {…}">{…}</a>')
+        parser.close()
+        source = next(((text, pre) for text, pre in parser.strings if text.startswith('Source ')), None)
+        self.assertIsNotNone(source, parser.strings)
+        self.assertEqual(scan.classify(*source), 'chrome')
+
+        joined = next((text, pre, body) for _pos, text, pre, body in scan.iter_py_strings('label("Open " "folder")')
+                      if text == 'Open folder')
+        self.assertEqual(scan.classify(joined[0], joined[1], joined[2]), 'chrome')

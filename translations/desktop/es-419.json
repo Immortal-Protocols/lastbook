@@ -1296,5 +1296,11 @@
   "notes.countOnDevice": {
     "one": "{count} nota en esta computadora",
     "other": "{count} notas en esta computadora"
-  }
+  },
+  "setup.skipMapNoAddress": "La búsqueda por dirección no está disponible. Se puede agregar más adelante en Configuración.",
+  "setup.skipMapNoLocal": "No hay un mapa local. Se puede agregar más adelante en Configuración.",
+  "setup.skipMapNoAddressLabel": "Sin búsqueda por dirección",
+  "setup.skipMapNoLocalLabel": "Sin mapa local",
+  "setup.skipMapForNow": "— omitir por ahora",
+  "setup.err.setupFolderLinkOrSpecial": "La carpeta de configuración contiene un enlace o un archivo especial. Elige otra carpeta para la biblioteca."
 }

@@ -1661,7 +1661,7 @@ def _check_pack_paths(*paths):
         reparse = getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
         hardlink = stat.S_ISREG(info.st_mode) and info.st_nlink > 1
         if reparse or hardlink or not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
-            raise download.Failed('folder', 'The setup folder contains a link or special file. Choose a different library folder.')
+            raise download.Failed('folder', 'The setup folder contains a link or special file. Choose a different library folder.', key='setup.err.setupFolderLinkOrSpecial')
 
 
 def _map_damaged(target, what):

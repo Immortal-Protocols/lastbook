@@ -1296,5 +1296,11 @@
   "notes.countOnDevice": {
     "one": "{count} note on this computer",
     "other": "{count} notes on this computer"
-  }
+  },
+  "setup.skipMapNoAddress": "No street-address search. You can add it later from Settings.",
+  "setup.skipMapNoLocal": "No local map. You can add one later from Settings.",
+  "setup.skipMapNoAddressLabel": "No street-address search",
+  "setup.skipMapNoLocalLabel": "No local map",
+  "setup.skipMapForNow": "— skip for now",
+  "setup.err.setupFolderLinkOrSpecial": "The setup folder contains a link or special file. Choose a different library folder."
 }

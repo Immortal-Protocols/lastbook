@@ -76,5 +76,11 @@
   "hardware.batteryLocalOnly": "仅在此设备上显示电池信息。",
   "desktop.comment": "无需联网，在此计算机上搜索和阅读生存资料库",
   "desktop.genericName": "离线生存资料库",
-  "desktop.keywords": "生存;资料库;离线;急救;"
+  "desktop.keywords": "生存;资料库;离线;急救;",
+  "setup.skipMapNoAddress": "地址搜索暂不可用，可稍后在“设置”中添加。",
+  "setup.skipMapNoLocal": "没有本地地图，可稍后在“设置”中添加。",
+  "setup.skipMapNoAddressLabel": "不含地址搜索",
+  "setup.skipMapNoLocalLabel": "无本地地图",
+  "setup.skipMapForNow": "— 暂时跳过",
+  "setup.err.setupFolderLinkOrSpecial": "配置文件夹中包含链接或特殊文件。请选择其他资料库文件夹。"
 }

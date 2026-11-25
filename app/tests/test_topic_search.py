@@ -504,12 +504,18 @@ FIRST_AID_WORDS = {
     'sepsis': ['hurt', 'bleeding'],
     'breastfeeding': ['food', 'special'],
 }
-# The multi-word ones are phrases, not hint words, so a search that merely shares one word keeps its own guide.
+# All of these are phrases with a context list, not hint words, so a search that merely shares one word keeps the
+# guide it had. A blister the person did not call a burn is the case to watch: "diabetic foot blister" is a chronic
+# illness search, and "friction blister" and "blister on my foot" are not burns either. None means no guide at all.
 FIRST_AID_UNDISTURBED = {
     'back pain': ['health', 'start'], 'abdominal pain': ['health', 'start'], 'lower back pain': ['health', 'start'],
     'recovery': ['hurt', None], 'position': ['hurt', None], 'back': ['hurt', 'head'],
     'burn': ['hurt', 'burn'], 'choking': ['hurt', 'breathing'], 'tourniquet': ['hurt', 'bleeding'],
     'breast feeding': ['food', 'special'], 'formula': ['food', 'special'],
+    'diabetic foot blister': ['hurt', 'sudden'], 'diabetic foot': ['hurt', 'sudden'],
+    'blister on my hand': ['sanitation', 'hands'], 'sun blister': ['preserve', 'nopower'],
+    'friction blister': None, 'foot blister': None, 'blister on my foot': None,
+    'burn blister': ['hurt', 'burn'], 'chemical burn blister': ['hurt', 'burn'],
 }
 TOPS = sorted({*TOPS, *FIRST_AID_WORDS, *FIRST_AID_UNDISTURBED})
 
@@ -813,7 +819,7 @@ class TopicSearch(unittest.TestCase):
                     self.assertEqual(top[q][:1], [first])
             for q, first in FIRST_AID_UNDISTURBED.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
-                    self.assertEqual(top[q][:1], [first])
+                    self.assertEqual(top[q][:1], [first] if first else [])
 
     def test_out_of_and_rat_reach_the_choice_that_answers_them(self):
         for r in self.modes:

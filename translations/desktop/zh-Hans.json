@@ -130,5 +130,16 @@
   "setup.why.savesToShortPath": "将保存到 {short}，因为用户文件夹路径太长，无法容纳资料库中的最长文件名。",
   "setup.why.smallToStart": "已选择 Small 作为入门选项。您也可以选择更大的资料库。",
   "setup.why.smallestNeeds": "最小的资料库 {title} 需要 {need} 可用空间，而这台电脑只有 {free}。",
-  "setup.why.unknownMemory": "Lastbook 无法确定这台电脑的内存大小。"
+  "setup.why.unknownMemory": "Lastbook 无法确定这台电脑的内存大小。",
+  "setup.repairSummaryLibrary": "由于部分文件已损坏，资料库已重新下载。损坏的副本已另行保留；您可以在“资料库和本地 AI”中将其删除。",
+  "setup.repairSummaryAiWithLibrary": "本地 AI 文件也已重新下载。",
+  "setup.repairSummaryAiOnly": "本地 AI 文件已损坏，因此已重新下载并替换原文件。",
+  "setup.repairSummaryMap": "详细地图已重新下载。",
+  "setup.repairSummaryOther": "已重新下载损坏的部分。",
+  "chat.conversations": "对话",
+  "chat.exportChat": "导出聊天",
+  "setup.retry": "重试",
+  "setup.downloadIt": "改为下载？",
+  "setup.chooseAiModelFile": "选择 AI 模型文件",
+  "setup.chooseAgain": "重新选择"
 }

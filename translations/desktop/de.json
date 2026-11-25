@@ -130,5 +130,16 @@
   "setup.why.savesToShortPath": "Wird unter {short} gespeichert, weil der Pfad Ihres Benutzerordners für die längsten Dateinamen der Bibliothek zu lang ist.",
   "setup.why.smallToStart": "Small ist für den Einstieg ausgewählt. Sie können eine größere Bibliothek wählen.",
   "setup.why.smallestNeeds": "Die kleinste Bibliothek, {title}, benötigt {need} freien Speicherplatz. Auf diesem Computer sind {free} frei.",
-  "setup.why.unknownMemory": "Lastbook konnte nicht feststellen, wie viel Arbeitsspeicher dieser Computer hat."
+  "setup.why.unknownMemory": "Lastbook konnte nicht feststellen, wie viel Arbeitsspeicher dieser Computer hat.",
+  "setup.repairSummaryLibrary": "Die Bibliothek wurde erneut heruntergeladen, weil einige Dateien beschädigt waren. Die beschädigte Kopie wurde beiseitegelegt; Sie können sie unter Bibliothek und lokale KI löschen.",
+  "setup.repairSummaryAiWithLibrary": "Auch die Datei der lokalen KI wurde erneut heruntergeladen.",
+  "setup.repairSummaryAiOnly": "Die Datei der lokalen KI war beschädigt und wurde erneut heruntergeladen und ersetzt.",
+  "setup.repairSummaryMap": "Die Detailkarte wurde erneut heruntergeladen.",
+  "setup.repairSummaryOther": "Ein beschädigter Bestandteil wurde erneut heruntergeladen.",
+  "chat.conversations": "Unterhaltungen",
+  "chat.exportChat": "Chat exportieren",
+  "setup.retry": "Erneut versuchen",
+  "setup.downloadIt": "Stattdessen herunterladen?",
+  "setup.chooseAiModelFile": "Datei für das KI-Modell auswählen",
+  "setup.chooseAgain": "Erneut auswählen"
 }

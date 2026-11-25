@@ -42,7 +42,7 @@ sign_target "$DIST"
 cp "$HERE/icon/Lastbook.ico" "$OUTU/Lastbook.ico"
 
 STAMP="${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
-# en-US plus es-MX (stand-in for es-419) and es-ES string tables. See packaging/windows_versioninfo.py.
+# en-US, es-MX/es-ES (stand-ins for es-419), German and Simplified Chinese string tables. See packaging/windows_versioninfo.py.
 "$PY" -I -B "$HEREW\\windows_versioninfo.py" --format pyinstaller --kind setup --version "$VERSION" --stamp "$STAMP" --out "$OUT\\version-setup.txt"
 "$PY" -I -B "$HEREW\\windows_versioninfo.py" --format pyinstaller --kind uninstall --version "$VERSION" --stamp "$STAMP" --out "$OUT\\version-uninstall.txt"
 

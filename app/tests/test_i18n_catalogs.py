@@ -391,7 +391,7 @@ class CatalogueCoverage(unittest.TestCase):
         self.assertGreaterEqual(len(used), 200)
 
 class WindowsVersionInfo(unittest.TestCase):
-    """App and Setup VERSIONINFO tables include es-MX / es-ES stand-ins for es-419."""
+    """App and Setup VERSIONINFO tables cover the supported desktop locales."""
 
     def setUp(self):
         import windows_versioninfo as versioninfo
@@ -416,6 +416,29 @@ class WindowsVersionInfo(unittest.TestCase):
         self.assertIn('Desinstalar Lastbook', uninstall)
         app = self.versioninfo.render_pyinstaller('app', '1.2.3', 'stamp', self.english, self.locales)
         self.assertIn("StringStruct('FileDescription', 'Lastbook')", app)
+
+    def test_pyinstaller_and_rc_include_german_and_simplified_chinese_tables(self):
+        self.assertEqual(set(self.locales), {'es-419', 'de', 'zh-Hans'})
+        py = self.versioninfo.render_pyinstaller('setup', '1.2.3', '20261121-010203', self.english, self.locales)
+        rc = self.versioninfo.render_rc('setup', '1.2.3', '20261121-010203', self.english, self.locales)
+        uninstall_py = self.versioninfo.render_pyinstaller('uninstall', '1.2.3', 'stamp', self.english, self.locales)
+        uninstall_rc = self.versioninfo.render_rc('uninstall', '1.2.3', 'stamp', self.english, self.locales)
+        app = self.versioninfo.render_pyinstaller('app', '1.2.3', 'stamp', self.english, self.locales)
+        for text in (py, rc, uninstall_py, uninstall_rc, app):
+            for table in ('040704B0', '080404B0', '100404B0'):
+                self.assertIn(table, text)
+        for text in (py, rc):
+            self.assertIn('Lastbook-Installation', text)
+            self.assertIn('Lastbook 安装程序', text)
+        for text in (uninstall_py, uninstall_rc):
+            self.assertIn('Lastbook entfernen', text)
+            self.assertIn('卸载 Lastbook', text)
+        self.assertIn('1031, 1200', py)
+        self.assertIn('2052, 1200', py)
+        self.assertIn('4100, 1200', py)
+        self.assertIn('0x407, 1200', rc)
+        self.assertIn('0x804, 1200', rc)
+        self.assertIn('0x1004, 1200', rc)
 
 
 class NativeInterpolation(unittest.TestCase):

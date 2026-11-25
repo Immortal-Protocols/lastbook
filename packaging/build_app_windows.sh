@@ -85,7 +85,7 @@ PYCHECK
 # Task Manager. The stamp also makes each build a file of its own, which Smart App Control judges afresh (see WINDOWS-SETUP-TESTS.md).
 VERSION="$("$PY" -I -B -c "import ast,sys;t=open(sys.argv[1],encoding='utf-8').read();print([n.value.value for n in ast.parse(t).body if isinstance(n,ast.Assign) and getattr(n.targets[0],'id','')=='VERSION'][0])" "$ROOTW\\packaging\\lastbook_setup.py")"
 STAMP="${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
-# en-US plus es-MX (stand-in for es-419) and es-ES string tables. See packaging/windows_versioninfo.py.
+# en-US, es-MX/es-ES (stand-ins for es-419), German and Simplified Chinese string tables. See packaging/windows_versioninfo.py.
 "$PY" -I -B "$ROOTW\\packaging\\windows_versioninfo.py" --format pyinstaller --kind app --version "$VERSION" --stamp "$STAMP" --out "$OUT\\version.txt"
 
 "$PY" -I -B -m PyInstaller --noconfirm --clean --onedir --windowed --noupx --name Lastbook --icon "$ROOTW\\packaging\\icon\\Lastbook.ico" --add-data "$ROOTW\\packaging\\icon\\Lastbook.ico;." --version-file "$OUT\\version.txt" \

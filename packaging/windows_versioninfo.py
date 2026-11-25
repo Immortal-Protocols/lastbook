@@ -4,7 +4,9 @@ PyInstaller --version-file and llvm-windres already consume these formats on
 the Windows build machine; this script only authors the text. es-419 has no
 Windows LCID, so 0x080A (Spanish-Mexico, StringTable 080A04B0) stands in for
 it, and 0x0C0A (Spanish-Spain, 0C0A04B0) carries the same Latin American
-wording so a computer whose UI is es-ES still shows Spanish.
+wording so a computer whose UI is es-ES still shows Spanish. German uses
+0x0407 (Germany); Simplified Chinese uses 0x0804 (China) and 0x1004
+(Singapore), with the same catalogue wording for both regions.
 
 Usage (run from the Windows build scripts):
 
@@ -27,6 +29,9 @@ TABLES = (
     ('040904B0', 1033, 'en'),
     ('080A04B0', 2058, 'es-419'),
     ('0C0A04B0', 3082, 'es-419'),
+    ('040704B0', 1031, 'de'),
+    ('080404B0', 2052, 'zh-Hans'),
+    ('100404B0', 4100, 'zh-Hans'),
 )
 
 KIND_DESCRIPTION = {
@@ -38,13 +43,16 @@ KIND_DESCRIPTION = {
 
 def load_catalogs(source=SOURCE):
     english = json.loads((source / 'en.json').read_text(encoding='utf-8'))
-    locales = {'es-419': json.loads((source / 'es-419.json').read_text(encoding='utf-8'))}
+    locales = {
+        locale: json.loads((source / f'{locale}.json').read_text(encoding='utf-8'))
+        for locale in ('es-419', 'de', 'zh-Hans')
+    }
     return english, locales
 
 
 def message(english, locales, locale, key, params=None):
-    table = english if locale == 'en' else locales[locale]
-    text = table[key]
+    table = english if locale == 'en' else locales.get(locale, {})
+    text = table.get(key, english[key])
     if params:
         for name, value in params.items():
             text = text.replace('{' + name + '}', str(value))

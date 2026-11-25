@@ -700,6 +700,14 @@ def build():
     if not (SOURCE / 'fetched.json').exists():
         raise SystemExit(f'no fetched.json in {SOURCE}; run the fetch step first')
     fetched = json.loads((SOURCE / 'fetched.json').read_text(encoding='utf-8'))
+    # the report publishes what it builds from, so the sources on disk are checked against fetched.json
+    # before anything else runs: an archive swapped under a stale record stops the build here, naming
+    # the archive, and leaves the last good output untouched
+    for name, info in sorted(fetched['files'].items()):
+        path = SOURCE / name
+        if not path.exists() or sha256(path) != info.get('sha256'):
+            raise SystemExit(f'{name}: the archive on disk does not match fetched.json — run the fetch step '
+                             'to re-download or re-record the sources before building')
     data, staging, previous = BASE / 'data', BASE / 'data.new', BASE / 'data.old'
     if previous.exists() and not data.exists():
         previous.rename(data)         # an earlier build stopped between the two renames at the end

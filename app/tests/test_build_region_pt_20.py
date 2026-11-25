@@ -327,5 +327,35 @@ class ExtractionProvenanceTests(unittest.TestCase):
         self.assertFalse((self.source / (self.MEMBERS[0] + '.part')).exists())
 
 
+class SourceProvenanceTests(unittest.TestCase):
+    """The build reports what it builds from: an archive on disk that no longer matches fetched.json
+    stops the build at the entry point — naming the archive, touching nothing — the mismatch the #481
+    review reproduced by swapping the cached ZIP under a stale fetched.json."""
+
+    def setUp(self):
+        self.base = Path(tempfile.mkdtemp())
+        for name, value in (('BASE', self.base), ('SOURCE', self.base / 'source')):
+            patcher = mock.patch.object(builder, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        source = self.base / 'source'
+        source.mkdir()
+        (source / 'fetched.json').write_text(json.dumps({'fetched': '', 'files': {
+            'caop_raa.zip': {'sha256': 'recorded-in-fetched', 'bytes': 1}}}), encoding='utf-8')
+        (source / 'caop_raa.zip').write_bytes(b'an archive that no longer matches the record')
+        self.data = self.base / 'data'
+        self.data.mkdir()
+        (self.data / 'marker.txt').write_text('previous good build', encoding='utf-8')
+
+    def test_a_stale_archive_stops_the_build_naming_it(self):
+        with self.assertRaises(SystemExit) as caught:
+            builder.build()
+        self.assertIn('caop_raa.zip', str(caught.exception))
+        self.assertIn('fetched.json', str(caught.exception))
+        # the last good output is untouched: the build stopped before staging anything
+        self.assertEqual((self.data / 'marker.txt').read_text(encoding='utf-8'), 'previous good build')
+        self.assertFalse((self.base / 'data.new').exists())
+
+
 if __name__ == '__main__':
     unittest.main()

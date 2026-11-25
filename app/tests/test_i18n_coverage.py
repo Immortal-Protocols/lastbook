@@ -191,6 +191,35 @@ class Coverage(unittest.TestCase):
         # Protocol flags stay technical after trimming for UI classification.
         self.assertEqual(scan.classify(' --lan', 'const command = '), 'technical')
 
+    def test_scanner_recognizes_chat_tr_keyed_fallbacks(self):
+        wired = "const title = chatTr('chat.exportTitle', { title }, 'Chat: {title}')"
+        hit = next(item for item in scan.iter_js_strings(wired) if item[1] == 'Chat: {title}')
+        self.assertEqual(scan.classify(hit[1], hit[2]), 'wired')
+
+        missing = "const title = chatTr('chat.newKey', null, 'A new visible label')"
+        hit = next(item for item in scan.iter_js_strings(missing) if item[1] == 'A new visible label')
+        self.assertEqual(scan.classify(hit[1], hit[2]), 'chrome')
+
+    def test_scanner_recognizes_keyed_message_helpers(self):
+        for sample, literal in [
+            ("const label = chatTr('chat.exportTitle', { title }, 'Chat: {title}')", 'Chat: {title}'),
+            ("setError(message, 'chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.')", 'The answer stopped unexpectedly.'),
+            ("trMarkup('setup.error', null, 'Setup could not start.')", 'Setup could not start.'),
+        ]:
+            with self.subTest(literal=literal):
+                hit = next(item for item in scan.iter_js_strings(sample) if item[1] == literal)
+                self.assertEqual(scan.classify(hit[1], hit[2]), 'wired')
+
+        missing = "const label = chatTr('chat.newKey', null, 'A new visible label')"
+        hit = next(item for item in scan.iter_js_strings(missing) if item[1] == 'A new visible label')
+        self.assertEqual(scan.classify(hit[1], hit[2]), 'chrome')
+
+    def test_scanner_treats_dynamic_attribute_selectors_as_technical(self):
+        self.assertEqual(
+            scan.classify('#{…} [data-act="{…}"]', 'document.querySelector(`'),
+            'technical',
+        )
+
     def test_scanner_detects_prose_exported_to_markdown(self):
         sample = '''function exportChat(c) {
           const md = `# ${c.title}\\n\\nExported from Lastbook (offline library) on ${chatDate(new Date())}.\\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\\n`;

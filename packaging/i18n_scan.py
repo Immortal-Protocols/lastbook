@@ -334,8 +334,13 @@ def _inside_catalogued_fallback(pre: str, names) -> bool:
             if not remains_open(match.start()):
                 continue
             args = source[match.end():]
-            direct = re.match(r"\s*(['\"])([A-Za-z][A-Za-z0-9_.-]+)\1\s*,", args)
-            if direct and direct.group(2) in keys:
+            if name == 'setError':
+                direct = (re.match(r"\s*[^,]+,\s*'([A-Za-z][A-Za-z0-9_.-]+)'\s*,", args) or
+                          re.match(r'\s*[^,]+,\s*"([A-Za-z][A-Za-z0-9_.-]+)"\s*,', args))
+            else:
+                direct = (re.match(r"\s*'([A-Za-z][A-Za-z0-9_.-]+)'\s*,", args) or
+                          re.match(r'\s*"([A-Za-z][A-Za-z0-9_.-]+)"\s*,', args))
+            if direct and direct.group(1) in keys:
                 return True
         # The map preset's "None" label uses a dynamic key for normal presets
         # and an explicit catalogue key for the empty preset.
@@ -406,6 +411,8 @@ def looks_technical(s: str) -> bool:
     if re.fullmatch(r'&near=\{…\},\{…\}', s):
         return True
     if re.fullmatch(r'#[\w-]+\s+[a-zA-Z][\w-]*', s):
+        return True
+    if re.fullmatch(r'#(?:[\w-]+|\{…\})\s+\[data-[\w-]+="\{…\}"\]', s):
         return True
     if 'style="' in s or 'style=\\"' in s or s.startswith('/ui/'):
         return True
@@ -490,7 +497,7 @@ def display_context(pre: str) -> bool:
         recent,
     )
     in_display_data = bool(display_data and ';' not in recent[display_data.end():])
-    display_helpers = {'statusLine', 'toast', 'button', 'heading', 'paragraph', 'hint', 'notice', 'message', 'sec', 'fail'}
+    display_helpers = {'statusLine', 'toast', 'button', 'heading', 'paragraph', 'hint', 'notice', 'message', 'sec', 'fail', 'chatTr', 'setError', 'trMarkup'}
     return bool(DISPLAY_PRE.search(pre[-240:]) or _inside_named_call(pre, display_helpers)
                 or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or re.search(r'\bsub\s*:\s*$', pre[-80:])
                 or in_zims or in_display_data)
@@ -503,13 +510,13 @@ def classify(s: str, pre: str, post: str = '') -> str:
     # A flattened template made only from translated expressions plus
     # punctuation is not a hard-coded message of its own.
     literal_remainder = re.sub(r'\{…\}', '', s)
-    if ('tr(' in post[:4000] and not re.search(r'[A-Za-z]{2,}', literal_remainder)
+    if (re.search(r'\b(?:tr|chatTr|trMarkup)\(', post[:4000]) and not re.search(r'[A-Za-z]{2,}', literal_remainder)
             and '{…}' in s):
         return 'wired'
     mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
     if ('__i18n_bound' in pre or _inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
             or mapped_error or already_wired(prefix)
-            or _inside_catalogued_fallback(pre, {'message', 'tHtml', 'chatResult'})
+            or _inside_catalogued_fallback(pre, {'message', 'tHtml', 'chatResult', 'chatTr', 'setError', 'trMarkup'})
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
     if '__no_js_fallback__' in pre:

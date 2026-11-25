@@ -306,6 +306,55 @@ class LibraryExtraction(unittest.TestCase):
                 with patch.object(Path, 'write_text', side_effect=AssertionError('rewrote repaired extract')):
                     self.assertEqual(self.extract(), ['Café label 12.'])
 
+    def test_rebuild_recovers_blank_video_text_without_caption_tracks(self):
+        self.record['captions'] = []
+        for text in ('', ' \n\t', '\n\f\n', '\u00a0'):
+            with self.subTest(cached_text=repr(text)):
+                self.textpath.unlink(missing_ok=True)
+                self.metapath.unlink(missing_ok=True)
+                original, _ = self.build()
+                before = (self.textpath.read_bytes(), self.metapath.read_bytes())
+                self.textpath.write_text(text, encoding='utf-8')
+
+                record, summary = self.build()
+                self.assertEqual(record, original)
+                self.assertEqual(summary['indexed_units'], 1)
+                self.assertEqual(summary['extraction_errors'], [])
+                for query in ('labels', 'recording'):
+                    self.assertEqual([r['doc_id'] for r in library.search(query)], ['video-example'])
+                self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes()), before)
+                with patch.object(Path, 'write_text', side_effect=AssertionError('rewrote repaired fallback')):
+                    self.assertEqual(self.extract(), ['Container labels\nAn example recording.'])
+
+    def test_rebuild_reports_missing_caption_with_blank_video_text(self):
+        for text in ('', ' \n\t', '\n\f\n', '\u00a0'):
+            with self.subTest(cached_text=repr(text)):
+                self.textpath.unlink(missing_ok=True)
+                self.metapath.unlink(missing_ok=True)
+                source = self.caption('Café label 12.')
+                original, _ = self.build()
+                self.textpath.write_text(text, encoding='utf-8')
+                before = (self.textpath.read_bytes(), self.metapath.read_bytes())
+                source.unlink()
+
+                for _ in range(2):
+                    record, summary = self.build()
+                    self.assertEqual(record, {k: v for k, v in original.items() if k != 'text_path'})
+                    for query in ('12', 'labels', 'recording'):
+                        self.assertEqual(library.search(query), [])
+                    self.assertEqual(summary['indexed_units'], 0)
+                    self.assertEqual(len(summary['extraction_errors']), 1)
+                    self.assertEqual(summary['extraction_errors'][0]['path'], self.record['path'])
+                    self.assertIn(source.name, summary['extraction_errors'][0]['error'])
+                    self.assertEqual((self.textpath.read_bytes(), self.metapath.read_bytes()), before)
+
+                self.caption('Café label 12.')
+                record, summary = self.build()
+                self.assertEqual(record, original)
+                self.assertEqual(summary['indexed_units'], 1)
+                self.assertEqual(summary['extraction_errors'], [])
+                self.assertEqual([r['doc_id'] for r in library.search('12')], ['video-example'])
+
     def test_rebuild_recovers_unreadable_extraction_caches(self):
         cases = ('invalid metadata', 'non-object metadata', 'invalid metadata encoding',
                  'invalid text encoding', 'invalid details')

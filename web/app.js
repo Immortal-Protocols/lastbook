@@ -1596,6 +1596,7 @@ async function savedPage() {
   const li = x => `<li><a class="row" href="${esc(x.href)}"><span class="k">${ico(x.key[0] === 'v' ? 'video' : x.key[0] === 'w' ? 'wiki' : x.key[0] === 't' ? 'book' : x.key[0] === 'a' ? 'ask' : 'page')}</span><span><b>${esc(x.title)}</b><small>${esc(rowSub(x))}</small></span></a></li>`;
   const cont = await resumable();
   const available = new Set(await held([...new Set(moments.map(x => x.videoId))]));
+  if (stale(me)) return;
   main.innerHTML = `<h1 data-i18n="nav.saved">${esc(tr('nav.saved', null, 'Saved'))}</h1><p class="lead" data-i18n="saved.keptOnDevice">${esc(tr('saved.keptOnDevice', null, 'Kept on this device only.'))}</p>
   ${savedError ? `<div class="err" role="alert">${esc(savedError)}</div>` : moments.length ? momentSection() : ''}
   ${s.length ? `<div class="collection" style="margin-top:18px"><ul class="list">${s.map(li).join('')}</ul></div>` : !moments.length && !savedError ? `<div class="empty"><span class="e-ico">${ico('save')}</span><b>${tr('saved.nothingYet', null, 'Nothing saved yet')}</b><p>${tr('saved.chooseSaveHint', null, 'Choose Save on any page, video, article or answer to keep it here.')}</p></div>` : ''}

@@ -79,6 +79,20 @@ const MapView = (() => {
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
+  const message = (key, params, fallback) => {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    if (result) return result;
+    return { text: globalThis.lastbookTr?.(key, params, fallback) ?? fallback ?? '', locale: 'en' };
+  };
+  const messageHtml = value => {
+    const result = typeof value === 'string' ? { text: value, locale: 'en' } : value || { text: '', locale: 'en' };
+    if (Array.isArray(result.segments)) return result.segments.filter(part => part.text).map(messageHtml).join('');
+    const locale = result.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result.text ?? '')}</span>`;
+  };
+  const layerMessage = layer => layer.id
+    ? message('map.layer.' + layer.id, null, layer.label)
+    : { text: layer.label || '', locale: 'en' };
   const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
@@ -120,9 +134,9 @@ const MapView = (() => {
       <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
-      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.nearestToCenter', null, 'Nearest to the map center') || 'Nearest to the map center')}</h2><p class="small muted" style="margin:0 0 4px">${escH(globalThis.lastbookTr?.('map.nearbyLayersNote', null, 'For the layers you have on. Straight-line distance, not by road.') || 'For the layers you have on. Straight-line distance, not by road.')}</p><div class="nearres" id="near" aria-live="polite"></div></section>
-      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.yourArea', null, 'Your area') || 'Your area')}</h2><p class="small muted" style="margin:0 0 8px">${escH(globalThis.lastbookTr?.('map.homeButtonNote', null, 'The home button returns here. Saved on this device only.') || 'The home button returns here. Saved on this device only.')}</p><button class="btn plain" id="sethome">${escH(globalThis.lastbookTr?.('map.makeCenterMyArea', null, 'Make the map center my area') || 'Make the map center my area')}</button>${navigator.geolocation && isSecureContext ? ` <button class="btn plain" id="gps">${escH(globalThis.lastbookTr?.('map.useMyLocation', null, 'Use my location') || 'Use my location')}</button>` : ''}</section>
-      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.coverageHeading', null, 'What this map covers') || 'What this map covers')}</h2><ul class="list small" id="mdata"><li class="muted">${escH(globalThis.lastbookTr?.('map.loading', null, 'Loading…') || 'Loading…')}</li></ul></section>
+      <section class="panel"><h2>${messageHtml(message('map.nearestToCenter', null, 'Nearest to the map center'))}</h2><p class="small muted" style="margin:0 0 4px">${messageHtml(message('map.nearbyLayersNote', null, 'For the layers you have on. Straight-line distance, not by road.'))}</p><div class="nearres" id="near" aria-live="polite"></div></section>
+      <section class="panel"><h2>${messageHtml(message('map.yourArea', null, 'Your area'))}</h2><p class="small muted" style="margin:0 0 8px">${messageHtml(message('map.homeButtonNote', null, 'The home button returns here. Saved on this device only.'))}</p><button class="btn plain" id="sethome">${messageHtml(message('map.makeCenterMyArea', null, 'Make the map center my area'))}</button>${navigator.geolocation && isSecureContext ? ` <button class="btn plain" id="gps">${messageHtml(message('map.useMyLocation', null, 'Use my location'))}</button>` : ''}</section>
+      <section class="panel"><h2>${messageHtml(message('map.coverageHeading', null, 'What this map covers'))}</h2><ul class="list small" id="mdata"><li class="muted">${messageHtml(message('map.loading', null, 'Loading…'))}</li></ul></section>
     </div></div>`;
     // The map fills the window. With the tools beside it, the page ends where the window does, at the page's own bottom margin (so the
     // page itself never scrolls); with the tools below, the map leaves room for the tab bar and a margin.
@@ -178,9 +192,9 @@ const MapView = (() => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
       describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
-      $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
-        (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
-    }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
+      $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${messageHtml({ text: d.label, locale: 'en' })}</b><span class="muted">${messageHtml({ text: d.status, locale: 'en' })}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
+        (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block"><span lang="en">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</span></li>`);
+    }).catch(() => { $('mdata').innerHTML = `<li class="muted">${messageHtml({ text: 'Map details unavailable.', locale: 'en' })}</li>`; if (openWhole && st) fit(US, 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
@@ -222,16 +236,16 @@ const MapView = (() => {
     const inSoCal = st.lat > 32.5 && st.lat < 35.9 && st.lon > -121.4 && st.lon < -114.1;
     const b = st.bounds, outside = b && (st.lon < b[0] || st.lon > b[2] || st.lat < b[1] || st.lat > b[3]);
     st.coverNote = n && n.state === 'building' && !inSoCal
-      ? `US streets still being converted (${((n.features || 0) / 1e6).toFixed(1)}M roads & features so far) — gaps fill in automatically.`
-      : outside ? 'Outside the area this map details, only main roads, towns and water show.'
-      : st.have && !st.have.size && st.z >= 9 ? 'This download has the base map only: main roads, towns and water.' : '';
+      ? message('map.streetsConverting', { count: ((n.features || 0) / 1e6).toFixed(1) }, 'US streets still being converted ({count}M roads & features so far) — gaps fill in automatically.')
+      : outside ? message('map.outsideDetail', null, 'Outside the area this map details, only main roads, towns and water show.')
+      : st.have && !st.have.size && st.z >= 9 ? message('map.baseOnly', null, 'This download has the base map only: main roads, towns and water.') : null;
     statusLine();
   }
   function statusLine(msg) {
     const el = $('mstatus'); if (!el || !st) return;
-    if (msg != null) st.pinMsg = msg;
-    const parts = [st.pinMsg, st.coverNote].filter(Boolean);
-    el.innerHTML = parts.map(escH).join('<br>'); el.hidden = !parts.length;
+    if (msg != null) st.pinMsg = typeof msg === 'string' ? { text: msg, locale: 'en' } : msg;
+    const parts = [st.pinMsg, st.coverNote].filter(part => part && (typeof part !== 'object' || part.text));
+    el.innerHTML = parts.map(messageHtml).join('<br>'); el.hidden = !parts.length;
   }
 
   // ---------------------------------------------------------------- layers ----
@@ -820,14 +834,14 @@ const MapView = (() => {
   async function loadPins() {
     if (!st) return;
     const state = st, cv = st.cv, ks = kinds(), z = Math.floor(st.z + 0.05);  // never a finer grid than the screen shows
-    if (!ks.length) { st.pins = []; st.pinBox = null; statusLine(st.have && !st.have.size ? '' : 'No layers on — open Layers to choose what to show.'); renderLayers(); draw(); return }
+    if (!ks.length) { st.pins = []; st.pinBox = null; statusLine(st.have && !st.have.size ? '' : message('map.noLayersOn', null, 'No layers on — open Layers to choose what to show.')); renderLayers(); draw(); return }
     const cx = lon2x(st.lon, st.z), cy = lat2y(st.lat, st.z), dx = cv.clientWidth / 256 * 0.75, dy = cv.clientHeight / 256 * 0.75;  // view + 25% margin each side
     const box = [x2lon(cx - dx, st.z), y2lat(cy + dy, st.z), x2lon(cx + dx, st.z), y2lat(cy - dy, st.z)];
     const v = [x2lon(cx - dx / 1.5, st.z), y2lat(cy + dy / 1.5, st.z), x2lon(cx + dx / 1.5, st.z), y2lat(cy - dy / 1.5, st.z)];
     const key = ks.join(',') + '|' + z;
     if (st.pinBox && st.pinKey === key && v[0] >= st.pinBox[0] && v[1] >= st.pinBox[1] && v[2] <= st.pinBox[2] && v[3] <= st.pinBox[3]) return countLine();
     const serial = ++st.serial.pins;
-    statusLine('Loading places…');
+    statusLine(message('map.loadingPlaces', null, 'Loading places…'));
     try {
       const q = new URLSearchParams({ west: box[0], south: box[1], east: box[2], north: box[3], zoom: z, kinds: ks.join(',') });
       const data = await fetch('/api/map/pins?' + q).then(r => r.json());
@@ -835,7 +849,7 @@ const MapView = (() => {
       if (!data.points) throw Error(data.error || 'no points');
       st.pins = data.points; st.pinBox = box; st.pinKey = key; st.truncated = data.truncated;
       countLine(); renderLayers(); draw();
-    } catch (e) { if (st === state && serial === st.serial.pins) statusLine('Couldn’t load places for this view — move the map to retry.') }
+    } catch (e) { if (st === state && serial === st.serial.pins) statusLine(message('map.placesFailed', null, 'Couldn’t load places for this view — move the map to retry.')) }
   }
   function inView(p) {
     const w = st.cv.clientWidth, h = st.cv.clientHeight, x = w / 2 + (lon2x(p.lon, st.z) - lon2x(st.lon, st.z)) * 256, y = h / 2 + (lat2y(p.lat, st.z) - lat2y(st.lat, st.z)) * 256;
@@ -844,41 +858,62 @@ const MapView = (() => {
   function countLine() {
     let n = 0; for (const p of st.pins) if (inView(p)) n += p.count;
     renderLayers();
-    statusLine(n ? `${n.toLocaleString()} place${n === 1 ? '' : 's'} in view${st.truncated ? ' (busiest shown — zoom in for all)' : ''}` : 'Nothing from your layers in this view — zoom out or turn on more layers.');
+    if (!n) { statusLine(message('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.')); return }
+    const extra = st.truncated ? message('map.cappedPlacesInView', null, ' (busiest shown — zoom in for all)') : null;
+    const marker = '\uE000map-extra\uE001';
+    const places = message('map.placesInView', { count: n, extra: extra ? marker : '', plural: n === 1 ? '' : 's' }, '{count} place{plural} in view{extra}');
+    const at = extra ? places.text.indexOf(marker) : -1;
+    if (at >= 0) {
+      places.text = places.text.slice(0, at) + extra.text + places.text.slice(at + marker.length);
+      places.segments = [
+        { text: places.text.slice(0, at), locale: places.locale },
+        extra,
+        { text: places.text.slice(at + extra.text.length), locale: places.locale },
+      ];
+    }
+    statusLine(places);
   }
   async function nearby() {
     if (!st) return;
     const box = $('near'), state = st, serial = ++st.serial.near, ks = kinds(); if (!box) return;
-    if (!ks.length) { box.innerHTML = '<p class="muted small">No layers are on.</p>'; return }
+    if (!ks.length) { box.innerHTML = `<p class="muted small">${messageHtml(message('map.noLayersList', null, 'No layers are on.'))}</p>`; return }
     box.classList.add('busy');
     try {
       const r = await fetch(`/api/map/near?lat=${st.lat}&lon=${st.lon}&cls=${ks.join(',')}&limit=${Math.max(3, Math.ceil(14 / ks.length))}`).then(r => r.json());
       if (st !== state || serial !== st.serial.near) return;
       box.classList.remove('busy');
-      if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">Nothing from your layers within about 100 miles of the map center.</p>'; return }
+      if (!Array.isArray(r) || !r.length) { box.innerHTML = `<p class="muted small">${messageHtml(message('map.nothingNearby', null, 'Nothing from your layers within about 100 miles of the map center.'))}</p>`; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
-      box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${escH(layerOf(p.cls).label)} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
+      box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${messageHtml(layerMessage(layerOf(p.cls)))} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
         const p = list[+b.dataset.i]; box.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
         st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }); settle(true); b.classList.add('on');
         if (innerWidth < 1000) $('mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
-    } catch { if (st === state) box.innerHTML = '<p class="muted small">Nearby search is unavailable.</p>' }
+    } catch { if (st === state) box.innerHTML = `<p class="muted small">${messageHtml(message('map.nearbyUnavailable', null, 'Nearby search is unavailable.'))}</p>` }
   }
   async function findPlace(q) {
     const box = $('pres'); if (!q) { box.hidden = true; return }
     $('layers').hidden = true;
     const state = st, serial = ++st.serial.place;
-    box.hidden = false; $('card').hidden = true; box.innerHTML = '<p class="muted small">Searching…</p>';
+    box.hidden = false; $('card').hidden = true; box.innerHTML = `<p class="muted small">${messageHtml(message('search.searching', null, 'Searching…'))}</p>`;
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
+      if (!r.length) {
+        const address = /^\s*\d[\w-]*\s+\S/.test(q);
+        const copy = address
+          ? message('map.addressNotFound', null, 'Address not found in your offline data. Check the house number and street.')
+          : message('map.placeNotFound', null, 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.');
+        const addAddress = IN_WINDOW ? message('map.addAddressSearch', null, 'Add your state’s address search') : null;
+        box.innerHTML = `<p class="muted small" style="padding:8px">${messageHtml(copy)}${addAddress ? ` <span lang="${escH(addAddress.locale || 'en')}"><a href="/ui/setup.html#manage">${escH(addAddress.text)}</a>.</span>` : ''}</p>`;
+        return;
+      }
       const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
-      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
+      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${messageHtml({ text: `${r.length} match${r.length === 1 ? '' : 'es'}`, locale: 'en' })}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);
-    } catch { if (st === state) box.innerHTML = '<p class="muted small">Place finder unavailable.</p>' }
+    } catch { if (st === state) box.innerHTML = `<p class="muted small">${messageHtml(message('map.finderUnavailable', null, 'Place finder unavailable.'))}</p>` }
   }
   return { page, stop };
 })();

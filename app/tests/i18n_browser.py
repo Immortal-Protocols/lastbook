@@ -290,6 +290,64 @@ class Browser(unittest.TestCase):
                 'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
             expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
 
+    def test_map_dynamic_english_fallbacks_keep_their_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(info)))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.route('**/api/places*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map')
+            expect(page.locator('.maptools h2').first).to_have_text('Am nächsten zur Kartenmitte')
+            expect(page.locator('#mstatus span[lang="en"]')).to_have_text(
+                'Nothing from your layers in this view — zoom out or turn on more layers.')
+            expect(page.locator('#near span[lang="en"]')).to_have_text(
+                'Nothing from your layers within about 100 miles of the map center.')
+            page.get_by_label('Find an address, town, ZIP code or place').fill('123 Main Street')
+            page.get_by_label('Find an address, town, ZIP code or place').press('Enter')
+            expect(page.locator('#pres span[lang="en"]')).to_have_text([
+                'Address not found in your offline data. Check the house number and street.',
+                'Add your state’s address search.'])
+
+    def test_map_truncated_status_tags_an_english_fallback_fragment(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        points = {'points': [{'lat': 39, 'lon': -98, 'count': 1, 'kinds': {'hospital': 1}, 'cls': 'hospital'}],
+                  'truncated': True}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(info)))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(points)))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map')
+            page.evaluate("""() => {
+                const real = window.LastbookI18n;
+                window.LastbookI18n = {
+                    ...real,
+                    resolve(key, params) {
+                        if (key === 'map.placesInView')
+                            return { text: `${params.count} Orte in Ansicht${params.extra}`, locale: 'de' };
+                        if (key === 'map.cappedPlacesInView')
+                            return { text: ' (busiest shown — zoom in for all)', locale: 'en' };
+                        return real.resolve(key, params);
+                    }
+                };
+            }""")
+            page.locator('#zin').click()
+            expect(page.locator('#mstatus span[lang="de"]')).to_have_text('1 Orte in Ansicht')
+            expect(page.locator('#mstatus span[lang="en"]')).to_have_text(' (busiest shown — zoom in for all)')
+
     def test_chat_guide_label_uses_the_selected_interface_language(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')

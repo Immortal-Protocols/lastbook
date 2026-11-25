@@ -670,7 +670,7 @@ def vtt_cues(path):
     out, last = [], ''
     for c in cues:
         t = c['text']
-        if t.startswith(last) and last:
+        if last and t.startswith(last) and not t[len(last):len(last) + 1].strip():  # a repeat ends at a word: "So" is not the start of "Some people"
             t = t[len(last):].strip()
         if not t:
             continue
@@ -2179,6 +2179,7 @@ def main():
     ap.add_argument('--data', help='data folder holding library-data/ and derived/ (or set LASTBOOK_DATA); default: beside this program')
     a = ap.parse_args()
     init(a.no_index)
+    setup_api.follow_model_server(assistant.use_server)   # a model server chosen in Setup (#78)
     serve(a.port, a.lan)
 
 

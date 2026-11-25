@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, json, os, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
+import faulthandler, hashlib, io, json, os, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -241,6 +241,17 @@ class Both:
         self.assertEqual(call(b, 'HEAD', route, key).body, b'')
         self.assertEqual(json.loads(file.read_bytes()), {'language': 'es-419'})
         self.assertEqual(call(self.b, 'GET', route, self.key).status, 404)
+
+    def test_simplified_chinese_can_be_saved(self):
+        file, b, key = self.language_bridge()
+        self.assertEqual(call(b, 'POST', B.ui_language.ROUTE, key, b'{"language":"zh-Hans"}').status, 200)
+        self.assertEqual(json.loads(file.read_bytes()), {'language': 'zh-Hans'})
+        self.assertEqual(json.loads(call(b, 'GET', B.ui_language.ROUTE, key).body), {'language': 'zh-Hans'})
+
+    def test_german_can_be_saved(self):
+        file, b, key = self.language_bridge()
+        self.assertEqual(call(b, 'POST', B.ui_language.ROUTE, key, b'{"language":"de"}').status, 200)
+        self.assertEqual(json.loads(file.read_bytes()), {'language': 'de'})
 
     def test_language_rejects_invalid_bodies_and_paths(self):
         file, b, key = self.language_bridge()
@@ -967,7 +978,7 @@ class Both:
 
     def test_link_rule(self):
         o, nw = self.b.origin, self.b.new_window
-        for gesture in (True, False, None):   # the app hands nothing to a browser, from anywhere
+        for gesture in (True, False, None):   # direct web addresses never leave the app
             self.assertEqual(nw('https://example.org/a', True, gesture), ('nothing', None))
             self.assertEqual(nw('http://example.org/', True, gesture), ('nothing', None))
         for gesture in (True, False, None):   # a frame opens nothing, gesture or not
@@ -986,6 +997,18 @@ class Both:
         for u in (nw(o + '/pages/s.html', True, True)[1], nw(o + '/documents/s.pdf', True, True)[1], nw(o + '/zim/a/b', True, True)[1]):
             self.assertTrue(self.b.top_url_ok(u), u)
 
+    def test_project_repository_requires_a_top_frame_popup_with_a_user_gesture(self):
+        origin, new_window = self.b.origin, self.b.new_window
+        action = origin + '/contribute/github'
+        self.assertEqual(new_window(action, True, True, popup=True), ('contribute', None))
+        for args in ((False, True), (True, False), (True, None)):
+            self.assertEqual(new_window(action, *args, popup=True), ('nothing', None))
+        self.assertEqual(new_window(action, True, True), ('nothing', None))
+        self.assertFalse(self.b.top_url_ok(action))
+        self.assertFalse(self.b.frame_url_ok(action))
+        for url in (action + '?q=local', action + '#local', action + '/', 'https://github.com/Immortal-Protocols/lastbook'):
+            self.assertEqual(new_window(url, True, True, popup=True), ('nothing', None), url)
+
 
 class AssistantStaysHere(unittest.TestCase):
     def test_only_loopback_addresses(self):
@@ -1003,13 +1026,81 @@ class AssistantStaysHere(unittest.TestCase):
                 assistant.model_open(bad, 1)
         with self.assertRaises(urllib.error.URLError):
             assistant.model_open(urllib.request.Request('http://example.org:80/v1/chat/completions', b'{}'), 1)
-        kinds = {type(h).__name__ for h in assistant._opener.handlers}
-        self.assertNotIn('ProxyHandler', {k for k in kinds if getattr(next(h for h in assistant._opener.handlers if type(h).__name__ == k), 'proxies', None)})
+        from engine import model_server     # where assistant.model_open lives
+        kinds = {type(h).__name__ for h in model_server._opener.handlers}
+        self.assertNotIn('ProxyHandler', {k for k in kinds if getattr(next(h for h in model_server._opener.handlers if type(h).__name__ == k), 'proxies', None)})
         self.assertIn('_NoRedirect', kinds)
         self.assertNotIn('HTTPRedirectHandler', kinds)
-        self.assertIsNone(assistant._NoRedirect().redirect_request(None, None, 302, 'Found', {}, 'https://example.org/'))
+        self.assertIsNone(model_server._NoRedirect().redirect_request(None, None, 302, 'Found', {}, 'https://example.org/'))
         self.assertEqual(assistant.MODEL_URL, 'http://127.0.0.1:9/v1/chat/completions')
 
+
+
+class AssistantChosenServer(unittest.TestCase):
+    """#78: a model server chosen in Setup answers instead of Lastbook's own local AI, text only; choosing none goes back.
+    REAL_STATUS and REAL_CHAT: the module below puts stubs in their place for the HTTP tests."""
+    def setUp(self):
+        self.local = mock.Mock()
+        self.local.available.return_value = True
+        self.local.status.return_value = {'name': 'Lastbook AI', 'state': 'stopped'}
+        p = patch.object(assistant, 'LOCAL', self.local)
+        p.start()
+        self.addCleanup(p.stop)
+        self.addCleanup(assistant.use_server, None, None)
+
+    def test_bundled_model_answers_when_nothing_is_chosen(self):
+        self.assertTrue(assistant.local_on())
+        st = REAL_STATUS()
+        self.assertEqual((st['model'], st['online'], st['local']['name']), ('Lastbook AI', True, 'Lastbook AI'))
+        self.assertNotIn('server', st)
+
+    def test_chosen_server_answers_and_back(self):
+        listed = []
+
+        def models(url, timeout):
+            listed.append(url)
+            return io.BytesIO(b'{"data":[{"id":"small-9b"}]}')
+        assistant.use_server('http://127.0.0.1:11434', 'small-9b')
+        self.assertFalse(assistant.local_on())
+        self.local.stop.assert_called_once()
+        self.assertEqual((assistant.MODEL_URL, assistant.MODEL), ('http://127.0.0.1:11434/v1/chat/completions', 'small-9b'))
+        with patch.object(assistant, 'model_open', side_effect=models):
+            st = REAL_STATUS()
+        self.assertEqual(listed, ['http://127.0.0.1:11434/v1/models'])
+        self.assertEqual((st['model'], st['online'], st['local'], st['vision'], st['server']),
+                         ('small-9b', True, None, False, {'address': '127.0.0.1:11434', 'model': 'small-9b'}))
+
+        assistant.use_server(None, None)
+        self.assertTrue(assistant.local_on())
+        self.assertEqual((assistant.MODEL_URL, assistant.MODEL), ('http://127.0.0.1:9/v1/chat/completions', assistant.STARTED_WITH[1]))
+
+    def test_an_unavailable_chosen_server_is_offline(self):
+        assistant.use_server('http://127.0.0.1:11434', 'small-9b')
+        with patch.object(assistant, 'model_open', side_effect=ConnectionRefusedError()):
+            st = REAL_STATUS()
+        self.assertEqual((st['online'], st['error'], st['server']['address']), (False, 'ConnectionRefusedError', '127.0.0.1:11434'))
+
+    def test_never_off_this_computer(self):
+        for bad in ('http://10.0.0.5:8080', 'http://example.org:80'):
+            with self.assertRaises(ValueError):
+                assistant.use_server(bad, 'm')
+        self.assertFalse(assistant.CHOSEN)
+        self.assertEqual(assistant.MODEL_URL, 'http://127.0.0.1:9/v1/chat/completions')
+
+    def test_chosen_server_gets_text_tools_only(self):
+        seen = []
+
+        def one_round(msgs, tools, cancelled, wrote, set_state):
+            seen.append(([t['function']['name'] for t in tools or []], msgs[0]['content']))
+            return ('Answer.', {})
+        assistant.use_server('http://127.0.0.1:11434', 'small-9b')
+        with patch.object(assistant, '_http_round', side_effect=one_round), patch.object(assistant, 'context_for', return_value=None):
+            REAL_CHAT([{'role': 'user', 'content': 'x'}], 'about', lambda ev: None, lambda: False)
+        names, system = seen[0]
+        self.assertIn('search_library', names)
+        self.assertNotIn('view_page', names)
+        self.assertEqual(system, assistant.SYSTEM_TEXT_ONLY)
+        self.local.ensure_running.assert_not_called()
 
 class AssistantHTTPMessages(unittest.TestCase):
     def round(self, messages, tools=None):
@@ -1127,6 +1218,12 @@ class NothingGoesOut(unittest.TestCase):
             src = (ROOT / 'app' / name).read_text(encoding='utf-8')
             for word in ('open_in_browser', 'open_external', 'startfile', 'NSWorkspace', 'openURL', "'browser'", 'webbrowser', 'Process.Start', 'ShellExecute'):
                 self.assertNotIn(word, src, name)
+
+    def test_contribution_opens_only_the_public_project_repository(self):
+        from contribute import launch_project_repository
+        with mock.patch('contribute.webbrowser.open') as launch:
+            launch_project_repository()
+        launch.assert_called_once_with('https://github.com/Immortal-Protocols/lastbook')
 
 
 class StreamTests(Both, unittest.TestCase):

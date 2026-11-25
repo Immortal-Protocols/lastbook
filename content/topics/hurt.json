@@ -8,11 +8,12 @@
   "first aid",
   "injury",
   "hurt",
+  "pain",
   "bleeding",
   "blood",
   "cut",
   "wound",
-  "stitches",
+  "stitches", "bandage", "gauze",
   "infection",
   "burn",
   "scald",
@@ -142,7 +143,7 @@
   {
    "id": "closing",
    "label": "Does this wound need stitches or a doctor?",
-   "hint": "Gaping cut, old wound, deep wound, tetanus worry",
+   "hint": "Gaping cut, graze, old wound, deep wound, tetanus worry",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -192,7 +193,7 @@
   {
    "id": "bone",
    "label": "Broken bone, dislocation or sprain",
-   "hint": "Fall, twisted ankle, fractured or dislocated limb, looks bent or can't be moved",
+   "hint": "Fall, twisted ankle, bruise, fractured or dislocated limb, looks bent or can't be moved, sling",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -305,6 +306,7 @@
    "id": "heatcold",
    "label": "Too hot or too cold (heat stroke, hypothermia, frostbite)",
    "hint": "Heatstroke or heat wave, no AC, confused and hot, shivering, frostnip, numb white fingers",
+   "urgent": ["heat stroke", "sun stroke", "stroke from the heat", "stroke in the heat"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -374,6 +376,7 @@
    "id": "animal-bite",
    "label": "Animal or human bite",
    "hint": "Dog, cat, bat or monkey bite, bitten by a person, rabies worry",
+   "phrases": ["rat bite", "rat bites", "rat bit", "rats bit", "bitten by a rat", "rodent bite"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -392,7 +395,7 @@
   {
    "id": "sting",
    "label": "Insect sting, tick, spider or jellyfish",
-   "hint": "Bee or wasp sting, ticks, mosquito or spider bite, scorpion, jellyfish or stinging fish",
+   "hint": "Bee or wasp sting or stinger, ticks, mosquito or spider bite, scorpion, jellyfish or stinging fish",
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -468,6 +471,7 @@
    "id": "sudden",
    "label": "Chest pain, stroke signs, seizure or diabetic emergency",
    "hint": "Crushing chest pain or heart attack, face drooping, fit or convulsion, diabetic acting confused",
+   "urgent": ["stroke"],
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -498,7 +502,7 @@
   {
    "id": "nohelp",
    "label": "Phones are down or help is far away",
-   "hint": "Earthquake, many injured, no ambulance coming, need to send for help",
+   "hint": "Earthquake, many injured, no ambulance coming, need to send for help, stretcher",
    "read": [
     {
      "doc": "clinical-fe3d008bfe1dd1a2",
@@ -685,11 +689,6 @@
  ],
  "learn": [
   {
-   "doc": "med-443ae5cfaa6ecc68",
-   "label": "New Where There Is No Doctor: First Aid chapter",
-   "note": "Hesperian's plain-language first aid chapter (2020 advance chapter) covering bleeding, wounds, burns, bones, breathing, heat, cold, bites and poisoning; medicine pages at the end include doses."
-  },
-  {
    "doc": "med-2e83e22162a9a006",
    "label": "IFRC International First Aid Guidelines 2025",
    "note": "Current evidence-based guidelines from the Red Cross Red Crescent, topic by topic with key actions. Written for first-aid educators and programme designers, so it is detailed."
@@ -698,17 +697,6 @@
    "doc": "clinical-14def41d1ef369f1",
    "label": "Where There Is No Doctor (2025): Chapter 10 First Aid",
    "note": "The classic village health book's first aid chapter, including shock, bleeding, wounds, burns, fractures and moving injured people."
-  },
-  {
-   "doc": "ed5bac0a81b009",
-   "page": 100,
-   "label": "CERT Basic Training: Disaster Medical Operations",
-   "note": "FEMA CERT 2019 units on life-threatening conditions, basic first aid, treatment areas and head-to-toe checks. A volunteer training course; hands-on practice is part of it."
-  },
-  {
-   "doc": "med-68adb7585ea5d7e0",
-   "label": "WHO/ICRC Basic Emergency Care workbook",
-   "note": "Systematic ABCDE approach to the acutely ill and injured (2018). For frontline health workers; many skills need supervised training."
   },
   {
    "doc": "video-k98ilfQmUWw",
@@ -740,6 +728,18 @@
    "title": "First aid",
    "label": "Encyclopedia: First aid (MDWiki)",
    "note": "Medical encyclopedia overview of first aid; from there, linked articles cover bleeding, burns, CPR, shock and more. Reference reading, not step-by-step instructions."
+  },
+  {
+   "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Simple_triage_and_rapid_treatment",
+   "title": "Simple triage and rapid treatment",
+   "label": "Encyclopedia: START triage, for trained responders (MDWiki)",
+   "note": "How trained responders sort many injured people into four color groups by walking, breathing, pulse and following commands. Reference reading, not training."
+  },
+  {
+   "zim": "zim/mdwiki_en_all_maxi_2025-11.zim/Psychological_first_aid",
+   "title": "Psychological first aid",
+   "label": "Encyclopedia: Psychological first aid (MDWiki)",
+   "note": "Medical encyclopedia article on how responders and volunteers support people right after a disaster: safety and comfort, listening without pressure, practical help and referral. Background reading, not training."
   }
  ],
  "related": [

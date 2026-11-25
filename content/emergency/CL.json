@@ -36,11 +36,13 @@
       "when": "Ambulance and medical emergencies, answered by Ministry of Health staff. Each Servicio de Salud sets up its own SAMU and is responsible for covering its territory, so how the service is organised can differ between Servicios de Salud.",
       "source": [
         "https://www.bcn.cl/leychile/navegar?idNorma=284665",
-        "https://juridico1.minsal.cl/RESOLUCION_338_05.doc"
+        "https://juridico1.minsal.cl/RESOLUCION_338_05.doc",
+        "https://transparencia.redsalud.gob.cl/transparencia/public/ssmetrocentral/archivos/A82A1FAAF11521D7E04001011E01580A",
+        "https://www.dipres.gob.cl/597/articles-15661_doc_pdf.pdf"
       ],
       "url": "https://www.samu.cl/",
       "area_whole_country": true,
-      "checked_on": "2026-11-22",
+      "checked_on": "2026-11-24",
       "verified": "official"
     },
     {

@@ -541,9 +541,9 @@ function show() {
   }
   let t = '<b>' + esc(d.name) + '</b>: we have ' + d.services + ' number' + (d.services === 1 ? '' : 's') + ', with search words in ' + names(d.covered) + '.';
   if (d.missing.length) t += ' <b>Not yet in:</b> ' + names(d.missing) + '. If you speak ' + (d.missing.length === 1 ? 'it' : 'one of them') + ' and can supply and check the words, you can help us.';
-  else t += ' Every main language of the country is covered.';
+  else t += ' Every language we list for it (' + names(d.listed) + ') has search words in this table.';
   if (d.nocode.length) t += ' (' + names(d.nocode) + ' ' + (d.nocode.length === 1 ? 'has' : 'have') + ' no two-letter ISO 639-1 code, so ' + (d.nocode.length === 1 ? 'it cannot' : 'they cannot') + ' be added yet.)';
-  if (d.more) t += ' The country has more than 4 languages; only the main ones are listed.';
+  if (d.more) t += ' This country has more than 4 languages. Our list keeps the first four the source gives, and they may not be the main ones, so we have not checked the others: their coverage is still open.';
   box.innerHTML = t;
 }
 sel.onchange = show; show();
@@ -564,7 +564,7 @@ def coverage_data(data_dir=DATA, languages_file=LANGUAGES_FILE):
         want = wiki.get('official', [])
         name_of = {x['code']: x['name'] for x in want if x['code']}
         row = {'name': wiki.get('name') or have[code]['country'], 'want': want, 'more': bool(wiki.get('more_than_4')),
-               'territory': bool(wiki.get('territory'))}
+               'listed': [x['name'] for x in want], 'territory': bool(wiki.get('territory'))}
         if code in have:
             covered = have[code]['languages']
             row.update(services=len(have[code]['services']), covered=[name_of.get(c, c) for c in covered],
@@ -588,7 +588,12 @@ def build_coverage(data_dir=DATA, languages_file=LANGUAGES_FILE):
         if 'services' not in d:
             status, label, cov, n = 'none', 'not yet', '<span class="unk">none</span>', 0
         else:
-            status, label = ('partly', 'partly') if d['missing'] or d['nocode'] else ('covered', 'covered')
+            if d['missing'] or d['nocode']:
+                status, label = 'partly', 'partly'
+            elif d['more']:
+                status, label = 'partly', 'listed ones only'    # more languages exist than the four we list: the rest is open
+            else:
+                status, label = 'covered', 'covered'
             cov, n = e(', '.join(d['covered'])), d['services']
         rows.append(f'<tr><td>{e(d["name"])} <small>{e(code)}{", territory" if d["territory"] else ""}</small></td><td>{wants}{" <small>(more than 4 exist)</small>" if d["more"] else ""}</td>'
                     f'<td>{cov}</td><td>{n}</td><td><span class="st {status}">{label}</span></td></tr>')
@@ -596,12 +601,12 @@ def build_coverage(data_dir=DATA, languages_file=LANGUAGES_FILE):
              f'<td><span class="st none">not yet</span></td></tr>' for n in nocode]
     have = sum(1 for d in data.values() if 'services' in d)
     nocode_blob = json.dumps(nocode, ensure_ascii=False).replace('</', '<\\/')
-    blob = json.dumps({c: {k: v for k, v in d.items() if k in ('name', 'services', 'covered', 'missing', 'nocode', 'more', 'territory')} for c, d in data.items()},
+    blob = json.dumps({c: {k: v for k, v in d.items() if k in ('name', 'services', 'covered', 'missing', 'nocode', 'more', 'territory', 'listed')} for c, d in data.items()},
                       ensure_ascii=False).replace('</', '<\\/')
     return f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emergency numbers: coverage</title>
 <style>{CSS}{COVERAGE_CSS}</style>
 <h1>Emergency numbers: coverage</h1>
-<p>Which countries have a table in <code>content/emergency/</code>, and in which of their languages it can be searched. {have} of {len(data)} countries and territories have one, and {len(nocode)} more states have no ISO code to name a file with (the list of countries is Wikipedia's list of official languages plus its list of sovereign states). The languages of each country come from Wikipedia's list of official languages (<code>tools/emergency_languages.json</code>; for a country with more than 4 languages, only the main ones). This page loads nothing from the network and sends nothing anywhere.</p>
+<p>Which countries have a table in <code>content/emergency/</code>, and in which of their languages it can be searched. {have} of {len(data)} countries and territories have one, and {len(nocode)} more states have no ISO code to name a file with (the list of countries is Wikipedia's list of official languages plus its list of sovereign states). The languages of each country come from Wikipedia's list of official languages (<code>tools/emergency_languages.json</code>; for a country with more than 4 languages it keeps the first four the source gives, which may not be the main ones, and says the rest is not checked). This page loads nothing from the network and sends nothing anywhere.</p>
 <h2>Where are you?</h2>
 <select id="where"><option value="">choose your country…</option></select>
 <div id="answer" aria-live="polite"></div>

@@ -141,6 +141,21 @@ class Coverage(unittest.TestCase):
         self.assertIn('is not in our list of countries and territories', page)
         self.assertIn('Wikipedia lists for', page)
 
+    def test_coverage_names_what_was_checked_and_leaves_the_rest_open(self):
+        """A country with more than four languages must not be called fully covered."""
+        with tempfile.TemporaryDirectory() as t:
+            (Path(t) / 'ZA.json').write_text(json.dumps({'code': 'ZA', 'country': 'South Africa', 'services': [{}],
+                                                         'languages': ['af', 'en', 'nr', 'st']}), encoding='utf-8')
+            data = forms.coverage_data(t)
+            page = forms.build_coverage(t)
+        self.assertTrue(data['ZA']['more'])
+        self.assertEqual(data['ZA']['missing'], [])
+        self.assertEqual(data['ZA']['listed'], ['Afrikaans', 'English', 'Southern Ndebele', 'Sotho'])
+        self.assertIn('listed ones only', page)                     # not "covered"
+        self.assertNotIn('Every main language', page)
+        self.assertIn('Every language we list for it', page)
+        self.assertIn('their coverage is still open', page)
+
     def test_the_real_tables_are_listed(self):
         data = forms.coverage_data()
         for p in rules.DIR.glob('*.json'):

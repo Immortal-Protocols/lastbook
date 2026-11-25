@@ -63,8 +63,10 @@ as "overseas departmental collectivity", and `FR-972` and `FR-973` as "overseas 
   change history dates that deletion to 25 November 2021, and the change from `FR-COR` to `FR-20R` to 24 November 2020
   (second check).
 - **The trial used a provisional stem.** To pass the `[A-Z]{2}` rule, the trial index was named with a two-letter code
-  that is not an ISO code (`BN`). It is not proposed. The trial builder refuses a region code that equals a US state
-  code, because the engine reads any `XX.sqlite` named like a state with US rules, without opening its `meta` table.
+  that is not an ISO code (`BN`). It is not proposed. The repeatable build ([MAP-FR-BN.md](MAP-FR-BN.md)) now names
+  the map set and its index `FR-BN`, in the regional id shape discussed in #31, which setup does not accept yet for an
+  address index. The trial builder refuses a region code that equals a US state code, because the engine reads any
+  `XX.sqlite` named like a state with US rules, without opening its `meta` table.
 - **Départements as the unit instead.** Départements have numeric codes (`FR-14`), which fail `[A-Z]{2}` too, and 101
   maps would be a long list. For address indexes alone, one index per département is easy to cut: the first two digits
   of a postcode are the département, except Corsica (`2A` and `2B` both use `20`) and overseas (three digits, `971` to
@@ -324,10 +326,9 @@ the ODbL; one file or table per licence avoids that (a question, not legal advic
 ## What a trial build showed
 
 The sources above were built into a local map set for three départements, Calvados (14), Manche (50) and Orne (61), and
-shown in the app's map from the repository sources. **The code is not in this pull request.** It is local, it was
-written against the current formats, and it will be adapted to the common region format when the maintainers publish it
-(in issue #31 the maintainers say they are coordinating the overlapping approaches and will follow up with the agreed
-direction). Every figure below was measured in that build on 17 November 2026.
+shown in the app's map from the repository sources. Every figure below was measured in that build on 17 November 2026.
+The build was later made repeatable by one command and aligned with the regional format discussed in #31: see
+[MAP-FR-BN.md](MAP-FR-BN.md), which also gives that build's own figures.
 
 | File | Contents | Size, bytes | Build time |
 |---|---|---|---|
@@ -346,9 +347,9 @@ The map set came to 414 MB on disk and about 209 MB with gzip. Among the help po
   including "35 r st jean caen", "11 rue du Marais Ri", postcodes before the commune, missing accents, abbreviations and
   delegated communes. Search took 0.2 ms at the median. 152 BAN rows were left out because their repetition field held a
   flat or door number. The US behaviour was compared with the original engine on 30 queries and is unchanged.
-- **How the engine knows an index is French.** The index declares `meta.country = 'FR'` and is searched only with its
-  own rules. #79 (Berlin) declares its rule in the same table (`norm = de-1`), according to its description; the two are
-  compatible in spirit, and one shared key would be better than two.
+- **How the engine knows an index is French.** The trial index declared `meta.country = 'FR'` and was searched only
+  with its own rules. The repeatable build uses the key #79 (Berlin) uses for the same purpose: `norm = fr-1`, beside
+  Berlin's `norm = de-1`.
 - **Projections.** The Lambert-93 conversion was checked against 797,760 BAN addresses that carry both coordinate
   systems: 7 mm at most. Terrain tiles agree with the source grid to 0.18 m at the median.
 - **Coast and sea.** `tools/build_coast.py` closes the sea at longitude -125, for California. The trial closed it along
@@ -371,14 +372,15 @@ Each of these needs the maintainers' decision before any code changes.
 
 1. **Codes and index names.** Whether `FR-ARA`, `FR-20R` and `FR-971` are acceptable as a manifest `id`, in
    `map-set.json` and in `Lastbook-Map-<id>.zip`, and how address indexes are named when `[A-Z]{2}` does not fit; or
-   whether France is cut by département instead. Either way, a region code must never equal a US state code.
+   whether France is cut by département instead. Either way, a region code must never equal a US state code. #31
+   discusses address-index ids of the form `[A-Z]{2}(-[A-Za-z0-9_]{1,48})?`, which `FR-BN` follows.
 2. **The box and the cut.** Whether boxes come from ADMIN EXPRESS, and whether every source is cut by département
    outlines rather than by the box, as Jersey and the borders above require.
 3. **Address indexes.** The BAN directly (daily, with repetition index and former commune) or the BAN through Overture
-   (the US pipeline; French fields in "How addresses are written", second check); one shared `meta` key for the
-   spelling rule (`country = 'FR'` here, `norm = de-1` in #79); the delegated commune in `city` in brackets or in a new
-   column; extra rows for named localities; whether a numbered query with no address should fall back to place search;
-   and whether US indexes should fold accents too, which means rebuilding them.
+   (the US pipeline; French fields in "How addresses are written", second check); the spelling rule as `meta.norm`
+   (`fr-1` in the repeatable build, `de-1` in #79), still to be confirmed as the shared key; the delegated commune in
+   `city` in brackets or in a new column; extra rows for named localities; whether a numbered query with no address
+   should fall back to place search; and whether US indexes should fold accents too, which means rebuilding them.
 4. **Licences in one file.** One table or file per licence, or OSM and Licence Ouverte points merged under the ODbL; an
    answer to ODbL article 4.6; per-region credits with dates.
 5. **Units.** Metric columns (`height_m`, `area_ha`) in the common format, or imperial columns converted on display.

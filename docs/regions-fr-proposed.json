@@ -316,7 +316,7 @@
       "example_pattern": "00000"
     },
     "order": "Number, optional repetition index (bis, ter, a letter), street type and name; then postcode and commune on the last line (\"14 bis Rue Écuyère, 14000 Caen\").",
-    "notes": "normalize() and norm() keep only a-z and 0-9 (\"Église\" becomes \"glise\"); the postcode is read only as the last word; a final word such as me, ri or il is taken for a US state (Bellême, Ri, Bonnœil); tools/build_addresses.py keeps only country = 'US'. Checked in this repository on 2026-11-17. The trial index declares meta.country = 'FR' and is searched with its own rules."
+    "notes": "normalize() and norm() keep only a-z and 0-9 (\"Église\" becomes \"glise\"); the postcode is read only as the last word; a final word such as me, ri or il is taken for a US state (Bellême, Ri, Bonnœil); tools/build_addresses.py keeps only country = 'US'. Checked in this repository on 2026-11-17. The trial index declared meta.country = 'FR' and was searched with its own rules; the repeatable build (docs/MAP-FR-BN.md) declares meta.norm = 'fr-1' instead."
   },
   "regions": [
     {

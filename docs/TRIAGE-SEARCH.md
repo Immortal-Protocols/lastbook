@@ -92,7 +92,8 @@ Every pair removes the book from 20 or more of the 25 top-8 lists, and no pair d
 another on the primary outcome. The best-looking alternative, 20,000 → 2,500, against the chosen pair: red first page
 useful 59 → 60 (+1/−0, p = 1; clustered p = 1), mean useful of 8 on red questions +0.04 (95% CI −0.03 to +0.14). So the
 choice within this range does not matter for these measures; 20,000 → 5,000 is kept. Hybrid was measured at the chosen
-pair only (each other pair needs its own meaning index, about an hour to build on a GPU).
+pair only (each other pair needs its own meaning index, about an hour to build on a GPU). Scripts: `tools/search_eval/sections_sweep/`; the full
+run files are on the data branch `eval-data/part2-sections` of STAirye/lastbook, with their SHA-256.
 
 Numbers (measured on the author's fork):
 

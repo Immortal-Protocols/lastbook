@@ -155,6 +155,7 @@ UNDISTURBED = {
     # reading on using an epinephrine auto-injector. The last three are guards.
     'anaphylaxis': ['hurt', 'allergy'], 'anaphylactic shock': ['hurt', 'allergy'], 'epinephrine': ['hurt', 'allergy'],
     'adrenaline': ['hurt', 'allergy'], 'auto-injector': ['hurt', 'allergy'], 'bee sting anaphylaxis': ['hurt', 'allergy'],
+    'epipen': ['hurt', 'allergy'], 'epipens': ['hurt', 'allergy'], 'used an epipen': ['hurt', 'allergy'],
     'anaphylaxis not breathing': ['hurt', 'breathing'], 'bee sting': ['hurt', 'sting'], 'pale and sweaty': ['hurt', 'shock'],
     'cold frame': ['repair', 'build'], 'freezing': ['shelter', 'cold'],
     'fire alarm': ['disaster', 'home-fire'], 'smoke alarm': ['disaster', 'home-fire'], 'smoke': ['disaster', 'smoke'],

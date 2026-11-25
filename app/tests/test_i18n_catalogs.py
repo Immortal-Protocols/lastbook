@@ -170,6 +170,13 @@ class GermanWording(unittest.TestCase):
         self.assertEqual(informal, [])
         self.assertIn('Wählen Sie', self.de['setup.chooseIntro'])
 
+    def test_informal_imperatives_are_not_used(self):
+        import re
+        informal = re.findall(r'\b(?:Erhalte|Versuche|Wähle|Klicke|Öffne|Lade|Verwende|Prüfe|Gib|Nimm|Trage|Gehe|Tippe|Schließe|Bestätige|Füge|Warte|Fahre|Stelle|Setze|Mach|Tue|Sieh|Lies|Rufe|Halte)\b',
+                              ' '.join(self.de.values()), flags=re.IGNORECASE)
+        self.assertEqual(informal, [])
+        self.assertEqual(self.de['search.label'], 'Suche')  # noun, not the informal imperative
+
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.de['setup.title'], 'Lastbook einrichten')
         self.assertEqual(self.de['nav.settings'], 'Einstellungen')
@@ -197,7 +204,7 @@ class SimplifiedChineseWording(unittest.TestCase):
         self.assertIn('设置', self.zh['language.preview'])
 
     def test_simplified_characters_only(self):
-        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網路線說檔電腦檢區換'
+        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網線說檔電腦檢區換'
         everything = ' '.join(self.zh.values())
         self.assertEqual([character for character in traditional if character in everything], [])
 
@@ -264,6 +271,7 @@ class SpanishWording(unittest.TestCase):
             'saved.pdf', 'app.titleSuffix', 'time.hoursMinutes', 'time.minutes', 'time.seconds',
             'map.zoom', 'library.shelfVideos',
             'native.menu.zoom', 'common.video',
+            'chat.sourceType.videos',
             'native.appFileDescription', 'installer.productName', 'installer.companyName',
             'setup.facts.sha256', 'setup.facts.bytes', 'videos.videoCount',
         })

@@ -52,11 +52,22 @@ except Exception as e:  # semantic search is optional; keyword search keeps work
     IMPORT_ERROR = str(e)
 
 
+def embed_providers(offered, want_gpu=False):
+    """Which onnxruntime providers to ask for. CPU unless the index build asks for the GPU, the installed onnxruntime
+    offers CUDA, and LASTBOOK_EMBED_DEVICE is not 'cpu'. The CUDA provider falls back to CPU for anything it cannot run."""
+    if want_gpu and os.environ.get('LASTBOOK_EMBED_DEVICE', '').strip().lower() != 'cpu' and 'CUDAExecutionProvider' in offered:
+        return ['CUDAExecutionProvider', 'CPUExecutionProvider']
+    return ['CPUExecutionProvider']
+
+
 class Embedder:
-    def __init__(self):
+    def __init__(self, gpu=False):
         so = ort.SessionOptions()
         so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
-        self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=['CPUExecutionProvider'])
+        self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=embed_providers(ort.get_available_providers(), gpu))
+        self.provider = self.sess.get_providers()[0]
+        if gpu:
+            print(f'embedding with {self.provider}', flush=True)
         self.tok = Tokenizer.from_file(str(MODEL / 'tokenizer.json'))
         self.tok.enable_truncation(max_length=320)
         self.tok.enable_padding()
@@ -153,7 +164,7 @@ def vtt_windows(path, span=45):
 
 
 class Index:
-    def __init__(self, catalog_fn, trust_fn, fts_db):
+    def __init__(self, catalog_fn, trust_fn, fts_db, gpu=False):
         self.catalog_fn, self.trust_fn, self.fts_db = catalog_fn, trust_fn, fts_db
         IDX.mkdir(parents=True, exist_ok=True)
         self.db_path = IDX / 'semantic.sqlite'
@@ -168,7 +179,7 @@ class Index:
           CREATE TABLE IF NOT EXISTS gaps(doc_id TEXT PRIMARY KEY, reason TEXT);''')
         db.close()
         self.lock = threading.RLock()
-        self.emb = Embedder() if AVAILABLE else None
+        self.emb = (Embedder(gpu=True) if gpu else Embedder()) if AVAILABLE else None
         self.mat = None
         self.active = None
         self.status = {'state': 'starting' if AVAILABLE else 'off', 'chunks': 0, 'docs': 0, 'pending': None, 'rate': None}
@@ -493,7 +504,7 @@ def rrf(lists, k=60):
 if __name__ == '__main__':  # python retrieval.py  -> build/refresh the semantic index once
     sys.path.insert(0, str(lastbook_paths.APP))
     import server
-    ix = Index(server.catalog, server.trust, server.library.DB)
+    ix = Index(server.catalog, server.trust, server.library.DB, gpu=True)  # the one-off build may use the GPU; the running app stays on the CPU
     print('pending documents:', len([1 for s in ix.sources()]), flush=True)
     stop = threading.Event()
     def report():

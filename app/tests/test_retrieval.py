@@ -75,5 +75,45 @@ class Semantic(unittest.TestCase):
         self.assertLessEqual(len(fetched), 4)
 
 
+class EmbedProviders(unittest.TestCase):
+    """Provider choice for the index build, with no GPU and no onnxruntime-gpu needed."""
+    BOTH = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+
+    def pick(self, offered, gpu, env=None):
+        with mock.patch.dict(os.environ, {'LASTBOOK_EMBED_DEVICE': env} if env is not None else {}):
+            if env is None:
+                os.environ.pop('LASTBOOK_EMBED_DEVICE', None)
+            return retrieval.embed_providers(offered, gpu)
+
+    def test_cuda_only_when_asked_and_offered(self):
+        self.assertEqual(self.pick(self.BOTH, True), self.BOTH)
+        self.assertEqual(self.pick(['CPUExecutionProvider'], True), ['CPUExecutionProvider'])
+        self.assertEqual(self.pick(self.BOTH, False), ['CPUExecutionProvider'])  # the running app never takes the GPU
+
+    def test_environment_opt_out(self):
+        for v in ('cpu', 'CPU', ' cpu '):
+            self.assertEqual(self.pick(self.BOTH, True, v), ['CPUExecutionProvider'])
+        self.assertEqual(self.pick(self.BOTH, True, ''), self.BOTH)
+
+    def test_embedder_passes_the_choice_to_onnxruntime(self):
+        seen = {}
+
+        class Sess:
+            def __init__(self, path, so, providers):
+                seen['providers'] = providers
+            def get_providers(self): return seen['providers']
+            def get_inputs(self): return []
+
+        class Tok:
+            def enable_truncation(self, **k): pass
+            def enable_padding(self): pass
+
+        fake_ort = mock.Mock(SessionOptions=mock.Mock, InferenceSession=Sess, get_available_providers=lambda: self.BOTH)
+        with mock.patch.object(retrieval, 'ort', fake_ort, create=True),                 mock.patch.object(retrieval, 'Tokenizer', mock.Mock(from_file=lambda p: Tok()), create=True):
+            os.environ.pop('LASTBOOK_EMBED_DEVICE', None)
+            self.assertEqual(retrieval.Embedder(gpu=True).provider, 'CUDAExecutionProvider')
+            self.assertEqual(retrieval.Embedder().provider, 'CPUExecutionProvider')
+
+
 if __name__ == '__main__':
     unittest.main()

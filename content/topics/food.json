@@ -167,7 +167,7 @@
   {
    "id": "special",
    "label": "Feeding babies or people with special diets",
-   "hint": "Formula, elderly, illness, allergies, pets",
+   "hint": "Formula, breastfeeding, elderly, illness, allergies, pets",
    "phrases": ["out of formula", "out of baby formula", "run out of formula", "running out of formula", "ran out of formula", "low on formula", "running low on formula"],
    "context": ["ran", "run", "running", "low", "baby", "babys", "newborn", "infant", "we", "nearly", "almost", "completely", "days", "week", "shop", "shops", "store", "stores"],
    "read": [

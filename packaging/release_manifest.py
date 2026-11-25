@@ -7,8 +7,9 @@
 Packs come from derived/release/manifest-v1.json, which session publish-packs writes for each verified pack. The model entries come
 from llm_local.py's MODELS (file, size, SHA-256, revision), so the two cannot drift. memory_bytes is llama.cpp's measure of
 the model and its context (device + host bytes from lastbook-llm --measure): MEASURED_MEMORY below, or measured again with --measure,
-which changes only the model named by the file or by --measure-model. Only ids in BUNDLED_AVAILABLE are offered in the bundled
-manifest; the other registered models stay listed as unavailable until they are verified.
+which changes only the model named by the file or by --measure-model. A file name already known to name one model may not be
+paired with a different --measure-model id; that conflict stops the build before measuring or writing. Only ids in
+BUNDLED_AVAILABLE are offered in the bundled manifest; the other registered models stay listed as unavailable until they are verified.
 --small-from builds the Small pack's entry from a release folder's SHA256SUMS.txt when the packs file has none (before
 publish-packs has written it). Every URL must be on an allowed host (engine/setup/download.py) or the build stops.
 The packaging spec bundles the output as setup/manifest-v1.json.
@@ -147,13 +148,15 @@ def main():
         sys.exit(f'no packs: {a.packs} is missing or empty (publish-packs writes it); --small-from builds Small alone')
     measured = dict(MEASURED_MEMORY)
     if a.measure:
+        named = llm_local.model_named(Path(a.measure).name)
         if a.measure_model:
+            if named and named['id'] != a.measure_model:
+                ap.error(f'--measure file {Path(a.measure).name} names {named["id"]}, which conflicts with --measure-model {a.measure_model}')
             model_id = a.measure_model
         else:
-            matches = [m for m in llm_local.MODELS if m['file'] == Path(a.measure).name]
-            if len(matches) != 1:
+            if not named:
                 ap.error('--measure must name one known model file, or give --measure-model with its id')
-            model_id = matches[0]['id']
+            model_id = named['id']
         measured[model_id] = measure(a.measure)
     models = [model_entry(spec, measured[spec['id']]) for spec in llm_local.MODELS]
     out = {'version': 1, 'published': src.get('published') or time.strftime('%Y-%m-%d'), 'packs': packs, 'maps': list(src.get('maps') or []),

@@ -396,6 +396,26 @@ class ReleaseManifest(unittest.TestCase):
             self.assertNotEqual(raised.exception.code, 0)
             self.assertEqual(out.read_bytes(), original)
 
+    def test_known_file_conflicting_with_explicit_measure_model_fails_before_measuring(self):
+        from tempfile import TemporaryDirectory
+
+        builder = self.builder()
+        target = next(x for x in builder.llm_local.MODELS if x['id'] == 'lfm3-1.7b')
+        with TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'manifest.json'
+            self.build_manifest(builder, tmp, out)
+            original = out.read_bytes()
+            copy = Path(tmp) / 'downloads' / target['file']
+            copy.parent.mkdir()
+            copy.write_bytes(b'')
+            with mock.patch.object(builder, 'measure', return_value=4242) as measuring:
+                with self.assertRaises(SystemExit) as raised:
+                    self.build_manifest(builder, tmp, out, '--measure', str(copy),
+                                        '--measure-model', 'gemma-4-26b-a4b')
+            self.assertNotEqual(raised.exception.code, 0)
+            measuring.assert_not_called()
+            self.assertEqual(out.read_bytes(), original)
+
     def test_measure_model_requires_measure(self):
         from tempfile import TemporaryDirectory
 

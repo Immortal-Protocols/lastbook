@@ -72,9 +72,27 @@ section number, so each section is an ordinary result; hybrid search fuses keywo
 fusion, `score = sum over lists 1 / (60 + rank)` (`retrieval.rrf`, k = 60), on the key (doc, page). Meaning-search passages
 embedded before the change are relabelled with their section by start offset (`sections.section_of`, no re-embedding).
 
-How the constants were chosen: not by a sweep. 20,000 and 5,000 were set once; the stored text has no headings, so the cut
-is by length. A score penalty for long pages was tried instead and dropped (the book still came in through meaning
-search). No other sizes were measured.
+How the constants were chosen: 20,000 and 5,000 were set once, before any measurement; the stored text has no headings,
+so the cut is by length. A score penalty for long pages was tried instead and dropped (the book still came in through
+meaning search).
+
+**Sensitivity to the two constants** (measured afterwards, on `main` d223056 with the published Medium pack; keyword
+search; development sets only, so this shows robustness, not a tuned optimum). Every pair of `LONG` in 10,000 / 20,000 /
+40,000 and `SECTION` in 2,500 / 5,000 / 10,000 was run with the branch's own scorer. The constants were set in the
+process before the scorer ran (no code edited), and each pair had its own sections file outside the data folder.
+
+| `LONG` → `SECTION` | Pages cut | Red, first page useful (of 131) | vs `main`: +/−, exact McNemar p | Triage, useful of 8 (mean) | *Modern Machine-Shop Practice* in top 8 (of 362) |
+|---|---|---|---|---|---|
+| `main` (no sections) | — | 58 | — | 3.86 | 25 |
+| 10,000 → 2,500 / 5,000 / 10,000 | 1,044 | 60 / 60 / 60 | +3/−1 p = 0.63; +2/−0 p = 0.5; +2/−0 p = 0.5 | 4.05 / 4.01 / 3.98 | 4 / 5 / 4 |
+| 20,000 → 2,500 / **5,000** / 10,000 | 351 | 60 / **59** / 59 | +2/−0 p = 0.5; **+1/−0 p = 1**; +1/−0 p = 1 | 4.05 / **4.01** / 3.99 | 4 / **4** / 5 |
+| 40,000 → 2,500 / 5,000 / 10,000 | 100 | 60 / 59 / 59 | +2/−0 p = 0.5; +1/−0 p = 1; +1/−0 p = 1 | 4.01 / 3.99 / 3.96 | 4 / 4 / 5 |
+
+Every pair removes the book from 20 or more of the 25 top-8 lists, and no pair differs significantly from `main` or from
+another on the primary outcome. The best-looking alternative, 20,000 → 2,500, against the chosen pair: red first page
+useful 59 → 60 (+1/−0, p = 1; clustered p = 1), mean useful of 8 on red questions +0.04 (95% CI −0.03 to +0.14). So the
+choice within this range does not matter for these measures; 20,000 → 5,000 is kept. Hybrid was measured at the chosen
+pair only (each other pair needs its own meaning index, about an hour to build on a GPU).
 
 Numbers (measured on the author's fork):
 
@@ -87,6 +105,17 @@ Numbers (measured on the author's fork):
 
 Rerun: `tools/search_eval/score.py --rows` before, and `--rows --sections <scratch folder>` after, and count the questions whose
 top 8 hold that book.
+
+**Meaning index built by this part's own indexer.** The scorer opens the meaning index read-only and never starts the
+indexer, so with an index built by `main`, long pages' passages keep their whole-page label (relabelling,
+`retrieval.Index.relabel_sections`, runs only when the indexer updates). To check that this does not change the hybrid
+result, the index was also built from scratch by this branch's indexer, which embeds long pages section by section
+(340,532 passages, against 338,910 from `main`'s indexer). Red questions, first page useful (of 131), hybrid: `main` 88;
+this part on `main`'s index 90 (+3/−1 against `main`, p = 0.63); this part on its own index 92 (+4/−0, p = 0.13). Between
+the two runs of this part, no yes/no outcome in any set changes significantly; *Modern Machine-Shop Practice* is in 0
+and 4 of 362 top-8 lists (the 4 are single sections reached through meaning search). The build used the GPU (CUDA,
+onnxruntime-gpu 1.32; 1 h 07 min); for `main`'s indexer, a CPU and a GPU build gave equivalent vectors and the same
+results (`tools/search_eval/baseline-files.md`).
 The mean hybrid search time per question over the triage set was 0.67 s on the fork; a before/after time for the long
 pages alone was not stored.
 

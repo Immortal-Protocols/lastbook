@@ -3935,6 +3935,34 @@ console.log(packSummary({id: 'medium', summary_key: 'setup.packSummary.medium', 
         self.assertEqual(run.stdout.strip(), 'El paquete Small, más los videos básicos de instrucciones, todos los documentos, Wikibooks y un mapa detallado de California.')
 
 
+    def test_legacy_medium_summary_uses_each_selected_locale(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const maps = () => [{id: 'CA', title: 'California'}], selectedState = () => 'CA', mapName = () => 'California';
+const translations = {
+  'es-419': 'El paquete Small, más los videos principales con instrucciones prácticas, todos los documentos, Wikibooks y un mapa detallado de {map}.',
+  de: 'Small sowie die wichtigsten Anleitungsvideos, alle Dokumente, Wikibooks und eine detaillierte Karte von {map}.',
+  'zh-Hans': 'Small 套件，以及核心操作指南视频、所有文档、Wikibooks 和 {map} 的详细地图。'
+};
+const tr = (key, params, fallback) => key === 'setup.packSummary.medium'
+  ? translations[globalThis.LastbookI18n.locale].replace('{map}', params.map) : fallback;
+eval(section('  function packSummary(', '  const packDl ='));
+const results = {};
+for (const locale of Object.keys(translations)) {
+  globalThis.LastbookI18n = {locale};
+  results[locale] = packSummary({id: 'medium', summary: 'Small, plus the core how-to videos, all documents, Wikibooks and a detailed map of California.'});
+}
+console.log(JSON.stringify(results));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(json.loads(run.stdout), {
+            'es-419': 'El paquete Small, más los videos principales con instrucciones prácticas, todos los documentos, Wikibooks y un mapa detallado de California.',
+            'de': 'Small sowie die wichtigsten Anleitungsvideos, alle Dokumente, Wikibooks und eine detaillierte Karte von California.',
+            'zh-Hans': 'Small 套件，以及核心操作指南视频、所有文档、Wikibooks 和 California 的详细地图。',
+        })
+
+
 @unittest.skipUnless(shutil.which('node'), 'needs Node')
 class SetupDateFormatting(unittest.TestCase):
     def test_setup_check_date_uses_the_selected_interface_language(self):

@@ -141,8 +141,8 @@ class Button(unittest.TestCase):
         """A page with no text, or one that could not be fetched, is shown in a toast (role=status), not only spoken; and after
         reading goes on to the next page by itself, focus returns to the button."""
         app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
-        self.assertIn("toast('This page has no text that can be read aloud.')", app)
-        self.assertIn("toast('This page could not be read aloud. Try again.')", app)
+        self.assertIn("toast(tr('reader.speakNoText', null, 'This page has no text that can be read aloud.'))", app)
+        self.assertIn("toast(tr('reader.speakFailed', null, 'This page could not be read aloud. Try again.'))", app)
         self.assertIn('focusAfterRoute = sb;', app)
         self.assertNotIn('data-speak hidden aria-pressed', app)
         css = (ROOT / 'web' / 'app.css').read_text(encoding='utf-8')

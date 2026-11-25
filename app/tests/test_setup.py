@@ -4821,6 +4821,41 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
         self.assertNotIn('internet', j['error']['message'])
 
     @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_download_to_share_says_it_turns_sharing_on(self):
+        """Download to share turns the sharing setting on, and it stays on (share_get). With sharing off, the words the button is
+        described by say so where it is chosen: it turns sharing on, other people see this computer's address, and it stays on
+        until Stop sharing. With sharing on already they do not claim to turn it on. The job and its end say it stays on."""
+        script = r"""
+const src = require('fs').readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const esc = String, ico = () => '', size = n => n + ' bytes', noDownload = () => false, errCode = e => e && e.code;
+let S, addingMirror = false, repair = null;
+eval(section('  function mirrorRow(', '  function sharingChoice(') + section('  function sharingRows(', '  function wireMirrors('));
+eval(section('  function jobHead(', '  function jobView('));
+eval(section('  function jobLead(', '  /* Resume when paused'));
+const row = on => { S = {sharing: {available: true, on, missing_bytes: 5, mirrors: []}}; return sharingRows() };
+const words = html => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ');
+const described = html => { const id = (html.match(/id="shareGet" aria-describedby="([^"]+)"/) || [])[1];
+  return id ? words((html.match(new RegExp(`<small id="${id}">([\\s\\S]*?)</small>`)) || [, ''])[1]) : '' };
+const job = {state: 'downloading', items: [{kind: 'share', state: 'downloading'}]};
+console.log(JSON.stringify({off: described(row(false)), on: described(row(true)), lead: jobLead(job), head: jobHead(job)}));
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js')],
+                           check=True, capture_output=True, text=True, encoding='utf-8')
+        w = json.loads(r.stdout)
+        self.assertIn('This turns sharing on.', w['off'])
+        self.assertIn('see its address', w['off'])
+        self.assertIn('until you choose Stop sharing', w['off'])
+        self.assertIn('Download it again to share it: 5 bytes.', w['off'])
+        self.assertIn('The library itself does not change.', w['off'])
+        self.assertNotIn('turns sharing on', w['on'])                  # already on: nothing to turn on
+        self.assertIn('Download it again to share it: 5 bytes.', w['on'])
+        self.assertEqual(w['head'], 'Downloading to share')
+        self.assertIn('Sharing stays on until you choose Stop sharing', w['lead'])
+        self.assertIn('Sharing stays on until you choose Stop sharing', (ROOT / 'web' / 'setup.js').read_text(encoding='utf-8')
+                      .split("function doneView()", 1)[1].split("const got = ", 1)[0])   # and the end of the job says it too
+
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
     def test_check_and_repair_words(self):
         """setup.js's own words: a check, also one resumed after a restart (j.check, with no memory of having started it), never
         speaks of downloads; Repair's offer and its result tell a whole-library download from an AI file put in place."""

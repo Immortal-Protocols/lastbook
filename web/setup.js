@@ -641,9 +641,12 @@
     const n = sh.seeding || 0;
     const share = sh.available ? `<div class="s-row">${ico('up', 's-ri')}<span><b>Download and share with BitTorrent</b><small>${sh.on ? (n ? `Sharing ${n} ${n === 1 ? 'file' : 'files'} while Lastbook is open; downloads also come from other people` : 'On. Downloads also come from other people, and are kept and shared') : 'Off. When it is on, downloads also come from other people, and they download from this computer and see its address.'}${sh.kept_bytes ? ' · ' + size(sh.kept_bytes) + ' kept' : ''}${sh.shared_bytes ? ` · <b class="s-shared">${size(sh.shared_bytes)} shared with other people so far</b>` : ''}</small></span>
       ${sh.on ? '<button class="btn plain" id="shareOff">Stop sharing</button>' : `<button class="btn plain" id="shareOn">Share</button>${sh.kept_bytes ? `<button class="btn plain" id="shareDel">${ico('trash')}Delete kept files</button>` : ''}`}</div>` : '';
-    /* a library installed with sharing off: its download was deleted once unpacked, so there is nothing of it to share yet */
-    const get = sh.available && sh.missing_bytes ? `<div class="s-row">${ico('down', 's-ri')}<span><b>Share what this library came from</b><small>Its download was not kept when it was installed. Download it again to share it: ${size(sh.missing_bytes)}. It comes from other people and the servers, and Lastbook shares each piece as soon as it has it. The library itself does not change.</small></span>
-      <button class="btn plain" id="shareGet">Download to share</button></div>` : '';
+    /* a library installed with sharing off: its download was deleted once unpacked, so there is nothing of it to share yet.
+       Download to share turns the sharing setting on (share_get) and it stays on: with sharing off, the words at the button say so */
+    const get = sh.available && sh.missing_bytes ? `<div class="s-row">${ico('down', 's-ri')}<span><b>Share what this library came from</b><small id="shareGetWhat">Its download was not kept when it was installed. Download it again to share it: ${size(sh.missing_bytes)}. ${sh.on
+      ? 'It comes from other people and the servers, and Lastbook shares each piece as soon as it has it.'
+      : '<b class="s-turns">This turns sharing on.</b> Other people then download from this computer and see its address. Sharing stays on whenever Lastbook is open, until you choose Stop sharing, and what you download meanwhile is kept and shared too.'} The library itself does not change.</small></span>
+      <button class="btn plain" id="shareGet" aria-describedby="shareGetWhat">Download to share</button></div>` : '';
     return `<div class="s-have">${share}${get}${mirrorRow()}</div>`;
   }
   function wireMirrors(rerender) {
@@ -842,7 +845,7 @@
     const quiet = j.state === 'paused' && j.items.filter(i => i.state === 'paused').every(noDownload);
     return quiet ? 'Stopped when Lastbook closed. Resume to finish; nothing needs downloading.'
       : j.state === 'paused' ? 'What is downloaded is kept. Resume when you are ready, even after closing Lastbook.'
-      : sharingJob(j) ? 'It comes from other people and the servers, and Lastbook shares each piece as soon as it has it. Closing Lastbook pauses it.'
+      : sharingJob(j) ? 'It comes from other people and the servers, and Lastbook shares each piece as soon as it has it. Closing Lastbook pauses it. Sharing stays on until you choose Stop sharing in Library and local AI.'
       : 'You can keep using this computer. Closing Lastbook pauses it.';
   }
   /* Resume when paused; Pause while it downloads, waits, or copies (a copy pauses between chunks, as a download does) */
@@ -884,7 +887,7 @@
     if (sharingJob(j)) {
       const kept = j.items.map(i => esc(i.title)).join(', ').replace(/, ([^,]*)$/, ' and $1');
       main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>Sharing</h1>
-        <p class="lead">Kept to share: ${kept}. Lastbook shares it while it is open, and counts what other people download from it.</p>
+        <p class="lead">Kept to share: ${kept}. Lastbook shares it while it is open, and counts what other people download from it. Sharing stays on until you choose Stop sharing in Library and local AI.</p>
         <button class="btn big" id="open">Back to Library and local AI</button><p class="s-note" id="openNote" hidden></p></div>`;
       live.textContent = 'Kept to share. Lastbook shares it while it is open.';
       $('#open').onclick = async () => {

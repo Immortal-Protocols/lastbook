@@ -94,7 +94,9 @@ downloads (`Download._run_swarm`):
   a job that downloads those files again (`POST /api/setup/share-get`), with BitTorrent on, so the pieces rqbit takes from
   other people are shared as soon as it has them while the servers fill in the rest. Each file is checked as any download is,
   then kept in `<library>.share` with its torrent and seeded from there. The library itself does not change, and the shared
-  total counts from then on.
+  total counts from then on. It turns the sharing setting on, and it stays on: with sharing off, the words the button is
+  described by say that it turns sharing on, that other people then see this computer's address, and that sharing stays on
+  (and later downloads are kept and shared) until **Stop sharing**.
 - People with a torrent client (qBittorrent, Transmission, aria2c) can download or seed the same torrent. Setup's existing
   "Use the file you already have" checks a file got that way before using it.
 

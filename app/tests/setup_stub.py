@@ -308,7 +308,7 @@ class Stub:
                     if self.fault and self.fault[0] == it['state']:
                         return self._fail(it)
                     order = ['verifying', 'unpacking', 'activating', 'done'] if it['kind'] == 'pack' else ['unpacking', 'done'] if it['kind'] == 'map' else ['verifying', 'activating', 'done']
-                    if j.get('repair'):
+                    if j.get('repair') or it['kind'] == 'share':   # a share item, as the engine's: downloading, verifying, done
                         order = ['verifying', 'done']
                     it['state'] = order[order.index(it['state']) + 1]
                     if it['state'] == 'unpacking':
@@ -371,6 +371,29 @@ class Stub:
             self.last = time.time()
             self.phase_t = 0
         return self.public()
+
+    def share_get(self):
+        """As engine/setup/api.py share_get: a job that downloads the missing files again to share them, and sharing turned on."""
+        if self.job and self.job['state'] not in ('done', 'failed'):
+            return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
+        if not self.sharing.get('missing'):
+            return {'error': 'Everything this library came from is kept to share already.', 'code': 'nothing'}
+        title = next(p['title'] for p in self.M['packs'] if p['id'] == self.current['pack']) + ' library'
+        self.job = {'id': 'j1', 'state': 'waiting', 'error': None, 'started': time.time(), 'folder': self.folder,
+                    'items': [{'id': f['name'], 'kind': 'share', 'title': title, 'state': 'waiting', 'bytes_done': 0, 'bytes_total': f['size'],
+                               'rate_bps': 0, 'eta_s': None, 'error': None, 'source': 'download'} for f in self.sharing['missing']]}
+        self.last, self.phase_t = time.time(), 0.0
+        self.sharing.update(on=True, seeding=len(self.sharing['kept']))
+        return self.public()
+
+    def share_kept(self):
+        """A share job finished: the library is as it was, and what it downloaded is kept and seeded."""
+        got = {i['id'] for i in self.job['items']}
+        kept = self.sharing['kept'] + [f for f in self.sharing.get('missing', []) if f['name'] in got]
+        missing = [f for f in self.sharing.get('missing', []) if f['name'] not in got]
+        self.sharing.update(kept=kept, kept_bytes=sum(f['size'] for f in kept), missing=missing, missing_bytes=sum(f['size'] for f in missing),
+                            seeding=len(kept) if self.sharing['on'] else 0)
+        self.job = None
 
     def public(self):
         if not self.job:
@@ -464,6 +487,9 @@ class H(BaseHTTPRequestHandler):
             on = body.get('on') is True
             STUB.sharing.update(on=on, seeding=len(STUB.sharing['kept']) if on else 0)
             return self.send(200, STUB.sharing)
+        if a == 'share-get':
+            r = STUB.share_get()
+            return self.send(400 if r.get('error') else 200, r)
         if a == 'share-delete':
             freed = STUB.sharing['kept_bytes']
             STUB.sharing.update(kept=[], kept_bytes=0, seeding=0)
@@ -489,6 +515,8 @@ class H(BaseHTTPRequestHandler):
         if a == 'finish':
             if STUB.job and STUB.job['state'] == 'done' and STUB.job.get('repair'):
                 STUB.job = None              # a repair leaves the library what it was
+            elif STUB.job and STUB.job['state'] == 'done' and all(i['kind'] == 'share' for i in STUB.job['items']):
+                STUB.share_kept()
             elif STUB.job and STUB.job['state'] == 'done':
                 cur = STUB.current or {'folder': STUB.folder, 'pack': None, 'model': None, 'map': 'base'}
                 for it in STUB.job['items']:

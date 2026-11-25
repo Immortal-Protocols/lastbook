@@ -145,6 +145,7 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-row b{display:block;font:650 18.5px/1.25 var(--display)}
 .s-row small{display:block;font-size:15px;color:var(--ink2);overflow-wrap:anywhere}
 .s-row small .s-shared{display:inline;font:inherit;font-weight:650;color:var(--accent)}
+.s-row small .s-turns{display:inline;font:inherit;font-weight:650;color:var(--ink)}
 .s-mirror{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:8px}
 .s-mirror code{font-size:15px;overflow-wrap:anywhere}
 .s-mirror .s-select{flex:1 1 240px;min-height:44px}

@@ -168,7 +168,9 @@
   {
    "id": "burn",
    "label": "Burn or scald",
-   "hint": "Burnt or burned by fire, hot water, cooking oil, chemicals, electricity, blisters",
+   "hint": "Burnt or burned by fire, hot water, cooking oil, chemicals, electricity",
+   "phrases": ["blister", "blisters", "popped blister", "burst blister", "broken blister"],
+   "context": ["popped", "burst", "pop", "broke", "broken", "big", "small", "fluid", "clear", "should", "treat"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",

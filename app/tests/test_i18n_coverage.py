@@ -14,7 +14,7 @@ class Coverage(unittest.TestCase):
     def setUpClass(cls):
         english, _ = scan.load_english()
         cls.english = english
-        cls.hits = scan.scan_web() + scan.scan_python()
+        cls.hits = scan.scan_web() + scan.scan_topics() + scan.scan_python() + scan.scan_c()
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
 
@@ -37,6 +37,10 @@ class Coverage(unittest.TestCase):
         self.assertEqual(actual, inventoried,
                          f'unclassified web files: {sorted(actual - inventoried)}; stale entries: {sorted(inventoried - actual)}')
 
+    def test_cli_scanner_includes_dynamic_topic_data(self):
+        source = (ROOT / 'packaging' / 'i18n_scan.py').read_text(encoding='utf-8')
+        self.assertIn('hits = scan_web() + scan_topics() + scan_python() + scan_c()', source)
+
     def test_literal_catalogue_references_exist(self):
         # Catch key typos and stale references across every scanned runtime,
         # not only JS tr() calls. setup.html/setup.json are asset filenames.
@@ -49,7 +53,14 @@ class Coverage(unittest.TestCase):
             if path.is_file():
                 referenced.update(re.findall(r"['\"]((?:about|app|chat|common|copy|desktop|error|help|installer|language|library|map|native|nav|reader|saved|search|setup|time|topic|update|video|videos|wiki)\.[A-Za-z][A-Za-z0-9_.-]*)['\"]",
                                              path.read_text(encoding='utf-8')))
-        referenced.difference_update({'setup.html', 'setup.json', 'app.zip'})
+        referenced.difference_update({'setup.html', 'setup.json', 'app.zip', 'map.sqlite'})
+        referenced.update({
+            'desktop.genericName', 'desktop.comment', 'desktop.keywords',
+            'installer.stub.selfMissing', 'installer.stub.selfUnreadable', 'installer.stub.damaged',
+            'installer.stub.tempMissing', 'installer.stub.tempCreate', 'installer.stub.tempWrite',
+            'installer.stub.unpackFailed', 'installer.stub.startFailed',
+            'native.macosPermission.desktop', 'native.macosPermission.documents', 'native.macosPermission.downloads',
+        })
         referenced = {key for key in referenced if not key.endswith('.')}
         self.assertGreaterEqual(len(referenced), 800)
         self.assertEqual(referenced - keys, set(),
@@ -162,10 +173,22 @@ class Coverage(unittest.TestCase):
         self.assertTrue(any('https://' in text and 'help' in text for text in visible), visible)
         self.assertFalse(any('discarded' in text for text in visible), visible)
 
+        nested = 'const x = "}"; root.innerHTML = `${/}/.test(x) ? `<button>Keep going</button>` : ""}`;'
+        nested_hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(nested)]
+        label, pre = next(((text, pre) for text, pre in nested_hits if text == 'Keep going'), (None, None))
+        self.assertIsNotNone(label, f'regex brace truncated a rendered template: {nested_hits!r}')
+        self.assertEqual(scan.classify(label, pre), 'chrome')
+
         py = 'def render():\n    """Technical implementation notes."""\n    message("""This window failed.\\nTry again.""")\n'
         literals = [text for _pos, text, _pre, _body in scan.iter_py_strings(py)]
         self.assertFalse(any('Technical implementation notes' in text for text in literals), literals)
         self.assertIn('This window failed.\nTry again.', literals)
+
+        concat = 'label("Open " "folder")'
+        joined = [text for _pos, text, _pre, _body in scan.iter_py_strings(concat)]
+        self.assertIn('Open folder', joined, joined)
+        visible_label = next(hit for hit in scan.iter_py_strings(concat) if hit[1] == 'Open folder')
+        self.assertEqual(scan.classify(visible_label[1], visible_label[2], visible_label[3]), 'chrome')
 
     def test_localized_runtime_paths_stay_wired(self):
         app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
@@ -195,6 +218,87 @@ class Coverage(unittest.TestCase):
         matches = [(text, pre) for text, pre in parser.strings if text == 'Opening the guide…']
         self.assertEqual(len(matches), 2)
         self.assertEqual([scan.classify(text, pre) for text, pre in matches], ['chrome', 'wired'])
+
+    def test_scanner_inventories_bound_meta_descriptions_and_no_javascript_fallback(self):
+        html = (ROOT / 'web' / 'index.html').read_text(encoding='utf-8')
+        parser = scan._MarkupStrings('web/index.html')
+        parser.feed(html)
+        parser.close()
+        description = next((text, pre) for text, pre in parser.strings
+                           if text.startswith('Offline survival and rebuilding guide:'))
+        no_js = next((text, pre) for text, pre in parser.strings if text == 'Lastbook needs JavaScript.')
+        self.assertEqual(scan.classify(*description), 'wired')
+        self.assertEqual(scan.classify(*no_js), 'technical')
+
+    def test_scanner_flags_unmapped_map_labels_and_short_visible_copy(self):
+        for variable, label, source in [
+            ('LAYERS', 'New layer', "const LAYERS = [['new-layer', '"),
+            ('GROUPS', 'New group', "const GROUPS = [['new-group', '"),
+        ]:
+            with self.subTest(variable=variable):
+                self.assertEqual(scan.classify(label, source), 'chrome')
+        self.assertEqual(scan.classify('Go', "button.textContent = '"), 'chrome')
+        self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
+        self.assertEqual(scan.classify('Hospitals', "const LAYERS = [['hospital', "), 'wired')
+        self.assertEqual(scan._map_data_catalogue_classes()['Berries & asparagus'], 'wired')
+        self.assertEqual(scan._map_data_catalogue_classes()['Dt'], 'technical')
+        self.assertEqual(set(scan._chat_starter_classes().values()), {'wired'})
+
+    def test_scanner_rejects_dynamic_map_label_without_a_key(self):
+        source = "const LAYERS = [['new-clinic', 'A newly visible clinic category', 'N', '#fff', 'clinic', 'help']];"
+        labels = [text for _pos, text, _pre in scan.iter_js_strings(source)]
+        self.assertIn('A newly visible clinic category', labels)
+        pre = source[:source.index("'A newly visible clinic category'")]
+        self.assertEqual(scan.classify('A newly visible clinic category', pre), 'chrome')
+        self.assertTrue(scan.looks_technical('videos.row.{…}'))
+
+    def test_scanner_follows_arrow_regex_before_nested_visible_template(self):
+        source = "root.innerHTML = `${(() => /}/.test('}'))() ? `<button>Keep visible copy</button>` : ''}`;"
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(source)]
+        label = next((text, pre) for text, pre in hits if text == 'Keep visible copy')
+        self.assertEqual(scan.classify(*label), 'chrome')
+
+    def test_scanner_requires_catalogue_keys_for_topic_data(self):
+        hits = scan.scan_topics()
+        self.assertTrue(hits)
+        self.assertTrue(all(hit['class'] == 'wired' for hit in hits),
+                        [hit for hit in hits if hit['class'] != 'wired'])
+        import tempfile
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / 'storm.json').write_text(
+                json.dumps({'id': 'storm', 'title': 'Storm', 'short': 'Storm damage'}), encoding='utf-8')
+            added = scan.scan_topics(Path(tmp))
+        self.assertEqual({hit['class'] for hit in added}, {'chrome'})
+
+    def test_scanner_finds_interpolated_visible_attributes(self):
+        parser = scan._MarkupStrings('web/chat.js')
+        parser.feed('<a title="Source {…}">{…}</a>')
+        parser.close()
+        source = next(((text, pre) for text, pre in parser.strings if text.startswith('Source ')), None)
+        self.assertIsNotNone(source, parser.strings)
+        self.assertEqual(scan.classify(*source), 'chrome')
+
+    def test_scanner_inventories_linux_desktop_entry_messages(self):
+        hits = scan.scan_python()
+        rows = [hit for hit in hits if hit.get('file') == 'packaging/linux/lastbook.desktop']
+        self.assertIn('Search and read the survival library on this computer, with no internet',
+                      [hit['text'] for hit in rows], rows)
+        self.assertEqual({hit['class'] for hit in rows if hit['text'].startswith('Search and read')}, {'wired'})
+
+    def test_scanner_inventories_linux_desktop_search_keywords(self):
+        hits = scan.scan_python()
+        rows = [hit for hit in hits if hit.get('file') == 'packaging/linux/lastbook.desktop'
+                and hit['text'] == 'survival;library;offline;first aid;']
+        self.assertEqual(len(rows), 1, hits)
+        self.assertEqual(rows[0]['class'], 'wired')
+
+    def test_scanner_inventories_windows_setup_stub_messages(self):
+        source = 'fail(L"The installer stopped unexpectedly.");'
+        literal = next(hit for hit in scan.iter_c_strings(source) if hit[1])
+        self.assertEqual(scan.classify(literal[1], literal[2]), 'chrome')
+        self.assertTrue(any(hit['file'] == 'packaging/setup_stub/lastbook_setup_stub.c'
+                            for hit in scan.scan_c()))
 
     def test_nearby_log_does_not_hide_a_visible_python_message(self):
         sample = "print('diagnostic only')\nmessage('This window stopped working.')"

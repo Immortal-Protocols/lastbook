@@ -122,6 +122,44 @@ class Catalogues(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'stale catalogue'):
             catalogues.check_assets(web, generated)
 
+    def test_native_installer_desktop_and_macos_permission_assets_are_catalog_backed(self):
+        generated = catalogues.generate()
+        header = generated['stub_header'].decode('ascii')
+        for phrase in ('El instalador no pudo localizarse.', 'Setup konnte sich nicht finden.', '\\u65e0\\u6cd5'):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, header)
+        self.assertIn('GenericName[es_419]=Biblioteca de supervivencia sin conexión', generated['desktop'].decode('utf-8'))
+        self.assertIn('GenericName[de]=Offline-Bibliothek für Krisenvorsorge', generated['desktop'].decode('utf-8'))
+        self.assertIn('Keywords[es_419]=supervivencia;biblioteca;sin conexión;primeros auxilios;', generated['desktop'].decode('utf-8'))
+        self.assertIn('Keywords[es]=supervivencia;biblioteca;sin conexión;primeros auxilios;', generated['desktop'].decode('utf-8'))
+        self.assertIn('Comment[zh_Hans]=无需联网', generated['desktop'].decode('utf-8'))
+        self.assertIn('Comment[zh_CN]=无需联网', generated['desktop'].decode('utf-8'))
+        self.assertIn('Keywords[zh]=生存;资料库;离线;急救;', generated['desktop'].decode('utf-8'))
+        spanish = generated['macos/es-419.lproj/InfoPlist.strings'].decode('utf-8')
+        self.assertIn('NSDocumentsFolderUsageDescription', spanish)
+        self.assertIn('Lastbook busca en Documentos', spanish)
+        self.assertIn('macos/zh-Hans.lproj/InfoPlist.strings', generated)
+        spec = (ROOT / 'packaging' / 'lastbook_macos.spec').read_text(encoding='utf-8')
+        self.assertIn("'es-419', 'de', 'zh-Hans'", spec)
+        self.assertIn("NATIVE_ENGLISH['native.macosPermission.documents']", spec)
+        stub = (ROOT / 'packaging' / 'setup_stub' / 'lastbook_setup_stub.c').read_text(encoding='utf-8')
+        self.assertIn('fail(STUB_DAMAGED)', stub)
+        self.assertNotIn('fail(L"', stub)
+
+    def test_every_supported_installer_locale_covers_the_full_installer_ui(self):
+        installer = json.loads(catalogues.generate()['installer'].decode('utf-8'))
+        required = set(installer['en'])
+        for locale in ('es-419', 'de', 'zh-Hans'):
+            with self.subTest(locale=locale):
+                translated = set(installer['locales'][locale])
+                self.assertEqual(required - translated, set(),
+                                 f'{locale} installer messages fall back to English: {sorted(required - translated)}')
+
+    def test_setup_stub_translations_use_static_storage_for_stack_probe_free_build(self):
+        stub = (ROOT / 'packaging' / 'setup_stub' / 'lastbook_setup_stub.c').read_text(encoding='utf-8')
+        self.assertIn('static char data[4096];', stub)
+        self.assertNotIn('char data[4096];', stub.replace('static char data[4096];', ''))
+
 
 class FallbackWording(unittest.TestCase):
     """Unavailable-language copy stays neutral across all offered locales."""
@@ -185,7 +223,12 @@ class GermanWording(unittest.TestCase):
 
     def test_no_message_is_left_in_english(self):
         same = {key for key in self.de if self.de[key] == self.en[key]}
-        self.assertLessEqual(same, {'nav.chat', 'nav.videos', 'nav.video', 'search.filter'})
+        self.assertLessEqual(same, {
+            'nav.chat', 'nav.videos', 'nav.video', 'search.filter',
+            'installer.productName', 'installer.companyName',
+            'installer.version', 'videos.speedNormal',
+            'videos.row.coalcracker', 'videos.row.corporals', 'videos.row.canterbury', 'videos.row.primitive',
+        })
 
 
 class SimplifiedChineseWording(unittest.TestCase):
@@ -220,7 +263,11 @@ class SimplifiedChineseWording(unittest.TestCase):
 
     def test_no_message_is_left_in_english(self):
         same = {key for key in self.zh if self.zh[key] == self.en[key]}
-        self.assertEqual(same, set())
+        # Lastbook and creator/channel names are intentionally preserved.
+        self.assertEqual(same, {
+            'installer.productName', 'installer.companyName',
+            'videos.row.coalcracker', 'videos.row.corporals', 'videos.row.canterbury', 'videos.row.primitive',
+        })
 
 
 class SpanishWording(unittest.TestCase):
@@ -274,6 +321,7 @@ class SpanishWording(unittest.TestCase):
             'chat.sourceType.videos',
             'native.appFileDescription', 'installer.productName', 'installer.companyName',
             'setup.facts.sha256', 'setup.facts.bytes', 'videos.videoCount',
+            'videos.row.coalcracker', 'videos.row.corporals', 'videos.row.canterbury', 'videos.row.primitive',
         })
 
     def test_catalogue_covers_every_english_message(self):

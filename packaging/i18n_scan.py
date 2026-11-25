@@ -21,6 +21,7 @@ import tokenize
 import ast
 from html.parser import HTMLParser
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,7 +57,14 @@ PYTHON_SURFACES = {
     'native/linux': [ROOT / 'app' / 'shell_linux.py'],
     'installer': [ROOT / 'packaging' / 'lastbook_setup.py'],
     'desktop': [ROOT / 'packaging' / 'linux' / 'lastbook.desktop'],
+    'native/macos-bundle': [ROOT / 'packaging' / 'lastbook_macos.spec'],
+    'assistant': [ROOT / 'assistant.py'],
+    'server': [ROOT / 'server.py'],
 }
+
+C_FILES = [ROOT / 'packaging' / 'setup_stub' / 'lastbook_setup_stub.c']
+DESKTOP_LOCALES = {'de', 'es_419', 'zh_Hans'}
+DESKTOP_TRANSLATED_FIELDS = {'GenericName', 'Comment', 'Keywords'}
 
 CONTENT = {
     'Lastbook', 'LastbookData', 'Lastbook videos', 'Español (Latinoamérica)',
@@ -80,7 +88,7 @@ TECHNICAL_EXACT = {
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
     'Could not access the desktop language preference', 'Contents',
     'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$', 'SPUStandardUpdaterController', 'SystemRoot', 'NotFound', 'WindowsPowerShell',
-    '(pointer: coarse)',
+    '(pointer: coarse)', 'Spanish|español|\\bkit de\\b',
 }
 
 TECHNICAL_PREFIX = (
@@ -123,6 +131,81 @@ def load_english():
         else:
             vals.add(v)
     return data, vals
+
+
+@lru_cache(maxsize=1)
+def _english_keys():
+    return frozenset(load_english()[0])
+
+
+@lru_cache(maxsize=1)
+def _map_preset_keys():
+    try:
+        source = (WEB / 'map.js').read_text(encoding='utf-8')
+    except OSError:
+        return {}
+    start = source.find('const PRESET_KEY = {')
+    end = source.find('};', start)
+    if start < 0 or end < 0:
+        return {}
+    block = source[start:end]
+    return {(quoted or bare): key for quoted, bare, key in re.findall(
+        r"(?:['\"]([^'\"]+)['\"]|([A-Za-z][A-Za-z0-9 ]*))\s*:\s*['\"](map\.preset\.[A-Za-z0-9_.-]+)['\"]", block
+    )}
+
+
+@lru_cache(maxsize=1)
+def _map_data_catalogue_classes():
+    """Resolve every hard-coded map label to the dynamic key its renderer uses."""
+    try:
+        source = (WEB / 'map.js').read_text(encoding='utf-8')
+    except OSError:
+        return {}
+    keys = _english_keys()
+    result = {}
+    layers = re.search(r'\bconst\s+LAYERS\s*=\s*\[([\s\S]*?)\]\s*\.map\b', source)
+    if layers:
+        for match in re.finditer(r"\[\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]", layers.group(1)):
+            ident, label, symbol = match.groups()
+            result[label] = 'wired' if f'map.layer.{ident}' in keys else 'chrome'
+            # These short values are map marker glyphs, not translated labels.
+            result.setdefault(symbol, 'technical')
+    groups = re.search(r'\bconst\s+GROUPS\s*=\s*\[([\s\S]*?)\]\s*;', source)
+    if groups:
+        for ident, label in re.findall(r"\[\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]", groups.group(1)):
+            result[label] = 'wired' if f'map.group.{ident}' in keys else 'chrome'
+    presets = re.search(r'\bconst\s+PRESETS\s*=\s*\[([\s\S]*?)\]\s*;', source)
+    if presets:
+        for label in re.findall(r"\[\s*['\"]([^'\"]+)['\"]\s*,\s*(?:\[|LAYERS\b)", presets.group(1)):
+            key = _map_preset_keys().get(label)
+            result[label] = 'wired' if key in keys else 'chrome'
+    return result
+
+
+@lru_cache(maxsize=1)
+def _chat_starter_classes():
+    """Map each rendered starter prompt to the catalogue key used by chat.js."""
+    try:
+        source = (WEB / 'chat.js').read_text(encoding='utf-8')
+    except OSError:
+        return {}
+    block = re.search(r'\bconst\s+STARTERS\s*=\s*\[([\s\S]*?)\]\s*;', source)
+    if not block:
+        return {}
+    keys = _english_keys()
+    return {prompt: 'wired' if f'chat.starter.{ident}' in keys else 'chrome'
+            for ident, prompt in re.findall(r"\[\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]\s*\]", block.group(1))}
+
+
+def _mapped_map_label(s, pre):
+    """Check dynamic map labels against the catalogue key used by their renderer."""
+    status = _map_data_catalogue_classes().get(s)
+    if status:
+        return status
+    status = _chat_starter_classes().get(s)
+    if status and re.search(r'\bconst\s+STARTERS\s*=', pre[-1000:]):
+        return status
+    return None
 
 
 def unescape(s, quote):
@@ -240,6 +323,9 @@ def looks_technical(s: str) -> bool:
         return True
     if re.fullmatch(r'[A-Za-z0-9_.-]+\.py --[A-Za-z0-9_-]+', s):
         return True
+    # A dynamic catalogue-key prefix is a resolver input, not display copy.
+    if s == 'videos.row.{…}':
+        return True
     if re.fullmatch(r'[A-Z][A-Za-z0-9]*(?:Enabled|Preconnect|Prefetch)', s):
         return True
     if s.startswith(TECHNICAL_PREFIX) or SVG_RE.match(s):
@@ -315,7 +401,7 @@ def looks_ui(s: str) -> bool:
         return False
     if ' ' in s or any(c in s for c in '?!…·—–'):
         return True
-    if s[0].isupper() and s.isascii() and s.isalpha() and len(s) >= 3:
+    if s[0].isupper() and s.isascii() and s.isalpha() and len(s) >= 2:
         return True
     return False
 
@@ -330,13 +416,14 @@ def display_context(pre: str) -> bool:
     zims = re.search(r'\b(?:const|let|var)\s+ZIMS\s*=\s*\[', recent)
     in_zims = bool(zims and ';' not in recent[zims.end():])
     display_data = re.search(
-        r'\b(?:const|let|var)\s+[A-Za-z_$][\w$]*(?:STARTERS|PROMPTS|STATES|STAGES|LABELS|TYPES|FILTERS|OPTIONS|ACTIONS|ITEMS|CATEGORIES|SECTIONS)\w*\s*=\s*[\[{]',
+        r'\b(?:const|let|var)\s+(?:[A-Za-z_$][\w$]*)?(?:STARTERS|PROMPTS|STATES|STAGES|LABELS|TYPES|FILTERS|OPTIONS|ACTIONS|ITEMS|CATEGORIES|SECTIONS|LAYERS|GROUPS|PRESETS)\w*\s*=\s*[\[{]',
         recent,
     )
     in_display_data = bool(display_data and ';' not in recent[display_data.end():])
-    display_helpers = {'statusLine', 'toast', 'button', 'heading', 'paragraph', 'hint', 'notice', 'message', 'sec'}
+    display_helpers = {'statusLine', 'toast', 'button', 'heading', 'paragraph', 'hint', 'notice', 'message', 'sec', 'fail'}
     return bool(DISPLAY_PRE.search(pre[-240:]) or _inside_named_call(pre, display_helpers)
-                or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or in_zims or in_display_data)
+                or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or re.search(r'\bsub\s*:\s*$', pre[-80:])
+                or in_zims or in_display_data)
 
 def classify(s: str, pre: str, post: str = '') -> str:
     # Wiring comes only from the source before this literal. Display and
@@ -354,6 +441,13 @@ def classify(s: str, pre: str, post: str = '') -> str:
             or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
+    if '__no_js_fallback__' in pre:
+        return 'technical'  # Static English fallback; localization needs the JavaScript runtime it explains.
+    mapped_label = _mapped_map_label(s, pre)
+    if mapped_label:
+        return mapped_label
+    if '__visible_attribute__' in pre:
+        return 'chrome' if looks_ui(s) else 'technical'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
     # Only the current literal's enclosing call makes it a log. A nearby print
@@ -362,9 +456,14 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'technical'
     if s in CONTENT:
         return 'content'
-    if looks_technical(s):
+    short_label = len(s) == 2 and s.isascii() and s.isalpha() and s[0].isupper()
+    if looks_technical(s) and not short_label:
         return 'technical'
-    if looks_ui(s) and display_context(pre):
+    if looks_ui(s) and (display_context(pre) or (
+            re.search(r"['\"]type['\"]\s*:\s*['\"]error['\"]", pre[-1200:])
+            and re.search(r"['\"]text['\"]\s*:\s*$", pre[-240:]))):
+        return 'chrome'
+    if short_label and display_context(pre):
         return 'chrome'
     # Flattened `${...}` templates are user-visible even when the prefix is only `return`.
     if looks_ui(s) and '{…}' in s:
@@ -546,8 +645,12 @@ def _skip_string(text, i):
 def _skip_js_expr(text, i):
     """i points at the first character of a ${...} expression. Return the index after its closing }."""
     depth = 1
+    regex_allowed = True
     n = len(text)
     while i < n and depth:
+        if text[i].isspace():
+            i += 1
+            continue
         if text.startswith('//', i):
             end = text.find('\n', i + 2)
             i = n if end < 0 else end + 1
@@ -559,14 +662,59 @@ def _skip_js_expr(text, i):
         c = text[i]
         if c in "'\"":
             i = _skip_string(text, i)
+            regex_allowed = False
             continue
         if c == '`':
             i = _skip_template(text, i)
+            regex_allowed = False
+            continue
+        if c == '/' and regex_allowed:
+            i += 1
+            in_class = False
+            while i < n:
+                if text[i] == '\\':
+                    i = min(n, i + 2)
+                elif text[i] == '[':
+                    in_class = True
+                    i += 1
+                elif text[i] == ']' and in_class:
+                    in_class = False
+                    i += 1
+                elif text[i] == '/' and not in_class:
+                    i += 1
+                    while i < n and text[i].isalpha():
+                        i += 1
+                    break
+                elif text[i] in '\r\n':
+                    break
+                else:
+                    i += 1
+            regex_allowed = False
             continue
         if c == '{':
             depth += 1
+            regex_allowed = True
         elif c == '}':
             depth -= 1
+            regex_allowed = False
+        elif c.isalpha() or c in '_$':
+            end = i + 1
+            while end < n and (text[end].isalnum() or text[end] in '_$'):
+                end += 1
+            regex_allowed = text[i:end] in {
+                'return', 'throw', 'case', 'delete', 'void', 'typeof', 'new',
+                'in', 'of', 'instanceof', 'yield', 'await', 'else', 'do',
+            }
+            i = end
+            continue
+        elif c.isdigit():
+            i += 1
+            while i < n and (text[i].isalnum() or text[i] in '._'):
+                i += 1
+            regex_allowed = False
+            continue
+        else:
+            regex_allowed = c in '=(:,[!&|?;+-*%^~<>'
         i += 1
     return i
 
@@ -707,9 +855,16 @@ class _MarkupStrings(HTMLParser):
             self.tags.append((tag, markers))
         for name in self.VISIBLE_ATTRIBUTES:
             value = values.get(name)
-            if value and '{…}' not in value:
+            if value:
                 marker = f'data-i18n-{name}'
-                pre = self.prefix + ' ' + name + (' __i18n_bound_attribute__' if marker in markers else '')
+                pre = self.prefix + ' ' + name + ' __visible_attribute__' + (' __i18n_bound_attribute__' if marker in markers else '')
+                self.strings.append((value, pre))
+        if tag == 'meta' and (values.get('name', '').lower() in {'description', 'twitter:description'}
+                              or values.get('property', '').lower() == 'og:description'):
+            value = values.get('content')
+            if value:
+                marker = 'data-i18n-content'
+                pre = self.prefix + ' content __visible_attribute__' + (' __i18n_bound_attribute__' if marker in markers else '')
                 self.strings.append((value, pre))
 
     def handle_startendtag(self, tag, attrs):
@@ -723,12 +878,14 @@ class _MarkupStrings(HTMLParser):
                 break
 
     def handle_data(self, data):
-        if any(tag in {'script', 'style', 'noscript'} for tag, _markers in self.tags):
+        if any(tag in {'script', 'style'} for tag, _markers in self.tags):
             return
         value = data.strip()
         if value:
             wired = bool(self.tags and 'data-i18n' in self.tags[-1][1])
-            self.strings.append((value, self.prefix + ' innerHTML' + (' __i18n_bound_text__' if wired else '')))
+            no_js = any(tag == 'noscript' for tag, _markers in self.tags)
+            marker = ' __no_js_fallback__' if no_js else ''
+            self.strings.append((value, self.prefix + ' innerHTML' + (' __i18n_bound_text__' if wired else '') + marker))
 
 
 def _template_markup_strings(flat, pre):
@@ -851,24 +1008,28 @@ def iter_py_strings(text: str):
     body = ''.join(chars)
     values = []
     try:
-        tokens = tokenize.generate_tokens(io.StringIO(text).readline)
-        for token in tokens:
-            if token.type != tokenize.STRING:
+        tree = ast.parse(text)
+        joined_ranges = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                joined_ranges.append((_ast_position(text, offsets, node.lineno, node.col_offset),
+                                      _ast_position(text, offsets, node.end_lineno, node.end_col_offset)))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
                 continue
-            start = offsets[token.start[0] - 1] + token.start[1]
-            end = offsets[token.end[0] - 1] + token.end[1]
+            start = _ast_position(text, offsets, node.lineno, node.col_offset)
+            end = _ast_position(text, offsets, node.end_lineno, node.end_col_offset)
             if any(start < doc_end and end > doc_start for doc_start, doc_end in docstrings):
                 continue
-            if re.match(r'(?i)^[rubf]*f[rub]*["\']', token.string):
-                continue  # Python 3.11 reports f-strings as STRING; AST handles these consistently across versions.
-            value = _python_string_value(token.string)
-            if value is None:
+            if any(start < joined_end and end > joined_start for joined_start, joined_end in joined_ranges):
                 continue
-            values.append((start, value))
+            # Python combines adjacent literals into one Constant. Scanning
+            # that value preserves the actual visible message at display sinks.
+            values.append((start, node.value))
         values.extend(_python_fstring_values(text, offsets, docstrings))
         for start, value in sorted(values):
             yield start, value, body[max(0, start - 200):start], body
-    except (tokenize.TokenError, IndentationError):
+    except (SyntaxError, tokenize.TokenError, IndentationError):
         return
 
 
@@ -904,11 +1065,39 @@ def scan_web():
     return hits
 
 
+def scan_topics(topics=ROOT / 'content' / 'topics'):
+    """Inventory topic titles and short descriptions that the UI resolves by dynamic key."""
+    english = load_english()[0]
+    hits = []
+    for path in sorted(topics.glob('*.json')):
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        topic_id = data.get('id') or path.stem
+        try:
+            relative = str(path.relative_to(ROOT))
+        except ValueError:
+            relative = path.name
+        source = path.read_text(encoding='utf-8')
+        for field, key in (('title', f'topic.{topic_id}'), ('short', f'topic.short.{topic_id}')):
+            value = data.get(field)
+            if not isinstance(value, str) or not value:
+                continue
+            line = next((i for i, row in enumerate(source.splitlines(), 1) if row.lstrip().startswith(f'"{field}"')), 1)
+            hits.append({'surface': 'topic-data', 'file': relative, 'line': line,
+                         'text': value, 'key': key, 'class': 'wired' if key in english else 'chrome'})
+    return hits
+
+
 def scan_python():
     hits = []
     for surface, paths in PYTHON_SURFACES.items():
         for path in paths:
             if not path.is_file():
+                continue
+            if path.suffix == '.desktop':
+                hits.extend(scan_desktop(path))
                 continue
             text = strip_python_comments(path.read_text(encoding='utf-8'))
             rel = str(path.relative_to(ROOT))
@@ -922,6 +1111,15 @@ def scan_python():
                     go_values = set(re.findall(r"['\"]([^'\"]+)['\"]\s*,", go_match.group(1)))
                     translated_names = set(re.findall(r"['\"]([^'\"]+)['\"]\s*:\s*['\"]nav\.", key_match.group(1)))
                     go_values &= translated_names
+            video_titles = {}
+            if rel == 'server.py':
+                rows = re.search(r'(?m)^VROWS\s*=\s*\[(.*?)^\]', text, re.S)
+                if rows:
+                    video_titles = {title: (f'videos.row.{ident}' if ident in {
+                        'health', 'water', 'food', 'power', 'outdoors', 'repair', 'making',
+                        'coalcracker', 'corporals', 'canterbury', 'primitive', 'courses'} else '')
+                        for ident, title in re.findall(r"\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]", rows.group(1))}
+                video_titles.update({'Picked for the guides': 'home.videosPicked', 'All videos': 'home.allVideos'})
             for pos, s, pre, body in iter_py_strings(text):
                 if not s or len(s) > 300:
                     continue
@@ -931,7 +1129,16 @@ def scan_python():
                 line = body[:pos].count('\n') + 1
                 if rel == 'engine/update.py':
                     pre = body[max(0, pos - 2000):pos]
-                kind = 'wired' if s in go_values else classify(s, pre, post)
+                if s in go_values:
+                    kind = 'wired'
+                elif s in video_titles:
+                    kind = 'wired' if video_titles[s] in _english_keys() else 'chrome'
+                elif rel == 'server.py' and s in {
+                        'arguments must be a JSON object', 'action is rescan, on, off or stop',
+                        'no local AI in this version', 'not a PDF'}:
+                    kind = 'technical'  # API validation/protocol responses, not rendered UI copy.
+                else:
+                    kind = classify(s, pre, post)
                 hits.append({'surface': surface, 'file': rel, 'line': line,
                              'text': s, 'class': kind})
             if rel == 'app/bridge.py':
@@ -945,6 +1152,54 @@ def scan_python():
                         line = line_offset + script[:pos].count('\n') + 1
                         hits.append({'surface': surface, 'file': rel, 'line': line,
                                      'text': s, 'class': classify(s, pre)})
+    return hits
+
+
+def scan_desktop(path):
+    """Scan translated user-facing fields in a freedesktop .desktop file."""
+    rows = []
+    for line_no, raw in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+        match = re.match(r'^(Name|GenericName|Comment|Keywords)(?:\[([A-Za-z0-9_-]+)\])?=(.*)$', raw)
+        if match:
+            key, locale, value = match.groups()
+            rows.append((line_no, key, locale, value))
+    variants = defaultdict(set)
+    for _line, key, locale, _value in rows:
+        if locale:
+            variants[key].add(locale)
+    hits = []
+    for line, key, locale, value in rows:
+        if key == 'Name' and value in CONTENT:
+            kind = 'content'
+        elif key in DESKTOP_TRANSLATED_FIELDS and DESKTOP_LOCALES.issubset(variants[key]):
+            kind = 'wired'
+        else:
+            kind = 'chrome'
+        hits.append({'surface': 'desktop', 'file': str(path.relative_to(ROOT)), 'line': line,
+                     'text': value, 'class': kind})
+    return hits
+
+
+def iter_c_strings(text):
+    """Yield C wide and narrow string literals after removing comments."""
+    body = strip_comments_js(text)
+    pattern = re.compile(r'(?<![A-Za-z0-9_])(?:L|u8|u|U)?"((?:\\.|[^"\\])*)"')
+    for match in pattern.finditer(body):
+        value = match.group(1).replace(r'\"', '"').replace(r'\\', '\\')
+        yield match.start(), value, body[max(0, match.start() - 2000):match.start()], body
+
+
+def scan_c():
+    hits = []
+    for path in C_FILES:
+        if not path.is_file():
+            continue
+        for pos, value, pre, body in iter_c_strings(path.read_text(encoding='utf-8')):
+            if not value or len(value) > 2000:
+                continue
+            hits.append({'surface': 'windows-setup-stub', 'file': str(path.relative_to(ROOT)),
+                         'line': body[:pos].count('\n') + 1, 'text': value,
+                         'class': classify(value, pre)})
     return hits
 
 
@@ -992,7 +1247,7 @@ def report(hits, key_count):
 
 def main(argv=None):
     english, _ = load_english()
-    hits = scan_web() + scan_python()
+    hits = scan_web() + scan_topics() + scan_python() + scan_c()
     text, totals, chrome, by = report(hits, len(english))
     sys.stdout.write(text)
     return 0

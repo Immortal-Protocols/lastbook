@@ -1,0 +1,3 @@
+"NSDesktopFolderUsageDescription" = "Lastbook sucht auf dem Schreibtisch nach dem Ordner LastbookData mit Ihrer Bibliothek. Es liest und speichert Dateien nur in diesem Ordner.";
+"NSDocumentsFolderUsageDescription" = "Lastbook sucht in Dokumente nach dem Ordner LastbookData mit Ihrer Bibliothek. Es liest und speichert Dateien nur in diesem Ordner.";
+"NSDownloadsFolderUsageDescription" = "Lastbook sucht in Downloads nach dem Ordner LastbookData mit Ihrer Bibliothek. Es liest und speichert Dateien nur in diesem Ordner.";

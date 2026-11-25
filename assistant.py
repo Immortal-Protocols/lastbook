@@ -671,7 +671,7 @@ def chat(messages, about, emit, cancelled):
             emit({'type': 'stopped'})
             return
         if why:
-            emit({'type': 'error', 'error': 'model_unavailable', 'text': why})
+            emit({'type': 'error', 'error': 'model_unavailable'})
             return
     first = {'at': None}
 
@@ -686,10 +686,10 @@ def chat(messages, about, emit, cancelled):
         set_state('thinking' if rnd == 0 else 'reading')
         got = (_local_round if local else _http_round)(msgs, None if last else tools, cancelled, wrote, set_state)
         if got in ('stopped', None):
-            emit({'type': 'stopped'} if got else {'type': 'error', 'error': 'model_unavailable', 'text': 'The local model stopped responding.'})
+            emit({'type': 'stopped'} if got else {'type': 'error', 'error': 'model_unavailable'})
             return
         if isinstance(got, str):
-            emit({'type': 'error', 'error': 'model_unavailable', 'text': got})
+            emit({'type': 'error', 'error': 'model_unavailable'})
             return
         content, calls = got
         rf = first['at']
@@ -723,8 +723,7 @@ def chat(messages, about, emit, cancelled):
         if content:  # text written before tool calls is discarded from the final answer
             emit({'type': 'reset'})
     if not answer.strip():
-        emit({'type': 'error', 'error': 'empty', 'text': 'The model did not produce an answer. The passages it found are listed below.',
-              'sources': list(sess.sources.values())})
+        emit({'type': 'error', 'error': 'empty', 'sources': list(sess.sources.values())})
         return
     # Validate citations against what the tools actually returned in this turn.
     answer, valid, invalid = validate_citations(answer, sess)

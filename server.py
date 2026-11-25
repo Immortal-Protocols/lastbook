@@ -1832,7 +1832,7 @@ class Handler(library.Handler):
     def internal_error(self):
         """The details go to the log. What reaches the client names no file path or user."""
         traceback.print_exc()
-        return self.send_json({'error': f'Server error ({sys.exc_info()[0].__name__}).'}, 500)
+        return self.send_json({'error_key': 'app.serverError', 'error_params': {'status': 500}}, 500)
 
     def lan_ok(self):
         """Loopback is always allowed. Other devices need the LAN access key once (then a cookie)."""
@@ -1970,13 +1970,13 @@ class Handler(library.Handler):
                 gone[0] = True  # the person pressed Stop or left; stop calling the model
         st = assistant.model_status()
         if not st['online']:
-            emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
+            emit({'type': 'error', 'error': 'model_unavailable'})
             return
         try:
             assistant.chat(msgs, about, emit, lambda: gone[0])
         except Exception as e:
             traceback.print_exc()
-            emit({'type': 'error', 'error': 'internal', 'text': f'The assistant stopped on an internal error ({type(e).__name__}).'})
+            emit({'type': 'error', 'error': 'internal', 'reason': type(e).__name__})
 
     def do_GET(self):
         try:
@@ -2018,16 +2018,16 @@ class Handler(library.Handler):
                 return self.send_json(find(qs.get('q', '')[:200], qs.get('kind', 'all')))
             if path.startswith('/api/doc/'):
                 r = catalog()['by_id'].get(path[9:])
-                return self.send_json(public(r, full=True) if r else {'error': 'This item is not in the library catalog.'}, 200 if r else 404)
+                return self.send_json(public(r, full=True) if r else {'error_key': 'app.libraryItemMissing'}, 200 if r else 404)
             m = re.fullmatch(r'/api/page/([^/]+)/(\d+)(\.png)?', path)
             if m:
                 r = catalog()['by_id'].get(m.group(1))
                 n = int(m.group(2))
                 if not r:
-                    return self.send_json({'error': 'unknown document'}, 404)
+                    return self.send_json({'error_key': 'app.libraryItemMissing'}, 404)
                 if m.group(3):
                     if r['kind'] != 'pdf':
-                        return self.send_json({'error': 'not a PDF'}, 400)
+                        return self.send_json({'error_key': 'app.notAPdf'}, 400)
                     data = render_page(r, n, int(qs.get('w', 1000)))
                     self.send_response(200)
                     self.send_header('Content-Type', 'image/png')

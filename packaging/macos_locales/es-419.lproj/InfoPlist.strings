@@ -1,0 +1,3 @@
+"NSDesktopFolderUsageDescription" = "Lastbook busca en el Escritorio la carpeta LastbookData de tu biblioteca. Solo lee y guarda archivos dentro de esa carpeta.";
+"NSDocumentsFolderUsageDescription" = "Lastbook busca en Documentos la carpeta LastbookData de tu biblioteca. Solo lee y guarda archivos dentro de esa carpeta.";
+"NSDownloadsFolderUsageDescription" = "Lastbook busca en Descargas la carpeta LastbookData de tu biblioteca. Solo lee y guarda archivos dentro de esa carpeta.";

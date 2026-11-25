@@ -93,6 +93,13 @@ class Coverage(unittest.TestCase):
                 self.assertIsNotNone(pre, f'nested template string {literal!r} was skipped: {hits!r}')
                 self.assertEqual(scan.classify(literal, pre), 'chrome')
 
+    def test_scanner_follows_arrow_regex_before_nested_visible_template(self):
+        source = "root.innerHTML = `${(() => /}/.test('}'))() ? `<button>Keep visible copy</button>` : ''}`;"
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(source)]
+        label = next(((text, pre) for text, pre in hits if text == 'Keep visible copy'), None)
+        self.assertIsNotNone(label, f'regex brace truncated a rendered template: {hits!r}')
+        self.assertEqual(scan.classify(*label), 'chrome')
+
     def test_scanner_detects_hardcoded_encyclopedia_display_data(self):
         sample = "const ZIMS = [['mdwiki', 'Medical encyclopedia', 'MDWiki: plain-language articles']];"
         hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
@@ -208,3 +215,32 @@ class Coverage(unittest.TestCase):
         values &= names
         self.assertEqual(values, {'Videos', 'Map', 'Chat'})
         self.assertEqual(scan.classify('Choose', 'dialog.setWindowTitle('), 'chrome')
+
+    def test_scanner_inventories_desktop_name_comment_and_search_keywords(self):
+        rows = [hit for hit in scan.scan_python() if hit.get('file') == 'packaging/linux/lastbook.desktop']
+        self.assertTrue(any(hit['text'] == 'Search and read the survival library on this computer, with no internet'
+                            and hit['class'] == 'wired' for hit in rows), rows)
+        self.assertTrue(any(hit['text'] == 'survival;library;offline;first aid;'
+                            and hit['class'] == 'wired' for hit in rows), rows)
+
+    def test_scanner_preserves_urls_regex_templates_attributes_and_python_concatenation(self):
+        js = "statusLine('Open https://example.org/help now');"
+        url = next((text, pre) for _pos, text, pre in scan.iter_js_strings(js) if 'https://' in text)
+        self.assertEqual(scan.classify(*url), 'chrome')
+
+        nested = 'const x = "}"; root.innerHTML = `${/}/.test(x) ? `<button>Keep going</button>` : ""}`;'
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(nested)]
+        pre = next((pre for text, pre in hits if text == 'Keep going'), None)
+        self.assertIsNotNone(pre, hits)
+        self.assertEqual(scan.classify('Keep going', pre), 'chrome')
+
+        parser = scan._MarkupStrings('web/chat.js')
+        parser.feed('<a title="Source {…}">{…}</a>')
+        parser.close()
+        source = next(((text, pre) for text, pre in parser.strings if text.startswith('Source ')), None)
+        self.assertIsNotNone(source, parser.strings)
+        self.assertEqual(scan.classify(*source), 'chrome')
+
+        joined = next((text, pre, body) for _pos, text, pre, body in scan.iter_py_strings('label("Open " "folder")')
+                      if text == 'Open folder')
+        self.assertEqual(scan.classify(joined[0], joined[1], joined[2]), 'chrome')

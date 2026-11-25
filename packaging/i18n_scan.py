@@ -18,6 +18,7 @@ import io
 import re
 import sys
 import tokenize
+import ast
 from html.parser import HTMLParser
 from collections import defaultdict
 from pathlib import Path
@@ -56,6 +57,8 @@ PYTHON_SURFACES = {
     'installer': [ROOT / 'packaging' / 'lastbook_setup.py'],
     'desktop': [ROOT / 'packaging' / 'linux' / 'lastbook.desktop'],
 }
+DESKTOP_LOCALES = {'de', 'es_419', 'zh_Hans'}
+DESKTOP_TRANSLATED_FIELDS = {'GenericName', 'Comment', 'Keywords'}
 
 CONTENT = {
     'Lastbook', 'LastbookData', 'Lastbook videos', 'Español (Latinoamérica)',
@@ -213,7 +216,7 @@ def _inside_named_call(pre: str, names) -> bool:
 def _inside_translation_call(pre: str) -> bool:
     """True when the string is an argument to an open translation call."""
     # A completed neighboring tr() cannot mark the next literal as translated.
-    return _inside_named_call(pre, {'tr', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
+    return _inside_named_call(pre, {'tr', 'trHtml', 'trLang', 'trResult', 'chatResult', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
@@ -328,7 +331,14 @@ def display_context(pre: str) -> bool:
     recent = pre[-2000:]
     zims = re.search(r'\b(?:const|let|var)\s+ZIMS\s*=\s*\[', recent)
     in_zims = bool(zims and ';' not in recent[zims.end():])
-    return bool(DISPLAY_PRE.search(pre[-240:]) or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or in_zims)
+    display_data = re.search(
+        r'\b(?:const|let|var)\s+[A-Za-z_$][\w$]*(?:STARTERS|PROMPTS|STATES|STAGES|LABELS|TYPES|FILTERS|OPTIONS|ACTIONS|ITEMS|CATEGORIES|SECTIONS)\w*\s*=\s*[\[{]',
+        recent,
+    )
+    in_display_data = bool(display_data and ';' not in recent[display_data.end():])
+    display_helpers = {'statusLine', 'toast', 'button', 'heading', 'paragraph', 'hint', 'notice', 'message', 'sec', 'fail'}
+    return bool(DISPLAY_PRE.search(pre[-240:]) or _inside_named_call(pre, display_helpers)
+                or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or in_zims or in_display_data)
 
 def classify(s: str, pre: str, post: str = '') -> str:
     # Wiring comes only from the source before this literal. Display and
@@ -346,6 +356,8 @@ def classify(s: str, pre: str, post: str = '') -> str:
             or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
+    if '__visible_attribute__' in pre:
+        return 'chrome' if looks_ui(s) else 'technical'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
     # Only the current literal's enclosing call makes it a log. A nearby print
@@ -365,23 +377,135 @@ def classify(s: str, pre: str, post: str = '') -> str:
 
 
 def strip_comments_js(text: str) -> str:
-    out, i, n = [], 0, len(text)
-    while i < n:
-        if text.startswith('//', i):
-            j = text.find('\n', i)
-            if j < 0:
-                out.append(' ' * (n - i))
-                break
-            out.append(' ' * (j - i) + '\n')
-            i = j + 1
-        elif text.startswith('/*', i):
-            j = text.find('*/', i + 2)
-            chunk = text[i: n if j < 0 else j + 2]
-            out.append(re.sub(r'[^\n]', ' ', chunk))
-            i = n if j < 0 else j + 2
-        else:
-            out.append(text[i])
+    """Blank JavaScript comments while preserving literals and source offsets.
+
+    This small lexer follows quoted strings, template literal expressions and
+    regular-expression literals so that `//` in visible text or a regexp is
+    never mistaken for a line comment. It is deliberately non-transforming:
+    every non-comment character remains at its original offset.
+    """
+    out = list(text)
+    n = len(text)
+
+    def blank(start, end):
+        for at in range(start, end):
+            if text[at] not in '\r\n':
+                out[at] = ' '
+
+    def quoted(i, quote):
+        i += 1
+        while i < n:
+            if text[i] == '\\':
+                i = min(n, i + 2)
+            elif text[i] == quote:
+                return i + 1
+            else:
+                i += 1
+        return i
+
+    def regexp(i):
+        i += 1
+        in_class = False
+        while i < n:
+            c = text[i]
+            if c == '\\':
+                i = min(n, i + 2)
+            elif c in '\r\n':
+                return i
+            elif c == '[':
+                in_class = True
+                i += 1
+            elif c == ']' and in_class:
+                in_class = False
+                i += 1
+            elif c == '/' and not in_class:
+                i += 1
+                while i < n and (text[i].isalpha() or text[i].isdigit()):
+                    i += 1
+                return i
+            else:
+                i += 1
+        return i
+
+    def template(i):
+        i += 1  # opening backtick
+        while i < n:
+            if text[i] == '\\':
+                i = min(n, i + 2)
+            elif text.startswith('${', i):
+                i = code(i + 2, template_expr=True)
+            elif text[i] == '`':
+                return i + 1
+            else:
+                i += 1
+        return i
+
+    def code(i, template_expr=False):
+        depth = 0
+        regex_allowed = True
+        while i < n:
+            c = text[i]
+            if c.isspace():
+                i += 1
+                continue
+            if template_expr and c == '}' and depth == 0:
+                return i + 1
+            if c in "'\"":
+                i = quoted(i, c)
+                regex_allowed = False
+                continue
+            if c == '`':
+                i = template(i)
+                regex_allowed = False
+                continue
+            if text.startswith('//', i):
+                end = i + 2
+                while end < n and text[end] not in '\r\n':
+                    end += 1
+                blank(i, end)
+                i = end
+                continue
+            if text.startswith('/*', i):
+                end = text.find('*/', i + 2)
+                end = n if end < 0 else end + 2
+                blank(i, end)
+                i = end
+                continue
+            if c == '/' and regex_allowed:
+                i = regexp(i)
+                regex_allowed = False
+                continue
+            if c == '{':
+                depth += 1
+                regex_allowed = True
+                i += 1
+                continue
+            if c == '}':
+                depth = max(0, depth - 1)
+                regex_allowed = False
+                i += 1
+                continue
+            if c.isalpha() or c in '_$':
+                end = i + 1
+                while end < n and (text[end].isalnum() or text[end] in '_$'):
+                    end += 1
+                regex_allowed = text[i:end] in {
+                    'return', 'throw', 'case', 'delete', 'void', 'typeof', 'new',
+                    'in', 'of', 'instanceof', 'yield', 'await', 'else', 'do',
+                }
+                i = end
+                continue
+            if c.isdigit():
+                i += 1
+                while i < n and (text[i].isalnum() or text[i] in '._'):
+                    i += 1
+                regex_allowed = False
+                continue
+            regex_allowed = c in '=(:,[!&|?;+-*%^~<>'
             i += 1
+        return i
+
+    code(0)
     return ''.join(out)
 
 
@@ -426,8 +550,12 @@ def _skip_string(text, i):
 def _skip_js_expr(text, i):
     """i points at the first character of a ${...} expression. Return the index after its closing }."""
     depth = 1
+    regex_allowed = True
     n = len(text)
     while i < n and depth:
+        if text[i].isspace():
+            i += 1
+            continue
         if text.startswith('//', i):
             end = text.find('\n', i + 2)
             i = n if end < 0 else end + 1
@@ -439,14 +567,59 @@ def _skip_js_expr(text, i):
         c = text[i]
         if c in "'\"":
             i = _skip_string(text, i)
+            regex_allowed = False
             continue
         if c == '`':
             i = _skip_template(text, i)
+            regex_allowed = False
+            continue
+        if c == '/' and regex_allowed:
+            i += 1
+            in_class = False
+            while i < n:
+                if text[i] == '\\':
+                    i = min(n, i + 2)
+                elif text[i] == '[':
+                    in_class = True
+                    i += 1
+                elif text[i] == ']' and in_class:
+                    in_class = False
+                    i += 1
+                elif text[i] == '/' and not in_class:
+                    i += 1
+                    while i < n and text[i].isalpha():
+                        i += 1
+                    break
+                elif text[i] in '\r\n':
+                    break
+                else:
+                    i += 1
+            regex_allowed = False
             continue
         if c == '{':
             depth += 1
+            regex_allowed = True
         elif c == '}':
             depth -= 1
+            regex_allowed = False
+        elif c.isalpha() or c in '_$':
+            end = i + 1
+            while end < n and (text[end].isalnum() or text[end] in '_$'):
+                end += 1
+            regex_allowed = text[i:end] in {
+                'return', 'throw', 'case', 'delete', 'void', 'typeof', 'new',
+                'in', 'of', 'instanceof', 'yield', 'await', 'else', 'do',
+            }
+            i = end
+            continue
+        elif c.isdigit():
+            i += 1
+            while i < n and (text[i].isalnum() or text[i] in '._'):
+                i += 1
+            regex_allowed = False
+            continue
+        else:
+            regex_allowed = c in '=(:,[!&|?;+-*%^~<>'
         i += 1
     return i
 
@@ -587,9 +760,9 @@ class _MarkupStrings(HTMLParser):
             self.tags.append((tag, markers))
         for name in self.VISIBLE_ATTRIBUTES:
             value = values.get(name)
-            if value and '{…}' not in value:
+            if value:
                 marker = f'data-i18n-{name}'
-                pre = self.prefix + ' ' + name + (' __i18n_bound_attribute__' if marker in markers else '')
+                pre = self.prefix + ' ' + name + ' __visible_attribute__' + (' __i18n_bound_attribute__' if marker in markers else '')
                 self.strings.append((value, pre))
 
     def handle_startendtag(self, tag, attrs):
@@ -642,29 +815,118 @@ def iter_js_strings(text):
     yield from _iter_js_templates(text, 0, text)
 
 
-def mask_py_docstrings(text: str) -> str:
-    trip = chr(34) * 3
-    trip2 = chr(39) * 3
-    def blank(m):
-        return re.sub(r'[^\n]', ' ', m.group(0))
-    text = re.sub(re.escape(trip) + r'[\s\S]*?' + re.escape(trip), blank, text)
-    text = re.sub(re.escape(trip2) + r'[\s\S]*?' + re.escape(trip2), blank, text)
-    return text
+def _offsets(text):
+    rows = [0]
+    for line in text.splitlines(keepends=True):
+        rows.append(rows[-1] + len(line))
+    return rows
+
+
+def _ast_position(text, offsets, line, byte_col):
+    source_line = text.splitlines(keepends=True)[line - 1]
+    char_col = len(source_line.encode('utf-8')[:byte_col].decode('utf-8', 'ignore'))
+    return offsets[line - 1] + char_col
+
+
+def _python_docstring_ranges(text):
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return []
+    offsets = _offsets(text)
+    ranges = []
+    owners = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, owners) or not node.body:
+            continue
+        first = node.body[0]
+        if not isinstance(first, ast.Expr) or not isinstance(first.value, ast.Constant) or not isinstance(first.value.value, str):
+            continue
+        ranges.append((_ast_position(text, offsets, first.lineno, first.col_offset),
+                       _ast_position(text, offsets, first.end_lineno, first.end_col_offset)))
+    return ranges
+
+
+def _python_string_value(literal):
+    try:
+        value = ast.literal_eval(literal)
+        return value if isinstance(value, str) else None
+    except (SyntaxError, ValueError):
+        # f-strings are not literal-evaluable. Keep their readable text and
+        # replace each expression with a stable placeholder for classification.
+        match = re.match(r'(?is)^([rubf]*)("""|\'\'\'|"|\')([\s\S]*?)\2$', literal)
+        if not match or 'f' not in match.group(1).lower() or 'b' in match.group(1).lower():
+            return None
+        body = match.group(3)
+        body = re.sub(r'(?<!\{)\{(?:[^{}]|\{[^{}]*\})*\}(?!\})', '{…}', body)
+        return body.replace('\\n', '\n').replace('\\t', '\t')
+
+
+def _python_fstring_values(text, offsets, docstrings):
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.JoinedStr):
+            continue
+        start = _ast_position(text, offsets, node.lineno, node.col_offset)
+        end = _ast_position(text, offsets, node.end_lineno, node.end_col_offset)
+        if any(start < doc_end and end > doc_start for doc_start, doc_end in docstrings):
+            continue
+        parts = []
+        for value in node.values:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                parts.append(value.value)
+            elif isinstance(value, ast.FormattedValue):
+                expression = ast.unparse(value.value)
+                field = '{' + expression
+                if value.conversion != -1:
+                    field += '!' + chr(value.conversion)
+                if value.format_spec:
+                    spec = ''.join(part.value for part in value.format_spec.values
+                                   if isinstance(part, ast.Constant) and isinstance(part.value, str))
+                    field += ':' + spec
+                parts.append(field + '}')
+        if parts:
+            yield start, ''.join(parts)
 
 
 def iter_py_strings(text: str):
-    text = mask_py_docstrings(text)
-    cleaned = []
-    for line in text.splitlines(True):
-        if line.lstrip().startswith('#'):
-            cleaned.append('\n' if line.endswith('\n') else '')
-        else:
-            cleaned.append(line)
-    body = ''.join(cleaned)
-    for m in STR_RE.finditer(body):
-        raw, q = m.group(2), m.group(1)
-        s = raw.replace(r"\'", "'").replace(r'\"', '"')
-        yield m.start(), s, body[max(0, m.start() - 200):m.start()], body
+    body = strip_python_comments(text)
+    offsets = _offsets(text)
+    chars = list(body)
+    docstrings = _python_docstring_ranges(text)
+    for start, end in docstrings:
+        for at in range(start, end):
+            if chars[at] not in '\r\n':
+                chars[at] = ' '
+    body = ''.join(chars)
+    values = []
+    try:
+        tree = ast.parse(text)
+        joined_ranges = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                joined_ranges.append((_ast_position(text, offsets, node.lineno, node.col_offset),
+                                      _ast_position(text, offsets, node.end_lineno, node.end_col_offset)))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            start = _ast_position(text, offsets, node.lineno, node.col_offset)
+            end = _ast_position(text, offsets, node.end_lineno, node.end_col_offset)
+            if any(start < doc_end and end > doc_start for doc_start, doc_end in docstrings):
+                continue
+            if any(start < joined_end and end > joined_start for joined_start, joined_end in joined_ranges):
+                continue
+            # Python combines adjacent literals into one Constant. Scanning
+            # that value preserves the actual visible message at display sinks.
+            values.append((start, node.value))
+        values.extend(_python_fstring_values(text, offsets, docstrings))
+        for start, value in sorted(values):
+            yield start, value, body[max(0, start - 200):start], body
+    except (SyntaxError, tokenize.TokenError, IndentationError):
+        return
 
 
 def scan_web():
@@ -705,6 +967,9 @@ def scan_python():
         for path in paths:
             if not path.is_file():
                 continue
+            if path.suffix == '.desktop':
+                hits.extend(scan_desktop(path))
+                continue
             text = strip_python_comments(path.read_text(encoding='utf-8'))
             rel = str(path.relative_to(ROOT))
             # These short labels are values in the Linux navigation table;
@@ -740,6 +1005,31 @@ def scan_python():
                         line = line_offset + script[:pos].count('\n') + 1
                         hits.append({'surface': surface, 'file': rel, 'line': line,
                                      'text': s, 'class': classify(s, pre)})
+    return hits
+
+
+def scan_desktop(path):
+    """Scan translated user-facing fields in a freedesktop .desktop file."""
+    rows = []
+    for line_no, raw in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+        match = re.match(r'^(Name|GenericName|Comment|Keywords)(?:\[([A-Za-z0-9_-]+)\])?=(.*)$', raw)
+        if match:
+            key, locale, value = match.groups()
+            rows.append((line_no, key, locale, value))
+    variants = defaultdict(set)
+    for _line, key, locale, _value in rows:
+        if locale:
+            variants[key].add(locale)
+    hits = []
+    for line, key, locale, value in rows:
+        if key == 'Name' and value in CONTENT:
+            kind = 'content'
+        elif key in DESKTOP_TRANSLATED_FIELDS and DESKTOP_LOCALES.issubset(variants[key]):
+            kind = 'wired'
+        else:
+            kind = 'chrome'
+        hits.append({'surface': 'desktop', 'file': str(path.relative_to(ROOT)), 'line': line,
+                     'text': value, 'class': kind})
     return hits
 
 

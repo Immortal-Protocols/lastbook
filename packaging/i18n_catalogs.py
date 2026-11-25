@@ -8,6 +8,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'translations' / 'desktop'
 WEB = ROOT / 'web'
+DESKTOP = ROOT / 'packaging' / 'linux' / 'lastbook.desktop'
+DESKTOP_FIELDS = (
+    ('desktop.genericName', 'GenericName'),
+    ('desktop.comment', 'Comment'),
+    ('desktop.keywords', 'Keywords'),
+)
+DESKTOP_LOCALE_NAMES = {'de': 'de', 'es-419': 'es_419', 'zh-Hans': 'zh_Hans'}
 REQUIRED = {'en', 'es-419'}
 SCRIPTS = ('i18n-core.js', 'i18n-dom.js', 'i18n-en.js', 'i18n-locales.js', 'i18n-app.js')
 ENTRIES = {'index.html': 'app.js', 'setup.html': 'setup.js'}
@@ -94,6 +101,26 @@ def script(name, data):
             f'globalThis.{name} = JSON.parse({literal});\n').encode('utf-8')
 
 
+def desktop_entry(english, locales):
+    if not {key for key, _field in DESKTOP_FIELDS}.issubset(english):
+        return b''
+    lines = ['[Desktop Entry]', 'Type=Application', 'Name=Lastbook']
+    for key, field in DESKTOP_FIELDS:
+        lines.append(f'{field}={english[key]}')
+        for locale, suffix in DESKTOP_LOCALE_NAMES.items():
+            value = locales.get(locale, {}).get(key)
+            if value:
+                lines.append(f'{field}[{suffix}]={value}')
+        if locales.get('es-419', {}).get(key):
+            lines.append(f'{field}[es]={locales["es-419"][key]}')
+    lines.extend([
+        'Exec=/usr/bin/lastbook', 'Icon=lastbook', 'Terminal=false',
+        'Categories=Education;Literature;',
+        'StartupNotify=true', 'StartupWMClass=Lastbook', '',
+    ])
+    return ('\n'.join(lines)).encode('utf-8')
+
+
 def generate(source=SOURCE):
     paths = {p.stem: p for p in sorted(source.glob('*.json'))}
     missing = REQUIRED - paths.keys()
@@ -120,6 +147,7 @@ def generate(source=SOURCE):
     return {
         'i18n-en.js': script('lastbookI18nEnglish', english),
         'i18n-locales.js': script('lastbookI18nLocales', catalogs),
+        'desktop': desktop_entry(english, catalogs),
     }
 
 
@@ -128,8 +156,9 @@ def check_assets(web, generated):
         if not (web / name).is_file():
             raise ValueError(f'{web / name}: required localization asset missing')
     for name, expected in generated.items():
-        if (web / name).read_bytes() != expected:
-            raise ValueError(f'{web / name}: stale catalogue. Run python3 packaging/i18n_catalogs.py')
+        path = DESKTOP if name == 'desktop' else web / name
+        if not path.is_file() or path.read_bytes() != expected:
+            raise ValueError(f'{path}: stale catalogue. Run python3 packaging/i18n_catalogs.py')
     for page, controller in ENTRIES.items():
         scripts = LocalScripts()
         scripts.feed((web / page).read_text(encoding='utf-8'))
@@ -156,7 +185,10 @@ def main():
             check_assets(args.web_dir or WEB, generated)
         else:
             for name, contents in generated.items():
-                (WEB / name).write_bytes(contents)
+                if name == 'desktop':
+                    DESKTOP.write_bytes(contents)
+                else:
+                    (WEB / name).write_bytes(contents)
     except (OSError, ValueError) as error:
         parser.exit(1, f'Localization: {error}\n')
 

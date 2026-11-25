@@ -1286,5 +1286,15 @@
   "setup.notifyMustBeBoolean": "notify is true or false.",
   "setup.internalError": "Setup stopped on an internal error ({type}).",
   "setup.copyJobTitle": "Copy of the {title} library",
-  "hardware.batteryLocalOnly": "The battery is only shown on this computer."
+  "hardware.batteryLocalOnly": "The battery is only shown on this computer.",
+  "chat.sourceType.all": "All",
+  "chat.sourceType.encyclopedias": "Encyclopedias",
+  "chat.sourceType.pages": "Pages",
+  "chat.sourceType.places": "Places",
+  "chat.sourceType.videos": "Videos",
+  "desktop.keywords": "survival;library;offline;first aid;",
+  "notes.countOnDevice": {
+    "one": "{count} note on this computer",
+    "other": "{count} notes on this computer"
+  }
 }

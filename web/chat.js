@@ -141,6 +141,7 @@ const Chat = (() => {
     leaving = () => { document.removeEventListener('keydown', escStop) };
     document.addEventListener('keydown', escStop);
     statusLine();
+    setBusy(!!busy());
     const initial = q.get('q');
     if (initial && !cur) { history.replaceState(null, '', '#/ask'); send(initial) }
     else if (matchMedia('(hover:hover)').matches) setTimeout(() => ta.focus({ preventScroll: true }), 60);
@@ -153,6 +154,8 @@ const Chat = (() => {
   // The optional local AI (desktop app): [ready?, the line to show]. The server version has no s.local.
   function localLine(l) {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
+    const diagnostic = (key, params, fallback) => tr(l.message_key || l.why_key || key,
+      l.message_params || l.why_params || params, l.message || fallback);
     return ({
       ready: [true, tr('chat.ready', null, 'Local AI ready')],
       stopped: [true, tr('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
@@ -160,10 +163,10 @@ const Chat = (() => {
       checking: [false, tr('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
       measuring: [false, tr('chat.checkingMemory', null, 'Checking this computer’s memory…')],
       absent: [false, tr('chat.notAdded', null, 'No local AI added')],
-      wrong: [false, l.message || tr('chat.wrongFile', null, 'The local AI file is not the right one.')],
-      too_big: [false, l.message || tr('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
+      wrong: [false, diagnostic('chat.wrongFile', null, 'The local AI file is not the right one.')],
+      too_big: [false, diagnostic('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
       off: [false, tr('chat.isOff', null, 'Local AI is off')],
-      error: [false, l.message || tr('chat.startFailed', null, 'The local AI could not start.')],
+      error: [false, diagnostic('chat.startFailed', null, 'The local AI could not start.')],
     })[l.state] || [false, l.message || tr('chat.unavailable', null, 'Local AI unavailable')];
   }
   let polling = null;
@@ -178,7 +181,8 @@ const Chat = (() => {
       el.innerHTML = s.online ? `<span class="dotok"></span>${tr('chat.ready', null, 'Local AI ready')}${still}`
         : `<span class="dotoff"></span><span>${esc(tr('chat.assistantOffline', null, 'Assistant offline'))}<span class="long">${esc(tr('chat.searchBrowsingStill', null, ' — search and browsing still work'))}</span></span>`;
     }
-    const sb = $('#sendBtn'); if (sb) sb.title = s.online ? tr('chat.send', null, 'Send') : tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
+    const sb = $('#sendBtn'); if (sb) sb.title = busy() ? tr('chat.stopAnswer', null, 'Stop the answer')
+      : s.online ? tr('chat.send', null, 'Send') : tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
     setupCard(s);
     clearTimeout(polling);
     if (l && /checking|measuring|loading/.test(l.state) && $('#chatStatus')) polling = setTimeout(statusLine, 1000);
@@ -191,7 +195,7 @@ const Chat = (() => {
     if (!show) return;
     box.innerHTML = l.state === 'off'
       ? `<p>${esc(tr('chat.aiTurnedOff', null, 'The local AI is turned off.'))}</p><div class="row"><button class="btn" data-ai="on">${esc(tr('about.turnOn', null, 'Turn on'))}</button></div>`
-      : l.state === 'error' ? `<p>${esc(l.message || tr('chat.startFailed', null, 'The local AI could not start.'))}</p><div class="row"><button class="btn" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>`
+      : l.state === 'error' ? `<p>${esc(localLine(l)[1])}</p><div class="row"><button class="btn" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>`
       : `<p><b>${esc(tr('chat.addAiToGetAnswers', null, 'Add the local AI to get written answers.'))}</b> ${esc(tr('chat.addAiRunsOnThisComputer', null, 'It is about 17 GB, and runs on this computer only.'))}</p>
          <div class="row"><a class="btn" href="/ui/setup.html#manage">${esc(tr('about.addTheLocalAi', null, 'Add the local AI'))}</a><button class="btn plain" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>
          <p class="small">${esc(tr('chat.alreadyHaveModelLead', null, 'Already downloaded'))} <code>${esc(l.file)}</code>? ${esc(tr('chat.alreadyHaveModelHint', null, 'Move it into the models folder inside your LastbookData folder, then Look again. Or open Add the local AI and pick the file you already have.'))}</p>`;
@@ -548,7 +552,9 @@ const Chat = (() => {
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast(tr('chat.copied', null, 'Copied')), () => toast(tr('chat.couldntCopy', null, 'Couldn’t copy'))) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
-        toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${chatDate(new Date())}` }, null);
+        const text = q.slice(0, 80);
+        toggleSave({ key: `a:${cur.id}:${i}`, title: tr('chat.answerPrefix', { text }, 'Answer: {text}'), title_params: { text },
+          href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${chatDate(new Date())}` }, null);
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
@@ -565,8 +571,16 @@ const Chat = (() => {
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' })}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
-    for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
+    const date = chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' });
+    let md = `# ${tr('chat.exportTitle', { title: c.title }, 'Chat: {title}')}\n\n`;
+    md += tr('chat.exportedFrom', { date }, 'Exported from Lastbook (offline library) on {date}.') + '\n';
+    md += tr('chat.exportNotice', null, 'Answers were written by a local AI model from the library’s documents. Check the linked pages; get trained help for anything serious.') + '\n';
+    for (const m of c.messages) {
+      const heading = m.role === 'user' ? tr('chat.exportQuestion', null, 'Question') : tr('chat.exportAnswer', null, 'Answer');
+      const reason = m.error === 'stopped' ? tr('chat.stopped', null, 'Stopped.') : m.error || tr('chat.stopped', null, 'Stopped.');
+      md += m.role === 'user' ? `\n## ${heading}\n\n${m.content}\n`
+        : `\n## ${heading}\n\n${m.content ? plain(m) : tr('chat.exportNoAnswer', { reason }, '(no answer: {reason})')}\n`;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
     a.download = `survival-chat-${new Date().toISOString().slice(0, 10)}.md`;
@@ -660,7 +674,10 @@ const Chat = (() => {
   function setBusy(on) {
     const b = $('#sendBtn'); if (!b) return;
     b.innerHTML = on ? '<span class="stopsq"></span>' : ico('up');
+    b.dataset.i18nAriaLabel = on ? 'chat.stopAnswer' : 'chat.send';
     b.setAttribute('aria-label', on ? tr('chat.stopAnswer', null, 'Stop the answer') : tr('chat.send', null, 'Send'));
+    b.title = on ? tr('chat.stopAnswer', null, 'Stop the answer') : status && !status.online
+      ? tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead') : tr('chat.send', null, 'Send');
     b.classList.toggle('stop', on);
   }
   function scrollEnd(force) {

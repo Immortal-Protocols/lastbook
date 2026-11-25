@@ -145,6 +145,34 @@ class Browser(unittest.TestCase):
                                           settings_dir=self.tmp, default_parent=self.tmp, manifest=setup_manifest or Manifest(remote=None),
                                           pick_folder=lambda files=False: str(library))
 
+    @staticmethod
+    def local_ai_manifest():
+        from engine.setup import manifest as setup_manifest
+
+        data = {'version': 1, 'packs': [{
+            'id': 'small', 'title': 'Small', 'summary': 'The essentials.', 'available': True,
+            'installed_bytes': 100, 'files': [{'name': 'small.zip', 'size': 1, 'sha256': '0' * 64,
+                'url': 'https://downloads.lastbook.org/small.zip'}],
+        }], 'models': [{
+            'id': 'local', 'title': 'Local AI', 'file': 'model.gguf', 'size': 17_000_000_000,
+            'sha256': '1' * 64, 'url': 'https://huggingface.co/lastbook/model.gguf',
+            'memory_bytes': 12_000_000_000, 'available': True,
+        }]}
+        bundled = setup_manifest.validate(data)
+        if bundled is None:
+            raise AssertionError('test manifest must be valid')
+        return Manifest(bundled=bundled, remote=None)
+
+    def set_hardware(self, setup, *, fits, disk_path=None):
+        why = 'The local AI needs about 20 GB of this computer’s memory, and it has 8 GB. Lastbook works without it: search and reading are the same.'
+        setup.hardware = lambda: {
+            'os': 'linux', 'ram_bytes': 8_000_000_000, 'unified_memory': False, 'gpus': [],
+            'disks': [{'path': str(disk_path or self.tmp), 'name': None,
+                       'free_bytes': 80_000_000_000, 'total_bytes': 100_000_000_000}],
+            'ai': {'fits': fits, 'needs_bytes': 20_000_000_000, 'estimate': True, 'why': why,
+                   'why_key': 'setup.why.aiNeedsMemoryShort', 'why_params': {'needs': '20 GB', 'ram': '8 GB'}},
+        }
+
     @contextlib.contextmanager
     def page(self, origin, http, locale='en-US'):
         context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850}, accept_downloads=True)
@@ -232,7 +260,7 @@ class Browser(unittest.TestCase):
             self.assertEqual(page.locator('img[src=x]').count(), 0)
             self.assertIsNone(page.evaluate('window.bad'))
             page.evaluate("location.hash = '#/watch/vida?from=%23%2Fsearch'")
-            expect(page.locator('.rtop .back')).to_have_text('Resultados de la búsqueda')
+            expect(page.locator('.rtop .back')).to_have_text('Resultados de búsqueda')
             expect(page.locator('h1')).to_have_text('vida')  # library title
             page.evaluate("location.hash = '#/missing'")
             expect(page.get_by_role('link', name='Ir a Videos')).to_be_visible()
@@ -394,6 +422,149 @@ class Browser(unittest.TestCase):
             page.goto(origin + '/ui/setup.html')
             expect(page.locator('[data-pack-summary="small"]')).to_have_text(
                 'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+
+    def test_small_pack_v1_summary_without_a_key_uses_the_selected_language(self):
+        from engine.setup import manifest as setup_manifest
+
+        bundled = setup_manifest.validate({'version': 1, 'packs': [{
+            'id': 'small', 'title': 'Small',
+            'summary': 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.',
+            'available': False, 'files': [],
+        }], 'models': []})
+        self.assertIsNotNone(bundled)
+        self.configure_setup(setup_manifest=Manifest(bundled=bundled, remote=None))
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/ui/setup.html')
+            expect(page.locator('[data-pack-summary="small"]')).to_have_text(
+                'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+
+    def test_setup_ai_diagnostics_use_the_translated_key_and_params(self):
+        manifest = self.local_ai_manifest()
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        setup = self.configure_setup(setup_manifest=manifest)
+        self.set_hardware(setup, fits=False)
+        setup.recommend = lambda _hw: {'pack': 'small', 'ai': False, 'why_key': 'setup.why.smallToStart'}
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin)
+            expect(page.locator('.s-opt.s-ai small')).to_have_text(
+                'La IA local necesita unos 20 GB de la memoria de esta computadora, y esta tiene 8 GB. Lastbook funciona sin ella: la búsqueda y la lectura son las mismas.')
+            self.assertNotIn('The local AI needs about', page.locator('.s-opt.s-ai').inner_text())
+
+        setup = self.configure_setup(current=DATA, setup_manifest=manifest)
+        self.set_hardware(setup, fits=False, disk_path=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/ui/setup.html#manage')
+            expect(page.locator('.s-have .s-row').nth(1).locator('small')).to_have_text(
+                    'La IA local necesita unos 20 GB de la memoria de esta computadora, y esta tiene 8 GB. Lastbook funciona sin ella: la búsqueda y la lectura son las mismas.')
+
+    def test_setup_local_ai_recommendation_and_linux_disk_fallback_are_translated(self):
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        setup = self.configure_setup(setup_manifest=self.local_ai_manifest())
+        self.set_hardware(setup, fits=True)
+        setup.recommend = lambda _hw: {'pack': 'small', 'ai': True, 'why_key': 'setup.why.smallToStart'}
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin)
+            expect(page.locator('.s-rec')).to_contain_text('con la IA local')
+
+        setup = self.configure_setup(current=DATA, setup_manifest=self.local_ai_manifest())
+        self.set_hardware(setup, fits=True, disk_path='/')
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("""(() => {
+              Object.defineProperty(navigator, 'platform', {get: () => 'Linux x86_64'});
+              const add = DOMTokenList.prototype.add;
+              DOMTokenList.prototype.add = function(...tokens) { return add.apply(this, tokens.filter(x => x !== 'plat-win')); };
+            })();""")
+            page.goto(origin + '/ui/setup.html#manage')
+            expect(page.get_by_role('button', name='Agregar')).to_be_visible()
+            expect(page.locator('.s-pc')).to_contain_text('libres en esta computadora')
+
+    def test_chat_local_ai_fit_diagnostic_uses_server_catalogue_key(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/assistant/status', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({
+                    'online': False, 'index': {'state': 'off'},
+                    'local': {'state': 'too_big', 'message': 'The local AI needs about 20 GB of this computer’s memory, and it has 8 GB.',
+                              'why_key': 'setup.why.aiNeedsMemoryShort',
+                              'why_params': {'needs': '20 GB', 'ram': '8 GB'}},
+                })))
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#chatStatus')).to_contain_text(
+                'La IA local necesita unos 20 GB de la memoria de esta computadora, y esta tiene 8 GB. Lastbook funciona sin ella: la búsqueda y la lectura son las mismas.')
+            self.assertNotIn('The local AI needs about', page.locator('#chatStatus').inner_text())
+
+    def test_language_change_keeps_the_active_chat_stop_control(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/assistant/status', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'online': True, 'index': {'state': 'off'}})))
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+              const nativeFetch = window.fetch.bind(window);
+              window.fetch = (input, init = {}) => {
+                if (new URL(input, location.href).pathname === '/api/chat') {
+                  window.chatRequestStarted = true;
+                  return new Promise((resolve, reject) => {
+                    init.signal?.addEventListener('abort', () => reject(new DOMException('Stopped', 'AbortError')), {once:true});
+                  });
+                }
+                return nativeFetch(input, init);
+              };
+            })();""")
+            page.goto(origin + '/#/ask')
+            page.locator('#chatIn').fill('Question')
+            page.locator('#composer').evaluate('(form) => form.requestSubmit()')
+            expect(page.locator('html')).to_have_attribute('lang', 'en')
+            page.wait_for_function('window.chatRequestStarted === true')
+            expect(page.locator('#sendBtn')).to_have_class('sendbtn stop')
+            page.evaluate("""(() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            })()""")
+            expect(page.locator('#sendBtn')).to_have_class('sendbtn stop')
+            expect(page.locator('#sendBtn')).to_have_accessible_name('Detener la respuesta')
+            page.locator('#sendBtn').click()
+            expect(page.locator('#sendBtn')).not_to_have_class('sendbtn stop')
+            expect(page.locator('#sendBtn')).to_have_accessible_name('Enviar')
+
+    def test_answer_title_and_markdown_export_use_catalogue_copy(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        chat = {'id': 'saved-chat', 'title': 'Pregunta de prueba', 'updated': '2026-11-25T12:00:00Z', 'messages': [
+            {'role': 'user', 'content': '¿Cómo hacerlo?'},
+            {'role': 'assistant', 'content': 'Respuesta de prueba.', 'cited': []},
+            {'role': 'user', 'content': 'Otra pregunta'},
+            {'role': 'assistant', 'content': '', 'error': 'stopped'},
+        ]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/saved-chat')
+            page.get_by_role('button', name='Guardar respuesta').click()
+            record = page.evaluate("JSON.parse(localStorage.getItem('sg.saved'))[0]")
+            self.assertEqual(record['title'], 'Respuesta: ¿Cómo hacerlo?')
+            page.evaluate("location.hash = '#/saved'")
+            expect(page.locator('.list b').first).to_have_text('Respuesta: ¿Cómo hacerlo?')
+            page.evaluate("location.hash = '#/ask/saved-chat'")
+            with page.expect_download() as exported:
+                page.get_by_role('button', name='Exportar chat').click()
+            markdown = Path(exported.value.path()).read_text(encoding='utf-8')
+            self.assertIn('# Chat: Pregunta de prueba', markdown)
+            self.assertIn('Exportado desde Lastbook (biblioteca sin conexión)', markdown)
+            self.assertIn('Las respuestas se escribieron con un modelo de IA local', markdown)
+            self.assertIn('## Pregunta', markdown)
+            self.assertIn('## Respuesta', markdown)
+            self.assertIn('(sin respuesta: Se detuvo.)', markdown)
 
     def test_static_update_notice_is_translated(self):
         self.configure_setup(current=DATA)

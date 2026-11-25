@@ -18,6 +18,16 @@ class Coverage(unittest.TestCase):
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
 
+    def test_bundled_manifest_summary_has_catalogue_key(self):
+        source = (ROOT / 'packaging' / 'release_manifest.py').read_text(encoding='utf-8')
+        self.assertIn("SMALL_SUMMARY_KEY = 'setup.packSummary.small'", source)
+        self.assertIn("'summary_key': SMALL_SUMMARY_KEY", source)
+        self.assertIn("MEDIUM_SUMMARY_KEY = 'setup.packSummary.medium'", source)
+        self.assertIn('SUMMARY_KEYS = {', source)
+        self.assertIn("pack.setdefault('summary_key', key)", source)
+        self.assertIn('setup.packSummary.small', self.english)
+        self.assertIn('setup.packSummary.medium', self.english)
+
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
 
@@ -33,6 +43,7 @@ class Coverage(unittest.TestCase):
         keys = set(self.english)
         sources = [scan.WEB / name for name in scan.WEB_FILES]
         sources.extend(path for paths in scan.PYTHON_SURFACES.values() for path in paths)
+        sources.append(ROOT / 'packaging' / 'release_manifest.py')
         referenced = set()
         for path in sources:
             if path.is_file():
@@ -53,10 +64,46 @@ class Coverage(unittest.TestCase):
             ),
         )
 
+    def test_scanner_classifies_command_examples_native_keys_and_attribution(self):
+        self.assertEqual(scan.classify('server.py --lan', "command: ", ""), 'technical')
+        self.assertEqual(scan.classify('SystemRoot', "os.environ.get(", ""), 'technical')
+        self.assertEqual(scan.classify('SPUStandardUpdaterController', "objc.lookUpClass(", ""), 'technical')
+        self.assertEqual(scan.classify('The battery is only shown on this computer.', "return {'error': '", "', 'error_key': 'hardware.batteryLocalOnly'}"), 'wired')
+        self.assertTrue(scan.looks_technical('NotFound'))
+        self.assertTrue(scan.looks_technical('WindowsPowerShell'))
+        self.assertEqual(scan.classify('© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth', 'map attribution: ', ''), 'content')
+
+    def test_macos_navigation_labels_are_wired_through_the_key_map(self):
+        if not (ROOT / 'app' / 'i18n_native.json').exists():
+            self.skipTest('native menu catalog is added with native shell localization')
+        hits = scan.scan_python()
+        rows = [h for h in hits if h.get('file') == 'app/shell_macos.py' and h['text'] in {'Videos', 'Map', 'Chat'}]
+        self.assertEqual({h['text']: h['class'] for h in rows}, {'Videos': 'wired', 'Map': 'wired', 'Chat': 'wired'})
+
     def test_scanner_still_classifies_surfaces(self):
         # The inventory should keep seeing the desktop surfaces even when chrome is 0.
         self.assertGreater(self.totals['wired'], 1000)
         self.assertEqual(self.totals['chrome'], 0)
+
+    def test_scanner_does_not_hide_visible_markup_after_a_translated_expression(self):
+        sample = "main.innerHTML = `<div><h1>Map</h1>${tr('map.heading', null, 'Map')}<section><h2>Nearest to the map center</h2>" + (
+            '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</section>`;'
+        hits = list(scan.iter_js_strings(sample))
+        pos, text, pre = next(item for item in hits if 'Nearest to the map center' in item[1])
+        end = scan._skip_template(sample, pos) if sample[pos] == '`' else scan._skip_string(sample, pos)
+        post = sample[pos:min(len(sample), end + 600)]
+        self.assertEqual(scan.classify(text, pre, post), 'chrome')
+
+    def test_scanner_finds_ask_offer_text_inside_a_long_dynamic_template(self):
+        sample = "el.innerHTML = `<a><b>Ask the library: “${esc(q)}”</b><small>Get a written answer with the exact pages it came from</small>" + (
+            '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</a>`;'
+        hits = list(scan.iter_js_strings(sample))
+        for text in ('Ask the library: “{…}”', 'Get a written answer with the exact pages it came from'):
+            with self.subTest(text=text):
+                pos, found, pre = next(item for item in hits if item[1] == text)
+                end = scan._skip_template(sample, pos) if sample[pos] == '`' else scan._skip_string(sample, pos)
+                post = sample[pos:min(len(sample), end + 600)]
+                self.assertEqual(scan.classify(found, pre, post), 'chrome')
 
     def test_scanner_flattens_interpolated_templates(self):
         sample = 'live.textContent = `Hello, ${name}, welcome.`;'
@@ -80,6 +127,82 @@ class Coverage(unittest.TestCase):
                 pre = next((pre for text, pre in hits if text == literal), None)
                 self.assertIsNotNone(pre, f'nested template string {literal!r} was skipped: {hits!r}')
                 self.assertEqual(scan.classify(literal, pre), 'chrome')
+
+    def test_scanner_detects_hardcoded_encyclopedia_display_data(self):
+        sample = "const ZIMS = [['mdwiki', 'Medical encyclopedia', 'MDWiki: plain-language articles']];"
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        for literal in ('Medical encyclopedia', 'MDWiki: plain-language articles'):
+            with self.subTest(literal=literal):
+                pre = next(pre for text, pre in hits if text == literal)
+                self.assertEqual(scan.classify(literal, pre), 'chrome')
+
+    def test_scanner_keeps_visible_url_strings(self):
+        js = "statusLine('Open https://example.org/help now');"
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(js)]
+        visible = next((text, pre) for text, pre in hits if 'https://example.org/help' in text)
+        self.assertEqual(scan.classify(*visible), 'chrome')
+
+    def test_scanner_finds_python_multiline_ui(self):
+        py = 'message("""This window failed.\\nTry again.""")'
+        hits = list(scan.iter_py_strings(py))
+        visible = next((text, pre, body) for _pos, text, pre, body in hits
+                       if 'This window failed.' in text)
+        self.assertEqual(scan.classify(visible[0], visible[1], visible[2]), 'chrome')
+
+    def test_scanner_classifies_ui_arrays_and_display_helpers(self):
+        sample = "const ABOUT_STARTERS = { doc: ['Explain this page in simple words'] }; statusLine('Nothing is visible yet');"
+        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
+        by_text = {text: scan.classify(text, pre) for text, pre in hits}
+        self.assertEqual(by_text.get('Explain this page in simple words'), 'chrome')
+        self.assertEqual(by_text.get('Nothing is visible yet'), 'chrome')
+
+    def test_scanner_preserves_regexps_templates_and_ignores_real_python_docstrings(self):
+        js = r"const urlPattern = /https?:\/\//; const shown = `Open https://${host}/help`; // discarded\n"
+        visible = [text for _pos, text, _pre in scan.iter_js_strings(js)]
+        self.assertTrue(any('https://' in text and 'help' in text for text in visible), visible)
+        self.assertFalse(any('discarded' in text for text in visible), visible)
+
+        py = 'def render():\n    """Technical implementation notes."""\n    message("""This window failed.\\nTry again.""")\n'
+        literals = [text for _pos, text, _pre, _body in scan.iter_py_strings(py)]
+        self.assertFalse(any('Technical implementation notes' in text for text in literals), literals)
+        self.assertIn('This window failed.\nTry again.', literals)
+
+    def test_localized_runtime_paths_stay_wired(self):
+        app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
+        chat = (ROOT / 'web' / 'chat.js').read_text(encoding='utf-8')
+        map_js = (ROOT / 'web' / 'map.js').read_text(encoding='utf-8')
+        self.assertIn("trLang('guide.getReady'", app)
+        self.assertIn("trLang('guide.goDeeper'", app)
+        self.assertIn("'chat.explainPage'", chat)
+        self.assertIn("'chat.sourceType.' + key", chat)
+        self.assertIn("trHtml('chat.sourcesDisagree'", chat)
+        self.assertIn("trHtml('chat.state.starting'", chat)
+        self.assertIn('count: n, extra:', map_js)
+        self.assertNotRegex(map_js, r'layerOf\(p\.cls\)\.label')
+
+    def test_windows_picker_actions_use_native_catalogue_keys(self):
+        if not (ROOT / 'app' / 'i18n_native.json').exists():
+            self.skipTest('native picker translations are added with native shell localization')
+        shell = (ROOT / 'app' / 'shell_windows.py').read_text(encoding='utf-8')
+        self.assertIn("native_t('native.choose', 'Choose')", shell)
+        self.assertIn("native_t('native.chooseLastbookData', 'Choose the folder called LastbookData')", shell)
+        self.assertNotIn("wstr)('Choose')", shell)
+
+    def test_scanner_reads_static_html_text_and_respects_i18n_markers(self):
+        parser = scan._MarkupStrings('web/index.html')
+        parser.feed('<p>Opening the guide…</p><p data-i18n="app.opening">Opening the guide…</p>')
+        parser.close()
+        matches = [(text, pre) for text, pre in parser.strings if text == 'Opening the guide…']
+        self.assertEqual(len(matches), 2)
+        self.assertEqual([scan.classify(text, pre) for text, pre in matches], ['chrome', 'wired'])
+
+    def test_nearby_log_does_not_hide_a_visible_python_message(self):
+        sample = "print('diagnostic only')\nmessage('This window stopped working.')"
+        hits = list(scan.iter_py_strings(sample))
+        shown = next(hit for hit in hits if hit[1] == 'This window stopped working.')
+        self.assertEqual(scan.classify(shown[1], shown[2], shown[3][shown[0]:shown[0] + 100]), 'chrome')
+        printed = next(hit for hit in hits if hit[1] == 'diagnostic only')
+        self.assertEqual(scan.classify(printed[1], printed[2], printed[3][printed[0]:printed[0] + 100]), 'technical')
 
     def test_scanner_does_not_let_a_translation_elsewhere_in_an_expression_hide_text(self):
         sample = '''

@@ -18,6 +18,7 @@ import io
 import re
 import sys
 import tokenize
+import ast
 from html.parser import HTMLParser
 from collections import defaultdict
 from pathlib import Path
@@ -59,7 +60,7 @@ PYTHON_SURFACES = {
 
 CONTENT = {
     'Lastbook', 'LastbookData', 'Lastbook videos', 'Español (Latinoamérica)',
-    'English', 'US', '3D', 'CC', 'PDF', 'AI', 'ZIP', 'GB', 'SHA-256',
+    'English', 'Deutsch', '简体中文', 'US', '3D', 'CC', 'PDF', 'AI', 'ZIP', 'GB', 'SHA-256',
     'Almonds', 'Walnuts', 'Pecans', 'Pistachios', 'Cherries', 'Peaches',
     'Apples', 'Pears', 'Prunes', 'Nectarines', 'Plums', 'Apricots',
     'Pomegranates', 'Avocados', 'Olives', 'Citrus', 'Oranges', 'Grapes',
@@ -67,7 +68,7 @@ CONTENT = {
     'Other tree crops', 'WHO', 'FEMA', 'CDC', 'EPA', 'USDA', 'NOAA',
     'UNICEF', 'MSF', 'Small', 'Medium', 'Large',
     'Where There Is No Doctor', 'National Center for Home Food Preservation',
-    'Appropedia', 'Wikipedia',
+    'Appropedia', 'Wikipedia', '© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth',
 }
 
 TECHNICAL_EXACT = {
@@ -78,7 +79,7 @@ TECHNICAL_EXACT = {
     'LastbookData.setup', 'application/json', 'text/html',
     'T12:00:00', 'Polygon', 'use strict', 'ETag', 'If-None-Match',
     'Could not access the desktop language preference', 'Contents',
-    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$',
+    'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$', 'SPUStandardUpdaterController', 'SystemRoot', 'NotFound', 'WindowsPowerShell',
     '(pointer: coarse)',
 }
 
@@ -88,11 +89,7 @@ TECHNICAL_PREFIX = (
     'const ', 'return ', 'typeof ', 'window.', 'document.', 'class ',
 )
 
-LOG_CONTEXT = (
-    'console.', 'logger.', 'log(', '_log(', 'print(',
-    'raise RuntimeError', 'raise ValueError', 'raise OSError',
-)
-LOG_CALLS = {'debug', 'error', 'info', 'log', 'print', 'warning', '_log'}
+LOG_CALLS = {'debug', 'error', 'info', 'log', 'print', 'warning', '_log', 'stop', 'ValueError', 'RuntimeError', 'OSError', 'end_page'}
 
 SVG_RE = re.compile(r'^M-?\d')
 KEYISH = re.compile(r'^[A-Za-z][A-Za-z0-9_.-]{0,40}$')
@@ -107,13 +104,13 @@ TOKEN = re.compile(
     re.I,
 )
 DISPLAY_PRE = re.compile(
-    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|'
+    r'innerHTML|outerHTML|textContent|innerText|document\.title|setTitle|Error\(|message\(|'
     r'setUiTitle|aria-label|placeholder|confirm\(|alert\(|toast\(|show_error|'
     r'MessageBox|MessageDialog|addButtonWithTitle_|setTitle_|setPrompt_|GenericName|'
     r'Comment=|Name=|\.Text\s*=|why\s*=|message\s*[:=]|[\'"]error[\'"]\s*:|Failed\(|_fail\(|live\.textContent|'
     r'set_tooltip|tooltip_text|add_buttons\(|initWithTitle_|ASK_TITLE|ASK\s*=|'
     r'TOO_BIG|STOPPED\s*=|APP_OPEN_TEXT|setWindowTitle|title\s*[:=]|menu\.append|view\.append|'
-    r'helps\.append|_menu\('
+    r'helps\.append|_menu\(|statusLine\('
 )
 
 
@@ -142,7 +139,7 @@ def already_wired(pre: str) -> bool:
         return True
     if _inside_named_call(pre, {'setUiTitle', 'labelPair', 'backButton'}):
         return True
-    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT)\s*=\s*$", tail):
+    if re.search(r"(?:ASK|ASK_TITLE|TOO_BIG|STOPPED|STUCK|APP_OPEN_TEXT|NO_RUNTIME)\s*=\s*\(?\s*$", tail):
         return True
     return False
 
@@ -217,32 +214,31 @@ def _inside_named_call(pre: str, names) -> bool:
 def _inside_translation_call(pre: str) -> bool:
     """True when the string is an argument to an open translation call."""
     # A completed neighboring tr() cannot mark the next literal as translated.
-    return _inside_named_call(pre, {'tr', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
+    return _inside_named_call(pre, {'tr', 'trHtml', 'trLang', 'trResult', 'lastbookTr', 'native_t', 'installer_t', 'user_error', '_api_error', 't'})
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
-    """Recognize literal fallback text inside the keyed setup error helpers."""
+    """Recognize literal fallbacks paired with an explicit translation key."""
     source = pre[-2000:] + post[:1000]
-    # why_part takes its catalogue key as the first argument.
     if re.search(r"why_part\s*\(\s*['\"]setup\.", source):
         return True
-    # Failed stores the key after its fallback text. Keep the lookahead local
-    # to the current call and require a catalogue key to avoid hiding raw errors.
+    if re.search(r"title_key['\"]?\s*:\s*['\"]setup\.copyJobTitle", source):
+        return True
     if re.search(r"(?:Failed|Refused|_fail|_refuse_carried_back)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"](?:setup|update)\.", source):
         return True
-    # Update state records carry a translation key next to the English fallback;
-    # web/update.js renders that key for the selected locale.
     if re.search(r"_set\s*\([\s\S]{0,1200}?\bmessage_key\s*=\s*['\"]update\.", source):
         return True
-    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"]update\.", source):
+    if re.search(r"\bkey\s*=\s*['\"]update\.[A-Za-z0-9_.-]+['\"]", pre[-1600:]) and re.search(r"message_key\s*=\s*key", post[:1600]):
         return True
-    # Some errors are stored as adjacent `error` / `key` fields and translated
-    # by the UI consumer. Treat only that explicit keyed record as a fallback.
+    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"](?:setup|update|hardware)\.", source):
+        return True
     return bool(re.search(r"note\[['\"]error['\"]\]\s*=\s*['\"][\s\S]{0,600}?note\[['\"]key['\"]\]\s*=\s*['\"]setup\.", source))
 
 
 def looks_technical(s: str) -> bool:
     if s in TECHNICAL_EXACT:
+        return True
+    if re.fullmatch(r'[A-Za-z0-9_.-]+\.py --[A-Za-z0-9_-]+', s):
         return True
     if re.fullmatch(r'[A-Z][A-Za-z0-9]*(?:Enabled|Preconnect|Prefetch)', s):
         return True
@@ -327,9 +323,20 @@ def looks_ui(s: str) -> bool:
 def display_context(pre: str) -> bool:
     # The installer helper label() is a visible WinForms sink. Require the
     # literal to be its immediate first argument so a nearby helper definition
-    # cannot misclassify a font name such as "Segoe UI" as interface text.
-    return bool(DISPLAY_PRE.search(pre[-240:]) or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]))
-
+    # cannot misclassify a font name such as "Segoe UI". ZIMS is a data array
+    # rendered as encyclopedia cards and result labels, so its literals are UI
+    # even though the strings do not sit beside an HTML assignment.
+    recent = pre[-2000:]
+    zims = re.search(r'\b(?:const|let|var)\s+ZIMS\s*=\s*\[', recent)
+    in_zims = bool(zims and ';' not in recent[zims.end():])
+    display_data = re.search(
+        r'\b(?:const|let|var)\s+[A-Za-z_$][\w$]*(?:STARTERS|PROMPTS|STATES|STAGES|LABELS|TYPES|FILTERS|OPTIONS|ACTIONS|ITEMS|CATEGORIES|SECTIONS)\w*\s*=\s*[\[{]',
+        recent,
+    )
+    in_display_data = bool(display_data and ';' not in recent[display_data.end():])
+    display_helpers = {'statusLine', 'toast', 'button', 'heading', 'paragraph', 'hint', 'notice', 'message', 'sec'}
+    return bool(DISPLAY_PRE.search(pre[-240:]) or _inside_named_call(pre, display_helpers)
+                or re.search(r'\blabel\s*\(\s*f?$', pre[-80:]) or in_zims or in_display_data)
 
 def classify(s: str, pre: str, post: str = '') -> str:
     # Wiring comes only from the source before this literal. Display and
@@ -349,13 +356,15 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'wired'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
-    if any(c in context[-260:] for c in LOG_CONTEXT) or _inside_named_call(pre, LOG_CALLS):
+    # Only the current literal's enclosing call makes it a log. A nearby print
+    # in the same function must not hide a later MessageBox or other display sink.
+    if _inside_named_call(pre, LOG_CALLS):
         return 'technical'
     if s in CONTENT:
         return 'content'
     if looks_technical(s):
         return 'technical'
-    if looks_ui(s) and display_context(context):
+    if looks_ui(s) and display_context(pre):
         return 'chrome'
     # Flattened `${...}` templates are user-visible even when the prefix is only `return`.
     if looks_ui(s) and '{…}' in s:
@@ -364,23 +373,135 @@ def classify(s: str, pre: str, post: str = '') -> str:
 
 
 def strip_comments_js(text: str) -> str:
-    out, i, n = [], 0, len(text)
-    while i < n:
-        if text.startswith('//', i):
-            j = text.find('\n', i)
-            if j < 0:
-                out.append(' ' * (n - i))
-                break
-            out.append(' ' * (j - i) + '\n')
-            i = j + 1
-        elif text.startswith('/*', i):
-            j = text.find('*/', i + 2)
-            chunk = text[i: n if j < 0 else j + 2]
-            out.append(re.sub(r'[^\n]', ' ', chunk))
-            i = n if j < 0 else j + 2
-        else:
-            out.append(text[i])
+    """Blank JavaScript comments while preserving literals and source offsets.
+
+    This small lexer follows quoted strings, template literal expressions and
+    regular-expression literals so that `//` in visible text or a regexp is
+    never mistaken for a line comment. It is deliberately non-transforming:
+    every non-comment character remains at its original offset.
+    """
+    out = list(text)
+    n = len(text)
+
+    def blank(start, end):
+        for at in range(start, end):
+            if text[at] not in '\r\n':
+                out[at] = ' '
+
+    def quoted(i, quote):
+        i += 1
+        while i < n:
+            if text[i] == '\\':
+                i = min(n, i + 2)
+            elif text[i] == quote:
+                return i + 1
+            else:
+                i += 1
+        return i
+
+    def regexp(i):
+        i += 1
+        in_class = False
+        while i < n:
+            c = text[i]
+            if c == '\\':
+                i = min(n, i + 2)
+            elif c in '\r\n':
+                return i
+            elif c == '[':
+                in_class = True
+                i += 1
+            elif c == ']' and in_class:
+                in_class = False
+                i += 1
+            elif c == '/' and not in_class:
+                i += 1
+                while i < n and (text[i].isalpha() or text[i].isdigit()):
+                    i += 1
+                return i
+            else:
+                i += 1
+        return i
+
+    def template(i):
+        i += 1  # opening backtick
+        while i < n:
+            if text[i] == '\\':
+                i = min(n, i + 2)
+            elif text.startswith('${', i):
+                i = code(i + 2, template_expr=True)
+            elif text[i] == '`':
+                return i + 1
+            else:
+                i += 1
+        return i
+
+    def code(i, template_expr=False):
+        depth = 0
+        regex_allowed = True
+        while i < n:
+            c = text[i]
+            if c.isspace():
+                i += 1
+                continue
+            if template_expr and c == '}' and depth == 0:
+                return i + 1
+            if c in "'\"":
+                i = quoted(i, c)
+                regex_allowed = False
+                continue
+            if c == '`':
+                i = template(i)
+                regex_allowed = False
+                continue
+            if text.startswith('//', i):
+                end = i + 2
+                while end < n and text[end] not in '\r\n':
+                    end += 1
+                blank(i, end)
+                i = end
+                continue
+            if text.startswith('/*', i):
+                end = text.find('*/', i + 2)
+                end = n if end < 0 else end + 2
+                blank(i, end)
+                i = end
+                continue
+            if c == '/' and regex_allowed:
+                i = regexp(i)
+                regex_allowed = False
+                continue
+            if c == '{':
+                depth += 1
+                regex_allowed = True
+                i += 1
+                continue
+            if c == '}':
+                depth = max(0, depth - 1)
+                regex_allowed = False
+                i += 1
+                continue
+            if c.isalpha() or c in '_$':
+                end = i + 1
+                while end < n and (text[end].isalnum() or text[end] in '_$'):
+                    end += 1
+                regex_allowed = text[i:end] in {
+                    'return', 'throw', 'case', 'delete', 'void', 'typeof', 'new',
+                    'in', 'of', 'instanceof', 'yield', 'await', 'else', 'do',
+                }
+                i = end
+                continue
+            if c.isdigit():
+                i += 1
+                while i < n and (text[i].isalnum() or text[i] in '._'):
+                    i += 1
+                regex_allowed = False
+                continue
+            regex_allowed = c in '=(:,[!&|?;+-*%^~<>'
             i += 1
+        return i
+
+    code(0)
     return ''.join(out)
 
 
@@ -602,6 +723,8 @@ class _MarkupStrings(HTMLParser):
                 break
 
     def handle_data(self, data):
+        if any(tag in {'script', 'style', 'noscript'} for tag, _markers in self.tags):
+            return
         value = data.strip()
         if value:
             wired = bool(self.tags and 'data-i18n' in self.tags[-1][1])
@@ -639,29 +762,114 @@ def iter_js_strings(text):
     yield from _iter_js_templates(text, 0, text)
 
 
-def mask_py_docstrings(text: str) -> str:
-    trip = chr(34) * 3
-    trip2 = chr(39) * 3
-    def blank(m):
-        return re.sub(r'[^\n]', ' ', m.group(0))
-    text = re.sub(re.escape(trip) + r'[\s\S]*?' + re.escape(trip), blank, text)
-    text = re.sub(re.escape(trip2) + r'[\s\S]*?' + re.escape(trip2), blank, text)
-    return text
+def _offsets(text):
+    rows = [0]
+    for line in text.splitlines(keepends=True):
+        rows.append(rows[-1] + len(line))
+    return rows
+
+
+def _ast_position(text, offsets, line, byte_col):
+    source_line = text.splitlines(keepends=True)[line - 1]
+    char_col = len(source_line.encode('utf-8')[:byte_col].decode('utf-8', 'ignore'))
+    return offsets[line - 1] + char_col
+
+
+def _python_docstring_ranges(text):
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return []
+    offsets = _offsets(text)
+    ranges = []
+    owners = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, owners) or not node.body:
+            continue
+        first = node.body[0]
+        if not isinstance(first, ast.Expr) or not isinstance(first.value, ast.Constant) or not isinstance(first.value.value, str):
+            continue
+        ranges.append((_ast_position(text, offsets, first.lineno, first.col_offset),
+                       _ast_position(text, offsets, first.end_lineno, first.end_col_offset)))
+    return ranges
+
+
+def _python_string_value(literal):
+    try:
+        value = ast.literal_eval(literal)
+        return value if isinstance(value, str) else None
+    except (SyntaxError, ValueError):
+        # f-strings are not literal-evaluable. Keep their readable text and
+        # replace each expression with a stable placeholder for classification.
+        match = re.match(r'(?is)^([rubf]*)("""|\'\'\'|"|\')([\s\S]*?)\2$', literal)
+        if not match or 'f' not in match.group(1).lower() or 'b' in match.group(1).lower():
+            return None
+        body = match.group(3)
+        body = re.sub(r'(?<!\{)\{(?:[^{}]|\{[^{}]*\})*\}(?!\})', '{…}', body)
+        return body.replace('\\n', '\n').replace('\\t', '\t')
+
+
+def _python_fstring_values(text, offsets, docstrings):
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.JoinedStr):
+            continue
+        start = _ast_position(text, offsets, node.lineno, node.col_offset)
+        end = _ast_position(text, offsets, node.end_lineno, node.end_col_offset)
+        if any(start < doc_end and end > doc_start for doc_start, doc_end in docstrings):
+            continue
+        parts = []
+        for value in node.values:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                parts.append(value.value)
+            elif isinstance(value, ast.FormattedValue):
+                expression = ast.unparse(value.value)
+                field = '{' + expression
+                if value.conversion != -1:
+                    field += '!' + chr(value.conversion)
+                if value.format_spec:
+                    spec = ''.join(part.value for part in value.format_spec.values
+                                   if isinstance(part, ast.Constant) and isinstance(part.value, str))
+                    field += ':' + spec
+                parts.append(field + '}')
+        if parts:
+            yield start, ''.join(parts)
 
 
 def iter_py_strings(text: str):
-    text = mask_py_docstrings(text)
-    cleaned = []
-    for line in text.splitlines(True):
-        if line.lstrip().startswith('#'):
-            cleaned.append('\n' if line.endswith('\n') else '')
-        else:
-            cleaned.append(line)
-    body = ''.join(cleaned)
-    for m in STR_RE.finditer(body):
-        raw, q = m.group(2), m.group(1)
-        s = raw.replace(r"\'", "'").replace(r'\"', '"')
-        yield m.start(), s, body[max(0, m.start() - 200):m.start()], body
+    body = strip_python_comments(text)
+    offsets = _offsets(text)
+    chars = list(body)
+    docstrings = _python_docstring_ranges(text)
+    for start, end in docstrings:
+        for at in range(start, end):
+            if chars[at] not in '\r\n':
+                chars[at] = ' '
+    body = ''.join(chars)
+    values = []
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+        for token in tokens:
+            if token.type != tokenize.STRING:
+                continue
+            start = offsets[token.start[0] - 1] + token.start[1]
+            end = offsets[token.end[0] - 1] + token.end[1]
+            if any(start < doc_end and end > doc_start for doc_start, doc_end in docstrings):
+                continue
+            if re.match(r'(?i)^[rubf]*f[rub]*["\']', token.string):
+                continue  # Python 3.11 reports f-strings as STRING; AST handles these consistently across versions.
+            value = _python_string_value(token.string)
+            if value is None:
+                continue
+            values.append((start, value))
+        values.extend(_python_fstring_values(text, offsets, docstrings))
+        for start, value in sorted(values):
+            yield start, value, body[max(0, start - 200):start], body
+    except (tokenize.TokenError, IndentationError):
+        return
 
 
 def scan_web():
@@ -671,6 +879,17 @@ def scan_web():
         if not path.is_file():
             continue
         text = path.read_text(encoding='utf-8')
+        if name.endswith('.html'):
+            parser = _MarkupStrings(f'web/{name}')
+            parser.feed(text)
+            parser.close()
+            for value, pre in parser.strings:
+                if not value or len(value) > 2000:
+                    continue
+                line = text[:text.find(value)].count('\n') + 1 if value in text else 1
+                hits.append({'surface': f'web/{name}', 'line': line, 'text': value,
+                             'class': classify(value, pre)})
+            continue
         it = iter_js_strings(text)
         for pos, s, pre in it:
             if not s or len(s) > 2000:
@@ -696,7 +915,7 @@ def scan_python():
             # These short labels are values in the Linux navigation table;
             # the corresponding key map sends them through native_t later.
             go_values = set()
-            if rel == 'app/shell_linux.py':
+            if rel in ('app/shell_linux.py', 'app/shell_macos.py'):
                 go_match = re.search(r'\bGO\s*=\s*\[(.*?)\]', text, re.S)
                 key_match = re.search(r'go_names\s*=\s*\{(.*?)\}', text, re.S)
                 if go_match and key_match and 'native_t(go_names.get(name' in text:
@@ -706,9 +925,12 @@ def scan_python():
             for pos, s, pre, body in iter_py_strings(text):
                 if not s or len(s) > 300:
                     continue
+                pre = body[max(0, pos - 200):pos]
                 end = _skip_string(body, pos)
-                post = body[pos:min(len(body), end + 600)]
+                post = body[pos:min(len(body), end + 1000)]
                 line = body[:pos].count('\n') + 1
+                if rel == 'engine/update.py':
+                    pre = body[max(0, pos - 2000):pos]
                 kind = 'wired' if s in go_values else classify(s, pre, post)
                 hits.append({'surface': surface, 'file': rel, 'line': line,
                              'text': s, 'class': kind})

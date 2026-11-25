@@ -30,6 +30,7 @@ ICON = 'Lastbook.ico'
 MANIFEST = 'installed-files.txt'
 KEY = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\Lastbook'
 OK, FAILED, APP_OPEN, CANCELLED = 0, 1, 2, 3
+SUPPORTED_INSTALLER_LOCALES = frozenset(('en', 'es-419', 'de', 'zh-Hans'))
 
 def installer_locale():
     """Saved Lastbook language if this user already ran the app, otherwise the Windows UI language."""

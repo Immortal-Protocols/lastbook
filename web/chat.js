@@ -28,6 +28,61 @@ function chatDate(value, options) {
       : date.toLocaleDateString(undefined, options);
   } catch { return '' }
 }
+const CHAT_ERROR_KEYS = ['chat.stoppedUnexpectedly', 'chat.stopped', 'chat.modelNotRunning', 'chat.internalError',
+  'chat.emptyResponse', 'chat.serverRefused', 'chat.modelServerNotAnswering', 'chat.wrongFile', 'chat.memoryEstimate',
+  'chat.startFailed', 'app.errorGeneric'];
+function matchLegacyError(text) {
+  const catalogs = [['en', globalThis.lastbookI18nEnglish || {}], ...Object.entries(globalThis.lastbookI18nLocales || {})];
+  const match = source => {
+    if (typeof source !== 'string') return null;
+    for (const [, catalog] of catalogs) for (const key of CHAT_ERROR_KEYS) {
+      const template = catalog[key];
+      if (typeof template !== 'string') continue;
+      const names = [...template.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map(m => m[1]);
+      const parts = template.split(/\{[A-Za-z_][A-Za-z0-9_]*\}/g);
+      const escaped = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp('^' + parts.map((part, i) => escaped(part) + (i < names.length ? '([\\s\\S]*?)' : '')).join('') + '$');
+      const found = source.match(pattern);
+      if (found) return { key, params: Object.fromEntries(names.map((name, i) => [name, found[i + 1]])) };
+    }
+    return null;
+  };
+  if (text === 'stopped') return { parts: [{ key: 'chat.stopped', params: null }] };
+  const direct = match(text);
+  if (direct) return { parts: [{ key: direct.key, params: direct.params }] };
+  for (const [, catalog] of catalogs) {
+    const suffix = catalog['chat.fallbackNothing'];
+    if (typeof suffix !== 'string' || !text.endsWith(suffix)) continue;
+    const first = match(text.slice(0, -suffix.length).trimEnd());
+    if (first) return { parts: [{ key: first.key, params: first.params }, { key: 'chat.fallbackNothing', params: null }] };
+  }
+  return null;
+}
+function errorParts(m) {
+  if (Array.isArray(m?.errorInfo?.parts)) return m.errorInfo.parts;
+  if (m?.errorInfo?.key) return [{ key: m.errorInfo.key, params: m.errorInfo.params || null, fallback: m.errorInfo.fallback }];
+  if (m?.errorInfo?.text != null) return [{ text: m.errorInfo.text, locale: m.errorInfo.locale || 'en' }];
+  if (m?.errorKey || m?.error_key) return [{ key: m.errorKey || m.error_key, params: m.errorParams || m.error_params || null, fallback: m.errorFallback }];
+  if (!m?.error) return [];
+  const legacy = matchLegacyError(String(m.error));
+  return legacy ? legacy.parts : [{ text: String(m.error), locale: 'en' }];
+}
+function errorResult(part) { return part.key ? trResult(part.key, part.params || null, part.fallback) : { text: part.text || '', locale: part.locale || 'en' } }
+function chatErrorResult(m) { return errorParts(m).map(errorResult) }
+function chatErrorHtml(m) { return chatErrorResult(m).map(localizedHtml).join('') }
+function chatErrorText(m) { return chatErrorResult(m).map(result => result.text).join('') }
+function contentText(m) {
+  const text = String(m?.content || '');
+  if (!m?.stopped) return text;
+  const catalogs = [globalThis.lastbookI18nEnglish || {}, ...Object.values(globalThis.lastbookI18nLocales || {})];
+  for (const catalog of catalogs) {
+    const stopped = catalog['chat.stopped'];
+    if (typeof stopped !== 'string') continue;
+    const suffix = '\n\n(' + stopped + ')';
+    if (text.endsWith(suffix)) return text.slice(0, -suffix.length);
+  }
+  return text;
+}
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
   const STARTERS = [
@@ -102,8 +157,9 @@ const Chat = (() => {
     aboutCtx = ctx;
     document.title = (cur ? cur.title : tr('nav.chat', null, 'Chat')) + ' · Lastbook';
     $('#tbTitle').textContent = cur ? cur.title : tr('nav.chat', null, 'Chat');
+    const conversations = trResult('chat.conversations', null, 'Conversations');
     main.innerHTML = `<div class="chat">
-      <aside class="chat-side" id="chatSide" aria-label="${tr('chat.conversations', null, "Conversations")}">
+      <aside class="chat-side" id="chatSide" aria-label="${esc(conversations.text)}" lang="${esc(conversations.locale)}">
         <div class="cs-head"><b data-i18n="library.chats">${tr('library.chats', null, 'Chats')}</b><button class="iconbtn" id="closeSide" aria-label="${tr('chat.closeList', null, "Close chat list")}">${ico('back')}</button></div>
         <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}<span data-i18n="chat.new">New chat</span></a>
         <ul class="cs-list" id="csList"></ul>
@@ -406,8 +462,9 @@ const Chat = (() => {
     const found = m.sources || [];
     let h = '';
     if (running) h += `<div class="working"><b>${stateHtml(m.state)}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
-    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
-    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
+    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${chatErrorHtml(m)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
+    if (contentText(m)) h += `<div class="answer">${md(contentText(m), m)}</div>`;
+    if (m.stopped && contentText(m)) h += `<p class="small ans-stopped">${trHtml('chat.stopped', null, 'Stopped.')}</p>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
@@ -564,7 +621,8 @@ const Chat = (() => {
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast(tr('chat.copied', null, 'Copied')), () => toast(tr('chat.couldntCopy', null, 'Couldn’t copy'))) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
-        toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${(globalThis.LastbookI18n?.date?.(new Date()) ?? new Date().toLocaleDateString())}` }, null);
+        const text = q.slice(0, 80);
+        toggleSave({ key: `a:${cur.id}:${i}`, title: tr('chat.answerPrefix', { text }, 'Answer: {text}'), title_params: { text }, href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${chatDate(new Date())}` }, null);
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
@@ -576,25 +634,35 @@ const Chat = (() => {
   }
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-    let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    let t = contentText(m).replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    if (m.stopped && contentText(m)) t += '\n\n(' + tr('chat.stopped', null, 'Stopped.') + ')';
     if ((m.cited || []).length) t += '\n\n' + tr('chat.sourcesHeading', null, 'Sources:') + '\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? tr('chat.citePage', { page: s.page }, ', page {page}') : ''}${s.t != null ? tr('chat.citeAt', { time: clock(s.t) }, ', at {time}') : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' })}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
-    for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
+    const date = chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' });
+    let md = `# ${tr('chat.exportTitle', { title: c.title }, 'Chat: {title}')}\n\n`;
+    md += tr('chat.exportedFrom', { date }, 'Exported from Lastbook (offline library) on {date}.') + '\n';
+    md += tr('chat.exportNotice', null, 'Answers were written by a local AI model from the library’s documents. Check the linked pages; get trained help for anything serious.') + '\n';
+    for (const m of c.messages) {
+      const heading = m.role === 'user' ? tr('chat.exportQuestion', null, 'Question') : tr('chat.exportAnswer', null, 'Answer');
+      const reason = chatErrorText(m) || tr('chat.stopped', null, 'Stopped.');
+      md += m.role === 'user' ? `\n## ${heading}\n\n${m.content}\n`
+        : `\n## ${heading}\n\n${m.content ? plain(m) : tr('chat.exportNoAnswer', { reason }, '(no answer: {reason})')}\n`;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
     a.download = `survival-chat-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
     toast(tr('chat.savedAsFile', null, 'Saved as a file on this device'));
   }
+
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
-    return c.messages.filter(m => m.content).map(m => {
+    return c.messages.filter(m => contentText(m)).map(m => {
       if (m.role !== 'assistant') return { role: m.role, content: m.content };
       const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-      return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? tr('chat.citePageShort', { page: map[k].page }, ', p. {page}') : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
+      return { role: 'assistant', content: contentText(m).replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? tr('chat.citePageShort', { page: map[k].page }, ', p. {page}') : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
     });
   }
 
@@ -645,7 +713,7 @@ const Chat = (() => {
     }
     m.running = false; delete m.state;
     if (m.stopped && m.content) {
-      m.content += '\n\n(' + tr('chat.stopped', null, 'Stopped.') + ')';
+
       // The `done` event never arrives, so `cited` would be empty and the finished view
       // would say the answer is unverified. Keep the sources already received.
       if (m.cited == null && (m.sources || []).length) m.cited = m.sources;

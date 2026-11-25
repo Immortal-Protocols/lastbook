@@ -3426,6 +3426,8 @@ const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'the drive', diskFor = () => null;
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => ({});
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const job = code => ({copy: true, folder: '/srv/x/LastbookData', error: {code, message: 'Lastbook could not read or write a file for the copy. Check the drive is still connected, then copy again to the same place to carry on.'}, items: []});
@@ -3639,7 +3641,7 @@ const jobWords = j => { repair = j.repair && !j.check ? {fixed: false} : null; r
 eval(section('  function jobHead(', '  function jobView('));
 eval(section('  function cancelWords(', '  function jobView('));
 eval(section('  function jobLead(', '  /* Resume when paused'));
-eval(section('  function repairedWords(', '  /* ---- Check now'));
+eval(section('  function repairParts(', '  /* ---- Check now'));
 eval(section('  function repairOffer(', '  function checkedView('));
 const esc = String, ico = () => '', itemTitle = it => it.title, WORD = {paused: 'Paused'};
 const joinList = parts => parts.length < 2 ? parts[0] : parts.slice(0, -1).join(', ') + (parts.length > 2 ? ',' : '') + ' and ' + parts[parts.length - 1];
@@ -3656,6 +3658,7 @@ console.log(JSON.stringify({
   offer_ai: repairOffer(0, true, false), offer_lib: repairOffer(2, false, false), offer_all: repairOffer(1, true, true),
   did_ai: repairedWords({repaired: true, model_ok: false, damaged: 1, pack_replaced: false}),
   did_lib: repairedWords({repaired: true, model_ok: true, damaged: 1, pack_replaced: true}),
+  did_map: repairedWords({repaired: true, model_ok: true, map_ok: false, damaged: 1, pack_replaced: false}),
   check_steps: steps({check: true, state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
   install_steps: steps({state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
 }));
@@ -3684,6 +3687,7 @@ console.log(JSON.stringify({
         self.assertNotIn('kept aside', w['did_ai'])
         self.assertIn('downloaded again', w['did_lib'])
         self.assertIn('kept aside', w['did_lib'])
+        self.assertEqual(w['did_map'], 'The detailed map was downloaded again.')
         self.assertEqual(w['check_steps'], ['Check'])                    # a check's items are only read: no Download or Unpack
         self.assertEqual(w['install_steps'], ['Download', 'Check', 'Unpack', 'Finish'])
 
@@ -4530,6 +4534,8 @@ const ico = () => '', size = String, ram = String, diskName = () => attack, disk
 const S = {hardware: {ram_bytes: 1024, gpus: [{name: attack, vram_bytes: 1024}]}}, folder = '/tmp/' + attack;
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null;
 globalThis.lastbookTr = (key, params, fallback) => interpolate(fallback, params);
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => `<span lang="en">${esc(interpolate(fallback, params))}</span>`;
 eval(section('  function computer()', '  function recommendLine()'));
 eval(section('  function errorBox(', '  function itemHTML('));
 const computerHTML = computer();
@@ -4647,6 +4653,8 @@ const calls = [], note = {hidden: true}, button = {}, UNIT = 1000;
 const $ = s => s === '#haveNote' ? note : button;
 const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk';
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '', S = {}, shortfall = null, confirmCancel = false, lastAct = null;
 const call = async (path, body) => { calls.push([path, body]); return cfg.cancel ? {cancelled: true} : {path: '/path/to/model.gguf'} };
 const useFile = async (path, btn) => { calls.push(['useFile', path, btn === button]) };
@@ -4696,6 +4704,8 @@ const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
 const diskName = () => 'this disk', errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
 const tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const error = {code: 'unreachable', message: 'Lastbook could not reach huggingface.co from this network.', host: 'huggingface.co',

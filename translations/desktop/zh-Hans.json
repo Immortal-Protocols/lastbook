@@ -105,5 +105,6 @@
   "setup.skipMapNoLocal": "没有本地地图，可稍后在“设置”中添加。",
   "setup.skipMapNoAddressLabel": "不含地址搜索",
   "setup.skipMapNoLocalLabel": "无本地地图",
-  "setup.skipMapForNow": "— 暂时跳过"
+  "setup.skipMapForNow": "— 暂时跳过",
+  "setup.err.setupFolderLinkOrSpecial": "配置文件夹中包含链接或特殊文件。请选择其他资料库文件夹。"
 }

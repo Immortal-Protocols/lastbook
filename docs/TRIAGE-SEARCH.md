@@ -33,7 +33,8 @@ baseline recorded on `main`. The modules described below arrive in the later pul
 | 1 | Long pages in sections (`engine/sections.py`) | 2 (#403) |
 | 3 | Typo correction (`engine/typos.py`, word list) | 3 (#404) |
 | 2 | Encyclopedia articles by best section (`engine/wiki_pick.py`) | 4 (#405) |
-| 4, 5, 8 | Body signs, confidence estimate, injury guard on everyday phrases (`engine/confidence.py`) | 5 (#406) |
+| 4, 5 | Body signs, confidence estimate (`engine/confidence.py`) | 5 (#406) |
+| 8 | Everyday phrases that hijack injury questions (`confidence.INJURY`, `server.PHRASES`) | 7 (#408) |
 | 6 | The runner's `--embed` mode (`packaging/llm/lastbook_llm.cpp`) | 6 (#407) |
 | 4, 6 | Urgency on one source (`urgent` phrases in the guides, `assistant.is_danger`, `engine/meaning_red.py`) | 7 (#408) |
 | 7 | Conversation handling (`assistant.turn_hits`) | 8 (#409) |
@@ -85,7 +86,8 @@ Numbers (measured on the author's fork):
 | Sections + typo correction + conversation handling | 26 → 4 (both modes); typo questions' useful pages 2.23 → 4.72 of 8 (kw) |
 | Build on the test data folder | 351 pages → 7,623 sections in 4.2 s, at most 1,890 sections in one page (read from the file's `meta` and `long` tables) |
 
-Rerun: `tools/search_eval/score.py --rows` before and after, and count the questions whose top 8 hold that book.
+Rerun: `tools/search_eval/score.py --rows` before, and `--rows --sections <scratch folder>` after, and count the questions whose
+top 8 hold that book.
 The mean hybrid search time per question over the triage set was 0.67 s on the fork; a before/after time for the long
 pages alone was not stored.
 
@@ -96,6 +98,12 @@ pages alone was not stored.
 Code: `engine/wiki_pick.py` (`words_of`, `_pattern`, `best_section`, `score_text`, `pick`), `engine/encyclopedias.py`
 (`search`, `entry_text`, `pick_section`; `INITIAL_LIMIT` = 3, `INITIAL_CHARS` = 2,000, `SEARCH_LIMIT` = 24), caller
 `assistant.first_wiki`. Off with `LASTBOOK_WIKI_PICK=0`.
+
+In pull request 4, `assistant.first_wiki` runs `wiki_pick.pick` on the question after `typos.correct`, and Chat sends
+the library's results and the encyclopedia articles to the model as two messages (`assistant.initial_messages`) and
+shows them apart (`web/chat.js`, "From the encyclopedias"). Skipping the articles for urgent questions (`is_danger`)
+comes in pull request 7. The vector index of the encyclopedias tried on the author's fork (about 690 MB of memory for
+three files, and a GPU build for each file) is not proposed.
 
 Constants: `PER_FILE` = 6 candidates per encyclopedia file, `SECTION` = 5,000 (= `sections.SECTION`), `MAX_BYTES` =
 800,000, `STEM` = 5, `TITLE_WEIGHT` = 0.25.
@@ -146,6 +154,16 @@ useful words inside the first 2,000 characters for 259 of the 622 articles that 
 Code: `engine/typos.py`. Entry points `correct(q)` (memoised, 2,000 entries), `correct_with(q, words)`, `fix_word`,
 `split_word`, `body_fix`. Switches: `LASTBOOK_TYPO_FIX=0` (all), `LASTBOOK_TYPO_SPLIT=0`, `LASTBOOK_TYPO_ENGLISH=0`,
 `LASTBOOK_BODY_FIX=0`. Called first in `assistant.hybrid`, `server.query_groups` and `assistant.is_danger`.
+`/api/find` and `/api/retrieve` add `corrected` (what was searched) when it differs from the question.
+
+In pull request 3, `body_fix` and `LASTBOOK_BODY_FIX` were not there: they need the body words of
+`engine/confidence.py`. Pull request 5 adds them. `assistant.is_danger` comes in pull request 7.
+
+**Word forms.** The corrector does not change word endings: an English word is never changed, so "tourniquets",
+"fainting" and "choked" are searched as typed. The library search's own form rule is older than this module: a word of
+5+ letters ending in -s is also searched without it (`server.query_groups`). The guide search (`web/words.js`, #287)
+has a wider rule (-s, -es, -ies, -ed, -ing, with a dropped e or a doubled letter undone), used only when a guide search
+finds nothing. The two searches are separate: the corrector runs on the server, the guide search in the page.
 
 **The library's words** (`Words.from_db`, read once per search database, kept until its size or time changes):
 
@@ -192,7 +210,7 @@ are skipped when a machine, food or animal word is in the question. Letters type
 (`unstretch`: "bloooood" → blood).
 
 **Order in `correct_with(q)`:** a question that looks foreign (non-ASCII letters, or more Spanish/Portuguese/French function words
-than English ones) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
+than English ones; "a", "me" and "no" count for neither, added in pull request 3 after test list 4) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
 then `phrase_slips`; then each token: not plain letters or ALL CAPS (unless most of the question is capitals) or with inner capitals
 ("ODing", "iPhone"): kept (a run with an apostrophe or hyphen inside goes to `glued`); `unstretch`; `split_word`; `fix_word`;
 `body_fix`; capitalisation restored.
@@ -239,6 +257,10 @@ Measured on the author's fork:
 Code: `engine/confidence.py` (`URGENT`, `NOT_URGENT`, `urgent`, `not_urgent_text`, `BODY_WORDS`, `BODY_PHRASES`, `BODY_GLUED`,
 `body_signs`, `body_match`) and `assistant.py` (`DANGER`, `danger_signs`, `is_danger`, `plea`).
 
+In pull request 5, `urgent`, `not_urgent_text` and the body signs are in `engine/confidence.py`, and the chat uses them
+only to decide whether pages may be held back (section 5). `DANGER`, `is_danger` and `plea` come in pull requests 7 and 8,
+which also move urgency to one shared source: the word list of `urgent` is then read from the guides.
+
 ```
 not_urgent_text(t)   = t with every NOT_URGENT match (72 idiom alternatives) replaced by a space
 urgent(*texts)       = any(URGENT.search(not_urgent_text(t)) for t in texts)  OR  body_signs(*texts) is non-empty
@@ -278,6 +300,13 @@ Measured (red recall, false flags): section 6's table, definitions in section 9.
 
 Code: `engine/confidence.py` (`MODELS`, `features`, `probability`, `estimate`, `unknown_words`, `thresholds`, `everyday_level`),
 `assistant.py` (`search_confidence`, `chat_level`, `chat_reply`).
+
+In pull request 5, `assistant.hybrid` and `assistant._fts` fill the search trace (word groups, rows with every word, bm25 per
+row, cosines), `assistant.question_hits` reads the first search's estimate, and `assistant.chat` asks for more words or
+offers buttons (`web/chat.js` draws them; `/api/retrieve` returns the estimate as `confidence`). A question counts as urgent
+by `confidence.urgent` alone (the meaning check and `DANGER` come in pull request 7). There are no conversation routes yet
+(pull request 8): only the first question of a chat can be asked to say more; a later message gets the buttons and the
+answer. A bare plea ("911", "help") is not told apart yet either.
 
 Model: `p = 1 / (1 + exp(-(bias + sum_k w_k * x_k)))` on the raw (not standardised) signals; one set per mode.
 
@@ -523,8 +552,8 @@ bge-small-en-v1.5 in `derived/models/` and, for hybrid runs, a meaning index bui
 uses an index built by main's own indexer (338,910 passages); the measurements of sections 1-10 were made earlier on the
 author's fork, against its own index (337,016 passages). `tools/search_eval/baseline-files.md` identifies every file.
 The scorer reads the data folder and never writes it: it opens the meaning index read-only (immutable when no
-write-ahead log is pending), never truncates `vectors.f16`, refuses the sections build (from PR 2 on), and starts no
-indexer and no local model.
+write-ahead log is pending), never truncates `vectors.f16`, never builds or removes a sections file there (`--sections <folder>`,
+from PR 2 on, keeps it in another folder), and starts no indexer and no local model.
 
 **Commands** (from the repository root):
 

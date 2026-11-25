@@ -341,15 +341,26 @@ def open_caop():
 
 
 def extract_caop():
-    for member in ('caop_raa_gocentral_goriental.gpkg', 'caop_raa_gocidental.gpkg'):
-        gpkg = SOURCE / member
-        if gpkg.exists():
-            continue
-        with zipfile.ZipFile(SOURCE / 'caop_raa.zip') as archive:
-            match = next(n for n in archive.namelist() if n.lower().endswith('.gpkg')
-                         and ('gcentral' in n.lower() if 'gocentral' in member else 'gocidental' in n.lower()))
-            with archive.open(match) as src, open(gpkg, 'wb') as dst:
+    """Extract both island-group geopackages from the CAOP RAA zip, with provenance: a geopackage is
+    reused only while a sidecar records the SHA-256 of the archive it was extracted from and that hash
+    still matches the archive on disk — a replaced ZIP forces re-extraction. The copy writes to a .part
+    file and renames on completion, so an interrupted run leaves no half-written geopackage a retry would
+    take for done."""
+    archive_sha = sha256(SOURCE / 'caop_raa.zip')
+    with zipfile.ZipFile(SOURCE / 'caop_raa.zip') as archive:
+        for member in ('caop_raa_gocentral_goriental.gpkg', 'caop_raa_gocidental.gpkg'):
+            gpkg = SOURCE / member
+            sidecar = SOURCE / (member + '.sha256')
+            group = 'gcentral' if 'gocentral' in member else 'gocidental'
+            if gpkg.exists() and sidecar.exists() \
+                    and sidecar.read_text(encoding='utf-8').strip() == archive_sha:
+                continue
+            match = next(n for n in archive.namelist() if n.lower().endswith('.gpkg') and group in n.lower())
+            part = SOURCE / (member + '.part')
+            with archive.open(match) as src, open(part, 'wb') as dst:
                 shutil.copyfileobj(src, dst, 1 << 22)
+            part.replace(gpkg)
+            sidecar.write_text(archive_sha, encoding='utf-8')
 
 
 def caop_ring_points(blob):

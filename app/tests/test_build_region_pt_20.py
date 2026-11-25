@@ -4,6 +4,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -261,6 +262,69 @@ class LegacyLayoutMigrationTests(RebuildRecoveryTests):
         failures = builder.check(staging)
         joined = ' | '.join(failures)
         self.assertIn('+ 1 without a number', joined)                 # judged by the staging's own report
+
+
+class ExtractionProvenanceTests(unittest.TestCase):
+    """The extracted geopackages carry provenance: they are reused only while the archive's SHA-256
+    matches what their sidecar recorded, an interrupted extraction never leaves a half-written gpkg
+    taken for done, and a swapped archive forces re-extraction — the provenance gap the #481 review
+    reproduced."""
+
+    MEMBERS = ('caop_raa_gocentral_goriental.gpkg', 'caop_raa_gocidental.gpkg')
+
+    def setUp(self):
+        self.source = Path(tempfile.mkdtemp())
+        patcher = mock.patch.object(builder, 'SOURCE', self.source)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def write_archive(marker):
+        """A minimal zip holding both island-group members; the marker bytes make its SHA-256 unique."""
+        path = builder.SOURCE / 'caop_raa.zip'
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('ArqAcores_GCentral_GOriental_CAOP2025.gpkg', b'central ' + marker)
+            archive.writestr('ArqAcores_GOcidental_CAOP2025.gpkg', b'occidental ' + marker)
+        return builder.sha256(path)
+
+    def sidecars_match(self, sha):
+        return all((self.source / (m + '.sha256')).read_text(encoding='utf-8') == sha for m in self.MEMBERS)
+
+    def test_a_swapped_archive_forces_re_extraction(self):
+        sha1 = self.write_archive(b'version-one')
+        builder.extract_caop()
+        self.assertIn(b'version-one', (self.source / self.MEMBERS[0]).read_bytes())
+        self.assertTrue(self.sidecars_match(sha1))
+        # the same archive again: the extraction is reused, the files untouched
+        before = {m: (self.source / m).read_bytes() for m in self.MEMBERS}
+        builder.extract_caop()
+        self.assertEqual({m: (self.source / m).read_bytes() for m in self.MEMBERS}, before)
+        # a replaced ZIP: the next build extracts the new contents and re-records the provenance
+        sha2 = self.write_archive(b'version-two')
+        builder.extract_caop()
+        self.assertIn(b'version-two', (self.source / self.MEMBERS[0]).read_bytes())
+        self.assertNotIn(b'version-one', (self.source / self.MEMBERS[0]).read_bytes())
+        self.assertTrue(self.sidecars_match(sha2))
+
+    def test_an_interrupted_extraction_leaves_no_half_written_gpkg(self):
+        sha1 = self.write_archive(b'version-one')
+        builder.extract_caop()
+        old = {m: (self.source / m).read_bytes() for m in self.MEMBERS}
+        self.write_archive(b'version-two')
+        with mock.patch.object(builder.shutil, 'copyfileobj', side_effect=IOError('interrupted')):
+            with self.assertRaises(IOError):
+                builder.extract_caop()
+        # the old geopackages and their provenance survive the interrupted re-extraction; the partial
+        # copy sits in a .part file, never in a gpkg a retry would take for done
+        self.assertEqual({m: (self.source / m).read_bytes() for m in self.MEMBERS}, old)
+        self.assertTrue(self.sidecars_match(sha1))
+        self.assertTrue((self.source / (self.MEMBERS[0] + '.part')).exists())
+        # the retry completes the extraction
+        sha2 = builder.sha256(self.source / 'caop_raa.zip')
+        builder.extract_caop()
+        self.assertIn(b'version-two', (self.source / self.MEMBERS[0]).read_bytes())
+        self.assertTrue(self.sidecars_match(sha2))
+        self.assertFalse((self.source / (self.MEMBERS[0] + '.part')).exists())
 
 
 if __name__ == '__main__':

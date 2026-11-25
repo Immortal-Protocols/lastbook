@@ -559,7 +559,7 @@ class Browser(unittest.TestCase):
             with page.expect_download() as exported:
                 page.get_by_role('button', name='Exportar chat').click()
             markdown = Path(exported.value.path()).read_text(encoding='utf-8')
-            self.assertIn('# Chat: Pregunta de prueba', markdown)
+            self.assertIn('# Conversación: Pregunta de prueba', markdown)
             self.assertIn('Exportado desde Lastbook (biblioteca sin conexión)', markdown)
             self.assertIn('Las respuestas se escribieron con un modelo de IA local', markdown)
             self.assertIn('## Pregunta', markdown)

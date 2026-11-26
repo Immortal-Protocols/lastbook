@@ -224,3 +224,24 @@ profile. A corrected ACT map also displayed Canberra's underlying city label at
 zoom 8; Victoria was restored afterward. This does not establish clinical review,
 all-six-PDF native coverage, Windows support, notarization or complete Australia
 coverage. The private library and personal-use PDFs are not published.
+
+After the regional expansion, the required contribution suite and both Australian
+builders passed 793 tests (five skips, eleven upstream expected failures); the two
+personal-distribution guards passed separately. Four final source-integrity tests
+passed after matching each SA attribution to its exact original work title. A fresh
+44-record offline build passed actual public/private engine search and guide
+resolution with socket construction forbidden. Household/rural references are
+66/71 (137 public); the four-guide private library has 171 valid references.
+
+The refreshed frozen private Mac app (`79fd960`) contains 365 records (314 base,
+44 public Australian and seven personal-use). TLS, i18n, package/privacy scan,
+strict ad-hoc signature and actual outbound-IP-denial self-check passed. Native
+checks opened the household six-reading SA weather choice, during-storm and
+after-flood readers, rural property and animal-planning sections, and ACMA's
+locating-device article with credits/dates/scope visible. The whole previous
+354-record library and frozen app were retained for rollback; Victoria is unchanged.
+These are selected native reader checks, not all-article or clinical verification.
+
+[The separate 44-record regional review](https://github.com/pilkster/lastbook/releases/tag/australia-regional-reference-review-2026-11-26)
+excludes personal-use material. Its actual extracted ZIP passed CRC, all 44 source
+size/hash checks and SQLite/FTS checks. Earlier 24/28/33-record reviews are unchanged.

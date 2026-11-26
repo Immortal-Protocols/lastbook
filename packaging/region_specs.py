@@ -1,4 +1,7 @@
-"""The non-US region maps Lastbook can build: one entry per region, keyed by its ISO 3166-2 code (lowercase).
+"""The non-US region maps Lastbook can build: one entry per region, keyed by a lowercase build id.
+
+Ids use ISO-derived codes where applicable; metropolitan and territory-extract
+ids are local build identifiers, not claims of ISO 3166-2 subdivision status.
 
 A region is the "state" equivalent outside the US (docs/MAPS.md, "Region maps"). Unlike a US state map, a region map
 ships only map.sqlite, detail-cells.json, national-status.json and map-set.json, built from a Geofabrik OpenStreetMap
@@ -126,5 +129,48 @@ REGIONS = {
         'bbox': [148.75, -35.93, 149.41, -35.12],
         'extract': 'https://download.geofabrik.de/australia-oceania/australia/act-latest-free.gpkg.zip',
         'source': 'OpenStreetMap contributors, via Geofabrik act-latest-free.gpkg.zip (ODbL 1.0)',
+    },
+    # Separate Geofabrik external-territory extract envelopes, reviewed 2026-11-26.
+    'au-ac': {
+        'country': 'Australia',
+        'title': 'Ashmore and Cartier Islands extract area',
+        'bbox': [122.56, -12.85, 124.05, -11.89],
+        'extract': 'https://download.geofabrik.de/australia-oceania/australia/ashmore-cartier-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik ashmore-cartier-latest-free.gpkg.zip (ODbL 1.0)',
+    },
+    'au-cx': {
+        'country': 'Australia',
+        'title': 'Christmas Island extract area',
+        'bbox': [105.29, -10.83, 106.0, -10.17],
+        'extract': 'https://download.geofabrik.de/australia-oceania/australia/christmas-island-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik christmas-island-latest-free.gpkg.zip (ODbL 1.0)',
+    },
+    'au-cc': {
+        'country': 'Australia',
+        'title': 'Cocos (Keeling) Islands extract area',
+        'bbox': [96.45, -12.56, 97.25, -11.54],
+        'extract': 'https://download.geofabrik.de/australia-oceania/australia/cocos-islands-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik cocos-islands-latest-free.gpkg.zip (ODbL 1.0)',
+    },
+    'au-csi': {
+        'country': 'Australia',
+        'title': 'Coral Sea Islands extract area',
+        'bbox': [146.86, -30.58, 160.43, -14.98],
+        'extract': 'https://download.geofabrik.de/australia-oceania/australia/coral-sea-islands-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik coral-sea-islands-latest-free.gpkg.zip (ODbL 1.0)',
+    },
+    'au-hm': {
+        'country': 'Australia',
+        'title': 'Heard Island and McDonald Islands extract area',
+        'bbox': [71.99, -53.55, 74.46, -52.66],
+        'extract': 'https://download.geofabrik.de/australia-oceania/australia/heard-mcdonald-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik heard-mcdonald-latest-free.gpkg.zip (ODbL 1.0)',
+    },
+    'au-nf': {
+        'country': 'Australia',
+        'title': 'Norfolk Island extract area',
+        'bbox': [167.62, -29.47, 168.35, -28.75],
+        'extract': 'https://download.geofabrik.de/australia-oceania/australia/norfolk-island-latest-free.gpkg.zip',
+        'source': 'OpenStreetMap contributors, via Geofabrik norfolk-island-latest-free.gpkg.zip (ODbL 1.0)',
     },
 }

@@ -1,6 +1,6 @@
 {
-  "checked": "2026-11-17",
-  "scope": "Eight Geofabrik extract envelopes. ACT has its own act extract and is also included with Jervis Bay in NSW. External-territory coverage must not be inferred.",
+  "checked": "2026-11-26",
+  "scope": "Fourteen Geofabrik extract envelopes: eight state/territory and six external-territory extracts. ACT/Jervis Bay are also included with NSW. Envelopes are not administrative boundaries or complete coastal, feature, facility or navigation coverage. Australian Antarctic Territory is not established by these definitions.",
   "extracts": [
     {
       "code": "au-act",
@@ -121,6 +121,126 @@
       "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/western-australia.poly",
       "polygon_sha256": "6d70031fe79acce34d89bae6123b396e22ef859beeda1349afffc293d334131f",
       "polygon_vertices": 11
+    },
+    {
+      "code": "au-ac",
+      "title": "Ashmore and Cartier Islands extract area",
+      "country": "Australia",
+      "bbox": [
+        122.56,
+        -12.85,
+        124.05,
+        -11.89
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/ashmore-cartier-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/ashmore-cartier/ashmore-cartier.poly",
+      "polygon_sha256": "798b97aadf6f1e5dd67e366c66ce9d06a79a1d76ab1d6243b1eda1070060b573",
+      "polygon_vertices": 6,
+      "checked": "2026-11-26",
+      "snapshot_review": "2026-11-24",
+      "source_archive_sha256": "1fe46d2111502ccca7058ea30c3193e629571d0fa73bf507d018bc6bd5d1d5ad",
+      "source_name": "ashmore-cartier",
+      "named_points": 0
+    },
+    {
+      "code": "au-cx",
+      "title": "Christmas Island extract area",
+      "country": "Australia",
+      "bbox": [
+        105.29,
+        -10.83,
+        106.0,
+        -10.17
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/christmas-island-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/christmas-island/christmas-island.poly",
+      "polygon_sha256": "d77fd528e9706929a8079cad0ddae6cb9eaa64e0bc61261b210987a7307cc3c8",
+      "polygon_vertices": 5,
+      "checked": "2026-11-26",
+      "snapshot_review": "2026-11-24",
+      "source_archive_sha256": "d10524057c1a245013e52814356b3f2d0c230cc1e65ec44d2eda5d809889a291",
+      "source_name": "christmas-island",
+      "named_points": 2
+    },
+    {
+      "code": "au-cc",
+      "title": "Cocos (Keeling) Islands extract area",
+      "country": "Australia",
+      "bbox": [
+        96.45,
+        -12.56,
+        97.25,
+        -11.54
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/cocos-islands-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/cocos-islands/cocos-islands.poly",
+      "polygon_sha256": "7e4af72cde2dd34391137535c00dbf173c3a937c2ccb99fe4d581adebc976417",
+      "polygon_vertices": 5,
+      "checked": "2026-11-26",
+      "snapshot_review": "2026-11-24",
+      "source_archive_sha256": "8f4ea778d6b8042f5f6a101a8626fed4b2d152091d158a1487121013de8d6fc0",
+      "source_name": "cocos-islands",
+      "named_points": 3
+    },
+    {
+      "code": "au-csi",
+      "title": "Coral Sea Islands extract area",
+      "country": "Australia",
+      "bbox": [
+        146.86,
+        -30.58,
+        160.43,
+        -14.98
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/coral-sea-islands-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/coral-sea-islands/coral-sea-islands.poly",
+      "polygon_sha256": "122c5fade7fae32e1ee07f2a2b7ab3644101a6ffa369a66d6d6ec954f651ecb6",
+      "polygon_vertices": 15,
+      "checked": "2026-11-26",
+      "snapshot_review": "2026-11-24",
+      "source_archive_sha256": "4f0e237ee85a66595ae21f92f63ba2194b632d8fe0cd21263515d955308133e7",
+      "source_name": "coral-sea-islands",
+      "named_points": 0
+    },
+    {
+      "code": "au-hm",
+      "title": "Heard Island and McDonald Islands extract area",
+      "country": "Australia",
+      "bbox": [
+        71.99,
+        -53.55,
+        74.46,
+        -52.66
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/heard-mcdonald-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/heard-mcdonald/heard-mcdonald.poly",
+      "polygon_sha256": "c4939b0cd6dcf53fbff49ff446380a0aaea43bb7a383d795d39d41a0235b5ded",
+      "polygon_vertices": 5,
+      "checked": "2026-11-26",
+      "snapshot_review": "2026-11-24",
+      "source_archive_sha256": "c0532fd63c71fefadf3125aaba75302fa93b7965687360ea02aaf1aa1de7e602",
+      "source_name": "heard-mcdonald",
+      "named_points": 20
+    },
+    {
+      "code": "au-nf",
+      "title": "Norfolk Island extract area",
+      "country": "Australia",
+      "bbox": [
+        167.62,
+        -29.47,
+        168.35,
+        -28.75
+      ],
+      "extract": "https://download.geofabrik.de/australia-oceania/australia/norfolk-island-latest-free.gpkg.zip",
+      "polygon_url": "https://download.geofabrik.de/australia-oceania/australia/norfolk-island/norfolk-island.poly",
+      "polygon_sha256": "28e4974affb4f0c44334864093d4c704eea6f956cd202c0080ee4f4c32d94c0c",
+      "polygon_vertices": 6,
+      "checked": "2026-11-26",
+      "snapshot_review": "2026-11-24",
+      "source_archive_sha256": "965f6f193a1518057ab7f079ffc92b7db756e5dbd13b0fa5b6a652c00ee7c72e",
+      "source_name": "norfolk-island",
+      "named_points": 18
     }
   ]
 }

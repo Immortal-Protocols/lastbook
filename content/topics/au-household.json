@@ -8,7 +8,7 @@
   "id": "au-household",
   "title": "Prepare an Australian household",
   "short": "Australian plans, hazards, food and water",
-  "intro": "Official Australian readings for household preparation, with regional contacts and source dates. This offline library does not receive warnings.",
+  "intro": "Official Australian readings for household preparation, with regional contacts and source dates. This offline library does not receive warnings. South Australian readings retain SA contacts and requirements; they are not national rules.",
   "keywords": [
     "australia",
     "australian",
@@ -25,7 +25,11 @@
     "emergency kit",
     "warnings",
     "fire danger",
-    "AusAlert"
+    "AusAlert",
+    "South Australia",
+    "Adelaide",
+    "satellite beacon",
+    "EPIRB"
   ],
   "choices": [
     {
@@ -42,6 +46,11 @@
           "doc": "au-jurisdictions",
           "label": "Australian state and territory emergency information",
           "note": "Australian source directory."
+        },
+        {
+          "doc": "au-locating-devices",
+          "label": "Emergency locating devices: ACMA explanation",
+          "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
         }
       ]
     },
@@ -59,6 +68,11 @@
           "doc": "qld-emergency-kit",
           "label": "Emergency kit: essential items, all times",
           "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "sa-animal-planning",
+          "label": "Plan for pets and larger livestock before bushfire: SA CFS sections",
+          "note": "Complete introduction and Small animals section, plus Larger animals Forward planning. The separate If fire threatens and horse-owner sections are excluded, including veterinary treatment and third-party horse-service references. This is preparation reading, not an animal-treatment protocol. Retrieved 26 November 2026."
         }
       ]
     },
@@ -81,6 +95,11 @@
           "doc": "nsw-evacuation",
           "label": "If you have to evacuate",
           "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "sa-property-preparation",
+          "label": "Prepare a home and property for bushfire: SA CFS sections",
+          "note": "Complete introduction, Around the house, In the garden and Seasonal preparation tips sections. New-build siting/design/landscaping sections and illustrations are excluded. Source building and vegetation advice is regional reading, not engineering approval or a guarantee of safety. Retrieved 26 November 2026."
         }
       ]
     },
@@ -158,6 +177,43 @@
       ]
     },
     {
+      "id": "sa-weather",
+      "label": "Read South Australian storm and flood guidance",
+      "hint": "Before, during and after are separate SA source readings. This library does not receive warnings or road closures.",
+      "read": [
+        {
+          "doc": "sa-storm-before",
+          "label": "Before a storm: South Australian SES source guidance",
+          "note": "Complete written introduction and before-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-storm-during",
+          "label": "During a storm: South Australian SES source guidance",
+          "note": "Complete written introduction and during-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-storm-after",
+          "label": "After a storm: South Australian SES source guidance",
+          "note": "Complete written introduction and after-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-flood-before",
+          "label": "Before a flood: South Australian SES source guidance",
+          "note": "Complete written introduction and before-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-flood-during",
+          "label": "During a flood: South Australian SES source guidance",
+          "note": "Complete written introduction and during-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-flood-after",
+          "label": "After a flood: South Australian SES source guidance",
+          "note": "Complete written introduction and after-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
       "id": "poisons",
       "label": "Someone may have been poisoned",
       "hint": "Read the source guidance and its regional limits.",
@@ -224,6 +280,51 @@
       "doc": "au-fire-danger-ratings",
       "label": "Australian fire-danger ratings: NEMA explanation",
       "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "sa-storm-before",
+      "label": "Before a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and before-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-during",
+      "label": "During a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and during-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-after",
+      "label": "After a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and after-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-before",
+      "label": "Before a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and before-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-during",
+      "label": "During a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and during-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-after",
+      "label": "After a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and after-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-property-preparation",
+      "label": "Prepare a home and property for bushfire: SA CFS sections",
+      "note": "Complete introduction, Around the house, In the garden and Seasonal preparation tips sections. New-build siting/design/landscaping sections and illustrations are excluded. Source building and vegetation advice is regional reading, not engineering approval or a guarantee of safety. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-animal-planning",
+      "label": "Plan for pets and larger livestock before bushfire: SA CFS sections",
+      "note": "Complete introduction and Small animals section, plus Larger animals Forward planning. The separate If fire threatens and horse-owner sections are excluded, including veterinary treatment and third-party horse-service references. This is preparation reading, not an animal-treatment protocol. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-locating-devices",
+      "label": "Emergency locating devices: ACMA explanation",
+      "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
     }
   ],
   "learn": [
@@ -281,6 +382,51 @@
       "doc": "au-ausalert-operational",
       "label": "AusAlert operational announcement: 10 November 2026",
       "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
+    },
+    {
+      "doc": "sa-storm-before",
+      "label": "Before a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and before-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-during",
+      "label": "During a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and during-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-after",
+      "label": "After a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and after-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-before",
+      "label": "Before a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and before-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-during",
+      "label": "During a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and during-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-after",
+      "label": "After a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and after-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-property-preparation",
+      "label": "Prepare a home and property for bushfire: SA CFS sections",
+      "note": "Complete introduction, Around the house, In the garden and Seasonal preparation tips sections. New-build siting/design/landscaping sections and illustrations are excluded. Source building and vegetation advice is regional reading, not engineering approval or a guarantee of safety. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-animal-planning",
+      "label": "Plan for pets and larger livestock before bushfire: SA CFS sections",
+      "note": "Complete introduction and Small animals section, plus Larger animals Forward planning. The separate If fire threatens and horse-owner sections are excluded, including veterinary treatment and third-party horse-service references. This is preparation reading, not an animal-treatment protocol. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-locating-devices",
+      "label": "Emergency locating devices: ACMA explanation",
+      "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
     }
   ],
   "related": [

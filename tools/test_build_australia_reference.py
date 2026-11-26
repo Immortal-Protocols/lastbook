@@ -31,7 +31,12 @@ class Reference(unittest.TestCase):
                                         ('"No Rating"', 'au-fire-danger-ratings'),
                                         ('"cell broadcast"', 'au-ausalert'),
                                         ('"Critical Alerts"', 'au-ausalert-operational'),
-                                        ('"heightened level"', 'nsw-warning-levels')]:
+                                        ('"heightened level"', 'nsw-warning-levels'),
+                                        ('"downed powerline"', 'sa-storm-during'),
+                                        ('"qualified electrician"', 'sa-flood-after'),
+                                        ('"small animals"', 'sa-animal-planning'),
+                                        ('"seasonal preparation"', 'sa-property-preparation'),
+                                        ('"short range devices"', 'au-locating-devices')]:
                     ids = {r[0] for r in db.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', (query,))}
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):

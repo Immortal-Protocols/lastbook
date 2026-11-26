@@ -6,16 +6,18 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 24 dated official text readings: ACMA emergency calls and CB radio; Queensland
+- 33 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
   emergency contacts; Energy Safe Victoria's complete generator-use section; and
   myGov's remote-travel preparation and emergency-help sections; NEMA's complete
   written fire-danger rating and AusAlert articles; the complete 10 November 2026
-  AusAlert operational announcement; and NSW's warning-level definitions.
-- Seven copyright statements, the original Australian source hub and a directory
-  covering all six states, ACT and NT: **33 searchable HTML records** altogether.
+  AusAlert operational announcement; NSW's warning-level definitions; six SA SES
+  before/during/after storm and flood pages; and SA CFS property and animal-planning
+  sections.
+- Nine copyright statements, the original Australian source hub and a directory
+  covering all six states, ACT and NT: **44 searchable HTML records** altogether.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
   documents are installed. The health guide also points to the library's existing
@@ -112,6 +114,35 @@ branded service presentation or endorsement are supplied. Frozen text was compar
 with the selected source blocks. The copyright/source review does not certify
 every statement for a particular emergency or make this a live warning service.
 
+The 26 November additions retain the complete SA SES written introduction and
+phase-specific body for each before/during/after storm and flood page. All cautions
+within those bodies remain, including fallen powerlines, floodwater, and qualified
+inspection of damaged electrical equipment. The CFS property selection retains its
+introduction and complete house, garden and seasonal-preparation sections; new-build
+siting/design/landscaping sections are excluded. The animal selection retains its
+introduction, complete Small animals section and Larger animals Forward planning;
+the separate response/veterinary and horse-owner sections are excluded. It is
+preparation reading, not an animal-treatment protocol. SA contacts and requirements
+remain labelled as SA. Both household and rural guides expose all nine new readings.
+
+The exact current SES and CFS copyright statements explicitly grant CC BY 4.0 with
+exceptions for images, emblems, trademarks and third-party material. Both statements
+are retained offline, with their requested Government of South Australia attribution
+form on each selected page. CFS's current linked privacy, copyright and disclaimer
+pages were checked directly. The ACMA locating-device article and current copyright
+statement were also checked; its required Commonwealth attribution is retained.
+The complete written ACMA article distinguishes satellite distress beacons from
+short-range locating aids. It is not an activation manual or device recommendation;
+its linked 2026 class licences and AMSA pages are not included.
+
+`content/regions/au/COVERAGE-SOURCE-AUDIT-20261126.json` records the raw-response
+hashes, exact selectors and normalized selected-text hashes. The selected source
+wording was compared before and after technical HTML simplification. Source files
+are pinned separately by the main manifest. All logos, imagery, media, remote
+resources and active external links are excluded; referenced brochures, maps,
+translations and manufacturers' instructions are not silently bundled. Retrieval
+dates are not authoring or independent clinical-review dates.
+
 Reviewed but **not bundled**:
 
 - ANZCOR full guidelines: its copyright page limits public redistribution without
@@ -141,9 +172,9 @@ an instruction to accept a new live page automatically.
 | Area | Current contribution | Still needed |
 | --- | --- | --- |
 | Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence; NEMA AusAlert explanations and operational notice | Satellite phone/PLB operation, detailed device support and local radio frequency coverage |
-| Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation | Licensed detailed local guides for other jurisdictions; disability and translated materials |
-| Rural preparation | NSW rural bushfire, flood/isolation, animals; myGov remote-travel basics | Detailed remote driving, route-specific water/fuel calculations, pastoral and First Nations community-specific sources |
-| Fire, flood, cyclone and heat | Dated NSW/Qld texts; current-source national fire-danger/No Rating explanation and warning-level definitions | More detailed regional manuals outside NSW/Qld; hazard-specific and accessible/translated warnings materials |
+| Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation; SA property and animal-planning selections | Licensed detailed local guides for remaining jurisdictions; disability and translated materials |
+| Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov remote-travel basics; ACMA locating-device explanation | Detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
+| Fire, flood, cyclone and heat | Dated NSW/Qld texts; six SA SES before/during/after storm/flood readings; current-source national fire-danger/No Rating explanation and warning-level definitions | More detailed regional manuals for ACT/NT/Tas/WA/Vic; hazard-specific and accessible/translated warnings materials |
 | Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
 | Power, gas and repairs | Energy Safe Victoria generator-use section, with its complete cautions | Broader electrical and gas safety; equipment-specific instructions and local professional assessment |

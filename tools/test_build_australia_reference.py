@@ -27,6 +27,10 @@ class Reference(unittest.TestCase):
                 self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
                 for query, expected in [('"Triple Zero"', 'au-emergency-calls'),
                                         ('livestock', 'nsw-rural-flood'), ('chemicals', 'qld-water'),
+                                        ('"cyanuric acid"', 'nsw-rainwater-tanks'),
+                                        ('"radiological quality"', 'nsw-groundwater'),
+                                        ('"structural integrity"', 'nsw-tanks-after-flood'),
+                                        ('"Boiling will not make"', 'nsw-nonpotable-water'),
                                         ('"carbon monoxide"', 'vic-generator'),
                                         ('"fuel and rest stops"', 'au-remote-travel'),
                                         ('"No Rating"', 'au-fire-danger-ratings'),
@@ -65,6 +69,60 @@ class Reference(unittest.TestCase):
                               'AU-JBT', 'AU-CX', 'AU-CC', 'AU-NF', 'AU-HM', 'AU-AC', 'AU-CSI', 'AU-AAT'})
             self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
             self.assertEqual(cat['vic-generator']['license'], 'CC-BY-4.0')
+
+    def test_water_sources_keep_full_faq_answers_units_dated_contacts_and_treatment_limits(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'WATER-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        def body(uid):
+            return (au.SOURCES / entries[uid]['snapshot']).read_text(encoding='utf-8')
+        def plain(text):
+            parser = au.Page(); parser.feed(text); parser.close()
+            return re.sub(r'\s+', ' ', ''.join(parser.text)).strip()
+        rain = body('nsw-rainwater-tanks')
+        pairs = re.findall(r'<h3>(.*?)</h3>(.*?)(?=<h3>|<h2>Useful links|</body>)', rain, re.S)
+        self.assertEqual(len(pairs), 19)
+        # Full independently frozen source answers,not merely the question labels.
+        for (question, answer), expected in zip(pairs, audit['rainwater_faq']):
+            self.assertEqual([re.sub(r'\s+([.,;:!?])', r'\1', plain(x)) for x in (question, answer)],
+                             [re.sub(r'\s+([.,;:!?])', r'\1', x) for x in expected])
+        for exact in ['calcium hypochlorite, 65% available chlorine',
+                      'sodium hypochlorite, 12.5% available chlorine',
+                      '7 grams of calcium hypochlorite',
+                      '40 millilitres of sodium hypochlorite per 1000 litres',
+                      'minimum of two hours', 'at least 0.5 milligrams per litre',
+                      '30 minutes after the chlorine is added',
+                      'Do not pour water into chlorine; always add chlorine to water.',
+                      'at least 24 hours', '2 to 3 minutes', '10 seconds', '48 hours']:
+            self.assertIn(exact, plain(rain))
+        self.assertIn('Source variation retained.', rain)
+        self.assertIn('loss of consciousness', rain.lower())
+        bore = body('nsw-groundwater')
+        for exact in ['250 metres', '30 degrees Celsius', '25 degrees Celsius',
+                      'testing and appropriate treatment including disinfection',
+                      'microbiological, chemical and radiological', '2022-10-18',
+                      'Department of Industry (DoI) Water on 1800 353 104']:
+            self.assertIn(exact, plain(bore))
+        flood = plain(body('nsw-tanks-after-flood'))
+        for exact in ['licensed electrician', 'structural integrity',
+                      'before the surrounding ground has dried out',
+                      'qualified, professional tank cleaner',
+                      'refilled with clean safe water', 'Rinse, reassemble']:
+            self.assertIn(exact, flood)
+        nonpotable = plain(body('nsw-nonpotable-water'))
+        self.assertIn('Boiling will not make the supply safe.', nonpotable)
+        self.assertIn('chemical or radiological', nonpotable)
+        self.assertIn("'Do not use'", nonpotable)
+        for uid, date in [('nsw-rainwater-tanks', '2026-09-11'),
+                          ('nsw-groundwater', '2022-10-18'),
+                          ('nsw-tanks-after-flood', '2023-04-04'),
+                          ('nsw-nonpotable-water', '2026-04-21')]:
+            self.assertEqual(entries[uid]['source_updated'], date)
+            self.assertEqual(entries[uid]['license'], 'CC-BY-4.0')
+            self.assertIn('Source current as at ' + date, entries[uid]['edition'])
+        rights = plain(body('nsw-health-copyright'))
+        self.assertIn('All NSW Health material on this website is licensed', rights)
+        self.assertIn('any third party material unless expressly stated', rights)
+        self.assertIn('Request for Copyright Permission form', rights)
 
     def test_cfa_adaptation_preserves_tables_checklists_and_last_resort_conditions(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}

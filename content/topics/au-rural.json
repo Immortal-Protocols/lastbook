@@ -51,7 +51,13 @@
     "CFA",
     "leave early",
     "radiant heat",
-    "embers"
+    "embers",
+    "rainwater",
+    "groundwater",
+    "bore",
+    "tank",
+    "water testing",
+    "non-potable"
   ],
   "choices": [
     {
@@ -127,6 +133,33 @@
           "doc": "vic-cfa-during-fire",
           "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
           "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
+        }
+      ]
+    },
+    {
+      "id": "private-water",
+      "label": "Check a rainwater, bore or untreated water supply",
+      "hint": "NSW source guidance covers maintenance,testing,flood contamination and treatment limits. Local water quality needs separate assessment.",
+      "read": [
+        {
+          "doc": "nsw-rainwater-tanks",
+          "label": "NSW: managing rainwater tanks for safe drinking water",
+          "note": "NSW Health; source 2026-09-11. Complete guide and 19 FAQs; tap-flushing differences remain flagged. Read product strengths, conditions and treatment limits."
+        },
+        {
+          "doc": "nsw-groundwater",
+          "label": "NSW: groundwater risks, protection and testing",
+          "note": "NSW Health; source 2022-10-18. Groundwater risks,protection and testing. Older agency/contact labels remain dated."
+        },
+        {
+          "doc": "nsw-tanks-after-flood",
+          "label": "NSW: cleaning rainwater tanks after floods or storms",
+          "note": "NSW Health; source 2023-04-04. Contaminated tanks,electrical/structural risks,cleaning/refill and taps."
+        },
+        {
+          "doc": "nsw-nonpotable-water",
+          "label": "NSW: non-potable supplies and water-use advice",
+          "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
         }
       ]
     },
@@ -552,6 +585,26 @@
       "doc": "vic-cfa-during-fire",
       "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
       "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
+    },
+    {
+      "doc": "nsw-rainwater-tanks",
+      "label": "NSW: managing rainwater tanks for safe drinking water",
+      "note": "NSW Health; source 2026-09-11. Complete guide and 19 FAQs; tap-flushing differences remain flagged. Read product strengths, conditions and treatment limits."
+    },
+    {
+      "doc": "nsw-groundwater",
+      "label": "NSW: groundwater risks, protection and testing",
+      "note": "NSW Health; source 2022-10-18. Groundwater risks,protection and testing. Older agency/contact labels remain dated."
+    },
+    {
+      "doc": "nsw-tanks-after-flood",
+      "label": "NSW: cleaning rainwater tanks after floods or storms",
+      "note": "NSW Health; source 2023-04-04. Contaminated tanks,electrical/structural risks,cleaning/refill and taps."
+    },
+    {
+      "doc": "nsw-nonpotable-water",
+      "label": "NSW: non-potable supplies and water-use advice",
+      "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
     }
   ],
   "learn": [
@@ -734,6 +787,26 @@
       "doc": "vic-cfa-during-fire",
       "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
       "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
+    },
+    {
+      "doc": "nsw-rainwater-tanks",
+      "label": "NSW: managing rainwater tanks for safe drinking water",
+      "note": "NSW Health; source 2026-09-11. Complete guide and 19 FAQs; tap-flushing differences remain flagged. Read product strengths, conditions and treatment limits."
+    },
+    {
+      "doc": "nsw-groundwater",
+      "label": "NSW: groundwater risks, protection and testing",
+      "note": "NSW Health; source 2022-10-18. Groundwater risks,protection and testing. Older agency/contact labels remain dated."
+    },
+    {
+      "doc": "nsw-tanks-after-flood",
+      "label": "NSW: cleaning rainwater tanks after floods or storms",
+      "note": "NSW Health; source 2023-04-04. Contaminated tanks,electrical/structural risks,cleaning/refill and taps."
+    },
+    {
+      "doc": "nsw-nonpotable-water",
+      "label": "NSW: non-potable supplies and water-use advice",
+      "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
     }
   ],
   "related": [

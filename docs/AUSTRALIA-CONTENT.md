@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 47 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 51 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -18,11 +18,11 @@ and remaining work are recorded below so missing information is visible.
   sections; four Victorian energy/gas/LPG readings; two Safe Work Australia
   remote-work readings; Queensland road-trip preparation; disability-inclusive
   planning selections and complete mobility and low/no-vision written articles;
-  four text-only parts of CFA's currently linked Victorian survival guide.
-- Eleven copyright statements, an original accessible-calling navigation note,
+  four text-only parts of CFA's currently linked Victorian survival guide;complete NSW Health rainwater,groundwater,flooded-tank and non-potable written readings.
+- Twelve copyright statements, an original accessible-calling navigation note,
   the original Australian source hub and a directory
   covering all six states, three internal territories and seven external territories:
-  **61 searchable HTML records** altogether. Four remote entries provide management
+  **66 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -222,7 +222,7 @@ an instruction to accept a new live page automatically.
 | Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation; SA property and animal-planning selections | Licensed detailed local guides for remaining jurisdictions; disability and translated materials |
 | Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov basics; Qld trip/kit source; SWA remote-work risks; ACMA locating-device explanation | More detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
 | Fire, flood, cyclone and heat | Dated NSW/Qld texts;six SA SES storm/flood readings;national warning/rating explanations;CFA Version6 text-only risk/preparation/warning/fire/last-resort source parts | More detailed regional manuals for ACT/NT/Tas/WA;hazard-specific and accessible/translated warning material;current local plans/services |
-| Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
+| Food and water | Qld food-safety/drinking-water section; complete NSW rainwater maintenance, groundwater risks/testing, flooded tanks and non-potable advice | Actual site-specific testing/treatment and extended remote supply; more jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
 | Power, gas and repairs | ESV generator use, gas emergencies, flood electricity/solar/battery/gas, outdoor LPG cylinders and all nine LCC27 FAQ pairs | More jurisdiction-specific material; equipment-specific instructions, repairs and local professional assessment |
 | Geographic directory | Six states,ACT,NT,Jervis Bay and all seven external territories; four remote entries are management references | Detailed territory manuals,field communications and verified current service availability |
@@ -525,3 +525,45 @@ The earlier unexplained idle watchdog event remains unresolved.
 [61-record Victorian bushfire contributor review and checksums](https://github.com/pilkster/lastbook/releases/tag/australia-victorian-bushfire-review-2026-11-26)
 provides public HTML,audits and engine evidence only. No original CFA PDF,excluded
 imagery or personal-use first-aid material is distributed.
+
+
+## NSW private drinking-water source expansion
+
+Four complete written readings add rainwater maintenance/all19FAQ answers,
+groundwater protection/testing,flooded tanks,and non-potable supply advice. Their
+source dates are11September2026,18October2022,4April2023 and21April2026 respectively;
+older regional contact/agency labels remain dated. A fifth record preserves the
+complete NSW Health copyright body,including the explicit CC BY4.0 grant,excluded
+material,requested credit and formal-permission enquiry paragraph. Excluded logos,
+trademarks,third-party files,PDFs,standards and linked manuals are not redistributed.
+No enHealth/Queensland Health/Victorian Health grant is inferred from a NSW link.
+
+All selected written blocks compare exactly before/after HTML simplification.
+Accordion controls become19 visible question headings with full ordered answers.
+The rainwater source has different daily tap-flushing durations in its introduction
+and FAQ:2–3minutes versus10seconds,with at least2minutes after48hours without use.
+Both remain,with a visible source-variation note. Chlorine products,strengths,
+volumes,waiting times and precautions remain in their original contexts. No new
+calculation or merged treatment recipe is introduced. The non-potable reading
+retains chemical/radiological do-not-drink and toxic-algal do-not-use distinctions,
+including the explicit limit that boiling will not make those supplies safe.
+Groundwater's Naegleria/specialist advice,testing,250metre separation and dated
+contacts remain. Flood guidance keeps electrical,structural/entry/clean-safe-refill
+conditions and all tap-cleaning steps. Water quality remains site-specific.
+
+Both household and rural guides expose the same four water readings in choices,
+prepare and learn. The collection now has66public records:51official readings,
+12copyright statements and3original hub/directory/navigation records.
+`WATER-SOURCE-AUDIT-20261126.json` pins exact primary responses,selected block hashes,
+all19source question/answer pairs and exclusions. Linked2019fire-retardant and2020
+bushfire bodies are not bundled or silently combined with2026treatment instructions.
+This is source comparison,not independent clinical/water-safety validation,actual
+water testing or verification of current local contamination/service availability.
+
+AMSA main land/trip/copyright acquisition was retried26November and returned403;
+its separate beacon site's policy requires written permission. Those search snippets
+and restricted pages are not copied into an offline operating manual. Victorian
+Health's own current copyright policy prohibits adaptation without permission;
+Queensland Health has a separate BY-NDpolicy. Those grants are not inferred from
+other departments' general CCpolicies. Remote/beacon operation and more jurisdictions
+remain work for the full Australian objective.

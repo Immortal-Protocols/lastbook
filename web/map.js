@@ -388,6 +388,8 @@ const MapView = (() => {
     if (!photo) {
       poly(L.ocean, C.ocean); poly(L.island, C.land);
       poly(L.land, cls => C[cls] || C.res); poly(L.beach, C.beach); poly(L.wet, C.wet); poly(L.water, C.water);
+      // A protected area may include ocean; show its boundary without a land fill.
+      g.setLineDash([3 * R, 3 * R]); poly(L.protected, 'rgba(0,0,0,0)', '#73935f'); g.setLineDash([]);
       if (L.waterway) for (const [cls, , parts] of L.waterway) { g.strokeStyle = C.waterway; g.lineWidth = (cls === 'river' ? (z < 9 ? 1.6 : 3) : z < 12 ? 0.7 : 1.2) * R; for (const p of parts) { line(p); g.stroke() } }
       if (z >= 15) poly(L.bldg, C.bldg, C.bldgLine);
     }

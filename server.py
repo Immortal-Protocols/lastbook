@@ -940,7 +940,7 @@ def _map_tile(z, x, y, version):
         if layer == 'bldg' and z < 15:
             continue
         parts = unpack(geom)
-        polygon = layer in ('water', 'wet', 'land', 'beach', 'bldg', 'ocean', 'island')
+        polygon = layer in ('water', 'wet', 'land', 'beach', 'bldg', 'ocean', 'island', 'protected')
         geo = []
         for p in parts:
             pts = [proj(lo, la) for lo, la in p]

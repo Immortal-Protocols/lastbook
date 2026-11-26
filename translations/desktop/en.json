@@ -477,6 +477,7 @@
   "map.layer.pond": "Unnamed ponds (1+ acre, year-round)",
   "map.layer.dam": "Dams (with storage & purpose)",
   "map.layer.spring": "Springs (untested water)",
+  "map.layer.pump": "Hand pumps & water wells (untested water)",
   "map.layer.food": "Supermarkets & food shops",
   "map.layer.hardware": "Hardware stores",
   "map.layer.fuel": "Fuel stations",

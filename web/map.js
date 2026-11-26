@@ -93,9 +93,6 @@ const MapView = (() => {
     const direction = globalThis.LastbookI18n?.direction?.(locale);
     return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result?.text ?? tr(key, params, fallback) ?? '')}</span>`;
   };
-  const markName = mark => mark?.nameKey ? tr(mark.nameKey, mark.nameParams || null, mark.nameFallback || '') : (mark?.name || '');
-  const markNameHtml = mark => mark?.nameKey ? tHtml(mark.nameKey, mark.nameParams || null, mark.nameFallback || '') : escH(mark?.name || '');
-  const markKindHtml = mark => mark?.kindKey ? tHtml(mark.kindKey, mark.kindParams || null, mark.kindFallback || '') : mark?.kind ? escH(mark.kind) : tHtml('map.place', null, 'Place');
   const $ = id => document.getElementById(id);
   const message = (key, params, fallback) => {
     const result = globalThis.LastbookI18n?.resolve?.(key, params);

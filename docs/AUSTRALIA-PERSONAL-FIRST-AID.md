@@ -60,6 +60,72 @@ review. Do not treat the existence of this fetch tool as permission to redistrib
 its output or as approval from ANZCOR or the Lastbook maintainers.
 
 
+## Add the originals to a full library
+
+`tools/compose_au_personal_first_aid.py` adds the six pinned originals and their
+source directory to a **new complete copy** of a closed Lastbook library. It also
+works when the base already contains the public Australian supplement. It preserves
+existing records, search row ids, unrelated index tables, maps, models, notes,
+summary diagnostics and any existing personal-use marker. It does not replace
+similarly named records or update an earlier personal composition.
+
+Use the build Python with `pypdfium2` from the platform requirements. Close the app
+and other SQLite users of the base. With your already obtained originals named
+`<catalog-id>.pdf`, the complete operation stays offline:
+
+```sh
+python3 -B tools/compose_au_personal_first_aid.py \
+  --base "/path/to/full/LastbookData" \
+  --pdf-cache "/path/to/my/originals" \
+  --output "/path/to/new/PersonalLastbookData"
+
+python3 -B tools/compose_au_personal_first_aid.py \
+  --verify "/path/to/new/PersonalLastbookData"
+
+python3 -B app/main.py --data "/path/to/new/PersonalLastbookData"
+```
+
+To request the exact pinned official originals, replace `--pdf-cache` and its
+argument with the explicit `--download` flag. Neither source mode is implicit.
+Changed downloads are refused. Source snapshot dates stay with the pinned
+selection; downloading again is not a new clinical review or guideline update.
+No source procedure or original PDF is rewritten.
+
+If you also need the public readings, first use the
+[public composition command](AUSTRALIA-COMPOSE.md), then pass that new full copy as
+`--base` here. A 314-record base becomes 438 after the public addition, then 445
+after the six originals and their directory. The personal step adds 42 searchable
+units: 41 physical PDF pages and one directory entry. This is an explicit personal
+workflow; the public builder and public downloads still exclude these originals.
+
+Choose an output outside the base. Existing outputs, source ids/paths, unsafe tree
+entries and active SQLite journals are refused. A failed build removes its own
+staging directory; exclusive publication protects a concurrently created output.
+APFS clones are used where available; other filesystems require space for a full
+copy. Keep the original as the rollback. The tool changes no installed profile,
+app setting, runtime downloader or production Setup policy.
+
+The output uses the local identity `local-australia-personal-first-aid`.
+**Setup Check/Repair are unavailable for this local composition.** Use its matching
+`--verify` command with the app closed, or recreate it from the retained original.
+The full manifest records a creation snapshot; subsequent user edits or new files
+are reported as differences. Verification checks local integrity, personal flags,
+original PDF hashes and physical page numbers; it is not publisher authentication.
+
+The whole output is **PERSONAL USE ONLY**, including its extracted text and index.
+`PERSONAL-USE-ONLY.json` is added if absent, or preserved byte-for-byte if the base
+already has one. The new `AUSTRALIA-PERSONAL-FIRST-AID-SOURCES.json` retains the
+ANZCOR notice and six source records in either case. The new composition receipt
+records source restrictions, counts and base hashes; personal checksums cover the
+added files, and `pack-manifest.tsv` covers the complete private copy.
+
+Existing public Australian manifests and receipts remain unchanged as provenance
+of the base snapshot. They do not claim to describe the new private total. The
+public verifier directs this output to the personal verifier. Public pack selection
+continues to reject the original PDFs and directory even when a guide cites them.
+Do not upload or redistribute the composed library, PDFs, extracted text or index.
+Public redistribution still requires the rights holder's permission.
+
 ## Ordinary first-aid choices — 27 November 2026
 
 The injury/illness guide now links installed originals from its breathing,

@@ -60,6 +60,16 @@ Household and rural guides have equal coverage. Source cards retain jurisdiction
 dates, licences and limits. The tool adds no personal first-aid PDFs: cards for
 separately installed originals appear only if those records are present.
 
+## Optional personal originals
+
+After building the public full-library copy, the separate
+[personal composition command](AUSTRALIA-PERSONAL-FIRST-AID.md#add-the-originals-to-a-full-library)
+can add your pinned personal-use originals to another new full copy. It preserves
+these public sources and their receipts, merges all physical PDF pages into search
+and marks the complete result as personal-use-only. It requires an explicit offline
+cache or download choice; the public command and public assets do not include PDFs.
+Use the personal command's verifier for that later private snapshot.
+
 ## Integrity, Setup and privacy
 
 The output's `pack.json` identifies it as `local-australia-reference`, records its

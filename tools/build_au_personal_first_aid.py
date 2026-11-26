@@ -51,7 +51,8 @@ def source_bytes(record, cache):
         raise ValueError('Expected a bounded personal-use source')
     allowed_url(record['pdf_url'])
     if cache is not None:
-        data = (Path(cache) / (record['id'] + '.pdf')).read_bytes()
+        with (Path(cache) / (record['id'] + '.pdf')).open('rb') as source:
+            data = source.read(MAX_PDF + 1)
     else:
         request = urllib.request.Request(record['pdf_url'], headers={'User-Agent': 'Lastbook-personal-reference-builder/1.0'})
         with urllib.request.build_opener(Redirect()).open(request, timeout=60) as response:

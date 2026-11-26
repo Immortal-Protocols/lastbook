@@ -144,7 +144,8 @@ def read_only(path):
     return sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)
 
 
-def merge_index(base, supplement, dest, ids):
+def merge_index(base, supplement, dest, ids, expected_units=None):
+    expected_units = len(ids) if expected_units is None else expected_units
     with closing(read_only(base)) as src, closing(sqlite3.connect(dest)) as db:
         src.backup(db)
         # The finished offline snapshot must not depend on WAL/SHM sidecars.
@@ -159,13 +160,16 @@ def merge_index(base, supplement, dest, ids):
             raise ValueError('Australian ids already exist in the base search index; no files replaced')
         before = db.execute('SELECT count(*) FROM pages').fetchone()[0]
         with closing(read_only(supplement)) as additions:
-            db.executemany('INSERT INTO pages VALUES(?,?,?,?,?,?,?)', additions.execute('SELECT ' + ','.join(COLUMNS) + ' FROM pages'))
+            rows = additions.execute('SELECT ' + ','.join(COLUMNS) + ' FROM pages').fetchall()
+            if len(rows) != expected_units or {row[0] for row in rows} != ids:
+                raise ValueError('Unexpected Australian search rows or document ids')
+            db.executemany('INSERT INTO pages VALUES(?,?,?,?,?,?,?)', rows)
         db.commit()
         db.execute("INSERT INTO pages(pages) VALUES('integrity-check')")
         if db.execute('PRAGMA integrity_check').fetchone() != ('ok',):
             raise ValueError('Combined search index integrity check failed')
         after = db.execute('SELECT count(*) FROM pages').fetchone()[0]
-        if after != before + len(ids):
+        if after != before + expected_units:
             raise ValueError('Unexpected number of Australian search rows')
     return before, after
 
@@ -175,9 +179,11 @@ def checksums(root, paths):
         f'{rel}\t{(root / rel).stat().st_size}\t{sha256(root / rel)}\n' for rel in sorted(paths))
 
 
-def verify(root):
+def verify(root, *, receipt_name='AUSTRALIA-COMPOSITION.json', local_name=LOCAL_NAME):
     """Read-only integrity check for the complete local composition, not publisher authentication."""
     root = Path(root).resolve()
+    if receipt_name == 'AUSTRALIA-COMPOSITION.json' and (root / 'AUSTRALIA-PERSONAL-FIRST-AID-COMPOSITION.json').is_file():
+        raise ValueError('Use tools/compose_au_personal_first_aid.py --verify for this personal first-aid composition')
     tree = inventory(root)
     lines = (root / 'pack-manifest.tsv').read_text(encoding='utf-8').splitlines()
     if not lines or lines[0] != 'path\tbytes\tsha256':
@@ -197,10 +203,10 @@ def verify(root):
     files = {rel for rel, value in tree.items() if stat.S_ISREG(value[2])}
     if seen != files - {'pack-manifest.tsv'}:
         raise ValueError('Composed manifest does not list every file')
-    receipt = json.loads((root / 'AUSTRALIA-COMPOSITION.json').read_text(encoding='utf-8'))
+    receipt = json.loads((root / relative(receipt_name)).read_text(encoding='utf-8'))
     pack = json.loads((root / 'pack.json').read_text(encoding='utf-8'))
     records = read_records(root)
-    if pack.get('name') != LOCAL_NAME or len(records) != receipt['records']:
+    if pack.get('name') != local_name or len(records) != receipt['records']:
         raise ValueError('Composition identity or catalog count differs')
     with closing(read_only(root / 'library-data/search.sqlite')) as db:
         if db.execute('PRAGMA integrity_check').fetchone() != ('ok',):

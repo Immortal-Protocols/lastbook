@@ -35,7 +35,7 @@ try:from engine import safe_paths
 except ImportError:  # run as a script (python3 engine/library.py): the engine folder is on the path, not the project
  sys.path.insert(0,str(Path(__file__).resolve().parents[1]));from engine import safe_paths
 from engine.safe_paths import RESERVED_NAMES,real_path,parts_below,name_refused,segments_ok  # noqa: E402  (also used as library.segments_ok)
-from engine.search_text import has_han, han_search_rows
+from engine.search_text import has_han, han_search_rows, needs_text_search, text_search_rows, query_terms
 
 def load_remote_storage():
  """Videos this Mac has moved to other machines. That code stays in the library's own tools and is never packaged."""

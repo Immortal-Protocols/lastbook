@@ -67,6 +67,22 @@ the full Australian objective. The government overview alone does not close thos
 gaps. This increment changes content and bundled guide assets, not production
 Setup, downloader, network policy or dependencies.
 
+Final validation for this increment: **868 content / 1,016 combined checks
+pass**, each five skips and eleven upstream expected failures. A subsequent
+one-space HTML layout cleanup leaves normalized source text unchanged; all
+**72 focused source/composition checks pass on Python 3.14 and 3.11.18** for
+the final bytes. Actual public125/private446 engine checks pass, including all
+125 public reader hashes, search snippets, scoped retrieval, libq and all638
+private Australian guide references. Native Mac checks open both new choices,
+the dated reading in Page/Text, correct Ask/Back context and the local rights
+notice. All132 AU hashes,42 personal search units,12,792 original non-public
+rows and Victoria map hashes are retained. The installed review remains private.
+The current real personal workflow also verifies439→446records, preserving all
+1,509retained files and12,875base search rows while adding42units. All1,532
+completed manifest files verify;public receipts remain unchanged. That separate
+private copy is not installed or published and has no native-window claim.
+[Exact validation scope](AUSTRALIA-COMMUNITY-PLANNING-REVIEW-20261127.json).
+
 ## Bat-exposure factsheet and unchanged-source terms — 27 November 2026
 
 The public collection now has **124 records:99 official practical,16 rights and

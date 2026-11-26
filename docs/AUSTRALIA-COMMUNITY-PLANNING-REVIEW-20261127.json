@@ -1,0 +1,81 @@
+{
+  "checked": "2026-11-27",
+  "public_records": 125,
+  "official_practical": 100,
+  "rights_readings": 16,
+  "original_records": 9,
+  "new_source": "nsw-aboriginal-planning",
+  "source_current_as_at": "2025-10-28",
+  "source_wording": "complete written overview unchanged;technical HTML simplification;one trailing layout space removed",
+  "guide_references_added": 8,
+  "household_rural_access": "identical choice/prepare/learn;health prepare/learn",
+  "full_checks": {
+    "content": 868,
+    "combined": 1016,
+    "skips_each": 5,
+    "upstream_expected_failures_each": 11
+  },
+  "full_scope": "Full suites passed before the final whitespace-only source HTML cleanup;runtime/guides/source wording unchanged by cleanup.",
+  "final_focused": {
+    "development_python": "3.14",
+    "app_python": "3.11.18",
+    "checks_each": 72
+  },
+  "engine": "All125reader hashes,search/snippets,scoped retrieval,libq and new8refs pass with sockets forbidden",
+  "native": {
+    "checked": "2026-11-27",
+    "status": "passed",
+    "new_readers_opened": 1,
+    "household_rural_choices": 2,
+    "source": "nsw-aboriginal-planning",
+    "source_date": "2025-10-28",
+    "page_rendered": true,
+    "text_only_opened": true,
+    "body": "Five considerations and four strategies visually inspected; full source/resource lists present in native AX tree",
+    "source_scope_and_linked_resource_exclusion_visible": true,
+    "source_details": "NSW Ministry of Health;2025edition;2026saved date",
+    "ask_context": "correct source and page1; no question submitted",
+    "local_rights_link": "outer title/source/Ask updated to nsw-health-copyright; Back returned to new reading",
+    "left_open": "New NSW planning reading from rural choice",
+    "audio_used": false,
+    "clinical_or_community_endorsement_claim": false
+  },
+  "installed_private": {
+    "records": 446,
+    "public": 125,
+    "personal": 7,
+    "AU_hashes": 132,
+    "personal_search_units": 42,
+    "original_nonpublic_search_rows_preserved": 12792,
+    "AU_guide_references": 638,
+    "victoria": "per-file hashes and3054names preserved",
+    "profile": "PERSONAL USE ONLY;not published"
+  },
+  "not_claimed": "Community endorsement,local community plans,clinical review,linked manuals/toolkits,current service status,official Setup availability or complete Australian coverage",
+  "real_personal_composition": {
+    "base_records": 439,
+    "records": 446,
+    "original_pdfs": 6,
+    "original_pdf_pages": 41,
+    "added_search_units": 42,
+    "base_search_units": 12875,
+    "search_units": 12917,
+    "all_base_inventory_and_hashes_unchanged": true,
+    "retained_files": 1509,
+    "retained_file_bytes": 9289475282,
+    "base_public_receipts_unchanged": true,
+    "original_pdf_hashes": 6,
+    "personal_flags": 7,
+    "verified_files": 1532,
+    "engine_search_personal_pdfs": 6,
+    "guide_reference_counts": {
+      "au-health": 18,
+      "au-household": 297,
+      "au-personal-first-aid": 21,
+      "au-rural": 302
+    },
+    "network_attempts": 0,
+    "installed_profile_hashes_unchanged": true,
+    "native_window_claim": false
+  }
+}

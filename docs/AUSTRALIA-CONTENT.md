@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 55 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 59 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -23,7 +23,8 @@ and remaining work are recorded below so missing information is visible.
   the original Australian source hub and a directory
   covering all six states, three internal territories and seven external territories:
   plus three original journey, isolation and beacon planning aids:
-  **74 searchable HTML records** altogether. Four remote entries provide management
+  plus four published-language poster texts in Yumplatok and Wik-Mungkan:
+  **78 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -744,3 +745,48 @@ HTTP-browser navigation limits remain.
 [74-record practical planning contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-practical-planning-review-2026-11-26)
 contains public HTML,audits and engine evidence only. Personal-use material and
 original agency PDFs are excluded. Previous release assets remain unchanged.
+
+
+## Published-language poster text — 26 November 2026
+
+Four short Queensland Government posters add **Yumplatok (Torres Strait Creole)**
+and **Wik-Mungkan** source text for bushfire/heatwave and cyclone/flood preparation.
+Each language receives a two-reading choice in both household and rural guides,
+with all four readings also in prepare/learn. The public collection now contains
+**78 HTML records: 59 official practical readings, 13 copyright statements and
+6 original records**.
+
+All four original one-page PDFs were rendered and inspected. Complete practical
+wording, five bullets per poster, order, punctuation and the source contact footer
+compare exactly with normalized PDF extraction. Wrapped lines are joined; no new
+translation, spelling correction or cross-language rewriting was performed. The
+Wik cyclone bullet's “aak” and bushfire “ak”, and Yumplatok “Meke”/“Mek” source
+variation remain. Source body language tags are tcs/wim; English metadata/context
+remain separate. This does not establish fluent-speaker, cultural or accessibility
+validation. These are short text-only preparedness posters, not full response
+manuals or independently validated Easy Read editions.
+
+The exact official listing's metadata is updated13October2026; its printed review
+date is4January2024. Each PDF's metadata records creation19March2024 and
+modification20March2024. These dates are retained separately from November2026
+retrieval; none is a new advice or translation review date. The printed Queensland
+Community Recovery contact1800173349 remains separate from emergency000. Printed
+website/social references are inert source text; no call, registration, warning
+or service availability is established by the app.
+
+The current qld.gov.au copyright policy explicitly covers material on or through
+that site unless otherwise noted, under CC BY4.0 with State of Queensland credit.
+All four files identify Queensland Government in PDF metadata, are directly
+linked under the named-language headings and show no separate text licence or
+third-party text credit. Artwork, culturally specific design, pictograms, logos,
+Coat of Arms, trademarks and original PDFs are excluded. The complete source text,
+raw response hashes, metadata and exclusions are recorded in
+LANGUAGE-POSTERS-SOURCE-AUDIT-20261126.json. No licence is inferred for the separate
+getready.gov.au national resource site from its branding or NEMA announcement;
+that resource guide and its manual bodies remain to be reviewed.
+
+This starts published-language coverage; it does not cover every First Nations
+community/language or supply locally agreed plans. More detailed translated
+manuals, fluent-speaker/community review, accessible formats and offline audio
+remain incomplete. Earlier source rights, personal-use distribution boundaries,
+map assets and remaining remote/clinical gaps are unchanged.

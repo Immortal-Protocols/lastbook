@@ -16,6 +16,45 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_published_language_posters_keep_complete_wording_language_and_metadata(self):
+        manifest, checked = au.checked_sources()
+        entries = {r['id']: r for r in manifest['sources']}
+        audit = json.loads((au.SOURCES / 'LANGUAGE-POSTERS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        self.assertEqual(audit['total_posters'], 4)
+        self.assertEqual(audit['total_practical_bullets'], 20)
+        for selection in audit['selections']:
+            uid = selection['id']
+            entry = entries[uid]
+            html = (au.SOURCES / entry['snapshot']).read_text(encoding='utf-8')
+            quoted = html.split('<hr>', 1)[1].split('</blockquote>', 1)[0] + '</blockquote>'
+            page = au.Page(); page.feed(quoted); page.close()
+            text = re.sub(r'\s+', ' ', ''.join(page.text)).strip()
+            self.assertEqual(text, selection['complete_source_text'])
+            self.assertEqual(au.digest(text.encode('utf-8')), selection['source_normalized_text_sha256'])
+            self.assertIn('<blockquote lang="' + selection['language'] + '">', quoted)
+            self.assertEqual(entry['language'], selection['language'])
+            self.assertEqual(entry['year'], 2024)
+            self.assertEqual(entry['source_updated'][:10], '2024-03-20')
+            self.assertEqual(entry['license'], 'CC-BY-4.0')
+            self.assertEqual(quoted.count('<li>'), 5)
+            self.assertNotIn('href=', quoted)
+            self.assertIn('1800 173 349', quoted)
+            self.assertIn('not newly translated or corrected', html)
+        by_id = {r['id']: r for r in audit['selections']}
+        # Preserve actual source differences rather than smoothing the translations.
+        self.assertIn('warning ak', by_id['qld-wik-mungkan-bushfires-poster']['complete_source_text'])
+        self.assertIn('warning aak', by_id['qld-wik-mungkan-cyclones-poster']['complete_source_text'])
+        self.assertIn('Mek sur', by_id['qld-yumplatok-bushfires-poster']['complete_source_text'])
+        self.assertIn('Meke sur', by_id['qld-yumplatok-cyclones-poster']['complete_source_text'])
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            for cid, language in [('yumplatok-posters', 'tcs'), ('wik-mungkan-posters', 'wim')]:
+                choice = next(c for c in guide['choices'] if c['id'] == cid)
+                self.assertEqual({r['doc'] for r in choice['read']},
+                                 {r['id'] for r in audit['selections'] if r['language'] == language})
+            for key in ['prepare', 'learn']:
+                self.assertTrue(set(by_id) <= {r.get('doc') for r in guide[key]})
+
     def test_original_planning_aids_keep_decision_limits_and_distress_cancellation_separate(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         def body(uid):
@@ -73,6 +112,10 @@ class Reference(unittest.TestCase):
                                         ('"chosen consumption"', 'au-remote-trip-plan'),
                                         ('"Verified backup"', 'au-isolation-plan'),
                                         ('"Accidental activation"', 'au-beacon-preparation'),
+                                        ('"buspaya"', 'qld-yumplatok-bushfires-poster'),
+                                        ('"cyclone or flood"', 'qld-yumplatok-cyclones-poster'),
+                                        ('"ngantam"', 'qld-wik-mungkan-bushfires-poster'),
+                                        ('"kaap"', 'qld-wik-mungkan-cyclones-poster'),
                                         ('"radiological quality"', 'nsw-groundwater'),
                                         ('"structural integrity"', 'nsw-tanks-after-flood'),
                                         ('"Boiling will not make"', 'nsw-nonpotable-water'),

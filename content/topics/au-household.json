@@ -67,7 +67,11 @@
     "beacon registration",
     "PLB",
     "dependency",
-    "backup duration"
+    "backup duration",
+    "Yumplatok",
+    "Torres Strait Creole",
+    "Wik-Mungkan",
+    "published-language posters"
   ],
   "choices": [
     {
@@ -89,6 +93,40 @@
           "doc": "au-beacon-preparation",
           "label": "Land-trip beacon preparation: registration, testing and distress plan",
           "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+        }
+      ]
+    },
+    {
+      "id": "yumplatok-posters",
+      "label": "Read published Yumplatok preparation posters",
+      "hint": "Queensland poster text for bushfire/heatwave and cyclone/flood preparation. Published words retained; artwork excluded.",
+      "read": [
+        {
+          "doc": "qld-yumplatok-bushfires-poster",
+          "label": "Yumplatok: preparing for bushfires and heatwaves",
+          "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        },
+        {
+          "doc": "qld-yumplatok-cyclones-poster",
+          "label": "Yumplatok: preparing for cyclones and floods",
+          "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        }
+      ]
+    },
+    {
+      "id": "wik-mungkan-posters",
+      "label": "Read published Wik-Mungkan preparation posters",
+      "hint": "Queensland poster text for bushfire/heatwave and cyclone/flood preparation. Published words retained; artwork excluded.",
+      "read": [
+        {
+          "doc": "qld-wik-mungkan-bushfires-poster",
+          "label": "Wik-Mungkan: preparing for bushfires and heatwaves",
+          "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        },
+        {
+          "doc": "qld-wik-mungkan-cyclones-poster",
+          "label": "Wik-Mungkan: preparing for cyclones and floods",
+          "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
         }
       ]
     },
@@ -679,6 +717,26 @@
       "doc": "au-beacon-preparation",
       "label": "Land-trip beacon preparation: registration, testing and distress plan",
       "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+    },
+    {
+      "doc": "qld-yumplatok-bushfires-poster",
+      "label": "Yumplatok: preparing for bushfires and heatwaves",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-yumplatok-cyclones-poster",
+      "label": "Yumplatok: preparing for cyclones and floods",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-bushfires-poster",
+      "label": "Wik-Mungkan: preparing for bushfires and heatwaves",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-cyclones-poster",
+      "label": "Wik-Mungkan: preparing for cyclones and floods",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
     }
   ],
   "learn": [
@@ -911,6 +969,26 @@
       "doc": "au-beacon-preparation",
       "label": "Land-trip beacon preparation: registration, testing and distress plan",
       "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+    },
+    {
+      "doc": "qld-yumplatok-bushfires-poster",
+      "label": "Yumplatok: preparing for bushfires and heatwaves",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-yumplatok-cyclones-poster",
+      "label": "Yumplatok: preparing for cyclones and floods",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-bushfires-poster",
+      "label": "Wik-Mungkan: preparing for bushfires and heatwaves",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-cyclones-poster",
+      "label": "Wik-Mungkan: preparing for cyclones and floods",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
     }
   ],
   "related": [

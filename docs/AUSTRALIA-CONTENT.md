@@ -641,3 +641,30 @@ animals,medical/medication/leave-early/stay-leave/floodwater/powerline and recov
 conditions remain. Linked detailed manuals/maps are excluded,so this does not
 establish complete ACT operating-manual coverage. Public collection71records:
 55official practical readings,13copyright statements,3original navigation records.
+
+
+Final ACT verification passed **807 required contribution/build tests**,including
+both Australian builders and personal-distribution guards,five skips/eleven
+upstream expected failures. The full combined source command passed **879 tests**,
+with the same skips/expected failures,including regional sources,state maps,map
+conversion,regional place lifecycle and GeoPackage place construction. Ten focused
+source tests passed. Actual public71/private392 engine checks and71 reader hashes
+pass with socket creation forbidden. Public household/rural275 references resolve;
+all four installed private Australian guides resolve309 references,zero errors.
+Seven personal-use records/42FTS units and Victoria's3,054names/per-file hashes remain.
+
+The matching self-contained Mac build passes i18n,package/privacy scan,strict
+signature and actual installed392/7 outbound-IP-denial self-check. Existing pinned
+roots/setup inputs remain unchanged;no newTLS rerun claim. Selected installed Mac
+review opens both four-reading choices and all five ACT records. All36 expanded
+section headings and before/during/after phases appear;selected screenshots check
+bushfire escalation/leave-early/powerline text,heatwave contact/emergency000
+separation,distinct July/November metadata and rural cards. Linked readers update
+outer title/source/Ask;Back heatwave→storm passes. This is selected native review,
+not all71 readers,actual calls/road-shelter-service availability or independent
+clinical/fire/engineering/accessibility review. Windows/Linux-native behaviour,
+HTTP-browser navigation and the earlier idle-watchdog issue retain their limits.
+
+[71-record ACT hazard contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-act-hazards-review-2026-11-26)
+contains public HTML,audits and engine evidence only. Personal-use material and
+original PDFs remain excluded;earlier release assets remain unchanged.

@@ -22,6 +22,11 @@ class Personal(unittest.TestCase):
     def test_ordinary_first_aid_links_preserve_sources_and_existing_choice_fields(self):
         audit = json.loads((b.ROOT / 'docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json').read_text())
         guide = json.loads((b.ROOT / 'content/topics/hurt.json').read_text())
+        # The later ordinary-route extension has its own exact preservation audit.
+        extension = json.loads((b.ROOT / 'docs/AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json').read_text())
+        later = {p['reference']['doc'] for p in extension['placements']}
+        for choice in guide['choices']:
+            choice['read'] = [r for r in choice['read'] if r.get('doc') not in later]
         # Later public bat guidance has its own pre-change baseline and availability tests.
         for c in guide['choices']:
             c['read'] = [r for r in c.get('read', []) if r.get('doc') != 'nsw-bat-lyssavirus']
@@ -78,6 +83,87 @@ class Personal(unittest.TestCase):
             for ref in refs:
                 self.assertEqual(ref['src']['id'], ref['doc'])
                 self.assertEqual(ref['src']['path'], available[ref['doc']]['path'])
+
+    def test_expanded_ordinary_routes_preserve_all_existing_fields_and_match_source_scopes(self):
+        import copy
+        audit=json.loads((b.ROOT/'docs/AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json').read_text())
+        guide=json.loads((b.ROOT/'content/topics/hurt.json').read_text())
+        records={r['id']:r for r in b.source_records('bls-first-aid')}
+        self.assertEqual(audit['counts'],dict(choices=10,new_personal_links=21,unique_originals=21,original_choices=17))
+        added={p['reference']['doc'] for p in audit['placements']}
+        original=copy.deepcopy(guide)
+        for choice in original['choices']:
+            choice['read']=[r for r in choice['read'] if r.get('doc') not in added]
+        self.assertEqual(b.digest(json.dumps(original,sort_keys=True).encode()),audit['baseline_guide_sha256'])
+        expected={'check':{'2'},'bleeding':{'9.1.1'},'burn':{'9.1.3'},
+                  'breathing':{'3','4','5','6','7','9.3.2'},'shock':{'9.2.3'},
+                  'head':{'9.1.4','9.1.6'},'heatcold':{'9.3.4','9.3.3'},
+                  'sting':{'9.4.3'},'poison':{'9.5.1','9.5.2'},
+                  'sudden':{'9.2.1','9.2.2','9.2.4','9.2.9'}}
+        for cid,numbers in expected.items():
+            placements=[p for p in audit['placements'] if p['choice']==cid]
+            self.assertEqual({p['number'] for p in placements},numbers)
+            actual=next(c for c in guide['choices'] if c['id']==cid)
+            self.assertEqual([r for r in actual['read'] if r.get('doc') in added],
+                             [p['reference'] for p in placements])
+            for p in placements:
+                ref=p['reference'];record=records[ref['doc']]
+                self.assertEqual(p['source_sha256'],record['sha256'])
+                self.assertEqual(ref['page'],1)
+                self.assertLessEqual(ref['page'],record['pages'])
+                self.assertTrue(ref['label'].startswith('Australia/New Zealand: '))
+                self.assertIn('personal use only',ref['note'])
+        self.assertFalse(any(p['choice'] in {'bone','closing'} for p in audit['placements']))
+        airway=next(p['reference'] for p in audit['placements'] if p['number']=='4')
+        self.assertIn('differ from the overseas Hesperian reading',airway['note'])
+        opioid=next(p['reference'] for p in audit['placements'] if p['number']=='9.5.2')
+        self.assertIn('Opioid-specific',opioid['note'])
+        self.assertIn('trained naloxone users',opioid['note'])
+
+    def test_expanded_ordinary_routes_follow_cached_catalogue_files_and_keep_fallbacks(self):
+        import copy
+        import server
+        from tools.validate_topics import items
+        audit=json.loads((b.ROOT/'docs/AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json').read_text())
+        guide=json.loads((b.ROOT/'content/topics/hurt.json').read_text())
+        new_ids={p['reference']['doc'] for p in audit['placements']}
+        public=module('ordinary_source_public',HERE/'build_australia_reference.py').checked_sources()[0]['sources']
+        all_sources={r['id']:r for r in public+b.source_records('bls-first-aid')}
+        fallback={r['doc']:dict(id=r['doc'],title='Existing source',kind='html',path='pages/baseline.html')
+                  for _,r in items(guide) if r.get('doc') and r['doc'] not in all_sources}
+        original=copy.deepcopy(guide)
+        for choice in original['choices']:
+            choice['read']=[r for r in choice['read'] if r.get('doc') not in new_ids]
+        cases=[('base',[],0),('public',public,0),('basic',public+b.source_records(),0),
+               ('full',public+b.source_records('bls-first-aid'),21),
+               ('single',public+[all_sources['personal-au-guideline-4']],1)]
+        for name,sources,count in cases:
+            records={**fallback,**{r['id']:r for r in sources}}
+            with self.subTest(selection=name),tempfile.TemporaryDirectory() as d, \
+                 patch.object(server,'LIB',Path(d)),patch.object(server,'APP',b.ROOT), \
+                 patch.object(server,'topics',return_value=[guide]),patch.object(server,'_cat',{'mtime':None}), \
+                 patch.object(server,'zim_names',return_value=[]), \
+                 patch.object(socket,'socket',side_effect=AssertionError('network')):
+                lib=Path(d)
+                for record in records.values():
+                    path=lib/record['path'];path.parent.mkdir(parents=True,exist_ok=True);path.write_text('Source fixture')
+                catalogue=lib/'catalog.json';catalogue.write_text(json.dumps(list(records.values())))
+                def resolve():return server.topics_resolved()[0]
+                resolved=resolve()
+                self.assertEqual(len([r for _,r in items(resolved) if r.get('doc') in new_ids]),count)
+                for choice in resolved['choices']:
+                    choice['read']=[r for r in choice['read'] if r.get('doc') not in new_ids]
+                with patch.object(server,'topics',return_value=[original]):baseline=resolve()
+                self.assertEqual(resolved,baseline)
+                if name=='full':
+                    before=resolve();saved=catalogue.read_bytes(),catalogue.stat().st_mtime_ns
+                    path=lib/all_sources['personal-au-guideline-4']['path'];held=lib/'held-source.pdf'
+                    path.rename(held)
+                    missing=resolve()
+                    self.assertEqual(len([r for _,r in items(missing) if r.get('doc') in new_ids]),20)
+                    self.assertFalse(any(r.get('doc')=='personal-au-guideline-4' for _,r in items(missing)))
+                    held.rename(path);self.assertEqual(resolve(),before)
+                    self.assertEqual((catalogue.read_bytes(),catalogue.stat().st_mtime_ns),saved)
 
     def test_expanded_metadata_covers_both_indexes_and_preserves_the_default(self):
         audit = json.loads((b.ROOT / 'content/regions/au/PERSONAL-EXTENDED-SOURCE-AUDIT-20261127.json').read_text())

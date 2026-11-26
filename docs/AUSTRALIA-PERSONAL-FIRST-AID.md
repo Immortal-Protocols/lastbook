@@ -60,6 +60,33 @@ review. Do not treat the existence of this fetch tool as permission to redistrib
 its output or as approval from ANZCOR or the Lastbook maintainers.
 
 
+## Ordinary injury and illness guide
+
+The ordinary "Injury & illness" guide now includes 21 additional conditional
+ANZCOR source links across ten existing choices: checking the person, bleeding,
+burns, breathing/unconsciousness/choking/drowning, shock, head/spine injury,
+heat/cold, stings, poisoning and sudden illness. They use the unchanged originals
+from the optional expanded collection. The existing Australian calling, poisoning,
+bat and six-source links retain their order, followed by the new relevant originals
+and existing fallback readings. All previous labels, hints, keywords, urgency
+fields, choice order, warnings and references are preserved.
+
+The links disappear if the corresponding actual PDF is absent, even if its
+catalogue record remains. The basic six-source and public-only libraries keep
+their existing fallbacks. No files are downloaded by opening a choice. Every new
+link opens physical page 1 with the full source audience, dates and conditions.
+The new airway card flags the different choking techniques in the ANZCOR and
+overseas Hesperian sources; their procedures remain separate and unchanged.
+The opioid source is explicitly labelled and retains its trained-user audience.
+
+Specific topics without a matching ordinary choice remain in the dedicated
+personal source guide; the spinal-injury original is not placed in the general
+limb-fracture choice, and the bleeding original is not presented as wound-closure
+instruction. This is source navigation, not a new treatment algorithm or clinical
+approval. The public 125-reading corpus and all original PDFs remain unchanged.
+The exact source placements and previous-guide baseline are recorded in
+`docs/AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json`.
+
 ## Optional Basic Life Support and First Aid collection
 
 The original default remains **six PDFs / 41 pages**, plus the source hub. Select

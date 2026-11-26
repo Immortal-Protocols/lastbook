@@ -161,6 +161,11 @@ class Reference(unittest.TestCase):
         self.assertEqual(len(audit['guide_placements']), 10)
         for gid, original in guides.items():
             guide = copy.deepcopy(original)
+            if gid == 'hurt':
+                extension = json.loads((au.ROOT / 'docs/AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json').read_text())
+                later = {p['reference']['doc'] for p in extension['placements']}
+                for choice in guide['choices']:
+                    choice['read'] = [r for r in choice['read'] if r.get('doc') not in later]
             # Compare the historical bat increment after removing the later,
             # separately audited community-planning addition.
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']

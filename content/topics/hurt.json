@@ -13,7 +13,9 @@
   "blood",
   "cut",
   "wound",
-  "stitches", "bandage", "gauze",
+  "stitches",
+  "bandage",
+  "gauze",
   "infection",
   "burn",
   "scald",
@@ -96,6 +98,12 @@
      "note": "ACMA source guidance; Australian emergency numbers and calling limitations. Static source copy, not an emergency-calling function."
     },
     {
+     "doc": "personal-au-guideline-2",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 2 – Managing an Emergency",
+     "note": "Unmodified 5-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 1,
      "label": "Stay calm, make the place safe, check breathing then bleeding",
@@ -126,6 +134,12 @@
    "label": "Bleeding, a cut or a wound",
    "hint": "Heavy bleeding, deep cut, tourniquet, dirty wound, wound getting red or swollen",
    "read": [
+    {
+     "doc": "personal-au-guideline-9-1-1",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.1.1 – First Aid for Management of Bleeding",
+     "note": "Unmodified 10-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
     {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 9,
@@ -182,6 +196,12 @@
    "hint": "Burnt or burned by fire, hot water, cooking oil, chemicals, electricity, electrocuted",
    "read": [
     {
+     "doc": "personal-au-guideline-9-1-3",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.1.3 – First Aid for Burns",
+     "note": "Unmodified 10-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
      "doc": "med-2e83e22162a9a006",
      "page": 288,
      "label": "Cool the burn with running water",
@@ -236,13 +256,58 @@
    "id": "breathing",
    "label": "Not breathing, unconscious or choking",
    "hint": "Collapsed or fainted, not responding, heart stopped (cardiac arrest), AED or defibrillator, can't breathe, gasping, food stuck in throat, drowning",
-   "urgent": ["not breathing", "stopped breathing", "isn't breathing", "isnt breathing", "unconscious", "cardiac arrest", "heart stopped", "heart has stopped"],
+   "urgent": [
+    "not breathing",
+    "stopped breathing",
+    "isn't breathing",
+    "isnt breathing",
+    "unconscious",
+    "cardiac arrest",
+    "heart stopped",
+    "heart has stopped"
+   ],
    "read": [
     {
      "doc": "personal-au-cpr",
      "page": 1,
      "label": "Australia/New Zealand: ANZCOR CPR original",
      "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. General bystander source; specifically trained paediatric providers are directed to other guidelines. Read the complete five-page original."
+    },
+    {
+     "doc": "personal-au-guideline-3",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 3 – Recognition and First Aid Management of the Unconscious Person",
+     "note": "Unmodified 4-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-4",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 4 – Airway",
+     "note": "Unmodified 11-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined. Choking techniques differ from the overseas Hesperian reading below; keep the complete country-specific source context."
+    },
+    {
+     "doc": "personal-au-guideline-5",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 5 – Breathing",
+     "note": "Unmodified 7-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-6",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 6 – Compressions",
+     "note": "Unmodified 13-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-7",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 7 – Automated External Defibrillation in Basic Life Support",
+     "note": "Unmodified 6-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-3-2",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.3.2 – Resuscitation in Drowning",
+     "note": "Unmodified 9-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
     },
     {
      "doc": "med-2e83e22162a9a006",
@@ -275,6 +340,12 @@
    "hint": "After heavy bleeding, bad burns, severe vomiting or a severe allergy",
    "read": [
     {
+     "doc": "personal-au-guideline-9-2-3",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.2.3 – Recognition and First Aid Management of the Seriously Ill person, including Shock and Sepsis",
+     "note": "Unmodified 10-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 12,
      "label": "Signs of shock and what to do on the way to help",
@@ -293,6 +364,18 @@
    "label": "Head, neck or back injury",
    "hint": "Fall or fell, car crash, blow to the head, spinal or vertebral injury, fractured skull, spine or vertebrae, dislocated neck, confused or numb after an accident",
    "read": [
+    {
+     "doc": "personal-au-guideline-9-1-4",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.1.4 – First Aid Management of Head Injury",
+     "note": "Unmodified 8-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-1-6",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.1.6 – First Aid Management of Suspected Spinal Injury",
+     "note": "Unmodified 11-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
     {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 22,
@@ -323,8 +406,25 @@
    "id": "heatcold",
    "label": "Too hot or too cold (heat stroke, hypothermia, frostbite)",
    "hint": "Heatstroke or heat wave, no AC, confused and hot, shivering, frostnip, numb white fingers",
-   "urgent": ["heat stroke", "sun stroke", "stroke from the heat", "stroke in the heat"],
+   "urgent": [
+    "heat stroke",
+    "sun stroke",
+    "stroke from the heat",
+    "stroke in the heat"
+   ],
    "read": [
+    {
+     "doc": "personal-au-guideline-9-3-4",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.3.4 – Heat Induced Illness (Hyperthermia)",
+     "note": "Unmodified 6-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-3-3",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.3.3 - First Aid Management of Hypothermia and Cold-Related Injuries",
+     "note": "Unmodified 10-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
     {
      "doc": "med-2e83e22162a9a006",
      "page": 446,
@@ -411,7 +511,14 @@
    "id": "animal-bite",
    "label": "Animal or human bite",
    "hint": "Dog, cat, bat or monkey bite, bitten by a person, rabies worry",
-   "phrases": ["rat bite", "rat bites", "rat bit", "rats bit", "bitten by a rat", "rodent bite"],
+   "phrases": [
+    "rat bite",
+    "rat bites",
+    "rat bit",
+    "rats bit",
+    "bitten by a rat",
+    "rodent bite"
+   ],
    "read": [
     {
      "doc": "nsw-bat-lyssavirus",
@@ -456,6 +563,12 @@
      "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Read the source exclusions before applying the technique to a bite or sting."
     },
     {
+     "doc": "personal-au-guideline-9-4-3",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.4.3 – Envenomation from Tick Bites and Bee, Wasp and Ant Stings",
+     "note": "Unmodified 6-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
      "doc": "med-2e83e22162a9a006",
      "page": 328,
      "label": "IFRC: removing a tick or a bee stinger",
@@ -484,6 +597,18 @@
      "doc": "qld-poisons",
      "label": "Queensland: poisoning source guidance",
      "note": "Queensland source; local services and requirements apply. Complete source instructions remain in their original context."
+    },
+    {
+     "doc": "personal-au-guideline-9-5-1",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.5.1 – First Aid Management of Poisoning",
+     "note": "Unmodified 10-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-5-2",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.5.2 – First Aid Management of Suspected Opioid Overdose",
+     "note": "Unmodified 11-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined. Opioid-specific source; its audience includes trained naloxone users."
     },
     {
      "doc": "med-2e83e22162a9a006",
@@ -534,8 +659,34 @@
    "id": "sudden",
    "label": "Chest pain, stroke signs, seizure or diabetic emergency",
    "hint": "Crushing chest pain or heart attack, face drooping, fit or convulsion, diabetic acting confused",
-   "urgent": ["stroke"],
+   "urgent": [
+    "stroke"
+   ],
    "read": [
+    {
+     "doc": "personal-au-guideline-9-2-1",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.2.1 – Recognition and First Aid Management of Suspected Heart Attack",
+     "note": "Unmodified 6-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-2-2",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.2.2 – Stroke",
+     "note": "Unmodified 7-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-2-4",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.2.4 - First Aid Management of a Seizure",
+     "note": "Unmodified 6-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
+    {
+     "doc": "personal-au-guideline-9-2-9",
+     "page": 1,
+     "label": "Australia/New Zealand: Guideline 9.2.9 – First Aid Management of a Diabetic Emergency",
+     "note": "Unmodified 10-page ANZCOR original for personal use only. Opens physical page 1. Read the complete source audience, dates and conditions; no treatment methods are combined."
+    },
     {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 28,

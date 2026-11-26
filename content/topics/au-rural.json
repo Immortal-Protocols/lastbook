@@ -39,7 +39,14 @@
     "battery",
     "solar",
     "working alone",
-    "road trip"
+    "road trip",
+    "disability",
+    "support needs",
+    "mobility",
+    "low vision",
+    "TTY",
+    "NRS",
+    "SMS Relay"
   ],
   "choices": [
     {
@@ -61,6 +68,33 @@
           "doc": "qld-emergency-kit",
           "label": "Emergency kit: essential items, all times",
           "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "support-needs",
+      "label": "Plan for disability or support needs",
+      "hint": "Plan with the person and their support network. Regional services and accessible transport need individual confirmation.",
+      "read": [
+        {
+          "doc": "au-accessible-calls",
+          "label": "Accessible emergency calling: Australian service navigation",
+          "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026."
+        },
+        {
+          "doc": "qld-inclusive-planning",
+          "label": "Disability-inclusive emergency planning: Queensland source sections",
+          "note": "Selected introduction, all four immediate-support cards, network-learning text and four prompts, strengths/planning text and all eight support areas. Lived-experience profiles, linked-resource cards and contact directory are excluded. The linked P-CEP workbook, NDIS resources and Auslan/video content are not bundled. Regional support arrangements require individual confirmation. Checked 26 November 2026."
+        },
+        {
+          "doc": "qld-mobility-planning",
+          "label": "Emergency planning with physical or mobility support needs: Queensland source",
+          "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+        },
+        {
+          "doc": "qld-vision-planning",
+          "label": "Emergency planning with low or no vision: Queensland source",
+          "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
         }
       ]
     },
@@ -446,6 +480,26 @@
       "doc": "qld-road-trip",
       "label": "Prepare for a Queensland road trip: Get Ready source guidance",
       "note": "Complete written article, including vehicle preparation, emergency kit, severe-weather tips and caravan sections. Interactive illustrations and linked alerts, caravan and boat pages are not bundled. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-accessible-calls",
+      "label": "Accessible emergency calling: Australian service navigation",
+      "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-inclusive-planning",
+      "label": "Disability-inclusive emergency planning: Queensland source sections",
+      "note": "Selected introduction, all four immediate-support cards, network-learning text and four prompts, strengths/planning text and all eight support areas. Lived-experience profiles, linked-resource cards and contact directory are excluded. The linked P-CEP workbook, NDIS resources and Auslan/video content are not bundled. Regional support arrangements require individual confirmation. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-mobility-planning",
+      "label": "Emergency planning with physical or mobility support needs: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-vision-planning",
+      "label": "Emergency planning with low or no vision: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
     }
   ],
   "learn": [
@@ -588,6 +642,26 @@
       "doc": "qld-road-trip",
       "label": "Prepare for a Queensland road trip: Get Ready source guidance",
       "note": "Complete written article, including vehicle preparation, emergency kit, severe-weather tips and caravan sections. Interactive illustrations and linked alerts, caravan and boat pages are not bundled. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-accessible-calls",
+      "label": "Accessible emergency calling: Australian service navigation",
+      "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-inclusive-planning",
+      "label": "Disability-inclusive emergency planning: Queensland source sections",
+      "note": "Selected introduction, all four immediate-support cards, network-learning text and four prompts, strengths/planning text and all eight support areas. Lived-experience profiles, linked-resource cards and contact directory are excluded. The linked P-CEP workbook, NDIS resources and Auslan/video content are not bundled. Regional support arrangements require individual confirmation. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-mobility-planning",
+      "label": "Emergency planning with physical or mobility support needs: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-vision-planning",
+      "label": "Emergency planning with low or no vision: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
     }
   ],
   "related": [

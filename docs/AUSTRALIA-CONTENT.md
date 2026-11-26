@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 40 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 43 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -16,9 +16,11 @@ and remaining work are recorded below so missing information is visible.
   AusAlert operational announcement; NSW's warning-level definitions; six SA SES
   before/during/after storm and flood pages; and SA CFS property and animal-planning
   sections; four Victorian energy/gas/LPG readings; two Safe Work Australia
-  remote-work readings; and Queensland road-trip preparation.
-- Ten copyright statements, the original Australian source hub and a directory
-  covering all six states, ACT and NT: **52 searchable HTML records** altogether.
+  remote-work readings; Queensland road-trip preparation; disability-inclusive
+  planning selections and complete mobility and low/no-vision written articles.
+- Ten copyright statements, an original accessible-calling navigation note,
+  the original Australian source hub and a directory
+  covering all six states, ACT and NT: **56 searchable HTML records** altogether.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
   documents are installed. The health guide also points to the library's existing
@@ -315,3 +317,39 @@ unresolved. Short reader checks do not establish long-idle reliability.
 contains only public material. Earlier 44-record and other review releases remain
 unchanged. These are contributor reviews, not official Setup releases, all-reader
 native verification or independent clinical/electrical/engineering review.
+
+
+## Disability preparedness and accessible calling
+
+The collection now contains **56 public records:43 official readings,ten copyright
+statements and three original hub/directory/navigation records**. Both household
+and rural guides expose all four new readings in choices, prepare and learn.
+
+Queensland's September 2026 disability-inclusive page is selected at its
+introduction,all four immediate-support cards,network-learning text and prompts,
+strengths/planning text and all eight support areas. Named lived-experience
+profiles,resource cards and the contact directory are excluded; the third-party
+P-CEP workbook,NDIS downloads,images and Auslan/video content are not bundled.
+The complete written mobility and low/no-vision articles retain all ten tips,
+service descriptions and five decision rows each. Tables become question sections
+with both column-label/value pairs preserved. Service statements remain regional
+source descriptions,not a guarantee of eligibility,transport,alerts or availability.
+These texts are not an independently validated Easy Read,braille or Auslan edition.
+The exact linked Queensland copyright policy was checked and CC BY4.0 attribution
+is retained.
+
+A separately authored factual service-navigation note distinguishes TTY106 from
+NRS SMS Relay and 000/112 direct-SMS limits,with current ACMA/Access Hub URLs and
+dates. It does not reproduce the complete NRS operating manual. Access Hub's
+linked departmental policy grants CC reuse where material is identified; no CC
+marker was established on those two pages,so their bodies are not bundled. The
+regional hearing page's save106inphone tip is not selected because its TTY context
+is easy to miss. The cognitive-support page's simplified warning translations
+need further review and are not bundled. Two disability-index links redirect to
+generic disaster indexes; they are not represented as disability manuals.
+
+`ACCESSIBILITY-SOURCE-AUDIT-20261126.json` records exact selections,raw/selected
+hashes,original decision matrices,licence evidence,factual-note references and
+exclusions. This expansion improves preparation reading; person-specific support,
+service readiness,more disability audiences and accessible translations remain
+incomplete.

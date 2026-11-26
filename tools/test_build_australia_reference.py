@@ -41,7 +41,11 @@ class Reference(unittest.TestCase):
                                         ('"not be compatible"', 'vic-lcc27-faq'),
                                         ('"solar system"', 'vic-flood-energy'),
                                         ('"emergency assistance"', 'au-remote-work-risks'),
-                                        ('"Spare fuel"', 'qld-road-trip')]:
+                                        ('"Spare fuel"', 'qld-road-trip'),
+                                        ('"everyday tasks"', 'qld-inclusive-planning'),
+                                        ('"continence aids"', 'qld-mobility-planning'),
+                                        ('"tactile"', 'qld-vision-planning'),
+                                        ('"SMS Relay"', 'au-accessible-calls')]:
                     ids = {r[0] for r in db.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', (query,))}
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):
@@ -81,6 +85,43 @@ class Reference(unittest.TestCase):
                     values.append(re.sub(r'\s+', ' ', ''.join(page.text)).strip())
                 return values
             self.assertEqual(list(map(list, zip(texts('dt'), texts('dd')))), pairs)
+
+    def test_accessibility_selections_keep_all_decision_row_associations(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'ACCESSIBILITY-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+
+        def text(fragment):
+            page = au.Page(); page.feed(fragment); page.close()
+            return re.sub(r'\s+', ' ', ''.join(page.text)).strip()
+
+        for selection in audit['selections']:
+            body = (au.SOURCES / entries[selection['id']]['snapshot']).read_text(encoding='utf-8')
+            matrix = selection['decision_table_source_matrix']
+            if matrix:
+                sections = re.findall(r'<h3>([^<]+)</h3>\s*<dl>(.*?)</dl>', body, re.S)
+                self.assertEqual(len(sections), 5)
+                for (heading, values), row in zip(sections, matrix[1:]):
+                    self.assertEqual(text(heading), row[0])
+                    labels = [text(v) for v in re.findall(r'<dt>(.*?)</dt>', values, re.S)]
+                    answers = [text(v) for v in re.findall(r'<dd>(.*?)</dd>', values, re.S)]
+                    self.assertEqual(list(zip(labels, answers)), list(zip(matrix[0][1:], row[1:])))
+                self.assertNotIn('<table', body)
+                tips = re.search(r'<ol[^>]*>(.*?)</ol>', body, re.S)
+                self.assertIsNotNone(tips)
+                self.assertEqual(len(re.findall(r'<li(?:\s|>)', tips.group(1))), 10)
+        inclusive = (au.SOURCES / entries['qld-inclusive-planning']['snapshot']).read_text(encoding='utf-8')
+        for phrase in ['What you do best', 'What you have already done', 'What might be hard',
+                       'What you can do to fix', 'Your living situation', 'Your social network',
+                       'Ways you get around', 'Assistance animals', 'Personal Support',
+                       'Management of Health', 'Assistive Technology']:
+            self.assertIn(phrase, inclusive)
+        self.assertNotIn('Uncle Willie', inclusive)
+        self.assertNotIn('1300 555 727', inclusive)
+        calls = (au.SOURCES / entries['au-accessible-calls']['snapshot']).read_text(encoding='utf-8')
+        self.assertIn('106. This requires a TTY/textphone', calls)
+        self.assertIn('not an ordinary mobile SMS number', calls)
+        self.assertIn('0423 677 767', calls)
+        self.assertEqual(entries['au-accessible-calls']['license'], 'CC0-1.0')
 
     def test_existing_output_is_untouched(self):
         with tempfile.TemporaryDirectory() as d:

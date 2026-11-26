@@ -1,0 +1,331 @@
+{
+  "checked": "2026-11-26",
+  "selections": [
+    {
+      "id": "qld-inclusive-planning",
+      "source_receipt": {
+        "id": "qld-inclusive",
+        "url": "https://www.getready.qld.gov.au/disability",
+        "final_url": "https://www.getready.qld.gov.au/disability",
+        "retrieved_at": "2026-11-26",
+        "bytes": 87528,
+        "raw_sha256": "da80813f05a721d5af0acbddb00693e585fa4b968ac2f63e712b8dad2b98fde0",
+        "links": [
+          {
+            "text": "Copyright",
+            "href": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "selection": {
+        "selector": "article .node__content",
+        "count": 1,
+        "intro_body": true,
+        "top_level_paragraphs": 12,
+        "kept_paragraph_indices": [
+          0,
+          1,
+          2,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "normalized_selected_text_sha256": "52355c46f362f7750a8d56892748269a3b723f5655471c523fcb6e105782e9d3",
+      "technical_simplification_preserves_text": true,
+      "decision_table_source_matrix": null,
+      "decision_table_display": null
+    },
+    {
+      "id": "qld-mobility-planning",
+      "source_receipt": {
+        "id": "qld-mobility",
+        "url": "https://www.getready.qld.gov.au/disability/mobility",
+        "final_url": "https://www.getready.qld.gov.au/disability/mobility",
+        "retrieved_at": "2026-11-26",
+        "bytes": 53533,
+        "raw_sha256": "5f25dfad2a16cb4335e2c375e07a475f696f77a9f71d7896d928d0a374b468cc",
+        "links": [
+          {
+            "text": "Copyright",
+            "href": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "selection": {
+        "selector": "article .node__content",
+        "count": 1
+      },
+      "normalized_selected_text_sha256": "e4cf41387bc49141d8303693e636098df7c69f80fe22a6bebbdaae5bd6d90918",
+      "technical_simplification_preserves_text": true,
+      "decision_table_source_matrix": [
+        [
+          "Before the Event",
+          "Ask Yourself",
+          "What to Do Next"
+        ],
+        [
+          "Am I ready to stay at home if a hazard arrives?",
+          "Can I safely navigate my home and access alerts?",
+          "Prepare mobility aids, test devices, and check kit accessibility."
+        ],
+        [
+          "Can I shelter in place safely?",
+          "Are doors, ramps, and pathways clear?",
+          "Clear obstacles, secure your home, and plan indoor safety areas."
+        ],
+        [
+          "Should I find alternative accommodation?",
+          "Are evacuation routes or transport accessible for me?",
+          "Arrange accessible hotel or friend’s home in advance."
+        ],
+        [
+          "Do I need to contact my support network?",
+          "Do carers or neighbours know my plan and mobility needs?",
+          "Share your emergency plan and preferred communication methods."
+        ],
+        [
+          "Is my plan realistic for my mobility limitations?",
+          "Can I carry or move my kit and essentials independently?",
+          "Adjust your kit and plan to ensure you can act quickly and safely."
+        ]
+      ],
+      "decision_table_display": "Five question sections,each retaining both column-label/value pairs; first column label retained once."
+    },
+    {
+      "id": "qld-vision-planning",
+      "source_receipt": {
+        "id": "qld-vision",
+        "url": "https://www.getready.qld.gov.au/disability/low-or-no-vision",
+        "final_url": "https://www.getready.qld.gov.au/disability/low-or-no-vision",
+        "retrieved_at": "2026-11-26",
+        "bytes": 53841,
+        "raw_sha256": "7c378ae6d6c07278102adfb6e84c904c397f1700e1dee98908a944a17e298254",
+        "links": [
+          {
+            "text": "Copyright",
+            "href": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "selection": {
+        "selector": "article .node__content",
+        "count": 1
+      },
+      "normalized_selected_text_sha256": "d0febd5cb93c3742b72019519ad9376f879d626397d3fc7d5bbb0eab7895c7f0",
+      "technical_simplification_preserves_text": true,
+      "decision_table_source_matrix": [
+        [
+          "Before the Event",
+          "Ask Yourself",
+          "What to Do Next"
+        ],
+        [
+          "Am I getting emergency alerts and information in a way I can use",
+          "Do I have accessible alerts and a clear way to receive them?",
+          "Sign up for voice, braille, or text notifications; ensure devices are charged."
+        ],
+        [
+          "Can I safely shelter in place?",
+          "Are my mobility aids and emergency kit ready?",
+          "Check canes, guide dog access, and make kit accessible."
+        ],
+        [
+          "Should I find alternative accommodation?",
+          "If power fails or roads are flooded, would I be OK staying at home for up to 5 days or would it be safer to stay in a hotel or with friends?",
+          "Plan an early evacuation; identify alternative accessible accomodation."
+        ],
+        [
+          "Do I need to contact my support network?",
+          "Do they know my needs and preferred communication methods?",
+          "Share your plan with family, carers, or neighbours."
+        ],
+        [
+          "Is my emergency plan accessible?",
+          "Can I access instructions in a format I can use (audio, braille, tactile)?",
+          "Confirm all information is in accessible formats and everyone helping knows how to use them."
+        ]
+      ],
+      "decision_table_display": "Five question sections,each retaining both column-label/value pairs; first column label retained once."
+    }
+  ],
+  "qld_policy": {
+    "id": "qld-copyright",
+    "url": "https://www.qld.gov.au/legal/copyright",
+    "final_url": "https://www.qld.gov.au/legal/copyright",
+    "retrieved_at": "2026-11-26",
+    "bytes": 182764,
+    "raw_sha256": "e2292d811c0965add789345105d9c4e491c42fb60fbc7d81099d4f2a4ad3e20a",
+    "links": [
+      {
+        "text": "Driver licence",
+        "href": "https://www.qld.gov.au/transport/licensing"
+      },
+      {
+        "text": "Copyright",
+        "href": "https://www.qld.gov.au/legal/copyright"
+      },
+      {
+        "text": "Creative Commons Attribution 4.0 International licence (CC BY 4.0)",
+        "href": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      {
+        "text": "Copyright",
+        "href": "https://www.qld.gov.au/legal/copyright"
+      }
+    ]
+  },
+  "national_original_note_fact_receipts": [
+    {
+      "id": "nrs-emergency",
+      "url": "https://www.accesshub.gov.au/about-the-nrs/how-to-make-an-emergency-call-using-the-nrs",
+      "final_url": "https://www.accesshub.gov.au/about-the-nrs/how-to-make-an-emergency-call-using-the-nrs",
+      "retrieved_at": "2026-11-26",
+      "bytes": 215573,
+      "raw_sha256": "3c6152783c4abc85813f38b02078dea8a9ea4d9c67ae6423e5cd665b2a5862f2",
+      "links": [
+        {
+          "text": "Copyright Opens in a new tab/window",
+          "href": "https://www.infrastructure.gov.au/copyright"
+        }
+      ]
+    },
+    {
+      "id": "nrs-numbers",
+      "url": "https://www.accesshub.gov.au/about-the-nrs/nrs-call-numbers-and-links",
+      "final_url": "https://www.accesshub.gov.au/about-the-nrs/nrs-call-numbers-and-links",
+      "retrieved_at": "2026-11-26",
+      "bytes": 100799,
+      "raw_sha256": "d2ec438088f2aba0343dab3bb6082debc6e74fe4c047d7432c83e96c8f2eb4ff",
+      "links": [
+        {
+          "text": "Copyright Opens in a new tab/window",
+          "href": "https://www.infrastructure.gov.au/copyright"
+        }
+      ]
+    },
+    {
+      "id": "acma-current-emergency",
+      "url": "https://www.acma.gov.au/emergency-calls",
+      "final_url": "https://www.acma.gov.au/emergency-calls",
+      "retrieved_at": "2026-11-26",
+      "bytes": 67598,
+      "raw_sha256": "5bcd3225f24c42099553c7e9df334ebdf3d85eb3b016d28c96583fe0ac10fc60",
+      "links": [
+        {
+          "text": "Carrier licences and carriage service providers",
+          "href": "/carrier-licences-and-carriage-service-providers"
+        },
+        {
+          "text": "Radiocommunications licences",
+          "href": "/radiocommunications-licences"
+        },
+        {
+          "text": "Copyright",
+          "href": "/copyright-notice"
+        },
+        {
+          "text": "Register of Radiocommunications Licences",
+          "href": "/register-radiocommunication-licences-rrl"
+        }
+      ]
+    }
+  ],
+  "accesshub_policy_review": {
+    "receipt": {
+      "id": "infrastructure-copyright",
+      "url": "https://www.infrastructure.gov.au/copyright",
+      "final_url": "https://www.infrastructure.gov.au/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 650245,
+      "raw_sha256": "ed43a2b0f1dd1a6923de95f3f61f3f8e0422412523effc649f7e66a9965de6e7",
+      "links": [
+        {
+          "text": "International Airline Licences - Guidance Notes",
+          "href": "/infrastructure-transport-vehicles/aviation/international-aviation/international-airline-licences/guide"
+        },
+        {
+          "text": "Number 1 of 2023—Temporary Licence Holder Obligations",
+          "href": "/infrastructure-transport-vehicles/maritime/maritime-business/coastal-trading/coastal-trading-licensing-and-publications/2023-shipping-business-unit-industry-bulletins/number-1-2023-temporary-licence-holder-obligations"
+        },
+        {
+          "text": "General Licences Granted",
+          "href": "/infrastructure-transport-vehicles/maritime/maritime-business/coastal-trading/licensing-publications/general-licences-granted"
+        },
+        {
+          "text": "Annual General Licences Reports",
+          "href": "/infrastructure-transport-vehicles/maritime/supporting-australian-maritime/coastal-trading/reporting-and-publications/annual-general-licences-reports"
+        },
+        {
+          "text": "Transitional General Licences Granted",
+          "href": "/infrastructure-transport-vehicles/maritime/maritime-business/coastal-trading/coastal-trading-licensing-and-publications/transitional-general-licences-granted"
+        },
+        {
+          "text": "Temporary Licence Variations Granted",
+          "href": "/infrastructure-transport-vehicles/maritime/supporting-australian-maritime/coastal-trading/reporting-and-publications/temporary-licence-variations-granted"
+        },
+        {
+          "text": "Temporary Licence Voyage Reports by year",
+          "href": "/infrastructure-transport-vehicles/maritime/supporting-australian-maritime/coastal-trading/reporting-and-publications/voyage-reports/temporary-licence-voyage-reports-year"
+        },
+        {
+          "text": "Australian Rural Leadership Foundation",
+          "href": "/territories-regions/regional-australia/regional-renewables-community-showcase/australian-rural-leadership-foundation"
+        },
+        {
+          "text": "Better Connectivity Plan for Regional and Rural Australia",
+          "href": "/media-communications/regional-communications-programs/better-connectivity-plan-regional-and-rural-australia"
+        },
+        {
+          "text": "Copyright",
+          "href": "/copyright"
+        },
+        {
+          "text": "International Airline Licences - Guidance Notes",
+          "href": "/infrastructure-transport-vehicles/aviation/international-aviation/international-airline-licences/guide"
+        },
+        {
+          "text": "Number 1 of 2023—Temporary Licence Holder Obligations",
+          "href": "/infrastructure-transport-vehicles/maritime/maritime-business/coastal-trading/coastal-trading-licensing-and-publications/2023-shipping-business-unit-industry-bulletins/number-1-2023-temporary-licence-holder-obligations"
+        },
+        {
+          "text": "General Licences Granted",
+          "href": "/infrastructure-transport-vehicles/maritime/maritime-business/coastal-trading/licensing-publications/general-licences-granted"
+        },
+        {
+          "text": "Annual General Licences Reports",
+          "href": "/infrastructure-transport-vehicles/maritime/supporting-australian-maritime/coastal-trading/reporting-and-publications/annual-general-licences-reports"
+        },
+        {
+          "text": "Transitional General Licences Granted",
+          "href": "/infrastructure-transport-vehicles/maritime/maritime-business/coastal-trading/coastal-trading-licensing-and-publications/transitional-general-licences-granted"
+        },
+        {
+          "text": "Temporary Licence Variations Granted",
+          "href": "/infrastructure-transport-vehicles/maritime/supporting-australian-maritime/coastal-trading/reporting-and-publications/temporary-licence-variations-granted"
+        },
+        {
+          "text": "Temporary Licence Voyage Reports by year",
+          "href": "/infrastructure-transport-vehicles/maritime/supporting-australian-maritime/coastal-trading/reporting-and-publications/voyage-reports/temporary-licence-voyage-reports-year"
+        },
+        {
+          "text": "Australian Rural Leadership Foundation",
+          "href": "/territories-regions/regional-australia/regional-renewables-community-showcase/australian-rural-leadership-foundation"
+        },
+        {
+          "text": "Better Connectivity Plan for Regional and Rural Australia",
+          "href": "/media-communications/regional-communications-programs/better-connectivity-plan-regional-and-rural-australia"
+        }
+      ]
+    },
+    "result": "Policy limits CC grant to identified material; no CC marker established on the two pages. Full page bodies are not reproduced; new navigation note states factual contacts and links, authored separately."
+  },
+  "excluded": [
+    "Get Ready hearing page has a save106inphone tip whose TTY context is easy to miss; use primary ACMA/NRS facts instead.",
+    "Intellectual-disability page includes simplified warning-word translations that are not a replacement for full official hazard instructions; not bundled pending further review.",
+    "Linked qld disability household/during pages redirect to generic disaster indexes; not represented as disability manuals.",
+    "Lived-experience profiles,media,linked P-CEP workbook and other third-party downloads not bundled."
+  ],
+  "limits": "Regional static source readings and an original factual calling note; not a complete accessible emergency manual, live alerts or independent disability/professional review."
+}

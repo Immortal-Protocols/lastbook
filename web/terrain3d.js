@@ -121,7 +121,7 @@ const Terrain3D = (() => {
       }
       for (let j = 0; j <= M; j++) for (let i = 0; i <= N; i++) {
         const k = j * (N + 1) + i, l = hts[j * (N + 1) + Math.max(0, i - 1)], r = hts[j * (N + 1) + Math.min(N, i + 1)], u = hts[Math.max(0, j - 1) * (N + 1) + i], d = hts[Math.min(M, j + 1) * (N + 1) + i];
-        const n = norm([-(r - l) * ex / (2 * W / N), (u - d) * ex / (2 * Hm / M), 1]); nrm.set(n, k * 3);
+        const n = norm([-(r - l) * ex / (2 * W / N), (d - u) * ex / (2 * Hm / M), 1]); nrm.set(n, k * 3);
       }
       for (const [buf, data] of [[pb, pos], [ub, uv], [nb, nrm]]) { gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW) }
       buildBldg(ex);
@@ -274,7 +274,7 @@ const Terrain3D = (() => {
       else { cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.12, Math.min(1.5, cam.pitch + dy * 0.004)) }
       render();
     });
-    const up = e => { pts.delete(e.pointerId); pinch = 0 };
+    const up = e => { pts.delete(e.pointerId); pinch = 0; if (pts.size === 1) last = [...pts.values()][0] };  // the finger still down drags on from where it is
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
     cv.addEventListener('contextmenu', e => e.preventDefault());
     cv.addEventListener('wheel', e => { e.preventDefault(); cam.dist = Math.max(W * 0.08, Math.min(W * 4, cam.dist * Math.exp(e.deltaY * 0.0015))); render() }, { passive: false });

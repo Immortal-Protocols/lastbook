@@ -228,7 +228,7 @@ an instruction to accept a new live page automatically.
 | Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation; SA property and animal-planning selections | Licensed detailed local guides for remaining jurisdictions; disability and translated materials |
 | Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov basics; Qld trip/kit source; SWA remote-work risks; ACMA locating-device explanation | More detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
 | Fire, flood, cyclone and heat | Dated NSW/Qld texts;six SA SES storm/flood readings;national warning/rating explanations;CFA Version6 text-only risk/preparation/warning/fire/last-resort source parts | More detailed regional manuals for ACT/NT/Tas/WA;hazard-specific and accessible/translated warning material;current local plans/services |
-| Food and water | Qld food-safety/drinking-water section; complete NSW rainwater maintenance, groundwater risks/testing, flooded tanks and non-potable advice | Actual site-specific testing/treatment and extended remote supply; more jurisdiction-specific recovery guidance |
+| Food and water | Complete FSANZ consumer food-safety basics, emergency/outage and flood-cleanup articles; Qld food/drinking-water section; NSW rainwater, groundwater, flooded tank and non-potable sources | Actual site-specific testing/treatment, appliance/food conditions, current recalls and extended remote supply; further local recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
 | Power, gas and repairs | ESV generator use, gas emergencies, flood electricity/solar/battery/gas, outdoor LPG cylinders and all nine LCC27 FAQ pairs | More jurisdiction-specific material; equipment-specific instructions, repairs and local professional assessment |
 | Geographic directory | Six states,ACT,NT,Jervis Bay and all seven external territories; four remote entries are management references | Detailed territory manuals,field communications and verified current service availability |
@@ -1102,3 +1102,60 @@ the earlier idle-watchdog issue remains unresolved. Community/professional revie
 broader language/accessibility/local/remote coverage,public first-aid rights and
 official maintainer acceptance remain open. The entire installed private profile
 remains PERSONAL USE ONLY;no private ANZCOR material is published.
+
+
+## FSANZ consumer food safety — 26 November 2026
+
+Three complete consumer articles now cover food-safety basics, emergency/outage
+preparation and disposal, and flood contamination/cleanup. Both household and rural
+guides receive the same three-reading food-safety choice and prepare/learn entries.
+A fourth record preserves the complete exact-site copyright and disclaimer texts.
+The collection is now **108 records: 87 official practical readings, 14 source-rights
+records and 7 original records**. All previous readers and choices remain.
+
+Each source page links FSANZ's exact-site policy. It grants CC BY 4.0 reuse except
+logos and third-party material, requires © Food Standards Australia New Zealand
+and prohibits implied endorsement. The policy's “Attribution 4.0 Australia” wording
+is retained; its actual licence link is CC BY 4.0 International. Images, logos,
+videos, external source bodies and linked downloads are excluded. The source audit
+pins five raw responses, displayed dates, article boundaries and complete text in
+source order. This is not independent food-safety or clinical review.
+
+Dates remain July/October 2025 for the consumer articles, October 2026 for copyright
+and February 2025 for the disclaimer. Source-specific cooking temperatures retain
+their associated food lists; room-temperature periods are distinct from the
+closed-fridge/freezer estimates. Floodwater exclusions, the not-touched-floodwater
+condition for potentially salvageable cans/pouches, cleaning/sanitising sequences,
+water advice and separate food-business restrictions remain. Source sanitising
+quantities are preserved, not recast as universal product instructions. No current
+recall, local water declaration or actual appliance performance is established.
+The separate business 2-hour/4-hour article is not substituted for consumer text.
+
+**831 contribution/build and 903 combined-source tests pass**, each five skips and
+eleven upstream expected failures; 17 focused source, 8 Han and 9 browser-link tests
+pass. Actual public108/private429 engine checks forbid sockets and verify every
+public reader hash, food queries/scoped retrieval, both choices, retained Chinese
+queries and earlier additions. The four private Australian guides resolve 531
+references: 246 household, 251 rural, 13 health and 21 personal; zero errors.
+Private staging preserves all115 Australian content hashes,42 personal FTS units
+and Victoria's3,054 names/per-file hashes. Frozen source fb86dfb passes package,
+i18n,privacy and strict signature checks with unchanged pinned roots/setup inputs.
+
+The public supplement remains data-only. Updated runtime is required for Han
+substring search and HTTP linked-reader source context. Extract into a new folder;
+never replace an installed full catalog with the supplement. Personal ANZCOR
+PDFs/text are excluded. Broader local/language/accessibility and community review,
+remote operations, public first-aid rights/clinical review, maintainer acceptance
+and the earlier idle-watchdog issue remain open.
+
+
+The installed429/7 offline-IP-denial self-check and strict signature pass. Selected
+native Mac review opens all four new readers,inspects food-specific cooking and
+cold-storage lists,flood disposal/salvage/business conditions and cleaning steps,
+and verifies source dates,Ask,local policy-link context,actual retort-pouches
+search and Back. Both guide choices show the same three source cards. The app is
+left open on rural food-safety. Full previous425 app/data copies are retained.
+These checks do not establish all108-reader visual QA,independent food-safety,
+clinical,community or accessibility review,every browser/encoding,Windows/Linux,
+notarization,newTLS or long-idle reliability. Public review release:
+https://github.com/pilkster/lastbook/releases/tag/australia-food-safety-review-2026-11-26

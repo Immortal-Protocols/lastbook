@@ -39,6 +39,7 @@ class MapBuilder(unittest.TestCase):
                 self.assertEqual(module.build(src, dst, metadata), 2)
             self.assertEqual(dst.execute('SELECT name FROM feat ORDER BY name').fetchall(), [('Canberra',), ('Melbourne',)])
             self.assertEqual(dict(dst.execute('SELECT name,minz FROM feat')), {'Canberra': 6, 'Melbourne': 6})
+            self.assertEqual(dict(dst.execute('SELECT name,cls FROM feat')), {'Canberra': 'city', 'Melbourne': 'city'})
             self.assertEqual(dict(dst.execute('SELECT key,value FROM meta')), metadata)
 
     def test_regional_cli_clips_without_changing_source_and_keeps_explicit_snapshot_date(self):

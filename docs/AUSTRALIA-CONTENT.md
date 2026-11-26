@@ -180,3 +180,16 @@ the personal-use restriction visible in source details. The integrated Victorian
 map found Mildura, drew street detail and displayed nearby distances in metres
 and kilometres. This does not claim native checks of the other seven broader
 extracts, clinical review, or a platform release build of the current-main rebase.
+
+Later that day, the current-main combined source (`76ab539`) passed 840 tests
+(five skips, eleven upstream expected failures) and the complete Mac build recipe:
+TLS roots, i18n, package/privacy scan and strict ad-hoc signature verification.
+A self-contained private frozen review app was installed with the same separate
+354-record library and outbound IP denied before startup. Native checks showed
+all four Australian guide cards, the original CPR PDF, NSW warning-level reader,
+and Ballarat's finder/street detail/metric nearby distances. All four installed
+guides resolve 116 references with zero errors after moving to the durable
+profile. A corrected ACT map also displayed Canberra's underlying city label at
+zoom 8; Victoria was restored afterward. This does not establish clinical review,
+all-six-PDF native coverage, Windows support, notarization or complete Australia
+coverage. The private library and personal-use PDFs are not published.

@@ -27,6 +27,33 @@ def source(db):
 
 
 class MapBuilder(unittest.TestCase):
+    def test_optional_island_polygons_supply_ground_without_filling_populated_place_areas(self):
+        spec = importlib.util.spec_from_file_location('island_fixture', TOOL)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+
+        def polygon(rings):
+            body = struct.pack('<BII', 1, 3, len(rings))
+            for ring in rings:
+                body += struct.pack('<I', len(ring) // 2) + struct.pack('<%dd' % len(ring), *ring)
+            return b'GP\x00\x01' + struct.pack('<i', 4326) + body
+
+        outer = [167.90, -29.07, 167.97, -29.07, 167.97, -29.00, 167.90, -29.00, 167.90, -29.07]
+        hole = [167.92, -29.05, 167.93, -29.05, 167.93, -29.04, 167.92, -29.04, 167.92, -29.05]
+        outside = [160, -30, 160.1, -30, 160.1, -29.9, 160, -29.9, 160, -30]
+        with closing(sqlite3.connect(':memory:')) as src, closing(sqlite3.connect(':memory:')) as dst:
+            source(src)
+            src.execute('CREATE TABLE gis_osm_places_a_free (geom BLOB, fclass TEXT, name TEXT)')
+            src.executemany('INSERT INTO gis_osm_places_a_free VALUES (?,?,?)', [
+                (polygon([outer, hole]), 'island', 'Example island'),
+                (polygon([outer]), 'city', 'Populated-place polygon'),
+                (polygon([outside]), 'islet', 'Outside the requested box')])
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(module.build(src, dst, {'source': 'Example'}, [167.8, -29.2, 168.1, -28.9]), 1)
+            layer, cls, name, minz, geom = dst.execute('SELECT layer,cls,name,minz,geom FROM feat').fetchone()
+            self.assertEqual((layer, cls, name), ('island', 'island', 'Example island'))
+            self.assertLessEqual(minz, 13)
+            self.assertEqual(geom, module.pack([outer, hole]))
+
     def test_import_and_existing_callable_api_keep_unclipped_coverage_and_metadata(self):
         spec = importlib.util.spec_from_file_location('map_fixture', TOOL)
         module = importlib.util.module_from_spec(spec)

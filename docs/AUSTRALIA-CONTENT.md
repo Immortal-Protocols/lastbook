@@ -977,3 +977,38 @@ FTS behavior. Use the matching updated runtime: a data-only supplement cannot ad
 this search behavior to an older application. No script conversion, Chinese word
 segmentation or independent translation/accessibility review is claimed. Other
 languages, community review and accessible/offline audio formats remain gaps.
+
+Chinese reading validation: **820 contribution/build and 892 combined-source tests
+pass**, each five skips and eleven upstream expected failures. Fifteen focused
+source tests and eight Han-search tests pass. All 20,838 non-whitespace source
+characters compare through independent raw extraction, coordinate panels and
+final HTML. This protects text completeness; it is not fluent-speaker review.
+
+Actual public103/private424 engine checks forbid sockets and verify all14 Chinese
+queries, scoped keyword retrieval, libq, highlighted snippets and all103 public
+reader hashes. Household/rural231/236, health13 and personal21 references resolve
+501 total, zero errors. Private all110 Australian content hashes, personal42 FTS
+units and Victoria per-file map hashes pass. On this staged library the first
+observed Han query took0.5828s; other uncached single-Han checks were under0.09s.
+Some repeated queries were cached; this is not a general performance guarantee.
+
+Installed Mac runtime bc4a93a passes package/i18n/privacy scan, strict signature
+and actual424/7 outbound-IP-denial self-check. Full prior410 app/data copies remain.
+Pinned roots/setup inputs are unchanged. Selected native checks opened all14 new
+readers, both script choices in both guides, Chinese substring searches, result
+highlighting, source/Ask targets and Back context. Screenshots inspected Chinese
+fonts, tsunami conditions and Traditional Chinese heatstroke drinking conditions.
+The app remains open on the rural Traditional Chinese choice. This does not claim
+all103-reader visual QA, independent translation/accessibility review, new TLS,
+Windows/Linux-native, notarization or long-idle validation. Earlier watchdog and
+HTTP-browser navigation gaps remain.
+
+Public103 text-only review, audits and checksums:
+https://github.com/pilkster/lastbook/releases/tag/australia-chinese-hazards-review-2026-11-26
+Extract into a new folder; never replace an installed catalog with this smaller
+supplement. Use matching updated source/runtime for Han substring search; this
+data-only archive cannot update an old application's search code. No private-use
+ANZCOR PDFs/text, original source PDFs, imagery or maps are distributed. Contributor
+prerelease, not official Setup availability or maintainer acceptance. Earlier
+release assets are unchanged. Remaining language/community/accessibility, remote
+operations, local/territory and public first-aid rights/review work stays open.

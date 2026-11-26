@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 51 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 55 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -18,11 +18,11 @@ and remaining work are recorded below so missing information is visible.
   sections; four Victorian energy/gas/LPG readings; two Safe Work Australia
   remote-work readings; Queensland road-trip preparation; disability-inclusive
   planning selections and complete mobility and low/no-vision written articles;
-  four text-only parts of CFA's currently linked Victorian survival guide;complete NSW Health rainwater,groundwater,flooded-tank and non-potable written readings.
-- Twelve copyright statements, an original accessible-calling navigation note,
+  four text-only parts of CFA's currently linked Victorian survival guide;complete NSW Health rainwater,groundwater,flooded-tank and non-potable written readings;four complete ACT portal hazard articles.
+- Thirteen copyright statements, an original accessible-calling navigation note,
   the original Australian source hub and a directory
   covering all six states, three internal territories and seven external territories:
-  **66 searchable HTML records** altogether. Four remote entries provide management
+  **71 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -599,3 +599,45 @@ HTTP-browser navigation and the earlier idle-watchdog issue retain their limits.
 [66-record rainwater and groundwater contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-rainwater-groundwater-review-2026-11-26)
 contains public HTML,audits and engine evidence only. Personal-use material and
 original PDFs remain excluded;earlier asset files remain unchanged.
+
+
+## ACT hazard preparation,response and recovery
+
+Four complete written ACT portal articles add bushfire,flood,severe storm and
+heatwave causes,effects,risk and before/during/after phases. All36 accordion
+label/full-answer pairs are expanded into ordered headings. Full introductions,
+hero summaries and related-link labels remain. Normalized selected written text
+compares exactly before/after technical HTML simplification. No source wording or
+printed typos are rewritten. Maps,images,logos,icons,forms,PDFs,apps,medical manuals
+and third-party destinations are not bundled or licensed by following a link.
+
+The exact ACT portal policy grants CC BY4.0 with requested © Australian Capital
+Territory credit,exceptions for third-party/separately conditioned material and
+State/directorate/agency symbols/logos/trademarks/Coat of Arms. Its complete written
+reuse/external-site/translation/security/liability/contact body is included as a
+fifth record. ESA /copyright currently presents privacy/disclaimer text without an
+explicit reuse grant;the ACT portal grant is not inherited by ESA,WorkSafe ACT or
+linked manuals. SecureNT's current footer points to /page/copyright-and-disclaimer;
+that exact acquired policy retains a no-reuse default except fair dealing/specific
+CCgrants. No specific CCmarker was established on its cyclone page;NT body is not
+bundled. The older NT policy address returned403 and is not treated as the current
+policy. Exact response hashes and decisions are in ACT-HAZARDS-SOURCE-AUDIT-20261126.json.
+
+Page metadata dates remain explicit:the three July pages were created January2025
+and last updated1July2026;heatwave was created January2025 and updated16November2026.
+Copyright metadata is17November2023/9September2026. These metadata dates are not
+independent clinical/engineering review or a certified new advice edition. Today's
+retrieved heatwave body differs from a stale search preview:it names1800MEDICARE
+1800633422/noMedicarecard;July bushfire/storm retain healthdirect1800022222. Exact
+source bodies and their contact lists remain separate. The national Health page
+confirms the newer service;its body is not reproduced. Source emergency000
+instructions remain. No actual service access,eligibility or clinical validation
+is claimed. Phone-call/message warning descriptions remain dated and link the
+existing10November2026 NEMA operational reading;no live warning capability is added.
+
+Both household and rural guides expose the same four-reading ACT choice,prepare
+and learn references. Rural-landowner Farm FireWise labels,outdoor workers,
+animals,medical/medication/leave-early/stay-leave/floodwater/powerline and recovery
+conditions remain. Linked detailed manuals/maps are excluded,so this does not
+establish complete ACT operating-manual coverage. Public collection71records:
+55official practical readings,13copyright statements,3original navigation records.

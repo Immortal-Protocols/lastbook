@@ -28,6 +28,10 @@ class Reference(unittest.TestCase):
                 for query, expected in [('"Triple Zero"', 'au-emergency-calls'),
                                         ('livestock', 'nsw-rural-flood'), ('chemicals', 'qld-water'),
                                         ('"cyanuric acid"', 'nsw-rainwater-tanks'),
+                                        ('"Farm FireWise"', 'act-bushfire'),
+                                        ('"water pooling"', 'act-flooding'),
+                                        ('"thunderstorm asthma"', 'act-severe-storm'),
+                                        ('"1800MEDICARE"', 'act-heatwave'),
                                         ('"radiological quality"', 'nsw-groundwater'),
                                         ('"structural integrity"', 'nsw-tanks-after-flood'),
                                         ('"Boiling will not make"', 'nsw-nonpotable-water'),
@@ -69,6 +73,53 @@ class Reference(unittest.TestCase):
                               'AU-JBT', 'AU-CX', 'AU-CC', 'AU-NF', 'AU-HM', 'AU-AC', 'AU-CSI', 'AU-AAT'})
             self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
             self.assertEqual(cat['vic-generator']['license'], 'CC-BY-4.0')
+
+    def test_act_hazards_preserve_all_36_complete_accordion_answers_and_source_contact_dates(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'ACT-HAZARDS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        def source(uid):
+            return (au.SOURCES / entries[uid]['snapshot']).read_text(encoding='utf-8').split('<hr>', 1)[1].split('</body>', 1)[0]
+        def plain(text):
+            parser = au.Page(); parser.feed(text); parser.close()
+            return re.sub(r'\s+([.,;:!?])', r'\1', re.sub(r'\s+', ' ', ''.join(parser.text)).strip())
+        self.assertEqual(audit['total_practical_accordion_pairs'], 36)
+        for uid, hazard in [('act-bushfire', 'bushfire'), ('act-flooding', 'flood'),
+                            ('act-severe-storm', 'storm'), ('act-heatwave', 'heatwave')]:
+            html = source(uid)
+            headings = [plain(x) for x in re.findall(r'<h2>(.*?)</h2>', html, re.S)]
+            phases = ['Before a ' + hazard, 'During a ' + hazard, 'After a ' + hazard]
+            self.assertEqual([h for h in headings if h in phases], phases)
+            pairs = re.findall(r'<h3>(.*?)</h3>(.*?)(?=<h3>|<h2>)', html, re.S)
+            self.assertEqual(len(pairs), 9)
+            # Independently frozen full source answers protect conditions and ordering.
+            self.assertEqual([[plain(q), plain(a)] for q, a in pairs],
+                             [[re.sub(r'\s+([.,;:!?])', r'\1', v) for v in row]
+                              for row in audit['accordion_pairs'][uid]])
+            self.assertEqual(entries[uid]['license'], 'CC-BY-4.0')
+            self.assertEqual(entries[uid]['source_created'][:4], '2025')
+        bushfire = plain(source('act-bushfire'))
+        for text in ['Leaving early is always the safest option.', 'Farm FireWise Program',
+                     'Do not enter a bushfire effected area until it is safe.', '1800 022 222']:
+            self.assertIn(text, bushfire)
+        self.assertIn('Do not drive, ride, walk or play in floodwater.', plain(source('act-flooding')))
+        storm = plain(source('act-severe-storm'))
+        self.assertIn('Do not leave your property unless told to do so.', storm)
+        self.assertIn('October to December', storm)
+        self.assertIn('Carry your prescribed medication', storm)
+        heat = plain(source('act-heatwave'))
+        for text in ['1800Medicare', '1800 633 422', 'you do not need a Medicare card',
+                     'Avoid working outdoors in the peak heat', 'Do not exercise animals during the day.',
+                     'call triple zero (000) for an ambulance.']:
+            self.assertIn(text, heat)
+        self.assertNotIn('1800 022 222', heat)
+        self.assertEqual(entries['act-heatwave']['source_updated'], '2026-11-16')
+        for uid in ['act-bushfire', 'act-flooding', 'act-severe-storm']:
+            self.assertEqual(entries[uid]['source_updated'], '2026-07-01')
+        rights = plain(source('act-copyright'))
+        for text in ['The appropriate credit is © Australian Capital Territory',
+                     'any third party material', 'the ACT', 'Coat of Arms',
+                     'copyright belongs to the author', 'automatic language translation services']:
+            self.assertIn(text, rights)
 
     def test_water_sources_keep_full_faq_answers_units_dated_contacts_and_treatment_limits(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}

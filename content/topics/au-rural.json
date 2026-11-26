@@ -57,7 +57,12 @@
     "bore",
     "tank",
     "water testing",
-    "non-potable"
+    "non-potable",
+    "ACT",
+    "Canberra",
+    "thunderstorm asthma",
+    "heatwave",
+    "recovery"
   ],
   "choices": [
     {
@@ -160,6 +165,33 @@
           "doc": "nsw-nonpotable-water",
           "label": "NSW: non-potable supplies and water-use advice",
           "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
+        }
+      ]
+    },
+    {
+      "id": "act-hazards",
+      "label": "Read ACT bushfire, flood, storm and heatwave guidance",
+      "hint": "Complete ACT portal articles cover preparation, response and recovery. Regional services and source dates remain labelled.",
+      "read": [
+        {
+          "doc": "act-bushfire",
+          "label": "ACT: bushfire preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text, including rural-landowner references, leave-early and smoke cautions. Linked manuals/maps excluded."
+        },
+        {
+          "doc": "act-flooding",
+          "label": "ACT: flood preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;floodwater, powerline, animal and recovery cautions retained."
+        },
+        {
+          "doc": "act-severe-storm",
+          "label": "ACT: severe storm preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;thunderstorm asthma, medication, stay/leave and recovery conditions retained."
+        },
+        {
+          "doc": "act-heatwave",
+          "label": "ACT: heatwave preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
         }
       ]
     },
@@ -605,6 +637,26 @@
       "doc": "nsw-nonpotable-water",
       "label": "NSW: non-potable supplies and water-use advice",
       "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
+    },
+    {
+      "doc": "act-bushfire",
+      "label": "ACT: bushfire preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text, including rural-landowner references, leave-early and smoke cautions. Linked manuals/maps excluded."
+    },
+    {
+      "doc": "act-flooding",
+      "label": "ACT: flood preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;floodwater, powerline, animal and recovery cautions retained."
+    },
+    {
+      "doc": "act-severe-storm",
+      "label": "ACT: severe storm preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;thunderstorm asthma, medication, stay/leave and recovery conditions retained."
+    },
+    {
+      "doc": "act-heatwave",
+      "label": "ACT: heatwave preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
     }
   ],
   "learn": [
@@ -807,6 +859,26 @@
       "doc": "nsw-nonpotable-water",
       "label": "NSW: non-potable supplies and water-use advice",
       "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
+    },
+    {
+      "doc": "act-bushfire",
+      "label": "ACT: bushfire preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text, including rural-landowner references, leave-early and smoke cautions. Linked manuals/maps excluded."
+    },
+    {
+      "doc": "act-flooding",
+      "label": "ACT: flood preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;floodwater, powerline, animal and recovery cautions retained."
+    },
+    {
+      "doc": "act-severe-storm",
+      "label": "ACT: severe storm preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;thunderstorm asthma, medication, stay/leave and recovery conditions retained."
+    },
+    {
+      "doc": "act-heatwave",
+      "label": "ACT: heatwave preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
     }
   ],
   "related": [

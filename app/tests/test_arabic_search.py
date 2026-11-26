@@ -48,9 +48,9 @@ class ArabicSearch(unittest.TestCase):
 
     def test_query_keeps_arabic_marks_without_changing_latin_tokenization(self):
         self.assertEqual(server.query_groups('مبكرًا تعرّف سأل')[0], ['مبكرًا', 'تعرّف', 'سأل'])
-        self.assertEqual(search_text.query_terms("water's café waterَ"), ["water's", 'café', 'water'])
+        self.assertEqual(search_text.query_terms("water's café waterَ waterٰ"), ["water's", 'café', 'water', 'water'])
         self.assertEqual(search_text.query_terms("water's", apostrophes=False), ['water', 's'])
-        self.assertEqual(server.query_groups('ًُّ')[1], [])
+        self.assertEqual(server.query_groups('ًُّٰ')[1], [])
 
     def test_marked_and_unmarked_queries_have_same_whole_word_matches(self):
         self.assertNotIn(('marked',), self.con.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', ('مبكرا',)).fetchall())

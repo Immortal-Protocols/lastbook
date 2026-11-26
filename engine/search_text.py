@@ -13,7 +13,8 @@ OPTIONAL_VOWELS = r'[\u064b-\u0652\u0670]*'
 
 
 def arabic_word(term):
-    return any(unicodedata.name(c, '').startswith('ARABIC LETTER ') for c in term)
+    return any(unicodedata.category(c).startswith('L') and
+               unicodedata.name(c, '').startswith('ARABIC LETTER ') for c in term)
 
 
 def query_terms(text, apostrophes=True):

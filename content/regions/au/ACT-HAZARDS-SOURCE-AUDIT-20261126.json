@@ -1,0 +1,1125 @@
+{
+  "checked": "2026-11-26",
+  "rights": {
+    "source": {
+      "id": "act-copyright",
+      "url": "https://www.act.gov.au/copyright",
+      "final_url": "https://www.act.gov.au/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 119366,
+      "raw_sha256": "2261652029bd9580438ee839b967ae495cae337be362bd7aa425684b7188b089",
+      "rights_or_rural_links": [
+        {
+          "text": "Rural fire service",
+          "href": "https://www.act.gov.au/emergency-and-safety/rural-fire-service"
+        },
+        {
+          "text": "Renew or replace your drivers licence",
+          "href": "https://www.act.gov.au/transport-and-traffic/renew-or-replace-your-drivers-licence"
+        },
+        {
+          "text": "Copyright",
+          "href": "https://www.act.gov.au/copyright"
+        },
+        {
+          "text": "Creative Commons Attribution 4.0 licence",
+          "href": "http://creativecommons.org/licenses/by/4.0"
+        },
+        {
+          "text": "Creative Commons Attribution 4.0 licence",
+          "href": "http://creativecommons.org/licenses/by/4.0"
+        },
+        {
+          "text": "terms of the licence on the Creative Commons website",
+          "href": "https://creativecommons.org/licenses/by/4.0/"
+        },
+        {
+          "text": "Copyright Act 1968 (Commonwealth)",
+          "href": "https://www.legislation.gov.au/Details/C2017C00414"
+        },
+        {
+          "text": "copyright@act.gov.au",
+          "href": "mailto:copyright@act.gov.au"
+        },
+        {
+          "text": "Driver licence renewal",
+          "href": "https://www.accesscanberra.act.gov.au/driving-transport-and-parking/licences/renew-or-replace-your-driver-licence"
+        },
+        {
+          "text": "Copyright",
+          "href": "https://www.act.gov.au/copyright"
+        }
+      ]
+    },
+    "license": "CC-BY-4.0",
+    "credit": "© Australian Capital Territory",
+    "grant": "Unless stated otherwise,ACT-owned portal content is licensed CC BY4.0.",
+    "exceptions": "Third-party material unless expressly licensed;separately conditioned material;ACT/directorate/agency symbols,logos,trademarks and Coat of Arms. No images/icons/branding distributed.",
+    "external_material": "Exact policy says external content belongs to its author/licensee. Separate ESA/WorkSafe ACT policies and linked PDFs/maps/medical manuals are not granted by the ACT portal policy."
+  },
+  "selections": [
+    {
+      "id": "act-bushfire",
+      "raw": {
+        "id": "act-bushfire",
+        "url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/bushfire",
+        "final_url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/bushfire",
+        "retrieved_at": "2026-11-26",
+        "bytes": 129704,
+        "raw_sha256": "789a7f11c9290a7782910cf51bed34466b52dfce3f622b21b32d2fa52e31de0a",
+        "rights_or_rural_links": [
+          {
+            "text": "Rural fire service",
+            "href": "https://www.act.gov.au/emergency-and-safety/rural-fire-service"
+          },
+          {
+            "text": "Renew or replace your drivers licence",
+            "href": "https://www.act.gov.au/transport-and-traffic/renew-or-replace-your-drivers-licence"
+          },
+          {
+            "text": "Farm FireWise Program [PDF 1.8 MB]",
+            "href": "https://esa.act.gov.au/sites/default/files/2022-09/Farm%20FireWise%20Information%20Booklet.pdf"
+          },
+          {
+            "text": "Driver licence renewal",
+            "href": "https://www.accesscanberra.act.gov.au/driving-transport-and-parking/licences/renew-or-replace-your-driver-licence"
+          },
+          {
+            "text": "Copyright",
+            "href": "https://www.act.gov.au/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "dcterms.created": "2025-01-13T17:38:09+11:00",
+        "dcterms.date": "2026-07-01T16:42:29+10:00"
+      },
+      "selector": "#act-main plus main hero summary paragraph when present",
+      "normalized_source_text_sha256": "a40713680c0e374715704e80ea6f7ab7934dbd07fcd735d24fff3ac86da220a7",
+      "normalized_adapted_text_sha256": "a40713680c0e374715704e80ea6f7ab7934dbd07fcd735d24fff3ac86da220a7",
+      "source_headings": [
+        "What causes bushfires",
+        "Impacts and effects",
+        "Who is most at risk",
+        "Before a bushfire",
+        "During a bushfire",
+        "After a bushfire",
+        "Related information"
+      ],
+      "accordion_pairs": [
+        [
+          "Be informed",
+          "Use the bushfire prone area map to determine the risk where you live. Think about where you might go if you need to evacuate, and how you might get there. Talk to your doctor about how bushfire smoke might affect you."
+        ],
+        [
+          "Reduce the risk",
+          "Take these steps before a bushfire to reduce your risk: Write a household survival plan and pack a home emergency kit . If you have asthma or other breathing issues, talk to your doctor about developing an action plan. Check that your home and contents insurance covers bushfire damage. Make copies of your important documents [DOC 754 KB] . Design your home and garden [PDF 8.6 MB] to reduce the risk of bushfires. Maintain your home and garden [PDF 1.6 MB] to continue to manage bushfire risk. If you are a rural landowner, get advice on bushfire preparedness. The Farm FireWise Program [PDF 1.8 MB] can assist. Write a list of people you could ask for assistance during a bushfire."
+        ],
+        [
+          "Remain aware",
+          "During bushfire season, stay informed by: Checking the ACT Emergency Services Agency website and social media channels. The public will receive daily updates on the bushfire threat level . When the threat is high, the public will also receive advice on what to do to stay safe. This may include a Total Fire Ban . Installing the Hazards Near Me NSW app ."
+        ],
+        [
+          "Stay informed",
+          "During bushfires, you can find warnings and updates on: the ACT Emergency Services Agency website ACT Government social media channels. You can also find updates by accessing: ABC radio emergency broadcasts the Hazards Near Me NSW app . It is important to note: traffic problems and road closures on your planned evacuation route the air quality readings and what you need to do to stay safe . You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given."
+        ],
+        [
+          "Stay in contact",
+          "Stay in touch with friends, neighbours, and loved ones. If you need assistance, reach out to your contacts list. Let someone know if you plan to evacuate and where you intend to shelter. If bushfire smoke is making you or someone you know unwell: contact your doctor go to a walk-in centre call healthdirect on 1800 022 222 . If you or someone else are experiencing shortness of breath : go to the nearest hospital emergency department call triple zero (000) for an ambulance."
+        ],
+        [
+          "Stay safe",
+          "Leaving early is always the safest option. Don’t wait for a warning to: Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water. Decide where you will evacuate to. Evacuation centres should be a last resort, plan to stay with family or friends if you can. Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification. Avoid fallen power lines, as well as debris near them. These could be live and cause an electric shock. If bushfire smoke is an issue: Follow your asthma or medical action plan. If you have medication prescribed, carry it with you. Stay inside. Keep the windows shut and turn on air conditioning. If you don’t have air conditioning, go to places that do, like cinemas and shopping centres. Do not engage in outdoor exercise."
+        ],
+        [
+          "Identify the impacts",
+          "Check on loved ones and assess damage to your property. If you can’t locate a neighbour, friend, or relative , report it. To find lost animals , check online. Take photos of damaged property and secure the site if you can."
+        ],
+        [
+          "Manage ongoing risks",
+          "Do not enter a bushfire effected area until it is safe. Hazard such as damaged and unstable buildings and reduced air and water quality remain. Shut off and report damaged utilities . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock. Monitor for health alerts about air and water quality. Get assistance for your mental health if you need it."
+        ],
+        [
+          "Assess and plan",
+          "Recovering from a bushfire can be hard. There are services and supports to help: ask your insurance provider about making a claim . check if you are eligible for financial assistance. Assess what worked and what didn’t work: review your household survival plan and home emergency kit consider what you might change in and around your home to reduce bushfire risk reassess your asthma or medical action plan."
+        ]
+      ],
+      "selected_blocks": [
+        "Bushfires play a key role in the health of Australia’s native landscape. When conditions create extremely hot fires, however, the impacts and effects outweigh the benefits. The 2019-2020 Black Summer Bushfires was an example of this. As the climate changes these bushfires may become more frequent.",
+        "What causes bushfires",
+        "Climate conditions, known as fire weather , can increase the likelihood of a bushfire starting. Including:",
+        "high temperatures",
+        "low rainfall and humidity",
+        "thunderstorms and strong winds.",
+        "To avoid accidently starting a bushfire during fire weather conditions:",
+        "take care when mowing long, dry grass",
+        "do not light open fires",
+        "avoid activities such as welding, grinding and soldering.",
+        "Impacts and effects",
+        "Bushfires and bushfire smoke can cause:",
+        "distress and breathing difficulties",
+        "need for medical and wellbeing services to rise",
+        "destruction of buildings and community facilities",
+        "soil erosion, water pollution and animal and plant species to decline",
+        "services such as power, water, businesses, and supply networks to stop",
+        "the economy to decline because of these impacts",
+        "people to become displaced",
+        "the demand for building supplies and housing to increase.",
+        "Who is most at risk",
+        "The ACT Bushfire Prone area map shows areas that are at highest risk of bushfires . Bushfires often start in the Brindabella mountains, which surround the ACT in the west and north.",
+        "Even if you don’t live close to bushland, bushfires can impact you. Hazards include:",
+        "embers",
+        "heat",
+        "strong winds",
+        "fallen objects like trees",
+        "smoke.",
+        "People who can’t leave their homes easily and people with breathing problems are most at risk.",
+        "Before a bushfire",
+        "Use the bushfire prone area map to determine the risk where you live. Think about where you might go if you need to evacuate, and how you might get there.",
+        "Talk to your doctor about how bushfire smoke might affect you.",
+        "Take these steps before a bushfire to reduce your risk:",
+        "Write a household survival plan and pack a home emergency kit .",
+        "If you have asthma or other breathing issues, talk to your doctor about developing an action plan.",
+        "Check that your home and contents insurance covers bushfire damage.",
+        "Make copies of your important documents [DOC 754 KB] .",
+        "Design your home and garden [PDF 8.6 MB] to reduce the risk of bushfires. Maintain your home and garden [PDF 1.6 MB] to continue to manage bushfire risk.",
+        "If you are a rural landowner, get advice on bushfire preparedness. The Farm FireWise Program [PDF 1.8 MB] can assist.",
+        "Write a list of people you could ask for assistance during a bushfire.",
+        "During bushfire season, stay informed by:",
+        "Checking the ACT Emergency Services Agency website and social media channels. The public will receive daily updates on the bushfire threat level . When the threat is high, the public will also receive advice on what to do to stay safe. This may include a Total Fire Ban .",
+        "Installing the Hazards Near Me NSW app .",
+        "During a bushfire",
+        "During bushfires, you can find warnings and updates on:",
+        "the ACT Emergency Services Agency website",
+        "ACT Government social media channels.",
+        "You can also find updates by accessing:",
+        "ABC radio emergency broadcasts",
+        "the Hazards Near Me NSW app .",
+        "It is important to note:",
+        "traffic problems and road closures on your planned evacuation route",
+        "the air quality readings and what you need to do to stay safe .",
+        "You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given.",
+        "Stay in touch with friends, neighbours, and loved ones. If you need assistance, reach out to your contacts list. Let someone know if you plan to evacuate and where you intend to shelter.",
+        "If bushfire smoke is making you or someone you know unwell:",
+        "contact your doctor",
+        "go to a walk-in centre",
+        "call healthdirect on 1800 022 222 .",
+        "If you or someone else are experiencing shortness of breath :",
+        "go to the nearest hospital emergency department",
+        "call triple zero (000) for an ambulance.",
+        "Leaving early is always the safest option. Don’t wait for a warning to:",
+        "Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water.",
+        "Decide where you will evacuate to. Evacuation centres should be a last resort, plan to stay with family or friends if you can.",
+        "Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification.",
+        "Avoid fallen power lines, as well as debris near them. These could be live and cause an electric shock.",
+        "If bushfire smoke is an issue:",
+        "Follow your asthma or medical action plan. If you have medication prescribed, carry it with you.",
+        "Stay inside. Keep the windows shut and turn on air conditioning.",
+        "If you don’t have air conditioning, go to places that do, like cinemas and shopping centres.",
+        "Do not engage in outdoor exercise.",
+        "After a bushfire",
+        "Check on loved ones and assess damage to your property.",
+        "If you can’t locate a neighbour, friend, or relative , report it.",
+        "To find lost animals , check online.",
+        "Take photos of damaged property and secure the site if you can.",
+        "Do not enter a bushfire effected area until it is safe. Hazard such as damaged and unstable buildings and reduced air and water quality remain.",
+        "Shut off and report damaged utilities . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock.",
+        "Monitor for health alerts about air and water quality.",
+        "Get assistance for your mental health if you need it.",
+        "Recovering from a bushfire can be hard. There are services and supports to help:",
+        "ask your insurance provider about making a claim .",
+        "check if you are eligible for financial assistance.",
+        "Assess what worked and what didn’t work:",
+        "review your household survival plan and home emergency kit",
+        "consider what you might change in and around your home to reduce bushfire risk",
+        "reassess your asthma or medical action plan.",
+        "Related information",
+        "Read the ACT Governments strategic plan for managing bushfire risk in the ACT",
+        "Find out about fuel reduction burns",
+        "Check advice about what activities you should avoid on high fire danger days",
+        "Discover more about the effect of bushfire smoke on health",
+        "Find out what else you can do to reduce your risk and become more disaster resilience"
+      ],
+      "sha256": "f9a0576f076d4f0e9ad2cffaf6acea8c4a38591b3d564c0db32085bb18b47c71",
+      "scope": "Complete written introduction, causes/effects/risk, before/during/after sections and related-link labels. Includes rural landowner reference, leave-early, smoke/medical and powerline cautions. Linked maps and Farm FireWise/manual PDFs are not bundled."
+    },
+    {
+      "id": "act-flooding",
+      "raw": {
+        "id": "act-flooding",
+        "url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/flooding",
+        "final_url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/flooding",
+        "retrieved_at": "2026-11-26",
+        "bytes": 127305,
+        "raw_sha256": "f975e1d8c29a93e75777d6044ad38d5f9ae19270079ca998521561f25044a256",
+        "rights_or_rural_links": [
+          {
+            "text": "Rural fire service",
+            "href": "https://www.act.gov.au/emergency-and-safety/rural-fire-service"
+          },
+          {
+            "text": "Renew or replace your drivers licence",
+            "href": "https://www.act.gov.au/transport-and-traffic/renew-or-replace-your-drivers-licence"
+          },
+          {
+            "text": "Driver licence renewal",
+            "href": "https://www.accesscanberra.act.gov.au/driving-transport-and-parking/licences/renew-or-replace-your-driver-licence"
+          },
+          {
+            "text": "Copyright",
+            "href": "https://www.act.gov.au/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "dcterms.created": "2025-01-14T12:33:41+11:00",
+        "dcterms.date": "2026-07-01T16:44:06+10:00"
+      },
+      "selector": "#act-main plus main hero summary paragraph when present",
+      "normalized_source_text_sha256": "de8917dbb89d203525eb2ecd2e0e867b8e6d37dadfb357a48405a3dd5af7a0fc",
+      "normalized_adapted_text_sha256": "de8917dbb89d203525eb2ecd2e0e867b8e6d37dadfb357a48405a3dd5af7a0fc",
+      "source_headings": [
+        "What causes flooding",
+        "Impacts and effects",
+        "Who is most at risk",
+        "Before a flood",
+        "During a flood",
+        "After a flood",
+        "Related information"
+      ],
+      "accordion_pairs": [
+        [
+          "Be informed",
+          "Use the flood prone area map to determine the risk where you live. Think about where you might go if you need to evacuate, and how you might get there."
+        ],
+        [
+          "Reduce the risk",
+          "Take these steps before a flood to reduce your risk: Write a household survival plan and pack a home emergency kit . Make copies of your important documents [PDF 754 KB] . Trim your trees, clear your gutters and remove any loose items from around your home. Rake up leaves and grass clippings. Bag them, do not rake them onto the road. Large amounts of debris in the storm water system can block water flow. Maintain your water tank to help capture excessive rainfall. Check that your home and contents insurance covers flood damage. Landscape your property to prevent water pooling. Minimise use of concrete and paving. The ACT Government has a guide to help reduce the risk of flooding when landscaping [PDF 8.6 MB] . Write a list of people you could ask for assistance during a flood."
+        ],
+        [
+          "Remain aware",
+          "Stay informed by: checking the local weather forecasts following ACT Government social media channels."
+        ],
+        [
+          "Stay informed",
+          "During a flood, you can find warnings and updates on: the ACT Emergency Services Agency website ACT Government social media channels. You can also find updates by accessing: ABC radio emergency broadcasts the Hazards Near Me NSW app . Check for traffic problems and road closures on your planned evacuation route. Do not drive, ride, walk or play in floodwater. You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given."
+        ],
+        [
+          "Stay in contact",
+          "Stay in touch with friends, neighbours, and loved ones. If you need assistance, reach out to your contacts list. Let someone know if you plan to evacuate and where you intend to shelter."
+        ],
+        [
+          "Stay safe",
+          "Prepare early to leave if your property is at threat: Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water. Decide where you will evacuate to. Evacuation centres should be a last resort. Plan to stay with family or friends if you can. Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification. If you need to leave: Use your cars hazard lights. Keep clear of floodwaters. Avoid fallen powerlines and debris near them. These could be live and cause an electric shock."
+        ],
+        [
+          "Identify the impacts",
+          "Check on loved ones and assess damage to your property. If you can’t locate a neighbour, friend, or relative , report it. To find lost animals , check online. Take photos of damaged property and secure the site if you can."
+        ],
+        [
+          "Manage ongoing risks",
+          "Watch out for potential risks. If you have broken utilities, turn them off and let someone know . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock. If you see a tree on public land damaged, report it . If you notice damage to a tree on your land, contact an arborist. If your home is unsafe call the ACT State Emergency Service for help. Avoid waterways. After a flood the water runoff can move fast and might have pollutants and other debris in it. Get assistance for your mental health if you need it."
+        ],
+        [
+          "Assess and plan",
+          "Recovering from a flood can be hard. There are services and supports to help: ask your insurance provider about making a claim check if you are eligible for financial assistance. Assess what worked and what didn’t work: review your household survival plan and home emergency kit consider what you might change in and around your home to reduce the risk [PDF 8.6 MB] of flooding."
+        ]
+      ],
+      "selected_blocks": [
+        "The impacts of climate change will make intense summer storms more common and severe. Intense summer storms can cause floods. Floods are Australia’s costliest disaster.",
+        "What causes flooding",
+        "Floods occur when water catchments exceed their volume, or rain collects on non-porous surfaces. The extent depends on the:",
+        "amount and length of the rainfall",
+        "catchment volume",
+        "groundcover's ability to absorb water.",
+        "Impacts and effects",
+        "Floods can cause:",
+        "distress and anxiety",
+        "need for medical and wellbeing services to rise",
+        "destruction of buildings and community facilities",
+        "soil erosion, water pollution and animal and plant species to decline",
+        "services such as power, businesses, and supply networks to stop",
+        "the economy to decline because of these impacts",
+        "people to become displaced",
+        "the demand for building supplies and housing to increase.",
+        "Who is most at risk",
+        "The ACT Flood Prone area map shows areas that are at highest risk of flooding .",
+        "People who can’t leave their homes easily are at highest risk.",
+        "Before a flood",
+        "Use the flood prone area map to determine the risk where you live. Think about where you might go if you need to evacuate, and how you might get there.",
+        "Take these steps before a flood to reduce your risk:",
+        "Write a household survival plan and pack a home emergency kit .",
+        "Make copies of your important documents [PDF 754 KB] .",
+        "Trim your trees, clear your gutters and remove any loose items from around your home.",
+        "Rake up leaves and grass clippings. Bag them, do not rake them onto the road. Large amounts of debris in the storm water system can block water flow.",
+        "Maintain your water tank to help capture excessive rainfall.",
+        "Check that your home and contents insurance covers flood damage.",
+        "Landscape your property to prevent water pooling. Minimise use of concrete and paving. The ACT Government has a guide to help reduce the risk of flooding when landscaping [PDF 8.6 MB] .",
+        "Write a list of people you could ask for assistance during a flood.",
+        "Stay informed by:",
+        "checking the local weather forecasts",
+        "following ACT Government social media channels.",
+        "During a flood",
+        "During a flood, you can find warnings and updates on:",
+        "the ACT Emergency Services Agency website",
+        "ACT Government social media channels.",
+        "You can also find updates by accessing:",
+        "ABC radio emergency broadcasts",
+        "the Hazards Near Me NSW app .",
+        "Check for traffic problems and road closures on your planned evacuation route. Do not drive, ride, walk or play in floodwater.",
+        "You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given.",
+        "Stay in touch with friends, neighbours, and loved ones. If you need assistance, reach out to your contacts list. Let someone know if you plan to evacuate and where you intend to shelter.",
+        "Prepare early to leave if your property is at threat:",
+        "Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water.",
+        "Decide where you will evacuate to. Evacuation centres should be a last resort. Plan to stay with family or friends if you can.",
+        "Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification.",
+        "If you need to leave:",
+        "Use your cars hazard lights.",
+        "Keep clear of floodwaters.",
+        "Avoid fallen powerlines and debris near them. These could be live and cause an electric shock.",
+        "After a flood",
+        "Check on loved ones and assess damage to your property.",
+        "If you can’t locate a neighbour, friend, or relative , report it.",
+        "To find lost animals , check online.",
+        "Take photos of damaged property and secure the site if you can.",
+        "Watch out for potential risks.",
+        "If you have broken utilities, turn them off and let someone know .",
+        "Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock.",
+        "If you see a tree on public land damaged, report it .",
+        "If you notice damage to a tree on your land, contact an arborist.",
+        "If your home is unsafe call the ACT State Emergency Service for help.",
+        "Avoid waterways. After a flood the water runoff can move fast and might have pollutants and other debris in it.",
+        "Get assistance for your mental health if you need it.",
+        "Recovering from a flood can be hard. There are services and supports to help:",
+        "ask your insurance provider about making a claim",
+        "check if you are eligible for financial assistance.",
+        "Assess what worked and what didn’t work:",
+        "review your household survival plan and home emergency kit",
+        "consider what you might change in and around your home to reduce the risk [PDF 8.6 MB] of flooding.",
+        "Related information",
+        "Learn how the ACT Government has lowered the risk of flooding using the stormwater system",
+        "Read the ACT Government’s water-sensitive urban design",
+        "Learn how to prevent water pooling on your property [PDF 420 KB]",
+        "Check advice for getting ready for storms and floods [PDF 1.6 MB]",
+        "Find out what else you can do to reduce your risk and become more disaster resilient"
+      ],
+      "sha256": "1000b2bf3e9f56113db242e8d9675e036fdf0a18110000a2105c3d06400c56e9",
+      "scope": "Complete written introduction, causes/effects/risk, before/during/after sections and related-link labels. Floodwater exclusion, evacuation/animal preparation, fallen powerline and post-flood water/tree/utility cautions remain."
+    },
+    {
+      "id": "act-severe-storm",
+      "raw": {
+        "id": "act-severe-storm",
+        "url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/severe-storm",
+        "final_url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/severe-storm",
+        "retrieved_at": "2026-11-26",
+        "bytes": 128913,
+        "raw_sha256": "30cbe4bdea57f16053cfa2b6b592487ad4ba6c01fb60ed7cdc41461ca908d8af",
+        "rights_or_rural_links": [
+          {
+            "text": "Rural fire service",
+            "href": "https://www.act.gov.au/emergency-and-safety/rural-fire-service"
+          },
+          {
+            "text": "Renew or replace your drivers licence",
+            "href": "https://www.act.gov.au/transport-and-traffic/renew-or-replace-your-drivers-licence"
+          },
+          {
+            "text": "Driver licence renewal",
+            "href": "https://www.accesscanberra.act.gov.au/driving-transport-and-parking/licences/renew-or-replace-your-driver-licence"
+          },
+          {
+            "text": "Copyright",
+            "href": "https://www.act.gov.au/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "dcterms.created": "2025-01-14T10:15:34+11:00",
+        "dcterms.date": "2026-07-01T16:47:23+10:00"
+      },
+      "selector": "#act-main plus main hero summary paragraph when present",
+      "normalized_source_text_sha256": "df198fa31f32d69ced6ea4a6d12c5594d580753002cc59cffb80ca8887592870",
+      "normalized_adapted_text_sha256": "df198fa31f32d69ced6ea4a6d12c5594d580753002cc59cffb80ca8887592870",
+      "source_headings": [
+        "What causes storms",
+        "Impacts and effects",
+        "Who is most at risk",
+        "Before a storm",
+        "During a storm",
+        "After a storm",
+        "Related information"
+      ],
+      "accordion_pairs": [
+        [
+          "Be informed",
+          "Talk to your doctor about the risk of thunderstorm asthma."
+        ],
+        [
+          "Reduce the risk",
+          "Take these steps before a storm to reduce your risk: Write a household survival plan and pack a home emergency kit . Check that your home and contents insurance includes storm damage. Make copies of your important documents [DOC 754 KB] . Follow advice about how to keep your house safe during storms [PDF 1.6 MB] . Trim your trees, clear your gutters and remove any loose items from around your home. Make your home airtight by sealing gaps around doors and windows. Concession cardholders can get free support with draught-proofing . If you have asthma or other breathing issues, ask your doctor about having an action plan. Carry your prescribed medication with you during peak risk times. Write a list of people you could ask for assistance during a storm."
+        ],
+        [
+          "Remain aware",
+          "Stay informed by: checking the local weather forecasts keeping an eye on air quality when storms are forecast following ACT Government social media channels."
+        ],
+        [
+          "Stay informed",
+          "During storms, you may find warnings and updates on: the Bureau of Meteorology website and phone app the ACT Emergency Services Agency website the public health alerts webpage ACT Government social media channels. You can listen to ABC radio for warnings and updates as well. It is important to monitor air quality readings and advice on what you need to do to stay safe . You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given."
+        ],
+        [
+          "Stay in contact",
+          "Stay in contact with neighbours, friends, and loved ones. Reach out to your list of contacts if you need help. If you or someone you know are feeling unwell: contact your doctor go to a walk-in centre call healthdirect on 1800 022 222 . In a medical emergency: go to the nearest hospital emergency department call triple zero (000) for an ambulance."
+        ],
+        [
+          "Stay safe",
+          "Stay inside, away from windows. Avoid using the electricity. Move your car somewhere safe, away from trees and powerlines. Prepare to leave if your property gets damaged: Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water. Decide where you will evacuate to. Evacuation centres should be a last resort, plan to stay with family or friends if you can. Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification. Do not leave your property unless told to do so. If you need to leave: Use your cars hazard lights. Keep clear of floodwaters. Avoid fallen powerlines and debris near them. These could be live and cause an electric shock."
+        ],
+        [
+          "Identify the impacts",
+          "Check on loved ones and assess damage to your property. If you can’t locate a neighbour, friend, or relative , report it. To find lost animals , check online. Take photos of damaged property and secure the site if you can."
+        ],
+        [
+          "Manage the ongoing risks",
+          "Watch out for potential risks. If you have broken utilities, turn them off and let someone know . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock. If you see a tree on public land damaged, report it . If you notice damage to a tree on your land, contact an arborist. If your home is unsafe call the ACT State Emergency Service for help. Avoid waterways. After a storm, the water runoff can move fast and might have pollutants and other debris in it."
+        ],
+        [
+          "Assess and plan",
+          "Recovering from a storm can be hard. There are services and supports to help: ask your insurance provider about making a claim check if you are eligible for financial assistance . Assess what worked and what didn’t work: review your household survival plan and home emergency kit consider what you might change in and around your home to reduce storm risks reassess your asthma or medical action plan."
+        ]
+      ],
+      "selected_blocks": [
+        "As the climate warms, the region will experience more frequent and intense storms.",
+        "What causes storms",
+        "Storms in the ACT are more common from September to March, when the air is warmer. They form when warm, humid air meets cooler air above. This creates strong winds that push warm air upwards, forming storm clouds. Storms often bring rain, lighting, thunder, hail and strong winds.",
+        "Impacts and effects",
+        "Storms can cause:",
+        "intense rain, hail and flash flooding",
+        "lightning strikes, fallen trees and other structures",
+        "damage to property and power, phone lines, and road structures",
+        "the economy to decline because of these impacts",
+        "greater demand for emergency and medical services.",
+        "Who is most at risk",
+        "Most at risk are people who will struggle to avoid the impacts of storms, including people with asthma and other breathing problems.",
+        "High levels of pollen combined with strong winds from storms can trigger thunderstorm asthma symptoms [PDF 987 KB] . People at high risk of thunderstorm asthma are:",
+        "people who suffer from asthma",
+        "people who suffer from hay fever or other allergies.",
+        "Risk is highest from October to December, when conditions are right for both pollen and storms.",
+        "Before a storm",
+        "Talk to your doctor about the risk of thunderstorm asthma.",
+        "Take these steps before a storm to reduce your risk:",
+        "Write a household survival plan and pack a home emergency kit .",
+        "Check that your home and contents insurance includes storm damage.",
+        "Make copies of your important documents [DOC 754 KB] .",
+        "Follow advice about how to keep your house safe during storms [PDF 1.6 MB] . Trim your trees, clear your gutters and remove any loose items from around your home.",
+        "Make your home airtight by sealing gaps around doors and windows. Concession cardholders can get free support with draught-proofing .",
+        "If you have asthma or other breathing issues, ask your doctor about having an action plan. Carry your prescribed medication with you during peak risk times.",
+        "Write a list of people you could ask for assistance during a storm.",
+        "Stay informed by:",
+        "checking the local weather forecasts",
+        "keeping an eye on air quality when storms are forecast",
+        "following ACT Government social media channels.",
+        "During a storm",
+        "During storms, you may find warnings and updates on:",
+        "the Bureau of Meteorology website and phone app",
+        "the ACT Emergency Services Agency website",
+        "the public health alerts webpage",
+        "ACT Government social media channels.",
+        "You can listen to ABC radio for warnings and updates as well.",
+        "It is important to monitor air quality readings and advice on what you need to do to stay safe .",
+        "You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given.",
+        "Stay in contact with neighbours, friends, and loved ones. Reach out to your list of contacts if you need help.",
+        "If you or someone you know are feeling unwell:",
+        "contact your doctor",
+        "go to a walk-in centre",
+        "call healthdirect on 1800 022 222 .",
+        "In a medical emergency:",
+        "go to the nearest hospital emergency department",
+        "call triple zero (000) for an ambulance.",
+        "Stay inside, away from windows. Avoid using the electricity. Move your car somewhere safe, away from trees and powerlines.",
+        "Prepare to leave if your property gets damaged:",
+        "Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water.",
+        "Decide where you will evacuate to. Evacuation centres should be a last resort, plan to stay with family or friends if you can.",
+        "Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification.",
+        "Do not leave your property unless told to do so. If you need to leave:",
+        "Use your cars hazard lights.",
+        "Keep clear of floodwaters.",
+        "Avoid fallen powerlines and debris near them. These could be live and cause an electric shock.",
+        "After a storm",
+        "Check on loved ones and assess damage to your property.",
+        "If you can’t locate a neighbour, friend, or relative , report it.",
+        "To find lost animals , check online.",
+        "Take photos of damaged property and secure the site if you can.",
+        "Watch out for potential risks.",
+        "If you have broken utilities, turn them off and let someone know .",
+        "Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock.",
+        "If you see a tree on public land damaged, report it .",
+        "If you notice damage to a tree on your land, contact an arborist.",
+        "If your home is unsafe call the ACT State Emergency Service for help.",
+        "Avoid waterways. After a storm, the water runoff can move fast and might have pollutants and other debris in it.",
+        "Recovering from a storm can be hard. There are services and supports to help:",
+        "ask your insurance provider about making a claim",
+        "check if you are eligible for financial assistance .",
+        "Assess what worked and what didn’t work:",
+        "review your household survival plan and home emergency kit",
+        "consider what you might change in and around your home to reduce storm risks",
+        "reassess your asthma or medical action plan.",
+        "Related information",
+        "Check advice on how to stay safe when the air quality is poor",
+        "Find out more about the health effects of thunderstorm asthma",
+        "Find out what else you can do to reduce your risk and become more disaster resilient",
+        "Check local weather forecasts",
+        "Follow ACT Emergency Services Agency Facebook page",
+        "Follow the ACT Health Facebook page",
+        "Install Hazards near me app"
+      ],
+      "sha256": "724fc195d0ea0af63e1a3c2c1f4f3a303f31bc63864abf2ade543e70c9f29c98",
+      "scope": "Complete written introduction, causes/effects/risk, before/during/after sections and related-link labels. Thunderstorm-asthma, medication, stay/leave, fallen powerline and recovery conditions remain."
+    },
+    {
+      "id": "act-heatwave",
+      "raw": {
+        "id": "act-heatwave",
+        "url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/heatwave",
+        "final_url": "https://www.act.gov.au/emergency-and-safety/reduce-the-impact-of-disasters/heatwave",
+        "retrieved_at": "2026-11-26",
+        "bytes": 128794,
+        "raw_sha256": "eae479fb1243a70b927d953f5f3b2dd68076edc8f90312f6f843f6c75fa4776c",
+        "rights_or_rural_links": [
+          {
+            "text": "Rural fire service",
+            "href": "https://www.act.gov.au/emergency-and-safety/rural-fire-service"
+          },
+          {
+            "text": "Renew or replace your drivers licence",
+            "href": "https://www.act.gov.au/transport-and-traffic/renew-or-replace-your-drivers-licence"
+          },
+          {
+            "text": "Driver licence renewal",
+            "href": "https://www.accesscanberra.act.gov.au/driving-transport-and-parking/licences/renew-or-replace-your-driver-licence"
+          },
+          {
+            "text": "Copyright",
+            "href": "https://www.act.gov.au/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "dcterms.created": "2025-01-13T16:50:34+11:00",
+        "dcterms.date": "2026-11-16T15:47:58+11:00"
+      },
+      "selector": "#act-main plus main hero summary paragraph when present",
+      "normalized_source_text_sha256": "ac9b858a0f3401ed9478c33db14ff026d33ed57333640061fbe1cdde4abcea2c",
+      "normalized_adapted_text_sha256": "ac9b858a0f3401ed9478c33db14ff026d33ed57333640061fbe1cdde4abcea2c",
+      "source_headings": [
+        "What is a heatwave",
+        "Impacts and effects",
+        "Who is most at risk",
+        "Before a heatwave",
+        "During a heatwave",
+        "After a heatwave",
+        "Related information"
+      ],
+      "accordion_pairs": [
+        [
+          "Be informed",
+          "Talk to your doctor about how heatwaves might affect you."
+        ],
+        [
+          "Reduce your risk",
+          "Take these steps before a heatwave to reduce your risk: Learn simple things you can do to stay cool in summer for less. All ACT households can get free advice through the Sustainable Home Advice Program , including advice for renters . Find cool places near your home. Like parks with shade, libraries, pools, and shopping centres. Invest in window coverings and seal gaps around windows and doors. Eligible concession cardholders can get free support with draught-proofing and window covers . Install energy efficient fans and reverse cycle air conditioning. Insulate your walls and ceilings. The ACT Government has developed a guide to help reduce heat when building or renovating . Limit use of concrete and paving around your home. Use trees for shade and increase planted surfaces using heat-resistant species . Learn how to design climate-smart gardens and landscape for the ACT climate [PDF 16.33MB] . Write a list of people you could ask for assistance during a heatwave."
+        ],
+        [
+          "Remain aware",
+          "Stay informed by: checking local weather forecasts following ACT Health and Community Services and ACT Emergency Service Agency social media channels."
+        ],
+        [
+          "Stay informed",
+          "On hot days, ACT Government social media channels will post advice for staying safe. Heat can impact you before a heatwave sets in and increase the risk when a heatwave occurs. Follow advice on hot days, before a heatwave happens. High fire danger days as well as reduced air and water quality are also a risk during heatwave conditions. Monitor for: air and water quality changes generalised health alerts high fire danger safety warnings changes in local weather forecasts ."
+        ],
+        [
+          "Stay in contact",
+          "Check in with neighbours, friends and loved ones. Reach out to your list of contacts if you need assistance. If you or someone you know becomes unwell: contact your doctor go to a Walk-in Centre or Medicare Urgent Clinic call 1800Medicare on 1800 633 422 , 24 hours a day, 7 day a week (you do not need a Medicare card to access this service) If you or someone in your care becomes very unwell due to heat-related illness: go to the nearest hospital emergency department call triple zero (000) for an ambulance."
+        ],
+        [
+          "Stay safe",
+          "Stay safe in a heatwave: Watch for signs of heat-related illness and seek medical support if required. Drink enough water. Healthdirect have tips for keeping children hydrated during hot weather. During the hottest times of the day, stay inside and close your doors, windows, blinds and curtains. Use fans or air conditioners if you have them. Move to a cool refuge with air-conditioning. Like a public library or shopping centre. Make sure animals have a cool place to rest and access to water. Do not exercise animals during the day. Avoid working outdoors in the peak heat of the day, if you can. If you have to be outside, stay sun safe and follow safe working practices during hot conditions. Check water quality before swimming in lakes and ponds. Hot weather encourages blue-green algae to bloom. Monitor food safety . Food can quickly become unsafe during warm weather."
+        ],
+        [
+          "Identify the impacts",
+          "After the heatwave has passed, continue to: Check on neighbours, friends and loved ones. Reach out to your list of contacts if you need assistance. Monitor for signs of heat-related illness and seek medical support if you are worried about yourself or someone else."
+        ],
+        [
+          "Manage ongoing risks",
+          "Continue to reduce the risks and stay safe: drink enough water and remain hydrated open your windows and doors to let the warm air out and the cooler air in monitor for health alerts about air and water quality."
+        ],
+        [
+          "Assess and plan",
+          "Consider what worked, what didn’t work and what you might do differently next time."
+        ]
+      ],
+      "selected_blocks": [
+        "By 2050, the ACT will experience an additional 5 hot days (days over 35˚C) each year. Some years may have an additional 20 days.",
+        "What is a heatwave",
+        "A heatwave is when the maximum and minimum temperatures are unusually hot over three days.",
+        "Heatwaves occur because of climate influences . These control how often heatwaves happen and how bad they are when they do.",
+        "Cities are more exposed to heatwaves. Buildings, roads, and dark surfaces absorb and trap heat.",
+        "Impacts and effects",
+        "Heatwaves can cause:",
+        "poor air and water quality",
+        "food and medicines to become unsafe",
+        "mental health illness",
+        "a rise in the demand for emergency, medical and wellbeing services",
+        "disruptions to services such as power, businesses, schools, and public transport",
+        "the economy to decline because of these impacts.",
+        "Who is most at risk",
+        "Some people are more at risk than others, such as:",
+        "young children",
+        "pregnant and breastfeeding women",
+        "older people",
+        "people with chronic illness or complex health concerns",
+        "outdoor workers",
+        "people who will have difficulty reducing their exposure.",
+        "Read more about who is most at risk during a heatwave .",
+        "Before a heatwave",
+        "Talk to your doctor about how heatwaves might affect you.",
+        "Take these steps before a heatwave to reduce your risk:",
+        "Learn simple things you can do to stay cool in summer for less. All ACT households can get free advice through the Sustainable Home Advice Program , including advice for renters .",
+        "Find cool places near your home. Like parks with shade, libraries, pools, and shopping centres.",
+        "Invest in window coverings and seal gaps around windows and doors. Eligible concession cardholders can get free support with draught-proofing and window covers .",
+        "Install energy efficient fans and reverse cycle air conditioning. Insulate your walls and ceilings. The ACT Government has developed a guide to help reduce heat when building or renovating .",
+        "Limit use of concrete and paving around your home. Use trees for shade and increase planted surfaces using heat-resistant species . Learn how to design climate-smart gardens and landscape for the ACT climate [PDF 16.33MB] .",
+        "Write a list of people you could ask for assistance during a heatwave.",
+        "Stay informed by:",
+        "checking local weather forecasts",
+        "following ACT Health and Community Services and ACT Emergency Service Agency social media channels.",
+        "During a heatwave",
+        "On hot days, ACT Government social media channels will post advice for staying safe. Heat can impact you before a heatwave sets in and increase the risk when a heatwave occurs. Follow advice on hot days, before a heatwave happens.",
+        "High fire danger days as well as reduced air and water quality are also a risk during heatwave conditions. Monitor for:",
+        "air and water quality changes",
+        "generalised health alerts",
+        "high fire danger safety warnings",
+        "changes in local weather forecasts .",
+        "Check in with neighbours, friends and loved ones. Reach out to your list of contacts if you need assistance.",
+        "If you or someone you know becomes unwell:",
+        "contact your doctor",
+        "go to a Walk-in Centre or Medicare Urgent Clinic",
+        "call 1800Medicare on 1800 633 422 , 24 hours a day, 7 day a week (you do not need a Medicare card to access this service)",
+        "If you or someone in your care becomes very unwell due to heat-related illness:",
+        "go to the nearest hospital emergency department",
+        "call triple zero (000) for an ambulance.",
+        "Stay safe in a heatwave:",
+        "Watch for signs of heat-related illness and seek medical support if required.",
+        "Drink enough water. Healthdirect have tips for keeping children hydrated during hot weather.",
+        "During the hottest times of the day, stay inside and close your doors, windows, blinds and curtains. Use fans or air conditioners if you have them.",
+        "Move to a cool refuge with air-conditioning. Like a public library or shopping centre.",
+        "Make sure animals have a cool place to rest and access to water. Do not exercise animals during the day.",
+        "Avoid working outdoors in the peak heat of the day, if you can. If you have to be outside, stay sun safe and follow safe working practices during hot conditions.",
+        "Check water quality before swimming in lakes and ponds. Hot weather encourages blue-green algae to bloom.",
+        "Monitor food safety . Food can quickly become unsafe during warm weather.",
+        "After a heatwave",
+        "After the heatwave has passed, continue to:",
+        "Check on neighbours, friends and loved ones. Reach out to your list of contacts if you need assistance.",
+        "Monitor for signs of heat-related illness and seek medical support if you are worried about yourself or someone else.",
+        "Continue to reduce the risks and stay safe:",
+        "drink enough water and remain hydrated",
+        "open your windows and doors to let the warm air out and the cooler air in",
+        "monitor for health alerts about air and water quality.",
+        "Consider what worked, what didn’t work and what you might do differently next time.",
+        "Related information",
+        "Read the ACT Government's health advice for staying well during hot weather",
+        "Look at the ACT Government health advice for staying safe when air quality is poor",
+        "Read the ACT Climate Change Snapshot",
+        "Discover what the ACT Government is doing to reduce the urban heat island effect",
+        "Get free expert advice on how to reduce heat in and around your home",
+        "Find out what else you can do to reduce your risk and become more disaster resilient"
+      ],
+      "sha256": "24600ebaac9875905eefa07bbc9b895874b1e48078677fa9f83274bec0ec06c2",
+      "scope": "Complete written introduction, causes/effects/risk, before/during/after sections and related-link labels. Vulnerable groups, outdoor work, animal care, food/water quality and post-event conditions remain. Current retrieved snapshot names 1800MEDICARE;other source pages retain their own contact lists."
+    },
+    {
+      "id": "act-copyright",
+      "raw": {
+        "id": "act-copyright",
+        "url": "https://www.act.gov.au/copyright",
+        "final_url": "https://www.act.gov.au/copyright",
+        "retrieved_at": "2026-11-26",
+        "bytes": 119366,
+        "raw_sha256": "2261652029bd9580438ee839b967ae495cae337be362bd7aa425684b7188b089",
+        "rights_or_rural_links": [
+          {
+            "text": "Rural fire service",
+            "href": "https://www.act.gov.au/emergency-and-safety/rural-fire-service"
+          },
+          {
+            "text": "Renew or replace your drivers licence",
+            "href": "https://www.act.gov.au/transport-and-traffic/renew-or-replace-your-drivers-licence"
+          },
+          {
+            "text": "Copyright",
+            "href": "https://www.act.gov.au/copyright"
+          },
+          {
+            "text": "Creative Commons Attribution 4.0 licence",
+            "href": "http://creativecommons.org/licenses/by/4.0"
+          },
+          {
+            "text": "Creative Commons Attribution 4.0 licence",
+            "href": "http://creativecommons.org/licenses/by/4.0"
+          },
+          {
+            "text": "terms of the licence on the Creative Commons website",
+            "href": "https://creativecommons.org/licenses/by/4.0/"
+          },
+          {
+            "text": "Copyright Act 1968 (Commonwealth)",
+            "href": "https://www.legislation.gov.au/Details/C2017C00414"
+          },
+          {
+            "text": "copyright@act.gov.au",
+            "href": "mailto:copyright@act.gov.au"
+          },
+          {
+            "text": "Driver licence renewal",
+            "href": "https://www.accesscanberra.act.gov.au/driving-transport-and-parking/licences/renew-or-replace-your-driver-licence"
+          },
+          {
+            "text": "Copyright",
+            "href": "https://www.act.gov.au/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "dcterms.created": "2023-11-17T16:41:43+11:00",
+        "dcterms.date": "2026-09-09T10:27:55+10:00"
+      },
+      "selector": "#act-main plus main hero summary paragraph when present",
+      "normalized_source_text_sha256": "1cd9f749a10d32d0e553341cdfec92a3869fb360de267b82265064b94513a287",
+      "normalized_adapted_text_sha256": "1cd9f749a10d32d0e553341cdfec92a3869fb360de267b82265064b94513a287",
+      "source_headings": [
+        "Using content on our website",
+        "Copyright",
+        "Attribution",
+        "Content not licensed under the Creative Commons Attribution 4.0 Licence",
+        "Reproduction requests and authorisation",
+        "Third party content",
+        "Third-party copyright",
+        "Links to external websites",
+        "Protecting yourself online",
+        "Liability",
+        "Contact us",
+        "Email"
+      ],
+      "accordion_pairs": [],
+      "selected_blocks": [
+        "Using content on our website",
+        "You should use your own skill and care when using any content. Consider whether it is:",
+        "accurate",
+        "up-to-date",
+        "complete",
+        "created by the most authoritative source on the topic",
+        "relevant to you.",
+        "We recommend getting professional advice for specific matters.",
+        "Copyright",
+        "Unless stated otherwise, the copyright of content on this website is owned by the Australian Capital Territory (ACT) and licensed under a Creative Commons Attribution 4.0 licence .",
+        "This includes text, images, software, logos and icons, sounds recordings and HTML code.",
+        "This means you can use most content on the site if you give appropriate attribution.",
+        "Read how we decide what to publish on this website .",
+        "Attribution",
+        "When using content from our website it is important to make it clear who owns it.",
+        "Under the Creative Commons Attribution 4.0 licence you can re‑use content as long as you:",
+        "give appropriate credit",
+        "provide a link to the license",
+        "make it clear if you’ve made any changes",
+        "comply with any other terms of the license.",
+        "You may do this in any reasonable way, but not in any way that suggests the ACT Government endorses you or your use.",
+        "The appropriate credit is © Australian Capital Territory",
+        "",
+        "© Australian Capital Territory",
+        "",
+        "Content not licensed under the Creative Commons Attribution 4.0 Licence",
+        "The licence doesn’t apply to the following content on this website:",
+        "any third party material - unless it states that it is published under the Creative Commons Attribution 4.0 licence",
+        "any material on the website that states it is subject to specific conditions other than the Creative Commons Attribution 4.0 licence",
+        "the ACT's Coat of Arms",
+        "any of the other symbols, logos or trademarks of the ACT",
+        "any other symbols, logos or trademarks of any ACT directorate or agency",
+        "For some uses the terms of the licence do apply to the Coat of Arms, logos and trademarks outlined above. For example, when reusing an unaltered document that:",
+        "is covered by the terms of the licence, and",
+        "includes the Coat of Arms, logos and trademarks outlined above.",
+        "To make an enquiry or ask a question about using content from our website contact us .",
+        "Reproduction requests and authorisation",
+        "You need to get authorisation if you want to use our website content in a way that isn’t covered by the licence’s terms of use.",
+        "You can review the terms of the licence on the Creative Commons website .",
+        "To make a request for authorisation contact us .",
+        "Third party content",
+        "Content on this web site may include views and suggestions from third parties.",
+        "This content doesn’t:",
+        "reflect the views of the ACT Government",
+        "represent actions the ACT Government is going to take.",
+        "Third-party copyright",
+        "When we link to external sites that have content developed by a third party, the copyright belongs to the author of that content, or the author’s licensee and is subject to the Copyright Act 1968 (Commonwealth) .",
+        "We recommend you refer to the copyright statement on the other site before using any of their content.",
+        "For further information please refer to the Copyright Act 1968 (Commonwealth) .",
+        "Links to external websites",
+        "We include links to external sites for convenience. We don't endorse or support any:",
+        "content on those sites",
+        "person or company listed",
+        "products or services provided by a listed person or company.",
+        "The ACT Government takes no responsibility for the content on linked sites.",
+        "We include links to external websites in good faith. We expect the owners of the websites to keep the content accurate and up-to-date. It is up to you to consider and assess the content.",
+        "Protecting yourself online",
+        "We use a range of security controls to protect our website. However, you should be aware that the internet is not a secure medium. We encourage you to take precautions to ensure your safety online.",
+        "When visiting external sites consider if the site is safe from computer viruses or other malware. If you do visit an external site, the ACT Government:",
+        "makes no warranties to the safety of linked website",
+        "accepts no liability for any interference with or damage to a user's computer, software or data.",
+        "If you use automatic language translation services on an external website, you do so at your own risk.",
+        "Liability",
+        "By accessing information at or through this site, you waive and release the ACT Government to the full extent permitted by law from all claims relating to the usage of the material made available through the website.",
+        "The ACT Government won’t be liable for any incident or consequential damages resulting from use of external content. The ACT Government isn’t accountable for the placement of a link to this website on any other site.",
+        "Contact us",
+        "Contact us for requests and inquiries about reproduction or authorisation.",
+        "You can email us directly or contact Access Canberra .",
+        "Email",
+        "copyright@act.gov.au"
+      ],
+      "sha256": "aa45e8594935158778f2481c4a992bb17955b28435475b53091b87eef77c524b",
+      "scope": "Complete written ACT portal copyright/reuse body, including explicit CC BY 4.0 grant, attribution, exceptions, external-site/translation/security/liability conditions and contact text. No imagery or third-party content is relicensed."
+    }
+  ],
+  "accordion_pairs": {
+    "act-bushfire": [
+      [
+        "Be informed",
+        "Use the bushfire prone area map to determine the risk where you live. Think about where you might go if you need to evacuate, and how you might get there. Talk to your doctor about how bushfire smoke might affect you."
+      ],
+      [
+        "Reduce the risk",
+        "Take these steps before a bushfire to reduce your risk: Write a household survival plan and pack a home emergency kit . If you have asthma or other breathing issues, talk to your doctor about developing an action plan. Check that your home and contents insurance covers bushfire damage. Make copies of your important documents [DOC 754 KB] . Design your home and garden [PDF 8.6 MB] to reduce the risk of bushfires. Maintain your home and garden [PDF 1.6 MB] to continue to manage bushfire risk. If you are a rural landowner, get advice on bushfire preparedness. The Farm FireWise Program [PDF 1.8 MB] can assist. Write a list of people you could ask for assistance during a bushfire."
+      ],
+      [
+        "Remain aware",
+        "During bushfire season, stay informed by: Checking the ACT Emergency Services Agency website and social media channels. The public will receive daily updates on the bushfire threat level . When the threat is high, the public will also receive advice on what to do to stay safe. This may include a Total Fire Ban . Installing the Hazards Near Me NSW app ."
+      ],
+      [
+        "Stay informed",
+        "During bushfires, you can find warnings and updates on: the ACT Emergency Services Agency website ACT Government social media channels. You can also find updates by accessing: ABC radio emergency broadcasts the Hazards Near Me NSW app . It is important to note: traffic problems and road closures on your planned evacuation route the air quality readings and what you need to do to stay safe . You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given."
+      ],
+      [
+        "Stay in contact",
+        "Stay in touch with friends, neighbours, and loved ones. If you need assistance, reach out to your contacts list. Let someone know if you plan to evacuate and where you intend to shelter. If bushfire smoke is making you or someone you know unwell: contact your doctor go to a walk-in centre call healthdirect on 1800 022 222 . If you or someone else are experiencing shortness of breath : go to the nearest hospital emergency department call triple zero (000) for an ambulance."
+      ],
+      [
+        "Stay safe",
+        "Leaving early is always the safest option. Don’t wait for a warning to: Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water. Decide where you will evacuate to. Evacuation centres should be a last resort, plan to stay with family or friends if you can. Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification. Avoid fallen power lines, as well as debris near them. These could be live and cause an electric shock. If bushfire smoke is an issue: Follow your asthma or medical action plan. If you have medication prescribed, carry it with you. Stay inside. Keep the windows shut and turn on air conditioning. If you don’t have air conditioning, go to places that do, like cinemas and shopping centres. Do not engage in outdoor exercise."
+      ],
+      [
+        "Identify the impacts",
+        "Check on loved ones and assess damage to your property. If you can’t locate a neighbour, friend, or relative , report it. To find lost animals , check online. Take photos of damaged property and secure the site if you can."
+      ],
+      [
+        "Manage ongoing risks",
+        "Do not enter a bushfire effected area until it is safe. Hazard such as damaged and unstable buildings and reduced air and water quality remain. Shut off and report damaged utilities . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock. Monitor for health alerts about air and water quality. Get assistance for your mental health if you need it."
+      ],
+      [
+        "Assess and plan",
+        "Recovering from a bushfire can be hard. There are services and supports to help: ask your insurance provider about making a claim . check if you are eligible for financial assistance. Assess what worked and what didn’t work: review your household survival plan and home emergency kit consider what you might change in and around your home to reduce bushfire risk reassess your asthma or medical action plan."
+      ]
+    ],
+    "act-flooding": [
+      [
+        "Be informed",
+        "Use the flood prone area map to determine the risk where you live. Think about where you might go if you need to evacuate, and how you might get there."
+      ],
+      [
+        "Reduce the risk",
+        "Take these steps before a flood to reduce your risk: Write a household survival plan and pack a home emergency kit . Make copies of your important documents [PDF 754 KB] . Trim your trees, clear your gutters and remove any loose items from around your home. Rake up leaves and grass clippings. Bag them, do not rake them onto the road. Large amounts of debris in the storm water system can block water flow. Maintain your water tank to help capture excessive rainfall. Check that your home and contents insurance covers flood damage. Landscape your property to prevent water pooling. Minimise use of concrete and paving. The ACT Government has a guide to help reduce the risk of flooding when landscaping [PDF 8.6 MB] . Write a list of people you could ask for assistance during a flood."
+      ],
+      [
+        "Remain aware",
+        "Stay informed by: checking the local weather forecasts following ACT Government social media channels."
+      ],
+      [
+        "Stay informed",
+        "During a flood, you can find warnings and updates on: the ACT Emergency Services Agency website ACT Government social media channels. You can also find updates by accessing: ABC radio emergency broadcasts the Hazards Near Me NSW app . Check for traffic problems and road closures on your planned evacuation route. Do not drive, ride, walk or play in floodwater. You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given."
+      ],
+      [
+        "Stay in contact",
+        "Stay in touch with friends, neighbours, and loved ones. If you need assistance, reach out to your contacts list. Let someone know if you plan to evacuate and where you intend to shelter."
+      ],
+      [
+        "Stay safe",
+        "Prepare early to leave if your property is at threat: Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water. Decide where you will evacuate to. Evacuation centres should be a last resort. Plan to stay with family or friends if you can. Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification. If you need to leave: Use your cars hazard lights. Keep clear of floodwaters. Avoid fallen powerlines and debris near them. These could be live and cause an electric shock."
+      ],
+      [
+        "Identify the impacts",
+        "Check on loved ones and assess damage to your property. If you can’t locate a neighbour, friend, or relative , report it. To find lost animals , check online. Take photos of damaged property and secure the site if you can."
+      ],
+      [
+        "Manage ongoing risks",
+        "Watch out for potential risks. If you have broken utilities, turn them off and let someone know . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock. If you see a tree on public land damaged, report it . If you notice damage to a tree on your land, contact an arborist. If your home is unsafe call the ACT State Emergency Service for help. Avoid waterways. After a flood the water runoff can move fast and might have pollutants and other debris in it. Get assistance for your mental health if you need it."
+      ],
+      [
+        "Assess and plan",
+        "Recovering from a flood can be hard. There are services and supports to help: ask your insurance provider about making a claim check if you are eligible for financial assistance. Assess what worked and what didn’t work: review your household survival plan and home emergency kit consider what you might change in and around your home to reduce the risk [PDF 8.6 MB] of flooding."
+      ]
+    ],
+    "act-severe-storm": [
+      [
+        "Be informed",
+        "Talk to your doctor about the risk of thunderstorm asthma."
+      ],
+      [
+        "Reduce the risk",
+        "Take these steps before a storm to reduce your risk: Write a household survival plan and pack a home emergency kit . Check that your home and contents insurance includes storm damage. Make copies of your important documents [DOC 754 KB] . Follow advice about how to keep your house safe during storms [PDF 1.6 MB] . Trim your trees, clear your gutters and remove any loose items from around your home. Make your home airtight by sealing gaps around doors and windows. Concession cardholders can get free support with draught-proofing . If you have asthma or other breathing issues, ask your doctor about having an action plan. Carry your prescribed medication with you during peak risk times. Write a list of people you could ask for assistance during a storm."
+      ],
+      [
+        "Remain aware",
+        "Stay informed by: checking the local weather forecasts keeping an eye on air quality when storms are forecast following ACT Government social media channels."
+      ],
+      [
+        "Stay informed",
+        "During storms, you may find warnings and updates on: the Bureau of Meteorology website and phone app the ACT Emergency Services Agency website the public health alerts webpage ACT Government social media channels. You can listen to ABC radio for warnings and updates as well. It is important to monitor air quality readings and advice on what you need to do to stay safe . You might get a call or message on your mobile phone. Local emergency services will do this when there is an emergency nearby . Follow the directions given."
+      ],
+      [
+        "Stay in contact",
+        "Stay in contact with neighbours, friends, and loved ones. Reach out to your list of contacts if you need help. If you or someone you know are feeling unwell: contact your doctor go to a walk-in centre call healthdirect on 1800 022 222 . In a medical emergency: go to the nearest hospital emergency department call triple zero (000) for an ambulance."
+      ],
+      [
+        "Stay safe",
+        "Stay inside, away from windows. Avoid using the electricity. Move your car somewhere safe, away from trees and powerlines. Prepare to leave if your property gets damaged: Check your home emergency kit . Add last minute items such as important documents, medication, and clean drinking water. Decide where you will evacuate to. Evacuation centres should be a last resort, plan to stay with family or friends if you can. Pack food, water and bedding for your animals. Secure them safely. Check that they are wearing identification. Do not leave your property unless told to do so. If you need to leave: Use your cars hazard lights. Keep clear of floodwaters. Avoid fallen powerlines and debris near them. These could be live and cause an electric shock."
+      ],
+      [
+        "Identify the impacts",
+        "Check on loved ones and assess damage to your property. If you can’t locate a neighbour, friend, or relative , report it. To find lost animals , check online. Take photos of damaged property and secure the site if you can."
+      ],
+      [
+        "Manage the ongoing risks",
+        "Watch out for potential risks. If you have broken utilities, turn them off and let someone know . Stay clear of fallen power lines and debris near them. These could be live and cause an electric shock. If you see a tree on public land damaged, report it . If you notice damage to a tree on your land, contact an arborist. If your home is unsafe call the ACT State Emergency Service for help. Avoid waterways. After a storm, the water runoff can move fast and might have pollutants and other debris in it."
+      ],
+      [
+        "Assess and plan",
+        "Recovering from a storm can be hard. There are services and supports to help: ask your insurance provider about making a claim check if you are eligible for financial assistance . Assess what worked and what didn’t work: review your household survival plan and home emergency kit consider what you might change in and around your home to reduce storm risks reassess your asthma or medical action plan."
+      ]
+    ],
+    "act-heatwave": [
+      [
+        "Be informed",
+        "Talk to your doctor about how heatwaves might affect you."
+      ],
+      [
+        "Reduce your risk",
+        "Take these steps before a heatwave to reduce your risk: Learn simple things you can do to stay cool in summer for less. All ACT households can get free advice through the Sustainable Home Advice Program , including advice for renters . Find cool places near your home. Like parks with shade, libraries, pools, and shopping centres. Invest in window coverings and seal gaps around windows and doors. Eligible concession cardholders can get free support with draught-proofing and window covers . Install energy efficient fans and reverse cycle air conditioning. Insulate your walls and ceilings. The ACT Government has developed a guide to help reduce heat when building or renovating . Limit use of concrete and paving around your home. Use trees for shade and increase planted surfaces using heat-resistant species . Learn how to design climate-smart gardens and landscape for the ACT climate [PDF 16.33MB] . Write a list of people you could ask for assistance during a heatwave."
+      ],
+      [
+        "Remain aware",
+        "Stay informed by: checking local weather forecasts following ACT Health and Community Services and ACT Emergency Service Agency social media channels."
+      ],
+      [
+        "Stay informed",
+        "On hot days, ACT Government social media channels will post advice for staying safe. Heat can impact you before a heatwave sets in and increase the risk when a heatwave occurs. Follow advice on hot days, before a heatwave happens. High fire danger days as well as reduced air and water quality are also a risk during heatwave conditions. Monitor for: air and water quality changes generalised health alerts high fire danger safety warnings changes in local weather forecasts ."
+      ],
+      [
+        "Stay in contact",
+        "Check in with neighbours, friends and loved ones. Reach out to your list of contacts if you need assistance. If you or someone you know becomes unwell: contact your doctor go to a Walk-in Centre or Medicare Urgent Clinic call 1800Medicare on 1800 633 422 , 24 hours a day, 7 day a week (you do not need a Medicare card to access this service) If you or someone in your care becomes very unwell due to heat-related illness: go to the nearest hospital emergency department call triple zero (000) for an ambulance."
+      ],
+      [
+        "Stay safe",
+        "Stay safe in a heatwave: Watch for signs of heat-related illness and seek medical support if required. Drink enough water. Healthdirect have tips for keeping children hydrated during hot weather. During the hottest times of the day, stay inside and close your doors, windows, blinds and curtains. Use fans or air conditioners if you have them. Move to a cool refuge with air-conditioning. Like a public library or shopping centre. Make sure animals have a cool place to rest and access to water. Do not exercise animals during the day. Avoid working outdoors in the peak heat of the day, if you can. If you have to be outside, stay sun safe and follow safe working practices during hot conditions. Check water quality before swimming in lakes and ponds. Hot weather encourages blue-green algae to bloom. Monitor food safety . Food can quickly become unsafe during warm weather."
+      ],
+      [
+        "Identify the impacts",
+        "After the heatwave has passed, continue to: Check on neighbours, friends and loved ones. Reach out to your list of contacts if you need assistance. Monitor for signs of heat-related illness and seek medical support if you are worried about yourself or someone else."
+      ],
+      [
+        "Manage ongoing risks",
+        "Continue to reduce the risks and stay safe: drink enough water and remain hydrated open your windows and doors to let the warm air out and the cooler air in monitor for health alerts about air and water quality."
+      ],
+      [
+        "Assess and plan",
+        "Consider what worked, what didn’t work and what you might do differently next time."
+      ]
+    ],
+    "act-copyright": []
+  },
+  "total_practical_accordion_pairs": 36,
+  "comparison": "Full selected source written text equals adapted text after whitespace/formatting-character normalization. All36accordion labels/complete answers expanded into ordered headings. No source wording/printed typo corrections.",
+  "metadata_note": "dcterms.created and dcterms.date are captured as metadata,not independent clinical/engineering review or advice-edition certification.",
+  "current_contact_context": {
+    "id": "medicare-current-context",
+    "url": "https://www.health.gov.au/our-work/1800medicare",
+    "final_url": "https://www.health.gov.au/our-work/1800medicare",
+    "retrieved_at": "2026-11-26",
+    "bytes": 40211,
+    "raw_sha256": "b95e7785316cd5ad4e64562da068a19a0340940acd6c16859315ca10ccedfe7a"
+  },
+  "contact_distinction": "July2026 bushfire/storm retain healthdirect1800022222. Retrieved16Nov metadata heatwave body names1800MEDICARE1800633422,24/7/noMedicarecard. Exact raw snapshot takes precedence over stale search preview. National Health page confirms newer service;body not copied.",
+  "nt_reuse_review": {
+    "source": {
+      "id": "nt-cyclone",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone",
+      "final_url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone",
+      "retrieved_at": "2026-11-26",
+      "bytes": 44286,
+      "raw_sha256": "3910c7f629a2e2c2742320c11624cee5e1075e4a75f0799476c8028d3b0146d8",
+      "rights_or_rural_links": [
+        {
+          "text": "Copyright, disclaimer and privacy",
+          "href": "https://nt.gov.au/page/copyright-and-disclaimer"
+        }
+      ]
+    },
+    "linked_policy": {
+      "id": "nt-linked-copyright",
+      "url": "https://nt.gov.au/page/copyright-and-disclaimer",
+      "final_url": "https://nt.gov.au/page/copyright-and-disclaimer",
+      "bytes": 36007,
+      "raw_sha256": "c6d38bd25c6c22b0a110fea6c5203e66e52f39e922bc25ab7f15f86ad0904d81",
+      "retrieved_at": "2026-11-26"
+    },
+    "decision": "Current SecureNT footer points to nt.gov.au/page/copyright-and-disclaimer. Exact policy retains general no-reuse except fair dealing or specificCCgrant. No explicit CC marker established on cyclone page;NT body not bundled. Older policy address403 did not establish the current policy."
+  },
+  "esa_review": {
+    "source": {
+      "id": "esa-policy",
+      "url": "https://esa.act.gov.au/copyright",
+      "final_url": "https://esa.act.gov.au/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 150675,
+      "raw_sha256": "0decccc644b22666c8438aeae296f63af395aa0521315bbeb2244c4b851fb5c2",
+      "rights_or_rural_links": [
+        {
+          "text": "Rural Fire Service",
+          "href": "/rural-fire-service"
+        },
+        {
+          "text": "Rural",
+          "href": "/cbr-be-emergency-ready/storms/rural"
+        },
+        {
+          "text": "ACT Rural Fire Service",
+          "href": "/join-us/volunteering/act-rural-fire-service"
+        },
+        {
+          "text": "Rural Fire Service",
+          "href": "/rural-fire-service"
+        },
+        {
+          "text": "Rural",
+          "href": "/cbr-be-emergency-ready/storms/rural"
+        },
+        {
+          "text": "ACT Rural Fire Service",
+          "href": "/join-us/volunteering/act-rural-fire-service"
+        },
+        {
+          "text": "Copyright",
+          "href": "/copyright"
+        }
+      ]
+    },
+    "decision": "ESA /copyright currently presents privacy/disclaimer text without an explicit CCgrant;no inheritance from ACTportal for ESA PDFs/body."
+  },
+  "exclusions": "Navigation/breadcrumbs,emptyTOC/icons,imagery,branding/scripts/forms and active external links. Original written related-link labels retained;targets/PDFs/maps/standards/apps/medical manuals not bundled.",
+  "not_claimed": "Live warnings,open evacuation centres,road access,current service eligibility/availability,independent fire/medical/engineering/accessibility review or all jurisdictions complete."
+}

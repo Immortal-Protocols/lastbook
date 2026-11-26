@@ -1,0 +1,151 @@
+{
+  "mode": "now",
+  "requires_docs": [
+    "au-reference",
+    "au-jurisdictions"
+  ],
+  "route": [],
+  "id": "au-health",
+  "title": "Find Australian emergency health sources",
+  "short": "Australian calls, poisons and dated CPR sources",
+  "intro": "Australian emergency-call guidance, Queensland poisons advice and dated Sydney Children’s Hospitals Network videos when present. The stored 2025 infant demonstration has a source variation flagged against ANZCOR Guideline 6 on 26 November 2026; qualified clinical review is pending. This is not a complete Australian first-aid manual.",
+  "keywords": [
+    "australia",
+    "australian",
+    "000",
+    "triple zero",
+    "poisons",
+    "baby",
+    "child",
+    "cpr"
+  ],
+  "choices": [
+    {
+      "id": "call",
+      "label": "Understand Australian emergency calls",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        }
+      ]
+    },
+    {
+      "id": "poisons",
+      "label": "Read Queensland poisoning advice",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-poisons",
+          "label": "Poisons",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "child",
+      "label": "Find dated child or baby CPR demonstrations",
+      "hint": "SCHN videos from 2025. Infant technique flagged for review against ANZCOR Guideline 6, checked 26 November 2026; use current accredited training.",
+      "read": [
+        {
+          "doc": "video-5zz9o_wy-Y0",
+          "label": "CPR for a child aged one year or older",
+          "note": "Sydney Children’s Hospitals Network demonstration, including calling Triple Zero."
+        },
+        {
+          "doc": "video-bsP45AXQGC4",
+          "label": "CPR for a baby under one year",
+          "note": "Stored SCHN demonstration from 2025. Its infant compression technique differs from the checked ANZCOR Guideline 6; qualified clinical review is pending. The source video is unchanged."
+        }
+      ]
+    },
+    {
+      "id": "bat-exposure",
+      "label": "Read bat-exposure and lyssavirus guidance",
+      "hint": "NSW Health factsheet covers prevention, exposure circumstances, medical assessment and follow-up.",
+      "read": [
+        {
+          "doc": "nsw-bat-lyssavirus",
+          "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+          "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "Queensland says not to wait for symptoms when poisoning is suspected.",
+      "doc": "qld-poisons"
+    },
+    {
+      "text": "ACMA says 000 and 112 cannot be contacted by text message.",
+      "doc": "au-emergency-calls"
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "au-emergency-calls",
+      "label": "Emergency calls",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-emergency-plan",
+      "label": "Prepare your emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-kit",
+      "label": "Emergency kit: essential items, all times",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
+      "doc": "nsw-aboriginal-planning",
+      "label": "NSW: Aboriginal-led public health emergency planning",
+      "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "au-reference",
+      "label": "Australia: household, rural and remote emergency reference",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-jurisdictions",
+      "label": "Australian state and territory emergency information",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-emergency-calls",
+      "label": "Emergency calls",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-poisons",
+      "label": "Poisons",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
+      "doc": "nsw-aboriginal-planning",
+      "label": "NSW: Aboriginal-led public health emergency planning",
+      "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+    }
+  ],
+  "related": [
+    "au-household",
+    "au-rural",
+    "hurt"
+  ]
+}

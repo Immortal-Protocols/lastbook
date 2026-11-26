@@ -1,0 +1,102 @@
+{
+  "checked": "2026-11-27",
+  "public_records": 127,
+  "official_practical": 102,
+  "rights": 16,
+  "original": 9,
+  "source_dates": [
+    "2025-05-23",
+    "2022-03-21"
+  ],
+  "new_sources": 2,
+  "new_guide_references": 14,
+  "household_rural_placements_identical": true,
+  "prior_nonhub_sources_unchanged": 124,
+  "public_tests": 846,
+  "combined_tests": 1059,
+  "skips_each": 5,
+  "expected_failures_each": 11,
+  "focused_public_each_python": 59,
+  "focused_combined314": 119,
+  "maintenance_growth_controls314": 20,
+  "actual_engine": {
+    "public_readers": 127,
+    "private_AU_readers": 164,
+    "private_records": 478,
+    "private_AU_guide_references": 746,
+    "search_scope_libq_source_loss_restoration": "passed",
+    "socket_attempts": 0
+  },
+  "native": {
+    "checked": "2026-11-27",
+    "status": "passed",
+    "new_readers_opened": 2,
+    "household_rural_choices": 2,
+    "ordinary_water_choice": 1,
+    "source_dates": [
+      "2025-05-23",
+      "2022-03-21"
+    ],
+    "retrieved_at": "2026-11-27",
+    "Page_and_Text": "both sources opened",
+    "Ask_and_Back": "each source retained matching doc/page1;Back restored Text view",
+    "linked_reader": "alert→header tank updates outer title/source/Ask;Page view retained",
+    "source_conditions": "dated/not-current-alert context,source credit,supplier/scalding/bathing/full strength-time-temperature paragraph,header cleaning-history alternatives and ordered flushing steps visibly retained",
+    "excluded_resources": "three online-only article labels and unbundled standard retained",
+    "question_submitted": false,
+    "audio_submitted": false,
+    "left_open": "Header-tank source,Page view,from ordinary water/boil choice",
+    "screenshots": [
+      "installed-alert-source.png",
+      "installed-alert-conditions.png",
+      "installed-header-tank-steps.png"
+    ],
+    "clinical_or_water_system_assessment": false
+  },
+  "preservation": {
+    "retained_files": 1722,
+    "unchanged_prior_search_rows": 13145,
+    "hub_rowid_retained": true,
+    "total_search_rows": 13148,
+    "personal_search_units": 264,
+    "core_hashes": "unchanged after native",
+    "Victoria": "per-file hashes passed;3054names retained",
+    "infant_video": "unchanged",
+    "complete_previous_app_library_metadata_rollback": true
+  },
+  "frozen_build": {
+    "source_commit": "319ad708055ec5eb68d031cb473985d4f9c7594d",
+    "shipped_assets_changed": 4,
+    "shipped_assets_total": 58,
+    "runtime_reader_map_unchanged": true,
+    "pinned_setup_manifest_roots": "unchanged",
+    "package_i18n_privacy_strict_signature": "passed",
+    "installed_offline_selfcheck": "478records/36personal;IPoutbounddenied before imports"
+  },
+  "actual_reading_maintenance": {
+    "python": "3.11.18",
+    "readings": 164,
+    "search_pages": 398,
+    "socket_attempts": 0,
+    "target_SQLite_connections": 0,
+    "matching_source_manifest_required": true
+  },
+  "public_archive": {
+    "checked": "2026-11-27",
+    "id": "au-reference-water-alerts-2026-11-27",
+    "records": 127,
+    "official_practical": 102,
+    "source_rights": 16,
+    "original_records": 9,
+    "new_readers": 2,
+    "new_guide_cards": 14,
+    "archive": "Lastbook-Australia-Water-Alerts-reference.zip",
+    "bytes": 1593824,
+    "sha256": "ebf0793c4314098c9e63806a7bc7bd847e05ba9589b0b2dc8930546c47e29bac",
+    "private_files": 0,
+    "zip_crc_inventory_extracted_reader_hashes_sqlite_fts_privacy": "passed",
+    "not_official_setup": true,
+    "required_runtime": "Matching contribution source for guides and offline composition;data download does not update bundled app guides."
+  },
+  "scope_limits": "Dated NSW source references,not current utility notices or lifting advice for a specific supply. No full apartment pump/outage-duration manual,actual tank/system assessment,independent clinical review,unbundled standard or other linked articles. Source restrictions and base-library privacy remain."
+}

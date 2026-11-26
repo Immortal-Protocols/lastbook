@@ -1,0 +1,346 @@
+{
+  "checked": "2026-11-26",
+  "pdf": {
+    "id": "current-linked-guide",
+    "url": "https://www.cfa.vic.gov.au/ArticleDocuments/6528/your-guide-to-survival.pdf.aspx",
+    "final_url": "https://www.cfa.vic.gov.au/ArticleDocuments/6528/your-guide-to-survival.pdf.aspx",
+    "retrieved_at": "2026-11-26",
+    "bytes": 1455205,
+    "sha256": "de37f989a65b529351f3fe87685bc70a1d84a5d543cb5fef905e5458f90d1918",
+    "linked_from": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/back-up-plans/backup-plans"
+  },
+  "visible_edition": "Version6,July2022",
+  "source_pdf_pages": 20,
+  "edition_verification": "Current official Backup plans page links /ArticleDocuments/6528/your-guide-to-survival.pdf.aspx. Visible page20 remains July2022. PDF metadata modification2025 is not an edition/policy date.",
+  "catalogues": [
+    {
+      "id": "current-backup-plans",
+      "url": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/back-up-plans/backup-plans",
+      "final_url": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/back-up-plans/backup-plans",
+      "retrieved_at": "2026-11-26",
+      "bytes": 157047,
+      "raw_sha256": "4b70e6217ce2fad3d01e2bb258a7cb85a5d14af730e7417dc480592ed2b50a6f",
+      "survival_guide_links": [
+        "/ArticleDocuments/6528/your-guide-to-survival.pdf.aspx"
+      ]
+    },
+    {
+      "id": "current-bushfire-plan",
+      "url": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/make-your-fire-plan/bushfire-plan",
+      "final_url": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/make-your-fire-plan/bushfire-plan",
+      "retrieved_at": "2026-11-26",
+      "bytes": 166374,
+      "raw_sha256": "123bd0a5a1714c33c42bd89bb3b488d92a4e17b1cc1dce93f7485fd99c040c41",
+      "survival_guide_links": []
+    },
+    {
+      "id": "current-defending",
+      "url": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/defending-your-property",
+      "final_url": "https://www.cfa.vic.gov.au/fire-safety/your-fire-plan/defending-your-property",
+      "retrieved_at": "2026-11-26",
+      "bytes": 159510,
+      "raw_sha256": "d81f99d6406be9cc8d3c07ad0620f105ef04db79f15ece5e437235d2c4c058bf",
+      "survival_guide_links": []
+    }
+  ],
+  "older_candidate": {
+    "url": "https://www.cfa.vic.gov.au/ArticleDocuments/335/CFA-Your-Guide-to-Survival-V6.pdf",
+    "sha256": "d99e7b396b1619aa41e4f2ac8641bc9d357e1d4dd7681a0933720ffb665fcecf",
+    "bytes": 1448134,
+    "comparison": "Full pdftotext-layout diff differs only at page20 delwp.vic.gov.au→deeca.vic.gov.au. Current linked bytes are used,not the older candidate."
+  },
+  "rights": {
+    "license": "CC-BY-4.0",
+    "source_page": 20,
+    "credit": "© State of Victoria (Country Fire Authority) 2022",
+    "exceptions": "Images,photographs,branding/CFA-government logos and any third-party rights; not assumed covered.",
+    "distribution": "Four practical HTML adaptations plus written page20 rights/contacts. Original PDF/images/maps/diagrams/branding not distributed."
+  },
+  "selections": [
+    {
+      "id": "vic-cfa-fire-risk",
+      "source_pages": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "sha256": "eb868c429b6eede25f84345f51facc9bcc371ed1afb67a16697cbdaa74af961f",
+      "scope": "Written text and annotation lists from source pages2-7:fire risk,district names,four rating rows,ten decisions and property preparation. District map and imagery are excluded. All eight rating-cell associations retain their labels."
+    },
+    {
+      "id": "vic-cfa-prepare-leave",
+      "source_pages": [
+        8,
+        9,
+        10
+      ],
+      "sha256": "ac79f89f37174b8f9b91fb029eec73d61cc38e3873b8a8c01ddd2230b35b77e3",
+      "scope": "Written text from source pages8-10:all12 before-summer items,pet and emergency-kit lists,and both fire-risk-day checklists. Original conditions,including only-if-you-have-time,remain. Photographs/imagery are excluded."
+    },
+    {
+      "id": "vic-cfa-warnings",
+      "source_pages": [
+        11,
+        12,
+        13
+      ],
+      "sha256": "a8a24fb1f68fdc5409c9b1f56e424c2fe4158004fc57569cae8ca1f1639948f8",
+      "scope": "Written text from source pages11-13,including all four WHEN/WHAT TO DO rows. Retains July2022 Emergency Alert,relay,broadcaster/social-media descriptions; separate bundled2026 NEMA/accessible-calling context is linked. No current service/reception test."
+    },
+    {
+      "id": "vic-cfa-during-fire",
+      "source_pages": [
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "sha256": "62b1d79b7f642db0e96c9fd09f1859166f4f7ae6b5355fe3d210a54b3ef7feda",
+      "scope": "Written body from source pages14-19,including full building/car procedures and all last-resort warnings. Illustrations/diagram labels are excluded. Dated July2022 source; current CFA defending-property context retained separately. Leaving early remains the safest option; safety is not guaranteed."
+    },
+    {
+      "id": "cfa-survival-copyright",
+      "source_pages": [
+        20
+      ],
+      "sha256": "2534b0ae56332721b7be920c45b4873a1cb9161ac1460fdc910929101271cb66",
+      "scope": "Complete written copyright,edition and contact text from sourcepage20. Text-only grant excludes imagery/branding and third-party rights. Version6,July2022; currently linked PDF retrieved26November2026. No original PDF redistributed."
+    }
+  ],
+  "visual_review": {
+    "rendered_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "renderer": "Poppler pdftoppm,1600px maximum dimension",
+    "checked": "All20 current-linked pages visually inspected before authoring. Rating/monitoring rows,12before-summer items,10decisions,full conditions/building-car procedures and3last-resort risk qualifications retained.",
+    "not_claimed": "Independent fire-safety/clinical/accessibility review,live warnings,current service/broadcaster availability or every future source revision."
+  },
+  "transcription_blocks": [
+    {
+      "id": "vic-cfa-fire-risk",
+      "checked_blocks": 112,
+      "blocks_per_page": {
+        "2": 9,
+        "3": 15,
+        "4": 54,
+        "5": 20,
+        "6": 8,
+        "7": 6
+      },
+      "reviewed_page_text_sha256": {
+        "2": "db0becdaa74482444286f0485808e7140bb3a7f9baddb52fc49415fa9bfbf350",
+        "3": "8b30108e100e1afcf5a2ac70a265e0dcda673262a828b5bd6358a24bd623a2f9",
+        "4": "fe1f44b51ad312352985779c3ade94e40363f60ca5c7382a6d24e12c03e7e963",
+        "5": "c199f65ca915445cc1f1c96a2256553d92ac5619d9d8875230673661be0d9fe3",
+        "6": "736ad8566f117967e36a4b1c40a5f9d85882f324f43c75362e03ea09fc25d931",
+        "7": "2e72b8945eff9b4101eeaf562f6282046ae68afe1f9f96ce4fc0bdf1764370cb"
+      },
+      "not_contiguous_in_extraction": []
+    },
+    {
+      "id": "vic-cfa-prepare-leave",
+      "checked_blocks": 58,
+      "blocks_per_page": {
+        "8": 13,
+        "9": 27,
+        "10": 18
+      },
+      "reviewed_page_text_sha256": {
+        "8": "499d69e6029bf89670ceda7cc963b823be7539c91e967e708c7c21b783c7ee78",
+        "9": "8fc553eb30bd4799466126fca2389bdc8f0154adb6a8f9b72383090227f1f0bd",
+        "10": "0c1df449a945348d300634b5aac038dbcc033975bf8261641d49183fb7e2bfc2"
+      },
+      "not_contiguous_in_extraction": []
+    },
+    {
+      "id": "vic-cfa-warnings",
+      "checked_blocks": 69,
+      "blocks_per_page": {
+        "11": 23,
+        "12": 16,
+        "13": 30
+      },
+      "reviewed_page_text_sha256": {
+        "11": "40dcae28fef1e6849340765051bbbab3f64ccac7e76e517f268fc999135dee2c",
+        "12": "ced16eaa39b07c3a4bb0fa56baad5ace2f1e60c3be05c49fef45909c0de64452",
+        "13": "db61933a224b168eef7806b62e620624152f22b5213985d57746ab0c1bc7a240"
+      },
+      "not_contiguous_in_extraction": []
+    },
+    {
+      "id": "vic-cfa-during-fire",
+      "checked_blocks": 107,
+      "blocks_per_page": {
+        "14": 27,
+        "15": 10,
+        "16": 7,
+        "17": 11,
+        "18": 34,
+        "19": 18
+      },
+      "reviewed_page_text_sha256": {
+        "14": "58c0bce1e3138f21d171948259e6aebfa37387adaf1bbad09768ac629f1c8a3b",
+        "15": "8993d956401608142f2772e0670a7ef7641a71d509751d650b3e9bfac1dd0b0c",
+        "16": "e838d39dd93f9cfe9e281d831c01c9f52b567e6623162237d8fc36e5bccaeaa9",
+        "17": "ebea55bdcf1a7533d431121c6ac87caad6867f1013c7d0f755e728b1b264f544",
+        "18": "424acdf1a7f521f4e53907705c4ddb5ac4a75e6f23cdc2e67a14f1d54f22f5ee",
+        "19": "0a96bb9c9c1a58b4b33605369a3f5e1f4e1d70ee9a78852a781e23835396ecaf"
+      },
+      "not_contiguous_in_extraction": []
+    },
+    {
+      "id": "cfa-survival-copyright",
+      "checked_blocks": 13,
+      "blocks_per_page": {
+        "20": 13
+      },
+      "reviewed_page_text_sha256": {
+        "20": "647287f0762f8938dcb9e4c0b8e26a2bd7141abccdc7e5dcb87143084f0013e6"
+      },
+      "not_contiguous_in_extraction": []
+    }
+  ],
+  "reviewed_block_count": 359,
+  "extraction_repairs": {
+    "words": {
+      "fre": "fire",
+      "fres": "fires",
+      "bushfre": "bushfire",
+      "bushfres": "bushfires",
+      "fve": "five",
+      "trafc": "traffic",
+      "diferent": "different",
+      "fammable": "flammable",
+      "identifcation": "identification",
+      "fles": "files",
+      "frst": "first",
+      "notifed": "notified",
+      "fnd": "find",
+      "fame": "flame",
+      "signifcant": "significant",
+      "infuence": "influence",
+      "infuences": "influences",
+      "campfre": "campfire",
+      "fames": "flames",
+      "ftting": "fitting",
+      "fbres": "fibres"
+    },
+    "phrases": [
+      "Park of the roadway→Park off the roadway",
+      "turn of the air→turn off the air",
+      "Turn of the engine→Turn off the engine"
+    ],
+    "method": "Only restore characters verified in rendered pages; case,line breaks and punctuation normalized for block comparison. Genuine printed Bushifre/health,life spellings retained."
+  },
+  "rating_table": {
+    "source_page": 4,
+    "columns": [
+      "What does it mean?",
+      "What should i do?"
+    ],
+    "rows": [
+      [
+        "CATASTROPHIC",
+        [
+          "If a fire starts and takes hold, lives are likely to be lost.",
+          "These are the most dangerous conditions for a fire."
+        ],
+        [
+          "For your survival, leave bushfire risk areas.",
+          "Your life may depend on the decisions you make, even before there is a fire.",
+          "For your survival, do not be in bushfire risk areas.",
+          "Stay safe by going to a safer location early in the morning or the night before.",
+          "Homes cannot withstand fires in these conditions. You may not be able to leave and help may not be available."
+        ]
+      ],
+      [
+        "EXTREME",
+        [
+          "Fires will spread quickly and be extremely dangerous.",
+          "These are dangerous fire conditions.",
+          "Expect hot, dry and windy conditions."
+        ],
+        [
+          "Take action now to protect your life and property",
+          "Check your bushfire plan and that your property is fire ready.",
+          "If a fire starts, take immediate action. If you and your property are not prepared to the highest level, go to a safer location well before the fire impacts.",
+          "Reconsider travel through bushfire risk areas.",
+          "Leaving bushfire risk areas early in the day is your safest option."
+        ]
+      ],
+      [
+        "HIGH",
+        [
+          "Fires can be dangerous."
+        ],
+        [
+          "Be ready to act.",
+          "There’s a heightened risk. Be alert for fires in your area.",
+          "Decide what you will do if a fire starts.",
+          "If a fire starts, your life and property may be at risk. The safest option is to avoid bushfire risk areas."
+        ]
+      ],
+      [
+        "MODERATE",
+        [
+          "Most fires can be controlled."
+        ],
+        [
+          "Plan and prepare.",
+          "Stay up to date and be ready to act if there is a fire."
+        ]
+      ]
+    ]
+  },
+  "monitoring_table": {
+    "source_page": 13,
+    "columns": [
+      "WHEN",
+      "WHAT TO DO"
+    ],
+    "rows": [
+      [
+        "It’s a hot, dry, windy day",
+        "During summer, check regularly for updates. Fires can start suddenly at any time."
+      ],
+      [
+        "It’s a fire risk day. You have left early, or are preparing to do so.",
+        "Ensure the route you have planned is safe. Stay up to date about fires in your area. Know when it is safe to return."
+      ],
+      [
+        "I can see or smell smoke in the air and I want to check what is going on.",
+        "Check the VicEmergency website or the VicEmergency app to see if there are signs of a fire in your area."
+      ],
+      [
+        "I’m staying to defend on a fire risk day.",
+        "It is important that you know at the earliest possible stage if a fire is in your area so that you can implement your plan. Once you are aware of a fire, continue to monitor updates."
+      ]
+    ]
+  },
+  "current_context": "Current CFA defending-property page22September2026 says it does not recommend defending; factual context is separated from dated guide text.2022 EmergencyAlert/relay/broadcaster descriptions remain dated and link the existing2026 NEMA operational and accessible-calling readings.",
+  "omitted": "Cover slogan/branding,page1artwork; all photos/maps/diagrams/icons/logos; graphic-onlylabels except separately listed risk/district/property annotation text. No visual chart is silently inferred from labels."
+}

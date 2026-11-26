@@ -832,7 +832,7 @@ personal-use material are excluded;earlier release assets remain unchanged.
 Seven complete two-page standard English factsheet texts add national bushfire,
 cyclone, earthquake, flood, heatwave, storm and tsunami preparedness. Both guides
 expose the same seven-reading choice plus prepare/learn references. The public
-collection now has **89 records: 70 official practical readings, 13 copyright
+collection now has **85 records: 66 official practical readings, 13 copyright
 statements and 6 original records**. These are standard English factsheets, not
 the separate illustrated Easy Read editions or new translations.
 
@@ -933,3 +933,28 @@ plan. Source packing quantities do not establish adequate supplies for an actual
 route/person/vehicle. No original images/video/PDFs,permits,maps or manufacturer
 manuals are bundled. AMSA beacon reproduction still requires permission;Main Roads
 WA's general terms are insufficient for unrestricted public redistribution.
+
+
+Final road/recovery validation: **811 contribution/build tests and 883 combined
+source tests pass**, each five skips and eleven upstream expected failures;
+14 focused source tests pass. Offline engine checks forbid sockets and verify
+public89/private410 searches, all89 public reader hashes and both four-reading
+choices, while retaining prior choices. Household/rural189/194, health13 and
+personal21 references resolve417total with zero errors. All96Australian content
+hashes, personal42FTS units and Victoria per-file map hashes pass.
+
+Private Mac runtime2edf215 passes i18n, package/privacy scan, strict signature and
+actual installed410/7IP-denial self-check. Full prior406app/data retained for
+rollback. Pinned roots/setup inputs unchanged; no newTLS rerun claim. Selected
+native review opens both choices/all4readers; screenshots inspect motorway
+exit/stay conditions, recovery attachment/exclusion/bystander/training text,
+2014packing scope/quantities and rural cards. No all89native, independent
+mechanical/recovery/legal/accessibility review,live-service,notarization or
+long-idle claim. Earlier idle-watchdog and HTTP-browser navigation gaps remain.
+
+The public89HTML-only contributor prerelease is
+https://github.com/pilkster/lastbook/releases/tag/australia-road-recovery-review-2026-11-26
+with source audits/checksums. Extract into a new folder; never replace an installed
+catalog with this smaller supplement. No personal-use PDFs/text, original agency
+PDFs, images/video or manufacturer manuals are distributed. Contributor review,
+not officialSetup/maintainer acceptance. Earlier release assets remain unchanged.

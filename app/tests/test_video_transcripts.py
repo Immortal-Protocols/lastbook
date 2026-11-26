@@ -179,6 +179,20 @@ class VideoTranscripts(unittest.TestCase):
         with patch.object(server, 'LIB', self.root):
             self.assertEqual(server.vtt_cues('captions.vtt'), [{'t': 20, 'text': expected}])
 
+        for boundary, decoded in ((' ', ' '), ('&nbsp;', '\u00a0'), ('\t', '\t')):
+            first = 'The label clearly says' + boundary + '14 litres.'
+            data = ('WEBVTT\n\n00:20.000 --> 00:25.000\n' + first +
+                    '\n14 litres.\nThe next label differs.\n').encode()
+            expected = 'The label clearly says' + decoded + '14 litres. The next label differs.'
+            for route, text in self.texts(data).items():
+                if route != 'saved page':  # Saved pages only merge identical whole lines.
+                    with self.subTest(boundary=boundary, route=route):
+                        self.assertEqual(text.split(), expected.split())
+            with self.subTest(boundary=boundary, route='reader timestamp'), patch.object(server, 'LIB', self.root):
+                self.assertEqual(server.vtt_cues('captions.vtt'), [{'t': 20, 'text': expected}])
+            with self.subTest(boundary=boundary, route='retrieval timestamp'):
+                self.assertEqual(retrieval.vtt_windows(self.path), [(20, ' '.join(expected.split()))])
+
     def test_cached_video_windows_are_refreshed_with_the_unchanged_track(self):
         expected = 'The first label says 112 12 is on the second label.'
         self.path.write_text('WEBVTT\n\n00:20.000 --> 00:25.000\n'

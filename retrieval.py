@@ -131,7 +131,7 @@ def vtt_windows(path, span=45):
         cur = [start, '']
         for line in lines:
             t = html.unescape(re.sub(r'<[^>]+>', '', line)).strip()
-            if t and not (cur[1] == t or cur[1].endswith(' ' + t)):
+            if t and not (cur[1].endswith(t) and (cur[1] == t or cur[1][-len(t) - 1].isspace())):
                 cur[1] = (cur[1] + ' ' + t).strip()
         cues.append(cur)
     out, start, buf, last = [], None, [], ''

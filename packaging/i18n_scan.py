@@ -91,6 +91,7 @@ TECHNICAL_EXACT = {
     'Could not access the desktop language preference', 'Contents',
     'Unexpected desktop language preference', 'no byte range', 'no points', '?t=', '/v1/?$', 'SPUStandardUpdaterController', 'SystemRoot', 'NotFound', 'WindowsPowerShell',
     '(pointer: coarse)', 'Spanish|español|\\bkit de\\b',
+    '#{…} [data-act="{…}"]',
 }
 
 TECHNICAL_PREFIX = (

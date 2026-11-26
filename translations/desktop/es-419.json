@@ -1290,6 +1290,7 @@
   "setup.theLocalAi": "la IA local",
   "setup.theNamedMap": "el mapa de {name}",
   "setup.thisComputer": "Esta computadora",
+  "setup.thisComputerDisk": "esta computadora",
   "setup.thisDisk": "este disco",
   "setup.thisMac": "esta Mac",
   "setup.title": "Configuración inicial de Lastbook",

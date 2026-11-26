@@ -97,6 +97,7 @@
   "setup.notifyMustBeBoolean": "notify muss true oder false sein.",
   "setup.internalError": "Die Einrichtung wurde durch einen internen Fehler gestoppt ({type}).",
   "setup.copyJobTitle": "Kopie der Bibliothek {title}",
+  "setup.thisComputerDisk": "dieser Computer",
   "hardware.batteryLocalOnly": "Der Akkustand wird nur auf diesem Computer angezeigt.",
   "app.description": "Offline-Leitfaden für Krisenvorsorge und Wiederaufbau: Erste Hilfe, Wasser, Lebensmittel, Energie, Unterkunft, Videos, Karten und praktische Fähigkeiten.",
   "app.libraryItemMissing": "Dieser Eintrag ist nicht mehr in der Bibliothek.",

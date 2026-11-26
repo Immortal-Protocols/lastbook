@@ -97,6 +97,7 @@
   "setup.notifyMustBeBoolean": "notify 的值必须为 true 或 false。",
   "setup.internalError": "初始设置因内部错误而停止（{type}）。",
   "setup.copyJobTitle": "{title}资料库的副本",
+  "setup.thisComputerDisk": "这台电脑",
   "hardware.batteryLocalOnly": "仅在此设备上显示电池信息。",
   "app.description": "离线生存与重建指南：涵盖急救、饮水、食物、能源、庇护所、视频、地图和实用技能，无需联网。",
   "app.libraryItemMissing": "此项目已不在资料库中。",

@@ -85,6 +85,10 @@ class Coverage(unittest.TestCase):
             ),
         )
 
+    def test_dynamic_chat_action_selector_is_technical(self):
+        selector = '#{…} [data-act="{…}"]'
+        self.assertEqual(scan.classify(selector, 'document.querySelector(', ''), 'technical')
+
     def test_scanner_classifies_command_examples_native_keys_and_attribution(self):
         self.assertEqual(scan.classify('server.py --lan', "command: ", ""), 'technical')
         self.assertEqual(scan.classify('SystemRoot', "os.environ.get(", ""), 'technical')

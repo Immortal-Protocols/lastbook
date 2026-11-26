@@ -7,8 +7,8 @@
   "route": [],
   "id": "au-health",
   "title": "Find Australian emergency health sources",
-  "short": "Australian calls, poisons and child CPR videos",
-  "intro": "Australian emergency-call guidance, Queensland poisons advice, and Sydney Children’s Hospitals Network videos when present. This is not a complete Australian first-aid manual.",
+  "short": "Australian calls, poisons and dated CPR sources",
+  "intro": "Australian emergency-call guidance, Queensland poisons advice and dated Sydney Children’s Hospitals Network videos when present. The stored 2025 infant demonstration has a source variation flagged against ANZCOR Guideline 6 on 26 November 2026; qualified clinical review is pending. This is not a complete Australian first-aid manual.",
   "keywords": [
     "australia",
     "australian",
@@ -46,8 +46,8 @@
     },
     {
       "id": "child",
-      "label": "Find child or baby CPR demonstrations",
-      "hint": "Sydney Children’s Hospitals Network, 2025; videos appear only when installed.",
+      "label": "Find dated child or baby CPR demonstrations",
+      "hint": "SCHN videos from 2025. Infant technique flagged for review against ANZCOR Guideline 6, checked 26 November 2026; use current accredited training.",
       "read": [
         {
           "doc": "video-5zz9o_wy-Y0",
@@ -57,7 +57,7 @@
         {
           "doc": "video-bsP45AXQGC4",
           "label": "CPR for a baby under one year",
-          "note": "Sydney Children’s Hospitals Network demonstration, including calling Triple Zero."
+          "note": "Stored SCHN demonstration from 2025. Its infant compression technique differs from the checked ANZCOR Guideline 6; qualified clinical review is pending. The source video is unchanged."
         }
       ]
     }

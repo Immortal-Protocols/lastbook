@@ -1,6 +1,6 @@
 {
-  "version": 17,
-  "id": "au-reference-food-safety-2026-11-26",
+  "version": 18,
+  "id": "au-reference-infant-source-review-2026-11-26",
   "checked": "2026-11-26",
   "sources": [
     {
@@ -498,8 +498,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "78b289e47086cea2c97adda511f9660a803819468d72273c459208f8c6d41a21",
-      "bytes": 18011,
+      "sha256": "31ecd780f50d19872c4cbf7059db9eb302a19d0e73577664eebe248d6c342f2c",
+      "bytes": 18829,
       "snapshot": "sources/au-reference.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },

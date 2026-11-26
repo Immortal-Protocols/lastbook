@@ -17,6 +17,28 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_infant_source_status_is_dated_visible_and_does_not_add_unreviewed_protocols(self):
+        manifest = au.checked_sources()[0]
+        audit = json.loads((au.SOURCES / 'INFANT-CPR-SOURCE-REVIEW-20261126.json').read_text(encoding='utf-8'))
+        self.assertEqual(audit['video']['id'], 'video-bsP45AXQGC4')
+        self.assertEqual(audit['video']['upload_date'], '20251014')
+        self.assertEqual(len(audit['original_pdf_candidates']), 3)
+        self.assertEqual({r['id'] for r in audit['source_comparisons']}, {'anzcor-guideline6', 'schn-infant-factsheet'})
+        self.assertTrue(all(r['kind'] == 'html' for r in manifest['sources']))
+        guide = json.loads((au.ROOT / 'content/topics/au-health.json').read_text(encoding='utf-8'))
+        choice = next(c for c in guide['choices'] if c['id'] == 'child')
+        baby = next(r for r in choice['read'] if r['doc'] == audit['video']['id'])
+        for scope in ['2025', 'ANZCOR Guideline 6', 'clinical review is pending', 'source video is unchanged']:
+            self.assertIn(scope, baby['note'])
+        self.assertIn('26 November 2026', choice['hint'])
+        self.assertIn('dated', choice['label'])
+        self.assertEqual(len(choice['read']), 2)
+        hub = next(r for r in manifest['sources'] if r['id'] == 'au-reference')
+        html = (au.SOURCES / hub['snapshot']).read_text(encoding='utf-8')
+        self.assertIn('Dated infant CPR source status', html)
+        self.assertIn('does not create a replacement treatment protocol', html)
+        self.assertIn('https://www.anzcor.org/home/basic-life-support/guideline-6-compressions', html)
+
     def test_fsanz_consumer_readings_preserve_complete_source_conditions_and_equal_access(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'FOOD-SAFETY-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))

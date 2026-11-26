@@ -712,3 +712,35 @@ These are reading-only planning aids. They do not save a completed personal plan
 register a beacon, lodge an itinerary, place a call or check live roads/services.
 Detailed remote driving/recovery, person/route/device-specific validation,
 translated/First Nations planning and public first-aid rights remain incomplete.
+
+
+Planning validation: **808 required contribution/build tests**, including both
+Australian builders and personal-distribution guards, and **880 combined-source
+tests** pass, each five skips/eleven upstream expected failures. Eleven focused
+source tests pass. The initial sandbox run could not open the temporary localhost
+test servers; the corrected complete runs used approved local-server access.
+Actual public74/private395 engine searches,74 reader hashes and SQLite/FTS pass
+with socket creation forbidden. Household144/rural149 references resolve (293
+public); all four private Australian guides resolve327,zero errors.
+
+The installed private Mac app contains395records:314base,74public Australian
+and7personal. Runtime source d07a089c8dd8be9acaa8d22622a3ade5c0c20c8e passes
+package/privacy scan,i18n,strict signature and actual395/7outbound-IP-denial
+self-check. All81Australian record hashes,42personal FTS units and unchanged
+Victoria map hashes/3,054names remain. Full previous392app/library copies are
+retained. Pinned roots/setup inputs are unchanged;no newTLS rerun is claimed.
+
+Selected installed Mac review opens both three-card choices and all three new
+readings. Journey fuel/water arithmetic and its limits,check-in/missing-person
+conditions,the six isolation dependency prompts and separate beacon genuine-
+distress/accidental-cancellation sections appear. Screenshots check supply text,
+dependency layout,beacon condition/number separation and both choice layouts.
+Journey→beacon linked navigation updates reader/source/Ask;Back returns to the
+journey reader. This is selected native verification,not all74readers,actual
+calls/routes/services,independent professional/accessibility validation,
+Windows/Linux-native,notarization or long-idle proof. Earlier idle-watchdog and
+HTTP-browser navigation limits remain.
+
+[74-record practical planning contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-practical-planning-review-2026-11-26)
+contains public HTML,audits and engine evidence only. Personal-use material and
+original agency PDFs are excluded. Previous release assets remain unchanged.

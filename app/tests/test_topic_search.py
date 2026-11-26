@@ -280,7 +280,7 @@ EMERGENCY_FIRST = {
 EMERGENCY_UNDISTURBED = {
     'heart': ['health', 'chronic'], 'heart disease': ['health', 'chronic'], 'blood pressure': ['health', 'chronic'],
     'chest pain': ['hurt', 'sudden'], 'collapsed': ['hurt', 'breathing'], 'not breathing': ['hurt', 'breathing'],
-    'drowning': ['hurt', 'breathing'], 'cpr': ['hurt', None], 'stopped': ['disaster', 'earthquake-after'],
+    'drowning': ['hurt', 'breathing'], 'cpr': ['hurt', 'breathing'], 'stopped': ['disaster', 'earthquake-after'],
     'heat stroke': ['hurt', 'heatcold'], 'sun stroke': ['hurt', 'heatcold'], 'heat stroke symptoms': ['hurt', 'heatcold'],
     'stroke from the heat': ['hurt', 'heatcold'], 'stroke in the heat': ['hurt', 'heatcold'],   # heat phrases win over "stroke"
     'signs of a stroke': ['hurt', 'sudden'],
@@ -502,6 +502,34 @@ OUT_AND_RAT_UNDISTURBED = {
     'formula': ['food', 'special'], 'insulin': ['health', 'chronic'],
 }
 TOPS = sorted({*TOPS, *OUT_AND_RAT, *OUT_AND_RAT_UNDISTURBED})
+
+# First aid words the cited readings already use, which found nothing or no choice. The breathing choice cites
+# "Choking: back blows and abdominal thrusts", "Unresponsive but breathing: the recovery position" and two CPR
+# readings; the burn choice cites "why not to break blisters"; the bleeding choice's last reading continues onto
+# sepsis danger signs; the feeding choice is where breastfeeding belongs. [guide, choice] that comes first.
+FIRST_AID_WORDS = {
+    'abdominal thrusts': ['hurt', 'breathing'], 'back blows': ['hurt', 'breathing'],
+    'heimlich': ['hurt', 'breathing'], 'heimlich maneuver': ['hurt', 'breathing'],
+    'recovery position': ['hurt', 'breathing'], 'cpr': ['hurt', 'breathing'],
+    'how to do CPR': ['hurt', 'breathing'],
+    'blister': ['hurt', 'burn'], 'blisters': ['hurt', 'burn'], 'popped blister': ['hurt', 'burn'],
+    'sepsis': ['hurt', 'bleeding'],
+    'breastfeeding': ['food', 'special'],
+}
+# All of these are phrases with a context list, not hint words, so a search that merely shares one word keeps the
+# guide it had. A blister the person did not call a burn is the case to watch: "diabetic foot blister" is a chronic
+# illness search, and "friction blister" and "blister on my foot" are not burns either. None means no guide at all.
+FIRST_AID_UNDISTURBED = {
+    'back pain': ['health', 'start'], 'abdominal pain': ['health', 'start'], 'lower back pain': ['health', 'start'],
+    'recovery': ['hurt', None], 'position': ['hurt', None], 'back': ['hurt', 'head'],
+    'burn': ['hurt', 'burn'], 'choking': ['hurt', 'breathing'], 'tourniquet': ['hurt', 'bleeding'],
+    'breast feeding': ['food', 'special'], 'formula': ['food', 'special'],
+    'diabetic foot blister': ['hurt', 'sudden'], 'diabetic foot': ['hurt', 'sudden'],
+    'blister on my hand': ['sanitation', 'hands'], 'sun blister': ['preserve', 'nopower'],
+    'friction blister': None, 'foot blister': None, 'blister on my foot': None,
+    'burn blister': ['hurt', 'burn'], 'chemical burn blister': ['hurt', 'burn'],
+}
+TOPS = sorted({*TOPS, *FIRST_AID_WORDS, *FIRST_AID_UNDISTURBED})
 
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
@@ -794,6 +822,16 @@ class TopicSearch(unittest.TestCase):
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q], [])
 
+
+    def test_first_aid_words_reach_the_choice_that_cites_them(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in FIRST_AID_WORDS.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])
+            for q, first in FIRST_AID_UNDISTURBED.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first] if first else [])
 
     def test_out_of_and_rat_reach_the_choice_that_answers_them(self):
         for r in self.modes:

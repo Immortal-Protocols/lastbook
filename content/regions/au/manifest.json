@@ -1207,7 +1207,8 @@
         7
       ],
       "year": 2022,
-      "notes": "Written text and annotation lists from source pages2-7:fire risk,district names,four rating rows,ten decisions and property preparation. District map and imagery are excluded. All eight rating-cell associations retain their labels. Text-only adaptation; source wording retained,with visually verified extraction corrections."
+      "notes": "Written text and annotation lists from source pages2-7:fire risk,district names,four rating rows,ten decisions and property preparation. District map and imagery are excluded. All eight rating-cell associations retain their labels. Text-only adaptation; source wording retained,with visually verified extraction corrections.",
+      "edition": "Version 6, July 2022"
     },
     {
       "id": "vic-cfa-prepare-leave",
@@ -1235,7 +1236,8 @@
         10
       ],
       "year": 2022,
-      "notes": "Written text from source pages8-10:all12 before-summer items,pet and emergency-kit lists,and both fire-risk-day checklists. Original conditions,including only-if-you-have-time,remain. Photographs/imagery are excluded. Text-only adaptation; source wording retained,with visually verified extraction corrections."
+      "notes": "Written text from source pages8-10:all12 before-summer items,pet and emergency-kit lists,and both fire-risk-day checklists. Original conditions,including only-if-you-have-time,remain. Photographs/imagery are excluded. Text-only adaptation; source wording retained,with visually verified extraction corrections.",
+      "edition": "Version 6, July 2022"
     },
     {
       "id": "vic-cfa-warnings",
@@ -1263,7 +1265,8 @@
         13
       ],
       "year": 2022,
-      "notes": "Written text from source pages11-13,including all four WHEN/WHAT TO DO rows. Retains July2022 Emergency Alert,relay,broadcaster/social-media descriptions; separate bundled2026 NEMA/accessible-calling context is linked. No current service/reception test. Text-only adaptation; source wording retained,with visually verified extraction corrections."
+      "notes": "Written text from source pages11-13,including all four WHEN/WHAT TO DO rows. Retains July2022 Emergency Alert,relay,broadcaster/social-media descriptions; separate bundled2026 NEMA/accessible-calling context is linked. No current service/reception test. Text-only adaptation; source wording retained,with visually verified extraction corrections.",
+      "edition": "Version 6, July 2022"
     },
     {
       "id": "vic-cfa-during-fire",
@@ -1294,7 +1297,8 @@
         19
       ],
       "year": 2022,
-      "notes": "Written body from source pages14-19,including full building/car procedures and all last-resort warnings. Illustrations/diagram labels are excluded. Dated July2022 source; current CFA defending-property context retained separately. Leaving early remains the safest option; safety is not guaranteed. Text-only adaptation; source wording retained,with visually verified extraction corrections."
+      "notes": "Written body from source pages14-19,including full building/car procedures and all last-resort warnings. Illustrations/diagram labels are excluded. Dated July2022 source; current CFA defending-property context retained separately. Leaving early remains the safest option; safety is not guaranteed. Text-only adaptation; source wording retained,with visually verified extraction corrections.",
+      "edition": "Version 6, July 2022"
     },
     {
       "id": "cfa-survival-copyright",
@@ -1320,7 +1324,8 @@
         20
       ],
       "year": 2022,
-      "notes": "Complete written copyright,edition and contact text from sourcepage20. Text-only grant excludes imagery/branding and third-party rights. Version6,July2022; currently linked PDF retrieved26November2026. No original PDF redistributed. Text-only adaptation; source wording retained,with visually verified extraction corrections."
+      "notes": "Complete written copyright,edition and contact text from sourcepage20. Text-only grant excludes imagery/branding and third-party rights. Version6,July2022; currently linked PDF retrieved26November2026. No original PDF redistributed. Text-only adaptation; source wording retained,with visually verified extraction corrections.",
+      "edition": "Version 6, July 2022"
     }
   ]
 }

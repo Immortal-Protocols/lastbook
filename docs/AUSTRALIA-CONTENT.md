@@ -478,3 +478,28 @@ Validation: **799 required contribution/build tests OK**,five skips/eleven
 upstream expected failures under PYTHONUTF8=0. Eight focused source/build tests
 cover actual offline61-record construction,source integrity,all table-cell
 associations,checklist counts and last-resort qualifiers.
+
+
+### Linked-reading source context
+
+Native review reproduced an existing HTML-reader problem:following an in-page
+link replaced the frame content while the outer title,source details and Ask
+context still named the earlier record. The desktop shells now send a user-clicked
+link to a different catalogued reading through the app's ordinary reader route.
+The current reader is retained as the back destination. The visible source,title,
+Ask,Saved and history then use the destination record.
+
+The shared bridge accepts only an active HTML reader,a real user link action and
+a different supported record already in the library. Initial loads,same-record
+anchors,PDF/encyclopedia browsing,unknown/external addresses and frame popups
+retain their existing rules. No saved-page origin/script/CSP permissions,network
+policy or download host changed. Both bridge modes passed204 tests,including
+Unicode/encoded ids,PDF page targets,back context,initial/self-link exclusions
+and refusal cases. Windows/Linux hooks are included;their native behaviour has
+not been verified here. This desktop-policy repair does not cover the optional
+browser-over-HTTP reader;that remains a separate navigation gap.
+
+The five CFA records also use the standard edition field,so the source details
+show Version6,July2022 and the year2022 alongside the distinct retrieval date.
+Final source repair suite:805 required contribution/build tests OK,five skips and
+eleven upstream expected failures. The61 source bodies remain unchanged.

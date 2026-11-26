@@ -81,6 +81,7 @@ class Reference(unittest.TestCase):
             self.assertEqual(r['raw_sha256'], 'de37f989a65b529351f3fe87685bc70a1d84a5d543cb5fef905e5458f90d1918')
             self.assertEqual(r['source_pages'], selection['source_pages'])
             self.assertEqual(r['source_edition'], 'Version 6, July 2022')
+            self.assertEqual(r['edition'], 'Version 6, July 2022')
             self.assertEqual(r['license'], 'CC-BY-4.0')
         risk = body('vic-cfa-fire-risk')
         for rating, meaning, action in audit['rating_table']['rows']:

@@ -1,0 +1,175 @@
+{
+  "checked": "2026-11-26",
+  "publisher": "State of Queensland",
+  "listing": {
+    "id": "qld-language-index",
+    "url": "https://www.qld.gov.au/community/disasters-emergencies/disasters/resources-translations/disaster-information-language",
+    "final_url": "https://www.qld.gov.au/community/disasters-emergencies/disasters/resources-translations/disaster-information-language",
+    "retrieved_at": "2026-11-26",
+    "bytes": 201710,
+    "raw_sha256": "b3af99b83ac6061b0ae742997e9099a066d003540a033bfb2c496e8043e1846f"
+  },
+  "listing_updated": "2026-10-13",
+  "listing_reviewed": "2024-01-04",
+  "rights": {
+    "id": "qld-copyright",
+    "url": "https://www.qld.gov.au/legal/copyright",
+    "final_url": "https://www.qld.gov.au/legal/copyright",
+    "retrieved_at": "2026-11-26",
+    "bytes": 182764,
+    "raw_sha256": "e2292d811c0965add789345105d9c4e491c42fb60fbc7d81099d4f2a4ad3e20a"
+  },
+  "grant": "CC BY4.0 for copyright material on or through qld.gov.au unless otherwise noted. State credit retained. No alternative text licence/third-party credit observed on the four one-page posters.",
+  "excluded": "Artwork,pictograms,logos,Coat of Arms,trademarks and original PDFs. No agency artwork or culturally specific design reproduced.",
+  "selections": [
+    {
+      "id": "qld-yumplatok-bushfires-poster",
+      "raw": {
+        "id": "qld-yumplatok-bushfires-poster",
+        "url": "https://www.qld.gov.au/__data/assets/pdf_file/0029/386831/yumplatok-bushfires-poster.pdf",
+        "final_url": "https://www.qld.gov.au/__data/assets/pdf_file/0029/386831/yumplatok-bushfires-poster.pdf",
+        "retrieved_at": "2026-11-26",
+        "bytes": 104121,
+        "raw_sha256": "35cceb99ffeb051bb3da89cef0d72dcdd3c3f37ec567310e67ab6fb7f4812ffc"
+      },
+      "language": "tcs",
+      "language_name": "Yumplatok (Torres Strait Creole)",
+      "pdf_metadata_created": "2024-03-19T09:39:43+11:00",
+      "pdf_metadata_modified": "2024-03-20T12:57:46+11:00",
+      "pages": 1,
+      "visual_check": "Full one-page1500px Poppler rendering inspected;Wik cyclone footer additionally inspected at150dpi. All practical text/list order/punctuation compared.",
+      "complete_source_text": "Preparing for Bushfires and Heatwaves Pamle upla sabe wanem po mekem ip i go gad buspaya? Mek sur home ane business blo yu i redi: Prepare wan emergency kit Meke wan evacuation plan po pamle/pets blo yu Sek weya ol neighbours blo yu Teke notice ane register po dem weather warnings Lesen po radio Stap calm, meke rait decisions ane teke action! www.qld.gov.au/DisasterHelp @RecoveryQLD 1800 173 349",
+      "source_bullets": [
+        "Prepare wan emergency kit",
+        "Meke wan evacuation plan po pamle/pets blo yu",
+        "Sek weya ol neighbours blo yu",
+        "Teke notice ane register po dem weather warnings",
+        "Lesen po radio"
+      ],
+      "source_normalized_text_sha256": "cbc95ccc31c517cff9adea8bc3503de9ec893fbc4f8c0ce2b231ce98a19f507a",
+      "adapted_normalized_text_sha256": "cbc95ccc31c517cff9adea8bc3503de9ec893fbc4f8c0ce2b231ce98a19f507a",
+      "reader_sha256": "d2abff074984c2f7805b888314eacf369cca483cded369e9b071e3c72a42a4b8"
+    },
+    {
+      "id": "qld-yumplatok-cyclones-poster",
+      "raw": {
+        "id": "qld-yumplatok-cyclones-poster",
+        "url": "https://www.qld.gov.au/__data/assets/pdf_file/0030/386832/yumplatok-cyclones-poster.pdf",
+        "final_url": "https://www.qld.gov.au/__data/assets/pdf_file/0030/386832/yumplatok-cyclones-poster.pdf",
+        "retrieved_at": "2026-11-26",
+        "bytes": 96551,
+        "raw_sha256": "a580522fcf970c19e6da8577493a21220824556c621de1c9f41c6fdccdbff7f8"
+      },
+      "language": "tcs",
+      "language_name": "Yumplatok (Torres Strait Creole)",
+      "pdf_metadata_created": "2024-03-19T09:41:42+11:00",
+      "pdf_metadata_modified": "2024-03-20T12:58:17+11:00",
+      "pages": 1,
+      "visual_check": "Full one-page1500px Poppler rendering inspected;Wik cyclone footer additionally inspected at150dpi. All practical text/list order/punctuation compared.",
+      "complete_source_text": "Preparing for Cyclones and Floods Pamle upla sabe wanem po mekem ip i go gad cyclone or flood? Meke sur home ane business blo yu i redi: Prepare wan emergency kit Meke wan evacuation plan po pamle/pets blo yu Sek weya ol neighbours blo yu Teke notice ane register po dem weather warnings Lesen po radio www.qld.gov.au/DisasterHelp @RecoveryQLD 1800 173 349",
+      "source_bullets": [
+        "Prepare wan emergency kit",
+        "Meke wan evacuation plan po pamle/pets blo yu",
+        "Sek weya ol neighbours blo yu",
+        "Teke notice ane register po dem weather warnings",
+        "Lesen po radio"
+      ],
+      "source_normalized_text_sha256": "dcc0020a05730314a723a08c47b771b9ea1991b5db0ff3218810ae69e1220027",
+      "adapted_normalized_text_sha256": "dcc0020a05730314a723a08c47b771b9ea1991b5db0ff3218810ae69e1220027",
+      "reader_sha256": "e7578f6ab14d0947fa352f0e0093f36c546d78ae7c698171308cb46762809e95"
+    },
+    {
+      "id": "qld-wik-mungkan-bushfires-poster",
+      "raw": {
+        "id": "qld-wik-mungkan-bushfires-poster",
+        "url": "https://www.qld.gov.au/__data/assets/pdf_file/0028/386830/wik-mungkan-bushfires-poster.pdf",
+        "final_url": "https://www.qld.gov.au/__data/assets/pdf_file/0028/386830/wik-mungkan-bushfires-poster.pdf",
+        "retrieved_at": "2026-11-26",
+        "bytes": 103065,
+        "raw_sha256": "9926e6e532f07cb5ec760a88ae47bb2ad6a355414ec0636d9411c28ba7e12ed0"
+      },
+      "language": "wim",
+      "language_name": "Wik-Mungkan",
+      "pdf_metadata_created": "2024-03-19T09:43:09+11:00",
+      "pdf_metadata_modified": "2024-03-20T12:56:25+11:00",
+      "pages": 1,
+      "visual_check": "Full one-page1500px Poppler rendering inspected;Wik cyclone footer additionally inspected at150dpi. All practical text/list order/punctuation compared.",
+      "complete_source_text": "Thum noorm a aak Karrkan an Nint puth mayalmathan nungkerakam thum noorm akan! Ma kerrkan awuch a business nungkeram anang: Ma’yalmathan emergency kit thakan Ma’yalmathan Ku a ku’waak nungkeram an Thowan pamwanch nungkerang thinth an wunthan Regist’iman weather warning ak Radio an ngeeyan Ngank nochanthan, min’min ngantam ngeeyan, a ma kerrkan! www.qld.gov.au/DisasterHelp @RecoveryQLD 1800 173 349",
+      "source_bullets": [
+        "Ma’yalmathan emergency kit thakan",
+        "Ma’yalmathan Ku a ku’waak nungkeram an",
+        "Thowan pamwanch nungkerang thinth an wunthan",
+        "Regist’iman weather warning ak",
+        "Radio an ngeeyan"
+      ],
+      "source_normalized_text_sha256": "56502e29e9acafd3b502cb29f0570c421c601827098bc1242e110f06bc88e721",
+      "adapted_normalized_text_sha256": "56502e29e9acafd3b502cb29f0570c421c601827098bc1242e110f06bc88e721",
+      "reader_sha256": "264f03933cea223198d1645e0cf8edf16ae2149969777dc66897eba89393f906"
+    },
+    {
+      "id": "qld-wik-mungkan-cyclones-poster",
+      "raw": {
+        "id": "qld-wik-mungkan-cyclones-poster",
+        "url": "https://www.qld.gov.au/__data/assets/pdf_file/0036/386829/wik-mungkan-cyclones-poster.pdf",
+        "final_url": "https://www.qld.gov.au/__data/assets/pdf_file/0036/386829/wik-mungkan-cyclones-poster.pdf",
+        "retrieved_at": "2026-11-26",
+        "bytes": 96116,
+        "raw_sha256": "0766cb2aa745cf311386d254cd45e9a4949dc55bf7eafa830f8ec964bc5f2031"
+      },
+      "language": "wim",
+      "language_name": "Wik-Mungkan",
+      "pdf_metadata_created": "2024-03-19T09:44:10+11:00",
+      "pdf_metadata_modified": "2024-03-20T12:57:03+11:00",
+      "pages": 1,
+      "visual_check": "Full one-page1500px Poppler rendering inspected;Wik cyclone footer additionally inspected at150dpi. All practical text/list order/punctuation compared.",
+      "complete_source_text": "Preparing for cyclones and floods Nint must mayalmathan keengk keengk wunt pian a aak kaap’man Ma kerrkan awuch a business nungkeram anang: Ma’yalmathan emergency kit thakan Ma’yalmathan Ku a ku’waak nungkeram an Thowan pamwanch nungkerang thinth an wunthan Regist’iman weather warning aak Radio an ngeeyan www.qld.gov.au/DisasterHelp @RecoveryQLD 1800 173 349",
+      "source_bullets": [
+        "Ma’yalmathan emergency kit thakan",
+        "Ma’yalmathan Ku a ku’waak nungkeram an",
+        "Thowan pamwanch nungkerang thinth an wunthan",
+        "Regist’iman weather warning aak",
+        "Radio an ngeeyan"
+      ],
+      "source_normalized_text_sha256": "52a6054e5252b59d2c85ddfb651601ea6f8890863b78edbce7f090f49a0d2806",
+      "adapted_normalized_text_sha256": "52a6054e5252b59d2c85ddfb651601ea6f8890863b78edbce7f090f49a0d2806",
+      "reader_sha256": "785c0ae1ae23aa52453e895471d480b2b9e75189b367c766ff56adbe83310ca0"
+    }
+  ],
+  "total_posters": 4,
+  "total_practical_bullets": 20,
+  "translation": "No new translation,spelling correction or merging across languages;complete published wording compared with rendered PDFs and normalized extraction. English source-context notes are separate. No independent fluent-speaker or cultural/accessibility validation claimed.",
+  "languages": "tcs=Torres Strait Creole;wim=Wik-Mungkan. Names come from the official listing. Codes cross-checked against US CEDS ISO639-3 listing and Glottolog language records.",
+  "dates": "March2024 PDF metadata retained separately from October2026 listing update and November2026 retrieval. None constitutes a newly issued advice/translation review.",
+  "national_resources_follow_up": {
+    "pages": [
+      {
+        "id": "national-english-index",
+        "url": "https://www.getready.gov.au/languages/english",
+        "final_url": "https://www.getready.gov.au/languages/english",
+        "retrieved_at": "2026-11-26",
+        "bytes": 27420,
+        "raw_sha256": "a2676d208efee7e827e36909c3201cbffe43f103fb4440aee6c797e033e0548e"
+      },
+      {
+        "id": "national-english-cyclone",
+        "url": "https://www.getready.gov.au/languages/english/cyclones",
+        "final_url": "https://www.getready.gov.au/languages/english/cyclones",
+        "retrieved_at": "2026-11-26",
+        "bytes": 23965,
+        "raw_sha256": "cf696f63bc921dedf337c3efa1bf38d8f77e8d3ca3b637c1542a18f8211ea9d0"
+      },
+      {
+        "id": "national-english-flood",
+        "url": "https://www.getready.gov.au/languages/english/floods",
+        "final_url": "https://www.getready.gov.au/languages/english/floods",
+        "retrieved_at": "2026-11-26",
+        "bytes": 23831,
+        "raw_sha256": "dcfd257c59fccf5d3ef7cfa9561df60a0e9579b15f0303b668b602c7440f3d29"
+      }
+    ],
+    "decision": "Separate getready.gov.au site has no footer copyright link in retrieved English pages. Resource guide is67MB;not yet acquired/reviewed. No licence inferred from NEMA announcement or Queensland branding. National manual bodies not included in this update."
+  },
+  "limits": "Two named language sets and two short preparedness posters per language,not every First Nations community/language,complete hazard response,validated accessible edition,current service access or live alerts. Printed Queensland recovery contact is distinct from emergency000.",
+  "reader_order": "Published language text first;English context,dates,licence and navigation follow the complete quote. No source wording changed.",
+  "context_correction": "Relative phrase corrected to quoted words after the source-first layout;published-language text unchanged."
+}

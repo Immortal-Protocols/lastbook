@@ -242,9 +242,9 @@ class VietnameseWording(unittest.TestCase):
 
     def test_everyday_words_and_formatting(self):
         self.assertIn('máy tính này', self.vi['setup.loading'])
-        self.assertIn('bang hoặc tỉnh', self.vi['setup.chooseIntro'])
-        self.assertIn('ngoại tuyến', self.vi['setup.chooseIntro'])
-        self.assertEqual(self.vi['setup.settingsTitle'], 'Thư viện và AI cục bộ')
+        self.assertIn('bản đồ chi tiết', self.vi['setup.chooseIntro'])
+        self.assertIn('không có mạng', self.vi['setup.chooseIntro'])
+        self.assertEqual(self.vi['setup.settingsTitle'], 'Thư viện và AI trên máy')
         everything = ' '.join(self.vi.values())
         self.assertNotIn('...', everything)
         self.assertTrue(self.vi['language.saving'].endswith('…'))

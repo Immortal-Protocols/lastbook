@@ -125,6 +125,30 @@
   ],
   "choices": [
     {
+      "id": "seven-day-power",
+      "label": "Plan for a household week without power",
+      "hint": "Seven-day needs, care, water, food, communications, backup limits and earlier action.",
+      "read": [
+        {
+          "doc": "au-seven-day-power",
+          "label": "Household: seven days without mains power",
+          "note": "Original scenario planning aid with complete bundled source links. Confirm actual needs, backup duration, support and early action; no live status or safe-stay guarantee."
+        }
+      ]
+    },
+    {
+      "id": "flood-isolated-property",
+      "label": "Plan for a rural property isolated by floods",
+      "hint": "People and livestock, early departure, property-specific duration, essential systems and longer isolation.",
+      "read": [
+        {
+          "doc": "au-flood-isolated-property",
+          "label": "Rural property: prepare for flood isolation",
+          "note": "Original scenario planning aid with complete bundled source links. Confirm actual needs, backup duration, support and early action; no live status or safe-stay guarantee."
+        }
+      ]
+    },
+    {
       "id": "planning-tools",
       "label": "Make a journey, isolation or beacon plan",
       "hint": "Original planning worksheets connect the readings to your own route, supplies, support needs and equipment.",
@@ -1383,6 +1407,16 @@
       "doc": "nsw-water-header-tanks",
       "label": "NSW: header tanks when a boil water alert is lifted",
       "note": "NSW Health; source 21 March 2022. Building-owner/manager precautions after an alert is lifted; cleaning-history distinction and source flushing steps retained. The referenced plumbing standard is not bundled; no actual tank approval."
+    },
+    {
+      "doc": "au-seven-day-power",
+      "label": "Household: seven days without mains power",
+      "note": "Original scenario planning aid with complete bundled source links. Confirm actual needs, backup duration, support and early action; no live status or safe-stay guarantee."
+    },
+    {
+      "doc": "au-flood-isolated-property",
+      "label": "Rural property: prepare for flood isolation",
+      "note": "Original scenario planning aid with complete bundled source links. Confirm actual needs, backup duration, support and early action; no live status or safe-stay guarantee."
     }
   ],
   "learn": [
@@ -1865,6 +1899,16 @@
       "doc": "nsw-water-header-tanks",
       "label": "NSW: header tanks when a boil water alert is lifted",
       "note": "NSW Health; source 21 March 2022. Building-owner/manager precautions after an alert is lifted; cleaning-history distinction and source flushing steps retained. The referenced plumbing standard is not bundled; no actual tank approval."
+    },
+    {
+      "doc": "au-seven-day-power",
+      "label": "Household: seven days without mains power",
+      "note": "Original scenario planning aid with complete bundled source links. Confirm actual needs, backup duration, support and early action; no live status or safe-stay guarantee."
+    },
+    {
+      "doc": "au-flood-isolated-property",
+      "label": "Rural property: prepare for flood isolation",
+      "note": "Original scenario planning aid with complete bundled source links. Confirm actual needs, backup duration, support and early action; no live status or safe-stay guarantee."
     }
   ],
   "related": [

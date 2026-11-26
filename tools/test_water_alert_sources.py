@@ -22,7 +22,7 @@ class WaterAlerts(unittest.TestCase):
     def test_complete_source_blocks_conditions_rights_and_prior_readings(self):
         manifest, sources = b.checked_sources()
         records = {r['id']: r for r, _, _, _ in sources}
-        self.assertEqual(len(manifest['sources']), 127)
+        self.assertEqual(len(self.audit['base_sources_sha256']) + len(self.uids), 127)
         self.assertEqual(len(self.uids), 2)
         for source in self.audit['selections']:
             record = records[source['id']]
@@ -64,6 +64,8 @@ class WaterAlerts(unittest.TestCase):
             if uid != 'au-reference':
                 self.assertEqual(records[uid]['sha256'], digest, uid)
         hub = (b.SOURCES / 'sources/au-reference.html').read_bytes()
+        later = hub.index(b'<h2>Household and rural scenario plans</h2>')
+        hub = hub[:later] + hub[hub.index(b'</body>', later):]
         start = hub.index(b'<h2>Water-supplier alerts and building header tanks</h2>')
         restored = hub[:start] + hub[hub.index(b'</body>', start):]
         self.assertEqual(b.digest(restored), self.audit['base_hub_sha256'])

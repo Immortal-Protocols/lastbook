@@ -16,8 +16,21 @@ spec = importlib.util.spec_from_file_location('au_builder', TOOL)
 au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
+def before_scenario_extension(guide):
+    """Remove only the separately audited, later household/rural scenario increment."""
+    ids = {'au-seven-day-power', 'au-flood-isolated-property'}
+    if 'choices' in guide:
+        guide['choices'] = [c for c in guide['choices'] if c['id'] not in
+                            {'seven-day-power', 'flood-isolated-property'}]
+    for key in ['prepare', 'learn']:
+        if key in guide:
+            guide[key] = [ref for ref in guide[key] if ref.get('doc') not in ids]
+    return guide
+
+
 def before_water_alert_extension(guide):
     """Keep historical source-increment audits scoped to their dated guides."""
+    guide = before_scenario_extension(guide)
     uids = {'nsw-boil-water-alert', 'nsw-water-header-tanks'}
     if 'choices' in guide:
         guide['choices'] = [c for c in guide['choices'] if c['id'] != 'water-alerts']

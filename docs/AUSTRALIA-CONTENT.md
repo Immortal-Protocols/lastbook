@@ -204,6 +204,10 @@ maps, videos, encyclopedias or AI model. It does not edit an existing library an
 not advertised to the production downloader. Maintainers can incorporate its catalog
 and search rows in a release snapshot, then rebuild normal packs using the existing
 pack pipeline. Do not replace an installed library's catalog with this small catalog.
+For an offline, out-of-place addition that retains an existing full library, see
+[Add Australian readings to a copy of your library](AUSTRALIA-COMPOSE.md).
+The composition tool gives the new copy a local identity and full integrity
+manifest; it is still not an official Setup pack and inherits all base restrictions.
 An arbitrary user-document import feature is a separate upstream proposal (#70).
 
 The app-side guides need the matching source version from this branch. Older apps

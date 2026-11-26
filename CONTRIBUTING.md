@@ -15,6 +15,10 @@ stays correct, and never sends anything anywhere.
 
 The README explains the layout and how to build the apps.
 
+The Australian library composition tool and its preservation/failure checks are
+documented in [AUSTRALIA-COMPOSE.md](docs/AUSTRALIA-COMPOSE.md). Run
+`python3 -B -m unittest tools.test_compose_australia_reference` when changing it.
+
 ## Test
 
 ```bash

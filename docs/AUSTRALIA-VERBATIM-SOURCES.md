@@ -87,6 +87,12 @@ remain refused. The licence's lettered cross-references therefore remain readabl
 
 ## Build and distribution
 
+The [dated review](AUSTRALIA-BAT-EXPOSURE-REVIEW-20261127.json) records 911/983
+full contribution/combined tests, all62 focused checks on Python3.14/3.11, source
+and date-only verification scope, native results and the privacy-checked archive.
+The [124-record contributor download](https://github.com/pilkster/lastbook/releases/tag/australia-bat-exposure-review-2026-11-27)
+is separate from earlier121-record assets. It contains no private app/library.
+
 Use the offline builder or [out-of-place composition tool](AUSTRALIA-COMPOSE.md).
 Never replace a full installed catalog with the smaller supplement catalog. The
 matching runtime supplies the new guide cards. A composed full library inherits

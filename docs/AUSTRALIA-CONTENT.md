@@ -23,6 +23,12 @@ failed exact-source retrieval. No private ANZCOR body is published.
 exact-site rights, technical changes, preserved legal numbering and the review
 boundaries. The earlier composition evidence below covers the preceding121-record
 snapshot; its historical counts do not describe the new124-record source build.
+The [bat-exposure review](AUSTRALIA-BAT-EXPOSURE-REVIEW-20261127.json) records
+911/983full suites, followed by62focused checks on3.14/3.11 and current engine
+validation after the own-directory date-only correction. Code,guide and third-party
+source bodies did not change in that correction. The installed private review is445records with630AUguide refs;
+the [new public124 download](https://github.com/pilkster/lastbook/releases/tag/australia-bat-exposure-review-2026-11-27)
+excludes that private app/library and all restricted originals.
 
 ## Compose a new full library — 27 November 2026
 

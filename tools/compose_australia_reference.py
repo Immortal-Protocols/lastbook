@@ -63,7 +63,21 @@ def inventory(root):
             if not (stat.S_ISREG(s.st_mode) or stat.S_ISDIR(s.st_mode)):
                 raise ValueError('Library contains a link or special file: ' + rel)
             if name.endswith(('-wal', '-journal', '-shm')):
-                raise ValueError('Close Lastbook and SQLite tools before composing: ' + rel)
+                # SQLite can leave an empty WAL and its shared-memory index after
+                # a read-only connection closes. No committed pages live there.
+                suffix = next(x for x in ('-wal', '-journal', '-shm') if name.endswith(x))
+                main = p.with_name(name[:-len(suffix)])
+                safe = False
+                if main.is_file() and not main.is_symlink():
+                    with main.open('rb') as f:
+                        sqlite_file = f.read(16) == b'SQLite format 3\x00'
+                    if sqlite_file and suffix in ('-wal', '-journal'):
+                        safe = s.st_size == 0
+                    elif sqlite_file:
+                        wal = p.with_name(name[:-4] + '-wal')
+                        safe = wal.is_file() and not wal.is_symlink() and wal.stat().st_size == 0
+                if not safe:
+                    raise ValueError('Close Lastbook and checkpoint SQLite before composing: ' + rel)
             result[rel] = (s.st_dev, s.st_ino, s.st_mode, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
     return result
 
@@ -249,6 +263,8 @@ def compose(base, output):
         # Even a read-only open of a closed WAL-mode source can create sidecars.
         # Keep that source in scratch space, outside the published library.
         (lib / 'search.sqlite').replace(work / 'base-search.sqlite')
+        for suffix in ('-wal', '-shm', '-journal'):
+            (lib / ('search.sqlite' + suffix)).unlink(missing_ok=True)
         before, after = merge_index(work / 'base-search.sqlite', supplement / 'library-data/search.sqlite',
                                     work / 'search.sqlite', ids)
         (work / 'search.sqlite').replace(lib / 'search.sqlite')

@@ -20,12 +20,19 @@ python3 -B tools/compose_australia_reference.py \
 
 Choose a new output folder outside the base. The tool refuses an existing output,
 catalog or search-id collisions, conflicting source paths, symbolic links, special
-files and SQLite sidecars. It checks for base changes during the build, assembles
+files and SQLite journals/WAL files containing data. It checks for base changes during the build, assembles
 the copy in a temporary sibling folder, and publishes the finished directory.
 Failures remove its temporary work. Keep other processes from changing either
 path while it runs. The original library remains the rollback copy.
 Publication uses an exclusive directory rename on macOS, Windows, and Linux with
 `renameat2`; systems lacking that operation refuse publication safely.
+
+SQLite may leave a zero-byte WAL and its shared-memory index after a read-only
+connection closes. These checkpointed pairs are accepted only beside a SQLite
+database; non-empty WAL/journal files and unpaired shared-memory files are refused.
+Other databases and their accepted empty sidecars are retained byte for byte. The
+search index is rebuilt as a self-contained database without its old sidecars.
+This does not replace the requirement to close the app and other SQLite users.
 
 This is an **initial addition**. A library already containing Australian supplement
 metadata is refused, including an older version. It is not an update/migration tool

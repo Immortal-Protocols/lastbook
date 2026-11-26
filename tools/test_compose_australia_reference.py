@@ -129,10 +129,10 @@ class Compose(unittest.TestCase):
         os.mkfifo(self.base / 'fifo')
         self.refuses('link or special')
 
-    def test_all_sqlite_sidecars_are_refused(self):
+    def test_nonempty_journals_and_unpaired_shared_memory_are_refused(self):
         for ending in ('-wal', '-shm', '-journal'):
             p = self.lib / ('search.sqlite' + ending)
-            p.touch()
+            p.write_bytes(b'not an empty checkpointed sidecar')
             self.refuses('Close Lastbook')
             p.unlink()
 
@@ -187,6 +187,30 @@ class Compose(unittest.TestCase):
         self.assertEqual(self.hashes(self.base), before)
         with closing(compose.read_only(self.out / 'library-data/search.sqlite')) as db:
             self.assertEqual(db.execute('PRAGMA journal_mode').fetchone(), ('delete',))
+        self.assertFalse(list((self.out / 'library-data').glob('search.sqlite-*')))
+        compose.verify(self.out)
+
+    def test_checkpointed_empty_sidecars_are_safe_without_modifying_base(self):
+        # A realistic stale read-only WAL/SHM pair, unrelated to the search index.
+        cached = self.base / 'unknown/cache.sqlite'
+        with closing(sqlite3.connect(cached)) as db:
+            db.execute('CREATE TABLE cached(value TEXT)')
+            db.execute('PRAGMA journal_mode=WAL')
+        with closing(compose.read_only(cached)) as db:
+            db.execute('SELECT * FROM cached').fetchall()
+        wal, shm = cached.with_name(cached.name + '-wal'), cached.with_name(cached.name + '-shm')
+        self.assertEqual(wal.stat().st_size, 0)
+        self.assertGreater(shm.stat().st_size, 0)
+        # Same harmless pair on the index that is rebuilt, rather than retained.
+        with closing(sqlite3.connect(self.lib / 'search.sqlite')) as db:
+            db.execute('PRAGMA journal_mode=WAL')
+        with closing(compose.read_only(self.lib / 'search.sqlite')) as db:
+            db.execute('SELECT count(*) FROM pages').fetchone()
+        before = self.hashes(self.base)
+        self.run_compose()
+        self.assertEqual(self.hashes(self.base), before)
+        for p in (cached, wal, shm):
+            self.assertEqual(compose.sha256(p), compose.sha256(self.out / p.relative_to(self.base)))
         self.assertFalse(list((self.out / 'library-data').glob('search.sqlite-*')))
         compose.verify(self.out)
 

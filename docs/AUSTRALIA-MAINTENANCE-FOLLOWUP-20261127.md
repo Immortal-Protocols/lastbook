@@ -17,3 +17,7 @@ Actual current476-record library:162 readings/396searchpages/331relevant files;
 no sockets, no target SQLite connection, five core hashes retained. Only its source
 location changes. Installed frozen app/source/data and all release assets remain.
 See AUSTRALIA-READING-CHECK.md for commands, scope and unchanged exact-snapshot rules.
+
+Water-source growth follow-up: two maintenance-fixture totals now derive from the
+committed public manifest instead of assuming125 sources. All20 maintenance controls
+pass again on Python3.14; checker implementation and tested behaviours are unchanged.

@@ -40,6 +40,7 @@ class Readings(unittest.TestCase):
         patch.object(v.personal, 'pdf_pages', return_value=self.private_pages).start()
         patch.object(v.trauma, 'source_record', return_value=self.nonprofit).start()
         patch.object(v.trauma, 'pdf_pages', return_value=self.nonprofit_pages).start()
+        self.public_count = len(json.loads((v.public.SOURCES / 'manifest.json').read_text(encoding='utf-8'))['sources'])
         self.pub, self.pers, self.data = [self.root / n for n in ('public', 'personal', 'mixed')]
         v.common.compose(self.base, self.pub)
         pc.compose(self.pub, self.pers, cache=self.cache, records=[self.private])
@@ -65,7 +66,7 @@ class Readings(unittest.TestCase):
             v.trauma.verify(self.data)
         before, inventory = self.fixture.hashes(self.data), v.common.inventory(self.data)
         report = self.check(required=['public', 'personal', 'trauma'])
-        self.assertEqual((report['readings'], report['search_pages']), (128, 135))
+        self.assertEqual((report['readings'], report['search_pages']), (self.public_count + 3, self.public_count + 10))
         self.assertEqual({r['collection'] for r in report['collections']}, v.COLLECTIONS)
         self.assertEqual(report['target_writes'], 0)
         self.assertEqual(self.fixture.hashes(self.data), before)
@@ -162,7 +163,7 @@ class Readings(unittest.TestCase):
     def test_unrelated_base_edits_are_outside_the_reported_scope(self):
         (self.data/'unknown/user-note.txt').write_text('Later private note',encoding='utf-8')
         report=self.check();self.assertIn('Other base-library files',report['not_checked'])
-        self.assertEqual(report['readings'],128)
+        self.assertEqual(report['readings'], self.public_count + 3)
 
     def test_source_links_and_hardlinks_are_refused(self):
         p=self.data/'library-data'/v.trauma.PDF;hold=self.root/'held.pdf';p.rename(hold);p.symlink_to(hold)

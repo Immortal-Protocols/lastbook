@@ -22,6 +22,30 @@ excluded. Source wording, nested water-use list, professional/council approval a
 undamaged holding-tank conditions remain. No independent clinical or engineering
 review is claimed.
 
+Local validation: **877 contribution/build and 949 combined-source tests pass**,
+each five skips and eleven expected failures. All22 focused source tests pass on
+Python3.14 and frozen-build Python3.11. Socket-forbidden public121/private442
+search, highlighted snippets, scoped assistant and libq checks pass. All621 private
+Australian references resolve (291household,296rural,13health,21personal), zero
+errors. Native Mac checks expand both choices, open all four readers/source panels,
+follow companion links, inspect selected mask and wastewater conditions, and verify
+search plus Ask/Back. No question was submitted or audio tested.
+
+Frozen combined source `4adb657` passes package/i18n/privacy/signature and the
+installed442/7 outbound-IP-denial self-check. All128 AU content hashes,42personal
+FTS units, Victoria3,054names/map hashes and exact infant video are preserved. Full
+prior438 app/data rollback copies remain. Runtime code is unchanged by this content
+increment; earlier Arabic/Chinese search, document language and Mac fixes remain.
+These are local selected checks, not hosted CI or independent clinical,engineering,
+accessibility/community or historical long-idle approval.
+
+[121-record public contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-smoke-sanitation-review-2026-11-27):
+ZIP1,493,993bytes; SHA256 `c4cbe0c36d55140162660bf76a115027c15871755004acd7cdf58bbb1b39fffe`.
+CRC/extraction,reader hashes,SQLite/FTS and private-term/path checks pass. Data only;
+use matching updated source/runtime for guide choices. Extract into a new folder;
+never replace a full installed catalog with this smaller supplement. Earlier
+release assets remain unchanged; this is not official Setup or maintainer acceptance.
+
 ## Included
 
 - 98 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland

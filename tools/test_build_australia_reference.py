@@ -17,6 +17,52 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_road_sources_preserve_conditions_transcripts_ratings_and_dated_selection(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'ROAD-RECOVERY-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['id']; r = entries[uid]
+            html = (au.SOURCES / r['snapshot']).read_text(encoding='utf-8')
+            body = html.split('<hr>', 1)[1].split('<h2>Source, dates and reuse</h2>', 1)[0]
+            parser = au.Page(); parser.feed(body); parser.close()
+            text = re.sub(r'\s+', ' ', ''.join(parser.text)).strip()
+            # The independently frozen source text protects full conditions and order.
+            # HTMLParser inserts separation around inline tags, so normalize punctuation.
+            normalized = lambda v: re.sub(r'\s+([.,;:!?])', r'\1', v)
+            self.assertEqual(normalized(text), normalized(selection['normalized_source_text']), uid)
+            self.assertEqual(au.digest(selection['normalized_source_text'].encode('utf-8')), selection['normalized_source_text_sha256'])
+            self.assertEqual(r['raw_sha256'], selection['raw_source']['sha256'])
+            self.assertEqual(r['source_updated'], selection['metadata']['DCTERMS.modified'])
+            self.assertEqual(r['year'], int(r['source_updated'][:4]))
+            self.assertEqual(r['license'], 'CC-BY-4.0')
+            self.assertEqual(selection['metadata']['DCTERMS.license'], r['license_url'])
+            bodies[uid] = text
+        breakdown = bodies['qld-motorway-breakdown']
+        for condition in ["if it's safe to do, exit your vehicle", "If it's not safe to exit your vehicle",
+                          'fasten their seat belts securely', "Don't walk along highways or motorways.",
+                          'Do not walk along highways and do not attempt repairs.', '13 19 40']:
+            self.assertIn(condition, breakdown)
+        self.assertEqual(breakdown.count('Video transcript'), 2)
+        recovery = bodies['qld-recovery-straps']
+        self.assertEqual(re.findall(r'Step ([1-7])—', recovery), list('1234567'))
+        for condition in ['lighter of the 2 vehicles', 'Never use a damaged strap.', 'Never attach it to:',
+                          'a standard tow ball', 'tie-down point.', 'Never use them to lift a vehicle or tow it conventionally.',
+                          'at least 1.5 times the length of the unstretched strap', 'Check with the course provider']:
+            self.assertIn(condition, recovery)
+        selected = bodies['qld-long-trip-checks']
+        for text in ['Checking your vehicle', 'Towing on your journey', 'Pack your vehicle for country and outback driving',
+                     '20L emergency use and 4L per person per day', 'communication equipment as your mobile phone may not work']:
+            self.assertIn(text, selected)
+        for excluded in ['Footbrake failure', 'Shattered windscreen', 'Car stalling', '8–10 hours']:
+            self.assertNotIn(excluded, selected)
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            choice = next(c for c in guide['choices'] if c['id'] == 'road-recovery')
+            self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
+            for key in ['prepare', 'learn']:
+                self.assertTrue(set(bodies) <= {r.get('doc') for r in guide[key]})
+
     def test_national_factsheets_keep_all_source_words_and_conditional_actions(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'NATIONAL-HAZARDS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))

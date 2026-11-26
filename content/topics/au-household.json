@@ -75,7 +75,13 @@
     "earthquake",
     "tsunami",
     "national factsheets",
-    "Get Ready Australia"
+    "Get Ready Australia",
+    "breakdown",
+    "snatch strap",
+    "road train",
+    "unsealed",
+    "tyre",
+    "outback"
   ],
   "choices": [
     {
@@ -139,6 +145,33 @@
           "doc": "au-getready-tsunamis",
           "label": "Get Ready Australia: tsunamis preparedness",
           "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        }
+      ]
+    },
+    {
+      "id": "road-recovery",
+      "label": "Read driving, breakdown and recovery-strap guidance",
+      "hint": "Queensland readings distinguish motorway traffic hazards, unsealed/remote driving, strap precautions and dated packing checks.",
+      "read": [
+        {
+          "doc": "qld-driving-conditions",
+          "label": "Queensland: driving on unsealed, sand and remote roads",
+          "note": "Queensland source;updated 2023-06-07. Unsealed, sand, remote-road, heavy-vehicle and road-train conditions;linked permits/maps excluded."
+        },
+        {
+          "doc": "qld-motorway-breakdown",
+          "label": "Queensland: breakdown safety on motorways and freeways",
+          "note": "Queensland source;updated 2024-01-25. Four steps and two written transcripts retain safe-exit/seat-belt fallback and Queensland help/reporting context;videos excluded."
+        },
+        {
+          "doc": "qld-recovery-straps",
+          "label": "Queensland: recovery-strap safety",
+          "note": "Queensland source;updated 2020-12-17. Seven source steps retain ratings, attachment exclusions, bystander distance and training;not a model-specific recovery procedure."
+        },
+        {
+          "doc": "qld-long-trip-checks",
+          "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
+          "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
         }
       ]
     },
@@ -818,6 +851,26 @@
       "doc": "au-getready-tsunamis",
       "label": "Get Ready Australia: tsunamis preparedness",
       "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "qld-driving-conditions",
+      "label": "Queensland: driving on unsealed, sand and remote roads",
+      "note": "Queensland source;updated 2023-06-07. Unsealed, sand, remote-road, heavy-vehicle and road-train conditions;linked permits/maps excluded."
+    },
+    {
+      "doc": "qld-motorway-breakdown",
+      "label": "Queensland: breakdown safety on motorways and freeways",
+      "note": "Queensland source;updated 2024-01-25. Four steps and two written transcripts retain safe-exit/seat-belt fallback and Queensland help/reporting context;videos excluded."
+    },
+    {
+      "doc": "qld-recovery-straps",
+      "label": "Queensland: recovery-strap safety",
+      "note": "Queensland source;updated 2020-12-17. Seven source steps retain ratings, attachment exclusions, bystander distance and training;not a model-specific recovery procedure."
+    },
+    {
+      "doc": "qld-long-trip-checks",
+      "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
+      "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
     }
   ],
   "learn": [
@@ -1105,6 +1158,26 @@
       "doc": "au-getready-tsunamis",
       "label": "Get Ready Australia: tsunamis preparedness",
       "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "qld-driving-conditions",
+      "label": "Queensland: driving on unsealed, sand and remote roads",
+      "note": "Queensland source;updated 2023-06-07. Unsealed, sand, remote-road, heavy-vehicle and road-train conditions;linked permits/maps excluded."
+    },
+    {
+      "doc": "qld-motorway-breakdown",
+      "label": "Queensland: breakdown safety on motorways and freeways",
+      "note": "Queensland source;updated 2024-01-25. Four steps and two written transcripts retain safe-exit/seat-belt fallback and Queensland help/reporting context;videos excluded."
+    },
+    {
+      "doc": "qld-recovery-straps",
+      "label": "Queensland: recovery-strap safety",
+      "note": "Queensland source;updated 2020-12-17. Seven source steps retain ratings, attachment exclusions, bystander distance and training;not a model-specific recovery procedure."
+    },
+    {
+      "doc": "qld-long-trip-checks",
+      "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
+      "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
     }
   ],
   "related": [

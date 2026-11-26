@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 66 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 70 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -25,7 +25,8 @@ and remaining work are recorded below so missing information is visible.
   plus three original journey, isolation and beacon planning aids:
   plus four published-language poster texts in Yumplatok and Wik-Mungkan:
   plus seven complete national Get Ready standard English factsheet texts:
-  **85 searchable HTML records** altogether. Four remote entries provide management
+  plus four Queensland driving, breakdown, recovery-strap and selected vehicle/packing readings:
+  **89 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -831,7 +832,7 @@ personal-use material are excluded;earlier release assets remain unchanged.
 Seven complete two-page standard English factsheet texts add national bushfire,
 cyclone, earthquake, flood, heatwave, storm and tsunami preparedness. Both guides
 expose the same seven-reading choice plus prepare/learn references. The public
-collection now has **85 records: 66 official practical readings, 13 copyright
+collection now has **89 records: 70 official practical readings, 13 copyright
 statements and 6 original records**. These are standard English factsheets, not
 the separate illustrated Easy Read editions or new translations.
 
@@ -909,3 +910,26 @@ with source audits/checksums. It is not an official Setup pack or maintainer
 acceptance. Extract supplements into a new folder; never replace an existing
 installed catalog with this smaller collection. No personal-use PDFs/text or
 original agency PDFs are distributed. Earlier assets remain unchanged.
+
+
+## Queensland driving, breakdown and recovery-strap sources — 26 November 2026
+
+Four dated readings add complete written road-condition and motorway-breakdown
+articles,all seven recovery-strap steps,and three selected vehicle/towing/outback
+packing sections. Household and rural guides receive identical additions.
+The breakdown article includes both full written video transcripts,not video files.
+All selected source words,lists and conditions compare in order;metadata dates
+remain2023,2024,2020and2014 respectively. The2014introductory driving-hour limit
+and tyre/brake/windscreen/stalling procedures are deliberately outside the selected
+checks/packing reading;current vehicle-specific instructions still need review.
+
+Every selected page explicitly supplies CC BY4.0 metadata and links the Queensland
+copyright policy. State credit/exclusions remain. ROAD-RECOVERY-SOURCE-AUDIT-20261126.json
+pins raw responses,source text,headings,transcripts,licences and selection scope.
+Motorway exit/stay conditions and Queensland13 19 40contact are separate from
+remote-survival guidance and national000. Strap rating/attachment/bystander/training
+conditions remain source-specific,not legal certification or a verified recovery
+plan. Source packing quantities do not establish adequate supplies for an actual
+route/person/vehicle. No original images/video/PDFs,permits,maps or manufacturer
+manuals are bundled. AMSA beacon reproduction still requires permission;Main Roads
+WA's general terms are insufficient for unrestricted public redistribution.

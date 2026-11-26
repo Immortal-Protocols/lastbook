@@ -4,9 +4,12 @@ The public collection now has 124 HTML records: 99 official practical readings,
 16 source-rights readings and nine original records. The new practical reading is
 NSW Health's complete *Rabies and Australian bat lyssavirus infection* factsheet,
 current as at 27 November 2025. Its summary, prevention, exposure circumstances,
-prior-vaccination and delayed-presentation advice, public-health response and
+advice about previous vaccination and uncertain exposure, public-health response and
 further-information text remain together. NSW service arrangements are identified.
 Retrieval on 27 November 2026 does not make its author or clinical review date 2026.
+The source uses four recorded cases in its introduction and retains three-case
+wording in its symptoms discussion. Both are preserved, with a visible editorial
+source note; they are not presented as live statistics.
 
 The same source is available in household, rural and health prepare/learn lists
 and choices, and the ordinary injury guide's animal-bite choice. Ten conditional

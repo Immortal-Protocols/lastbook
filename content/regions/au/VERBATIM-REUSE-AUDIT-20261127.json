@@ -87,7 +87,7 @@
         }
       ],
       "reader_body_sha256": "178452fc501d1af88440562fb15a8ea1c78526006f096c2661ce0da2ab9858e8",
-      "reader_sha256": "657a59ac3137d79ec6527d353127d867d25d9fcb8ec25ce4767dbd2731ace5d1"
+      "reader_sha256": "f1f82413a1ef845ad55cc7458094862283e428b189acd4fa4f5883c11cb865e3"
     },
     {
       "id": "qld-health-copyright",
@@ -286,7 +286,7 @@
     "excluded": "Images, logos, scripts, site navigation, third-party files and external linked resources are not included."
   },
   "clinical_selection": {
-    "selected": "Complete NSW Health factsheet including summary, exposure conditions, prior-vaccination and delayed-presentation advice, public-health response and further-information text.",
+    "selected": "Complete NSW Health factsheet including summary, exposure conditions, advice about previous vaccination and uncertain exposure, public-health response and further-information text.",
     "qpic_bat": "Not imported: older source gives live/dead-bat intervention suggestions that differ from the selected NSW and current national avoid-handling advice.",
     "qpic_ticks": "Not imported: older page lacks sensitive-site and remote-removal conditions found in current ANZCOR9.4.3. No removal method is combined or rewritten.",
     "qpic_insects": "Not imported: raw request returned403; no exact-body extraction inferred from search text.",
@@ -348,7 +348,8 @@
         ]
       }
     ],
-    "not_claimed": "Independent clinical/legal review or complete Australian first-aid coverage. No personal ANZCOR body copied."
+    "not_claimed": "Independent clinical/legal review or complete Australian first-aid coverage. No personal ANZCOR body copied.",
+    "source_count_caveat": "The source includes inconsistent historical case counts between its introduction and symptoms section. Original wording is retained; these numbers are not live statistics."
   },
   "guide_placements": [
     {
@@ -358,7 +359,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -367,7 +368,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -376,7 +377,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -386,7 +387,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -395,7 +396,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -404,7 +405,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -414,7 +415,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -423,7 +424,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -432,7 +433,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     },
     {
@@ -442,7 +443,7 @@
       "reference": {
         "doc": "nsw-bat-lyssavirus",
         "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
-        "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
       }
     }
   ],

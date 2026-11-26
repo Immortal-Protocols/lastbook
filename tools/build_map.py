@@ -158,6 +158,16 @@ def build(src, dst, metadata, clip=None):
                 continue
             yield parts, row[1:]
 
+    # A coarse world base can omit small islands. Keep actual island/islet
+    # polygons from the optional places-area layer as ground, using the
+    # renderer's existing island layer. Populated-place areas are not land
+    # boundaries; neither are marine administrative/protected-area envelopes.
+    if src.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='gis_osm_places_a_free'").fetchone():
+        for parts, (cls, name) in each('gis_osm_places_a_free'):
+            if cls in ('island', 'islet'):
+                add('island', cls, name, area_z(*bbox(parts), 0),
+                    [simplify(p, 0.00001) for p in parts])
+
     # Water bodies
     for parts, (cls, name) in each('gis_osm_water_a_free'):
         layer = 'wet' if cls.startswith('wetland') else 'water'

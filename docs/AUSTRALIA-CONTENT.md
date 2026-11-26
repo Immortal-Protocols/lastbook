@@ -1159,3 +1159,27 @@ These checks do not establish all108-reader visual QA,independent food-safety,
 clinical,community or accessibility review,every browser/encoding,Windows/Linux,
 notarization,newTLS or long-idle reliability. Public review release:
 https://github.com/pilkster/lastbook/releases/tag/australia-food-safety-review-2026-11-26
+
+
+## Public first-aid source-rights review — 26 November 2026
+
+`AUSTRALIA-FIRST-AID-SOURCE-REVIEW.md` and its JSON receipt document 15 successful
+primary acquisitions. Exact-site policies differ: NSW Ministry CC terms do not
+clear SCHN or NSW Ambulance. Conditional unchanged-resource licences from St John,
+ACSQHC and AWFA are recorded accurately rather than labelled categorically unusable.
+AWFA's specific v7.4 manual has a restrictive internal-copy notice, independently
+rendered/inspected, so its general website grant is not applied to that manual.
+Ambulance Victoria has an explicit website CC grant, but campaign/transcript
+recognition wording and hands-only CPR scope need qualified review. No newly
+combined treatment algorithm or candidate clinical source is added to the pack.
+
+ANZCOR directs Australian enquiries to ARC; info@resus.org.au was rechecked against
+the official contact page. A six-guideline distribution/indexing/accessibility/
+clinical-review enquiry is prepared locally and remains unsent. No permission or
+endorsement is claimed. Approval, review, generation and retrieval dates are
+separate; a 2026 generated timestamp does not establish a 2026 clinical review.
+
+This increment changes review documentation only. Public108/private429 records,
+frozen runtime fb86dfb,531 guide references and all prior release assets remain
+unchanged. The 831/903 source-suite results above remain evidence for that unchanged
+product; no new clinical or full-suite validation is claimed from this rights audit.

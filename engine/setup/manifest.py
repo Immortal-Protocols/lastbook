@@ -26,6 +26,9 @@ def _from(url, hosts, allowed):
     import urllib.parse
     return (urllib.parse.urlsplit(url).hostname or '').lower() in hosts
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$')
+# An address index's id, which is also its file name in derived/geo/addresses/: a two-letter US state (CA), or a
+# country code and a region (DE-BE, PT-20, ES-CT). No dot and no slash, so a file named after it stays in that folder.
+ADDRESS_INDEX_ID = re.compile(r'[A-Z]{2}(-[A-Za-z0-9_]{1,48})?')
 MAX_PACK_PART = 256 * 1024 * 1024
 
 
@@ -94,7 +97,7 @@ def validate(m, allowed=None, *, bundled=False):
         for x in m.get(key) or []:
             if not isinstance(x, dict) or not isinstance(x.get('id'), str) or not NAME.match(x['id']):
                 return None
-            if key == 'address_indexes' and not re.fullmatch(r'[A-Z]{2}', x['id']):
+            if key == 'address_indexes' and not ADDRESS_INDEX_ID.fullmatch(x['id']):
                 return None
             files = []
             for f in x.get('files') or []:

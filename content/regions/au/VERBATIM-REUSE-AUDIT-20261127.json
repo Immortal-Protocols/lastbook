@@ -1,0 +1,489 @@
+{
+  "version": 1,
+  "checked": "2026-11-27",
+  "records": {
+    "qld-health-copyright": {
+      "license": "CC-BY-ND-4.0",
+      "source_url": "https://www.health.qld.gov.au/global/copyright-statement",
+      "raw_sha256": "2b242df22b439a8069b812bff03428a29240be892c9bb60f363844e00443955b",
+      "source_text": "© The State of Queensland (Queensland Health) 1996-2026 The content on this website and its sub-domains (Website) is owned by, or licensed to, the State of Queensland acting through Queensland Health and is protected by Australian and international copyright, trade mark law or other intellectual property laws. Unless otherwise indicated, copyright material on this website is licensed under a Creative Commons Attribution No Derivatives V4.0 International licence (CC BY-ND 4.0). To view a copy of this licence, visit https://creativecommons.org/licenses/by-nd/4.0/deed.en. You are free to reproduce and communicate copyright material on this website in its current form, provided you: retain the copyright notice on the copyright material; attribute the State of Queensland (Queensland Health) as the source of the copyright material; and comply with the Creative Commons licence terms. If you alter or adapt the copyright material in any way, you are not permitted to share or distribute the modified work. Note: Creative Commons licences relate to copyright material, not to other forms of intellectual property. Some material accessible on or through the Website may not be available under a Creative Commons licence. Website material not available under a Creative Commons licence: material indicating a contrary intention (e.g. stating that permission is required for use, or specifying an alternative Creative Commons licence) the government coat of arms or government (including Queensland Health) logos material covered by intellectual property rights other than copyright (e.g. trademark-protected material) intellectual property (including copyright) owned by third parties material available under other specified licences For permissions beyond the scope of this licence, complete the Request to adapt or use Queensland Health copyright material (DOCX 49 kB) and attach it to an email to ip_officer@health.qld.gov.au. Linked material available on other Queensland Government websites A user of this Website who uses the links provided to another Queensland Government agency’s website and material available on or through there, acknowledges and agrees that the terms of use, including licence terms, set out on the other agency’s website apply to the use that may be made of those materials. Disclaimer As far as practicable, material for which the copyright is owned by a third party will be clearly labelled. Queensland Health has made all reasonable efforts to ensure that this material has been reproduced with the consent of the copyright owners.",
+      "source_text_sha256": "67fc888570ab659cc0d66ff8ef1a98861d3bed934cd14a7d9a780d6001e0da1b",
+      "reader_body_sha256": "53461e8247941f6c7e64bd0d458fb16c3a2770ce3800c26f6fa308583712bcb3",
+      "source_blocks": [
+        {
+          "selector": "#content_container_141379_141379",
+          "text": "© The State of Queensland (Queensland Health) 1996-2026 The content on this website and its sub-domains (Website) is owned by, or licensed to, the State of Queensland acting through Queensland Health and is protected by Australian and international copyright, trade mark law or other intellectual property laws. Unless otherwise indicated, copyright material on this website is licensed under a Creative Commons Attribution No Derivatives V4.0 International licence (CC BY-ND 4.0). To view a copy of this licence, visit https://creativecommons.org/licenses/by-nd/4.0/deed.en. You are free to reproduce and communicate copyright material on this website in its current form, provided you: retain the copyright notice on the copyright material; attribute the State of Queensland (Queensland Health) as the source of the copyright material; and comply with the Creative Commons licence terms. If you alter or adapt the copyright material in any way, you are not permitted to share or distribute the modified work. Note: Creative Commons licences relate to copyright material, not to other forms of intellectual property. Some material accessible on or through the Website may not be available under a Creative Commons licence. Website material not available under a Creative Commons licence: material indicating a contrary intention (e.g. stating that permission is required for use, or specifying an alternative Creative Commons licence) the government coat of arms or government (including Queensland Health) logos material covered by intellectual property rights other than copyright (e.g. trademark-protected material) intellectual property (including copyright) owned by third parties material available under other specified licences For permissions beyond the scope of this licence, complete the Request to adapt or use Queensland Health copyright material (DOCX 49 kB) and attach it to an email to ip_officer@health.qld.gov.au. Linked material available on other Queensland Government websites A user of this Website who uses the links provided to another Queensland Government agency’s website and material available on or through there, acknowledges and agrees that the terms of use, including licence terms, set out on the other agency’s website apply to the use that may be made of those materials. Disclaimer As far as practicable, material for which the copyright is owned by a third party will be clearly labelled. Queensland Health has made all reasonable efforts to ensure that this material has been reproduced with the consent of the copyright owners.",
+          "sha256": "67fc888570ab659cc0d66ff8ef1a98861d3bed934cd14a7d9a780d6001e0da1b"
+        }
+      ],
+      "retained_copyright_notice": "© The State of Queensland (Queensland Health) 1996-2026"
+    }
+  },
+  "selections": [
+    {
+      "id": "nsw-bat-lyssavirus",
+      "raw": {
+        "id": "nsw-bat-lyssavirus",
+        "url": "https://www.health.nsw.gov.au/Infectious/factsheets/Pages/rabies-australian-bat-lyssavirus-infection.aspx",
+        "final_url": "https://www.health.nsw.gov.au/Infectious/factsheets/Pages/rabies-australian-bat-lyssavirus-infection.aspx",
+        "retrieved_at": "2026-11-27",
+        "bytes": 90699,
+        "raw_sha256": "5947d5c0e060a26203683f414f65f6287acba1f7056b4d8451d24baf49cfcdd8",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_blocks": [
+        {
+          "selector": "#maincontent .factsummarybox .ms-rtestate-field",
+          "text": "Lyssaviruses are a group of viruses that includes rabies and bat lyssavirus. In Australia bats carry bat lyssavirus. Mammals in many overseas countries carry rabies. Bites and scratches spread both diseases. These diseases are prevented by rapid and thorough cleaning of the wound and by vaccination. There is no cure.",
+          "sha256": "273bb799c1b7643ff82d702eb7161bdd4752ebb751f146f9f8c18da1126195cf"
+        },
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "text": "What are rabies and Australian bat lyssavirus? Rabies virus and Australian bat lyssavirus (ABLV) belong to a group of viruses called lyssaviruses. These viruses transmit via a bite from an infected (\"rabid\") animal. They all cause a similar illness known as rabies, which affects the central nervous system and is usually fatal. The World Health Organization estimates that more than 55 000 people die from rabies worldwide each year. Rabies virus does not currently occur in land living animals in Australia. ABLV, is closely related but not identical to rabies virus, does occur in Australia, and is transmitted from bats to humans. Only four cases of human infection with ABLV are recorded since the virus was first identified in 1996. Three cases were in Queensland and one in NSW, and all infections occurred after bites or scratches by bats. Following the NSW case in July 2025, NSW Health convened an ABLV expert panel to determine what factors may have led to a breakthrough infection of confirmed ABLV. The panel included infectious diseases, public health, immunisation, microbiology, and other external specialists. What are the symptoms? Rabies and ABLV infection cause similar symptoms. The early symptoms are flu-like, including headache, fever and fatigue. The illness progresses rapidly to paralysis, delirium, convulsions and death, usually within a week or two. Rabies cases and the three known human cases of ABLV infection have shown a wide variability in the time it takes for symptoms to appear following exposure to an infected animal (from several days to several years). How are they spread? Both rabies and ABLV are spread from infected animals to people through bites or scratches, or by being exposed to infected animals’ saliva through the eyes, nose or mouth. Only mammals can be infected. Overseas, dogs are the main transmitter of rabies. Other animals that transmit rabies overseas include bats, monkeys, foxes, cats, raccoons, skunks, jackals and mongooses. In Australia, evidence of ABLV infection has been found in species of flying foxes/fruit bats and insect-eating microbats. Any bat in Australia could potentially carry ABLV. The behaviour or appearance of a bat is not a true guide as to whether it is carrying the virus. The rabies and ABLV viruses are unlikely to survive outside the bat or animal for more than a few hours, especially in dry environments exposed to sunlight. Contact with bat faeces, urine or blood as well as playing or walking near bat roosting areas, does not pose a risk of ABLV if bats are not handled. Apart from two horses, no wild or domestic animals in Australia have been found to be infected with ABLV. Person-to-person transmission of lyssavirus has only been reported to people who have received infected tissue or organ transplants. If someone is exposed to a person who is infectious, a risk assessment will be conducted to identify and manage other people who may be at risk (see Section ‘what is the public heath response?). Who is at risk? People who handle bats in Australia are at risk of ABLV infection. People who come into contact with wild or domestic mammals, including bats, in a rabies endemic country are at increased risk of rabies infection. How is it prevented? The best protection against being exposed to rabies or other lyssaviruses (including ABLV) is to avoid handling any bat in Australia or overseas, or any wild or domestic land dwelling mammal in a country where there is a rabies virus risk. This includes bats and wild or domestic dogs, cats and monkeys. Only people who have been vaccinated against rabies and who are trained in handling bats should ever handle bats or flying foxes. When a bat is injured or in distress, do not try to rescue it. Contact experts at your local wildlife rescue group, which has trained staff who can deal with bats safely. Contact details can be found at NSW Wildlife Council or download the IFAW Wildlife Rescue App from your app store. A private veterinarian may also be able to offer assistance and advice. Do not touch the bat and avoid direct contact with any bat saliva. Rabies vaccine is to protect against rabies and ABLV infection before a potential exposure. A course of three injections, given over one month, is recommended for people whose job or other activities place them at increased risk of being bitten or scratched by bats in Australia or mammals in rabies endemic countries. Periodic booster doses of vaccine may also be required. Rabies vaccination may also be recommended for people who travel to a rabies endemic country, depending on the circumstances (see below for specific advice for travellers). Rabies infection can be prevented following an exposure through proper wound care. Depending on the outcome a risk-assessment by a series of treatments known as post-exposure prophylaxis (PEP) or postexposure treatment (PET) - see below for advice on what to do if potentially exposed. Is there any advice for travellers? People who handle bats in Australia are at risk of ABLV infection. People who come into contact with wild or domestic mammals, including bats, in a rabies endemic country are at increased risk of rabies infection. Rabies risks vary depending on where you are travelling and activities planned while abroad. The World Health Organisation (WHO) maintains maps of rabies-endemic countries. Visit Rabies information for travellers and Staying safe and healthy overseas for information on reducing your risk of contracting diseases whilst overseas. What should I do if bitten, scratched or exposed to a potentially rabid animal? Even if previously vaccinated, if you are bitten or scratched by a bat anywhere or by a land living mammal overseas, you should: immediately wash the wound thoroughly with soap and water for at least fifteen minutes - proper cleansing of the wound reduces the risk of infection apply an antiseptic with anti-virus action such as povidone-iodine (e.g. Betadine), iodine tincture, aqueous iodine solution, chlorhexidine, or alcohol (containing at least 70% ethanol) after washing. These items may be in a first-aid kit or may need to be purchased. It is recommended to use what is most available (preferably within the expiry date). seek medical attention as soon as possible to care for the wound and to assess whether you are at risk of infection It might not always be clear if you or someone else has been bitten by a bat, for example, if a bat is found in the room of a child or when a person has slept in a confined space with a bat present. In these situations, speak to a health professional or contact your local public health unit and they can assess if post-exposure treatment is needed. If you are at risk of infection, you may require treatment consisting of a combination of rabies immunoglobulin and rabies vaccine. If you have not been vaccinated previously, you will require an injection of rabies immunoglobulin as soon as possible and a series of either four or five rabies vaccine injections over one month. If you have had a full vaccination course, you will require two further doses of vaccine. In NSW, Public Health Units will work with your doctor to assess your risk and where indicated, will arrange for rabies vaccines and immunoglobulin to be delivered to your GP or hospital. Rabies information for travellers outlines what to do if you may be exposed to rabies whilst abroad and what to do upon returning to Australia. How is it diagnosed? Diagnosis of rabies and ABLV can be difficult. Confirmation requires laboratory tests for the presence of the virus in skin, blood, spinal fluid and nervous tissue. How is it treated? There is no available treatment for rabies or ABLV once symptoms have started. What is the public health response? Doctors should contact their local public health unit for advice on people bitten or scratched by animals or bats that could transmit rabies or ABLV. Public health unit staff will help arrange vaccination following exposure and rabies immunoglobulin where required. Hospitals and laboratories will notify cases of rabies and ABLV infection to the local public health unit. Public health unit staff will work with treating clinicians and experts to investigate the likely source and determine whether others may be at risk of infection. Further information For further information please call your local Public Health Unit on 1300 066 055 or visit HealthDirect. For information regarding domestic animals that have been exposed to sick bats, please visit NSW Department of Primary Industries and Regional Development - Australian bat lyssavirus. Translated information on rabies and ABLV is available from Multicultural Health Communication Service. For simple steps on how to protect yourself, and organisations to report sick, injured or dead animals, please see Be careful around wildlife factsheet.",
+          "sha256": "128812037644a91adca136600b5c501b3748c1228a29f8b3979dcac4bdcc26e0"
+        }
+      ],
+      "source_links": [
+        {
+          "text": "ABLV expert panel",
+          "url": "https://www.health.nsw.gov.au/Infectious/factsheets/Documents/ablv-expert-panel.pdf"
+        },
+        {
+          "text": "NSW Wildlife Council",
+          "url": "https://www.nwc.org.au/resources/injured-wildlife-find-your-nearest-rescue-group/"
+        },
+        {
+          "text": "Rabies information for travellers",
+          "url": "https://www.health.nsw.gov.au/Infectious/factsheets/Pages/rabies-travel.aspx"
+        },
+        {
+          "text": "Staying safe and healthy overseas",
+          "url": "https://www.health.nsw.gov.au/travel/Pages/default.aspx"
+        },
+        {
+          "text": "Rabies information for travellers",
+          "url": "https://www.health.nsw.gov.au/Infectious/factsheets/Pages/rabies-travel.aspx"
+        },
+        {
+          "text": "HealthDirect",
+          "url": "https://www.healthdirect.gov.au/"
+        },
+        {
+          "text": "NSW Department of Primary Industries and Regional Development - Australian bat lyssavirus",
+          "url": "https://www.dpi.nsw.gov.au/dpi/biosecurity/animal-biosecurity/animal-diseases-of-concern-for-nsw2/australian-bat-lyssavirus"
+        },
+        {
+          "text": "Multicultural Health Communication Service",
+          "url": "https://www.mhcs.health.nsw.gov.au/publications/7180?collectionfilter=1"
+        },
+        {
+          "text": "Be careful around wildlife",
+          "url": "https://www.health.nsw.gov.au/Infectious/factsheets/Pages/be-careful-around-wildlife.aspx"
+        }
+      ],
+      "reader_body_sha256": "178452fc501d1af88440562fb15a8ea1c78526006f096c2661ce0da2ab9858e8",
+      "reader_sha256": "f1f82413a1ef845ad55cc7458094862283e428b189acd4fa4f5883c11cb865e3"
+    },
+    {
+      "id": "qld-health-copyright",
+      "raw": {
+        "id": "qld-health-copyright",
+        "url": "https://www.health.qld.gov.au/global/copyright-statement",
+        "final_url": "https://www.health.qld.gov.au/global/copyright-statement",
+        "retrieved_at": "2026-11-27",
+        "bytes": 83983,
+        "raw_sha256": "2b242df22b439a8069b812bff03428a29240be892c9bb60f363844e00443955b",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "https://www.health.qld.gov.au/global/copyright-statement"
+          }
+        ]
+      },
+      "source_blocks": [
+        {
+          "selector": "#content_container_141379_141379",
+          "text": "© The State of Queensland (Queensland Health) 1996-2026 The content on this website and its sub-domains (Website) is owned by, or licensed to, the State of Queensland acting through Queensland Health and is protected by Australian and international copyright, trade mark law or other intellectual property laws. Unless otherwise indicated, copyright material on this website is licensed under a Creative Commons Attribution No Derivatives V4.0 International licence (CC BY-ND 4.0). To view a copy of this licence, visit https://creativecommons.org/licenses/by-nd/4.0/deed.en. You are free to reproduce and communicate copyright material on this website in its current form, provided you: retain the copyright notice on the copyright material; attribute the State of Queensland (Queensland Health) as the source of the copyright material; and comply with the Creative Commons licence terms. If you alter or adapt the copyright material in any way, you are not permitted to share or distribute the modified work. Note: Creative Commons licences relate to copyright material, not to other forms of intellectual property. Some material accessible on or through the Website may not be available under a Creative Commons licence. Website material not available under a Creative Commons licence: material indicating a contrary intention (e.g. stating that permission is required for use, or specifying an alternative Creative Commons licence) the government coat of arms or government (including Queensland Health) logos material covered by intellectual property rights other than copyright (e.g. trademark-protected material) intellectual property (including copyright) owned by third parties material available under other specified licences For permissions beyond the scope of this licence, complete the Request to adapt or use Queensland Health copyright material (DOCX 49 kB) and attach it to an email to ip_officer@health.qld.gov.au. Linked material available on other Queensland Government websites A user of this Website who uses the links provided to another Queensland Government agency’s website and material available on or through there, acknowledges and agrees that the terms of use, including licence terms, set out on the other agency’s website apply to the use that may be made of those materials. Disclaimer As far as practicable, material for which the copyright is owned by a third party will be clearly labelled. Queensland Health has made all reasonable efforts to ensure that this material has been reproduced with the consent of the copyright owners.",
+          "sha256": "67fc888570ab659cc0d66ff8ef1a98861d3bed934cd14a7d9a780d6001e0da1b"
+        }
+      ],
+      "source_links": [
+        {
+          "text": "Creative Commons Attribution No Derivatives V4.0 International licence (CC BY-ND 4.0)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/deed.en"
+        },
+        {
+          "text": "https://creativecommons.org/licenses/by-nd/4.0/deed.en",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/deed.en"
+        },
+        {
+          "text": "Request to adapt or use Queensland Health copyright material",
+          "url": "https://www.health.qld.gov.au/__data/assets/word_doc/0028/1119169/210617_copyright_form.docx"
+        },
+        {
+          "text": "ip_officer@health.qld.gov.au",
+          "url": "mailto:ip_officer@health.qld.gov.au"
+        }
+      ],
+      "reader_body_sha256": "53461e8247941f6c7e64bd0d458fb16c3a2770ce3800c26f6fa308583712bcb3",
+      "reader_sha256": "c6bf8009eb9dd966beccba1a2e1d35dc982d520848ce4c34a22bc8beef8e4fb3"
+    },
+    {
+      "id": "cc-by-nd-legalcode",
+      "raw": {
+        "id": "cc-by-nd-legalcode",
+        "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en",
+        "final_url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en",
+        "retrieved_at": "2026-11-27",
+        "bytes": 49531,
+        "raw_sha256": "c8d6a35b8b2f92d99ffe2b12497263a142d314440d1b94c072d96862f41d64a5",
+        "copyright_links": []
+      },
+      "source_blocks": [
+        {
+          "selector": "#legal-code-body",
+          "text": "Attribution-NoDerivatives 4.0 International By exercising the Licensed Rights (defined below), You accept and agree to be bound by the terms and conditions of this Creative Commons Attribution-NoDerivatives 4.0 International Public License (\"Public License\"). To the extent this Public License may be interpreted as a contract, You are granted the Licensed Rights in consideration of Your acceptance of these terms and conditions, and the Licensor grants You such rights in consideration of benefits the Licensor receives from making the Licensed Material available under these terms and conditions. Section 1 – Definitions. Adapted Material means material subject to Copyright and Similar Rights that is derived from or based upon the Licensed Material and in which the Licensed Material is translated, altered, arranged, transformed, or otherwise modified in a manner requiring permission under the Copyright and Similar Rights held by the Licensor. For purposes of this Public License, where the Licensed Material is a musical work, performance, or sound recording, Adapted Material is always produced where the Licensed Material is synched in timed relation with a moving image. Copyright and Similar Rights means copyright and/or similar rights closely related to copyright including, without limitation, performance, broadcast, sound recording, and Sui Generis Database Rights, without regard to how the rights are labeled or categorized. For purposes of this Public License, the rights specified in Section 2(b)(1)-(2) are not Copyright and Similar Rights. Effective Technological Measures means those measures that, in the absence of proper authority, may not be circumvented under laws fulfilling obligations under Article 11 of the WIPO Copyright Treaty adopted on December 20, 1996, and/or similar international agreements. Exceptions and Limitations means fair use, fair dealing, and/or any other exception or limitation to Copyright and Similar Rights that applies to Your use of the Licensed Material. Licensed Material means the artistic or literary work, database, or other material to which the Licensor applied this Public License. Licensed Rights means the rights granted to You subject to the terms and conditions of this Public License, which are limited to all Copyright and Similar Rights that apply to Your use of the Licensed Material and that the Licensor has authority to license. Licensor means the individual(s) or entity(ies) granting rights under this Public License. Share means to provide material to the public by any means or process that requires permission under the Licensed Rights, such as reproduction, public display, public performance, distribution, dissemination, communication, or importation, and to make material available to the public including in ways that members of the public may access the material from a place and at a time individually chosen by them. Sui Generis Database Rights means rights other than copyright resulting from Directive 96/9/EC of the European Parliament and of the Council of 11 March 1996 on the legal protection of databases, as amended and/or succeeded, as well as other essentially equivalent rights anywhere in the world. You means the individual or entity exercising the Licensed Rights under this Public License. Your has a corresponding meaning. Section 2 – Scope. License grant. Subject to the terms and conditions of this Public License, the Licensor hereby grants You a worldwide, royalty-free, non-sublicensable, non-exclusive, irrevocable license to exercise the Licensed Rights in the Licensed Material to: reproduce and Share the Licensed Material, in whole or in part; and produce and reproduce, but not Share, Adapted Material. Exceptions and Limitations. For the avoidance of doubt, where Exceptions and Limitations apply to Your use, this Public License does not apply, and You do not need to comply with its terms and conditions. Term. The term of this Public License is specified in Section 6(a). Media and formats; technical modifications allowed. The Licensor authorizes You to exercise the Licensed Rights in all media and formats whether now known or hereafter created, and to make technical modifications necessary to do so. The Licensor waives and/or agrees not to assert any right or authority to forbid You from making technical modifications necessary to exercise the Licensed Rights, including technical modifications necessary to circumvent Effective Technological Measures. For purposes of this Public License, simply making modifications authorized by this Section 2(a)(4) never produces Adapted Material. Downstream recipients. Offer from the Licensor – Licensed Material. Every recipient of the Licensed Material automatically receives an offer from the Licensor to exercise the Licensed Rights under the terms and conditions of this Public License. No downstream restrictions. You may not offer or impose any additional or different terms or conditions on, or apply any Effective Technological Measures to, the Licensed Material if doing so restricts exercise of the Licensed Rights by any recipient of the Licensed Material. No endorsement. Nothing in this Public License constitutes or may be construed as permission to assert or imply that You are, or that Your use of the Licensed Material is, connected with, or sponsored, endorsed, or granted official status by, the Licensor or others designated to receive attribution as provided in Section 3(a)(1)(A)(i). Other rights. Moral rights, such as the right of integrity, are not licensed under this Public License, nor are publicity, privacy, and/or other similar personality rights; however, to the extent possible, the Licensor waives and/or agrees not to assert any such rights held by the Licensor to the limited extent necessary to allow You to exercise the Licensed Rights, but not otherwise. Patent and trademark rights are not licensed under this Public License. To the extent possible, the Licensor waives any right to collect royalties from You for the exercise of the Licensed Rights, whether directly or through a collecting society under any voluntary or waivable statutory or compulsory licensing scheme. In all other cases the Licensor expressly reserves any right to collect such royalties. Section 3 – License Conditions. Your exercise of the Licensed Rights is expressly made subject to the following conditions. Attribution. If You Share the Licensed Material, You must: retain the following if it is supplied by the Licensor with the Licensed Material: identification of the creator(s) of the Licensed Material and any others designated to receive attribution, in any reasonable manner requested by the Licensor (including by pseudonym if designated); a copyright notice; a notice that refers to this Public License; a notice that refers to the disclaimer of warranties; a URI or hyperlink to the Licensed Material to the extent reasonably practicable; indicate if You modified the Licensed Material and retain an indication of any previous modifications; and indicate the Licensed Material is licensed under this Public License, and include the text of, or the URI or hyperlink to, this Public License. For the avoidance of doubt, You do not have permission under this Public License to Share Adapted Material. You may satisfy the conditions in Section 3(a)(1) in any reasonable manner based on the medium, means, and context in which You Share the Licensed Material. For example, it may be reasonable to satisfy the conditions by providing a URI or hyperlink to a resource that includes the required information. If requested by the Licensor, You must remove any of the information required by Section 3(a)(1)(A) to the extent reasonably practicable. Section 4 – Sui Generis Database Rights. Where the Licensed Rights include Sui Generis Database Rights that apply to Your use of the Licensed Material: for the avoidance of doubt, Section 2(a)(1) grants You the right to extract, reuse, reproduce, and Share all or a substantial portion of the contents of the database, provided You do not Share Adapted Material; if You include all or a substantial portion of the database contents in a database in which You have Sui Generis Database Rights, then the database in which You have Sui Generis Database Rights (but not its individual contents) is Adapted Material; and You must comply with the conditions in Section 3(a) if You Share all or a substantial portion of the contents of the database. For the avoidance of doubt, this Section 4 supplements and does not replace Your obligations under this Public License where the Licensed Rights include other Copyright and Similar Rights. Section 5 – Disclaimer of Warranties and Limitation of Liability. Unless otherwise separately undertaken by the Licensor, to the extent possible, the Licensor offers the Licensed Material as-is and as-available, and makes no representations or warranties of any kind concerning the Licensed Material, whether express, implied, statutory, or other. This includes, without limitation, warranties of title, merchantability, fitness for a particular purpose, non-infringement, absence of latent or other defects, accuracy, or the presence or absence of errors, whether or not known or discoverable. Where disclaimers of warranties are not allowed in full or in part, this disclaimer may not apply to You. To the extent possible, in no event will the Licensor be liable to You on any legal theory (including, without limitation, negligence) or otherwise for any direct, special, indirect, incidental, consequential, punitive, exemplary, or other losses, costs, expenses, or damages arising out of this Public License or use of the Licensed Material, even if the Licensor has been advised of the possibility of such losses, costs, expenses, or damages. Where a limitation of liability is not allowed in full or in part, this limitation may not apply to You. The disclaimer of warranties and limitation of liability provided above shall be interpreted in a manner that, to the extent possible, most closely approximates an absolute disclaimer and waiver of all liability. Section 6 – Term and Termination. This Public License applies for the term of the Copyright and Similar Rights licensed here. However, if You fail to comply with this Public License, then Your rights under this Public License terminate automatically. Where Your right to use the Licensed Material has terminated under Section 6(a), it reinstates: automatically as of the date the violation is cured, provided it is cured within 30 days of Your discovery of the violation; or upon express reinstatement by the Licensor. For the avoidance of doubt, this Section 6(b) does not affect any right the Licensor may have to seek remedies for Your violations of this Public License. For the avoidance of doubt, the Licensor may also offer the Licensed Material under separate terms or conditions or stop distributing the Licensed Material at any time; however, doing so will not terminate this Public License. Sections 1, 5, 6, 7, and 8 survive termination of this Public License. Section 7 – Other Terms and Conditions. The Licensor shall not be bound by any additional or different terms or conditions communicated by You unless expressly agreed. Any arrangements, understandings, or agreements regarding the Licensed Material not stated herein are separate from and independent of the terms and conditions of this Public License. Section 8 – Interpretation. For the avoidance of doubt, this Public License does not, and shall not be interpreted to, reduce, limit, restrict, or impose conditions on any use of the Licensed Material that could lawfully be made without permission under this Public License. To the extent possible, if any provision of this Public License is deemed unenforceable, it shall be automatically reformed to the minimum extent necessary to make it enforceable. If the provision cannot be reformed, it shall be severed from this Public License without affecting the enforceability of the remaining terms and conditions. No term or condition of this Public License will be waived and no failure to comply consented to unless expressly agreed to by the Licensor. Nothing in this Public License constitutes or may be interpreted as a limitation upon, or waiver of, any privileges and immunities that apply to the Licensor or You, including from the legal processes of any jurisdiction or authority.",
+          "sha256": "f3fbc315780649ec77efc7a09e5b240c023499a58e7659f0bb7c33d3e2bbd25b"
+        },
+        {
+          "selector": "#notice-about-cc-and-trademark",
+          "text": "About Creative Commons Creative Commons is not a party to its public licenses. Notwithstanding, Creative Commons may elect to apply one of its public licenses to material it publishes and in those instances will be considered the \"Licensor.\" The text of the Creative Commons public licenses is dedicated to the public domain under the CC0 Public Domain Dedication. Except for the limited purpose of indicating that material is shared under a Creative Commons public license or as otherwise permitted by the Creative Commons policies published at creativecommons.org/policies, Creative Commons does not authorize the use of the trademark \"Creative Commons\" or any other trademark or logo of Creative Commons without its prior written consent including, without limitation, in connection with any unauthorized modifications to any of its public licenses or any other arrangements, understandings, or agreements concerning use of licensed material. For the avoidance of doubt, this paragraph does not form part of the public licenses. Creative Commons may be contacted at creativecommons.org.",
+          "sha256": "72abaeafe050a9929ad59ba7b501356135046dbf67fd31710ada04275166436a"
+        }
+      ],
+      "source_links": [
+        {
+          "text": "2(b)(1)-(2)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s2b"
+        },
+        {
+          "text": "6(a)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s6a"
+        },
+        {
+          "text": "2(a)(4)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s2a4"
+        },
+        {
+          "text": "3(a)(1)(A)(i)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s3a1Ai"
+        },
+        {
+          "text": "3(a)(1)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s3a1"
+        },
+        {
+          "text": "3(a)(1)(A)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s3a1A"
+        },
+        {
+          "text": "2(a)(1)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s2a1"
+        },
+        {
+          "text": "3(a)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s3a"
+        },
+        {
+          "text": "4",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s4"
+        },
+        {
+          "text": "6(b)",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s6b"
+        },
+        {
+          "text": "1",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s1"
+        },
+        {
+          "text": "5",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s5"
+        },
+        {
+          "text": "6",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s6"
+        },
+        {
+          "text": "7",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s7"
+        },
+        {
+          "text": "8",
+          "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en#s8"
+        },
+        {
+          "text": "CC0 Public Domain Dedication",
+          "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+        },
+        {
+          "text": "creativecommons.org/policies",
+          "url": "https://creativecommons.org/policies/"
+        },
+        {
+          "text": "creativecommons.org",
+          "url": "https://creativecommons.org/"
+        }
+      ],
+      "reader_body_sha256": "468de0e3cedc8d5bd59d244096839bedfe70df36a37b32821938c6eb3b3d3247",
+      "reader_sha256": "059d6d9c9cd91224ce39652c1e4074a81e5fca4aeafe4e0d6f5e549f191548ad"
+    }
+  ],
+  "rights": {
+    "queensland_policy": {
+      "id": "qld-health-copyright",
+      "url": "https://www.health.qld.gov.au/global/copyright-statement",
+      "final_url": "https://www.health.qld.gov.au/global/copyright-statement",
+      "retrieved_at": "2026-11-27",
+      "bytes": 83983,
+      "raw_sha256": "2b242df22b439a8069b812bff03428a29240be892c9bb60f363844e00443955b",
+      "copyright_links": [
+        {
+          "text": "Copyright",
+          "href": "https://www.health.qld.gov.au/global/copyright-statement"
+        }
+      ]
+    },
+    "legal_code": {
+      "id": "cc-by-nd-legalcode",
+      "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en",
+      "final_url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en",
+      "retrieved_at": "2026-11-27",
+      "bytes": 49531,
+      "raw_sha256": "c8d6a35b8b2f92d99ffe2b12497263a142d314440d1b94c072d96862f41d64a5",
+      "copyright_links": []
+    },
+    "cc_legal_tools_public_domain_policy": {
+      "id": "cc-policy",
+      "url": "https://creativecommons.org/policies/",
+      "final_url": "https://creativecommons.org/policies/",
+      "retrieved_at": "2026-11-27",
+      "bytes": 59320,
+      "raw_sha256": "57162967d552dadd92349b91b9b39d7722293be8ec943c2a5ecb803a9a12aa91",
+      "copyright_links": []
+    },
+    "nsw_policy": {
+      "id": "nsw-health-copyright",
+      "url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "final_url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "retrieved_at": "2026-11-27",
+      "bytes": 80813,
+      "raw_sha256": "09056c686fca26cf3ba8c951983fe72e507601cc06e04f3d66b858851a52d25f",
+      "copyright_links": [
+        {
+          "text": "Copyright",
+          "href": "/pages/copyright.aspx"
+        }
+      ]
+    },
+    "nsw_policy_matches_existing_bundled_text": true,
+    "nd_scope": "CC BY-ND4 sections2(a)(1) and2(a)(4): unmodified sharing in whole/part and technical format changes. No general adaptation permission.",
+    "excluded": "Images, logos, scripts, site navigation, third-party files and external linked resources are not included."
+  },
+  "clinical_selection": {
+    "selected": "Complete NSW Health factsheet including summary, exposure conditions, advice about previous vaccination and uncertain exposure, public-health response and further-information text.",
+    "qpic_bat": "Not imported: older source gives live/dead-bat intervention suggestions that differ from the selected NSW and current national avoid-handling advice.",
+    "qpic_ticks": "Not imported: older page lacks sensitive-site and remote-removal conditions found in current ANZCOR9.4.3. No removal method is combined or rewritten.",
+    "qpic_insects": "Not imported: raw request returned403; no exact-body extraction inferred from search text.",
+    "comparisons": [
+      {
+        "id": "qpic-bats",
+        "url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/bat-bites-and-scratches",
+        "final_url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/bat-bites-and-scratches",
+        "retrieved_at": "2026-11-27",
+        "bytes": 43701,
+        "raw_sha256": "95ee9db378969779f7096b2bfd59362559cc2e0c398777645720ddc3f88561c0",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "https://www.health.qld.gov.au/global/copyright-statement"
+          }
+        ]
+      },
+      {
+        "id": "qpic-ticks",
+        "url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/tick-bites",
+        "final_url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/tick-bites",
+        "retrieved_at": "2026-11-27",
+        "bytes": 47281,
+        "raw_sha256": "cebbedfb6650b5abc10155a4455dc85b341d59e7652cb667d48a4550cff6fe8e",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "https://www.health.qld.gov.au/global/copyright-statement"
+          }
+        ]
+      },
+      {
+        "id": "qpic-insects",
+        "url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/insect-bites-and-stings",
+        "error": "HTTP Error 403: Forbidden"
+      },
+      {
+        "id": "anzcor-insects",
+        "url": "https://www.anzcor.org/home/first-aid/guideline-9-4-3-envenomation-from-tick-bites-and-bee-wasp-and-ant-stings",
+        "final_url": "https://www.anzcor.org/home/first-aid/guideline-9-4-3-envenomation-from-tick-bites-and-bee-wasp-and-ant-stings",
+        "retrieved_at": "2026-11-27",
+        "bytes": 67171,
+        "raw_sha256": "96bba80e3950fa52ed6d369a68cd7875332dde75e0aaa3e6ad480b05edbf5720",
+        "copyright_links": []
+      },
+      {
+        "id": "cdc-bat-lyssavirus",
+        "url": "https://www.cdc.gov.au/diseases/australian-bat-lyssavirus",
+        "final_url": "https://www.cdc.gov.au/diseases/australian-bat-lyssavirus",
+        "retrieved_at": "2026-11-27",
+        "bytes": 90620,
+        "raw_sha256": "b68007c1ce10b736308e4dc411c4ada8e4a232e58beeff1a7a66316c94a26bad",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "/topics/about-us/legislation-and-transparency/using-our-site/copyright"
+          }
+        ]
+      }
+    ],
+    "not_claimed": "Independent clinical/legal review or complete Australian first-aid coverage. No personal ANZCOR body copied.",
+    "source_count_caveat": "The source includes inconsistent historical case counts between its introduction and symptoms section. Original wording is retained; these numbers are not live statistics."
+  },
+  "guide_placements": [
+    {
+      "guide": "au-household",
+      "location": "choice",
+      "choice": "bat-exposure",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-household",
+      "location": "prepare",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-household",
+      "location": "learn",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "location": "choice",
+      "choice": "bat-exposure",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "location": "prepare",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "location": "learn",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-health",
+      "location": "choice",
+      "choice": "bat-exposure",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-health",
+      "location": "prepare",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "au-health",
+      "location": "learn",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    },
+    {
+      "guide": "hurt",
+      "location": "choice",
+      "choice": "animal-bite",
+      "reference": {
+        "doc": "nsw-bat-lyssavirus",
+        "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+        "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+      }
+    }
+  ],
+  "baseline_guides": {
+    "au-household": "f52a627c8504137ff1f62144e9bd4aee3ab23aee2ff28f313dd75e5f1fe6ba97",
+    "au-rural": "4f0c3c2a3d782b2f1a53959a7443d16366cec0f8a9e6600ab0b968d63937e3e2",
+    "au-health": "9f9d220f6be6c4803459a5ce3f82f83ff44d78f4315e1cd883525cb63341702f",
+    "hurt": "c03a6fff5cf02cca15aa64b1e4e835485a7a36800b641743ca5beeab92bbdb5c"
+  },
+  "counts": {
+    "public_records": 124,
+    "new_practical": 1,
+    "new_rights": 2,
+    "guide_references": 10
+  },
+  "technical_formatting": "Line endings normalized to LF; original ordered-list numbering types retained. No source wording, punctuation, spelling or case edits. NSW zero-width layout characters removed as recorded.",
+  "legal_ordered_list_types": [
+    "a",
+    "a",
+    null,
+    "A",
+    "A",
+    null,
+    "a",
+    "1",
+    "A",
+    "i",
+    "a",
+    "a",
+    "a",
+    null,
+    "a",
+    "a"
+  ],
+  "public_scope_projection": {
+    "checked": "2026-11-27",
+    "reason": "Move all personal source links to a follow-up PR; retain public bat increment baseline comparison.",
+    "hurt_original_baseline_sha256": "24d939f40d9b51d026c156eddcae6a7a16ab74459eb37e0605f55d1940ef8ff0",
+    "baseline_source_commit": "61b8d7b0e89e7d8b630bfe40b3888629e718918d",
+    "excluded_doc_prefix": "personal-au-",
+    "source_variation_note": "Australian originals are not included in the public supplement."
+  }
+}

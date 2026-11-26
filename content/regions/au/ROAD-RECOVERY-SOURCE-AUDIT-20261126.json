@@ -1,0 +1,223 @@
+{
+  "checked": "2026-11-26",
+  "selections": [
+    {
+      "id": "qld-driving-conditions",
+      "raw_source": {
+        "id": "qld-conditions",
+        "url": "https://www.qld.gov.au/transport/safety/road-safety/driving-safely/driving-conditions",
+        "final_url": "https://www.qld.gov.au/transport/safety/road-safety/driving-safely/driving-conditions",
+        "retrieved_at": "2026-11-26",
+        "bytes": 188570,
+        "sha256": "150208a7a43a5f6ffa4c710e57576a2aba0e848ad5e6f001f59fda24e9aee604",
+        "links": [
+          {
+            "label": "Copyright",
+            "url": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "DCTERMS.created": "2014-02-26",
+        "DCTERMS.modified": "2023-06-07",
+        "DCTERMS.license": "https://creativecommons.org/licenses/by/4.0/",
+        "expiry.date": "2024-06-06"
+      },
+      "selector": "#content",
+      "selected_sections": "Complete written #content body after picture/video controls removed;all source transcript words retained.",
+      "normalized_source_text": "Driving conditions When driving around Queensland, the road conditions may change because of weather and the environment, traffic and crashes or roadworks. Get familiar with the different conditions you may experience when driving. The roads you travel on can be: unsealed dusty sand tracks remote roads used by heavy vehicles road train areas . Driving on unsealed roads Not all roads are sealed with bitumen. Driving on unsealed roads can be more difficult than driving on bitumen. Unsealed road surfaces include gravel, sand or dirt. These surfaces can make your tyres lose traction with the road. You should decrease your speed when travelling on these roads and increase the distance between you and the vehicle in front. Weather can also affect driving conditions on unsealed roads. Some examples of how weather affects your driving include: dry weather can create dusty conditions and limit your visibility wet weather can make roads muddy, slippery and boggy. Driving in dusty conditions Dust can be caused from strong winds and driving on unsealed roads. These conditions can reduce your visibility on the road. If you are driving through dusty conditions: pull over, stop and wait for the dust to settle turn on your lights so other vehicles can see you. Driving in sandy conditions Driving on sand is very different to driving on a sealed road surface. Sand over the road can make your vehicle lose traction when driving. You should avoid sharp turns, drive slowly and keep up your momentum to avoid spinning your wheels. Sand locations such as beaches are not suitable for vehicles other than 4WDs. When driving a 4WD on sand, make sure you: engage 4WD locking hubs and use low gears deflate your tyre pressure for better traction—carry an air pump and re-inflate when you drive on hard surfaces bring a jack and shovel in case you get stuck or need to change a tyre pack your vehicle correctly with the heaviest items stored low—don’t over-pack your roof racks as this can make the vehicle overturn make sure you have a first-aid kit and call 000 in an emergency. Beach driving You can drive 4WDs on many beaches and inland tracks throughout Queensland—first check if you need a vehicle permit . There are also extra restrictions for driving a 4WD on K’gari (formerly Fraser Island) . Normal road rules apply with beach traffic being 2-way—so remember to keep left, obey the signed speed, wear your seatbelt and never sit outside the moving vehicle. When driving on the beach: travel at low tide or within 2 hours on either side of the low tide avoid salt water—stay on the harder sand between the waterline and the high tide mark to get the firmest driving surface avoid rocks, pools, and washouts watch out for pedestrians, wildlife, other vehicles and landing aircraft. Driving on country and remote roads When driving in the country or along remotely located roads: reduce your speed before nearing the edge of the road—the edge may drop off or have loose stones keep 1 wheel on the bitumen due to the unstable nature of road edges if you’re driving towards the west, the afternoon sun can affect your vision from 4pm keep an eye out for livestock and wildlife on or at the side of the road, especially at night. Slow down and beep your horn if you see animals at the edge of the road about to cross. Driving near heavy vehicles Heavy vehicles are heavy and long. They take longer to stop and accelerate than smaller vehicles and require more room when turning. If you are driving behind a heavy vehicle, keep a 2-second distance between you and the heavy vehicle—double this distance in bad driving conditions. Tips when driving near heavy vehicles include: do not cut in front of heavy vehicles because you reduce the driver’s breaking distance do not speed up when a heavy vehicle overtakes you. if you are behind a heavy vehicle and you cannot see its side mirrors then assume that the heavy, vehicle driver cannot see you do not tailgate a heavy vehicle. You cannot see what is ahead of it and you won’t be able to react in time never overtake a turning vehicle that has a DO NOT OVERTAKE TURNING VEHICLE sign displayed—it is dangerous and you can get a fine. Overtaking a road train Road trains are large truck and trailer combinations more than 19m long. You should only overtake when it is safe and road markings indicate you can. Before you overtake: allow enough time to overtake stay back at the recommended following distance (2 second distance) without crossing the centre line when preparing to overtake look out for soft shoulders, guideposts and wildlife as you overtake when it’s safe to overtake, indicate, accelerate and overtake quickly without exceeding the speed limit. Changing down a gear may give you enough engine power to get past maintain your speed so the road train does not have to brake after you overtake Do not overtake a turning vehicle at an intersection, unless it is safe to do so.",
+      "normalized_source_text_sha256": "aeb858866405341576369cb763d5b359018129d846353e954d440aa012ef8bb3",
+      "reader_sha256": "f766014e66358b92d4ca473b7306a69b38a7d18bb99f832fa3572dafc0875e63",
+      "source_headings": [
+        "Driving conditions",
+        "Driving on unsealed roads",
+        "Driving in dusty conditions",
+        "Driving in sandy conditions",
+        "Beach driving",
+        "Driving on country and remote roads",
+        "Driving near heavy vehicles",
+        "Overtaking a road train"
+      ],
+      "transcripts": [],
+      "scope": "Complete written driving-conditions body: unsealed/dust/sand/beach,remote roads,heavy vehicles and road trains. Regional road rules and dated source wording retained; linked permits,rules,maps and illustrations excluded."
+    },
+    {
+      "id": "qld-motorway-breakdown",
+      "raw_source": {
+        "id": "qld-breakdown",
+        "url": "https://www.qld.gov.au/transport/vehicle-safety/crashes-and-breakdowns/breakdown-safety",
+        "final_url": "https://www.qld.gov.au/transport/vehicle-safety/crashes-and-breakdowns/breakdown-safety",
+        "retrieved_at": "2026-11-26",
+        "bytes": 199316,
+        "sha256": "1e59b982b7915c5b4e43699d1ce1596ccc67b7de9c0f13cb9683b9342e44facb",
+        "links": [
+          {
+            "label": "Copyright",
+            "url": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "DCTERMS.created": "2023-06-07",
+        "DCTERMS.modified": "2024-01-25",
+        "DCTERMS.license": "https://creativecommons.org/licenses/by/4.0/",
+        "expiry.date": "2025-01-24"
+      },
+      "selector": "#content",
+      "selected_sections": "Complete written #content body after picture/video controls removed;all source transcript words retained.",
+      "normalized_source_text": "Breakdown safety on motorways and freeways Being prepared can help avoid breakdown risks. Use our pre-trip checklist below to help you prepare. It's dangerous to exit your vehicle on or near high speed roads such as highways and motorways. If you break down, follow our steps below to help keep you and your passengers as safe as possible and away from the traffic. What to do if you break down Step 1—Exit highway or pull over Exit the highway or motorway as soon as you realise your vehicle is going to break down if you can. You'll be much safer waiting for help in a lower speed area. If you can't exit the highway, pull your vehicle onto the road shoulder, or if no shoulder exists, as far away from traffic as possible. Step 2—Show you've broken down Turn on your vehicle hazard lights so other motorists can see you have broken down. If at night, also leave your parking lights on. Once you have pulled over safely turn your wheels away from the traffic if safe, pop your bonnet to show passing motorists that you have broken down. Step 3—Check if it's safe to exit your vehicle Check your surroundings and if it's safe to do, exit your vehicle—the driver and any passengers should exit through the passenger side of the vehicle to keep away from the traffic. Then move behind a barrier or as far away from traffic as possible. If it's not safe to exit your vehicle, the driver and any passengers should fasten their seat belts securely. Step 4—Phone for help Call your roadside assistance provider or 13 19 40 from your mobile phone and let them know your location. If you don’t have a mobile phone and it isn’t safe to walk to a telephone, stay with your car and wait for help. Don't walk along highways or motorways. Video transcript Breakdowns can be dangerous. On a motorway, they can be terrifying. So if it happens to you, here are some safety tips. Activate your car’s hazard lights, limp to an exit if possible, or pull your vehicle onto the shoulder of the road as far away as possible. Turn the wheels away from traffic and stop the vehicle. Check you are clear of traffic. When safe, release your seat belt, grab your phone, and safety vest if you have one, and exit to the left. Move to a safe location and call your roadside assistance provider or 13 19 40. If you don’t have a mobile phone and it isn’t safe to walk to a telephone, stay with your car and wait for help. Do not walk along highways and do not attempt repairs. It’s not worth the risk. Pre-trip checks You can help reduce breakdown risks through good preparation: Keep vehicles well-maintained and full of fuel. Ensure mobile phones are charged, and you have enough credit to make a phone call. Download the ‘Emergency +’ smartphone app. Keep a high visibility vest and torch in your vehicle. Save roadside assistance contacts in your mobile phone. Keep a copy of the Breakdown Safety Glovebox Guide in your car. Watch the video to see these steps in action: Video transcript Breaking down can be dangerous. Don’t let this happen to you. Maintenance helps avoid breakdowns. Check when your car’s service is due. Check your fuel level. Check the engine. Is it right for oil and is it right for coolant? Regularly check your tyre pressures, and don’t forget the spare. Be prepared. Carry a charged mobile phone. Have roadside assist in your contacts. Keep a high-vis vest and a torch in the car. Just a little preparation will help avoid this. What to do if you see a breakdown Learn how you can safely help other motorists if you see their vehicle broken down on a motorway or highway: Look out for the signs of a broken-down vehicle, which include hazard lights and a popped bonnet. If you think they need assistance, when safe to do so, call 13 19 40 to report the breakdown and location. Don’t stop or pull over to help as this can be dangerous. Move over and slow down as you pass a broken-down vehicle. Abandoned or broken-down vehicles If you leave your broken-down vehicle parked illegally or in a dangerous situation, we may move it to a safer location or tow it to a holding yard. Owners will be required to pay all costs associated with towing and storage of the vehicle. To recover your vehicle, please contact the traffic management centre on 13 19 40. If you breakdown on a motorway in South East Queensland and cannot immediately arrange removal from your roadside assistance provider, advise the traffic management centre on 13 19 40.",
+      "normalized_source_text_sha256": "0146fbfa95ce44f1b844e3a74c6aa119ddbd124134d555a2d77b2db384c3418c",
+      "reader_sha256": "af20f64ad54645546fca7e09569c26f8486536d6486f4a65a8b6d703c92b42cc",
+      "source_headings": [
+        "Breakdown safety on motorways and freeways",
+        "What to do if you break down",
+        "Step 1—Exit highway or pull over",
+        "Step 2—Show you've broken down",
+        "Step 3—Check if it's safe to exit your vehicle",
+        "Step 4—Phone for help",
+        "Video transcript",
+        "Pre-trip checks",
+        "Video transcript",
+        "What to do if you see a breakdown",
+        "Abandoned or broken-down vehicles"
+      ],
+      "transcripts": [
+        "Video transcript Breakdowns can be dangerous. On a motorway, they can be terrifying. So if it happens to you, here are some safety tips. Activate your car’s hazard lights, limp to an exit if possible, or pull your vehicle onto the shoulder of the road as far away as possible. Turn the wheels away from traffic and stop the vehicle. Check you are clear of traffic. When safe, release your seat belt, grab your phone, and safety vest if you have one, and exit to the left. Move to a safe location and call your roadside assistance provider or 13 19 40. If you don’t have a mobile phone and it isn’t safe to walk to a telephone, stay with your car and wait for help. Do not walk along highways and do not attempt repairs. It’s not worth the risk.",
+        "Video transcript Breaking down can be dangerous. Don’t let this happen to you. Maintenance helps avoid breakdowns. Check when your car’s service is due. Check your fuel level. Check the engine. Is it right for oil and is it right for coolant? Regularly check your tyre pressures, and don’t forget the spare. Be prepared. Carry a charged mobile phone. Have roadside assist in your contacts. Keep a high-vis vest and a torch in the car. Just a little preparation will help avoid this."
+      ],
+      "scope": "Complete written breakdown article and both published video transcripts. All four steps,conditional safe exit/seat-belt fallback,help/reporting,pre-trip and towing sections retained. Videos,images and linked glovebox PDF excluded."
+    },
+    {
+      "id": "qld-recovery-straps",
+      "raw_source": {
+        "id": "qld-recovery-straps",
+        "url": "https://www.qld.gov.au/community/fair-trading/consumer-rights-complaints-and-scams/product-safety-for-consumers/safety-advice-and-warnings/vehicle-products/recovery-straps",
+        "final_url": "https://www.qld.gov.au/community/fair-trading/consumer-rights-complaints-and-scams/product-safety-for-consumers/safety-advice-and-warnings/vehicle-products/recovery-straps",
+        "retrieved_at": "2026-11-26",
+        "bytes": 186246,
+        "sha256": "e227974853511a0809007f319697e4d4a31a8aab77c68717fd2a2c316c7d77e0",
+        "links": [
+          {
+            "label": "Copyright",
+            "url": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "DCTERMS.created": "2014-09-25",
+        "DCTERMS.modified": "2020-12-17",
+        "DCTERMS.license": "https://creativecommons.org/licenses/by/4.0/",
+        "expiry.date": "2021-12-17"
+      },
+      "selector": "#content",
+      "selected_sections": "Complete written #content body after picture/video controls removed;all source transcript words retained.",
+      "normalized_source_text": "Recovery straps Recovery straps—also known as ‘snatch straps’—can pull a bogged vehicle to safety. However, they can be unsafe if used incorrectly. Recovery strap accidents have caused a number of deaths in Queensland. Think safety first with these helpful steps Step 1—follow the product instructions By law, your recovery straps must give you: safety warnings, including a minimum breaking strength instructions for safe use. The minimum breaking strength must be at least double the gross vehicle mass (GVM) of the lighter of the 2 vehicles used in the recovery. Step 2—check the strap Make sure your recovery strap isn’t damaged at all. Never use a damaged strap. Step 3—attach it correctly Attach the recovery strap to a point on the vehicle that is suitable to use with the strap. Make sure it has a safety rating to pull that much weight. You could also use a shackle, as long as it: complies with the legal standards has a working load limit that’s higher than the strap’s minimum breaking strength. Never attach it to: a standard tow ball your vehicle’s tie-down point. These aren’t strong enough to pull a bogged vehicle. They can easily break off and cause injury or death. Step 4—use it properly Only use recovery straps to pull a bogged vehicle to safety. Never use them to lift a vehicle or tow it conventionally. Step 5—reduce rebounding Recovery straps are elastic. They can easily rebound when fully stretched, and this can be a safety hazard. You can reduce the risk of rebounding by covering the straps with: a recovery damper a heavy bag a blanket. Step 6—keep bystanders safe Rebounding straps are deadly. People have died from being struck by rebounding straps. Have any bystanders move away from the vehicles to a distance of at least 1.5 times the length of the unstretched strap. Step 7—educate yourself If you are likely to use recovery straps, sign up for a 4-wheel-drive training course. Most nationally recognised courses will give you instructions about using recovery straps. Check with the course provider before you sign up.",
+      "normalized_source_text_sha256": "47a84821370eff99d157f7afc4825ed958dd20c5837a9eda1a24a3f8dda3a78c",
+      "reader_sha256": "db4ab7dbf00d22ef48d2ad62b378037eb680087e9e55b795f783a61c23531541",
+      "source_headings": [
+        "Recovery straps",
+        "Think safety first with these helpful steps",
+        "Step 1—follow the product instructions",
+        "Step 2—check the strap",
+        "Step 3—attach it correctly",
+        "Step 4—use it properly",
+        "Step 5—reduce rebounding",
+        "Step 6—keep bystanders safe",
+        "Step 7—educate yourself"
+      ],
+      "transcripts": [],
+      "scope": "Complete written seven-step Queensland recovery-strap guidance,including product instructions,ratings,attachment exclusions,bystander distance and training. Not a vehicle-specific recovery procedure or certification."
+    },
+    {
+      "id": "qld-long-trip-checks",
+      "raw_source": {
+        "id": "qld-long-trips",
+        "url": "https://www.qld.gov.au/transport/safety/holiday-travel/long-trips",
+        "final_url": "https://www.qld.gov.au/transport/safety/holiday-travel/long-trips",
+        "retrieved_at": "2026-11-26",
+        "bytes": 188962,
+        "sha256": "882ceff9a832cba65b71b68daf0d7b12d876376e639f6876f783e2f043fcfc4e",
+        "links": [
+          {
+            "label": "Copyright",
+            "url": "https://www.qld.gov.au/legal/copyright"
+          }
+        ]
+      },
+      "metadata": {
+        "DCTERMS.created": "2014-02-06",
+        "DCTERMS.modified": "2014-02-07",
+        "DCTERMS.license": "https://creativecommons.org/licenses/by/4.0/",
+        "expiry.date": "2015-02-07"
+      },
+      "selector": "#content",
+      "selected_sections": [
+        "Checking your vehicle",
+        "Towing on your journey",
+        "Pack your vehicle for country and outback driving"
+      ],
+      "normalized_source_text": "Checking your vehicle You should regularly maintain your vehicle to help keep your car in good condition. Before you go away on a long trip make sure you double check these essentials on your vehicle: tyres—check they are in good condition and at the right pressure including the spare fluid levels—brake, coolant, oil, clutch, automatic transmission, power steering, water lights—headlights, high-beams, reverse, indicators and brake windscreen wipers are working in case of wet weather battery fan belt condition and tension coolant hoses—ensure your coolant does not leak and the hoses are in good condition tow bar and connections (if towing) ensure you have enough fuel for the journey. Towing on your journey If you are towing a boat, vehicle or caravan on your journey make sure you check: your vehicle is suitable to tow the size and type of trailer attached tow fittings, couplings and safety chains are correctly fastened any loads are evenly distributed and properly restrained—don’t overload your trailer your vehicle, trailer and caravan are roadworthy and registered the number plate and registration are visible to other drivers. Check out our tips for driving with a caravan . Pack your vehicle for country and outback driving For country and outback driving you may find yourself heading into remote locations. You should pack your vehicle with essential items in case of an emergency such as: first aid kit water (20L emergency use and 4L per person per day) food, in case of delays or breakdown fire extinguisher tool kit (jack, winder, wheel brace, spanners, screwdrivers, spare fan belt, hoses and fuses) 2 spare wheels tow rope shovel (in case you get bogged) toilet paper maps, compass or GPS tarpaulin and blanket cooler or fridge rubbish bags matches or lighter communication equipment as your mobile phone may not work in the outback.",
+      "normalized_source_text_sha256": "7877521a31564f969130844edaba00b058c974948abfbcb5f80f7ec0396802f3",
+      "reader_sha256": "c654634417ebdbc99a1320893667be3432a3010f70708d283f1fba1713fdff77",
+      "source_headings": [
+        "Checking your vehicle",
+        "Towing on your journey",
+        "Pack your vehicle for country and outback driving"
+      ],
+      "transcripts": [],
+      "scope": "Three complete selected sections: Checking your vehicle,Towing on your journey,Pack your vehicle for country and outback driving. Source last updated2014;other article sections and moving-vehicle failure procedures not included."
+    }
+  ],
+  "rights": {
+    "policy": {
+      "id": "qld-copyright",
+      "url": "https://www.qld.gov.au/legal/copyright",
+      "final_url": "https://www.qld.gov.au/legal/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 182764,
+      "sha256": "e2292d811c0965add789345105d9c4e491c42fb60fbc7d81099d4f2a4ad3e20a",
+      "links": [
+        {
+          "label": "Copyright",
+          "url": "https://www.qld.gov.au/legal/copyright"
+        },
+        {
+          "label": "Copyright",
+          "url": "https://www.qld.gov.au/legal/copyright"
+        }
+      ]
+    },
+    "page_licence": "All four exact pages explicitly identify CC BY4.0 in DCTERMS.license and link the same copyright policy.",
+    "credit": "© The State of Queensland",
+    "exceptions": "Branding,logos,Coat of Arms,trademarks,third-party/separately licensed material excluded. No images/video/audio/PDFs bundled."
+  },
+  "comparison": "All selected source words compare exactly in order after whitespace normalization. Four-step nested condition lists,seven recovery steps and both complete written video transcripts preserved;no source wording corrections.",
+  "source_selection": "Long-trip page metadata is2014. Only complete Checkingyourvehicle,Towingonyourjourney,Packyourvehicle sections selected;introductory driving-hour recommendation and moving-vehicle tyre/brake/windscreen/stalling procedures excluded rather than republished as current model-specific instructions.",
+  "accc_context": {
+    "url": "https://www.productsafety.gov.au/consumers/drive-and-ride-safely/motor-vehicle-recovery-straps-guide",
+    "checked": "2026-11-26",
+    "method": "Official primary page viewed through web tool;direct raw acquisition403. Full body and warning graphic are not bundled.",
+    "observation": "Current ACCC consumer guide recommends minimum breaking strength between2and3times GVM and suitability to the lighter vehicle;Queensland2020wording remains labelled separately. No new compliance assessment or merging of specifications."
+  },
+  "other_rights": {
+    "amsa": "Earlier exact beacons-site policy requires written permission;no operating-page text copied.",
+    "main_roads_wa": {
+      "policy": {
+        "id": "wa-mainroads-copyright",
+        "url": "https://www.mainroads.wa.gov.au/disclaimer-copyright/",
+        "final_url": "https://www.mainroads.wa.gov.au/disclaimer-copyright/",
+        "retrieved_at": "2026-11-26",
+        "bytes": 55750,
+        "sha256": "49dd3caeb7675d0f062dbf7918244bbed3351c74adcc2367b124a1e97137bc69",
+        "links": [
+          {
+            "label": "Disclaimer & Copyright",
+            "url": "https://www.mainroads.wa.gov.au/disclaimer-copyright/"
+          }
+        ]
+      },
+      "decision": "General personal/noncommercial/organisation licence with commercial reuse requiring written permission;Main Roads guide not included in broadly distributable supplement."
+    }
+  },
+  "not_claimed": "Current legal certification,independent driving/mechanical/recovery review,equipment/vehicle compatibility,live traffic/tides,actual emergency/assistance access,complete Australian coverage."
+}

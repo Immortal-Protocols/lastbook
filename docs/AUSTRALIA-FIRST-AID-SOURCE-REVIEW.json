@@ -1,0 +1,187 @@
+{
+  "checked": "2026-11-26",
+  "purpose": "Original first-aid source-rights and review findings;not clinical guidance or permission.",
+  "public_collection_records": 108,
+  "installed_records": 429,
+  "candidate_documents_added": 0,
+  "source_acquisitions": [
+    {
+      "id": "anzcor-rights",
+      "url": "https://www.anzcor.org/disclaimer-and-copyright",
+      "final_url": "https://www.anzcor.org/disclaimer-and-copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 12993,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "4848fb63ed9c90e374ea8eb6a20543c437a51f37079beaf415a01fe69e6fea6c"
+    },
+    {
+      "id": "arc-contact",
+      "url": "https://www.resus.org.au/contact",
+      "final_url": "https://www.resus.org.au/contact",
+      "retrieved_at": "2026-11-26",
+      "bytes": 31021,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "7f6f18186bd90fc9b246f1bfdef98c6cc2f27eea119afb2d63843e27372df0bb"
+    },
+    {
+      "id": "schn-rights",
+      "url": "https://www.schn.health.nsw.gov.au/copyright",
+      "final_url": "https://www.schn.health.nsw.gov.au/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 53920,
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "4eff49a56702ac52c1a9d80d1b39d274f013f2e071798e167d657b491b2e7c57"
+    },
+    {
+      "id": "nsw-ambulance-rights",
+      "url": "https://www.ambulance.nsw.gov.au/copyright-disclaimer",
+      "final_url": "https://www.ambulance.nsw.gov.au/copyright-disclaimer",
+      "retrieved_at": "2026-11-26",
+      "bytes": 75377,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "2b37521f407656aae6611b5802315883b40cdb15c8fbd4a1eba8069115bc084f"
+    },
+    {
+      "id": "healthdirect-terms",
+      "url": "https://www.healthdirect.gov.au/terms-of-use",
+      "final_url": "https://www.healthdirect.gov.au/terms-of-use",
+      "retrieved_at": "2026-11-26",
+      "bytes": 208795,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "62014786a1a493673508b059cefbd45ed01eb1be2571a3b96f55507f94c1c8cc"
+    },
+    {
+      "id": "stjohn-factsheets",
+      "url": "https://stjohn.org.au/resources/fact-sheets/",
+      "final_url": "https://stjohn.org.au/resources/fact-sheets/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 293101,
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "b9eb93e7f97529d94610e9e4cc350ee7d57f31b2af834fda76aff94175edf61a"
+    },
+    {
+      "id": "acsqhc-rights",
+      "url": "https://www.safetyandquality.gov.au/disclaimer-and-copyright",
+      "final_url": "https://www.safetyandquality.gov.au/disclaimer-and-copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 316034,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "38c7b527e678c1f4f80df6b8de5273352274b6657b30377e3bbe4a0b097f7fe1"
+    },
+    {
+      "id": "awfa-rights",
+      "url": "https://www.australiawidefirstaid.com.au/resources/using-our-content",
+      "final_url": "https://www.australiawidefirstaid.com.au/resources/using-our-content",
+      "retrieved_at": "2026-11-26",
+      "bytes": 207817,
+      "content_type": "text/html; charset=UTF-8",
+      "sha256": "ac98e2030fc03f79a94aa83ecb2364f306f8106755ac65346dadf00d06e305a6"
+    },
+    {
+      "id": "awfa-manual",
+      "url": "https://www.australiawidefirstaid.com.au/AWFA%20First%20Aid%20E-Manual.pdf",
+      "final_url": "https://www.australiawidefirstaid.com.au/AWFA%20First%20Aid%20E-Manual.pdf",
+      "retrieved_at": "2026-11-26",
+      "bytes": 7589746,
+      "content_type": "application/pdf",
+      "sha256": "c11248ed0f5a83eccf3e6c32c587d9cec4f8fb64524db2bf67de235693382952"
+    },
+    {
+      "id": "av-rights",
+      "url": "https://www.ambulance.vic.gov.au/copyright-1",
+      "final_url": "https://www.ambulance.vic.gov.au/copyright-1",
+      "retrieved_at": "2026-11-26",
+      "bytes": 127802,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "324caab73006ed84c420a28662ecf045b9adebcaf524f14cc3824e7924edda29"
+    },
+    {
+      "id": "av-disclaimer",
+      "url": "https://www.ambulance.vic.gov.au/disclaimer",
+      "final_url": "https://www.ambulance.vic.gov.au/disclaimer",
+      "retrieved_at": "2026-11-26",
+      "bytes": 124320,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "7a9164c2eb972adb768431af99a7ec5f5fc3df593e6319804dfa789c1ee424ed"
+    },
+    {
+      "id": "av-program",
+      "url": "https://www.ambulance.vic.gov.au/call-push-shock",
+      "final_url": "https://www.ambulance.vic.gov.au/call-push-shock",
+      "retrieved_at": "2026-11-26",
+      "bytes": 177965,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "66442f62cf59650b3e589b1a470fe9ec88303a0044dd2809697ab783647f0587"
+    },
+    {
+      "id": "av-transcript",
+      "url": "https://www.ambulance.vic.gov.au/media/988417",
+      "final_url": "https://www.ambulance.vic.gov.au/media/988417",
+      "retrieved_at": "2026-11-26",
+      "bytes": 124667,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "2bfded585dbc114b97092b31bb8afafb2563569850d55f930fa05645ecfaa048"
+    },
+    {
+      "id": "av-calling",
+      "url": "https://www.ambulance.vic.gov.au/calling-ambulance",
+      "final_url": "https://www.ambulance.vic.gov.au/calling-ambulance",
+      "retrieved_at": "2026-11-26",
+      "bytes": 188099,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "2b95e44b16f00a6a1d5a257324010e8217539f8263169e2ac76289d1a9222a9c"
+    },
+    {
+      "id": "av-aed",
+      "url": "https://www.ambulance.vic.gov.au/find-aed",
+      "final_url": "https://www.ambulance.vic.gov.au/find-aed",
+      "retrieved_at": "2026-11-26",
+      "bytes": 167893,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "74862f24766ce7f8ed189e97771135acd8d93996cc7fb68352872ec587f6c094"
+    }
+  ],
+  "decisions": {
+    "anzcor": "Written public-distribution permission required;private reference files/text excluded.",
+    "schn": "Separate restrictive exact-site policy;NSW Ministry CC grant not applied.",
+    "nsw_ambulance": "Written permission required;separate policy.",
+    "healthdirect": "No public publication/distribution grant established.",
+    "st_john": "Conditional full/current/unaltered noncommercial sharing route;exact resource and formats must be checked. Not categorically unshareable.",
+    "acsqhc": "Generally BY-NC-ND4;exact-resource exceptions and intended use require separate evaluation.",
+    "awfa_site": "Generally BY-ND4 including commercial use,unless resource overrides;third-party exceptions remain.",
+    "awfa_manual": "v7.4 June2024,131pages;physical page2 independently rendered/inspected. Specific students/staff/internal-copy notice;not cleared under broad website grant. No source PDF/body published.",
+    "av_site": "Explicit website CC BY4 excluding imagery/branding/third-party material;candidate campaign/transcript retained for clinical-scope review."
+  },
+  "review_questions": [
+    {
+      "sources": [
+        "av-program",
+        "av-transcript"
+      ],
+      "issue": "Campaign introduction and transcript differ in the conjunction joining recognition conditions. No new merged clinical algorithm produced.",
+      "campaign_updated": "2026-09-30",
+      "transcript_updated": "2024-11-22"
+    },
+    {
+      "sources": [
+        "av-transcript",
+        "ANZCOR Guideline8"
+      ],
+      "issue": "Hands-only campaign scope and trained/willing rescue-breath guidance need qualified age/situation review before inclusion alongside child CPR or drowning references."
+    }
+  ],
+  "date_distinction": {
+    "document": "Privately held ANZCOR Guideline8",
+    "approval": "April2021",
+    "generated_information_timestamp": "29September2026",
+    "retrieval": "17November2026",
+    "conclusion": "Generated/download dates are not a new clinical-review date;no private body or index units published."
+  },
+  "permission_enquiry": {
+    "recipient": "info@resus.org.au",
+    "contact_url": "https://www.resus.org.au/contact",
+    "contact_rechecked": "2026-11-26",
+    "status": "prepared,not sent;no grant or endorsement obtained"
+  },
+  "limits": "Rights/scope selection audit,not legal advice,independent clinical review,all-first-aid completeness,or a publication grant. Product/runtime/content/previous assets unchanged."
+}

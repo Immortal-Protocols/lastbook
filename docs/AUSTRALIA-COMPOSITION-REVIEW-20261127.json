@@ -1,0 +1,73 @@
+{
+  "checked": "2026-11-27",
+  "scope": "Offline, out-of-place initial addition of the reviewed Australian readings to an existing closed library",
+  "product_source": {
+    "contribution_commit": "a36fe1cb58da896339472668917326f780cbb87d",
+    "combined_commit": "c31062ab5bed29e3835ae583bad9aae3406f5c12",
+    "runtime_and_reader_assets_changed": false,
+    "new_dependencies": false
+  },
+  "full_tests": {
+    "python": "3.14",
+    "contribution": 904,
+    "combined": 976,
+    "each_skipped": 5,
+    "each_expected_failures": 11,
+    "result": "PASS on stable committed product sources"
+  },
+  "focused_composition_tests": {
+    "count": 22,
+    "python_versions": ["3.14", "3.11.18"],
+    "result": "PASS",
+    "cases": [
+      "actual 121-source manifest and source hashes",
+      "original records, FTS row ids, pages and bodies",
+      "unrelated SQLite tables and database user version",
+      "private-use records and markers",
+      "opaque files, maps, nested manifests and independent file inodes",
+      "read-only complete-manifest verification and changed/unlisted file detection",
+      "existing output and nested path refusal",
+      "symlinks, special files and path escapes",
+      "duplicate ids, catalog/FTS collisions and file collisions",
+      "non-empty journal/WAL and unpaired shared-memory refusal",
+      "closed WAL normalization and checkpointed empty-sidecar preservation",
+      "copy failure cleanup and concurrent base-edit refusal",
+      "concurrently appearing output preservation and exclusive rename",
+      "portable full-copy fallback without hardlinks"
+    ]
+  },
+  "actual_library_check": {
+    "base_records": 314,
+    "added_public_records": 121,
+    "combined_records": 435,
+    "original_search_units": 12750,
+    "combined_search_units": 12871,
+    "original_catalog_records_and_fts_rowids_pages_bodies": "unchanged",
+    "base_inventory_and_every_base_file_hash": "unchanged",
+    "retained_output_files": 1256,
+    "retained_output_file_bytes": 9287617106,
+    "retained_map_metadata_and_engine_check": "unchanged",
+    "verified_added_reader_hashes": 121,
+    "full_manifest_verified_files": 1506,
+    "network_socket_attempts": 0,
+    "public_archive_created_from_base": false
+  },
+  "installed_private_review": {
+    "frozen_source": "02b642cecb65debed43418a71fd4801020f28882",
+    "records": 442,
+    "personal_records": 7,
+    "rebuild_or_library_switch": false,
+    "five_previous_data_hashes": "unchanged",
+    "strict_signature_verification": "PASS"
+  },
+  "limits": [
+    "Initial addition only; an existing Australian supplement is refused",
+    "The complete output inherits all base privacy and redistribution restrictions",
+    "Local pack identity; official Setup Check/Repair are unavailable",
+    "Read-only verification detects changes from this manifest, not publisher authenticity or pre-existing base correctness",
+    "The source library and SQLite users must be closed",
+    "Other files/databases and accepted empty sidecars are retained; the search index is rebuilt without old sidecars",
+    "No new map installer, runtime asset, clinical source body or private original is supplied by this tool",
+    "No native-window, Windows/Linux-native, independent professional review or official publication claim"
+  ]
+}

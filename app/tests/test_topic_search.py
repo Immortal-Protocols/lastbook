@@ -18,7 +18,10 @@ WORDS = ROOT / 'web' / 'words.js'
 
 # The stop words app.js passes in, read from app.js so the test follows it.
 QSTOP = re.search(r"const QSTOP = new Set\('([^']*)'\.split", (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')).group(1).split(' ')
-TOPICS = [json.loads(p.read_text(encoding='utf-8')) for p in sorted((ROOT / 'content' / 'topics').glob('*.json'))]
+# Baseline library, without an optional regional source supplement. The server applies
+# the same availability rule before sending guides to the browser.
+ALL_TOPICS = [json.loads(p.read_text(encoding='utf-8')) for p in sorted((ROOT / 'content' / 'topics').glob('*.json'))]
+TOPICS = [t for t in ALL_TOPICS if not t.get('requires_docs')]
 
 # Everyday English questions. Each must give the same topics and choices as the old a-z matching,
 # including words joined by punctuation, which the old split took apart.
@@ -514,10 +517,10 @@ CASES = {
 CASES.update(topsPlain=PHRASE_THREATS, plainTopics=PLAIN_TOPICS)   # the same searches without the phrase fields
 
 
-def run(mode):
+def run(mode, cases=CASES):
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / 'cases.json'
-        p.write_text(json.dumps(CASES, ensure_ascii=False), encoding='utf-8')
+        p.write_text(json.dumps(cases, ensure_ascii=False), encoding='utf-8')
         r = subprocess.run([NODE, str(HERE / 'topic_search_test.mjs'), str(WORDS), str(p), mode],
                            capture_output=True, text=True, encoding='utf-8', timeout=60)
     if r.returncode:
@@ -605,6 +608,15 @@ class TopicSearch(unittest.TestCase):
             for q, choice in LISTED.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertIn(choice, top[q])
+
+    def test_installed_australian_guides_are_searchable(self):
+        cases = {'stop': QSTOP, 'topics': ALL_TOPICS,
+                 'tops': ['Australian household', 'Australian rural isolation', 'Australian poisons']}
+        for mode in ('segmenter', 'webkit', 'fallback', 'throwing'):
+            result = run(mode, cases)
+            ids = [[pair[0] for pair in ok(e)] for e in result['tops']]
+            for found, expected in zip(ids, ['au-household', 'au-rural', 'au-health']):
+                self.assertIn(expected, found)
 
     def test_english_ranks_as_before(self):
         for r in self.modes:

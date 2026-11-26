@@ -71,6 +71,11 @@
    "hint": "Portable generator, extension cords, refuelling with petrol, CO alarm",
    "read": [
     {
+     "doc": "vic-generator",
+     "label": "Victoria: Using a portable generator: Victorian source guidance",
+     "note": "Victorian source reviewed 16 March 2026. Complete generator-use section; outdoor siting, wiring and refuelling conditions remain. Source siting descriptions differ from the nearby US distance rule; read each source in full."
+    },
+    {
      "doc": "equipment-b463000c0e14b4ad",
      "page": 9,
      "label": "Generator carbon monoxide danger (Honda manual)",
@@ -181,6 +186,11 @@
    "label": "I smell gas or need to shut off utilities",
    "hint": "Rotten-egg smell, hissing, propane, after an earthquake, breaker panel",
    "read": [
+    {
+     "doc": "vic-gas-emergencies",
+     "label": "Victoria: Gas emergencies: Energy Safe Victoria source guidance",
+     "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor contacts and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Contact rows are grouped by distributor for clear offline reading; all source labels and values are retained. Retrieved 26 November 2026. Retrieved 2026-11-26; source and retrieval dates are distinct."
+    },
     {
      "doc": "ed5bac0a81b009",
      "page": 177,

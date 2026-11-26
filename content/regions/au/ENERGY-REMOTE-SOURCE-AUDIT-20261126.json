@@ -71,7 +71,99 @@
       "faq_questions_retained": null,
       "trip_unique_checklist_points": null,
       "normalized_selected_text_sha256": "e8298b5f4c35d66db810f391d03028d01f8c275bc6b33f5e197516f2bde867ae",
-      "wording_unchanged_after_technical_simplification": true
+      "wording_unchanged_after_technical_simplification": true,
+      "contact_table_display": {
+        "change": "Transpose four-column contact table into three distributor definition lists; generic Issue column header becomes implicit field labels. No contact label/value changed.",
+        "source_matrix": [
+          [
+            "Issue",
+            "Multinet Gas",
+            "Australian Gas Networks",
+            "Ausnet Services"
+          ],
+          [
+            "Gas leaks",
+            "132 691",
+            "1800 Gas Leak or 1800 427 532",
+            "13 67 07"
+          ],
+          [
+            "Gas supply faults",
+            "132 691",
+            "1800 898 220",
+            "13 67 07"
+          ],
+          [
+            "General enquiries",
+            "1300 887 501",
+            "1300 001 001",
+            "1300 360 795"
+          ],
+          [
+            "Website link",
+            "Multinet Gas",
+            "Australian Gas Networks",
+            "Ausnet Services"
+          ]
+        ],
+        "displayed_pairs": {
+          "Multinet Gas": [
+            [
+              "Gas leaks",
+              "132 691"
+            ],
+            [
+              "Gas supply faults",
+              "132 691"
+            ],
+            [
+              "General enquiries",
+              "1300 887 501"
+            ],
+            [
+              "Website link",
+              "Multinet Gas"
+            ]
+          ],
+          "Australian Gas Networks": [
+            [
+              "Gas leaks",
+              "1800 Gas Leak or 1800 427 532"
+            ],
+            [
+              "Gas supply faults",
+              "1800 898 220"
+            ],
+            [
+              "General enquiries",
+              "1300 001 001"
+            ],
+            [
+              "Website link",
+              "Australian Gas Networks"
+            ]
+          ],
+          "Ausnet Services": [
+            [
+              "Gas leaks",
+              "13 67 07"
+            ],
+            [
+              "Gas supply faults",
+              "13 67 07"
+            ],
+            [
+              "General enquiries",
+              "1300 360 795"
+            ],
+            [
+              "Website link",
+              "Ausnet Services"
+            ]
+          ]
+        },
+        "all_source_pairs_preserved": true
+      }
     },
     {
       "id": "vic-flood-energy",

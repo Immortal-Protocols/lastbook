@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import shutil
 import socket
 import sqlite3
@@ -65,6 +66,21 @@ class Reference(unittest.TestCase):
         self.assertIn('20 litres', trip)
         self.assertNotIn('48.00%', trip)
         self.assertNotIn('Hover over', trip)
+        audit = json.loads((au.SOURCES / 'ENERGY-REMOTE-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        contacts = next(s for s in audit['selections'] if s['id'] == 'vic-gas-emergencies')['contact_table_display']
+        source = contacts['source_matrix']
+        for col, distributor in enumerate(source[0][1:], 1):
+            self.assertEqual(contacts['displayed_pairs'][distributor], [[row[0], row[col]] for row in source[1:]])
+        gas = (au.SOURCES / entries['vic-gas-emergencies']['snapshot']).read_text(encoding='utf-8')
+        for distributor, pairs in contacts['displayed_pairs'].items():
+            section = gas.split('<h3>' + distributor + '</h3>', 1)[1].split('</dl>', 1)[0]
+            def texts(tag):
+                values = []
+                for fragment in re.findall('<' + tag + '>(.*?)</' + tag + '>', section, re.S):
+                    page = au.Page(); page.feed(fragment); page.close()
+                    values.append(re.sub(r'\s+', ' ', ''.join(page.text)).strip())
+                return values
+            self.assertEqual(list(map(list, zip(texts('dt'), texts('dd')))), pairs)
 
     def test_existing_output_is_untouched(self):
         with tempfile.TemporaryDirectory() as d:

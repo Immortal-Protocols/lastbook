@@ -1008,10 +1008,10 @@
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "https://www.energysafe.vic.gov.au/about-us/policy-and-copyright/copyright",
       "raw_sha256": "dcfa107b4650e60f6a816692534a7d02dc2aa32d412e7d043fceb5412dcf3df1",
-      "sha256": "2a4edf962be4f2c7b0876c132e165e3b71ba24cb040c84a207b7b4a9e2af987a",
-      "bytes": 4321,
+      "sha256": "b86d5cb3a5af57954827ca641815dce190a2482a5e2bc1d4028311ce89763bed",
+      "bytes": 4626,
       "snapshot": "sources/vic-gas-emergencies.html",
-      "notes": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor table and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled."
+      "notes": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor contacts and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Contact rows are grouped by distributor for clear offline reading; all source labels and values are retained."
     },
     {
       "id": "vic-flood-energy",

@@ -328,7 +328,7 @@ def query_groups(q):
         if re.search(rx, q):
             phrase_groups += g if isinstance(g[0], list) else [g]
             q = re.sub(rx, ' ', q)
-    words = [w.lower() for w in re.findall(r"[\w'-]+", q)]
+    words = [w.lower() for w in library.query_terms(q)]
     words = [w.strip("'") for w in words if w.strip("'")]
     content = [w for w in words if w not in STOP] or ([] if phrase_groups else words)
     groups = []
@@ -370,8 +370,16 @@ def find(q, kind='all', limit=30):
            " ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT 600")
     rows, mode = [], 'all words'
     try:
-        rows = con.execute(sql, (fts_expr(groups),) + only).fetchall()
-        if len(rows) < 8 and len(groups) > 1:
+        if library.needs_text_search(groups):
+            rows = library.text_search_rows(con, groups, only[0] if only else None)
+            if len(rows) < 8 and len(groups) > 1:
+                mode = 'some words'
+                extra = library.text_search_rows(con, groups, only[0] if only else None, any_group=True)
+                seen = {(r[0], r[1]) for r in rows}
+                rows += [r for r in extra if (r[0], r[1]) not in seen]
+        else:
+            rows = con.execute(sql, (fts_expr(groups),) + only).fetchall()
+        if not library.needs_text_search(groups) and len(rows) < 8 and len(groups) > 1:
             # relax: any of the ideas, rank documents that have more of them higher
             mode = 'some words'
             rows += con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),) + only).fetchall()

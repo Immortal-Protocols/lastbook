@@ -41,6 +41,9 @@ class Page(HTMLParser):
                 if '..' in value or '\\' in value:
                     raise ValueError('Invalid local link')
                 self.links.append(value.lstrip('/'))
+            elif name == 'dir':
+                if value not in {'ltr', 'rtl', 'auto'}:
+                    raise ValueError('Invalid text direction')
             elif name not in {'lang', 'charset', 'rowspan', 'colspan', 'start'}:
                 raise ValueError('Unexpected HTML attribute: ' + name)
         self.text.append('\n')

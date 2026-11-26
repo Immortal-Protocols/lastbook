@@ -17,6 +17,15 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_text_direction_is_explicit_and_rejects_nonstandard_values(self):
+        for direction in ['rtl', 'ltr', 'auto']:
+            page = au.Page()
+            page.feed('<html lang="ar" dir="' + direction + '"><body><p>استعد للفيضانات</p></body></html>')
+            self.assertIn('استعد للفيضانات', ''.join(page.text))
+        for direction in ['sideways', '', 'RTL', 'rtl onload=alert(1)']:
+            with self.assertRaisesRegex(ValueError, 'Invalid text direction'):
+                au.Page().feed('<p dir="' + direction + '">Text</p>')
+
     def test_wa_tas_planning_preserves_local_distinctions_and_equal_access(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'WA-TAS-PLANNING-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))

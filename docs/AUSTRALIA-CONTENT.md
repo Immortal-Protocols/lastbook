@@ -34,6 +34,29 @@ See `docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json` for the nine placements a
 source decisions. ARC enquiry remains unsent; no permission,endorsement or
 independent clinical/legal approval is claimed.
 
+Validation: **882 contribution/build and 954 combined tests pass**, each five skips
+and eleven expected failures.33 focused source/personal/distribution tests pass on
+Python3.14 and frozen3.11;27 topic-search tests also pass on3.14. Frozen3.11 runs
+distribution tests as a script because its installed `packaging` dependency owns
+that import name; this is a test invocation detail,not a product change.
+
+Actual442-record engine checks forbid sockets,verify all9new references,original
+hashes and physical PDF page text,and check public121/base314 views. The7personal
+cards disappear without their originals;2public cards remain in the public-only
+view. The9added references validate with zero errors;the4AUguides retain621refs.
+Public small,medium and all pack selectors exclude every real personal manifest
+record even though shipped guides reference them.
+
+Frozen combined source `02b642c` passes package/i18n/privacy/signature and installed
+442/7 offline-IP-denial checks. Exactly2of58 bundled JSON assets change;all121public
+records,128AUcontenthashes,42personalFTS,Victoria and five data hashes are unchanged.
+The previous442app remains for rollback. Native checks observe all9cards,open all6
+unique original PDFs at their cited pages and both public sources,and check
+snakebite Page/Text and Ask/Back context. No question submitted or audio tested.
+These checks establish source navigation,not independent clinical/legal review.
+Existing public data-release assets remain unchanged;updated PRsource/runtime is
+needed for the bundled guide links. ARC enquiry remains unsent.
+
 ## Australian readings in ordinary needs — 27 November 2026
 
 Forty links across 25 existing choices in seven ordinary guides now expose relevant

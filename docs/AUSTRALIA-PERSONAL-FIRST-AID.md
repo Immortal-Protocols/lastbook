@@ -76,3 +76,12 @@ public Australian calling/poisons additions remain available when their records
 are installed. No PDF,extracted text,index or medical procedure is added to the
 public supplement by these links. Public pack-selection checks retain the explicit
 personal-use exclusions,even when shipped guides cite all six originals.
+
+
+The 27 November2026 first-aid-link update passes882contribution/954combined tests.
+Native checks open all six unique original PDFs from the ordinary guide at their
+cited physical pages,and verify snakebite Page/Text and Ask/Back context. The source
+PDFs,index and library are unchanged. This remains navigation evidence,not a new
+clinical review. Exact candidate policies and source differences are recorded in
+`docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json`;raw research/private renders are
+not contributed.

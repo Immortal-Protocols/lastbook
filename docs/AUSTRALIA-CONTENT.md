@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 43 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 47 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -17,11 +17,12 @@ and remaining work are recorded below so missing information is visible.
   before/during/after storm and flood pages; and SA CFS property and animal-planning
   sections; four Victorian energy/gas/LPG readings; two Safe Work Australia
   remote-work readings; Queensland road-trip preparation; disability-inclusive
-  planning selections and complete mobility and low/no-vision written articles.
-- Ten copyright statements, an original accessible-calling navigation note,
+  planning selections and complete mobility and low/no-vision written articles;
+  four text-only parts of CFA's currently linked Victorian survival guide.
+- Eleven copyright statements, an original accessible-calling navigation note,
   the original Australian source hub and a directory
   covering all six states, three internal territories and seven external territories:
-  **56 searchable HTML records** altogether. Four remote entries provide management
+  **61 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -199,10 +200,11 @@ Reviewed but **not bundled**:
   WorkSafe WA links noncommercial WA terms; no separate open grant was established
   in the remote-tour PDF. Neither is bundled. The older WA bulletin also describes
   a usually-24-hour contact delay and was not adopted as current missing-person advice.
-- CFA's July 2022 Version 6 survival PDF explicitly licenses text under CC BY 4.0,
-  excluding imagery/branding. Current-catalogue edition confirmation and reliable
-  transcription/layout QA remain incomplete; its text layer drops some ligatures.
-  No CFA PDF or transcription is bundled here. VICSES commercial reuse needs
+- CFA's July2022 Version6 survival guide is now included as four text-only
+  practical readings and a written source-rights/contact record. The current
+  resource page links a different PDF from the older candidate; exact bytes and
+  all20 rendered pages were checked. The original PDF and excluded imagery are
+  not bundled. See the detailed CFA audit below. VICSES commercial reuse needs
   written permission; its general site grant was not treated as open CC material.
 
 To refresh: retrieve the official source and its exact site's copyright statement,
@@ -219,7 +221,7 @@ an instruction to accept a new live page automatically.
 | Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence; NEMA AusAlert explanations and operational notice | Satellite phone/PLB operation, detailed device support and local radio frequency coverage |
 | Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation; SA property and animal-planning selections | Licensed detailed local guides for remaining jurisdictions; disability and translated materials |
 | Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov basics; Qld trip/kit source; SWA remote-work risks; ACMA locating-device explanation | More detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
-| Fire, flood, cyclone and heat | Dated NSW/Qld texts; six SA SES before/during/after storm/flood readings; current-source national fire-danger/No Rating explanation and warning-level definitions | More detailed regional manuals for ACT/NT/Tas/WA/Vic; hazard-specific and accessible/translated warnings materials |
+| Fire, flood, cyclone and heat | Dated NSW/Qld texts;six SA SES storm/flood readings;national warning/rating explanations;CFA Version6 text-only risk/preparation/warning/fire/last-resort source parts | More detailed regional manuals for ACT/NT/Tas/WA;hazard-specific and accessible/translated warning material;current local plans/services |
 | Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
 | Power, gas and repairs | ESV generator use, gas emergencies, flood electricity/solar/battery/gas, outdoor LPG cylinders and all nine LCC27 FAQ pairs | More jurisdiction-specific material; equipment-specific instructions, repairs and local professional assessment |
@@ -424,3 +426,55 @@ expected failures under PYTHONUTF8=0. Final reader wording then passed all seven
 focused source tests and fresh public/private builds. The first sandbox-only full
 run could not bind its localhost test fixtures; the permission-scoped rerun passed.
 The unchanged regional runtime retains its prior864-test combined-source check.
+
+
+## Victorian bushfire survival text — 26 November 2026
+
+CFA's current Backup plans page links a20-page guide at
+ArticleDocuments/6528/your-guide-to-survival.pdf.aspx. It differs from the older
+ArticleDocuments/335/CFA-Your-Guide-to-Survival-V6.pdf candidate. The current file
+is1,455,205bytes,SHA-256 de37f989a65b529351f3fe87685bc70a1d84a5d543cb5fef905e5458f90d1918.
+Its visible edition remains **Version6,July2022**. A complete text-layer diff found
+only the page20 department address change from delwp to deeca. The PDF metadata's
+2025 modification date is not presented as a new edition or advice review date.
+The resource-listing/plan/defending pages and exact bytes are pinned in
+CFA-SURVIVAL-SOURCE-AUDIT-20261126.json.
+
+Page20 explicitly licenses text under CC BY4.0 and requests the credit
+“© State of Victoria (Country Fire Authority)2022”. Images,photographs,branding
+and third-party rights are excluded. No original PDF,image,map,diagram,logo or
+cover slogan is distributed. Four practical HTML parts cover the written body,
+checklists and table cells on pages2-19,plus a separate written copyright/contact
+record from page20. District/risk/property annotation text becomes lists; a list
+of district names does not provide geographic boundaries. Diagram-only labels are
+excluded. Source page numbers remain explicit in every part.
+
+All20 rendered pages were visually inspected.359 individual transcribed blocks
+match the actual PDF extraction after only visually verified missing-character
+repairs and comparison whitespace/punctuation normalization. The text layer loses
+characters in words such as fire,flammable,traffic and off; the display restores
+the printed words. Genuine printed “Bushifre” and “health,life” spellings remain.
+The audit stores page-text hashes,repair mappings and independent source matrices
+for all eight rating cells and all four WHEN/WHAT TO DO rows. The source's ten
+planning decisions,twelve before-summer items,both leaving checklists,conditional
+phrases,building/car procedures and all three last-resort risk qualifications
+remain. Tables become labelled sections rather than wide grids.
+
+The warning part retains2022 Emergency Alert,relay,broadcaster/social-media
+wording,with visible links to the existing NEMA10November2026 operational and
+accessible-calling readings. Current CFA22September2026 defending-property context
+is separated from the older guide text: CFA does not recommend defending a home.
+No later website article body is copied under the PDF's grant. All readings are
+dated Victorian sources,not live warnings,current service/reception tests or an
+independent fire-safety/clinical/accessibility audit.
+
+Both household/rural guides expose the same four-reading Victorian choice and
+preparation/learning cards. The collection now has **61public records:47official
+readings,11copyright statements and3original records**. Hub/directory remain
+CC BY4.0; the original accessible-calling note alone is CC0. Personal-use material
+remains separate and excluded from public downloads.
+
+Validation: **799 required contribution/build tests OK**,five skips/eleven
+upstream expected failures under PYTHONUTF8=0. Eight focused source/build tests
+cover actual offline61-record construction,source integrity,all table-cell
+associations,checklist counts and last-resort qualifiers.

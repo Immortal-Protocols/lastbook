@@ -48,7 +48,11 @@ class Reference(unittest.TestCase):
                                         ('"SMS Relay"', 'au-accessible-calls'),
                                         ('"Jervis Bay"', 'au-jurisdictions'),
                                         ('"West Island Clinic"', 'au-jurisdictions'),
-                                        ('"Australian Antarctic Territory"', 'au-jurisdictions')]:
+                                        ('"Australian Antarctic Territory"', 'au-jurisdictions'),
+                                        ('"different routes"', 'vic-cfa-fire-risk'),
+                                        ('"expanding file"', 'vic-cfa-prepare-leave'),
+                                        ('"20 watch zones"', 'vic-cfa-warnings'),
+                                        ('"frosted windows"', 'vic-cfa-during-fire')]:
                     ids = {r[0] for r in db.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', (query,))}
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):
@@ -61,6 +65,48 @@ class Reference(unittest.TestCase):
                               'AU-JBT', 'AU-CX', 'AU-CC', 'AU-NF', 'AU-HM', 'AU-AC', 'AU-CSI', 'AU-AAT'})
             self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
             self.assertEqual(cat['vic-generator']['license'], 'CC-BY-4.0')
+
+    def test_cfa_adaptation_preserves_tables_checklists_and_last_resort_conditions(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'CFA-SURVIVAL-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        def body(uid):
+            return (au.SOURCES / entries[uid]['snapshot']).read_text(encoding='utf-8')
+        def plain(fragment):
+            page = au.Page(); page.feed(fragment); page.close()
+            return re.sub(r'\s+', ' ', ''.join(page.text)).strip()
+        self.assertEqual(audit['reviewed_block_count'], 359)
+        self.assertEqual(audit['visual_review']['rendered_pages'], list(range(1, 21)))
+        for selection in audit['selections']:
+            r = entries[selection['id']]
+            self.assertEqual(r['raw_sha256'], 'de37f989a65b529351f3fe87685bc70a1d84a5d543cb5fef905e5458f90d1918')
+            self.assertEqual(r['source_pages'], selection['source_pages'])
+            self.assertEqual(r['source_edition'], 'Version 6, July 2022')
+            self.assertEqual(r['license'], 'CC-BY-4.0')
+        risk = body('vic-cfa-fire-risk')
+        for rating, meaning, action in audit['rating_table']['rows']:
+            values = re.search(r'<h4>' + rating + r'</h4>\s*<dl>(.*?)</dl>', risk, re.S).group(1)
+            self.assertEqual([plain(x) for x in re.findall(r'<dt>(.*?)</dt>', values, re.S)], audit['rating_table']['columns'])
+            self.assertEqual([plain(x) for x in re.findall(r'<dd>(.*?)</dd>', values, re.S)],
+                             [' '.join(meaning), ' '.join(action)])
+        decisions = re.search(r'<ol>(.*?)</ol>', risk, re.S).group(1)
+        self.assertEqual(decisions.count('<li>'), 10)
+        prep = body('vic-cfa-prepare-leave')
+        before = prep.split('<h3>Before summer</h3>', 1)[1].split('</ul>', 1)[0]
+        self.assertEqual(before.count('<li>'), 12)
+        self.assertIn('only if you have time.', prep)
+        warnings = body('vic-cfa-warnings')
+        rows = re.findall(r'<h5>(.*?)</h5><dl><dt>WHAT TO DO</dt><dd>(.*?)</dd></dl>', warnings, re.S)
+        self.assertEqual([[plain(x), plain(y)] for x,y in rows], audit['monitoring_table']['rows'])
+        self.assertIn('/pages/au/au-ausalert-operational.html', warnings)
+        self.assertIn('July 2022', warnings)
+        during = body('vic-cfa-during-fire')
+        for warning in ['including one direct exit to the outside', 'It may not be immediately safe to go outside.',
+                        'are not able to turn around and drive to safety.', 'can result in serious injury or death.',
+                        'YOUR SAFETY IS NOT GUARANTEED', 'HIGH RISK OF TRAUMA, INJURY OR DEATH.']:
+            self.assertIn(warning, during)
+        self.assertIn('does not recommend defending your home', during)
+        self.assertIn('Bushifre Place of Last Resort', during)  # printed source spelling
+        self.assertNotIn('<table', risk + warnings)
 
     def test_territory_directory_preserves_service_scope_dates_and_contact_associations(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}

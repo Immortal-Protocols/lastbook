@@ -1,3 +1,11 @@
+Review scope: this branch includes the separately reviewed PR38 and PR90 heads
+as ancestors. The shared `PLACE-FINDER-GEOPACKAGE.md`, standalone builder and its
+tests are byte-identical to PR90; regional coverage and Australian metric map
+presentation belong to PR38. The integration-only comparison against the merged
+dependency base contains the map/index build,archive,availability and repair
+lifecycle plus its tests. GitHub's upstream base remains main until dependencies
+land; the PR description links that dependency-only comparison explicitly.
+
 # Regional maps with named-place search
 
 This draft joins the Australian region definitions from #38 and GeoPackage place
@@ -5,7 +13,9 @@ builder from #90 to the map build/release/lifecycle proposed in #30. It compleme
 #63's richer PBF path, now merged into main; it does not add address/postcode search, alternate-language
 name tags, new POI classifications or verified emergency facilities.
 
-All sixteen Australian definitions declare `places: True`. Their normal map build
+Twenty of the22 Australian definitions declare `places: True`:the16 mainland/
+metropolitan definitions and four external-territory extracts with named points.
+Ashmore/Cartier and Coral Sea remain geometry-only. An opted-in map build
 uses the same cached Geofabrik inputs and west/south/east/north box for both map
 geometry and named-point search. The country is the public detail label, avoiding
 a capital name matching every row. No second PBF download or spatial dependency

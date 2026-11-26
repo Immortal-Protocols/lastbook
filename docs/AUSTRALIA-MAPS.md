@@ -110,3 +110,35 @@ All eight map ZIPs together are 830,654,610 bytes. The separate place indexes co
 [Whole-extract review downloads, source receipts and checksums](https://github.com/pilkster/lastbook/releases/tag/australia-state-maps-review-2026-11-17) are separate from the earlier three capital-area ZIPs. Named-place sidecars are included as a separate archive; integrating them into the release scanner, map switching and repair remains a maintainer decision alongside #63 and #90.
 
 Read-only checks through the existing application engine also passed with sockets forbidden: 30 capital/regional-town queries across all eight broader maps returned the exact named place and a nonempty detailed zoom-15 tile; nearby-point queries executed. `AUSTRALIA-STATE-ENGINE-CHECKS.json` in the release records these checks. They do not replace native window verification.
+
+
+## Separate external-territory extracts
+
+Six further definitions use Geofabrik's own external-territory polygons and
+dedicated extracts,reviewed26 November2026. They are offered under Australia in
+the region grouping; their short ids are build ids,not assertions that every
+territory has an ISO3166-2 subdivision code. Rounded-out source envelopes,polygon
+hashes and the dated24 November review-source receipts are recorded in
+`AUSTRALIAN-EXTRACT-BOUNDS.json`.
+
+| Id | Extract | West,south,east,north |
+| --- | --- | --- |
+| au-ac | Ashmore and Cartier Islands extract area | 122.56, -12.85, 124.05, -11.89 |
+| au-cx | Christmas Island extract area | 105.29, -10.83, 106.0, -10.17 |
+| au-cc | Cocos (Keeling) Islands extract area | 96.45, -12.56, 97.25, -11.54 |
+| au-csi | Coral Sea Islands extract area | 146.86, -30.58, 160.43, -14.98 |
+| au-hm | Heard Island and McDonald Islands extract area | 71.99, -53.55, 74.46, -52.66 |
+| au-nf | Norfolk Island extract area | 167.62, -29.47, 168.35, -28.75 |
+
+These sources vary greatly in detail. Ashmore/Cartier and Coral Sea contain no
+eligible named POINT places; this is not proof that islands,settlements,services
+or geographic names are absent. Places held only as polygons are not inferred
+as points. Geometry-only maps remain valid four-file sets; the separate #101
+integration can add a finder only where its source supplies named points.
+Heard/McDonald map labels,including old station names,do not establish occupancy
+or services. The free extract schema does not establish complete shorelines,
+reefs,depths,tides,marine hazards,landing rights or safe navigation. No access,
+permit,rescue,facility-availability or emergency-contact assumptions follow from
+a feature on the map. Australian Antarctic Territory remains a separate gap.
+Jervis Bay remains included with the NSW extract; it is a distinct internal
+territory,not part of ACT and not an external territory.

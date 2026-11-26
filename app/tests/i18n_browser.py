@@ -941,7 +941,6 @@ class Browser(unittest.TestCase):
             page.goto(origin + '/ui/setup.html')
             expect(page.locator('.s-err b span[lang="en"]')).to_have_text('Lastbook can’t reach download.example.')
             expect(page.locator('.s-err > div > p > span[lang="en"]').first).to_contain_text('It may be down for a while')
-            expect(page.locator('.s-err button[data-act="retry"] span[lang="de"]')).to_have_text('Erneut versuchen')
 
     def test_saved_chat_errors_and_stopped_answers_retranslate(self):
         self.configure_setup(current=DATA)

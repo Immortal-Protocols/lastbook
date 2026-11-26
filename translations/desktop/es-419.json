@@ -515,6 +515,7 @@
   "map.layer.reservoir": "Embalses y lagos con nombre",
   "map.layer.shelter": "Refugios (estructuras)",
   "map.layer.spring": "Manantiales (agua no comprobada)",
+  "map.layer.pump": "Bombas manuales y pozos de agua (agua no analizada)",
   "map.layer.vineyard": "Viñedos (uvas)",
   "map.layer.water": "Puntos de agua potable",
   "map.layer.well": "Pozos de petróleo y gas (California)",

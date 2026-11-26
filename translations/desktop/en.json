@@ -515,6 +515,7 @@
   "map.layer.reservoir": "Reservoirs & named lakes",
   "map.layer.shelter": "Shelters (structures)",
   "map.layer.spring": "Springs (untested water)",
+  "map.layer.pump": "Hand pumps & water wells (untested water)",
   "map.layer.vineyard": "Vineyards (grapes)",
   "map.layer.water": "Drinking-water taps",
   "map.layer.well": "Oil & gas wells (California)",

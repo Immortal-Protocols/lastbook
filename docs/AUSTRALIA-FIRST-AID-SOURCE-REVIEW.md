@@ -78,3 +78,10 @@ Before releasing a clinical collection, establish:
 `AUSTRALIA-FIRST-AID-SOURCE-REVIEW.json` pins 15 successful raw acquisitions and the
 decisions above. Restricted response bodies remain local research. Public data,
 installed personal material, map assets and previous releases are unchanged.
+
+
+Follow-up exact-PDF and installed-video review is recorded in
+AUSTRALIA-INFANT-SOURCE-STATUS.md. Adult depth descriptions were checked against
+ANZCOR and are not classified as a conflict. A verified infant-technique variation
+now has a dated guide/card/source-hub status note; no candidate clinical PDF or
+new treatment algorithm was added. Public108/private429 record counts are unchanged.

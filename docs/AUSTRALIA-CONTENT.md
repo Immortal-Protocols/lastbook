@@ -1183,3 +1183,44 @@ This increment changes review documentation only. Public108/private429 records,
 frozen runtime fb86dfb,531 guide references and all prior release assets remain
 unchanged. The 831/903 source-suite results above remain evidence for that unchanged
 product; no new clinical or full-suite validation is claimed from this rights audit.
+
+
+## Dated infant CPR source status — 26 November 2026
+
+The stored SCHN 2025 infant demonstration uses a different compression technique
+from the checked current ANZCOR Guideline 6. Captions and an actual decoded frame
+were verified. Its guide card, choice hint and intro identify the source date,
+comparison date and pending qualified review. The original source hub contains a
+dated status note and primary URL. The video remains unchanged. No replacement
+treatment protocol or clinical PDF is introduced.
+
+Three exact AWFA posters were acquired, rendered and inspected as potential
+unchanged-PDF resources. They remain research only. Adult depth descriptions were
+resolved against ANZCOR's own text and are not classified as a conflict. The
+all-ages poster's infant method remains a review item; an EpiPen usage poster is
+not automatically a complete anaphylaxis plan. Conditional reuse and clinical
+completeness are separate questions. See [source-status review](AUSTRALIA-INFANT-SOURCE-STATUS.md)
+and `content/regions/au/INFANT-CPR-SOURCE-REVIEW-20261126.json`.
+The ARC enquiry remains unsent; no grant is claimed.
+
+Public 108/private 429 record counts and 531 guide references remain unchanged.
+**832 contribution/build and 904 combined-source tests pass**, each with 5 skips
+and 11 expected failures. Eighteen focused source, 8 Han and 9 browser-link tests
+pass. Actual public/private engine checks forbid sockets and verify source-status
+search, private health-card resolution, all 108 reader hashes and retained
+food/Chinese/NT choices. Staging preserves all 115 Australian hashes, 42 personal
+FTS units, Victoria's 3,054 names/map hashes and the infant video's exact hash.
+Frozen source `2f4dbbd` passes package/i18n/privacy, strict signature and the actual
+installed 429/7 outbound-IP-denial self-check. Pinned roots/setup inputs remain
+unchanged. Full previous 429-record app and library backups remain.
+
+Selected installed Mac checks verify the health intro, expanded child/baby hint,
+infant card note and source-hub reader; Back restores the expanded choice. A native
+screenshot confirms the inspected card/hint are readable. No clinical approval,
+all-reader/all-browser check or long-idle reliability is claimed.
+
+Matching updated runtime/guide assets are needed for the card/hint; a data-only
+pack cannot update an older executable's bundled guide JSON. The hub note is data.
+The [108-record source-status review](https://github.com/pilkster/lastbook/releases/tag/australia-infant-source-review-2026-11-26) includes the updated hub and
+checksums. Earlier release assets remain unchanged. Contributor prerelease,
+not official Setup publication or maintainer acceptance.

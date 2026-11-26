@@ -13,7 +13,6 @@
       "number": "112",
       "how": [
         "call",
-        "sms",
         "app"
       ],
       "works_from": [
@@ -40,7 +39,7 @@
           "police"
         ]
       },
-      "when": "Only when every second counts. The national 112 centre asks what is happening and where, and connects the caller to the police, fire service or ambulance in their region. It can be called from a mobile phone without credit or without a (valid) SIM card. Deaf, hard-of-hearing and speech-impaired people can use the Tolkcontact app or the 112NL app, or text 112 after registering once for e-sms by texting 'aanmelden' to 112.",
+      "when": "Only when every second counts. The national 112 centre asks what is happening and where, and connects the caller to the police, fire service or ambulance in their region. It can be called from a mobile phone without credit or without a (valid) SIM card. Deaf, hard-of-hearing and speech-impaired people can use the Tolkcontact app or the 112NL app. Texting 112 (e-sms) works only after registering in advance, once: text 'aanmelden' to 112, then confirm by texting 'aanmelden akkoord'. Without that registration, a text message is not a way to reach 112 in an emergency: call instead.",
       "source": [
         "https://www.rijksoverheid.nl/themas/recht-veiligheid-en-defensie/huiselijk-geweld/vraag-en-antwoord/alarmnummer-112/wat-gebeurt-er-als-ik-alarmnummer-112-bel",
         "https://www.rijksoverheid.nl/vraag-en-antwoord/alarmnummer-112/112-bellen-doven-slechthorenden",
@@ -48,7 +47,7 @@
       ],
       "url": "https://www.rijksoverheid.nl/onderwerpen/alarmnummer-112",
       "area_whole_country": true,
-      "checked_on": "2026-11-25",
+      "checked_on": "2026-11-26",
       "verified": "official"
     },
     {
@@ -122,7 +121,7 @@
       ],
       "works_from": [],
       "free": true,
-      "free_source": "https://www.liander.nl/grootzakelijk/graafschade-voorkomen/herstel-graafschade",
+      "free_source": "https://www.netbeheernederland.nl/storingen",
       "keywords": {
         "nl": [
           "stroomstoring",
@@ -140,13 +139,10 @@
           "gas smell"
         ]
       },
-      "when": "To report a power cut, a gas outage or a smell of gas to the grid operator (netbeheerder) for the area. Stedin's page, for a smell of gas: close the main gas tap at the meter, ventilate the house, then call this number.",
-      "source": [
-        "https://web.stedin.net/storingen",
-        "https://www.liander.nl/grootzakelijk/graafschade-voorkomen/herstel-graafschade"
-      ],
-      "url": "https://web.stedin.net/storingen",
-      "checked_on": "2026-11-25",
+      "when": "The grid operators' national number, 24 hours a day: to report an outage in the supply of gas or electricity, up to and including the meter, or a smell of gas. A fault in the home's own wiring or installation is for the home's installer, not this number.",
+      "source": "https://www.netbeheernederland.nl/storingen",
+      "url": "https://www.netbeheernederland.nl/storingen",
+      "checked_on": "2026-11-26",
       "verified": "official"
     }
   ]

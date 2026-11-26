@@ -1314,3 +1314,48 @@ sets the matching Ask context and returns through reader history to the expanded
 guide choice. No new page-kill event appears. Actual modal WebKit timing,controlled
 sleep/background behavior and long-idle reliability are not established by these
 selected checks. The earlier one-event idle failure remains unexplained.
+
+
+## Document language and plain-text direction — 27 November 2026
+
+[Independent PR493](https://github.com/Immortal-Protocols/lastbook/pull/493) forwards
+the declared document language to plain text and Read aloud. An exact locale is
+preferred, then a matching local language-family voice. Without a matching local
+voice the button stays hidden; unlabelled records retain the computer-language
+fallback. LocalService-only speech is retained. English interface text is unchanged.
+
+Plain-text paragraphs use automatic direction independently. Numeric runs have
+left-to-right isolates so groups in 131 450 retain their printed order in Arabic.
+Language attributes and text are escaped; digits and indexed/spoken text remain
+unchanged. The Australian HTML builder accepts only rtl/ltr/auto direction and
+text-only bdi elements. No new translation, voice download or dependency is added.
+
+Final stable-source suites pass **801 standalone, 861 Australian contribution and
+933 combined tests**, each with five skips and eleven upstream expected failures.
+Ten new language tests exercise actual API/reader/speech code; eight existing
+speech tests and twenty focused Australian source tests pass. The shared setup
+fixtures mock synthetic capacity as in PR487/491; production disk reserves remain.
+Combined server AST outside public() matches the prior integrated map server.
+
+Frozen source `1a291fadaab4a3c8564cc54cd30b6804f2d648b4` passes package/i18n/privacy,
+strict signature and installed431/7 outbound-IP-denial self-check. Of58 bundled
+content/web/setup assets, only web/app.js,web/app.css,web/speak.js differ from the
+modal-fix runtime. All431 records,110 public AU records,555 guide references,
+117 AU hashes,42 personal FTS units,Victoria3,054 names/map hashes and exact infant
+video remain. Catalog/search/reference/map-set/personal marker are byte-identical
+after selected native checks. A full prior app rollback copy is retained.
+
+Chrome synthetic loopback fixtures show Arabic paragraphs right-aligned, English
+paragraphs left-aligned and 131 450 in order. Installed Mac checks open existing
+Chinese floods in Page/Text views, observe Read aloud→Stop reading→Read aloud,
+then matching Ask context and Back. No audio/pronunciation quality is established;
+the browser Arabic click did not establish sustained playback. These are selected
+render/control checks, not professional translation/accessibility or long-idle
+approval. The historical idle cause remains unproven. Temporary preview stopped.
+
+Seven Arabic publisher factsheets are research drafts only; extraction and all
+source/HTML reading-order reviews are still pending. They are absent from this
+catalog and release. Public110/private431 counts and the existing WA/Tas data
+release remain unchanged. No original PDF/media, private first-aid source or
+installed profile data is included in the public contribution. Broader rights,
+clinical/community/local/accessibility review and official acceptance remain open.

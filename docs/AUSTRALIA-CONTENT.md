@@ -1067,3 +1067,38 @@ PDFs/extracted text,private profile,maps,models and videos are excluded. Contrib
 prerelease,not official Setup availability or maintainer acceptance;earlier assets
 unchanged. Broader NT/local manuals,language/community/accessibility,remote and
 public first-aid rights/review remain open work.
+
+
+## HTTP browser linked-reader context — 26 November 2026
+
+The browser reader now opens supported local links through the outer reader,
+keeping the current title,publisher,source details,Ask,Save and history together.
+Previously an NT worksheet link could display Emergency calls inside the iframe
+while its outer source context still described the worksheet. A trusted relay
+validates the active iframe,origin,source,random token and route. Saved-page CSP,
+opaque origin and script prohibition are unchanged. Missing user-activation
+metadata produces a trusted Open reading button. Native desktop routing remains
+separate. See BROWSER-READING-LINKS.md for limits and the implementation contract.
+
+Nine focused tests pass. Required upstream suite on main plus this independent
+fix passes792;Australian contribution/build passes830;combined source passes902.
+Each full suite has five skips and eleven upstream expected failures. Three setup
+fixture failures reproduced on unchanged main;mocked disk capacity fixes the
+fixtures without changing production storage reserves. Selected actual Chrome
+checks cover source/Ask,Back/Forward,Save and fallback;an actual host-page console
+probe confirmed DOM isolation and was removed before final tests/build. Installed
+Mac linked-reader/Back checks retain the native path without the HTTP nonce.
+
+Installed frozen runtime f8a124aa3b9107dabb8cea5f3f8a134b9bd5977d passes packaging,
+i18n,privacy,strict signature and actual425/7 outbound-IP-denial self-check. All111
+Australian content hashes,42 personal FTS units,513 guide references and Victoria
+map hashes/3,054 names remain. Full previous425 app/data copies are retained.
+The public104-record collection and NT release assets are unchanged;no new content
+ZIP is needed. Data-only supplements cannot update an older reader runtime.
+
+This closes the reproduced HTTP linked-reader source-context gap for the stated
+scope. It does not establish every browser,encoding,document or long-idle behavior;
+the earlier idle-watchdog issue remains unresolved. Community/professional review,
+broader language/accessibility/local/remote coverage,public first-aid rights and
+official maintainer acceptance remain open. The entire installed private profile
+remains PERSONAL USE ONLY;no private ANZCOR material is published.

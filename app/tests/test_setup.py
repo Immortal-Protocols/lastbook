@@ -4645,13 +4645,15 @@ class SkipMap(unittest.TestCase):
         run = subprocess.run(['node', '-e', script], text=True, capture_output=True, check=True)
         return json.loads(run.stdout)
 
-    def run_switch(self, from_pack, to_pack, picked):
+    def run_switch(self, from_pack, to_pack, picked, extra_map=None):
         source = (ROOT / 'web/setup.js').read_text(encoding='utf-8')
         start = source.index('  const packs =')
         helpers = source[start:source.index('  const packDl =', start)]
         state = {'manifest': {'packs': [{'id': 'small', 'map': None}, {'id': 'medium', 'map': None}, {'id': 'all', 'map': None}],
                               'maps': [{'id': 'CA', 'title': 'California'}], 'address_indexes': [{'id': 'CA', 'available': True}]},
                  'current': None}
+        if extra_map:
+            state['manifest']['maps'].append(extra_map)
         script = (f'const S = {json.dumps(state)};\nconst choice = {json.dumps({"pack": from_pack, "ai": False, "map": picked})};\n' + helpers +
                   f'\nsetPack({json.dumps(to_pack)});' +
                   '\nconsole.log(JSON.stringify({kept: choice.map, offered: canSkipMap(), skipped: skippedMap(), missing: mapMissing(), state: selectedState(),'
@@ -4691,6 +4693,15 @@ class SkipMap(unittest.TestCase):
     def test_switching_packs_keeps_a_chosen_state(self):
         self.assertEqual(self.run_switch('small', 'all', 'CA'),
                          {'kept': 'CA', 'offered': True, 'skipped': False, 'missing': False, 'state': 'CA', 'map': None, 'address': 'CA'})
+
+    def test_all_keeps_a_non_us_map_as_a_separate_download(self):
+        for entry in [{'id': 'au-vic', 'title': 'Victoria', 'kind': 'region', 'country': 'Australia'},
+                      {'id': 'eu-de1', 'title': 'Germany', 'kind': 'state', 'country': 'Germany'}]:
+            with self.subTest(area=entry['id']):
+                result = self.run_switch('small', 'all', entry['id'], extra_map=entry)
+                self.assertEqual(result['map'], entry['id'])
+                self.assertEqual(result['state'], entry['id'])
+                self.assertFalse(result['missing'])
 
     def test_same_pack_keeps_the_skip(self):   # re-entering choose for the same pack changes nothing
         self.assertEqual(self.run_switch('small', 'small', 'none'),

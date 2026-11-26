@@ -136,7 +136,7 @@
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState() && !skippedMap();
-  const mapIncluded = m => m && (m.id === mapNow() || (mapNow() === 'us' && m.kind === 'state' && (!m.country || m.country === 'United States')));
+  const mapIncluded = m => m && (m.id === mapNow() || (mapNow() === 'us' && (m.kind || 'state') === 'state' && (!m.country || m.country === 'United States')));
   const mapAdds = () => { const m = mapById(choice.map); return m && !mapIncluded(m) ? m : null };
   function packSummary(p) {
     const text = p.summary || '';

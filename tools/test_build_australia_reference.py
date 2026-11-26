@@ -17,6 +17,51 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_fsanz_consumer_readings_preserve_complete_source_conditions_and_equal_access(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'FOOD-SAFETY-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['reader_id']; r = entries[uid]
+            html = (au.SOURCES / r['snapshot']).read_text(encoding='utf-8')
+            body = html.split('<hr>', 1)[1].split('<h2>Source, dates and reuse</h2>', 1)[0]
+            parser = au.Page(); parser.feed(body); parser.close()
+            compact = re.sub(r'\s+', '', ''.join(parser.text))
+            expected = selection['source_text_without_whitespace']
+            self.assertEqual(au.digest(expected.encode('utf-8')), selection['source_text_sha256'])
+            if r['category'] == 'source-rights':
+                self.assertIn(expected, compact)
+            else:
+                self.assertEqual(compact, expected, uid)
+                self.assertEqual(au.digest(body.encode('utf-8')), selection['body_html_sha256'])
+                self.assertEqual(r['source_updated'], selection['source_updated'])
+                self.assertEqual(r['year'], 2025)
+                self.assertEqual(r['raw_sha256'], selection['raw_source']['raw_sha256'])
+                bodies[uid] = compact
+            self.assertEqual(r['license'], 'CC-BY-4.0')
+            self.assertEqual(r['copyright_source'], 'https://www.foodstandards.gov.au/legal-policies/copyright')
+        basics = bodies['fsanz-food-basics']
+        for condition in ['at least 75°C in the centre:', 'all poultry', 'all meat that has been minced or rolled',
+                          'liver and other offal', 'between 2 and 4 hours, eat it straight away',
+                          'after 4 hours, throw it away', 'Do not thaw frozen food at room temperature',
+                          "Don't use soap, disinfectants or detergents to wash your food"]:
+            self.assertIn(re.sub(r'\s+', '', condition), basics)
+        flood = bodies['fsanz-food-flood']
+        for condition in ['Do not taste or cook flood-affected food', 'if they have not touched flood water and look undamaged',
+                          'salvaging cans and pouches for sale is not recommended',
+                          'Private water supplies should be tested before using', '1 tablespoon of chlorine bleach per 2 litres of hot water',
+                          'for 10 minutes in boiling water']:
+            self.assertIn(re.sub(r'\s+', '', condition), flood)
+        emergency = bodies['fsanz-food-emergency']
+        for condition in ['around four hours', 'around 24 hours', "If frozen foods have thawed don't refreeze!", 'including food in cans and jars even if they appear OK']:
+            self.assertIn(re.sub(r'\s+', '', condition), emergency)
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            choice = next(c for c in guide['choices'] if c['id'] == 'food-safety')
+            self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
+            for key in ['prepare', 'learn']:
+                self.assertTrue(set(bodies) <= {r.get('doc') for r in guide[key]})
+
     def test_nt_worksheet_keeps_contact_associations_shelter_limits_and_original_rights(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         r = entries['au-nt-local-plan']

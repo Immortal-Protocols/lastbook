@@ -95,7 +95,15 @@
     "Top End",
     "NT planning",
     "storm surge",
-    "car park shelter"
+    "car park shelter",
+    "FSANZ",
+    "food safety",
+    "food poisoning",
+    "fridge",
+    "freezer",
+    "food thermometer",
+    "floodwater contamination",
+    "use-by"
   ],
   "choices": [
     {
@@ -144,6 +152,28 @@
           "doc": "au-getready-bushfires",
           "label": "National bushfire preparedness factsheet",
           "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        }
+      ]
+    },
+    {
+      "id": "food-safety",
+      "label": "Keep food safe during outages and floods",
+      "hint": "FSANZ consumer readings cover cold storage, food-specific cooking temperatures, flood contamination and cleaning. Source dates and conditions remain.",
+      "read": [
+        {
+          "doc": "fsanz-food-basics",
+          "label": "Food safety basics: FSANZ consumer guidance",
+          "note": "Complete consumer article: use-by/allergens, cleaning, separation, food-specific cooking temperatures, cold/hot storage and washing food. Source dated July 2025; linked vulnerable-person guidance and videos are not bundled."
+        },
+        {
+          "doc": "fsanz-food-emergency",
+          "label": "Food safety in an emergency: FSANZ consumer guidance",
+          "note": "Complete before/during/after article including approximate closed-fridge/freezer times, thawed food, flood/fire disposal and regional link labels. Source dated October 2025; appliance estimates are not measured food temperatures."
+        },
+        {
+          "doc": "fsanz-food-flood",
+          "label": "Floods and food safety: FSANZ consumer guidance",
+          "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
         }
       ]
     },
@@ -1071,6 +1101,21 @@
       "doc": "au-nt-local-plan",
       "label": "Make a Northern Territory local warning, shelter and isolation plan",
       "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
+    },
+    {
+      "doc": "fsanz-food-basics",
+      "label": "Food safety basics: FSANZ consumer guidance",
+      "note": "Complete consumer article: use-by/allergens, cleaning, separation, food-specific cooking temperatures, cold/hot storage and washing food. Source dated July 2025; linked vulnerable-person guidance and videos are not bundled."
+    },
+    {
+      "doc": "fsanz-food-emergency",
+      "label": "Food safety in an emergency: FSANZ consumer guidance",
+      "note": "Complete before/during/after article including approximate closed-fridge/freezer times, thawed food, flood/fire disposal and regional link labels. Source dated October 2025; appliance estimates are not measured food temperatures."
+    },
+    {
+      "doc": "fsanz-food-flood",
+      "label": "Floods and food safety: FSANZ consumer guidance",
+      "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
     }
   ],
   "learn": [
@@ -1453,6 +1498,21 @@
       "doc": "au-nt-local-plan",
       "label": "Make a Northern Territory local warning, shelter and isolation plan",
       "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
+    },
+    {
+      "doc": "fsanz-food-basics",
+      "label": "Food safety basics: FSANZ consumer guidance",
+      "note": "Complete consumer article: use-by/allergens, cleaning, separation, food-specific cooking temperatures, cold/hot storage and washing food. Source dated July 2025; linked vulnerable-person guidance and videos are not bundled."
+    },
+    {
+      "doc": "fsanz-food-emergency",
+      "label": "Food safety in an emergency: FSANZ consumer guidance",
+      "note": "Complete before/during/after article including approximate closed-fridge/freezer times, thawed food, flood/fire disposal and regional link labels. Source dated October 2025; appliance estimates are not measured food temperatures."
+    },
+    {
+      "doc": "fsanz-food-flood",
+      "label": "Floods and food safety: FSANZ consumer guidance",
+      "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
     }
   ],
   "related": [

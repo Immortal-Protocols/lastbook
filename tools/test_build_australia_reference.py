@@ -17,6 +17,46 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_arabic_factsheets_keep_source_order_conditions_and_equal_guide_access(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'ARABIC-HAZARDS-SOURCE-AUDIT-20261127.json').read_text(encoding='utf-8'))
+        self.assertEqual(audit['source_pages'], 14)
+        self.assertEqual(len(audit['selections']), 7)
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['reader_id']; record = entries[uid]
+            html = (au.SOURCES / record['snapshot']).read_text(encoding='utf-8')
+            body = html.split('<hr>', 1)[1].split('<h2 lang="en-AU" dir="ltr">Source, dates and reuse</h2>', 1)[0]
+            self.assertEqual(au.digest(body.encode()), selection['body_html_sha256'])
+            page = au.Page(); page.feed(re.sub(r'<h2 lang="en-AU" dir="ltr">Source page [12]</h2>', '', body))
+            text = ''.join(page.text); compact = re.sub(r'\s+', '', text)
+            self.assertEqual(compact, selection['normalized_source_text_without_whitespace'], uid)
+            self.assertEqual(Counter(compact), Counter(selection['source_character_counts']))
+            self.assertEqual(record['language'], 'ar')
+            self.assertIn('<html lang="ar" dir="rtl">', html)
+            self.assertEqual(record['source_url'], selection['source']['licensed_source']['url'])
+            self.assertEqual(record['raw_sha256'], selection['source']['factsheet']['sha256'])
+            self.assertEqual(record['raw_sha256'], selection['source']['licensed_source']['sha256'])
+            self.assertEqual(record['license'], 'CC-BY-4.0')
+            self.assertIn('<bdi dir="ltr">131 450</bdi>', body)
+            self.assertIn('<bdi dir="ltr">000</bdi>', body)
+            self.assertNotIn('<img', html)
+            self.assertIn('no new translation', html.lower())
+            bodies[uid] = compact
+        self.assertIn('إذاكانبكامِلوعيهوقادرعلىالاستجابة'.replace('ِ', ''), bodies['au-getready-arabic-heatwaves'])
+        self.assertIn('فقدملهرشفاتصغيرةمتكررةمنالماء.', bodies['au-getready-arabic-heatwaves'])
+        self.assertIn('إذالمتتمكنمنالمغادرة،فانتقلإلىالطابقالعلويمنمبنىقويعلىارتفاععشرةأمتارعلىالأقلفوقمستوىسطحالبحر.', bodies['au-getready-arabic-tsunamis'])
+        self.assertIn('لاتقمأبدًابالقيادةأوالمشيأوالسباحةفيمياهالفيضانات.', bodies['au-getready-arabic-floods'])
+        self.assertIn('خادعًا.بمجردمروره،', bodies['au-getready-arabic-cyclones'])
+        earthquake = next(s for s in audit['selections'] if s['reader_id'].endswith('earthquakes'))
+        self.assertEqual(earthquake['earthquake_number_action_pairs'], [['1', 'انخفض!'], ['2', 'احتمِ!'], ['3', 'تمسّك!']])
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            choice = next(c for c in guide['choices'] if c['id'] == 'arabic-hazards')
+            self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
+            for key in ['prepare', 'learn']:
+                self.assertTrue(set(bodies) <= {r.get('doc') for r in guide[key]})
+
     def test_text_direction_is_explicit_and_rejects_nonstandard_values(self):
         for direction in ['rtl', 'ltr', 'auto']:
             page = au.Page()

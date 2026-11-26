@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 87 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 94 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -27,10 +27,11 @@ and remaining work are recorded below so missing information is visible.
   plus seven complete national Get Ready standard English factsheet texts:
   plus four Queensland driving, breakdown, recovery-strap and selected vehicle/packing readings:
   plus fourteen publisher-written Chinese hazard factsheet texts:
+  plus seven publisher-written Arabic hazard factsheet texts:
   plus one original Northern Territory local planning worksheet:
   plus three complete FSANZ consumer food-safety readings and a rights/disclaimer record:
   plus two original Western Australian and Tasmanian local planning readings:
-  **110 searchable HTML records** altogether. Four remote entries provide management
+  **117 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -1359,3 +1360,36 @@ catalog and release. Public110/private431 counts and the existing WA/Tas data
 release remain unchanged. No original PDF/media, private first-aid source or
 installed profile data is included in the public contribution. Broader rights,
 clinical/community/local/accessibility review and official acceptance remain open.
+
+
+## Arabic national hazard factsheets — 27 November 2026
+
+Seven complete publisher-written Arabic standard factsheet texts cover bushfire,
+cyclone,earthquake,flood,heatwave,storm and tsunami preparation, equally in both
+household/rural choices and preparation/deeper-reading lists. Sources were acquired
+26 November; all14 original pages were visually inspected and the exact licensed
+site footer/policy refreshed27 November. Each directly hosted Get Ready Queensland
+PDF is byte-identical to its national counterpart. QRA author metadata, State/QRA
+credit, CC BY4.0 policy link and exceptions are recorded in
+ARABIC-HAZARDS-SOURCE-AUDIT-20261127.json. Original PDFs,imagery,diagrams,icons,QR,
+branding,Coat of Arms,trademarks and third-party/separately licensed assets are
+excluded. No blanket licence for other national-site material is implied.
+
+Ordinary PDF extraction corrupts some Arabic glyph order,word spacing and accents.
+Research-only glyph recovery uses font maps,position and tagged structure,repairs
+four exact malformed replacement-text patterns (including one extra alef mapping),
+places/deduplicates combining marks and restores a visible header word gap.
+Publisher wording and spelling are retained; no new translation or grammar editing.
+The research parser and its dependencies are not shipped. Ordered source text and
+final HTML agree after documented encoding/formatting recovery; character counts
+alone are not proof of correct reading order or an independent translation review.
+
+HTML declares Arabic/right-to-left direction, English source notes declare English/
+left-to-right direction and numeric runs retain their printed order in isolates.
+Earthquake numbered action labels remain paired; warning labels,planning questions,
+heatstroke consciousness/response condition,tsunami last-resort height,water quantity,
+flood exclusions and service references remain. The English interface is unchanged.
+Matching-runtime document-language speech requires an installed local voice; no
+voice download,independent audio/pronunciation/accessibility/community or clinical
+review is claimed. These static readings do not establish local warnings,routes,
+services,shelters or adequate supplies for any individual trip/person.

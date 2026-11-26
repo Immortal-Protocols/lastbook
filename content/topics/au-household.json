@@ -109,7 +109,13 @@
     "Tasmania",
     "Tasmanian planning",
     "Nearby Safer Place",
-    "animal accommodation"
+    "animal accommodation",
+    "Arabic",
+    "العربية",
+    "الفيضانات",
+    "الزلازل",
+    "موجات الحر",
+    "التسونامي"
   ],
   "choices": [
     {
@@ -318,6 +324,48 @@
           "doc": "au-getready-simplified-chinese-tsunamis",
           "label": "海啸 — Simplified Chinese / tsunamis preparedness",
           "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        }
+      ]
+    },
+    {
+      "id": "arabic-hazards",
+      "label": "Read Arabic / العربية hazard factsheets",
+      "hint": "Seven national factsheet texts in right-to-left Arabic; English interface and source notes remain.",
+      "read": [
+        {
+          "doc": "au-getready-arabic-bushfires",
+          "label": "حرائق الغابات — Arabic / bushfires preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-03-31. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-cyclones",
+          "label": "الأعاصير المدارية — Arabic / cyclones preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-earthquakes",
+          "label": "الزلازل — Arabic / earthquakes preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-10. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-floods",
+          "label": "الفيضانات — Arabic / floods preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-heatwaves",
+          "label": "موجات الحر — Arabic / heatwaves preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-storms",
+          "label": "العواصف — Arabic / storms preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-tsunamis",
+          "label": "التسونامي — Arabic / tsunamis preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
         }
       ]
     },
@@ -1186,6 +1234,41 @@
       "doc": "au-tas-local-plan",
       "label": "Tasmania: access, warnings and distinct shelter arrangements",
       "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-getready-arabic-bushfires",
+      "label": "حرائق الغابات — Arabic / bushfires preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-03-31. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-cyclones",
+      "label": "الأعاصير المدارية — Arabic / cyclones preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-earthquakes",
+      "label": "الزلازل — Arabic / earthquakes preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-10. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-floods",
+      "label": "الفيضانات — Arabic / floods preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-heatwaves",
+      "label": "موجات الحر — Arabic / heatwaves preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-storms",
+      "label": "العواصف — Arabic / storms preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-tsunamis",
+      "label": "التسونامي — Arabic / tsunamis preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
     }
   ],
   "learn": [
@@ -1593,6 +1676,41 @@
       "doc": "au-tas-local-plan",
       "label": "Tasmania: access, warnings and distinct shelter arrangements",
       "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-getready-arabic-bushfires",
+      "label": "حرائق الغابات — Arabic / bushfires preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-03-31. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-cyclones",
+      "label": "الأعاصير المدارية — Arabic / cyclones preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-earthquakes",
+      "label": "الزلازل — Arabic / earthquakes preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-10. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-floods",
+      "label": "الفيضانات — Arabic / floods preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-heatwaves",
+      "label": "موجات الحر — Arabic / heatwaves preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-storms",
+      "label": "العواصف — Arabic / storms preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-tsunamis",
+      "label": "التسونامي — Arabic / tsunamis preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
     }
   ],
   "related": [

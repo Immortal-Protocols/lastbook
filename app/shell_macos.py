@@ -157,6 +157,7 @@ class _Pulse:
         self.asked_at = None
         self.misses = self.slow = 0
         self.paused = 0
+        self.question_paused = False
         self.acks_out = []
 
     def add(self, ack):
@@ -167,6 +168,7 @@ class _Pulse:
     def ask(self):
         acks, self.waiting = self.waiting, []
         self.asked_at = time.monotonic()
+        self.question_paused = bool(self.paused)
         generation = self.asked_at
 
         def answered(result, error):
@@ -176,7 +178,7 @@ class _Pulse:
             self.asked_at = None
             self.acks_out = []
             self.misses = 0
-            self.slow = self.slow + 1 if late >= SLOW_ANSWER and not self.paused else 0
+            self.slow = self.slow + 1 if late >= SLOW_ANSWER and not self.question_paused else 0
             self.release(acks)
             if self.slow >= SLOW_IN_A_ROW:
                 self.on_stuck()
@@ -189,6 +191,15 @@ class _Pulse:
     def release(self, acks):
         for ack in acks:
             ack()
+
+    def pause(self):
+        """An app-owned modal may defer the outstanding reply until after dismissal."""
+        self.paused += 1
+        self.question_paused = True
+        self.misses = self.slow = 0
+
+    def resume(self):
+        self.paused -= 1
 
     def tick(self):
         """Every PULSE_EVERY seconds. Ticks, not the clock: a Mac asleep is not a page that is stuck."""
@@ -204,6 +215,7 @@ class _Pulse:
     def reset(self):
         """The page's process has gone, and any question to it with it."""
         self.asked_at = None
+        self.question_paused = False
         self.misses = self.slow = 0
         out, self.acks_out = self.acks_out, []
         waiting, self.waiting = self.waiting, []
@@ -641,10 +653,10 @@ class Shell:
         alert.addButtonWithTitle_('OK')
         if kind == 'confirm':
             alert.addButtonWithTitle_('Cancel')
-        self.pulse.paused += 1      # an alert from the app's own page holds its process until it is answered: that is not a page stuck
+        self.pulse.pause()      # the page's reply may arrive only after the modal is dismissed
 
         def answered(r):
-            self.pulse.paused -= 1
+            self.pulse.resume()
             done(r == MODAL_FIRST_BUTTON)
 
         alert.beginSheetModalForWindow_completionHandler_(self.window, answered)

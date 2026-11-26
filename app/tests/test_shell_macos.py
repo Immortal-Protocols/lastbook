@@ -9,6 +9,7 @@ shell must never ask it. What the PIDs are for must still work: the memory limit
 Networking process as the fixed NETWORK_SHARE), ending a stuck or too-big page with SIGKILL, and starting again at home. Never packaged."""
 import os, re, signal, sys, threading, unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
@@ -63,6 +64,113 @@ class Pulse:
 
 class Stop(BaseException):
     """Ends _watch_memory's endless loop from a patched time.sleep (BaseException: the loop catches Exception)."""
+
+
+class PagePulse(unittest.TestCase):
+    """WebKit completion ordering, including a reply deferred until a modal closes."""
+    def setUp(self):
+        self.now = 1000.0
+        self.clock = patch.object(S.time, 'monotonic', side_effect=lambda: self.now)
+        self.clock.start()
+        self.addCleanup(self.clock.stop)
+        self.pending, self.ended = [], []
+        view = type('WebKitReplies', (), {})()
+        view.evaluateJavaScript_completionHandler_ = lambda script, done: self.pending.append(done)
+        self.pulse = S._Pulse(view, lambda: self.ended.append('stuck'))
+
+    def reply(self, after=0.1):
+        self.now += after
+        self.pending.pop(0)(0, None)
+
+    def test_three_unpaused_slow_answers_still_end_the_page(self):
+        for _ in range(S.SLOW_IN_A_ROW):
+            self.pulse.tick()
+            self.reply(S.SLOW_ANSWER + 1)
+        self.assertEqual(self.ended, ['stuck'])
+
+    def test_three_replies_after_modal_dismissal_are_not_slow_answers(self):
+        for _ in range(S.SLOW_IN_A_ROW):
+            self.pulse.tick()
+            self.pulse.pause()
+            self.now += 30
+            self.pulse.tick()
+            self.pulse.resume()
+            self.reply()
+        self.assertEqual((self.pulse.slow, self.ended), (0, []))
+
+    def test_short_modal_between_ticks_also_excludes_the_deferred_reply(self):
+        self.pulse.tick()
+        self.now += S.SLOW_ANSWER
+        self.pulse.pause()
+        self.pulse.resume()
+        self.reply()
+        self.assertEqual(self.pulse.slow, 0)
+
+    def test_nested_modals_and_a_question_started_while_paused(self):
+        self.pulse.pause()
+        self.pulse.pause()
+        self.pulse.tick()
+        self.pulse.resume()
+        for _ in range(S.STUCK_AFTER + 1):
+            self.now += 1
+            self.pulse.tick()
+        self.assertEqual((self.pulse.paused, self.ended), (1, []))
+        self.pulse.resume()
+        self.reply(30)
+        self.assertEqual((self.pulse.slow, self.ended), (0, []))
+
+    def test_unanswered_page_is_still_ended_after_dismissal_without_releasing_bytes(self):
+        released = []
+        self.pulse.add(lambda: released.append('bytes'))
+        self.pulse.pause()
+        for _ in range(S.STUCK_AFTER + 1):
+            self.pulse.tick()
+        self.pulse.resume()
+        for _ in range(S.STUCK_AFTER - 1):
+            self.pulse.tick()
+        self.assertEqual((self.ended, released), ([], []))
+        self.pulse.tick()
+        self.assertEqual((self.ended, released), (['stuck'], []))
+
+    def test_modal_does_not_release_or_merge_queued_byte_acknowledgements(self):
+        released = []
+        self.pulse.add(lambda: released.append('first'))
+        self.pulse.add(lambda: released.append('second'))
+        self.pulse.pause()
+        self.pulse.resume()
+        self.assertEqual(released, [])
+        self.reply(30)
+        self.assertEqual(released, ['first'])
+        self.reply()
+        self.assertEqual((released, self.pulse.slow), (['first', 'second'], 0))
+
+    def test_reset_releases_once_and_ignores_a_late_pre_modal_completion(self):
+        released = []
+        self.pulse.add(lambda: released.append('bytes'))
+        self.pulse.pause()
+        self.pulse.reset()
+        self.pulse.resume()
+        self.reply(30)
+        self.assertEqual((released, self.pulse.slow, self.ended), (['bytes'], 0, []))
+
+    def test_shell_modal_marks_pause_before_presenting_and_resumes_before_reply(self):
+        events, completions = [], []
+        class Alert:
+            @classmethod
+            def alloc(cls): return cls()
+            def init(self): return self
+            def setMessageText_(self, message): pass
+            def addButtonWithTitle_(self, title): pass
+            def beginSheetModalForWindow_completionHandler_(self, window, done):
+                events.append(('present', self_pulse.paused))
+                completions.append(done)
+        self_pulse = self.pulse
+        s = S.Shell(None)
+        s.pulse = self.pulse
+        with patch.object(S.AppKit, 'NSAlert', Alert):
+            s.ask('confirm', 'test', lambda ok: events.append(('done', self.pulse.paused, ok)))
+        completions.pop()(S.MODAL_FIRST_BUTTON)
+        self.assertEqual(events, [('present', 1), ('done', 0, True)])
 
 
 def shell(view):

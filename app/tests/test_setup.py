@@ -4268,6 +4268,50 @@ class AddressIndexes(Maps):
             self.assertEqual((new / 'derived/geo/addresses' / name).read_bytes(), name.encode())
         self.assertEqual(sorted(p.name for p in (old / 'derived/geo/addresses').iterdir()), sorted(left))
 
+    def test_a_mixed_case_index_id_installs_under_its_own_name(self):
+        """#486 review: lower case after the hyphen stays allowed (PT-20w), and the files carry the id as written."""
+        mf, _ = self.address_manifest()
+        azores, receipt = self.add_index(mf, 'PT-20w', 'Azores')
+        setup = self.setup(manifest=mf)
+        setup.start('small', address_id='PT-20w')
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, _ = api.startup(self.settings)
+        addresses = library / 'derived/geo/addresses'
+        self.assertEqual(sorted(p.name for p in addresses.iterdir()), ['PT-20w.json', 'PT-20w.sqlite'])
+        self.assertEqual((addresses / 'PT-20w.sqlite').read_bytes(), azores)
+        self.assertEqual(self.setup('manage', current=library, manifest=mf).current_info()['address_indexes'], ['PT-20w'])
+
+    def test_two_ids_that_differ_in_case_only_never_share_the_catalog(self):
+        """#486 review: PT-20w and PT-20W name the same files on a disk that ignores case, so installing one would replace
+        the other. A manifest that lists both is refused, and a fetched one that renames a bundled index in other letters
+        leaves the bundled one in place, so the pair cannot overwrite an installed index."""
+        mf, _ = self.address_manifest()
+        azores, _ = self.add_index(mf, 'PT-20w', 'Azores')
+        self.add_index(mf, 'PT-20W', 'Azores')
+        self.assertIsNone(manifest.validate(mf.current, ALLOWED))
+        twice = json.loads(json.dumps(mf.current))
+        twice['address_indexes'] = [twice['address_indexes'][0]] * 2
+        self.assertIsNone(manifest.validate(twice, ALLOWED))
+
+        listed = json.loads(json.dumps(mf.current))
+        bundled = {**listed, 'address_indexes': listed['address_indexes'][:2]}           # CA, PT-20w
+        fetched = {**listed, 'address_indexes': [listed['address_indexes'][0], listed['address_indexes'][2]]}   # CA, PT-20W
+        bundled, fetched = manifest.validate(bundled, ALLOWED), manifest.validate(fetched, ALLOWED)
+        merged = manifest.merge(bundled, fetched)
+        self.assertEqual([x['id'] for x in merged['address_indexes']], ['CA', 'PT-20w'])
+        self.assertEqual(merged['address_indexes'][1]['files'], bundled['address_indexes'][1]['files'])
+
+        mf.current = bundled
+        setup = self.setup(manifest=mf)
+        setup.start('small', address_id='PT-20w')
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, _ = api.startup(self.settings)
+        mf.current = merged
+        setup = self.setup('manage', current=library, manifest=mf)
+        self.assertEqual(setup.start(address_id='PT-20W')['code'], 'unavailable')
+        self.assertEqual((library / 'derived/geo/addresses/PT-20w.sqlite').read_bytes(), azores)
+        self.assertEqual(setup.current_info()['address_indexes'], ['PT-20w'])
+
     def test_address_index_ids_follow_the_shared_rule(self):
         """#31's rule: two capital letters, then optionally a hyphen and 1 to 48 letters, digits or underscores. One id
         outside it refuses the whole manifest, as before."""

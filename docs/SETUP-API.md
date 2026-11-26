@@ -251,6 +251,10 @@ An entry in the manifest's `address_indexes` has an `id` that matches `[A-Z]{2}(
 state (`CA`), or a country code and a region (`DE-BE`, `PT-20`, `ES-CT`), as proposed in #31. The id names the files:
 the index is `derived/geo/addresses/<id>.sqlite` and its receipt `<id>.json`. The rule has no dot and no slash, so a file
 named after an id stays in that folder. A manifest that lists any other address-index id is refused whole, as before.
+Letters after the hyphen may be lower case (`PT-20w`), so two ids can differ in case only. On a disk that ignores case
+(a Mac's, by default) they name the same files, so a manifest that lists both is refused whole too, and when a fetched
+manifest lists an index under other letters than the bundled one (`PT-20W` for `PT-20w`), the bundled one stays and
+the fetched one is left out.
 When setup switches to a new library, `install.carry_over` moves every `.sqlite` and `.json` in
 `derived/geo/addresses/` whose name before the suffix matches the rule, and leaves other files in the old library. The
 rule is one constant, `ADDRESS_INDEX_ID` in `engine/setup/manifest.py`, which both use.

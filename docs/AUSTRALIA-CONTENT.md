@@ -1,9 +1,13 @@
 # Australian public reference supplement
 
-PR89 contains 125 public readings (100 official practical sources, 16 rights readings
+This follow-up contains127 public readings (102 official practical sources,16 rights readings
 and nine original records), public guide links and the shared reader-file availability
 fix. Personal/nonprofit source workflows and their guide links are separate follow-ups.
 Their originals, extracted text and indexes are not in this supplement.
+
+Two additional complete NSW Health water-alert/header-tank articles are described
+in [the water-alert source review](AUSTRALIA-WATER-ALERTS.md). PR89 remains the
+reviewed125-record dependency; this separate follow-up adds the two sources.
 
 ## Build and open offline
 
@@ -17,7 +21,7 @@ reviewed snapshots and the standard library; it makes no network request. Choose
 new directory. The data-only download cannot update guide JSON bundled in an older
 app. To retain an existing library, use the separate [public composition command](AUSTRALIA-COMPOSE.md).
 
-[Public 125-reading review download](https://github.com/pilkster/lastbook/releases/tag/australia-community-planning-review-2026-11-27).
+[Previous125-reading review download](https://github.com/pilkster/lastbook/releases/tag/australia-community-planning-review-2026-11-27).
 Existing release assets and historical tags are unchanged by this review split.
 
 ## Source scope and reuse

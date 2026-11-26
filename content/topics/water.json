@@ -96,6 +96,16 @@
      "page": 2,
      "label": "WHO: boiling, chlorine, and their limits",
      "note": "WHO emergency technical note (2013) on boiling and chemical disinfection; notes some parasites such as cryptosporidium resist chlorine."
+    },
+    {
+     "doc": "nsw-boil-water-alert",
+     "label": "NSW: what to do during a boil water alert",
+     "note": "NSW Health; source 2025-05-23. Utility-issued alert context, full source conditions and regional limits remain. This offline copy is not a current alert."
+    },
+    {
+     "doc": "nsw-water-header-tanks",
+     "label": "NSW: header tanks when a boil water alert is lifted",
+     "note": "NSW Health; source 21 March 2022. Building-owner/manager precautions after an alert is lifted; cleaning-history distinction and source flushing steps retained. The referenced plumbing standard is not bundled; no actual tank approval."
     }
    ]
   },

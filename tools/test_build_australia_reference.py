@@ -16,6 +16,20 @@ spec = importlib.util.spec_from_file_location('au_builder', TOOL)
 au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
+def before_water_alert_extension(guide):
+    """Keep historical source-increment audits scoped to their dated guides."""
+    uids = {'nsw-boil-water-alert', 'nsw-water-header-tanks'}
+    if 'choices' in guide:
+        guide['choices'] = [c for c in guide['choices'] if c['id'] != 'water-alerts']
+    for choice in guide.get('choices', []):
+        if 'read' in choice:
+            choice['read'] = [ref for ref in choice['read'] if ref.get('doc') not in uids]
+    for key in ['prepare', 'learn']:
+        if key in guide:
+            guide[key] = [ref for ref in guide[key] if ref.get('doc') not in uids]
+    return guide
+
+
 class Reference(unittest.TestCase):
     def test_built_guides_follow_moved_sources_with_catalogue_left_intact(self):
         import server
@@ -160,7 +174,7 @@ class Reference(unittest.TestCase):
         guides = {g: json.loads((au.ROOT / 'content/topics' / (g + '.json')).read_text()) for g in audit['baseline_guides']}
         self.assertEqual(len(audit['guide_placements']), 10)
         for gid, original in guides.items():
-            guide = copy.deepcopy(original)
+            guide = before_water_alert_extension(copy.deepcopy(original))
             # Compare the historical bat increment after removing the later,
             # separately audited community-planning addition.
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
@@ -210,6 +224,7 @@ class Reference(unittest.TestCase):
         self.assertEqual(audit['counts'], {'guides': 7, 'choices': 25, 'references': 40})
         for gid, digest in audit['baseline_topic_sha256'].items():
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text())
+            guide = before_water_alert_extension(guide)
             for choice in guide['choices']:
                 added = [p for p in audit['placements'] if p['guide'] == gid and p['choice'] == choice['id']]
                 self.assertEqual(choice.get('read', [])[:len(added)], [p['reference'] for p in added])
@@ -354,6 +369,7 @@ class Reference(unittest.TestCase):
         self.assertEqual(earthquake['earthquake_number_action_pairs'], [['1', 'انخفض!'], ['2', 'احتمِ!'], ['3', 'تمسّك!']])
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'arabic-hazards')
             self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
             for key in ['prepare', 'learn']:
@@ -393,6 +409,7 @@ class Reference(unittest.TestCase):
             self.assertIn(condition, tas)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             for cid, uid, hazards in [('wa-planning', 'au-wa-local-plan', ['cyclones','floods','bushfires']),
                                      ('tas-planning', 'au-tas-local-plan', ['floods','storms','bushfires'])]:
                 choice = next(c for c in guide['choices'] if c['id'] == cid)
@@ -462,6 +479,7 @@ class Reference(unittest.TestCase):
             self.assertIn(re.sub(r'\s+', '', condition), emergency)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'food-safety')
             self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
             for key in ['prepare', 'learn']:
@@ -484,6 +502,7 @@ class Reference(unittest.TestCase):
         expected = {'au-nt-local-plan','au-getready-cyclones','au-getready-floods','au-getready-bushfires'}
         for gid in ['au-household','au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'nt-planning')
             self.assertEqual({r['doc'] for r in choice['read']}, expected)
             for key in ['prepare','learn']:
@@ -529,6 +548,7 @@ class Reference(unittest.TestCase):
         self.assertIn('若無法撤離，請前往堅固建築物頂層，該處需高於海平面至少十公尺。', bodies['au-getready-traditional-chinese-tsunamis'])
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             for script in ['simplified', 'traditional']:
                 choice = next(c for c in guide['choices'] if c['id'] == script + '-chinese-hazards')
                 expected = {uid for uid in bodies if script + '-chinese-' in uid}
@@ -577,6 +597,7 @@ class Reference(unittest.TestCase):
             self.assertNotIn(excluded, selected)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'road-recovery')
             self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
             for key in ['prepare', 'learn']:
@@ -672,6 +693,7 @@ class Reference(unittest.TestCase):
         self.assertIn('Meke sur', by_id['qld-yumplatok-cyclones-poster']['complete_source_text'])
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             for cid, language in [('yumplatok-posters', 'tcs'), ('wik-mungkan-posters', 'wim')]:
                 choice = next(c for c in guide['choices'] if c['id'] == cid)
                 self.assertEqual({r['doc'] for r in choice['read']},
@@ -712,6 +734,7 @@ class Reference(unittest.TestCase):
             self.assertIn(text, beacon)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'planning-tools')
             self.assertEqual({r['doc'] for r in choice['read']}, ids)
             for key in ['prepare', 'learn']:
@@ -1067,6 +1090,7 @@ class Reference(unittest.TestCase):
         uid = audit['id']
         for gid, digest in audit['baseline_guides'].items():
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_water_alert_extension(guide)
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
             for key in ['prepare', 'learn']:
                 guide[key] = [r for r in guide[key] if r.get('doc') != uid]

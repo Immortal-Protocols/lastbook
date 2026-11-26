@@ -1,6 +1,6 @@
 {
-  "version": 23,
-  "id": "au-reference-community-planning-2026-11-27",
+  "version": 24,
+  "id": "au-reference-water-alerts-2026-11-27",
   "checked": "2026-11-27",
   "sources": [
     {
@@ -498,8 +498,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "0d2bc9632f0005eeac54ef8c9d7a21b3dd40aecb398d921997b47e0330f90f52",
-      "bytes": 22210,
+      "sha256": "ed70636bfb57e608805d1c092096e30f6cbe2b92c8cb5403d055e6b2e358d92f",
+      "bytes": 22593,
       "snapshot": "sources/au-reference.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-27. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
@@ -3009,6 +3009,54 @@
       "bytes": 5906,
       "snapshot": "sources/nsw-aboriginal-planning.html",
       "notes": "Complete dated NSW Health overview; Aboriginal-led planning, self-determination, governance and formal partnerships retained. Linked guidelines and AH&MRC resources excluded; not a local community plan or community endorsement."
+    },
+    {
+      "id": "nsw-boil-water-alert",
+      "title": "NSW: what to do during a boil water alert",
+      "kind": "html",
+      "publisher": "NSW Ministry of Health, State of New South Wales",
+      "jurisdiction": "New South Wales",
+      "category": "water",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/nsw-boil-water-alert.html",
+      "source_url": "https://www.health.nsw.gov.au/environment/water/Pages/bwa-what-to-do.aspx",
+      "final_url": "https://www.health.nsw.gov.au/environment/water/Pages/bwa-what-to-do.aspx",
+      "retrieved_at": "2026-11-27",
+      "source_updated": "2025-05-23",
+      "edition": "Source current as at Friday 23 May 2025",
+      "year": 2025,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "raw_sha256": "4174abb43da46eb22ce91638cb96fe6fd290487f4d635db0ae650a6858554fde",
+      "sha256": "6b86564205c1a750937ae21e84a827d4baf24995c3ca72156685f9e70c476d5c",
+      "bytes": 4213,
+      "snapshot": "sources/nsw-boil-water-alert.html",
+      "notes": "Dated NSW Health guidance for a water-utility-issued boil water alert; not a notice that an alert currently exists or has been lifted. Follow the relevant water supplier and local public-health advice. The complete source method retains product strength, water condition, temperature, waiting times and scalding precautions. Do not combine quantities or timings from different source methods. The separate non-potable-water reading distinguishes boil-water and do-not-drink advice. No independent water-safety assessment or clinical review is claimed."
+    },
+    {
+      "id": "nsw-water-header-tanks",
+      "title": "NSW: header tanks when a boil water alert is lifted",
+      "kind": "html",
+      "publisher": "NSW Ministry of Health, State of New South Wales",
+      "jurisdiction": "New South Wales",
+      "category": "water",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/nsw-water-header-tanks.html",
+      "source_url": "https://www.health.nsw.gov.au/environment/water/Pages/watertanks.aspx",
+      "final_url": "https://www.health.nsw.gov.au/environment/water/Pages/watertanks.aspx",
+      "retrieved_at": "2026-11-27",
+      "source_updated": "2022-03-21",
+      "edition": "Source current as at Monday 21 March 2022",
+      "year": 2022,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "raw_sha256": "3ec015b917be45b4177412ff7f021afa757c7994a858c5e575537709205660c9",
+      "sha256": "7617539bc05036708458373a659d182f0f0530ad5f1f5c6ec65826df91620647",
+      "bytes": 4366,
+      "snapshot": "sources/nsw-water-header-tanks.html",
+      "notes": "Dated NSW Health guidance for a water-utility-issued boil water alert; not a notice that an alert currently exists or has been lifted. Follow the relevant water supplier and local public-health advice. The complete source method retains product strength, water condition, temperature, waiting times and scalding precautions. Do not combine quantities or timings from different source methods. The separate non-potable-water reading distinguishes boil-water and do-not-drink advice. No independent water-safety assessment or clinical review is claimed. This 2022 source addresses building owners/managers and distinguishes recent tank cleaning from other cases. Its named plumbing standard is not included or checked as a current edition; this reading does not approve a tank or plumbing system."
     }
   ]
 }

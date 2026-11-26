@@ -17,6 +17,55 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_smoke_and_wastewater_readings_keep_full_conditions_and_equal_access(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'SMOKE-SANITATION-SOURCE-AUDIT-20261127.json').read_text())
+        def plain(html):
+            page = au.Page(); page.feed(html); page.close()
+            return re.sub(r'\s+', '', ''.join(page.text))
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['id']; record = entries[uid]
+            html = (au.SOURCES / record['snapshot']).read_text()
+            body = html.split('<hr>', 1)[1].split('</body>', 1)[0]
+            self.assertEqual(plain(body), re.sub(r'\s+', '', ''.join(b['source_text'] for b in selection['blocks'])))
+            self.assertEqual(record['raw_sha256'], selection['raw']['raw_sha256'])
+            self.assertEqual(record['source_updated'], selection['source_updated'])
+            self.assertEqual(record['license'], 'CC-BY-4.0')
+            self.assertIn('/pages/au/nsw-health-copyright.html', html)
+            bodies[uid] = body
+        protection = plain(bodies['nsw-smoke-protection'])
+        for condition in ['open them when air quality improves', 'do not use evaporative coolers',
+                          'small, well-sealed areas', 'Surgical and cloth masks do not protect you from smoke.',
+                          'trouble breathing or chest pain or tightness', '1800 633 422']:
+            self.assertIn(re.sub(r'\s+', '', condition), protection)
+        mask = plain(bodies['nsw-p2-n95-masks'])
+        for condition in ['Speak to your doctor before wearing one.',
+                          'remove the mask and go indoors or to a place where there is better air quality.',
+                          'not designed to fit the smaller face of children', 'It becomes moist',
+                          'It becomes hard to breathe through', 'replaced after each use']:
+            self.assertIn(re.sub(r'\s+', '', condition), mask)
+        high = bodies['nsw-smoke-higher-risk']
+        pairs = re.findall(r'<h3>(.*?)</h3>(.*?)(?=<h3>|<h2>)', high, re.S)
+        self.assertEqual(len(pairs), 5)
+        self.assertEqual([[plain(q), plain(a)] for q,a in pairs],
+                         [[re.sub(r'\s+', '', v) for v in row] for row in audit['higher_risk_faq']])
+        wastewater = plain(bodies['nsw-flooded-wastewater'])
+        for condition in ['do not use any toilets, laundry, kitchen, bathroom or clean-up equipment',
+                          'inspected and approved for use by the local council',
+                          'provided the tank is not damaged', 'do not use the system until it is repaired or replaced',
+                          'only leave the tank empty for a short time',
+                          'Reduce water use as much as possible until the system is inspected and repaired',
+                          'If possible avoid using automatic clothes washers and dishwashers']:
+            self.assertIn(re.sub(r'\s+', '', condition), wastewater)
+        self.assertIn('<ul>', bodies['nsw-flooded-wastewater'].split('Reduce water use',1)[1].split('</li>\n</ul>',1)[0])
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text())
+            choice = next(c for c in guide['choices'] if c['id'] == 'smoke-sanitation')
+            self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
+            for key in ['prepare','learn']:
+                self.assertTrue(set(bodies) <= {r.get('doc') for r in guide[key]})
+
     def test_arabic_factsheets_keep_source_order_conditions_and_equal_guide_access(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'ARABIC-HAZARDS-SOURCE-AUDIT-20261127.json').read_text(encoding='utf-8'))

@@ -115,7 +115,13 @@
     "الفيضانات",
     "الزلازل",
     "موجات الحر",
-    "التسونامي"
+    "التسونامي",
+    "smoke",
+    "P2",
+    "N95",
+    "septic",
+    "AWTS",
+    "wastewater"
   ],
   "choices": [
     {
@@ -218,6 +224,33 @@
           "doc": "au-getready-bushfires",
           "label": "National bushfire preparedness factsheet",
           "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        }
+      ]
+    },
+    {
+      "id": "smoke-sanitation",
+      "label": "Reduce smoke exposure or check a flooded septic system",
+      "hint": "NSW Health source readings cover higher-risk groups, P2/N95 limitations and wastewater assessment conditions.",
+      "read": [
+        {
+          "doc": "nsw-smoke-protection",
+          "label": "NSW: protect yourself from bushfire smoke",
+          "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+        },
+        {
+          "doc": "nsw-smoke-higher-risk",
+          "label": "NSW: higher risk from bushfire smoke",
+          "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+        },
+        {
+          "doc": "nsw-p2-n95-masks",
+          "label": "NSW: P2/N95 masks, fit and limitations",
+          "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+        },
+        {
+          "doc": "nsw-flooded-wastewater",
+          "label": "NSW: flooded septic and on-site wastewater systems",
+          "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
         }
       ]
     },
@@ -1269,6 +1302,26 @@
       "doc": "au-getready-arabic-tsunamis",
       "label": "التسونامي — Arabic / tsunamis preparedness",
       "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "nsw-smoke-protection",
+      "label": "NSW: protect yourself from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-smoke-higher-risk",
+      "label": "NSW: higher risk from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-p2-n95-masks",
+      "label": "NSW: P2/N95 masks, fit and limitations",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-flooded-wastewater",
+      "label": "NSW: flooded septic and on-site wastewater systems",
+      "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
     }
   ],
   "learn": [
@@ -1711,6 +1764,26 @@
       "doc": "au-getready-arabic-tsunamis",
       "label": "التسونامي — Arabic / tsunamis preparedness",
       "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "nsw-smoke-protection",
+      "label": "NSW: protect yourself from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-smoke-higher-risk",
+      "label": "NSW: higher risk from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-p2-n95-masks",
+      "label": "NSW: P2/N95 masks, fit and limitations",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-flooded-wastewater",
+      "label": "NSW: flooded septic and on-site wastewater systems",
+      "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
     }
   ],
   "related": [

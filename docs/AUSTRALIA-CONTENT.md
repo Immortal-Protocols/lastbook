@@ -4,9 +4,27 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Smoke health and flooded wastewater — 27 November 2026
+
+Four additional NSW Health readings cover smoke exposure reduction, higher-risk
+groups (all five expanded FAQ answers), P2/N95 mask suitability and flooded septic
+or on-site wastewater systems. Both household and rural guides have the same four
+readings in a choice and their prepare/learn lists. Smoke sources are dated
+17 March 2025; wastewater is dated 4 April 2023. Live air quality, warnings,
+third-party resources and actual system approval are outside this offline copy.
+
+All selected written blocks compare before/after technical HTML simplification.
+The source-specific audit retains exact URLs, raw hashes, dates, text, and the
+individually checked copyright links. NSW Health's current policy body matches the
+already bundled full CC BY 4.0 notice; its exceptions and separate permission
+paragraph remain. Images, video, branding, third-party files and linked pages are
+excluded. Source wording, nested water-use list, professional/council approval and
+undamaged holding-tank conditions remain. No independent clinical or engineering
+review is claimed.
+
 ## Included
 
-- 94 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 98 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -31,7 +49,7 @@ and remaining work are recorded below so missing information is visible.
   plus one original Northern Territory local planning worksheet:
   plus three complete FSANZ consumer food-safety readings and a rights/disclaimer record:
   plus two original Western Australian and Tasmanian local planning readings:
-  **117 searchable HTML records** altogether. Four remote entries provide management
+  **121 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory

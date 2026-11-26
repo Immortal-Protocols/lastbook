@@ -1,6 +1,8 @@
 """Hard-coded UI chrome should not regress: every user-visible string is catalogued."""
-import sys
 import re
+import shutil
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -88,6 +90,14 @@ class Coverage(unittest.TestCase):
     def test_dynamic_chat_action_selector_is_technical(self):
         selector = '#{…} [data-act="{…}"]'
         self.assertEqual(scan.classify(selector, 'document.querySelector(', ''), 'technical')
+
+    def test_map_view_script_parses_without_duplicate_declarations(self):
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('requires Node.js to check browser JavaScript syntax')
+        result = subprocess.run([node, '--check', str(ROOT / 'web' / 'map.js')],
+                                capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_scanner_classifies_command_examples_native_keys_and_attribution(self):
         self.assertEqual(scan.classify('server.py --lan', "command: ", ""), 'technical')

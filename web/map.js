@@ -88,9 +88,6 @@ const MapView = (() => {
   const x2lon = (x, z) => x / 2 ** z * 360 - 180;
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const markName = mark => mark?.nameKey ? tr(mark.nameKey, mark.nameParams || null, mark.nameFallback || '') : (mark?.name || '');
-  const markNameHtml = mark => mark?.nameKey ? tHtml(mark.nameKey, mark.nameParams || null, mark.nameFallback || '') : escH(mark?.name || '');
-  const markKindHtml = mark => mark?.kindKey ? tHtml(mark.kindKey, mark.kindParams || null, mark.kindFallback || '') : mark?.kind ? escH(mark.kind) : tHtml('map.place', null, 'Place');
   const $ = id => document.getElementById(id);
   const message = (key, params, fallback) => {
     const result = globalThis.LastbookI18n?.resolve?.(key, params);

@@ -28,17 +28,18 @@
 <meta name="twitter:image:alt" content="Lastbook — Everything you need to survive and rebuild society.">
 <link rel="preload" href="/fonts/Nunito-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css?v=cac0405468">
-<link rel="stylesheet" href="/community.css?v=2a361390ed">
+<link rel="stylesheet" href="/community.css?v=680c0c4ea8">
 <script src="/os.js?v=940e747a6e"></script>
 <script src="/crowd.js?v=8c85170b37" defer></script>
 <script src="/community-carousel.js?v=c69d962c60" defer></script>
+<script src="/updates-signup.js?v=f040b49a4f" defer></script>
 </head>
 <body class="community-home">
 <svg class="defs" aria-hidden="true" focusable="false" width="0" height="0"><filter id="rough" x="-3%" y="-8%" width="106%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="2.2" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="rough-line" x="-2%" y="-2%" width="104%" height="104%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar bar-over">
   <div class="bar-in">
-    <a class="brand" href="/"><img src="/img/ink/mark.svg" alt="" width="36" height="36"><span>Lastbook</span></a>
+    <a class="brand" href="/"><img src="/img/icon-192.png" alt="" width="36" height="36"><span>Lastbook</span></a>
     <nav class="nav community-nav" aria-label="Main">
       <a href="/download/">Download</a>
       <a href="/community/">Community</a>
@@ -553,6 +554,22 @@
       </article>
       </div>
     </div>
+
+    <section class="updates-signup" id="updates" aria-labelledby="updates-h">
+      <div class="updates-copy">
+        <h2 id="updates-h">Stay up to date</h2>
+        <p>New releases and what the community built.</p>
+      </div>
+      <form class="updates-form" action="/updates/subscribe" method="post" hidden>
+        <label class="updates-label" for="updates-email">Email address</label>
+        <div class="updates-fields">
+          <input id="updates-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+          <button class="btn" type="submit">Subscribe</button>
+        </div>
+        <p class="updates-note">Unsubscribe anytime. <a href="/privacy/#email-updates">Privacy</a></p>
+        <p class="updates-note" role="status"></p>
+      </form>
+    </section>
   </div>
 </section>
 
@@ -642,6 +659,21 @@
 </main>
 <footer class="foot">
   <div class="wrap">
+    <section class="updates-signup updates-signup-footer" id="footer-updates" aria-labelledby="footer-updates-h">
+      <div class="updates-copy">
+        <h2 id="footer-updates-h">Stay up to date</h2>
+        <p>New releases and what the community built.</p>
+      </div>
+      <form class="updates-form" action="/updates/subscribe" method="post" hidden>
+        <label class="updates-label" for="footer-updates-email">Email address</label>
+        <div class="updates-fields">
+          <input id="footer-updates-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+          <button class="btn" type="submit">Subscribe</button>
+        </div>
+        <p class="updates-note">Unsubscribe anytime. <a href="/privacy/#email-updates">Privacy</a></p>
+        <p class="updates-note" role="status"></p>
+      </form>
+    </section>
     <p class="foot-warn"><img src="/img/ink/d-bang-red.svg" alt="" width="30" height="30"><span><strong>Not clinically reviewed.</strong> Lastbook doesn’t replace trained care. In an emergency, call 911 if you can.</span></p>
     <p class="foot-links">
       <a href="/community/">Community</a>

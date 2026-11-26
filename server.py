@@ -215,12 +215,22 @@ def doc_here(doc):
     Developer libraries may explicitly store their videos on another machine.
     """
     record = catalog()['by_id'].get(doc)
-    if not record or not record.get('path'):
+    if not record or not isinstance(record.get('path'), str):
         return False
-    if record.get('kind') == 'video' and record['path'] in remote_records():
+    path = record['path']
+    request_path = '/' + path
+    # Match the reader's library URL scope and decoded-path checks before its
+    # shared on-disk policy. Catalogue paths are filenames, not URLs to unquote.
+    if (not request_path.startswith(Handler.LIBRARY_PREFIXES) or '\0' in path
+            or '/..' in request_path or '\\' in path or not library.segments_ok(request_path)):
+        return False
+    file = LIB / path
+    if not library.library_file_ok(LIB, file, folders=True, served_only=Handler.SERVED_ONLY):
+        return False
+    if record.get('kind') == 'video' and path in remote_records():
         return True
     try:
-        return (LIB / record['path']).is_file()
+        return file.is_file()
     except (OSError, ValueError):
         return False
 

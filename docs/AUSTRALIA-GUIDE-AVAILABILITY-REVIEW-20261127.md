@@ -44,3 +44,21 @@ failures. All 73 focused source/availability/personal/composition checks passed
 on development Python 3.14 and the app-build Python 3.11.18. The separate native
 reader patch passed all 204 bridge tests on both interpreters. No source corpus
 or data archive bytes changed for this availability repair.
+
+## Shared reader path policy
+
+The follow-up review found that an existing catalogue path could still be offered
+when the reader would refuse it. The reader's on-disk checks now live in
+`engine.library.library_file_ok`; the reader method delegates to that same
+function and guide availability uses it with the reader's served-folder policy.
+The reader's existing file policy is preserved, including hard-link refusal and
+checks on requested and resolved paths. Guide paths also stay within the reader's
+library URL scope; explicit remote-video records do not bypass these checks.
+
+A filesystem control exercises the actual reader's path/translation methods and
+resolved guides together. It verifies ordinary files, an allowed internal link
+and an explicitly served external folder, then refuses escaping/hidden links,
+hard links, root tools, hidden folders, cookie/auth metadata, parent traversal and
+missing files. Refused sources disappear from ordinary readings and required
+regional guides while source-free warning text remains. The regional fixture now
+uses files under pages/, where the reader can actually open them.

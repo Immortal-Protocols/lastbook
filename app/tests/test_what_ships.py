@@ -104,7 +104,8 @@ class Guides(unittest.TestCase):
                  'intro': 'A regional introduction', 'limits': [{'text': 'A regional limit'}]}
         with tempfile.TemporaryDirectory() as d, patch.object(server, 'LIB', Path(d)), \
              patch.object(server, 'topics', return_value=[topic]):
-            records = {name: {'path': name + '.html'} for name in ('source-a', 'source-b')}
+            (Path(d) / 'pages').mkdir()
+            records = {name: {'path': 'pages/' + name + '.html'} for name in ('source-a', 'source-b')}
             for name in records:
                 (Path(d) / records[name]['path']).write_text('Source', encoding='utf-8')
             for ids in ([], ['source-a']):
@@ -120,6 +121,52 @@ class Guides(unittest.TestCase):
         with patch.object(server, 'catalog', return_value={'by_id': {'remote': record}}), \
              patch.object(server, 'remote_records', return_value={record['path']: {'host': 'configured'}}):
             self.assertTrue(server.item_here({'doc': 'remote'}, []))
+
+    def test_guides_hide_paths_the_reader_refuses_and_keep_allowed_links(self):
+        import urllib.parse
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); lib = root / 'library'; lib.mkdir()
+            for name in ('pages', 'documents', 'tools', 'pages/.hidden', 'metadata/videos'):
+                (lib / name).mkdir(parents=True, exist_ok=True)
+            outside = root / 'outside.html'; outside.write_text('<p>Outside the library</p>')
+            for rel in ('pages/ordinary.html', 'documents/ordinary.html', 'tools/private.html',
+                        'pages/.hidden/article.html', 'pages/private-cookie.html', 'metadata/videos/source.info.json'):
+                (lib / rel).write_text('<p>Fixture reading</p>')
+            (lib / 'pages/escape.html').symlink_to(outside)
+            (lib / 'pages/allowed-link.html').symlink_to(lib / 'documents/ordinary.html')
+            (lib / 'pages/hidden-link.html').symlink_to(lib / 'pages/.hidden/article.html')
+            hard_target = root / 'hard-target.html'; hard_target.write_text('<p>Hard-link target</p>')
+            (lib / 'pages/hardlink.html').hardlink_to(hard_target)
+            external = root / 'external'; external.mkdir()
+            (external / 'saved.html').write_text('<p>Explicitly served external folder</p>')
+            (lib / 'videos-external').symlink_to(external, target_is_directory=True)
+            reader = object.__new__(server.Handler)
+            reader.directory = str(lib)
+            cases = [('pages/ordinary.html', True), ('pages/allowed-link.html', True),
+                     ('videos-external/saved.html', True), ('pages/escape.html', False),
+                     ('pages/hidden-link.html', False),
+                     ('pages/hardlink.html', False), ('tools/private.html', False),
+                     ('pages/.hidden/article.html', False), ('pages/private-cookie.html', False),
+                     ('metadata/videos/source.info.json', False), ('pages/../documents/ordinary.html', False),
+                     ('pages/missing.html', False)]
+            for path, expected in cases:
+                record = dict(id='reading', kind='html', title='Fixture reading', path=path)
+                topics = [{'id': 'regional', 'requires_docs': ['reading'], 'learn': [{'doc': 'reading'}]},
+                          {'id': 'ordinary', 'learn': [{'doc': 'reading'}],
+                           'limits': [{'text': 'Retain this warning', 'doc': 'reading'}]}]
+                cat = {'by_id': {'reading': record}}
+                with self.subTest(path=path), patch.object(server, 'LIB', lib), patch.object(server.library, 'ROOT', lib), \
+                     patch.object(server, 'catalog', return_value=cat), patch.object(server, 'topics', return_value=topics):
+                    reader.path = '/' + urllib.parse.quote(path, safe='/')
+                    translated = reader.translate_path(reader.path)
+                    reader_accepts = reader.path_ok(urllib.parse.unquote(urllib.parse.urlsplit(reader.path).path)) and Path(translated).is_file()
+                    self.assertEqual(reader_accepts, expected)
+                    self.assertEqual(server.doc_here('reading'), expected)
+                    resolved = {t['id']: t for t in server.topics_resolved()}
+                    self.assertEqual('regional' in resolved, expected)
+                    self.assertEqual(bool(resolved['ordinary']['learn']), expected)
+                    self.assertEqual(resolved['ordinary']['limits'][0]['text'], 'Retain this warning')
+                    self.assertEqual('doc' in resolved['ordinary']['limits'][0], expected)
 
     def test_not_a_pack_offers_everything(self):
         self.assertIsNone(server.pack_info())

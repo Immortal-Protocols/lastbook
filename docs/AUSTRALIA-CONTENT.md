@@ -1393,3 +1393,28 @@ Matching-runtime document-language speech requires an installed local voice; no
 voice download,independent audio/pronunciation/accessibility/community or clinical
 review is claimed. These static readings do not establish local warnings,routes,
 services,shelters or adequate supplies for any individual trip/person.
+
+
+Arabic release verification: **862 contribution/build and934 combined-source tests
+pass**,each5skips/11upstream expected failures.21source,10document-language,8speech
+tests pass. Actual public117/private438 engine checks forbid sockets and verify
+seven Arabic reader searches,highlighted snippets,scoped assistant retrieval and
+libq. Both guides retain all earlier choices. All597 private AU references resolve:
+279 household,284 rural,13health,21personal;zero errors.
+
+Installed frozen source`da6961948b0d3e8a68afb5156ba0c460ff1ffdd2` passes packaging,
+i18n,privacy,strict signature and438/7 outbound-IP-denial self-check. All124 AU
+hashes,42personalFTS,Victoria3054names/map hashes and exact infant video remain.
+Full prior431 app/data rollback copies retained;vendor/original library separate.
+Native checks open all7 source panels;selected screenshots inspect RTL,earthquake
+action pairs,heatstroke response/consciousness condition,tsunami departure/
+conditional height,131450/000 and English note direction. Plaintext,Arabic search
+to matching floods reader,Ask/Back and both guide choices pass. No Arabic playback
+or pronunciation test is claimed;no all-reader/every-browser/professional approval.
+
+[117-record Arabic review](https://github.com/pilkster/lastbook/releases/tag/australia-arabic-hazards-review-2026-11-27):
+ZIP1450185bytes,SHA256`1c24694dc931214c400e5aa798a3807ed45dbc146280716b9bc9e68a45596e30`.
+CRC/inventory/extraction,117readerhashes,SQLite/FTS and privacy checks pass. Data
+only;matching updated runtime is needed for new guide choices and existing
+language/speech/Han/HTTP behavior. Extract into a new folder. Earlier releases
+unchanged;official Setup/maintainer acceptance remains pending.

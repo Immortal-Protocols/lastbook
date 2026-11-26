@@ -28,6 +28,46 @@ bytes and mtime unchanged. Missing links disappear, the three public regional
 guides hide, ordinary warning text remains, and restoration is immediate. Existing
 explicit remote-video storage keeps its established availability semantics.
 
+## Optional expanded personal first-aid originals — 27 November 2026
+
+The public collection remains **125 readings**. A new explicit
+`--collection bls-first-aid` option selects35unchanged ANZCOR originals/263pages,
+covering the7Basic Life Support and28First Aid entries on the checked indexes.
+The original six-source default,its metadata and original PDF hashes are unchanged.
+No PDF,extracted source body or private index is included in public source/assets.
+Five conditional personal-guide groups add87references;the original5choices remain.
+Actual-file checks hide missing additions without altering the basic routes.
+
+Both the separate-library builder and out-of-place full-library composer accept
+the selection,using an explicit cache or download choice. Existing output and
+personal-ID/path collision rules remain;this is not an updater for an earlier
+personal copy. From the retained original,the full workflow gives314+125+36=475
+records and264personal search units. See the
+[exact commands and restrictions](AUSTRALIA-PERSONAL-FIRST-AID.md).
+
+Source acquisition verified all six prior hashes still match. All263pages render
+and yield text;all35first pages and selected full pages were inspected,including
+a Poppler cross-render of the airway diagram. Original audiences,training conditions,
+review dates,illustrations and external-reference limits remain in each PDF.
+The collection is not training or independent clinical approval.
+
+**872content/1,020combined checks pass**,each5skips/11upstream expected failures;
+**29focused checks pass on Python3.14and3.11.18**. Real CLI composition439→475,
+all35physical-page sequences,161AUreader hashes,search/snippets,scoped retrieval
+andlibq pass. All725AUguide refs resolve. Public pack selection excludes all35PDFs
+at every size,even when guides cite them. Actual default-build7reader files and
+its personal marker remain byte-identical to the previous installed basic set.
+
+The private installed upgrade preserves all12,875base/public search rows and all
+41default PDF-page rows,adds29PDFs,and replaces only the personal source-directory
+entry among existing search rows. Victoria’s3054names/map hashes and infant video
+hash are preserved. The personal marker retains its restrictions and updates the
+source list to35;the complete previous446app/library is retained. Native selected
+checks cover the new groups,bleeding,burnsPage3Text/Ask/Back,andAirwayPage9diagram,
+source date/footer andAsk/Back. Only one bundled guide asset changes;reader/map
+runtime and all125public data/archive bytes remain unchanged.
+[Exact validation scope](AUSTRALIA-PERSONAL-EXPANSION-REVIEW-20261127.json).
+
 ## Aboriginal-led public health planning in NSW — 27 November 2026
 
 The public collection now has **125 records: 100 official practical readings,

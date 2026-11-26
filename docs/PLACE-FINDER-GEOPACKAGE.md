@@ -78,6 +78,11 @@ combined Australian review app (`5c5e501`) also found Mildura in the broader
 Victorian extract, drew detailed streets and showed nearby places with metric
 distances. The other seven broader extracts retain engine/data checks rather
 than native-window checks. The earlier metro check covered East Melbourne.
+The current frozen combined app (`76ab539`) also found Ballarat and rendered its
+detailed Victorian streets with metric nearby distances. A corrected ACT map
+was checked natively for Canberra search and a city label at zoom 8; its source
+and the NSW correction retain the same 15 November snapshot. The other six
+broader extracts have engine/data checks only.
 [Review sidecars and per-source provenance](https://github.com/pilkster/lastbook/releases/tag/australia-state-maps-review-2026-11-17)
 remain separate from the existing four-file map ZIP contract. External-territory
 completeness and address/postcode search are not established by these builds.

@@ -2426,6 +2426,54 @@ class Switching(Base):
         self.assertIn(str(kept[0]), note['error'])                          # the person is told where the files are
         self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
 
+    def test_a_refused_switch_is_shown_in_library_and_local_ai(self):
+        """#311 left the old library opening again with nothing said, so a finished download looked as if it had never
+        happened. The refusal now reaches the Manage screen for this run, and a later start that switches clears it."""
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        install.stage_switch(pend, new, cur)
+        self.failed_switch_settings()
+        real = os.replace
+
+        def replace(a, b):
+            if Path(a) == cur:
+                raise PermissionError(13, 'in use')
+            return real(a, b)
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), mock.patch.object(install.os, 'replace', replace):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        shown = self.setup('manage', current=lib).current_info()['switch_problem']
+        self.assertEqual(shown['message'], note['error'])
+        self.assertIn('could not move the old library aside', shown['message'])
+        self.assertTrue(shown['again'])
+        lib, note = api.startup(self.settings)                       # the next start, with nothing holding the library
+        api.opened(self.settings, lib, note)
+        self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertIsNone(self.setup('manage', current=lib).current_info()['switch_problem'])
+
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_switch_note_words(self):
+        """setup.js's own switchNote: nothing when all went well, a plain line plus the engine's reason when not, and what
+        happens next only when Lastbook will try again."""
+        script = r"""
+const src = require('fs').readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const esc = s => String(s == null ? '' : s).replace(/</g, '&lt;'), ico = () => '';
+eval(section('  function switchNote(', '  function cloudNote('));
+console.log(JSON.stringify({none: switchNote({}), again: switchNote({switch_problem: {message: 'Could not move <it>.', again: true}}),
+                            given_up: switchNote({switch_problem: {message: 'Kept in X.', again: false}})}));
+"""
+        r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js')],
+                           check=True, capture_output=True, text=True, encoding='utf-8')
+        out = json.loads(r.stdout)
+        self.assertEqual(out['none'], '')
+        self.assertIn('What you downloaded is not in use yet.', out['again'])
+        self.assertIn('tries again the next time it opens', out['again'])
+        self.assertIn('Could not move &lt;it>.', out['again'])           # the engine's words, escaped
+        self.assertNotIn('tries again', out['given_up'])
+        self.assertIn('opened this library instead', out['given_up'])
+        self.assertIn('Kept in X.', out['given_up'])
+
     def test_ai_only_in_manage_mode(self):
         cur = self.lib(self.parent / 'LastbookData', '{}')
         (cur / 'pack.json').write_text('{"name": "small"}')

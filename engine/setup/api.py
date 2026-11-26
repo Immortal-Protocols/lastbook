@@ -407,6 +407,7 @@ class Setup:
                 model = m['id']
         return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', []),
                 'checked': self._settings().get('checks', {}).get(str(self.current)),   # the last full check of this library (Check now, Repair)
+                'switch_problem': SWITCH_PROBLEM,     # a downloaded library or map that this start could not put in place
                 **self._cloud_only()}
 
     def _cloud_only(self):
@@ -1863,8 +1864,14 @@ def _clear_work(work, s):
         s.pop('work', None)
 
 
+SWITCH_PROBLEM = None   # this run's: what startup could not put in place ({message, again}), shown in Library and local AI
+
+
 def opened(settings_dir, data, note):
-    """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder."""
+    """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder.
+    A switch that could not be made is kept in SWITCH_PROBLEM for this run, so the window can say so: without it the old
+    library just opens again, and a finished download looks as if it never happened (#311)."""
+    global SWITCH_PROBLEM
     settings_dir = Path(settings_dir)
     try:
         s = json.loads((settings_dir / 'setup.json').read_text(encoding='utf-8'))
@@ -1899,6 +1906,7 @@ def opened(settings_dir, data, note):
                 _job_file(settings_dir).unlink()
             except OSError:
                 pass
+    SWITCH_PROBLEM = {'message': str(note['error']), 'again': bool(note.get('again'))} if note and note.get('error') else None
     s['old'] = [o for o in s.get('old', []) if Path(o).exists()]
     try:
         settings_dir.mkdir(parents=True, exist_ok=True)

@@ -482,6 +482,17 @@
   }
 
   /* ---- manage */
+  /* What was downloaded before the restart could not be put in place (api.opened), so this library opened again. Without this
+     the screen offered the same download once more, as if the finished one had never happened (#311). */
+  function switchNote(c) {
+    const p = c.switch_problem;
+    if (!p || !p.message) return '';
+    return `<p class="s-short" role="alert">${ico('warn')}<span><b>What you downloaded is not in use yet.</b>
+      ${p.again ? 'Lastbook tries again the next time it opens. Close any window showing the library folder, then close Lastbook and open it again.'
+                : 'Lastbook opened this library instead.'}
+      <br><small>${esc(p.message)}</small></span></p>`;
+  }
+
   // #362: files of this library whose contents are only in iCloud do not open offline. The engine counts them from metadata alone.
   function cloudNote(c) {
     const k = c.cloud_only;
@@ -516,6 +527,7 @@
     const larger = packs().filter(x => (x.installed_bytes || 0) > ((p && p.installed_bytes) || 0));
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
+      ${switchNote(c)}
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>

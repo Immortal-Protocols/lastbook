@@ -45,7 +45,10 @@ class Reference(unittest.TestCase):
                                         ('"everyday tasks"', 'qld-inclusive-planning'),
                                         ('"continence aids"', 'qld-mobility-planning'),
                                         ('"tactile"', 'qld-vision-planning'),
-                                        ('"SMS Relay"', 'au-accessible-calls')]:
+                                        ('"SMS Relay"', 'au-accessible-calls'),
+                                        ('"Jervis Bay"', 'au-jurisdictions'),
+                                        ('"West Island Clinic"', 'au-jurisdictions'),
+                                        ('"Australian Antarctic Territory"', 'au-jurisdictions')]:
                     ids = {r[0] for r in db.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', (query,))}
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):
@@ -54,9 +57,40 @@ class Reference(unittest.TestCase):
                     self.assertEqual(au.digest((lib / path).read_bytes()), cat[uid]['sha256'])
             directory = json.loads((au.SOURCES / 'jurisdictions.json').read_text(encoding='utf-8'))
             self.assertEqual({r['id'] for r in directory['jurisdictions']},
-                             {'AU-ACT', 'AU-NSW', 'AU-NT', 'AU-QLD', 'AU-SA', 'AU-TAS', 'AU-VIC', 'AU-WA'})
+                             {'AU-ACT', 'AU-NSW', 'AU-NT', 'AU-QLD', 'AU-SA', 'AU-TAS', 'AU-VIC', 'AU-WA',
+                              'AU-JBT', 'AU-CX', 'AU-CC', 'AU-NF', 'AU-HM', 'AU-AC', 'AU-CSI', 'AU-AAT'})
             self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
             self.assertEqual(cat['vic-generator']['license'], 'CC-BY-4.0')
+
+    def test_territory_directory_preserves_service_scope_dates_and_contact_associations(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        source = (au.SOURCES / entries['au-jurisdictions']['snapshot']).read_text(encoding='utf-8')
+        directory = json.loads((au.SOURCES / 'jurisdictions.json').read_text(encoding='utf-8'))
+        regions = {r['id']: r for r in directory['jurisdictions']}
+        parts = re.split(r'<h3>(.*?)</h3>', source)
+        sections = dict(zip(parts[1::2], parts[2::2]))
+        self.assertEqual(len(sections), 16)
+        self.assertEqual(regions['AU-JBT']['classification'], 'internal-territory')
+        self.assertEqual(regions['AU-JBT']['source_published'], '2023-08-28')
+        self.assertEqual(regions['AU-JBT']['ses_storm_flood'], '132 500')
+        self.assertIn('<dd>132 500</dd>', sections['Jervis Bay Territory'])
+        self.assertIn('<dd>2023-08-28</dd>', sections['Jervis Bay Territory'])
+        for uid in ['AU-ACT','AU-NSW','AU-NT','AU-QLD','AU-SA','AU-TAS','AU-VIC','AU-WA']:
+            self.assertEqual(regions[uid]['checked'], '2026-11-17')
+        for uid in ['AU-CX','AU-CC','AU-NF']:
+            self.assertEqual(regions[uid]['life_threatening'], '000')
+            self.assertIsNone(regions[uid]['ses_storm_flood'])
+            self.assertNotIn('<dd>132 500</dd>', sections[regions[uid]['title']])
+        for uid in ['AU-HM','AU-AC','AU-CSI','AU-AAT']:
+            self.assertIsNone(regions[uid]['life_threatening'])
+            self.assertIsNone(regions[uid]['ses_storm_flood'])
+            self.assertNotIn('<dd>000</dd>', sections[regions[uid]['title']])
+        for title, label, phone in [('Christmas Island','Christmas Island Health Centre','08 9164 8333'),
+                                    ('Cocos (Keeling) Islands','West Island Clinic','08 9162 6655'),
+                                    ('Cocos (Keeling) Islands','Home Island Clinic','08 9162 7609')]:
+            self.assertIn('<dt>' + label + ' — health-service contact</dt><dd>' + phone + '</dd>', sections[title])
+        self.assertIn('Police emergency (official Cocos boating guide)', sections['Cocos (Keeling) Islands'])
+        self.assertEqual(entries['au-jurisdictions']['license'], 'CC-BY-4.0')
 
     def test_new_sources_keep_connector_questions_and_flatten_only_trip_controls(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}

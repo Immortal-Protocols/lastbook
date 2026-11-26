@@ -1,6 +1,6 @@
 {
-  "checked": "2026-11-17",
-  "scope": "Six states, ACT and Northern Territory. External territories need separate arrangements; do not infer that this directory covers them.",
+  "checked": "2026-11-26",
+  "scope": "Six states, three internal territories (ACT, NT and Jervis Bay) and seven external territories. The four remote management entries do not establish local emergency numbers or services.",
   "jurisdictions": [
     {
       "id": "AU-ACT",
@@ -9,7 +9,9 @@
       "warning_url": "https://www.esa.act.gov.au/be-emergency-ready/warnings-alerts",
       "contact_source": "https://www.esa.act.gov.au/contact-us",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "internal-territory",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-NSW",
@@ -18,7 +20,9 @@
       "warning_url": "https://www.ses.nsw.gov.au/",
       "contact_source": "https://www.nsw.gov.au/emergency/floods/prepare",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "state",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-NT",
@@ -27,7 +31,9 @@
       "warning_url": "https://securent.nt.gov.au/",
       "contact_source": "https://securent.nt.gov.au/emergency-contacts",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "internal-territory",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-QLD",
@@ -36,7 +42,9 @@
       "warning_url": "https://www.qld.gov.au/alerts",
       "contact_source": "https://www.qld.gov.au/emergency/dealing-disasters/prepare-for-disasters/prep-emergency-plan",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "state",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-SA",
@@ -45,7 +53,9 @@
       "warning_url": "https://alert.sa.gov.au/",
       "contact_source": "https://www.sa.gov.au/topics/emergencies-and-safety/emergency-phone-numbers",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "state",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-TAS",
@@ -54,7 +64,9 @@
       "warning_url": "https://alert.tas.gov.au/",
       "contact_source": "https://alert.tas.gov.au/emergency-contacts",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "state",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-VIC",
@@ -63,7 +75,9 @@
       "warning_url": "https://www.emergency.vic.gov.au/",
       "contact_source": "https://www.ses.vic.gov.au/",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "state",
+      "checked": "2026-11-17"
     },
     {
       "id": "AU-WA",
@@ -72,7 +86,131 @@
       "warning_url": "https://www.emergency.wa.gov.au/",
       "contact_source": "https://www.emergency.wa.gov.au/",
       "life_threatening": "000",
-      "ses_storm_flood": "132 500"
+      "ses_storm_flood": "132 500",
+      "classification": "state",
+      "checked": "2026-11-17"
+    },
+    {
+      "id": "AU-JBT",
+      "title": "Jervis Bay Territory",
+      "classification": "internal-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Government territory administration; NSW SES contact listed for Jervis Bay",
+      "reference_url": "https://www.infrastructure.gov.au/department/media/publications/202314-contacts-and-service-information-jervis-bay-territory-residents",
+      "life_threatening": "000",
+      "ses_storm_flood": "132 500",
+      "service_notes": "Jervis Bay is a distinct internal territory. The official resident contact list includes NSW SES for assistance. The list was published on 28 August 2023; retrieval in 2026 does not change that publication date.",
+      "source_published": "2023-08-28",
+      "emergency_service_scope": "Emergency calls"
+    },
+    {
+      "id": "AU-CX",
+      "title": "Christmas Island",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Government Indian Ocean Territories administration and Health Service",
+      "reference_url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/indian-ocean-territories/health-service",
+      "life_threatening": "000",
+      "ses_storm_flood": null,
+      "service_notes": "The official June 2024 emergency plan identifies 000 emergency calls and describes communications failures that can also disable them. The health-service page lists an emergency service operating 24 hours a day. Mobile reception does not cover every part of the island; the official travel page discusses personal locator beacons.",
+      "emergency_service_scope": "Emergency calls",
+      "health_contacts": [
+        {
+          "label": "Christmas Island Health Centre",
+          "phone": "08 9164 8333"
+        }
+      ],
+      "additional_sources": [
+        "christmas-emergency-plan",
+        "christmas-travel",
+        "iot-bulletins"
+      ]
+    },
+    {
+      "id": "AU-CC",
+      "title": "Cocos (Keeling) Islands",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Government Indian Ocean Territories administration and Health Service",
+      "reference_url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/indian-ocean-territories/health-service",
+      "life_threatening": "000",
+      "ses_storm_flood": null,
+      "service_notes": "The official February 2025 Cocos boating guide lists 000 for a police emergency. The health-service page lists an after-hours nurse on call, limited inpatient capacity and medical evacuation arrangements. These clinic contacts are distinct from the emergency number.",
+      "emergency_service_scope": "Police emergency (official Cocos boating guide)",
+      "health_contacts": [
+        {
+          "label": "West Island Clinic",
+          "phone": "08 9162 6655"
+        },
+        {
+          "label": "Home Island Clinic",
+          "phone": "08 9162 7609"
+        }
+      ],
+      "additional_sources": [
+        "cocos-boating-guide",
+        "iot-bulletins"
+      ]
+    },
+    {
+      "id": "AU-NF",
+      "title": "Norfolk Island",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Emergency Management Norfolk Island and Norfolk Island Regional Council",
+      "reference_url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/norfolk-island/governance-administration/government-services",
+      "life_threatening": "000",
+      "ses_storm_flood": null,
+      "service_notes": "The Australian Government service directory identifies Emergency Management Norfolk Island and lists 000 under fire and policing services. It does not establish mainland SES 132 500 arrangements for Norfolk Island.",
+      "emergency_service_scope": "Fire and police emergencies (official service directory)"
+    },
+    {
+      "id": "AU-HM",
+      "title": "Heard Island and McDonald Islands",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Antarctic Division",
+      "reference_url": "https://www.antarctica.gov.au/antarctic-operations/stations-and-field-locations/heard-island/protection-and-management/",
+      "life_threatening": null,
+      "ses_storm_flood": null,
+      "service_notes": "The Australian Antarctic Division manages activities in this remote territory. A named historic station on a map does not establish an occupied station or operating help point. This is an official management reference, not a verified local emergency contact or evidence of rescue availability. No local 000 or SES service arrangement has been established by this directory."
+    },
+    {
+      "id": "AU-AC",
+      "title": "Ashmore and Cartier Islands",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Government territory administration",
+      "reference_url": "https://www.infrastructure.gov.au/territories-regions/territories/ashmore-and-cartier-islands",
+      "life_threatening": null,
+      "ses_storm_flood": null,
+      "service_notes": "The official territory page describes the islands as uninhabited. It is an administrative reference, not a local service directory. This is an official management reference, not a verified local emergency contact or evidence of rescue availability. No local 000 or SES service arrangement has been established by this directory."
+    },
+    {
+      "id": "AU-CSI",
+      "title": "Coral Sea Islands",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Government territory administration",
+      "reference_url": "https://www.infrastructure.gov.au/territories-regions/territories/coral-sea-islands",
+      "life_threatening": null,
+      "ses_storm_flood": null,
+      "service_notes": "The official territory page identifies meteorological staff on Willis Island. A weather station or unmanned beacon on a map does not establish public emergency assistance. This is an official management reference, not a verified local emergency contact or evidence of rescue availability. No local 000 or SES service arrangement has been established by this directory."
+    },
+    {
+      "id": "AU-AAT",
+      "title": "Australian Antarctic Territory",
+      "classification": "external-territory",
+      "checked": "2026-11-26",
+      "reference_authority": "Australian Antarctic Division",
+      "reference_url": "https://www.antarctica.gov.au/about-antarctica/australia-in-antarctica/australian-antarctic-territory/",
+      "life_threatening": null,
+      "ses_storm_flood": null,
+      "service_notes": "The Australian Antarctic Division provides the official territory and research-station entry point. This is not an expedition operating plan, field communications procedure or Antarctic map. This is an official management reference, not a verified local emergency contact or evidence of rescue availability. No local 000 or SES service arrangement has been established by this directory.",
+      "source_updated": "2016-04-15"
     }
-  ]
+  ],
+  "version": 2,
+  "id_note": "Directory ids are stable local identifiers, not a claim of ISO subdivision status.",
+  "classification_source": "https://www.ga.gov.au/scientific-topics/national-location-information/geography/external-territories"
 }

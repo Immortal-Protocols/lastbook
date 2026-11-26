@@ -1,6 +1,6 @@
 {
-  "version": 6,
-  "id": "au-reference-accessibility-2026-11-26",
+  "version": 7,
+  "id": "au-reference-territory-directory-2026-11-26",
   "checked": "2026-11-26",
   "sources": [
     {
@@ -470,26 +470,26 @@
       "title": "Australian state and territory emergency information",
       "kind": "html",
       "publisher": "Lastbook contributors",
-      "jurisdiction": "Australia (six states, ACT and NT)",
+      "jurisdiction": "Australia (six states, three internal territories and seven external territories)",
       "category": "preparedness",
       "collection": "Australian emergency reference",
       "path": "pages/au/au-jurisdictions.html",
       "source_url": "",
-      "retrieved_at": "2026-11-17",
+      "retrieved_at": "2026-11-26",
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "0f3fb44b9949820f30d785beba72b2d651ea5d682e2e4ec3778e9bdcbacadd54",
-      "bytes": 3730,
+      "sha256": "cf0c3dd64e9a3f0d89fab42b4431fcc85f882ff03b7a28c5b9f12fe231d49680",
+      "bytes": 14168,
       "snapshot": "sources/au-jurisdictions.html",
-      "notes": "Original source directory and descriptions, checked 2026-11-17. Not a live warning service."
+      "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
     {
       "id": "au-reference",
       "title": "Australia: household, rural and remote emergency reference",
       "kind": "html",
       "publisher": "Lastbook contributors",
-      "jurisdiction": "Australia (six states, ACT and NT)",
+      "jurisdiction": "Australia (six states, three internal territories and seven external territories)",
       "category": "preparedness",
       "collection": "Australian emergency reference",
       "path": "pages/au/au-reference.html",
@@ -498,10 +498,10 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "985d0b487a83db08e30613fce3770f61192840e99159d1b229ac2e98df24f9c0",
-      "bytes": 8575,
+      "sha256": "f9deb1b3db3179bb53e75e9a05bf56e068948df705b9c1a56067869c55c68b4f",
+      "bytes": 8740,
       "snapshot": "sources/au-reference.html",
-      "notes": "Original source directory and descriptions, checked 2026-11-17. Not a live warning service."
+      "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
     {
       "id": "vic-generator",

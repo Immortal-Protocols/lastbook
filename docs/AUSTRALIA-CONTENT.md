@@ -20,7 +20,9 @@ and remaining work are recorded below so missing information is visible.
   planning selections and complete mobility and low/no-vision written articles.
 - Ten copyright statements, an original accessible-calling navigation note,
   the original Australian source hub and a directory
-  covering all six states, ACT and NT: **56 searchable HTML records** altogether.
+  covering all six states, three internal territories and seven external territories:
+  **56 searchable HTML records** altogether. Four remote entries provide management
+  references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
   documents are installed. The health guide also points to the library's existing
@@ -221,8 +223,8 @@ an instruction to accept a new live page automatically.
 | Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
 | Power, gas and repairs | ESV generator use, gas emergencies, flood electricity/solar/battery/gas, outdoor LPG cylinders and all nine LCC27 FAQ pairs | More jurisdiction-specific material; equipment-specific instructions, repairs and local professional assessment |
-| Geographic directory | Six states, ACT and NT | External territories, including Jervis Bay's distinct arrangements |
-| Maps | Separate #38 now has eight capital and eight broader extract definitions; #90 provides point-place sidecars alongside #63 | Official release/scanner/switch/repair integration and external-territory verification; this supplement contains no map files |
+| Geographic directory | Six states,ACT,NT,Jervis Bay and all seven external territories; four remote entries are management references | Detailed territory manuals,field communications and verified current service availability |
+| Maps | Separate #38 now has eight capital,eight broader and six external extract definitions; #90/#101 provide point-place build/lifecycle support alongside #63 | Official publication/Setup listing; Antarctic coverage and detailed coastal/navigation data; this supplement contains no map files |
 
 All snapshots are static. Lastbook does not use this directory to fetch warnings,
 make phone calls, find current evacuation centres or decide that a road is safe.
@@ -376,3 +378,49 @@ Victoria is unchanged. The earlier idle-page watchdog issue remains unresolved.
 excludes all personal-use material. Earlier52-record energy/remote and other
 review downloads remain unchanged. Contributor reviews are not official Setup
 releases or complete Australian coverage.
+
+
+## Territory directory expansion — 26 November 2026
+
+The existing original directory now has16 entries: six states, ACT, NT, Jervis Bay
+and all seven external territories. The public library remains56 HTML records;
+43 official readings and10 copyright statements are unchanged. Original hub and
+directory remain CC BY4.0; the accessible-calling note alone is CC0.
+
+Jervis Bay is a distinct internal territory. Its official28August2023 resident
+contact list supports000 and NSW SES132500. Norfolk's official government-service
+page supports000 for fire/policing. Christmas's June2024 emergency plan identifies
+000 and outages that can disable it. Cocos's February2025 official boating guide
+lists000 for a police emergency. Those PDFs were inspected locally, but neither
+the files nor their extracted text are redistributed. No local SES132500 service
+arrangement is inferred for Christmas,Cocos or Norfolk.
+
+Indian Ocean Territories Health Service numbers retain their clinic labels:
+Christmas Health Centre,West Island Clinic and Home Island Clinic. They are not
+relabelled as emergency numbers; hours,capacity and evacuation descriptions are
+source facts,not a current availability test. Heard/McDonald,Ashmore/Cartier,Coral
+Sea and the Australian Antarctic Territory provide official management entry
+points without assigning local000 or SES contacts. Map/station labels cannot
+establish rescue capability. Antarctic field procedures/maps are not supplied.
+
+Existing eight entries retain their17November check dates. New entries use
+26November retrieval dates and retain older publication dates where known. The
+machine-readable directory and linear heading/definition-list reader agree;
+there is no wide contact table. Written online addresses remain inert. The
+TERRITORY-DIRECTORY-SOURCE-AUDIT-20261126.json receipt pins exact official HTML/PDF
+response hashes and distinguishes original facts from licensed source-body
+reproduction. No runtime downloader,guide JSON or shipped dependency changes.
+
+Seven source-integrity/build tests passed,including jurisdiction classification,
+per-entry dates,clinic/number associations and preventing unsupported SES/000
+assignments. Both existing household/rural directory choices resolve the refreshed
+reader. Actual public/staged-private engine queries for all eight added territories
+and both Cocos clinics pass with sockets forbidden; all56 public reader hashes,
+private377 records/personal7 and Victoria map hashes remain valid. The matching
+source runtime is unchanged; this update only replaces data.
+
+Required contribution/build suite: **798 tests OK**,five skips and eleven upstream
+expected failures under PYTHONUTF8=0. Final reader wording then passed all seven
+focused source tests and fresh public/private builds. The first sandbox-only full
+run could not bind its localhost test fixtures; the permission-scoped rerun passed.
+The unchanged regional runtime retains its prior864-test combined-source check.

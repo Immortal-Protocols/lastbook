@@ -250,7 +250,8 @@ class ChatStore(private val context: Context) {
                     reply.running = false
                     reply.phase = null
                     if (answer.isNullOrBlank()) {
-                        reply.error = "The local AI could not write an answer. These library pages match your question."
+                        reply.error = LastbookCore.chat.lastError()
+                            ?: "The local AI could not write an answer. These library pages match your question."
                     } else {
                         reply.content = answer
                         reply.sources = sources.filter { answer.contains("[${it.key}]") }.ifEmpty { sources.take(3) }

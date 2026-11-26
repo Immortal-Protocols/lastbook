@@ -12,6 +12,19 @@ static void piece(const char * bytes, int length, void *) {
     if (bytes && length > 0) g_last.append(bytes, static_cast<size_t>(length));
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_local_lastbook_core_ai_LlamaAndroid_nativeMeasure(JNIEnv * env, jobject, jstring path, jint n_ctx, jint threads) {
+    const char * p = env->GetStringUTFChars(path, nullptr);
+    LBLOG("measure start %s ctx=%d threads=%d", p, (int)n_ctx, (int)threads);
+    char * raw = lb_measure(p, n_ctx, threads);
+    LBLOG("measure end result=%s", raw ? raw : "");
+    env->ReleaseStringUTFChars(path, p);
+    if (!raw) return nullptr;
+    jstring out = env->NewStringUTF(raw);
+    lb_string_free(raw);
+    return out;
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_local_lastbook_core_ai_LlamaAndroid_nativeLoad(JNIEnv * env, jobject, jstring path, jint n_ctx, jint threads) {
     const char * p = env->GetStringUTFChars(path, nullptr);

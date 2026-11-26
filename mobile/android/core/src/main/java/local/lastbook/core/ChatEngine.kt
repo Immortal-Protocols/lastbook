@@ -239,6 +239,9 @@ class ChatEngine(
 
     fun canGenerate(): Boolean = localModelFile() != null
 
+    /** Reason the last local AI startup/generation failed (e.g. model exceeds phone RAM), if known. */
+    fun lastError(): String? = llama.lastError()
+
     /** One answer written on this phone from the retrieved sources. Returns null when the runtime or model cannot start. */
     fun generate(question: String, sources: List<Rec>): String? {
         // The native bridge shares one context and one output buffer: never let two answers overlap.

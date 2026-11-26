@@ -6,6 +6,7 @@ object LlamaAndroid {
         System.loadLibrary("lastbook_llm")
     }
 
+    external fun nativeMeasure(path: String, nCtx: Int, threads: Int): String?
     external fun nativeLoad(path: String, nCtx: Int, threads: Int): Long
     external fun nativeGenerate(handle: Long, texts: Array<String>, special: BooleanArray, maxTokens: Int,
                                 temp: Float, topK: Int, topP: Float): String

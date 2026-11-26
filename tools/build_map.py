@@ -182,7 +182,9 @@ def build(src, dst, metadata, clip=None):
         if k:
             add('land', k, name, area_z(*bbox(parts), 9), [simplify(p, 0.00001) for p in parts])
     for parts, (cls,) in each('gis_osm_protected_areas_a_free', 'fclass'):
-        add('land', 'park', None, area_z(*bbox(parts), 8), [simplify(p, 0.00002) for p in parts])
+        # Protected areas can include sea. Keep their boundaries separate from
+        # ground/land-use fills so a marine reserve cannot turn ocean green.
+        add('protected', cls, None, area_z(*bbox(parts), 8), [simplify(p, 0.00002) for p in parts])
     print('land', fid[0], round(time.time() - t0), flush=True)
     for parts, (cls, name) in each('gis_osm_waterways_free'):
         add('waterway', cls, name, 10 if cls == 'river' else 13, parts)

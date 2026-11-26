@@ -47,12 +47,16 @@ class MapBuilder(unittest.TestCase):
                 (polygon([outer, hole]), 'island', 'Example island'),
                 (polygon([outer]), 'city', 'Populated-place polygon'),
                 (polygon([outside]), 'islet', 'Outside the requested box')])
+            src.execute('INSERT INTO gis_osm_protected_areas_a_free VALUES (?,?,?,?,?)',
+                        (polygon([outer, hole]), 'nature_reserve', 'Marine protected area', None, None))
             with redirect_stdout(io.StringIO()):
-                self.assertEqual(module.build(src, dst, {'source': 'Example'}, [167.8, -29.2, 168.1, -28.9]), 1)
-            layer, cls, name, minz, geom = dst.execute('SELECT layer,cls,name,minz,geom FROM feat').fetchone()
+                self.assertEqual(module.build(src, dst, {'source': 'Example'}, [167.8, -29.2, 168.1, -28.9]), 2)
+            layer, cls, name, minz, geom = dst.execute("SELECT layer,cls,name,minz,geom FROM feat WHERE layer='island'").fetchone()
             self.assertEqual((layer, cls, name), ('island', 'island', 'Example island'))
             self.assertLessEqual(minz, 13)
             self.assertEqual(geom, module.pack([outer, hole]))
+            self.assertEqual(dst.execute("SELECT cls FROM feat WHERE layer='protected'").fetchall(), [('nature_reserve',)])
+            self.assertEqual(dst.execute("SELECT count(*) FROM feat WHERE layer='land'").fetchone()[0], 0)
 
     def test_import_and_existing_callable_api_keep_unclipped_coverage_and_metadata(self):
         spec = importlib.util.spec_from_file_location('map_fixture', TOOL)

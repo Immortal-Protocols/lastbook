@@ -3,10 +3,14 @@
   "missing": [
    "No current CDC or EPA page on disinfecting drinking water. Every bleach dose here assumes 5–6% bleach, and today's stronger US bleach labels are not covered.",
    "No guidance on choosing certified filters or tablets, storing water in large barrels, or treating pool or spa water.",
-   "No local water utility's boil-water notice material."
+   "No local water utility's boil-water notice material.",
+   "No source on how tall buildings get their water (roof tanks, booster pumps), or how long taps keep running on upper floors in a blackout.",
+   "No official guide to water in an apartment or high-rise when the power is out; the readings for it here are general.",
+   "No source on how salty or polluted particular city rivers, harbors or canals are, or what home treatment does to a mix of sewage and chemicals beyond the general warnings here."
   ],
   "disagree": [
-   "Sources give different bleach drop counts. Each card states the bleach strength its own source assumes — follow one source's method fully rather than mixing them."
+   "Sources give different bleach drop counts. Each card states the bleach strength its own source assumes — follow one source's method fully rather than mixing them.",
+   "Water-heater water: the FEMA/Red Cross booklet (2004) lists the hot-water tank among safe water sources in the home; the Norwegian civil protection guide (2024) says water from the water heater should not be used for drinking."
   ]
  },
  "sanitation": {
@@ -29,9 +33,9 @@
  },
  "hurt": {
   "missing": [
-   "No simple mass-casualty triage method (such as START) written for the public.",
-   "No stand-alone psychological first aid guide.",
-   "No agency videos on heat illness, carbon monoxide or burns.",
+   "No simple mass-casualty triage method (such as START) written for the public. The medical encyclopedia’s START article (under Go deeper) explains it, but is written for responders.",
+   "No stand-alone psychological first aid guide. The medical encyclopedia has an overview article (under Go deeper), but not a guide to follow.",
+   "No agency videos on carbon monoxide or burns.",
    "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available."
   ],
   "disagree": [
@@ -48,8 +52,9 @@
  },
  "shelter": {
   "missing": [
-   "No EPA or CDC wildfire smoke health guide and no Air Quality Index explainer.",
-   "Most outdoor-shelter videos are hobbyist channels without captions."
+   "No EPA or CDC wildfire smoke health guide. The medical encyclopedia’s Air quality index article (under Go deeper) explains the numbers, but there is no agency explainer.",
+   "Most outdoor-shelter videos are hobbyist channels without captions.",
+   "No city guidance on cooling centers or on heat in apartments without air conditioning."
   ],
   "disagree": [
    "Heat stroke: CERT says no fluids; New Where There Is No Doctor says drinks once alert."
@@ -59,12 +64,15 @@
   "missing": [
    "No manual for EcoFlow, Jackery or similar battery power stations.",
    "Nothing from FDA or health agencies on keeping CPAP or oxygen machines running in an outage beyond Red Cross/FEMA planning advice.",
-   "No local utility's material on gas meters, seismic shut-off valves or planned power shut-offs."
+   "No local utility's material on gas meters, seismic shut-off valves or planned power shut-offs.",
+   "No power outage guide written for people living in apartment or high-rise buildings, and nothing for residents on being stuck in an elevator.",
+   "Nothing on camp stoves or generators on apartment balconies specifically; the general 20-foot rule is in the FEMA outage sheet. U.S. Fire Administration guidance says not to store or use a grill on a porch or balcony."
   ]
  },
  "energy": {
   "missing": [
-   "Micro-hydro and wind material is mostly old or utility-scale."
+   "Micro-hydro and wind material is mostly old or utility-scale.",
+   "No official, beginner-level guide to pedal power or to charging a battery from it safely. The two Appropedia build guides (route step 7) are community-written and leave out battery gas and ventilation."
   ]
  },
  "comms": {
@@ -79,7 +87,10 @@
  "disaster": {
   "missing": [
    "No California tsunami inundation maps or local tsunami zone guide.",
-   "No EPA/CDC wildfire smoke guide."
+   "No EPA/CDC wildfire smoke guide.",
+   "No guidance on getting out of a subway or other transit during an emergency, or on what to do when transit stops running.",
+   "No fire department guidance on when to stay inside a fire-resistant apartment building during a fire elsewhere in it.",
+   "City guides such as NYC Emergency Management's Ready New York series are not in the library."
   ]
  },
  "grow": {

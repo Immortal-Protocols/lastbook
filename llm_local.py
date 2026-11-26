@@ -12,6 +12,7 @@ cannot start a turn of its own), and turns Gemma's tool calls back into the shap
 import hashlib
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -29,7 +30,7 @@ SOURCE = 'unsloth/gemma-4-26B-A4B-it-GGUF, revision c099eb48e663fd284577b04978a9
 CTX = 16384               # tokens the model holds: the system prompt, sources, the conversation and the answer
 RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook beyond what llama.cpp measures for the model
 IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds without a question before the model is stopped, to give its memory back
-START_WAIT = 600          # longest a question waits for the model to load
+START_WAIT = 600          # longest a question waits for a load that has stopped getting further; each step forward starts the wait again
 
 STATE_FILE = paths.DATA / 'derived' / 'llm' / 'state.json'   # where the file was found, its check, the on/off setting
 
@@ -110,6 +111,8 @@ class Local:
         self.state, self.pct, self.message = 'absent', None, ''
         self.path, self.fit, self.ready_info = None, None, None
         self.proc, self.events, self.last_used = None, None, 0
+        self.t_progress = 0       # when the load last got further (it started, or its percentage passed the furthest so far)
+        self.furthest = 0         # the highest percentage this load has reported
         self.next_id = 0
         self.failed_loads = 0     # loads in a row that ended before the model was ready
         self.saved = _load()
@@ -130,7 +133,7 @@ class Local:
 
     def available(self):
         """True when a question can be answered: running, or ready to start."""
-        return self.state in ('ready', 'stopped', 'loading')
+        return self.enabled() and self.state in ('ready', 'stopped', 'loading')
 
     # -- finding and checking the file ------------------------------------------------------------------------------------
     def start_background(self):
@@ -169,6 +172,8 @@ class Local:
             wrong = wrong or (p, size)
         if not found:
             with self.lock:
+                if not self.enabled():
+                    return
                 if wrong:
                     p, size = wrong
                     done = size < SIZE
@@ -185,11 +190,15 @@ class Local:
             self.saved['checked'] = stamp
             _save(self.saved)
         with self.lock:
+            if not self.enabled():
+                return
             self.path = found
         self._measure()
 
     def _check(self, p):
         with self.lock:
+            if not self.enabled():     # turned off since discover began: leave it off
+                return False
             self.state, self.pct, self.message = 'checking', 0, ''
         h = hashlib.sha256()
         done = 0
@@ -201,18 +210,22 @@ class Local:
                     self.pct = int(done * 100 / SIZE)
         except OSError as e:
             with self.lock:
-                self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
+                if self.enabled():
+                    self.state, self.pct, self.message = 'wrong', None, f'Lastbook could not read the model file ({type(e).__name__}).'
             return False
         if h.hexdigest() != SHA256:
             with self.lock:
-                self.state, self.pct = 'wrong', None
-                self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
+                if self.enabled():
+                    self.state, self.pct = 'wrong', None
+                    self.message = f'The file in {_folder_name(p)} has the right size but different contents. Download it again.'
             return False
-        return True
+        return self.enabled()
 
     def _measure(self):
         """llama.cpp's fitting decides where each part of the model goes; this then checks the whole fits this computer."""
         with self.lock:
+            if not self.enabled():
+                return
             self.state, self.pct, self.message = 'measuring', None, ''
         try:
             out = subprocess.run(self._argv(['--measure']), stdin=subprocess.DEVNULL, capture_output=True, timeout=180, **_quiet())
@@ -221,6 +234,8 @@ class Local:
             fit, out = None, None
             print('local AI: measuring failed:', type(e).__name__, e, flush=True)
         with self.lock:
+            if not self.enabled():
+                return
             if not fit:
                 self.state, self.message = 'error', 'The local AI program could not read the model file.'
                 if out is not None:
@@ -241,6 +256,8 @@ class Local:
     def ensure_running(self, on_wait=None, cancelled=lambda: False):
         """Starts the model if it is stopped and waits until it is ready. Returns None when ready, else a sentence why not."""
         with self.lock:
+            if not self.enabled():
+                return 'The local AI is turned off.'
             if self.state == 'ready' and self.proc and self.proc.poll() is None:
                 self.last_used = time.time()
                 return None
@@ -249,24 +266,39 @@ class Local:
             if self.state != 'loading':
                 self._spawn()
         t0 = time.time()
-        while time.time() - t0 < START_WAIT:
+        # Progress is timestamped by the reader under the same lock. Check the
+        # deadline and stop atomically so progress at the boundary cannot be lost.
+        with self.lock:
+            waiting_for = self.proc
+        while True:
             with self.lock:
+                if self.proc is not waiting_for:
+                    return self.message or 'The local AI start was interrupted.'
                 if self.state == 'ready':
                     self.last_used = time.time()
                     return None
                 if self.state != 'loading':
                     return self.message or 'The local AI did not start.'
+                if time.time() - max(t0, self.t_progress) >= START_WAIT:
+                    # Detach atomically with the deadline check, then let the
+                    # potentially slow child shutdown happen outside this lock.
+                    timed_out_proc, self.proc = self.proc, None
+                    self.state, self.pct, self.message = 'stopped', None, ''
+                else:
+                    timed_out_proc = None
+                    pct = self.pct
+            if timed_out_proc is not None:
+                self._finish_stop(timed_out_proc, 'took too long to start')
+                return 'The local AI took too long to start.'
             if cancelled():
                 return 'stopped'
             if on_wait:
-                on_wait(self.pct)
+                on_wait(pct)
             time.sleep(0.25)
-        self.stop('took too long to start')
-        return 'The local AI took too long to start.'
 
     def _spawn(self):
         import queue
-        self.state, self.pct, self.message = 'loading', 0, ''
+        self.state, self.pct, self.message = 'loading', None, ''
         logs = paths.DATA / 'derived' / 'logs'
         logs.mkdir(parents=True, exist_ok=True)
         err = open(logs / 'local-ai.log', 'ab')
@@ -276,7 +308,8 @@ class Local:
         _tie_to_this_process(self.proc)
         err.close()
         self.events = queue.Queue()
-        self.t_spawn = time.time()
+        self.t_spawn = self.t_progress = time.time()
+        self.furthest = 0
         threading.Thread(target=self._read, args=(self.proc, self.events), daemon=True, name='local-ai-read').start()
 
     def _read(self, proc, events):
@@ -289,7 +322,12 @@ class Local:
             if kind == 'progress':
                 with self.lock:
                     if self.proc is proc:
-                        self.pct = ev.get('p')
+                        p = ev.get('p')
+                        # Only a figure past the furthest so far counts, so the wait has an end: the same figure again,
+                        # or a lower one and then the old one (20, 19, 20), is not a step forward.
+                        if isinstance(p, (int, float)) and not isinstance(p, bool) and p > self.furthest:
+                            self.furthest, self.t_progress = p, time.time()
+                        self.pct = p
             elif kind == 'ready':
                 with self.lock:
                     if self.proc is proc:
@@ -329,6 +367,10 @@ class Local:
             if self.state in ('ready', 'loading', 'error') and self.path and (self.fit or {}).get('fits'):
                 self.state, self.pct = 'stopped', None
                 self.message = ''
+        self._finish_stop(proc, why)
+
+    @staticmethod
+    def _finish_stop(proc, why=''):
         if proc and proc.poll() is None:
             print(f'local AI: stopping ({why or "asked"})', flush=True)
             try:
@@ -408,6 +450,23 @@ class Local:
 LOCAL = Local()
 
 
+def _apple_silicon_linux(tree='/proc/device-tree'):
+    """True on Apple silicon running Linux, where the graphics share the computer's one memory as they do on a Mac: an ARM
+    processor, and the kernel's device tree names the maker ("apple,t8103"). No device tree means some other computer. The
+    check itself lives in engine/setup/hardware.py (setup reads the model name from the same tree), read here so the AI
+    runner's fit and setup's hardware picture answer this one question identically."""
+    if platform.machine() not in ('aarch64', 'arm64'):
+        return False
+    try:
+        from engine.setup import hardware
+        return hardware._apple_silicon_linux(tree) is not None
+    except Exception:
+        try:
+            return any(c.startswith(b'apple,') for c in (Path(tree) / 'compatible').read_bytes().split(b'\0'))
+        except OSError:
+            return False
+
+
 def judge(fit):
     """Does the whole of it fit this computer? llama.cpp's fit places the model on the graphics memory it finds and counts
     the rest as the computer's own memory, which it takes to be unlimited. So the computer's own memory is checked here:
@@ -415,7 +474,7 @@ def judge(fit):
     total = fit.get('ram_total') or 0
     dev, host = fit.get('device_bytes') or 0, fit.get('host_bytes') or 0
     devices = [m for m in fit.get('memory') or [] if m.get('kind') == 'device']
-    unified = sys.platform == 'darwin'
+    unified = sys.platform == 'darwin' or _apple_silicon_linux()
     # Windows: weights left in the mapped file (not on a graphics card, not repacked) are outside llama.cpp's count, yet in use
     # while answering. Measured with no GPU: the fit said 9.6 GB, the program held 16.5 to 26 GB.
     mapped = 0 if unified else max(0, SIZE - sum(m.get('model') or 0 for m in fit.get('memory') or []))
@@ -430,8 +489,9 @@ def judge(fit):
         out['why'] = 'The model does not fit this computer’s graphics memory together with its own memory.'
     elif total and needs > total:
         out['fits'] = False
-        out['why'] = (f'The model needs about {_gb(in_ram)} of this computer’s memory, plus room for everything else, '
-                      f'and this computer has {_gb(total)}.')
+        # Say the whole need, so it can be held against what the computer has: "needs 14.9 GB ... has 17.2 GB" read as a fit (#112).
+        out['why'] = (f'The local AI needs about {_gb(needs)} of memory: {_gb(in_ram)} for the model and {_gb(RESERVE)} for everything else. '
+                      f'This computer has {_gb(total)}.')
     else:
         out['fits'] = True
     return out

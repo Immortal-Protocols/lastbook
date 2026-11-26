@@ -4,7 +4,9 @@ import ctypes
 import json
 import os
 import platform
+import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -185,12 +187,29 @@ def linux_ai_runtime():
 
 # ------------------------------------------------------------------------------------------------------------- disks --
 def disk_of(path):
-    """(free, total) on the disk that holds path, or the nearest folder above it that exists."""
+    """(free, total) on the disk that holds path, or the nearest folder above it that exists.
+    On a Mac, free is what Finder calls available, as on the iPad (ZipInstall.freeSpace): it counts the room macOS makes on its own
+    when a file the person asked for needs it (purgeable caches, local snapshots). The plain free count leaves that out, and on a
+    Mac that has been used a while it can be tens of GB short, so setup said there was no room when Finder said there was (#112)."""
     p = Path(path)
     while not p.exists() and p.parent != p:
         p = p.parent
     u = shutil.disk_usage(p)
-    return u.free, u.total
+    free = u.free
+    if sys.platform == 'darwin':
+        free = max(free, _mac_available(p) or 0)
+    return free, u.total
+
+
+def _mac_available(p):
+    """macOS's room for a file the person asked for (NSURLVolumeAvailableCapacityForImportantUsageKey), or None if it cannot say."""
+    try:
+        import Foundation
+        ok, n, _ = Foundation.NSURL.fileURLWithPath_(str(p)).getResourceValue_forKey_error_(
+            None, Foundation.NSURLVolumeAvailableCapacityForImportantUsageKey, None)
+        return int(n) if ok and n is not None and int(n) > 0 else None
+    except Exception:
+        return None
 
 
 def disk_name(path):
@@ -212,6 +231,124 @@ def disk_name(path):
     except Exception:
         return None
     return None
+
+
+FAT = {'vfat', 'msdos', 'fat', 'fat12', 'fat16', 'fat32'}     # file systems that cannot hold a file of 4 GB or more
+
+
+def _unescape_mount(s):
+    """mountinfo writes a space in a mount point as \\040 (and tab, newline and backslash likewise)."""
+    return re.sub(r'\\([0-7]{3})', lambda m: chr(int(m.group(1), 8)), s)
+
+
+def _linux_fs_type(path, mountinfo='/proc/self/mountinfo'):
+    """The file system type of the mount that holds path, from mountinfo (the longest mount point that contains it)."""
+    want = os.path.realpath(path)
+    best, kind = None, None
+    try:
+        lines = Path(mountinfo).read_text(encoding='utf-8', errors='replace').splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        left, sep, right = line.partition(' - ')
+        fields = left.split()
+        if not sep or len(fields) < 5 or not right.split():
+            continue
+        mp = _unescape_mount(fields[4])
+        inside = want == mp or want.startswith(mp.rstrip('/') + '/')
+        if inside and (best is None or len(mp) > len(best)):
+            best, kind = mp, right.split()[0]
+    return kind
+
+
+def _windows_fs_type(path):
+    root = os.path.splitdrive(os.path.abspath(path))[0] + '\\'
+    name = ctypes.create_unicode_buffer(64)
+    ok = ctypes.windll.kernel32.GetVolumeInformationW(ctypes.c_wchar_p(root), None, 0, None, None, None, name, len(name))
+    return name.value if ok else None
+
+
+def fs_type(path):
+    """The file system that holds path ('ext4', 'exfat', 'vfat', 'NTFS', 'FAT32'…), or None where this cannot tell (macOS for now:
+    a file too large for FAT there fails as it is written, with EFBIG). Read only; nothing is mounted or changed."""
+    try:
+        if sys.platform.startswith('linux'):
+            return _linux_fs_type(path)
+        if sys.platform == 'win32':
+            return _windows_fs_type(path)
+    except Exception:
+        return None
+    return None
+
+
+def cluster_size(path):
+    """The smallest space a file takes on the drive that holds path, in bytes (exFAT on a large drive: often 128 KB), or None."""
+    try:
+        if sys.platform == 'win32':
+            spc, bps, free, total = (ctypes.c_ulong() for _ in range(4))
+            root = os.path.splitdrive(os.path.abspath(path))[0] + '\\'
+            if ctypes.windll.kernel32.GetDiskFreeSpaceW(ctypes.c_wchar_p(root), ctypes.byref(spc), ctypes.byref(bps), ctypes.byref(free), ctypes.byref(total)):
+                return spc.value * bps.value or None
+            return None
+        st = os.statvfs(path)
+        return st.f_frsize or st.f_bsize or None
+    except (OSError, AttributeError, ValueError):
+        return None
+
+
+# macOS marks a file or folder whose contents are only in iCloud (Optimize Mac Storage) with this flag. Python names it
+# stat.SF_DATALESS from 3.13 on; the value is the same before that.
+DATALESS = 0x40000000
+CLOUD_EXAMPLES = 5
+
+
+def cloud_only(folder, examples=CLOUD_EXAMPLES):
+    """What under folder is only in iCloud, so it will not open without internet: {'files', 'folders', 'bytes', 'examples'}
+    (examples: relative paths, a folder with a trailing /). None where this cannot tell (not a Mac).
+
+    Metadata only: lstat never downloads, and no file is opened. A folder in the cloud is counted, not listed, because listing
+    it asks iCloud for its contents. Links are not followed."""
+    if sys.platform != 'darwin':
+        return None
+    folder = Path(folder)
+    out = {'files': 0, 'folders': 0, 'bytes': 0, 'examples': []}
+
+    def note(rel, kind, size=0):
+        out[kind] += 1
+        out['bytes'] += size
+        if len(out['examples']) < examples:
+            out['examples'].append(rel)
+
+    try:
+        if os.lstat(folder).st_flags & DATALESS:   # the library folder itself: not listed either
+            return {'files': 0, 'folders': 1, 'bytes': 0, 'examples': ['./']}
+    except OSError:
+        return None
+    stack = [folder]
+    while stack:
+        d = stack.pop()
+        try:
+            names = sorted(os.listdir(d), reverse=True)
+        except OSError:
+            continue
+        for name in names:
+            p = d / name
+            try:
+                st = os.lstat(p)
+            except OSError:
+                continue
+            rel = p.relative_to(folder).as_posix()
+            if stat.S_ISLNK(st.st_mode):
+                continue
+            if stat.S_ISDIR(st.st_mode):
+                if st.st_flags & DATALESS:
+                    note(rel + '/', 'folders')
+                else:
+                    stack.append(p)
+            elif st.st_flags & DATALESS:
+                note(rel, 'files', st.st_size)
+    out['examples'].sort()
+    return out
 
 
 def candidate_disks(extra=()):
@@ -279,6 +416,162 @@ def measure_ai(llm_local, model_path, timeout=180):
     j = llm_local.judge(fit)
     return {'fits': bool(j['fits']), 'needs_bytes': int(j['needs']), 'estimate': False,
             'why': j.get('why') or f'Measured on this computer: the local AI needs about {_gb(j["needs"])} of memory, and it fits.'}
+
+
+# ----------------------------------------------------------------------------------------------------------- battery --
+# Read only when asked; nothing is kept. Linux from files (#119), a Mac from IOKit's power sources. Windows can follow once it
+# can be tried.
+POWER_SUPPLY = '/sys/class/power_supply'
+EXTERNAL = ('Mains', 'USB', 'USB_C', 'USB_PD', 'USB_PD_DRP', 'BrickID', 'Wireless')   # power_supply types that power the computer
+LONGEST = 7 * 24 * 3600     # a time left beyond a week is a counter that has not settled: not shown
+
+
+def _value(d, name):
+    try:
+        return (d / name).read_text(encoding='ascii', errors='replace').strip()
+    except OSError:
+        return None
+
+
+def _int(d, name):
+    try:
+        return int(_value(d, name))
+    except (TypeError, ValueError):
+        return None
+
+
+def linux_battery(root=POWER_SUPPLY):
+    """This computer's own battery, from Linux's power_supply class, or None when it has none (a desktop; a mouse's or a UPS's
+    battery is not the computer's). {on_battery, charging, percent, seconds_left, batteries}: percent and seconds_left are
+    None when the counters do not say. Several batteries (as in some laptops) count as one."""
+    try:
+        supplies = sorted(Path(root).iterdir())
+    except OSError:
+        return None
+    batteries, external = [], []
+    for d in supplies:
+        kind = _value(d, 'type')
+        if kind == 'Battery' and _value(d, 'scope') != 'Device' and _value(d, 'present') != '0':
+            batteries.append(d)
+        elif kind in EXTERNAL:
+            external.append(d)
+    if not batteries:
+        return None
+    statuses, capacities, now, full, draw, units = [], [], 0, 0, 0, set()
+    for d in batteries:
+        statuses.append(_value(d, 'status') or 'Unknown')
+        cap = _int(d, 'capacity')
+        if cap is not None:
+            capacities.append(cap)
+        for unit, have, most, rate in (('energy', 'energy_now', 'energy_full', 'power_now'), ('charge', 'charge_now', 'charge_full', 'current_now')):
+            n, f = _int(d, have), _int(d, most)
+            if n is not None and f:
+                units.add(unit)
+                now, full, draw = now + n, full + f, draw + abs(_int(d, rate) or 0)
+                break
+        else:
+            units.add(None)          # this battery gives no counters: only its capacity says anything
+    counted = len(units) == 1 and None not in units and full > 0
+    percent = round(100 * now / full) if counted else round(sum(capacities) / len(capacities)) if capacities else None
+    plugged = any(_value(d, 'online') == '1' for d in external)
+    discharging = 'Discharging' in statuses
+    on_battery = discharging or (bool(external) and not plugged)
+    seconds = round(now / draw * 3600) if on_battery and counted and draw > 0 else None   # µWh / µW (or µAh / µA) = hours
+    return {'on_battery': on_battery, 'charging': 'Charging' in statuses and not discharging,
+            'percent': None if percent is None else max(0, min(100, percent)),
+            'seconds_left': seconds if seconds is not None and 0 < seconds <= LONGEST else None, 'batteries': len(batteries)}
+
+
+def _cf_value(cf, ref):
+    """A CoreFoundation string, number or boolean as Python's; anything else as None."""
+    kind = cf.CFGetTypeID(ref)
+    if kind == cf.CFBooleanGetTypeID():
+        return bool(cf.CFBooleanGetValue(ref))
+    if kind == cf.CFNumberGetTypeID():
+        v = ctypes.c_double(0)
+        if not cf.CFNumberGetValue(ref, 13, ctypes.byref(v)):       # kCFNumberDoubleType
+            return None
+        return int(v.value) if v.value == int(v.value) else v.value
+    if kind == cf.CFStringGetTypeID():
+        buf = ctypes.create_string_buffer(1024)
+        return buf.value.decode('utf-8', 'replace') if cf.CFStringGetCString(ref, buf, len(buf), 0x08000100) else None   # UTF-8
+    return None
+
+
+def mac_power_sources():
+    """What macOS says of each power source, as a list of plain dicts, through IOKit (IOPSCopyPowerSourcesInfo): the same
+    reading the menu bar shows. No subprocess and no file. [] when the Mac reports none (a desktop)."""
+    cf = ctypes.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
+    iokit = ctypes.CDLL('/System/Library/Frameworks/IOKit.framework/IOKit')
+    ref, index = ctypes.c_void_p, ctypes.c_long
+    for lib, name, res, args in ((iokit, 'IOPSCopyPowerSourcesInfo', ref, []), (iokit, 'IOPSCopyPowerSourcesList', ref, [ref]),
+                                 (iokit, 'IOPSGetPowerSourceDescription', ref, [ref, ref]), (cf, 'CFRelease', None, [ref]),
+                                 (cf, 'CFArrayGetCount', index, [ref]), (cf, 'CFArrayGetValueAtIndex', ref, [ref, index]),
+                                 (cf, 'CFDictionaryGetCount', index, [ref]), (cf, 'CFDictionaryGetKeysAndValues', None, [ref, ctypes.c_void_p, ctypes.c_void_p]),
+                                 (cf, 'CFGetTypeID', ctypes.c_ulong, [ref]), (cf, 'CFStringGetTypeID', ctypes.c_ulong, []),
+                                 (cf, 'CFNumberGetTypeID', ctypes.c_ulong, []), (cf, 'CFBooleanGetTypeID', ctypes.c_ulong, []),
+                                 (cf, 'CFBooleanGetValue', ctypes.c_ubyte, [ref]), (cf, 'CFNumberGetValue', ctypes.c_ubyte, [ref, index, ctypes.c_void_p]),
+                                 (cf, 'CFStringGetCString', ctypes.c_ubyte, [ref, ctypes.c_char_p, index, ctypes.c_uint32])):
+        fn = getattr(lib, name)
+        fn.restype, fn.argtypes = res, args
+    info = iokit.IOPSCopyPowerSourcesInfo()
+    if not info:
+        return []
+    sources = iokit.IOPSCopyPowerSourcesList(info)
+    out = []
+    try:
+        for i in range(cf.CFArrayGetCount(sources) if sources else 0):
+            d = iokit.IOPSGetPowerSourceDescription(info, cf.CFArrayGetValueAtIndex(sources, i))   # borrowed: not ours to release
+            if not d:
+                continue
+            n = cf.CFDictionaryGetCount(d)
+            keys, values = (ctypes.c_void_p * n)(), (ctypes.c_void_p * n)()
+            cf.CFDictionaryGetKeysAndValues(d, keys, values)
+            out.append({_cf_value(cf, keys[j]): _cf_value(cf, values[j]) for j in range(n)})
+    finally:
+        if sources:
+            cf.CFRelease(sources)
+        cf.CFRelease(info)
+    return out
+
+
+def mac_battery(sources=None):
+    """This Mac's own battery from mac_power_sources(), in linux_battery's shape, or None when it has none (a desktop; a UPS
+    is not the computer's battery). macOS gives the charge as a percentage and the time left in minutes, -1 while it is still
+    working that out: then seconds_left is None, not a guess."""
+    sources = mac_power_sources() if sources is None else sources
+    own = [s for s in sources if s.get('Type') == 'InternalBattery' and s.get('Is Present') is not False]
+    if not own:
+        return None
+    now = sum(s['Current Capacity'] for s in own if isinstance(s.get('Current Capacity'), (int, float)) and s.get('Max Capacity'))
+    full = sum(s['Max Capacity'] for s in own if isinstance(s.get('Current Capacity'), (int, float)) and s.get('Max Capacity'))
+    on_battery = any(s.get('Power Source State') == 'Battery Power' for s in own)
+    minutes = [s.get('Time to Empty') for s in own]
+    seconds = sum(minutes) * 60 if on_battery and all(isinstance(m, (int, float)) and m > 0 for m in minutes) else None
+    return {'on_battery': on_battery, 'charging': not on_battery and any(s.get('Is Charging') is True for s in own),
+            'percent': max(0, min(100, round(100 * now / full))) if full > 0 else None,
+            'seconds_left': seconds if seconds is not None and 0 < seconds <= LONGEST else None, 'batteries': len(own)}
+
+
+def battery():
+    """{supported, battery}: battery as linux_battery or mac_battery gives it, or None. Windows is not read yet."""
+    read = {'linux': linux_battery, 'macos': mac_battery}.get(os_name())
+    if not read:
+        return {'supported': False, 'battery': None}
+    try:
+        return {'supported': True, 'battery': read()}
+    except Exception as e:      # a strange driver must not break the page that asked
+        print('battery:', type(e).__name__, e, flush=True)
+        return {'supported': True, 'battery': None}
+
+
+def handle_battery(h):
+    """GET /api/battery on a BaseHTTPRequestHandler h. This computer only, like /api/setup/: a phone the library is shared with
+    gets 403, because a laptop's battery is nobody else's business."""
+    from engine.setup.api import _send_json
+    if h.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+        return _send_json(h, {'error': 'The battery is only shown on this computer.'}, 403)
+    return _send_json(h, battery())
 
 
 def detect(extra_disks=()):

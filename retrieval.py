@@ -13,6 +13,7 @@ from pathlib import Path
 
 import engine.paths as lastbook_paths
 from engine.paths import ro_uri
+from engine.saved_pages import caption_blocks
 HERE = lastbook_paths.DATA  # holds derived/
 if not lastbook_paths.FROZEN and os.name != 'nt' and sys.version_info[:2] == (3, 12):  # Mac binaries that belong to the program, built for 3.12, so they would shadow another Python's numpy; never import code from a data folder
     sys.path.insert(0, str(lastbook_paths.APP / 'derived' / 'pylib'))
@@ -81,8 +82,11 @@ def norm_ws(s):
 
 
 def readable(text):
-    """Skip table/spreadsheet debris and non-English runs that match every query by accident."""
-    words = re.findall(r"[A-Za-z][a-z']+", text)
+    """Skip table/spreadsheet debris and non-English runs that match every query by accident.
+
+    Words in capitals count too: manuals print their warnings that way ("DO NOT DRINK FLOOD WATER"). A curly
+    apostrophe (don’t) keeps a word whole, the same as a straight one."""
+    words = re.findall(r"[A-Za-z][A-Za-z'’]+", text)
     if len(words) < 12:
         return False
     letters = sum(len(w) for w in words)
@@ -91,6 +95,16 @@ def readable(text):
 
 
 COMMON = set('the a an of to and in is are be for on with as by or that this it from at not can if your you use when should may will water have has which all but more they their each must after before into out other than any one two do does'.split())
+
+
+def scores(mat, qv, block=4096):
+    """mat (float16 rows) times qv, in float32. numpy has no fast float16 product; turning a block of rows into float32
+    at a time is over ten times faster than mat @ qv and adds only one block of memory."""
+    qv = np.asarray(qv, dtype=np.float32)
+    out = np.empty(len(mat), dtype=np.float32)
+    for i in range(0, len(mat), block):
+        out[i:i + block] = mat[i:i + block].astype(np.float32) @ qv
+    return out
 
 
 def chunks_of(text):
@@ -112,20 +126,17 @@ def chunks_of(text):
 
 def vtt_windows(path, span=45):
     """Timed transcript windows (~45 s) so answers can cite a moment in a video."""
-    cues, cur = [], None
-    for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
-        m = re.match(r'(?:(\d+):)?(\d\d):(\d\d)[.,]\d+\s+-->', line)
-        if m:
-            h = int(m.group(1) or 0)
-            cur = [h * 3600 + int(m.group(2)) * 60 + int(m.group(3)), '']
-            cues.append(cur)
-        elif cur is not None and line.strip() and not line.strip().isdigit():
+    cues = []
+    for start, lines in caption_blocks(path.read_bytes()):
+        cur = [start, '']
+        for line in lines:
             t = html.unescape(re.sub(r'<[^>]+>', '', line)).strip()
             if t and not cur[1].endswith(t):
                 cur[1] = (cur[1] + ' ' + t).strip()
+        cues.append(cur)
     out, start, buf, last = [], None, [], ''
     for t, txt in cues:
-        if txt.startswith(last) and last:
+        if last and txt.startswith(last) and not txt[len(last):len(last) + 1].strip():  # a repeat ends at a word: "So" is not the start of "Some people"
             txt = txt[len(last):].strip()
         last = txt or last
         if not txt:
@@ -427,29 +438,33 @@ class Index:
     def semantic(self, q, k=60, allowed=None, floor=0.55):
         if not self.emb or self.mat is None or not len(self.mat):
             return []
-        qv = self.emb.embed([QUERY_PREFIX + q])[0].astype(np.float16)
+        qv = self.emb.embed([QUERY_PREFIX + q])[0]
         with self.lock:
             m, act = self.mat, self.active
-            s = (m @ qv).astype(np.float32)
+            s = scores(m, qv)
             s[~act[:len(s)]] = -1
-        top = np.argpartition(-s, min(k * 3, len(s) - 1))[:k * 3]
+        top = np.nonzero(s >= floor)[0]  # everything above the floor, best first: filtering by allowed happens before any cut
         top = top[np.argsort(-s[top])]
         db = self._ro()
         excl = self.excluded()
-        out = []
-        for i in top:
-            row = one(db, 'SELECT doc_id,page,t,text FROM chunk WHERE id=?', (int(i) + 1,))
-            if not row or row[0] in excl:
-                continue
-            if allowed and not allowed(row[0]):
-                continue
-            if float(s[i]) < floor:
-                break
-            if not readable(row[3]):  # indexed before the quality filter existed
-                continue
-            out.append({'doc_id': row[0], 'page': row[1], 't': row[2], 'text': row[3], 'sem': float(s[i])})
-            if len(out) >= k:
-                break
+        out, seen = [], {}
+        for b in range(0, len(top), 500):  # doc ids in batches, text only for what survives the filters
+            ids = [int(i) + 1 for i in top[b:b + 500]]
+            docs = dict(db.execute(f"SELECT id,doc_id FROM chunk WHERE id IN ({','.join('?' * len(ids))})", ids).fetchall())
+            for i in top[b:b + 500]:
+                d = docs.get(int(i) + 1)
+                if d is None or d in excl:
+                    continue
+                if d not in seen:
+                    seen[d] = not allowed or bool(allowed(d))
+                if not seen[d]:
+                    continue
+                row = one(db, 'SELECT doc_id,page,t,text FROM chunk WHERE id=?', (int(i) + 1,))
+                if not row or not readable(row[3]):  # indexed before the quality filter existed
+                    continue
+                out.append({'doc_id': row[0], 'page': row[1], 't': row[2], 'text': row[3], 'sem': float(s[i])})
+                if len(out) >= k:
+                    return out
         return out
 
     def gaps_for(self, doc_ids):

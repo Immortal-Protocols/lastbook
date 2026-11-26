@@ -11,10 +11,24 @@ const Chat = (() => {
     ['grow', 'What vegetables can I plant this month?'],
     ['repair', 'How do I change the oil on a Honda EU2200i generator?'],
   ];
+  // The Chat page's first screen: one card per urgent guide, each asking its guide's starter question, then a few learning guides.
+  // The ink drawings are the website's own (website-next/img/ink/), copied flat into web/ because builds ship web/ without folders.
+  const HOME = [['water', 'water'], ['hurt', 'aid'], ['food', 'food'], ['power', 'power'], ['comms', 'radio'], ['grow', 'garden']];
+  const LEARN = [['grow', 'garden'], ['health', 'carer'], ['energy', 'lantern']];
   const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
     video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
     topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
   const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
+  // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
+  const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
+  // The stage the answer is at, and how far the local AI has loaded (null: no figure, so the bar sweeps).
+  const stage = m => ({ at: STAGE_AT[m.state] ?? 0, pct: m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null });
+  const stageClass = (i, at) => i < at ? 'done' : i === at ? 'now' : '';
+  function progress(m) {
+    const { at, pct } = stage(m);
+    const stages = STAGES.map((t, i) => `<li class="${stageClass(i, at)}">${t}</li>`).join('');
+    return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
+  }
   let chats = load(), live = {};   // live[chatId] = {abort, state, steps}
   let status = null;
 
@@ -37,8 +51,10 @@ const Chat = (() => {
     const id = parts[0];
     cur = id ? byId(id) : null;
     if (id && !cur) { swap('#/ask'); return }
-    const about = q.get('about');
-    aboutCtx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
+    const about = q.get('about'), me = routeSeq;
+    const ctx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
+    if (stale(me)) return;   // the person has gone to another page: the chat now open keeps its own context
+    aboutCtx = ctx;
     document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
     $('#tbTitle').textContent = cur ? cur.title : 'Chat';
     main.innerHTML = `<div class="chat">
@@ -70,6 +86,7 @@ const Chat = (() => {
           </div>
           <p class="comp-note">Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.</p>
         </form>
+        <div class="ask-more" id="askMore" hidden></div>
       </section></div>`;
     renderSide(); renderCtx(); renderLog();
     const ta = $('#chatIn');
@@ -103,8 +120,8 @@ const Chat = (() => {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
     return ({
       ready: [true, 'Local AI ready'],
-      stopped: [true, 'Local AI ready · it starts when you ask'],
-      loading: [true, `Starting the local AI${l.pct ? ' ' + l.pct + '%' : '…'}`],
+      stopped: [true, 'Local AI available · your first question loads it and may take a while'],
+      loading: [true, `Starting the local AI${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       checking: [false, `Checking the local AI file${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       measuring: [false, 'Checking this computer’s memory…'],
       absent: [false, 'No local AI added'],
@@ -123,8 +140,9 @@ const Chat = (() => {
       const [ok, line] = localLine(l);
       el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
     } else {
-      el.innerHTML = s.online ? `<span class="dotok"></span>Local assistant ready${still}`
-        : `<span class="dotoff"></span><span>Assistant offline<span class="long"> — search and browsing still work</span></span>`;
+      const srv = s.server;   // a model server the person chose in Settings (#78)
+      el.innerHTML = s.online ? `<span class="dotok"></span>${srv ? esc(srv.model) + ' ready' : 'Local assistant ready'}${still}`
+        : `<span class="dotoff"></span><span>${srv ? `The model server at ${esc(srv.address)} is not answering` : 'Assistant offline'}<span class="long"> — search and browsing still work</span></span>`;
     }
     const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
     setupCard(s);
@@ -142,7 +160,7 @@ const Chat = (() => {
       : l.state === 'error' ? `<p>${esc(l.message || 'The local AI could not start.')}</p><div class="row"><button class="btn" data-ai="rescan">Look again</button></div>`
       : `<p><b>Add the local AI to get written answers.</b> It is about 17 GB, and runs on this computer only.</p>
          <div class="row"><a class="btn" href="/ui/setup.html#manage">Add the local AI</a><button class="btn plain" data-ai="rescan">Look again</button></div>
-         <p class="small">Already downloaded <code>${esc(l.file)}</code>? Put it in your <b>LastbookData</b> folder or Downloads, then Look again.</p>`;
+         <p class="small">Already downloaded <code>${esc(l.file)}</code>? Move it into the <b>models</b> folder inside your <b>LastbookData</b> folder, then Look again. Or open <b>Add the local AI</b> and pick the file you already have.</p>`;
     $$('[data-ai]', box).forEach(b => b.onclick = async () => {
       b.disabled = true;
       try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: b.dataset.ai }) }) } catch { }
@@ -180,13 +198,24 @@ const Chat = (() => {
   /* --------------------------------------------------------------- log --- */
   function renderLog() {
     const log = $('#chatLog'); if (!log) return;
-    if (!cur || !cur.messages.length) {
-      const st = aboutCtx ? ABOUT_STARTERS[aboutCtx.kind] || [] : null;
+    const empty = !cur || !cur.messages.length, home = empty && !aboutCtx, more = $('#askMore');
+    log.closest('.chat-main').classList.toggle('home', home);
+    if (more) { more.hidden = !home; more.innerHTML = home ? homeMore() : '' }
+    if (home) {
+      log.innerHTML = `<div class="ask-hero">
+        <div><h1>What do you need to know?</h1>
+        <p class="lead">Answers from the guides, manuals and videos on this computer, with the page or video moment for each point.</p></div>
+        <img class="ink-art" src="/ui/ink-pair.svg" alt="" width="240" height="120"></div>`;
+      $$('[data-start]', more).forEach(b => b.onclick = () => send(b.dataset.start));
+      return;
+    }
+    if (empty) {
+      const st = ABOUT_STARTERS[aboutCtx.kind] || [];
       log.innerHTML = `<div class="chat-empty">
         <div class="ce-mark">${ico('ask')}</div>
         <h1>Chat</h1>
         <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
-        <div class="starters">${(st ? st.map(t => ['ask', t]) : STARTERS).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
+        <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
         <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
@@ -194,6 +223,15 @@ const Chat = (() => {
     }
     log.innerHTML = cur.messages.map((m, i) => m.role === 'user' ? `<div class="msg user"><div class="bubble">${esc(m.content)}</div></div>` : `<div class="msg bot" id="m${i}">${botHtml(m, i)}</div>`).join('');
     wire(log);
+  }
+  function homeMore() {
+    const q = Object.fromEntries(STARTERS), title = id => esc(SHORT[id] || id);
+    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>Runs on this computer. Nothing you ask leaves it.</p>
+      <h2 class="ask-h">Start with what matters</h2>
+      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
+        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
+      <div class="ask-learn-head"><h2 class="ask-h">Keep learning</h2><a href="#/library">All skills</a></div>
+      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small>Step-by-step guide</small></span></a>`).join('')}</div>`;
   }
   // The page itself never scrolls while a chat is empty: in a window too short for every suggestion (or with lines wrapped narrow beside
   // the chats column), the last ones go, a row at a time down to one row, then the note under them, the introduction and the mark.
@@ -210,23 +248,114 @@ const Chat = (() => {
   addEventListener('resize', () => { if ($('.chat-empty')) fitEmpty() });
   function updateBot(i) {
     const el = $('#m' + i); if (!el || !cur) return renderLog();
-    el.innerHTML = botHtml(cur.messages[i], i); wire(el);
+    const m = cur.messages[i], l = live[cur.id], running = l && l.running && i === cur.messages.length - 1;
+    if (running && !m.error && !m.fallback) { patchStream(el, m); wire(el); return }
+    el.innerHTML = botHtml(m, i); wire(el);
   }
+  /* An answer being written changes many times a second. Rebuilding the whole message each time loaded every page thumbnail
+     again (they blinked), started the spinner and the progress bar over, and dropped any text being selected. While it is
+     written, only the parts that changed are touched. Finished answer paragraphs keep their nodes, so a selection in an
+     earlier paragraph stays put while the last, still-growing block is updated. When the answer is done, the message is
+     drawn once in full, as before. */
+  const kid = (parent, cls) => [...parent.children].find(n => n.classList.contains(cls));
+  // patch-answer:start
+  // Put new HTML into el without replacing earlier block nodes whose markup has not changed, so a selection in a
+  // finished paragraph stays put while the trailing, still-growing block is updated.
+  const PATCH_DESCEND = new Set(['UL', 'OL', 'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'DIV', 'BLOCKQUOTE']);
+  function sameNode(a, b) {
+    if (a.nodeType !== b.nodeType) return false;
+    if (a.nodeType === 3) return a.nodeValue === b.nodeValue;
+    if (a.nodeType !== 1) return false;
+    return a.tagName === b.tagName && a.outerHTML === b.outerHTML;
+  }
+  function syncAttrs(a, b) {
+    for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+    for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  }
+  function syncChildren(dst, src) {
+    const want = [...src.childNodes];
+    let i = 0;
+    while (i < want.length) {
+      const b = want[i], a = dst.childNodes[i];
+      if (a && sameNode(a, b)) { i++; continue }
+      if (a && b && a.nodeType === 1 && b.nodeType === 1 && a.tagName === b.tagName && PATCH_DESCEND.has(a.tagName)) {
+        syncAttrs(a, b);
+        syncChildren(a, b);
+        i++;
+        continue;
+      }
+      break;
+    }
+    while (dst.childNodes.length > i) dst.removeChild(dst.lastChild);
+    for (; i < want.length; i++) dst.appendChild(want[i]);
+  }
+  function patchAnswer(el, html) {
+    if (!html) { while (el.firstChild) el.removeChild(el.firstChild); el.lbHtml = ''; return }
+    if (el.lbHtml === html) return;
+    const tmp = el.ownerDocument.createElement('div');
+    tmp.innerHTML = html;
+    syncChildren(el, tmp);
+    el.lbHtml = html;
+  }
+  // patch-answer:end
+  // One part of the message: made when it first has something to show, removed when it has nothing (a reset clears the
+  // draft), and its HTML set only when that HTML changed. The answer uses patchAnswer so finished paragraphs stay put.
+  function region(parent, tag, cls, inner, place) {
+    let n = kid(parent, cls);
+    if (!inner) { if (n) n.remove(); return }
+    if (!n) { n = parent.ownerDocument.createElement(tag); n.className = cls; place(n) }
+    if (n.lbHtml !== inner) { n.innerHTML = inner; n.lbHtml = inner }
+  }
+  function patchStream(el, m) {
+    const doc = el.ownerDocument, { at, pct } = stage(m);
+    let work = kid(el, 'working');
+    if (!work) {   // the same parts progress() writes, made here when the message has none yet
+      work = doc.createElement('div'); work.className = 'working';
+      const ol = doc.createElement('ol'); ol.className = 'wk-stages'; ol.setAttribute('aria-hidden', 'true');
+      for (const t of STAGES) { const li = doc.createElement('li'); li.textContent = t; ol.append(li) }
+      const bar = doc.createElement('span'); bar.className = 'wk-bar'; bar.setAttribute('aria-hidden', 'true'); bar.append(doc.createElement('span'));
+      work.append(doc.createElement('b'), ol, bar);
+      el.prepend(work);
+    }
+    const label = esc(STATES[m.state] || 'Working…') + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
+    if (b.lbHtml !== label) { b.innerHTML = label; b.lbHtml = label }
+    // The stage list and the bar keep their elements, so the spinner and the bar's sweep carry on.
+    [...kid(work, 'wk-stages').children].forEach((li, k) => { const c = stageClass(k, at); if (li.className !== c) li.className = c });
+    const bar = kid(work, 'wk-bar'), fill = bar.children[0], width = pct === null ? '' : pct + '%';
+    bar.classList.toggle('run', pct === null);
+    if (fill.style.width !== width) fill.style.width = width;
+    region(work, 'ul', 'steps', (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join(''), n => work.append(n));
+    const html = m.content ? md(m.content, m) : '';
+    let ans = kid(el, 'answer');
+    if (!html) { if (ans) ans.remove() }
+    else {
+      if (!ans) { ans = doc.createElement('div'); ans.className = 'answer'; work.after(ans) }
+      patchAnswer(ans, html);
+    }
+
+    const found = m.sources || [];
+    region(el, 'div', 'prefound', found.length ? `<p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}` : '', n => el.append(n));
+  }
+  // sources-finish:start (app/tests/test_chat_steps.py)
+  // After a normal `done` event, `cited` is the final list. If the user stops mid-stream,
+  // `cited` is empty, so keep the sources already received.
+  const sourcesForFinish = m => m.cited || (m.stopped ? (m.sources || []) : []) || [];
+  // sources-finish:end
   function botHtml(m, i) {
     const l = live[cur.id], running = l && l.running && i === cur.messages.length - 1;
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><span class="pulse"></span><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct ? ` ${m.pct}%` : ''}</b>${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
-    if (m.fallback) h += srcCards(m.fallback, true);
+    if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
-      const cited = m.cited || [];
+      const cited = sourcesForFinish(m);
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
       h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
-      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcCards(cited, false)}`;
+      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
       else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');
       if (other.length) h += `<details class="also"><summary>Also looked at (${other.length}, not used)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
@@ -236,32 +365,67 @@ const Chat = (() => {
     return h;
   }
   function stepText(s) {
-    const a = s.args || {}, r = s.summary || {};
+    // s.args is the model's own tool call, as it sent it: use only plain text and numbers from it, never convert anything else.
+    const plain = v => typeof v === 'string' || typeof v === 'number' ? v : '';
+    const raw = s.args && typeof s.args === 'object' ? s.args : {}, r = s.summary || {};
+    const a = { query: plain(raw.query), kind: plain(raw.kind), doc_id: plain(raw.doc_id), page: plain(raw.page), pages: raw.pages, article: plain(raw.article) };
     if (s.name === 'search_library') return `Searched “${esc(a.query || '')}”${a.kind && a.kind !== 'any' ? ' (' + esc(a.kind) + 's)' : ''} — ${r.count ?? '…'} passage${r.count === 1 ? '' : 's'}`;
-    if (s.name === 'read_pages') return r.error ? 'Tried to read an unknown document' : `Read ${esc(r.title || a.doc_id)}, page${(a.pages || []).length > 1 ? 's' : ''} ${(a.pages || []).join(', ')}`;
+    if (s.name === 'read_pages') {
+      const pages = (Array.isArray(a.pages) ? a.pages : [a.pages]).filter(p => typeof p === 'number' || typeof p === 'string');
+      return r.error ? 'Tried to read an unknown document' : `Read ${esc(r.title || a.doc_id)}, page${pages.length > 1 ? 's' : ''} ${esc(pages.join(', '))}`;
+    }
     if (s.name === 'view_page') return r.error ? 'Couldn’t view that page' : `Looked at the picture of ${esc(r.title || '')}, page ${esc(a.page)}`;
     if (s.name === 'get_timed_transcript') return r.error ? `No transcript for ${esc(r.title || 'that video')}` : `Read the transcript of ${esc(r.title || '')}`;
     if (s.name === 'lookup_place') return `Looked up “${esc(a.query || '')}” on the offline map`;
+    if (s.name === 'search_encyclopedia') return `Searched the encyclopedias for “${esc(a.query || '')}” — ${r.count ?? '…'} article${r.count === 1 ? '' : 's'}`;
+    if (s.name === 'read_encyclopedia') return r.error ? 'Tried to read an unknown encyclopedia article' : `Read the encyclopedia article “${esc(r.title || a.article)}”`;
     if (s.name === 'found') return `Matched ${s.count} passage${s.count === 1 ? '' : 's'} for your question`;
     return esc(s.name);
   }
   function srcHref(s) {
     if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || 'Place from the answer')}`;
     if (s.kind === 'video') return `#/watch/${encodeURIComponent(s.doc_id)}?${s.t != null ? 't=' + Math.floor(s.t) + '&' : ''}from=${encodeURIComponent(here())}`;
+    if (s.kind === 'zim' || s.zim) {
+      // s.path is already percent-encoded (encyclopedias.ui_path), as on the Encyclopedias page. A row without one
+      // gets each part of its key encoded here: article names can hold ?, % and ".
+      const path = typeof s.path === 'string' && s.path ? s.path.replace(/^\/?zim\//, '')
+        : String(s.zim || s.doc_id || '').replace(/^\/?zim\//, '').split('/').map(encodeURIComponent).join('/');
+      return `#/wiki/${path}?from=${encodeURIComponent(here())}`;
+    }
     return `#/read/${encodeURIComponent(s.doc_id)}?${s.page ? 'p=' + s.page + '&' : ''}from=${encodeURIComponent(here())}`;
   }
-  function srcCards(list, compact) {
+  // What a source is, for the filter above an answer's sources: a page (manuals, PDFs, saved pages), a video, an encyclopedia article or a place on the map.
+  const SRC_TYPES = [['page', 'Pages'], ['video', 'Videos'], ['wiki', 'Encyclopedias'], ['place', 'Places']];
+  const srcType = s => s.kind === 'video' ? 'video' : s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'place' : 'page';
+  function srcCards(list, compact, type) {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
       let pv;
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
       else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
-      else pv = `<span class="pv w">${ico(s.kind === 'place' ? 'pin' : 'page')}</span>`;
+      else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
       const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
-      return `<a class="srccard" href="${srcHref(s)}" id="src-${esc(s.key || '')}">${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
+      return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
         ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}
         ${s.image ? '<span class="sc-tag">diagram viewed</span>' : ''}</span></a>`;
     }).join('')}</div>`;
+  }
+  // Buttons that show one type of source at a time, with how many of each. Only when the sources are of two types or more.
+  function srcFilter(list, type, i) {
+    const n = {}; for (const s of list) n[srcType(s)] = (n[srcType(s)] || 0) + 1;
+    const types = SRC_TYPES.filter(([t]) => n[t]);
+    if (types.length < 2) return '';
+    const on = type || '';
+    const btn = (t, label, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${label} <small>${count}</small></button>`;
+    return `<div class="srcfilter" role="group" aria-label="Show sources by type"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'All', list.length)}${types.map(([t, label]) => btn(t, label, n[t])).join('')}</div>`;
+  }
+  // Show only the cards of one type (or all of them, for ''), in the cards that follow this filter.
+  function showType(filter, type) {
+    $$('button', filter).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === type)));
+    const cards = filter.nextElementSibling;
+    if (cards) $$('.srccard', cards).forEach(c => { c.hidden = !!type && c.dataset.type !== type });
+    const m = cur && cur.messages[+filter.dataset.i];
+    if (m) m.srcType = type;
   }
 
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
@@ -271,15 +435,40 @@ const Chat = (() => {
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
-    let out = '', list = null, section = 'main';
+    let out = '', list = null, section = 'main', table = null, before = '';
     const close = () => { if (list) { out += `</${list}>`; list = null } };
+    // A table the model copied from a source. It counts as cited when a key is in it or in the line just before it, as the instructions ask.
+    // Cells split on bare pipes only: "\|" is a pipe inside a cell.
+    const cells = r => {
+      const s = r.replace(/^\|/, '').replace(/(?<!\\)\|$/, ''), c = [];
+      let cur = '';
+      for (let i = 0; i < s.length; i++) {
+        if (s[i] === '\\' && s[i + 1] === '|') { cur += '|'; i++ } else if (s[i] === '|') { c.push(cur.trim()); cur = '' } else cur += s[i];
+      }
+      c.push(cur.trim());
+      return c;
+    };
+    const SEP = /^\|?(\s*:?-{2,}:?\s*\|)*\s*:?-{2,}:?\s*\|?$/;
+    const flush = () => {
+      if (!table) return;
+      const head = table.length > 1 && SEP.test(table[1]) ? cells(table[0]) : null, rows = table.slice(head ? 2 : 0).filter(r => !SEP.test(r)).map(cells);
+      const cited = section !== 'main' || m.running || /\[[SM]\d+\]/.test(table.join(' ') + ' ' + before);
+      const no = cited ? '' : ' title="Not linked to a source"', width = head ? head.length : (rows[0] || []).length;
+      // A row with more or fewer cells than the header would put numbers under the wrong heading, so show the lines as written.
+      if (rows.some(r => r.length !== width)) out += `<p class="ans-raw${cited ? '' : ' uncited'}"${no}>${table.map(inline).join('<br>')}</p>`;
+      else out += `<div class="ans-table${cited ? '' : ' uncited'}"${no}><table>${head ? `<thead><tr>${head.map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead>` : ''}<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      table = null; before = '';  // a key before one table says nothing about the next
+    };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
       if (section !== 'main' || m.running) return inline(raw);
       return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
     };
     for (let ln of lines) {
       const t = ln.trim();
-      if (!t) { close(); continue }
+      if (/^\|.*\|$/.test(t)) { close(); (table = table || []).push(t); continue }
+      flush();
+      if (!t) { close(); before = ''; continue }
+      before = t;
       const head = /^#{1,4}\s+(.*)$/.exec(t) || /^\*\*([^*]+:)\*\*$/.exec(t) || /^\*\*([^*]+)\*\*:?$/.exec(t);
       const hText = head ? head[1] : '';
       const sec = /not found in the library/i.test(t) ? 'missing' : /sources disagree/i.test(t) ? 'disagree' : /own reasoning/i.test(t) ? 'reasoning' : null;
@@ -298,7 +487,7 @@ const Chat = (() => {
       }
       close(); out += `<p>${mark(t)}</p>`;
     }
-    close();
+    flush(); close();
     if (out.includes('<div class="sec-')) out += '</div>';
     return out;
   }
@@ -314,8 +503,10 @@ const Chat = (() => {
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
     });
-    // citation chips scroll to their card instead of changing the route
-    $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
+    $$('.srcfilter button', el).forEach(b => b.onclick = () => { showType(b.parentNode, b.dataset.type); persist() });
+    // citation chips scroll to their card instead of changing the route; a card the filter hides comes back with all the others
+    $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c && c.hidden) { const f = c.parentNode.previousElementSibling; if (f && f.matches('.srcfilter')) { showType(f, ''); persist() } } if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
+    $$('.srcfilter', el).forEach(f => { const type = (cur && cur.messages[+f.dataset.i] && cur.messages[+f.dataset.i].srcType) || ''; if (type) showType(f, type) });
   }
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
@@ -362,7 +553,7 @@ const Chat = (() => {
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
       const st = await getStatus();
-      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local && localLine(st.local)[1] });
+      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();
@@ -387,7 +578,12 @@ const Chat = (() => {
       else m.error = e.message || 'Something went wrong.';
     }
     m.running = false; delete m.state;
-    if (m.stopped && m.content) m.content += '\n\n(Stopped.)';
+    if (m.stopped && m.content) {
+      m.content += '\n\n(Stopped.)';
+      // The `done` event never arrives, so `cited` would be empty and the finished view
+      // would say the answer is unverified. Keep the sources already received.
+      if (m.cited == null && (m.sources || []).length) m.cited = m.sources;
+    }
     live[c.id].running = false;
     c.updated = Date.now(); persist();
     if (cur === c) { updateBot(idx); setBusy(false); scrollEnd(); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }

@@ -6,6 +6,7 @@
 !/derived/packs/pack-spec.json
 __pycache__/
 *.pyc
+.venv
 .DS_Store
 .vercel/
 .env*
@@ -19,3 +20,4 @@ build/
 *.dmg
 *.exe
 *.zip
+/app/webview2/

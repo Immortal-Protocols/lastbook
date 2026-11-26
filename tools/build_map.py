@@ -2,7 +2,7 @@
 """Convert the Geofabrik SoCal GeoPackage (OpenStreetMap, ODbL) into a compact, spatially indexed
 map database the app can draw offline.
 
-  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite [west,south,east,north] [source]
+  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite [west,south,east,north] [source] [data_as_of]
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
 the original archive is only read. Output tables:
@@ -14,12 +14,7 @@ the original archive is only read. Output tables:
 import math, sqlite3, struct, sys, time
 from array import array
 
-SRC, DST = sys.argv[1], sys.argv[2]
 Q = 1e6
-CLIP = [float(v) for v in sys.argv[3].split(',')] if len(sys.argv) > 3 else None      # [west, south, east, north]
-SOURCE = sys.argv[4] if len(sys.argv) > 4 else 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)'
-DATA_AS_OF = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()) if CLIP else '2026-10-25T21:21:21Z'
-BOUNDS = ','.join(f'{v:.6f}' for v in CLIP) if CLIP else '-121.36,32.50,-114.10,35.89'
 
 ROAD_Z = {'motorway': 5, 'trunk': 6, 'motorway_link': 10, 'trunk_link': 10, 'primary': 8, 'primary_link': 12,
           'secondary': 10, 'secondary_link': 13, 'tertiary': 11, 'tertiary_link': 13, 'residential': 13,
@@ -115,7 +110,7 @@ def bbox(parts):
 
 
 def intersects(parts, box):
-    """True if a feature's bounds touch the clip box [west, south, east, north]."""
+    """Whether a feature's bounds touch [west, south, east, north]."""
     minx, maxx, miny, maxy = bbox(parts)
     w, s, e, n = box
     return maxx >= w and minx <= e and maxy >= s and miny <= n
@@ -130,16 +125,17 @@ def area_z(minx, maxx, miny, maxy, base):
     return max(base, min(16, z))
 
 
-def main():
-    t0 = time.time()
-    src = sqlite3.connect(SRC)
-    dst = sqlite3.connect(DST)
-    dst.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
-      DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
+MAP_SCHEMA = '''DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP TABLE IF EXISTS poi; DROP TABLE IF EXISTS meta;
       CREATE TABLE feat(id INTEGER PRIMARY KEY, layer TEXT, cls TEXT, name TEXT, minz INTEGER, geom BLOB);
       CREATE VIRTUAL TABLE feat_idx USING rtree(id, minx, maxx, miny, maxy, minz, maxz);
       CREATE TABLE poi(id INTEGER PRIMARY KEY, cls TEXT, name TEXT, lon REAL, lat REAL);
-      CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);''')
+      CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);'''
+
+
+def build(src, dst, metadata, clip=None):
+    t0 = time.time()
+    dst.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;')
+    dst.executescript(MAP_SCHEMA)
     fid = [0]
 
     def add(layer, cls, name, minz, parts):
@@ -158,7 +154,7 @@ def main():
                 parts = gpkg_parts(row[0])
             except Exception:
                 continue
-            if CLIP and not intersects(parts, CLIP):
+            if clip and not intersects(parts, clip):
                 continue
             yield parts, row[1:]
 
@@ -209,14 +205,22 @@ def main():
             pid += 1
             dst.execute('INSERT INTO poi VALUES (?,?,?,?,?)', (pid, cls, name, (minx + maxx) / 2, (miny + maxy) / 2))
     dst.execute('CREATE INDEX poi_cls ON poi(cls, lon, lat)')
-    dst.executemany('INSERT INTO meta VALUES (?,?)', [
-        ('source', SOURCE),
-        ('data_as_of', DATA_AS_OF),
-        ('bounds', BOUNDS),
-        ('built', time.strftime('%Y-%m-%dT%H:%M:%S')),
-    ])
+    dst.executemany('INSERT INTO meta VALUES (?,?)', metadata.items())
     dst.commit()
     print('done features', fid[0], 'pois', pid, round(time.time() - t0), 's', flush=True)
+    return fid[0]
 
 
-main()
+if __name__ == '__main__':
+    src, dst = sys.argv[1:3]
+    clip = [float(v) for v in sys.argv[3].split(',')] if len(sys.argv) > 3 else None
+    if clip and (len(clip) != 4 or not all(math.isfinite(v) for v in clip)
+                 or not (-180 <= clip[0] < clip[2] <= 180 and -90 <= clip[1] < clip[3] <= 90)):
+        raise SystemExit('Clip must be west,south,east,north in longitude/latitude degrees')
+    with sqlite3.connect(src) as source, sqlite3.connect(dst) as output:
+        build(source, output, {
+            'source': sys.argv[4] if len(sys.argv) > 4 else 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)',
+            'data_as_of': sys.argv[5] if len(sys.argv) > 5 else 'not recorded' if clip else '2026-10-25T21:21:21Z',
+            'bounds': ','.join(f'{v:.6f}' for v in clip) if clip else '-121.36,32.50,-114.10,35.89',
+            'built': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        }, clip=clip)

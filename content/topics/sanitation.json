@@ -6,20 +6,26 @@
  "intro": "Readings for when toilets cannot be flushed or sewer lines may be broken: emergency toilets, keeping hands clean with little water, handling garbage, and stopping diarrhea from spreading. It also shows the warning signs that mean someone needs medical help.",
  "keywords": [
   "toilet",
+  "washroom",
+  "bathroom",
   "sanitation",
   "sewage",
   "sewer",
   "latrine",
+  "loo",
   "bucket toilet",
   "poop",
   "waste",
   "garbage",
   "trash",
+  "rubbish",
   "handwashing",
   "hygiene",
   "soap",
   "hand sanitizer",
+  "hand sanitiser",
   "diarrhea",
+  "loose motions",
   "cholera",
   "vomiting",
   "dehydration",
@@ -29,7 +35,7 @@
   {
    "id": "noflush",
    "label": "The toilet can't be flushed",
-   "hint": "No water, earthquake, broken sewer line",
+   "hint": "No water, earthquake, broken sewer line, loo won't flush",
    "read": [
     {
      "doc": "5cd0b4e41cc479",
@@ -110,7 +116,7 @@
   {
    "id": "garbage",
    "label": "Garbage is piling up",
-   "hint": "No trash pickup, food waste, flies and rats",
+   "hint": "No trash or rubbish pickup, food waste, flies and rats",
    "read": [
     {
      "doc": "med-c6ff5672759900f4",

@@ -1,9 +1,9 @@
 {
  "id": "disaster",
  "mode": "now",
- "title": "Stay safe in an earthquake, fire, flood or tsunami",
- "short": "Earthquake, tsunami, wildfire, home fire, flood, shelter-in-place",
- "intro": "What official guides say to do during and right after an earthquake, tsunami warning, wildfire or wildfire smoke, home fire, flood, or chemical or radiation emergency — and how to get a go-bag and family plan ready beforehand.",
+ "title": "Stay safe in an earthquake, storm, fire, flood or tsunami",
+ "short": "Earthquake, tsunami, hurricane, tornado, thunderstorm, avalanche, landslide, volcano, wildfire, home and high-rise fire, flood, nuclear explosion, bombing, shelter-in-place",
+ "intro": "What official guides say to do during and right after an earthquake, tsunami warning, hurricane, tornado or thunderstorm, avalanche, landslide, volcanic eruption, wildfire or wildfire smoke, home or high-rise fire, flood, nuclear explosion, bombing, or chemical or radiation emergency, and how to plan an evacuation without a car — and how to get a go-bag and family plan ready beforehand.",
  "keywords": [
   "earthquake",
   "drop cover hold on",
@@ -13,6 +13,7 @@
   "evacuate",
   "high ground",
   "wildfire",
+  "bushfire",
   "smoke",
   "N95",
   "air quality",
@@ -21,14 +22,44 @@
   "escape plan",
   "flood",
   "floodwater",
+  "cloudburst",
+  "cyclone",
+  "monsoon",
+  "storms",
+  "hurricanes",
+  "typhoons",
+  "storm surge",
+  "tornadoes",
+  "funnel cloud",
+  "thunderstorms",
+  "hail",
+  "avalanche",
+  "landslide",
+  "rockfall",
+  "volcano",
+  "eruption",
+  "lava",
   "chemical",
   "shelter in place",
   "radiation",
+  "radiological",
   "nuclear",
-  "fallout",
-  "go bag",
+  "nuke",
+  "missiles",
+  "bombing",
+  "explosions",
+  "dirty bomb",
+  "go bag", "documents",
   "kit",
-  "family plan"
+  "family plan",
+  "high-rise",
+  "apartment fire",
+  "elevator",
+  "stairs",
+  "no car",
+  "public transit",
+  "bus",
+  "paratransit"
  ],
  "choices": [
   {
@@ -115,7 +146,7 @@
   {
    "id": "wildfire",
    "label": "A wildfire is near — evacuate or trapped",
-   "hint": "Evacuation order, fire approaching, trapped at home or in a car",
+   "hint": "Evacuation order, forest fires approaching, trapped at home or in a car",
    "read": [
     {
      "doc": "2848f4bffb8109",
@@ -140,7 +171,7 @@
   {
    "id": "smoke",
    "label": "Wildfire smoke is making the air bad",
-   "hint": "Smoky air, not ordered to evacuate",
+   "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate, N95 respirator",
    "read": [
     {
      "doc": "a90ff7e6f3cf01",
@@ -158,7 +189,7 @@
   {
    "id": "home-fire",
    "label": "Fire in the home",
-   "hint": "Smoke alarm going off, fire or smoke inside",
+   "hint": "Smoke alarm going off, house fire, fire or smoke inside",
    "read": [
     {
      "doc": "255b448d041a65",
@@ -180,9 +211,38 @@
    ]
   },
   {
+   "id": "highrise-fire",
+   "label": "Fire in an apartment or high-rise building",
+   "hint": "Alarm in the building, smoke in the hallway, stairs or elevator",
+   "read": [
+    {
+     "doc": "27757fb5d39987",
+     "label": "USFA: leaving a high-rise apartment in a fire",
+     "note": "U.S. Fire Administration page: high-rise fires are especially dangerous; leave, close the door behind you, pull the alarm, take the stairs, not the elevator unless firefighters direct it."
+    },
+    {
+     "doc": "cae1149a714fc3",
+     "page": 1,
+     "label": "Red Cross: if you can't reach the exit stairs",
+     "note": "Red Cross sheet (2014): if trapped, call 911, close doors, hang a white sheet outside the window; practice reaching the fire stairs or a safe place in your unit."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 35,
+     "label": "CERT: no elevators, hot doors, and being trapped in a room",
+     "note": "CERT 2019 annex: never using an elevator to escape, checking a door for heat and smoke, and sealing gaps with wet cloth if all exits are blocked."
+    },
+    {
+     "doc": "5cf2ec3dc27738",
+     "label": "Know two ways out of your building",
+     "note": "Ready.gov page (2026): in a high-rise, knowing the closest exit and a second way out, not using elevators, and keeping right on stairwells so emergency workers can come up."
+    }
+   ]
+  },
+  {
    "id": "flood",
    "label": "Flooding or a flood warning",
-   "hint": "Rising water, flooded roads, storm",
+   "hint": "Rising water, flooded roads, storm, cyclone or monsoon",
    "read": [
     {
      "doc": "d0fbb2e051cd46",
@@ -199,9 +259,270 @@
    ]
   },
   {
+   "id": "hurricane",
+   "label": "A hurricane is coming — evacuate or stay",
+   "hint": "Hurricanes, typhoons, storm surge, evacuation order, high winds",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 15,
+     "label": "FEMA: how to stay safe when a hurricane threatens",
+     "note": "FEMA 2024 sheet: evacuating when told, the safest room for high winds, not climbing into a closed attic in a flood, generators outdoors only, and dangers after."
+    },
+    {
+     "doc": "1f738924576334",
+     "page": 8,
+     "label": "Deciding to stay or go",
+     "note": "FEMA hurricane guide (2020): leaving at once when told to evacuate, reaching higher ground before floodwater, and why staying can mean days without power, water or roads."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 58,
+     "label": "CERT: if you stay, and during the hurricane",
+     "note": "CERT 2019 annex: a small interior windowless room above flood level, leaving a mobile home for a sturdy building, and keeping generators 20 feet from doors and windows."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 59,
+     "label": "The eye of the storm, tornadoes and flooding",
+     "note": "CERT 2019 annex: sturdy cover from high winds, why the calm eye does not mean the storm is over, tornadoes at landfall, and floodwater dangers."
+    }
+   ]
+  },
+  {
+   "id": "tornado",
+   "label": "Tornado warning — where to go now",
+   "hint": "Tornadoes, funnel cloud, sirens, trailer home, caught in a car or outside",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 26,
+     "label": "FEMA: under a tornado warning, find shelter now",
+     "note": "FEMA 2024 sheet: safe room or basement, otherwise a small interior room on the lowest floor away from windows, not under an overpass, and protecting head and neck."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 91,
+     "label": "CERT: signs of a tornado, watches and warnings",
+     "note": "CERT 2019 annex: why mobile and manufactured homes are unsafe, signs such as a roaring sound or a debris cloud, and what to do at a watch or a warning."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 92,
+     "label": "In a car or outside, and if you are trapped after",
+     "note": "CERT 2019 annex: why not to outrun a tornado or stop under an overpass, covering head and neck, and signalling for help if trapped under debris."
+    }
+   ]
+  },
+  {
+   "id": "thunderstorm",
+   "label": "Thunderstorm, lightning or hail",
+   "hint": "Thunder nearby, caught outside, swimming or boating, hail while driving, hailstorms",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 25,
+     "label": "FEMA: how to stay safe when a thunderstorm threatens",
+     "note": "FEMA 2024 sheet: going indoors when thunder roars, avoiding running water and landline phones, sheltering in a car with a metal top and sides if needed, and flooded roads."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 84,
+     "label": "CERT: watches, warnings and getting indoors",
+     "note": "CERT 2019 annex: what a severe thunderstorm watch and warning mean, why a sturdy building is safest, and securing the yard against high winds."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 85,
+     "label": "Caught outdoors in a thunderstorm",
+     "note": "CERT 2019 annex: shelters that do not protect, a metal-topped car as a last option, hail while driving, and how lightning travels through water and plumbing."
+    }
+   ]
+  },
+  {
+   "id": "avalanche",
+   "label": "Avalanche — caught or buried in one",
+   "hint": "Avalanche warning, trapped by a slide, steep slopes",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 5,
+     "label": "FEMA: how to stay safe when an avalanche threatens",
+     "note": "FEMA 2024 sheet: signs of increased danger such as recent avalanches and shooting cracks, slopes steeper than 30 degrees, calling 9-1-1 then searching for a buried partner, and treating hypothermia."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 7,
+     "label": "CERT: the danger scale, and if you are buried",
+     "note": "CERT 2019 annex: what the five danger levels, low to extreme, mean for travel, and cupping a hand in front of your face to clear airspace before the snow stops."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 8,
+     "label": "After an avalanche",
+     "note": "CERT 2019 annex: not yelling when buried, a brief call to 9-1-1 before an immediate search for a buried partner, the medical attention rescued people need, and additional slides."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 6,
+     "label": "CERT: where avalanches start, and warning signs",
+     "note": "CERT 2019 annex: slopes of 30 to 45 degrees and runout zones below them, recent avalanches, shooting cracks and whumpfing sounds, and not stopping your car in marked avalanche areas."
+    }
+   ]
+  },
+  {
+   "id": "landslide",
+   "label": "Landslide, mudslide or rockfall",
+   "hint": "Landslide warning, mudflow, debris flow, rock slide, bulging ground, rumbling",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 16,
+     "label": "FEMA: under a landslide warning, find safe shelter right away",
+     "note": "FEMA 2024 sheet: what a landslide and a mudflow are, striking with little or no warning, and under a warning: evacuate early, listen for alerts, watch for signs and flooding."
+    },
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 17,
+     "label": "FEMA: how to stay safe when a landslide threatens",
+     "note": "FEMA 2024 sheet: signs like cracks or bulges in the ground and leaning poles, trees, walls or fences, and evacuating in advance, especially if a landslide could occur at night."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 67,
+     "label": "CERT: signs of a slide, and leaving before it starts",
+     "note": "CERT 2019 annex: ground wet where it is usually dry, a creek that suddenly rises or drops, a rumbling that grows louder, and getting out of the likely path."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 68,
+     "label": "At night, and after a landslide",
+     "note": "CERT 2019 annex: evacuating in advance to avoid night-time slides, watching for flooding, staying away from the slide area, and checking the foundation, chimney and surrounding land."
+    }
+   ]
+  },
+  {
+   "id": "volcano",
+   "label": "A volcano is erupting",
+   "hint": "Volcano warning, volcanic eruption, lava flow, ashfall, lahar, vog",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 30,
+     "label": "FEMA: under a volcano warning",
+     "note": "FEMA 2024 sheet: following evacuation or shelter orders, evacuating early if advised, avoiding areas downstream of the eruption, protecting yourself from falling ash, and not driving in heavy ash fall."
+    },
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 31,
+     "label": "FEMA: how to stay safe when a volcano threatens",
+     "note": "FEMA 2024 sheet: avoiding areas downwind and river valleys downstream, temporary shelter from ash with ventilation openings covered and doors and windows sealed, and staying indoors with breathing problems."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 109,
+     "label": "CERT: during a volcanic eruption",
+     "note": "CERT 2019 annex: what advisory, watch and warning mean, why staying home in a hazardous zone is dangerous, sheltering from ash, and driving slowly if you must drive."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 110,
+     "label": "After a volcanic eruption",
+     "note": "CERT 2019 annex: never climbing on a lava crust, staying away from ashfall areas, the higher risk to children and people with asthma, and how ash stalls engines."
+    }
+   ]
+  },
+  {
+   "id": "no-car",
+   "label": "I may need to evacuate and have no car",
+   "hint": "Bus, train, paratransit, a ride from neighbors or family",
+   "read": [
+    {
+     "doc": "cecc1671ae4d02",
+     "page": 20,
+     "label": "Are You Ready: planning evacuation without a car",
+     "note": "FEMA Are You Ready? guide (2020): planning transportation with family, friends or local government if you have no car, and checking on neighbors who may need a ride."
+    },
+    {
+     "doc": "2848f4bffb8109",
+     "page": 5,
+     "label": "Public transportation and paratransit in an evacuation",
+     "note": "FEMA wildfire guide (written 2014, reposted 2020): arranging shared rides and asking local emergency management how evacuation by public transportation or paratransit works, including staging areas."
+    },
+    {
+     "doc": "cecc1671ae4d02",
+     "page": 19,
+     "label": "Meeting places and backup ways to get out",
+     "note": "FEMA Are You Ready? (2020): meeting places in several directions that everyone can reach, and learning alternate routes and backup modes of transportation out of your area."
+    },
+    {
+     "doc": "53da8d3443e35e",
+     "page": 1,
+     "label": "Commuter plan: write down routes, buses and trains",
+     "note": "Ready.gov fill-in form (2013): normal and alternative routes between work and home, public transportation lines and stops, and taxi and local bus numbers."
+    }
+   ]
+  },
+  {
+   "id": "explosion",
+   "label": "An explosion or bombing nearby",
+   "hint": "Bombs, blasts, explosions, dirty bomb, unattended package",
+   "read": [
+    {
+     "doc": "ed5bac0a81b009",
+     "page": 237,
+     "label": "CERT: blast injuries and second attacks",
+     "note": "CERT 2019 manual, written for trained volunteers: the injuries explosions cause, and why to move away from danger because a second attack may target people helping."
+    },
+    {
+     "doc": "ed5bac0a81b009",
+     "page": 238,
+     "label": "Fires, gas and other dangers after a bomb",
+     "note": "CERT 2019 manual: secondary explosions, toxic smoke, broken gas lines and water mains, and the zones responders set up around the scene."
+    },
+    {
+     "doc": "ed5bac0a81b009",
+     "page": 240,
+     "label": "Unattended packages: don't touch, move away, report",
+     "note": "CERT 2019 manual: signs of a possible attack, such as unusual vapor clouds or out-of-place packages, boxes or vehicles, and what to do if you see one."
+    },
+    {
+     "doc": "e02dc81261aae7",
+     "page": 363,
+     "label": "What a dirty bomb is",
+     "note": "Emergency Response Guidebook 2024, written for first responders: in a dirty bomb the main hazard is the explosion, and radiation cannot be detected without special equipment."
+    }
+   ]
+  },
+  {
+   "id": "nuclear-explosion",
+   "label": "Nuclear explosion or fallout",
+   "hint": "Nuclear war or bombs, nukes, missile warning, incoming missiles, fallout",
+   "read": [
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 20,
+     "label": "FEMA: get inside, stay inside, stay tuned",
+     "note": "FEMA 2024 sheet: the flash, blast, heat and fallout of a nuclear explosion, why fallout often takes more than 15 minutes to arrive, and staying inside for 24 hours."
+    },
+    {
+     "doc": "d0fbb2e051cd46",
+     "page": 21,
+     "label": "FEMA: if you are outdoors or in a car when it happens",
+     "note": "FEMA 2024 sheet: taking cover and lying face down, getting inside before fallout arrives, removing outer clothing and washing, and which food and drink is safe."
+    },
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 77,
+     "label": "CERT: where in a building to shelter from fallout",
+     "note": "CERT 2019 annex: brick or concrete buildings, the basement or middle away from outer walls and the roof, families staying where they are, and radios that may still work."
+    }
+   ]
+  },
+  {
    "id": "shelter-in-place",
    "label": "Chemical or radiation emergency — told to shelter",
-   "hint": "Shelter-in-place order, chemical release, nuclear incident",
+   "hint": "Shelter-in-place order, chemical release, nuclear power plant incident",
    "read": [
     {
      "doc": "ed5bac0a81b009",
@@ -226,6 +547,27 @@
      "page": 75,
      "label": "CERT: nuclear power plant emergency",
      "note": "Follow local instructions, sheltering vs evacuating, closing air intakes, and showering and bagging clothes after exposure."
+    }
+   ]
+  },
+  {
+   "id": "pack",
+   "label": "What to pack for an evacuation",
+   "hint": "Checklist, the 5 Ps",
+   "phrases": ["pack", "packing", "go bag", "bug out bag", "grab bag"],
+   "context": ["bag", "bags", "evacuate", "evacuating", "leave", "leaving", "emergency", "hurry", "quickly", "list", "family", "kids", "car"],
+   "read": [
+    {
+     "doc": "2848f4bffb8109",
+     "page": 7,
+     "label": "The Five Ps of evacuation and a go-bag",
+     "note": "People, Prescriptions, Papers, Personal needs, Priceless items, and storing important documents safely."
+    },
+    {
+     "doc": "db4d9783fca34b",
+     "page": 2,
+     "label": "FEMA 2024 emergency supply kit checklist",
+     "note": "Basic kit items — water, food, radio with NOAA alerts, flashlight, whistle, masks, plastic sheeting, utility wrench — and extras on the reverse."
     }
    ]
   }
@@ -297,6 +639,56 @@
    "page": 29
   },
   {
+   "text": "When the calm eye of a hurricane passes over, the storm is not over; stay inside until emergency officials say it is safe.",
+   "doc": "9681a68ebd07f5",
+   "page": 59
+  },
+  {
+   "text": "Mobile and manufactured homes are unsafe in a tornado; choose a sturdier shelter before a watch or warning.",
+   "doc": "9681a68ebd07f5",
+   "page": 91
+  },
+  {
+   "text": "Do not try to outrun a tornado in a vehicle, and do not stop under a freeway, overpass or trees.",
+   "doc": "9681a68ebd07f5",
+   "page": 92
+  },
+  {
+   "text": "In a thunderstorm, avoid running water and landline phones; electricity can travel through plumbing and phone lines.",
+   "doc": "d0fbb2e051cd46",
+   "page": 25
+  },
+  {
+   "text": "If buried in an avalanche, do not yell; rescuers will not be able to hear you even though you can hear them.",
+   "doc": "9681a68ebd07f5",
+   "page": 8
+  },
+  {
+   "text": "Stay away from avalanche areas after a slide; there may be danger of additional slides.",
+   "doc": "9681a68ebd07f5",
+   "page": 8
+  },
+  {
+   "text": "Once a landslide starts, it may move too quickly to escape unless you are already near the edge; evacuate while there is enough warning to get out of its likely path.",
+   "doc": "9681a68ebd07f5",
+   "page": 67
+  },
+  {
+   "text": "After a landslide, stay away from the slide area; there may be danger of additional slides.",
+   "doc": "9681a68ebd07f5",
+   "page": 68
+  },
+  {
+   "text": "Sheltering indoors from volcanic ash may not be possible for more than a few hours: the weight of the ash could collapse the roof and block air intakes.",
+   "doc": "9681a68ebd07f5",
+   "page": 109
+  },
+  {
+   "text": "Never climb on a lava crust until the authorities say it is safe; the surface cools faster than the lava trapped inside.",
+   "doc": "9681a68ebd07f5",
+   "page": 110
+  },
+  {
    "text": "Young children and older adults should not use fire extinguishers; ask the fire department for training.",
    "doc": "fc85c36f9ccfab"
   },
@@ -304,6 +696,30 @@
    "text": "Outdoor areas, vehicles and mobile homes do NOT provide adequate shelter from nuclear fallout.",
    "doc": "d0fbb2e051cd46",
    "page": 21
+  },
+  {
+   "text": "After a nuclear explosion, stay inside for 24 hours unless local authorities give other instructions; family members should stay where they are and reunite later.",
+   "doc": "d0fbb2e051cd46",
+   "page": 20
+  },
+  {
+   "text": "Attacks with explosives may include a second wave aimed at people helping the injured; move away from danger as soon as you can.",
+   "doc": "ed5bac0a81b009",
+   "page": 237
+  },
+  {
+   "text": "Do not touch an out-of-place, unattended package, box or vehicle; move away and report it to authorities immediately.",
+   "doc": "ed5bac0a81b009",
+   "page": 240
+  },
+  {
+   "text": "In a high-rise fire, use the stairs; do not use the elevator unless the fire department tells you to.",
+   "doc": "27757fb5d39987"
+  },
+  {
+   "text": "Never open a door that feels hot. If smoke, heat or flames block every exit, stay in the room with the door closed and call the fire department to say where you are.",
+   "doc": "9681a68ebd07f5",
+   "page": 35
   }
  ],
  "prepare": [

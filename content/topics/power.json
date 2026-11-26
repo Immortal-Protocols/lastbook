@@ -3,14 +3,17 @@
  "mode": "now",
  "title": "Power is out — light, phones & power",
  "short": "Outages, generators, batteries and gas safety",
- "intro": "Help for the first hours and days without electricity: safe lighting, keeping phones charged, running a generator or battery station without poisoning or shocking anyone, power-dependent medical needs, and what to do if you smell gas.",
+ "intro": "Help for the first hours and days without electricity: safe lighting, keeping phones charged, running a generator or battery station without poisoning or shocking anyone, power-dependent medical needs, apartment buildings where the elevator stops, and what to do if you smell gas.",
  "keywords": [
   "power outage",
+  "power cut",
+  "loadshedding",
   "blackout",
   "electricity",
   "generator",
   "carbon monoxide",
   "flashlight",
+  "torch",
   "candles",
   "phone charging",
   "battery",
@@ -23,13 +26,18 @@
   "backfeed",
   "CPAP",
   "oxygen",
-  "medical device"
+  "medical device",
+  "apartment",
+  "high-rise",
+  "elevator",
+  "stairs",
+  "building manager"
  ],
  "choices": [
   {
    "id": "first-hours",
    "label": "The power just went out",
-   "hint": "Lights out, fridge off, no idea how long it will last",
+   "hint": "Lights out, hydro is out, fridge off, no idea how long it will last",
    "read": [
     {
      "doc": "18bf4604bf28c4",
@@ -60,7 +68,7 @@
   {
    "id": "generator",
    "label": "I want to run a generator safely",
-   "hint": "Portable generator, extension cords, refuelling, CO alarm",
+   "hint": "Portable generator, extension cords, refuelling with petrol, CO alarm",
    "read": [
     {
      "doc": "equipment-b463000c0e14b4ad",
@@ -91,7 +99,7 @@
   {
    "id": "batteries-solar",
    "label": "Charging phones from batteries, a car or solar",
-   "hint": "Power bank, battery station, solar panels, car charger",
+   "hint": "Power bank (powerbank), battery station, solar panels, car charger",
    "read": [
     {
      "doc": "cecc1671ae4d02",
@@ -145,9 +153,33 @@
    ]
   },
   {
+   "id": "apartment",
+   "label": "I live in an apartment or high-rise",
+   "hint": "Elevator out, stairs only, neighbors who can't get down",
+   "read": [
+    {
+     "doc": "9681a68ebd07f5",
+     "page": 58,
+     "label": "Who gets stuck upstairs when the elevator stops",
+     "note": "CERT Hazard Annexes (2019), hurricane section: a wheelchair user in a high-rise may be shut in when power and the elevator fail, and will need food, water and possibly medicine."
+    },
+    {
+     "doc": "5cf2ec3dc27738",
+     "label": "Planning with neighbors and your building",
+     "note": "Ready.gov page (2026): talking with neighbors in apartments and condos, deciding who checks on older or disabled neighbors, and high-rise basics such as not using elevators."
+    },
+    {
+     "doc": "0dfdf1fb4b178f",
+     "page": 17,
+     "label": "If you can't use the stairs: escape chairs and help from management",
+     "note": "Older FEMA Are You Ready? guide (2004): an escape chair for people with limited mobility in high-rises, and asking apartment management to mark accessible exits and help you leave."
+    }
+   ]
+  },
+  {
    "id": "gas",
    "label": "I smell gas or need to shut off utilities",
-   "hint": "Rotten-egg smell, hissing, after an earthquake, breaker panel",
+   "hint": "Rotten-egg smell, hissing, propane, after an earthquake, breaker panel",
    "read": [
     {
      "doc": "ed5bac0a81b009",
@@ -178,7 +210,7 @@
   {
    "id": "long-outage",
    "label": "The outage could last days or weeks",
-   "hint": "Planning, heat or cold, staying put or leaving",
+   "hint": "No electricity for days, planning, heat or cold, staying put or leaving",
    "read": [
     {
      "doc": "e629b2983d95e4",

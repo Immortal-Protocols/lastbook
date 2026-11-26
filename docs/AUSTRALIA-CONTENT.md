@@ -26,7 +26,9 @@ and remaining work are recorded below so missing information is visible.
   plus four published-language poster texts in Yumplatok and Wik-Mungkan:
   plus seven complete national Get Ready standard English factsheet texts:
   plus four Queensland driving, breakdown, recovery-strap and selected vehicle/packing readings:
-  **103 searchable HTML records** altogether. Four remote entries provide management
+  plus fourteen publisher-written Chinese hazard factsheet texts:
+  plus one original Northern Territory local planning worksheet:
+  **104 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -1012,3 +1014,26 @@ ANZCOR PDFs/text, original source PDFs, imagery or maps are distributed. Contrib
 prerelease, not official Setup availability or maintainer acceptance. Earlier
 release assets are unchanged. Remaining language/community/accessibility, remote
 operations, local/territory and public first-aid rights/review work stays open.
+
+
+## Northern Territory local planning — 26 November 2026
+
+An original contributor worksheet connects factual NT contact/warning references
+to separate cyclone wind,surge,flood,bushfire,shelter,animal and isolation planning.
+Both household and rural guides receive the same worksheet and three existing
+national hazard readings. Agency texts are reserved: SecureNT links the NT general
+copyright policy,and PFES has a limited internal/noncommercial permission,not an
+unrestricted redistribution grant. No agency article,official plan,PDF,shelter map,
+translation or branding is bundled or relicensed. NT-PLANNING-SOURCE-AUDIT-20261126.json
+pins successful raw receipts,reported403acquisition limits,web-reviewed official
+factual sources and the original worksheet's CC BY4.0 scope.
+
+The contact reference retains its displayed2024date;other retrieved planning
+pages have November2026metadata. Opening announcements govern public shelter use.
+Designated Darwin car-park pet options are distinct from public emergency shelters;
+ordinary car parks are not inferred safe. Source72hour/10litre household quantities
+are separate from actual supply adequacy. No completed plan is stored. The NT
+directory check is refreshed to26November;the other original state/ACT dates remain.
+Public collection now104=84official practical+13copyright+7original records. Full
+NT/local manuals,professional/community review and actual routes/shelters/supplies
+remain open work.

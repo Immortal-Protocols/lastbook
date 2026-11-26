@@ -17,6 +17,28 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_nt_worksheet_keeps_contact_associations_shelter_limits_and_original_rights(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        r = entries['au-nt-local-plan']
+        html = (au.SOURCES / r['snapshot']).read_text(encoding='utf-8')
+        self.assertEqual(r['publisher'], 'Lastbook Australia contributors')
+        self.assertEqual(r['source_url'], '')
+        audit = json.loads((au.SOURCES / 'NT-PLANNING-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        self.assertEqual(au.digest(html.encode('utf-8')), audit['reader_sha256'])
+        for purpose, number in [('Police, fire or ambulance emergency','000'), ('Police assistance','131 444'), ('Storm assistance','132 500'), ('Power and Water','1800 245 090'), ('NT road report','1800 246 199')]:
+            self.assertIn('<td>' + purpose + '</td><td>' + number + '</td>', html)
+        for condition in ['not necessarily open', 'not public emergency shelters', 'temporary calm in the cyclone eye is not an all-clear', 'caravans are unsuitable cyclone shelters', 'at least 10 litres of bottled water per person for three days', 'not a ceiling', 'after travel becomes unsafe', '29 April 2024', 'It does not relicense NT Government pages', 'does not collect or save them']:
+            self.assertIn(condition, html)
+        self.assertNotIn('<form', html)
+        self.assertNotIn('<input', html)
+        expected = {'au-nt-local-plan','au-getready-cyclones','au-getready-floods','au-getready-bushfires'}
+        for gid in ['au-household','au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            choice = next(c for c in guide['choices'] if c['id'] == 'nt-planning')
+            self.assertEqual({r['doc'] for r in choice['read']}, expected)
+            for key in ['prepare','learn']:
+                self.assertIn('au-nt-local-plan', {r.get('doc') for r in guide[key]})
+
     def test_chinese_factsheets_preserve_script_characters_conditions_and_guide_access(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'CHINESE-HAZARDS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
@@ -474,8 +496,9 @@ class Reference(unittest.TestCase):
         self.assertEqual(regions['AU-JBT']['ses_storm_flood'], '132 500')
         self.assertIn('<dd>132 500</dd>', sections['Jervis Bay Territory'])
         self.assertIn('<dd>2023-08-28</dd>', sections['Jervis Bay Territory'])
-        for uid in ['AU-ACT','AU-NSW','AU-NT','AU-QLD','AU-SA','AU-TAS','AU-VIC','AU-WA']:
+        for uid in ['AU-ACT','AU-NSW','AU-QLD','AU-SA','AU-TAS','AU-VIC','AU-WA']:
             self.assertEqual(regions[uid]['checked'], '2026-11-17')
+        self.assertEqual(regions['AU-NT']['checked'], '2026-11-26')
         for uid in ['AU-CX','AU-CC','AU-NF']:
             self.assertEqual(regions[uid]['life_threatening'], '000')
             self.assertIsNone(regions[uid]['ses_storm_flood'])

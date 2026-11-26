@@ -92,7 +92,12 @@
     "热浪",
     "熱浪",
     "海啸",
-    "海嘯"
+    "海嘯",
+    "Northern Territory",
+    "Top End",
+    "NT planning",
+    "storm surge",
+    "car park shelter"
   ],
   "choices": [
     {
@@ -114,6 +119,33 @@
           "doc": "au-beacon-preparation",
           "label": "Land-trip beacon preparation: registration, testing and distress plan",
           "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+        }
+      ]
+    },
+    {
+      "id": "nt-planning",
+      "label": "Plan for Northern Territory hazards and isolation",
+      "hint": "Original local worksheet plus national cyclone,flood and bushfire readings. Confirm NT shelter,animal,route and support arrangements.",
+      "read": [
+        {
+          "doc": "au-nt-local-plan",
+          "label": "Make a Northern Territory local warning, shelter and isolation plan",
+          "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
+        },
+        {
+          "doc": "au-getready-cyclones",
+          "label": "National cyclone preparedness factsheet",
+          "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "National flood preparedness factsheet",
+          "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-bushfires",
+          "label": "National bushfire preparedness factsheet",
+          "note": "Standard English national source text;use current NT/local instructions for actual decisions."
         }
       ]
     },
@@ -1056,6 +1088,11 @@
       "doc": "au-getready-traditional-chinese-tsunamis",
       "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
       "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-nt-local-plan",
+      "label": "Make a Northern Territory local warning, shelter and isolation plan",
+      "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
     }
   ],
   "learn": [
@@ -1438,6 +1475,11 @@
       "doc": "au-getready-traditional-chinese-tsunamis",
       "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
       "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-nt-local-plan",
+      "label": "Make a Northern Territory local warning, shelter and isolation plan",
+      "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
     }
   ],
   "related": [

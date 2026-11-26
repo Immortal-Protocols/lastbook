@@ -1,6 +1,6 @@
 {
-  "version": 15,
-  "id": "au-reference-chinese-hazards-2026-11-26",
+  "version": 16,
+  "id": "au-reference-nt-planning-2026-11-26",
   "checked": "2026-11-26",
   "sources": [
     {
@@ -479,8 +479,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "cf0c3dd64e9a3f0d89fab42b4431fcc85f882ff03b7a28c5b9f12fe231d49680",
-      "bytes": 14168,
+      "sha256": "95053e731f4906366d89389646a9f34d476894f1a149c19466ae703da0bdf8a7",
+      "bytes": 14212,
       "snapshot": "sources/au-jurisdictions.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
@@ -498,8 +498,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "d41b87b32e555fb34108c33c193fc8d167570820bbaec356a10d73d2e116655a",
-      "bytes": 17059,
+      "sha256": "22db17b4c6b14c9ccc6b132bda4314ed6248c30ac9fa8eeabd10f239a97302d4",
+      "bytes": 17435,
       "snapshot": "sources/au-reference.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
@@ -2433,6 +2433,42 @@
       "bytes": 8233,
       "snapshot": "sources/au-getready-traditional-chinese-tsunamis.html",
       "notes": "Complete publisher-written Traditional Chinese two-page factsheet text; no new translation/script conversion. Direct licensed-host copy matches national PDF. Source conditions and script retained; original PDFs/imagery/branding excluded. Not independent translation/accessibility review."
+    },
+    {
+      "id": "au-nt-local-plan",
+      "title": "Northern Territory: local warning, shelter and isolation worksheet",
+      "kind": "html",
+      "publisher": "Lastbook Australia contributors",
+      "jurisdiction": "Northern Territory",
+      "language": "en-AU",
+      "category": "preparedness",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/au-nt-local-plan.html",
+      "source_url": "",
+      "retrieved_at": "2026-11-26",
+      "authored_at": "2026-11-26",
+      "edition": "Original NT planning aid, 26 November 2026; cited source dates differ",
+      "year": 2026,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "",
+      "references": [
+        "https://securent.nt.gov.au/current-warnings",
+        "https://bushfires.nt.gov.au/",
+        "https://roadreport.nt.gov.au/",
+        "https://securent.nt.gov.au/emergency-contacts",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-plans-and-kits",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-shelters",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/evacuate-stay",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/prepare-your-home",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/storm-surge",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/animals",
+        "https://securent.nt.gov.au/prepare-for-an-emergency/bushfires"
+      ],
+      "sha256": "279dd4a659f410472f5de20dfc022115194f4b9eb658f55aa66fce99bebba928",
+      "bytes": 11197,
+      "snapshot": "sources/au-nt-local-plan.html",
+      "notes": "Original contributor wording,planning prompts and short factual references. NT Government articles,manuals,maps,translations and branding are not reproduced or relicensed. No completed personal plan stored;current shelter/route/service and professional assessment remain necessary."
     }
   ]
 }

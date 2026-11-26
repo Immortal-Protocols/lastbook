@@ -35,3 +35,12 @@ Australian data and guides can be reviewed and built independently. The relevant
 runtime PR supplies each optional reader/search/speech behavior. Historical
 release/runtime check notes in AUSTRALIA-CONTENT.md remain historical evidence;
 they do not describe code still included in the content diff.
+
+## Validation on 27 November 2026
+
+The isolated content branch passed 849 tests; the integrated map/place/runtime
+branch passed 985. Each reported five skips and eleven upstream expected
+failures. All 73 focused source/availability/personal/composition checks passed
+on development Python 3.14 and the app-build Python 3.11.18. The separate native
+reader patch passed all 204 bridge tests on both interpreters. No source corpus
+or data archive bytes changed for this availability repair.

@@ -852,6 +852,24 @@ class Browser(unittest.TestCase):
                 'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
             expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
 
+    def test_nearby_distance_fragment_uses_catalogue_locale(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(info)))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps([
+                    {'lat': 39, 'lon': -98, 'km': 0.5, 'cls': 'hospital', 'name': 'Hospital', 'dir': 'north'}])))
+            page.goto(origin + '/#/map?lat=39&lon=-98&z=15')
+            distance = page.locator('#near .near-distance span')
+            expect(distance).to_have_attribute('lang', 'es-419')
+            expect(distance).to_have_text('a 500 m al norte')
+
     def test_map_dynamic_english_fallbacks_keep_their_language(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"de"}', encoding='utf-8')

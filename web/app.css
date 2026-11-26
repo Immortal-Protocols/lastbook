@@ -949,6 +949,7 @@ body.map-maxed{overflow:hidden}
 .map-card .members button:hover,.nearres button:hover,.nearres button.on{background:var(--sunk)}
 .map-card .members small,.nearres button small{display:block;color:var(--ink3);font-size:13px}
 .nearres button{border-top:0;font-size:15px}.nearres button .msym{margin-top:2px}
+.nearres .near-distance::before{content:'·';margin-inline:.4em}
 .nearres.busy{opacity:.55;transition:opacity .2s}
 .mapattr{font-size:11px;bottom:6px}.mapscale{bottom:6px}
 @media(max-width:1000px){main.map-page{padding-bottom:90px}.map-page .mapgrid{grid-template-columns:1fr}

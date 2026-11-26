@@ -79,13 +79,15 @@ Source polygon URLs, SHA-256 hashes, vertex counts and rounded-out envelopes, ch
 | au-vic | Victoria extract area | 140.95, -39.24, 150.47, -33.97 |
 | au-wa | Western Australia extract area | 109.92, -41.17, 130.32, -12.83 |
 
-Actual broader review builds now cover all eight definitions. They use the dated 15 November 2026 sources, with input receipts, SQLite integrity checks, ZIP CRC checks and passing region-map scans. New whole-extract native UI checks are pending; the earlier metro maps and Melbourne suburb finder were checked in the native Mac app. No release manifest is silently changed by adding these definitions.
+Actual broader review builds cover all eight definitions. They use the dated 15 November 2026 sources, with input receipts, SQLite integrity checks, ZIP CRC checks and passing region-map scans. On 26 November, the combined Australian Mac review app also drew the full Victorian extract, found Mildura/Ballarat and showed metric nearby distances. A corrected ACT map displayed Canberra's city label at zoom 8. The other six broader extracts retain engine/data checks. No release manifest is silently changed by adding these definitions.
 
-The review ZIP metadata is set to its actual dated input, rather than the generic builder’s build-time `data_as_of` fallback. The input receipt remains the authoritative provenance. Named-point place-finder sidecars are separate review artifacts from PR #90; they are not street-address/postcode indexes and have not changed the existing four-file region-map release contract.
+The regional CLI accepts the source and recorded snapshot date; an unknown date is `not recorded`, rather than the build date. The callable `build(src, dst, metadata, clip=None)` API used by Spain remains available without import-time argument parsing. The input receipt remains the authoritative provenance. Named-point place-finder sidecars are separate review artifacts from PR #90; the opt-in five-file lifecycle proposal is #101. Neither supplies street-address/postcode search.
 
-The required source suite and region-source tests are run before publication. A full Mac release-bundle attempt stopped at missing `uv`, and the checkout does not hold the release-baseline data required by that recipe. Map SQLite/ZIP integrity and region-map scans are separate checks, not a claim that a complete release app bundle/package scan ran.
+The current branch combines #30 at `da577d0` with main `51658f5`, retaining optional map skipping, current country dispatch and separate Canadian provinces. The required suite plus regional checks passed: 809 tests, five skips and eleven upstream expected failures. Converter/API and Spain checks passed again after the capital-label fix. The combined Australian source passed 840 tests and the full Mac build recipe, including TLS, i18n, package/privacy scan and strict ad-hoc signature verification. Its frozen private review app was installed and checked natively. No Windows, notarization or upstream-release claim is made.
 
-### Whole-extract review results
+Geofabrik classifies Canberra as `national_capital`; the converter now normalizes that to the renderer's `city` class for city font, priority and minimum zoom. The cached source population puts Canberra at zoom 5 rather than the old fallback 14. [Separate corrected ACT/NSW integrated review maps](https://github.com/pilkster/lastbook/releases/tag/australia-map-label-review-2026-11-26) retain the 15 November snapshot and feature/place counts. Both passed privacy/inventory, SQLite/FTS/bounds, per-file SHA, full Setup unpack/CRC and zoom-8 city-label engine checks with sockets forbidden. Only ACT received this native capital-label check. Earlier releases below remain unchanged.
+
+### Original four-file whole-extract review results
 
 | Id | Feature rows | Mapped POI rows | Named point sidecar | Map ZIP bytes |
 | --- | ---: | ---: | ---: | ---: |

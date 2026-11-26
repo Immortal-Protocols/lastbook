@@ -503,3 +503,25 @@ The five CFA records also use the standard edition field,so the source details
 show Version6,July2022 and the year2022 alongside the distinct retrieval date.
 Final source repair suite:805 required contribution/build tests OK,five skips and
 eleven upstream expected failures. The61 source bodies remain unchanged.
+
+
+Final combined source verification passed **872 tests**,five skips and eleven
+upstream expected failures,including the required suite,Australian builders and
+distribution guards,and regional map/place lifecycle tests. The matching private
+Mac build passed package/privacy scan,i18n,strict signature and installed
+382-record/7-personal-record outbound-IP-denial self-check. All261 Australian
+guide references resolve;61 public source hashes and the preserved Victoria map
+hashes pass. No new TLS verification is claimed.
+
+Installed Mac review opened both four-reading guide choices and all five CFA
+readers. Following risk → preparation → warnings → last-resort → rights updated
+the outer title,source panel and Ask record each time. Back returned preparation
+to risk. Source details show the July2022 edition/year separately from retrieval.
+Selected screenshots checked rating cells,monitoring rows,last-resort danger text
+and concise rural cards. This is selected native review,not all61 native readers,
+Windows/Linux native verification or independent professional/accessibility review.
+The earlier unexplained idle watchdog event remains unresolved.
+
+[61-record Victorian bushfire contributor review and checksums](https://github.com/pilkster/lastbook/releases/tag/australia-victorian-bushfire-review-2026-11-26)
+provides public HTML,audits and engine evidence only. No original CFA PDF,excluded
+imagery or personal-use first-aid material is distributed.

@@ -567,3 +567,35 @@ Health's own current copyright policy prohibits adaptation without permission;
 Queensland Health has a separate BY-NDpolicy. Those grants are not inferred from
 other departments' general CCpolicies. Remote/beacon operation and more jurisdictions
 remain work for the full Australian objective.
+
+
+Final water validation: **804 required contribution/build tests plus2 separately
+run personal-distribution guards passed**,five skips/eleven upstream expected
+failures in the required suite. The final combined source command passed **878
+tests**,five skips/eleven expected failures,including both Australian builders,
+personal-distribution guards,regional sources,state maps,map conversion,regional
+place lifecycle and the GeoPackage place builder. Nine focused source tests pass.
+An initial combined invocation used four wrong module paths and failed only those
+imports;the corrected command is the878-test result. System Python's earlier792
+pass skipped dependencies;the current result uses the existing development venv.
+
+Actual public66/private387 engine searches and66 public reader hashes pass with
+socket creation forbidden. Public household/rural251 references resolve;all four
+installed private Australian guides resolve285 references,zero errors. Seven
+personal-use records/42FTS units and Victoria's3,054names/per-file hashes remain.
+The self-contained Mac build passes i18n,package/privacy scan,strict signature and
+actual installed387/7 outbound-IP-denial self-check. Its roots/setup manifest are
+unchanged,pinned inputs;no newTLS rerun claim.
+
+Selected installed Mac review opens both water choices and all five new readers.
+All19FAQ headings appear;selected screenshots check product/quantity conditions,
+flooded-tank cautions,chemical/radiological do-not-drink limits and rural cards.
+Source panels keep2022/2023/2026 dates distinct. User-clicked links update outer
+title/source/Ask;Back from non-potable returns flooded-tanks. This is selected native
+review,not all66 readers,actual testing/contamination/service availability or an
+independent water-safety/clinical/accessibility audit. Windows/Linux native hooks,
+HTTP-browser navigation and the earlier idle-watchdog issue retain their limits.
+
+[66-record rainwater and groundwater contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-rainwater-groundwater-review-2026-11-26)
+contains public HTML,audits and engine evidence only. Personal-use material and
+original PDFs remain excluded;earlier asset files remain unchanged.

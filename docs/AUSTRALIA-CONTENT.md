@@ -4,6 +4,18 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Current scope audit — 27 November 2026
+
+The [requirement-by-requirement audit](AUSTRALIA-SCOPE-AUDIT-20261127.md) reconciles
+installation, maps, public/personal source access and equal household/rural coverage
+against current files and published contributions. Its coverage table below
+supersedes the initial supplement's table. The latest ordinary-guide extension and
+874 content / 1,022 combined checks are recorded in
+[the routing review](AUSTRALIA-ORDINARY-FIRST-AID-REVIEW-20261127.json).
+The broad Australian objective remains incomplete; source counts and passing
+software checks do not establish local arrangements, reuse permission or nationwide
+practical completeness. Dated reviews later in this document remain historical.
+
 ## Current review scope — 27 November 2026
 
 This branch contains Australian content, offline builders/composition, personal-use
@@ -528,15 +540,17 @@ an instruction to accept a new live page automatically.
 
 | Area | Current contribution | Still needed |
 | --- | --- | --- |
-| Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence; NEMA AusAlert explanations and operational notice | Satellite phone/PLB operation, detailed device support and local radio frequency coverage |
-| Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation; SA property and animal-planning selections | Licensed detailed local guides for remaining jurisdictions; disability and translated materials |
-| Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov basics; Qld trip/kit source; SWA remote-work risks; ACMA locating-device explanation | More detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
-| Fire, flood, cyclone and heat | Dated NSW/Qld texts;six SA SES storm/flood readings;national warning/rating explanations;CFA Version6 text-only risk/preparation/warning/fire/last-resort source parts | More detailed regional manuals for ACT/NT/Tas/WA;hazard-specific and accessible/translated warning material;current local plans/services |
-| Food and water | Complete FSANZ consumer food-safety basics, emergency/outage and flood-cleanup articles; Qld food/drinking-water section; NSW rainwater, groundwater, flooded tank and non-potable sources | Actual site-specific testing/treatment, appliance/food conditions, current recalls and extended remote supply; further local recovery guidance |
-| Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
-| Power, gas and repairs | ESV generator use, gas emergencies, flood electricity/solar/battery/gas, outdoor LPG cylinders and all nine LCC27 FAQ pairs | More jurisdiction-specific material; equipment-specific instructions, repairs and local professional assessment |
-| Geographic directory | Six states,ACT,NT,Jervis Bay and all seven external territories; four remote entries are management references | Detailed territory manuals,field communications and verified current service availability |
-| Maps | Separate #38 now has eight capital,eight broader and six external extract definitions; #90/#101 provide point-place build/lifecycle support alongside #63 | Official publication/Setup listing; Antarctic coverage and detailed coastal/navigation data; this supplement contains no map files |
+| Emergency calls and communications | ACMA 000/112/106 and CB sources; accessible calling note; NEMA AusAlert explanations; locating-device and beacon preparation readings | Device-specific satellite/beacon instructions, local radio coverage and actual check-in/rescue arrangements |
+| Household planning and supplies | Qld plan/kit/home/pets; NSW evacuation; SA property/animals; NT/WA/Tas planning worksheets; original isolation-dependency worksheet | Full licensed local manuals where absent, actual support/destination/animal arrangements and completed suitable plans |
+| Rural preparation | NSW rural fire/flood/animals; SA property/livestock; myGov remote basics; SWA isolated-work risks; Qld road/recovery/packing texts; route/supply/check-in and beacon worksheets | Assessed route and supply requirements, model-specific equipment/recovery manuals, broader pastoral and community-specific planning |
+| Fire, flood and other hazards | NSW/Qld/SA readings; four Victorian CFA survival-guide sections; four ACT hazard articles; seven national standard English hazard factsheets | Detailed local operating manuals where absent, current local access/conditions and source-appropriate local arrangements |
+| Accessibility and languages | Qld inclusive/mobility/vision readings; accessible-call navigation; four Yumplatok/Wik-Mungkan poster texts; seven hazards each in Simplified Chinese, Traditional Chinese and Arabic | Independent language/accessibility/community review, accessible audio/Easy Read where absent, further needs/languages and actual support arrangements |
+| Food, water, smoke and sanitation | FSANZ basics/emergency/flood food texts; Qld food/water; NSW tank/groundwater/non-potable sources, smoke/mask/higher-risk and flooded-wastewater readings | Site-specific testing/treatment/system assessment, equipment conditions and extended remote supply needs; further licensed local procedures |
+| Health | Emergency calls/poisons, existing SCHN videos and NSW bat-exposure factsheet; optional 35 personal ANZCOR originals with dedicated and ordinary-guide links | Public first-aid reuse permission, remaining source/context coverage and qualified review; individual care plans are not established |
+| Power, gas and repairs | ESV generator, gas, flood energy/solar/battery, LPG cylinder and LCC27 compatibility source texts | Relevant equipment-specific instructions, other jurisdictional material where needed and site-specific professional assessment |
+| First Nations and community planning | Four published-language poster texts; complete NSW Health Aboriginal-led public-health planning overview with linked-resource labels | Community-led local plans, consent/partnerships, jurisdiction-specific material and actual culturally appropriate services; linked toolkits are not bundled |
+| Geographic directory | Six states, ACT, NT, Jervis Bay and seven external territories; remote management entries retain their limited scope | Detailed local/territory arrangements and verified current services; a directory is not an operational service inventory |
+| Maps and places | Separate #38 provides eight capital, eight broader and six external extract definitions and review downloads; #90/#101 provide place-build/lifecycle work. Installed Victoria has 3,054 named points | Maintainer acceptance and official Setup publication; full address/coastal/navigation and Antarctic coverage remain absent |
 
 All snapshots are static. Lastbook does not use this directory to fetch warnings,
 make phone calls, find current evacuation centres or decide that a road is safe.

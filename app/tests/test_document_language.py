@@ -23,7 +23,7 @@ const Speak=new Function('$','navigator','document','speechSynthesis','SpeechSyn
 '''
 READER = r'''
 const fs=require('fs'),vm=require('vm'),options=JSON.parse(process.argv[2]);
-const src=fs.readFileSync(process.argv[1],'utf8'),start=src.indexOf('async function reader('),end=src.indexOf('/* --------------------------------------------------------------- wiki',start);
+const src=fs.readFileSync(process.argv[1],'utf8'),start=src.indexOf('function plainReadingText('),end=src.indexOf('/* --------------------------------------------------------------- wiki',start);
 if(start<0||end<0)throw Error('reader not found');
 const main={innerHTML:''},body={innerHTML:''},button={},languages=[];
 const env={main,routeSeq:1,stale:()=>false,swap(){},setTitle(){},remember(){},backButton:()=>'',askLink:()=>'',saveButton:()=>'',ico:()=>'',fileUrl:p=>'/'+p,
@@ -92,6 +92,18 @@ class DocumentLanguage(unittest.TestCase):
         result = self.js(READER, 'web/app.js', dict(language=value, text='Content'))
         self.assertIn('lang="ar&quot; onmouseover=&quot;alert(1)"', result['html'])
         self.assertNotIn('lang="ar" onmouseover=', result['html'])
+
+    def test_numeric_runs_keep_digits_separators_and_signs_inside_ltr_isolates(self):
+        text = 'اختبار 131 450 و 000 ثم -18 °C و 0.5 و 10:30 و ١٣١ ٤٥٠.'
+        result = self.js(READER, 'web/app.js', dict(language='ar', text=text))
+        for value in ['131 450', '000', '-18', '0.5', '10:30', '١٣١ ٤٥٠']:
+            self.assertIn('<bdi dir="ltr">' + value + '</bdi>', result['html'])
+        from html.parser import HTMLParser
+        class Text(HTMLParser):
+            def __init__(self): super().__init__(); self.parts = []
+            def handle_data(self, value): self.parts.append(value)
+        parsed = Text(); parsed.feed(result['html'])
+        self.assertTrue(''.join(parsed.parts).endswith(text))
 
 if __name__ == '__main__':
     unittest.main()

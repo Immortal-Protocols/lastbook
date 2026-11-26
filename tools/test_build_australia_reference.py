@@ -22,6 +22,9 @@ class Reference(unittest.TestCase):
         audit = json.loads((au.SOURCES / 'NATIONAL-HAZARDS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
         self.assertEqual(audit['source_pages'], 14)
         self.assertEqual(audit['source_word_tokens'], 4944)
+        tsunami = (au.SOURCES / 'sources/au-getready-tsunamis.html').read_text(encoding='utf-8')
+        for label in ['If you feel the earth shake', 'If you see the ocean drop', 'If you hear an unusual roaring']:
+            self.assertIn('<h4>' + label + '</h4><p>', tsunami)
         self.assertEqual(len(audit['selections']), 7)
         bodies = {}
         for selection in audit['selections']:

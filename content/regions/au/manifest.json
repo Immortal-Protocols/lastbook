@@ -1947,8 +1947,8 @@
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "https://www.qld.gov.au/legal/copyright",
       "raw_sha256": "e7fd721a238cd3126764e3e2aac9ab685a51de3e7ce90e80efa24841987948fe",
-      "sha256": "d4985544f22d8a2914f8eafe6f394096b5474b3662c1c3e0a5b7efb4da6eafe5",
-      "bytes": 8421,
+      "sha256": "c9d299c30fbc2b59856e43e82627eee4f25252631882856a123c67f55986cc39",
+      "bytes": 8463,
       "snapshot": "sources/au-getready-tsunamis.html",
       "notes": "Complete standard English factsheet text from two source pages. National PDF and directly hosted licensed Queensland copy are byte-identical. Panel order, checklist words, source-specific quantities and conditions retained; original PDFs/imagery/branding excluded. Not the separate Easy Read edition or an independent professional/accessibility review."
     }

@@ -8160,12 +8160,13 @@
       "independent_word_counter": "Equal to pdftotext-raw after whitespace,printed-wrap-hyphen and empty-checkbox normalization.",
       "visual_review": "All14pages rendered1800px and inspected. Illustrations/branding/originalPDFs excluded; all extracted nonbranding words retained.",
       "reader_id": "au-getready-tsunamis",
-      "reader_sha256": "d4985544f22d8a2914f8eafe6f394096b5474b3662c1c3e0a5b7efb4da6eafe5",
+      "reader_sha256": "c9d299c30fbc2b59856e43e82627eee4f25252631882856a123c67f55986cc39",
       "source_created": "2026-02-19",
       "source_updated": "2026-03-06"
     }
   ],
   "comparison": "All selected nonbranding words compare through independent raw and coordinate-based extraction and final HTML counters. Original panels/list/question associations were inspected in14rendered1800pxpages;column/panel reading order is made linear. Empty checkbox glyphs and typography/line-wrap artifacts are normalized;no source spelling/quantity/condition corrections.",
   "exclusions": "Photos,artwork,diagrams,icons,QRcodes,branding,original PDFs,the55page resource guide and separate Easy Read/translated/video/audio assets.",
-  "not_claimed": "Independent clinical/fire/electrical/engineering/accessibility/translation review,live warnings,service availability,actual calls/roads/shelters,person-specific adequacy or complete Australian coverage."
+  "not_claimed": "Independent clinical/fire/electrical/engineering/accessibility/translation review,live warnings,service availability,actual calls/roads/shelters,person-specific adequacy or complete Australian coverage.",
+  "native_layout_review": "Tsunami warning-sign labels split into individual headings and answers; all original words and their order retained."
 }

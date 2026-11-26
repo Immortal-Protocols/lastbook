@@ -93,3 +93,5 @@ All source rights remain. Personal originals and a mixed private library stay
 private. The separate MHFA reproduction grant remains limited to nonprofit use
 with credit and clears no other source. Source integrity is not current advice,
 training, a clinical review or a guarantee of local services.
+
+[Exact validation scope](AUSTRALIA-READING-CHECK-REVIEW-20261127.md).

@@ -66,6 +66,16 @@ rights grant, a working local arrangement or upstream acceptance. Conversely,
 absence of live network requests is expected for this offline project and is not
 itself an implementation defect.
 
+## Reading maintenance follow-up
+
+The [reading-maintenance check](AUSTRALIA-READING-CHECK.md) now validates installed
+Australian readings after normal app logs/history change. It reconstructs matching
+sources offline and checks files, source conditions and all source search pages,
+with SQLite/FTS checks on a private temporary database copy. Explicit required
+collections catch complete removal. The existing full-snapshot verifiers retain
+their exact-copy scope; this command does not make official Setup repair available
+or verify other base files, maps, source currency or clinical suitability.
+
 ## Verification scope
 
 This documentation reconciliation reads the exact 125-source manifest, relevant
@@ -76,10 +86,10 @@ revalidate every map archive again. Installed data hashes still match the final
 native-preservation receipt. No new maintainer request is present after the
 already addressed reader-path-policy request.
 
-Latest product checks are **888 content / 1,036 combined**, each five skips and
-eleven upstream expected failures, plus **62 focused checks on Python 3.14 and
-3.11.18**. Their exact scope and selected native observations are in
-[AUSTRALIA-TRAUMA-REFERENCE-REVIEW-20261127.json](AUSTRALIA-TRAUMA-REFERENCE-REVIEW-20261127.json).
+Latest product checks are **908 content / 1,056 combined**, each five skips and
+eleven upstream expected failures, plus **82 focused checks on Python 3.14 and
+3.11.18**. Their exact scope and reading-maintenance observations are in
+[AUSTRALIA-READING-CHECK-REVIEW-20261127.md](AUSTRALIA-READING-CHECK-REVIEW-20261127.md).
 Other relevant evidence is in [the personal-source review](AUSTRALIA-PERSONAL-EXPANSION-REVIEW-20261127.json),
 [composition instructions](AUSTRALIA-COMPOSE.md), [source reuse audit](AUSTRALIA-VERBATIM-SOURCES.md)
 and [ordinary source-placement audit](AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json).

@@ -17,6 +17,68 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_ordinary_need_links_preserve_existing_choices_and_source_boundaries(self):
+        audit = json.loads((au.ROOT / 'docs/AUSTRALIA-GUIDE-LINKS-20261127.json').read_text())
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        self.assertEqual(audit['counts'], {'guides': 7, 'choices': 25, 'references': 40})
+        for gid, digest in audit['baseline_topic_sha256'].items():
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text())
+            for choice in guide['choices']:
+                added = [p for p in audit['placements'] if p['guide'] == gid and p['choice'] == choice['id']]
+                self.assertEqual(choice.get('read', [])[:len(added)], [p['reference'] for p in added])
+                for placement in added:
+                    ref = placement['reference']; record = entries[ref['doc']]
+                    self.assertEqual(record['sha256'], placement['source_sha256'])
+                    self.assertTrue(ref['label'].startswith(record['jurisdiction'] + ': '))
+                if added:
+                    choice['read'] = choice['read'][len(added):]
+            # Frozen pre-change guide protects labels, hints, ranking fields and all original references.
+            self.assertEqual(au.digest(json.dumps(guide, sort_keys=True).encode()), digest)
+        wastewater = next(p['reference'] for p in audit['placements'] if p['reference']['doc'] == 'nsw-flooded-wastewater')
+        self.assertIn('does not provide a sewer-backup cleanup procedure', wastewater['note'])
+        tank = next(p['reference'] for p in audit['placements'] if p['reference']['doc'] == 'nsw-tanks-after-flood')
+        self.assertIn('not a treatment method for chemically contaminated river water', tank['note'])
+
+    def test_ordinary_need_links_resolve_only_installed_australian_sources(self):
+        import copy
+        import server
+        audit = json.loads((au.ROOT / 'docs/AUSTRALIA-GUIDE-LINKS-20261127.json').read_text())
+        records = au.checked_sources()[0]['sources']
+        australian = {r['id']: r for r in records}
+        topics = [json.loads(p.read_text()) for p in sorted((au.ROOT / 'content/topics').glob('*.json'))]
+        # Ordinary source fixtures let the test verify full fallback order, not just an empty guide.
+        from tools.validate_topics import items
+        base = {r['doc']: dict(id=r['doc'], title='Baseline source', path='pages/baseline.html', kind='html')
+                for t in topics for _, r in items(t)
+                if r.get('doc') and r['doc'] not in australian and not r['doc'].startswith('personal-au-')}
+        originals = copy.deepcopy(topics)
+        for t in originals:
+            for c in t.get('choices', []):
+                count = sum(p['guide'] == t['id'] and p['choice'] == c['id'] for p in audit['placements'])
+                if count:
+                    c['read'] = c['read'][count:]
+        def resolve(available, source=topics):
+            cat = {'by_id': {**base, **available}, 'by_path': {}, 'video_tx': {}, 'thumbs': {}}
+            with patch.object(server, 'APP', au.ROOT), patch.object(server, 'topics', return_value=source), \
+                 patch.object(server, 'catalog', return_value=cat), patch.object(server, 'zim_names', return_value=[]), \
+                 patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                return {t['id']: t for t in server.topics_resolved()}
+        absent = resolve({}); baseline = resolve({}, originals)
+        for gid in audit['baseline_topic_sha256']:
+            self.assertEqual(absent[gid], baseline[gid])
+        self.assertNotIn('au-household', absent)
+        for available in [australian, {'nsw-smoke-protection': australian['nsw-smoke-protection']}]:
+            resolved = resolve(available)
+            for placement in audit['placements']:
+                guide = resolved[placement['guide']]
+                choice = next(c for c in guide['choices'] if c['id'] == placement['choice'])
+                uid = placement['reference']['doc']
+                matches = [r for r in choice['read'] if r.get('doc') == uid]
+                self.assertEqual(len(matches), int(uid in available))
+                if matches:
+                    self.assertEqual(matches[0]['src']['id'], uid)
+                    self.assertEqual(matches[0]['src']['path'], available[uid]['path'])
+
     def test_smoke_and_wastewater_readings_keep_full_conditions_and_equal_access(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'SMOKE-SANITATION-SOURCE-AUDIT-20261127.json').read_text())

@@ -16,7 +16,8 @@
   "NOAA weather radio",
   "emergency alert",
   "ham",
-  "amateur radio", "antenna",
+  "amateur radio",
+  "antenna",
   "license",
   "FRS",
   "GMRS",
@@ -35,9 +36,38 @@
    "id": "phones-down",
    "label": "Phones or internet are down or overloaded",
    "hint": "Calls won't connect, need to find family",
-   "phrases": ["cell service", "cell signal", "cell reception", "cell coverage", "cell phone service", "cellphone service"],
-   "context": ["phone", "phones", "home", "house", "here", "area", "town", "anywhere", "lost", "working", "work"],
+   "phrases": [
+    "cell service",
+    "cell signal",
+    "cell reception",
+    "cell coverage",
+    "cell phone service",
+    "cellphone service"
+   ],
+   "context": [
+    "phone",
+    "phones",
+    "home",
+    "house",
+    "here",
+    "area",
+    "town",
+    "anywhere",
+    "lost",
+    "working",
+    "work"
+   ],
    "read": [
+    {
+     "doc": "au-emergency-calls",
+     "label": "Australia: Emergency calls",
+     "note": "Australian source directory. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "au-accessible-calls",
+     "label": "Australia: Accessible emergency calling: Australian service navigation",
+     "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026. Retrieved 2026-11-26; source and retrieval dates are distinct."
+    },
     {
      "doc": "d0fbb2e051cd46",
      "page": 29,
@@ -63,6 +93,21 @@
    "label": "I need official warnings and news",
    "hint": "NOAA Weather Radio, emergency alerts, battery or crank radio",
    "read": [
+    {
+     "doc": "au-ausalert",
+     "label": "Australia: AusAlert: NEMA national warning-system explanation",
+     "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "au-ausalert-operational",
+     "label": "Australia: AusAlert operational announcement: 10 November 2026",
+     "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "nsw-warning-levels",
+     "label": "New South Wales: Warning levels: NSW explanation of the Australian Warning System",
+     "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning. Retrieved 2026-11-18; source and retrieval dates are distinct."
+    },
     {
      "doc": "2c619f4fe19187",
      "page": 2,
@@ -111,6 +156,11 @@
    "label": "Talking with neighbors without phones",
    "hint": "FRS/GMRS walkie-talkies, CB, neighborhood radio plans",
    "read": [
+    {
+     "doc": "au-cb-radio",
+     "label": "Australia: Citizen band radio stations class licence",
+     "note": "Australian source directory. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
     {
      "doc": "4f6b406c191181",
      "page": 47,
@@ -165,6 +215,11 @@
    "label": "Signal for help or rescue",
    "hint": "Trapped, lost, need to be seen or heard",
    "read": [
+    {
+     "doc": "au-locating-devices",
+     "label": "Australia: Emergency locating devices: ACMA explanation",
+     "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026. Retrieved 2026-11-26; source and retrieval dates are distinct."
+    },
     {
      "doc": "d0fbb2e051cd46",
      "page": 9,

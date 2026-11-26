@@ -4,6 +4,22 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Australian readings in ordinary needs — 27 November 2026
+
+Forty links across 25 existing choices in seven ordinary guides now expose relevant
+Australian sources when installed: water, food, power, shelter, sanitation, disasters
+and communications. There is no inferred location or new country setting. Existing
+source-availability filtering hides absent records; original choices, ranking
+fields and source order remain after the added cards. Household/rural guides and
+all 121 public reader bytes are unchanged.
+
+Cards label jurisdiction and dates. NSW septic assessment is not presented as a
+sewer-cleanup or emergency-toilet procedure; flooded tank cleaning is not a method
+for chemically contaminated river water. Generator source differences and NSW
+tank-source variations remain visible. Existing overseas sources remain separate;
+no new combined medical, electrical or water-treatment procedure is written.
+The placement audit is `docs/AUSTRALIA-GUIDE-LINKS-20261127.json`.
+
 ## Smoke health and flooded wastewater — 27 November 2026
 
 Four additional NSW Health readings cover smoke exposure reduction, higher-risk

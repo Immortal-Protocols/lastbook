@@ -40,6 +40,16 @@
    "hint": "Boil-water notice, earthquake, flood, broken main",
    "read": [
     {
+     "doc": "nsw-nonpotable-water",
+     "label": "New South Wales: NSW: non-potable supplies and water-use advice",
+     "note": "NSW Health source 21 April 2026. Distinguishes microbial boil advice from chemical/radiological do-not-drink and algal do-not-use advice. No local water declaration or testing is supplied."
+    },
+    {
+     "doc": "qld-water",
+     "label": "Queensland: Food and drinking water",
+     "note": "Queensland guidance; local services and rules apply. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
+    {
      "doc": "f7ff53bcaae9cc",
      "page": 13,
      "label": "Ways to treat water of uncertain quality",
@@ -64,6 +74,11 @@
    "label": "I can boil water",
    "hint": "Stove, camp stove, grill or fire is available",
    "read": [
+    {
+     "doc": "nsw-nonpotable-water",
+     "label": "New South Wales: NSW: non-potable supplies and water-use advice",
+     "note": "NSW Health source 21 April 2026. Distinguishes microbial boil advice from chemical/radiological do-not-drink and algal do-not-use advice. No local water declaration or testing is supplied."
+    },
     {
      "doc": "med-953dfe1df69e0773",
      "page": 23,
@@ -212,6 +227,16 @@
    "hint": "No stored water left, borewell or tubewell",
    "read": [
     {
+     "doc": "nsw-rainwater-tanks",
+     "label": "New South Wales: NSW: managing rainwater tanks for safe drinking water",
+     "note": "NSW Health source 11 September 2026. Complete tank guide and 19 FAQs; product strengths and quantities apply within the source tank context. Different source tap-flushing durations are retained and flagged."
+    },
+    {
+     "doc": "nsw-groundwater",
+     "label": "New South Wales: NSW: groundwater risks, protection and testing",
+     "note": "NSW Health source 18 October 2022. Groundwater risks, protection and testing; the dated regional agency/contact labels remain."
+    },
+    {
      "doc": "f7ff53bcaae9cc",
      "page": 12,
      "label": "Emergency outdoor water sources",
@@ -243,6 +268,11 @@
    "hint": "City river, canal, bay or flooded streets",
    "read": [
     {
+     "doc": "nsw-nonpotable-water",
+     "label": "New South Wales: NSW: non-potable supplies and water-use advice",
+     "note": "NSW Health source 21 April 2026. Distinguishes microbial boil advice from chemical/radiological do-not-drink and algal do-not-use advice. No local water declaration or testing is supplied."
+    },
+    {
      "doc": "f7ff53bcaae9cc",
      "page": 12,
      "label": "Which outdoor water to avoid, and salt water",
@@ -268,6 +298,16 @@
    "hint": "Poisoned, odd smell or color, spill, flood water, industrial area, distillation",
    "read": [
     {
+     "doc": "nsw-nonpotable-water",
+     "label": "New South Wales: NSW: non-potable supplies and water-use advice",
+     "note": "NSW Health source 21 April 2026. Distinguishes microbial boil advice from chemical/radiological do-not-drink and algal do-not-use advice. No local water declaration or testing is supplied."
+    },
+    {
+     "doc": "nsw-tanks-after-flood",
+     "label": "New South Wales: NSW: cleaning rainwater tanks after floods or storms",
+     "note": "NSW Health source 4 April 2023. Flooded rainwater tanks: electrical, structural and entry risks, professional cleaning and clean-safe-refill conditions. This is not a treatment method for chemically contaminated river water."
+    },
+    {
      "doc": "med-ea4055db35ff180d",
      "page": 29,
      "label": "Why filtering and disinfecting will not remove toxic chemicals",
@@ -292,6 +332,11 @@
    "label": "Keep treated water clean once you have it",
    "hint": "Containers, dippers, how much per person",
    "read": [
+    {
+     "doc": "nsw-rainwater-tanks",
+     "label": "New South Wales: NSW: managing rainwater tanks for safe drinking water",
+     "note": "NSW Health source 11 September 2026. Complete tank guide and 19 FAQs; product strengths and quantities apply within the source tank context. Different source tap-flushing durations are retained and flagged."
+    },
     {
      "doc": "med-953dfe1df69e0773",
      "page": 25,

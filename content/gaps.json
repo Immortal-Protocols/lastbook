@@ -1,7 +1,7 @@
 {
   "water": {
     "missing": [
-      "No current CDC or EPA page on disinfecting drinking water. Every bleach dose here assumes 5–6% bleach, and today's stronger US bleach labels are not covered.",
+      "No current CDC or EPA page on disinfecting drinking water. The core overseas bleach readings assume 5–6% bleach; the optional NSW rainwater-tank source has different product strengths and tank quantities. Keep each complete source method within its stated context; stronger household bleach labels are not covered by a universal dose here.",
       "No guidance on choosing certified filters or tablets, storing water in large barrels, or treating pool or spa water.",
       "No local water utility's boil-water notice material.",
       "No source on how tall buildings get their water (roof tanks, booster pumps), or how long taps keep running on upper floors in a blackout.",
@@ -10,12 +10,13 @@
     ],
     "disagree": [
       "Sources give different bleach drop counts. Each card states the bleach strength its own source assumes — follow one source's method fully rather than mixing them.",
-      "Water-heater water: the FEMA/Red Cross booklet (2004) lists the hot-water tank among safe water sources in the home; the Norwegian civil protection guide (2024) says water from the water heater should not be used for drinking."
+      "Water-heater water: the FEMA/Red Cross booklet (2004) lists the hot-water tank among safe water sources in the home; the Norwegian civil protection guide (2024) says water from the water heater should not be used for drinking.",
+      "When the Australian sources are installed, the NSW rainwater-tank reading retains different tap-flushing durations in its introduction and FAQs and flags them. Its tank-cleaning and treatment quantities are not a small-container drinking-water recipe."
     ]
   },
   "sanitation": {
     "missing": [
-      "No US (CDC, FEMA or Red Cross) guide to bucket or bag emergency toilets, or to cleaning up sewage backups. The closest are a Norwegian civil-protection guide, WHO notes written for camps and a 1987 book.",
+      "No US (CDC, FEMA or Red Cross) guide to bucket or bag emergency toilets, or to cleaning up sewage backups. The closest are a Norwegian civil-protection guide, WHO notes written for camps and a 1987 book. The optional Australian supplement adds NSW Health flood-affected septic/AWTS assessment guidance, not a sewage-cleanup or bucket-toilet procedure.",
       "Almost no sanitation videos."
     ]
   },
@@ -52,12 +53,13 @@
   },
   "shelter": {
     "missing": [
-      "No EPA or CDC wildfire smoke health guide. The medical encyclopedia’s Air quality index article (under Go deeper) explains the numbers, but there is no agency explainer.",
+      "No EPA or CDC wildfire-smoke health guide. When the optional Australian sources are installed, this guide links dated NSW Health smoke, higher-risk and mask readings; the offline copy supplies no live air-quality information.",
       "Most outdoor-shelter videos are hobbyist channels without captions.",
       "No city guidance on cooling centers or on heat in apartments without air conditioning."
     ],
     "disagree": [
-      "Heat stroke: CERT says no fluids; New Where There Is No Doctor says drinks once alert."
+      "Heat stroke: CERT says no fluids; New Where There Is No Doctor says drinks once alert.",
+      "Generator siting sources differ: US FEMA uses a distance rule; the optional Victorian source describes sheltered outdoor locations with exhaust and ventilation conditions. A particular carport or veranda is not assessed here. Read the complete source and equipment instructions; do not combine fragments into a new siting rule."
     ]
   },
   "power": {
@@ -67,6 +69,9 @@
       "No local utility's material on gas meters, seismic shut-off valves or planned power shut-offs.",
       "No power outage guide written for people living in apartment or high-rise buildings, and nothing for residents on being stuck in an elevator.",
       "Nothing on camp stoves or generators on apartment balconies specifically; the general 20-foot rule is in the FEMA outage sheet. U.S. Fire Administration guidance says not to store or use a grill on a porch or balcony."
+    ],
+    "disagree": [
+      "Generator siting sources differ: US FEMA uses a distance rule; the optional Victorian source describes sheltered outdoor locations with exhaust and ventilation conditions. A particular carport or veranda is not assessed here. Read the complete source and equipment instructions; do not combine fragments into a new siting rule."
     ]
   },
   "energy": {
@@ -87,7 +92,7 @@
   "disaster": {
     "missing": [
       "No California tsunami inundation maps or local tsunami zone guide.",
-      "No EPA/CDC wildfire smoke guide.",
+      "No EPA/CDC wildfire-smoke guide. Dated NSW Health smoke, higher-risk and mask readings appear when the optional Australian sources are installed; local warnings and air quality still require current information.",
       "No guidance on getting out of a subway or other transit during an emergency, or on what to do when transit stops running.",
       "No fire department guidance on when to stay inside a fire-resistant apartment building during a fire elsewhere in it.",
       "City guides such as NYC Emergency Management's Ready New York series are not in the library."

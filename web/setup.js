@@ -193,10 +193,11 @@
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState() && !skippedMap();
   const mapAdds = () => choice.map && choice.map !== 'none' && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const SMALL_PACK_ENGLISH_SUMMARY = globalThis.lastbookI18nEnglish?.['setup.packSummary.small'];
   function packSummary(p) {
     const state = p.id === 'medium' ? selectedState() : '';
     const map = maps().length && state ? mapName(state) : 'California';
-    const summaryKey = p.summary_key || (p.id === 'small' ? 'setup.packSummary.small' : null);
+    const summaryKey = p.summary_key || (p.id === 'small' && p.summary === SMALL_PACK_ENGLISH_SUMMARY ? 'setup.packSummary.small' : null);
     const text = summaryKey
       ? tr(summaryKey, p.id === 'medium' ? { map } : null, p.summary || '')
       : (p.summary || '');

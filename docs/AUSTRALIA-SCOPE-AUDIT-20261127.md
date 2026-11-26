@@ -10,15 +10,26 @@ smaller completion target.
 
 | Requirement | Current evidence | Result and limit |
 | --- | --- | --- |
-| Install and run Lastbook locally | Installed Mac review self-check verifies 475 records, 36 personal records and outbound-IP denial. Selected native reader, guide, map and source-context checks are recorded in the dated reviews. Original vendor app and rollback copies are retained privately. | Working local installation verified for the recorded Mac scope. This does not establish a public production app release. |
+| Install and run Lastbook locally | Installed Mac review self-check verifies 476 records, 36 personal records and one nonprofit original and outbound-IP denial. Selected native reader, guide, map and source-context checks are recorded in the dated reviews. Original vendor app and rollback copies are retained privately. | Working local installation verified for the recorded Mac scope. This does not establish a public production app release. |
 | Contribute Australian maps | [PR38](https://github.com/Immortal-Protocols/lastbook/pull/38) supplies 22 exact build definitions: eight capital areas, eight broader extracts and six external-territory extracts. [Broader map downloads](https://github.com/pilkster/lastbook/releases/tag/australia-state-maps-review-2026-11-17), [corrected ACT/NSW maps](https://github.com/pilkster/lastbook/releases/tag/australia-map-label-review-2026-11-26) and [territory downloads](https://github.com/pilkster/lastbook/releases/tag/australia-territory-maps-review-2026-11-26) are published contributor prereleases. | Contribution and review downloads delivered. Definitions are extract envelopes, not complete administrative/coastal/navigation coverage. Antarctic coverage and official Setup publication remain absent. |
 | Australian place search and map lifecycle | [PR90](https://github.com/Immortal-Protocols/lastbook/pull/90) and [PR101](https://github.com/Immortal-Protocols/lastbook/pull/101), with the source/build and lifecycle checks in their descriptions. Installed Victoria retains 3,054 named points and verified layer hashes. | Named-place search delivered for the reviewed datasets. These are not full street-address coverage or verified operating facilities. |
 | Contribute reusable Australian information | Current manifest has 125 public records: 100 official practical readings, 16 rights readings and nine original records. The [public data download](https://github.com/pilkster/lastbook/releases/tag/australia-community-planning-review-2026-11-27) and PR89 source/build/composition tools are published. | Delivered for the listed sources. Per-source dates, jurisdictions, licence exclusions and boundaries remain; linked resources are not implicitly included. |
-| Give household and rural use equal depth | The actual 475-record library resolves 297 household references and 302 rural references. Both guides expose the national/local planning, hazard, accessibility and language additions; specialised rural route, isolation, property and animal readings remain. | Both use cases have substantial verified coverage. Similar counts are navigation evidence, not proof of equal usefulness or complete content. |
+| Give household and rural use equal depth | The actual 476-record library resolves 300 household references and 305 rural references. Both guides expose the national/local planning, hazard, accessibility and language additions; specialised rural route, isolation, property and animal readings remain. | Both use cases have substantial verified coverage. Similar counts are navigation evidence, not proof of equal usefulness or complete content. |
 | Australian first-aid source access | The optional explicit collection contains 35 unchanged ANZCOR PDFs / 263 pages plus a directory. All physical-page sequences and 161 Australian reader hashes verify. The dedicated guide has 108 references; ordinary Injury & illness has 21 further conditional links across ten choices. | Local personal-source access and opt-in tools delivered. Originals and their extracted bodies/index are excluded from public assets. Public redistribution permission and independent clinical review remain unproven. |
 | Work without an Internet connection | Actual engine checks forbid sockets; the installed private app denies outbound IP before imports. Readers, local search, guides and the installed map work with local files. | Verified for the recorded checks. Setup/acquisition remain explicit separate steps. Static warnings and directory entries do not establish current conditions. |
 | Make contributions independently reviewable | Nine focused PRs separate maps, places, lifecycle, content, HTTP reader, Mac timing, document language, script search and native reader work. PR89 excludes the companion runtime changes except the shared existing reader-file predicate used for availability. | Delivered for the reviewed branch structure. Maintainer acceptance and official release/Setup listing remain pending. |
 | Make it complete for the user and other Australians | Current source audits and coverage table still identify unavailable manuals, local/device/community needs, public first-aid rights and unverified use cases. The optional request for the user's remaining essential household/rural situations has no answer yet. | Completion is not proved. Neither green software checks nor a large source count proves nationwide practical completeness. |
+
+## Adult traumatic-event source follow-up
+
+The optional nonprofit source path now adds one unchanged seven-page MHFA adult
+traumatic-event guideline with ten conditional guide references. Its physical-page-7
+grant permits nonprofit reproduction with source acknowledgement. It remains
+separate from the 125-record public manifest and is excluded from general packs.
+This source does not clear the reserved ANZCOR or Australian Red Cross materials,
+and is not the full Red Cross PFA manual. The installed mixed library has 476 records;
+all 13,139 earlier search rows are preserved. See the [source workflow](AUSTRALIA-TRAUMA-REFERENCE.md)
+and [latest exact review](AUSTRALIA-TRAUMA-REFERENCE-REVIEW-20261127.json).
 
 ## Current coverage and concrete gaps
 
@@ -65,8 +76,8 @@ revalidate every map archive again. Installed data hashes still match the final
 native-preservation receipt. No new maintainer request is present after the
 already addressed reader-path-policy request.
 
-Latest product checks remain **874 content / 1,022 combined**, each five skips and
-eleven upstream expected failures, plus **48 focused checks on Python 3.14 and
+Latest product checks are **888 content / 1,036 combined**, each five skips and
+eleven upstream expected failures, plus **62 focused checks on Python 3.14 and
 3.11.18**. Their exact scope and selected native observations are in
 [AUSTRALIA-ORDINARY-FIRST-AID-REVIEW-20261127.json](AUSTRALIA-ORDINARY-FIRST-AID-REVIEW-20261127.json).
 Other relevant evidence is in [the personal-source review](AUSTRALIA-PERSONAL-EXPANSION-REVIEW-20261127.json),

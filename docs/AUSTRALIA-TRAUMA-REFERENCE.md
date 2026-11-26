@@ -86,7 +86,10 @@ All base material and restrictions remain. A private mixed library stays private
 or private metadata. The nonprofit source grant does not clear the base. Local
 compositions are not official Setup packs; Setup Check/Repair are unavailable.
 Use the matching read-only verifier or recreate from the retained closed base.
-Earlier composition receipts describe their earlier snapshots; use this matching
+The full checksum verifier describes the composition snapshot. Later app-written
+logs or other changes can produce a mismatch; a snapshot mismatch alone does not
+establish that the original PDF changed. Earlier composition receipts describe
+their earlier snapshots; use this matching
 verifier for the newly composed snapshot.
 
 ## Guide and general-pack behavior
@@ -109,3 +112,5 @@ not silently enter an unrestricted pack.
 Software, source/layout checking and selected native observations are separate
 from independent clinical review, training, local service availability and public
 permission for the restricted ANZCOR/Red Cross sources.
+
+[Exact software, source/layout, native and preservation checks](AUSTRALIA-TRAUMA-REFERENCE-REVIEW-20261127.json).

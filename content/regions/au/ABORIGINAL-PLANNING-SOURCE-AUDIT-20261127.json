@@ -1,0 +1,294 @@
+{
+  "checked": "2026-11-27",
+  "id": "nsw-aboriginal-planning",
+  "raw": {
+    "id": "nsw-aboriginal-planning",
+    "url": "https://www.health.nsw.gov.au/pandemic/Pages/engaging_aboriginal_communities.aspx",
+    "final_url": "https://www.health.nsw.gov.au/pandemic/Pages/engaging_aboriginal_communities.aspx",
+    "retrieved_at": "2026-11-27",
+    "bytes": 85175,
+    "raw_sha256": "fd46fae9b26dbb937133543824ea52068679136e89099a30be7a547dc23adc03",
+    "copyright_links": [
+      {
+        "text": "Copyright",
+        "href": "/pages/copyright.aspx"
+      }
+    ]
+  },
+  "rights": {
+    "raw": {
+      "id": "nsw-health-copyright",
+      "url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "final_url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "retrieved_at": "2026-11-27",
+      "bytes": 81203,
+      "raw_sha256": "20c6de5936d30ca8baa2066781ee2f68b2efc17afb0fd48bddc34d487306a67d",
+      "copyright_links": [
+        {
+          "text": "Copyright",
+          "href": "/pages/copyright.aspx"
+        }
+      ]
+    },
+    "license": "CC-BY-4.0",
+    "policy_matches_existing_bundled_body": true,
+    "credit": "© State of New South Wales NSW Ministry of Health. For current information go to www.health.nsw.gov.au.",
+    "exclusions": "State symbols/logos/trademarks, third-party material and expressly restricted material. No right to linked guideline/toolkits is inferred."
+  },
+  "source_updated": "2025-10-28",
+  "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+  "source_text": "Aboriginal peoples in NSW are at a greater risk from morbidity and mortality during a public health emergency due to existing challenges accessing health services, social determinants of health and a higher prevalence of people living with chronic conditions. Preparedness and response planning led by Aboriginal people will ensure strategies reflect the needs of Aboriginal communities. Policies that align with, and support Aboriginal cultural values and practices minimise potential health impacts to Aboriginal peoples prior to, during, and after public health emergencies. Key resource Public Health Emergency Preparedness and Response with Aboriginal Communities (GL2024_016) outlines guiding principles and actions in prevention, preparedness, response, and recovery specific to Aboriginal Communities when planning at local, regional, and state levels with key stakeholders. Considerations when planning for emergencies with Aboriginal communities Key considerations when developing emergency plans and services for Aboriginal communities include: self-determination at all 4 stages of prevention, preparedness, response, and recovery information for Aboriginal communities is to be informed by Aboriginal people family, housing, and mobility patterns disease burden and suboptimal access to healthcare recognition of Aboriginal cultural values, practices, and local Lore. Additional strategies to strengthen emergency preparedness and response with Aboriginal communities Embedding Aboriginal cultural governance structures in NSW Health systems at all levels to ensure shared decision making and self-determination Continually improve the cultural safety of health services Ensuring there is Aboriginal representation on Local Health District / Specialty Health Network Emergency Management Committees Ensuring NSW Health and the Aboriginal Community Controlled sector have formal partnership mechanisms that support active participation when planning for, and responding to, emergencies. Additional resources Public Health Services Supporting Plan to HEALTHPLAN (under review) NSW Health Services Functional Area Supporting Plan (NSW HEALTHPLAN) (PD2024_029) NSW Health Public Health Emergency Response Preparedness (PD2024_002) NSW Health Influenza and Aboriginal people AH&MRC Aboriginal Community Controlled Health Services Pandemic Response Toolkit (2023) AH&MRC Emergency Activation Framework & Appendix Version 1.1 (2024)",
+  "source_text_sha256": "5194ba55a0fd43e2b1c4cf82258432d7167eb303022f026c9f39d0951900f5d5",
+  "reader_body_html_sha256": "8c76dce1648403a8f080ed096a7c899ff60cc682b5d192c6e83e88c2e0bbfac7",
+  "reader_sha256": "03df12a0449e8b4d522f8bd837be90ddff6d8f9305ea5dd8e795d5ad3e57cba2",
+  "source_list_counts": [
+    5,
+    4,
+    6
+  ],
+  "linked_resources_excluded": [
+    {
+      "label": "Public Health Emergency Preparedness and Response with Aboriginal Communities",
+      "url": "https://www1.health.nsw.gov.au/pds/Pages/doc.aspx?dn=GL2024_016"
+    },
+    {
+      "label": "Public Health Services Supporting Plan to HEALTHPLAN",
+      "url": "https://www1.health.nsw.gov.au/pds/Pages/doc.aspx?dn=PD2015_002"
+    },
+    {
+      "label": "NSW Health Services Functional Area Supporting Plan (NSW HEALTHPLAN)",
+      "url": "https://www1.health.nsw.gov.au/pds/Pages/doc.aspx?dn=PD2024_029"
+    },
+    {
+      "label": "NSW Health Public Health Emergency Response Preparedness",
+      "url": "https://www1.health.nsw.gov.au/pds/Pages/doc.aspx?dn=PD2024_002"
+    },
+    {
+      "label": "Influenza and Aboriginal people",
+      "url": "https://www.health.nsw.gov.au/Infectious/Influenza/Pages/aboriginal_people_and_influenza.aspx"
+    },
+    {
+      "label": "AH&MRC Aboriginal Community Controlled Health Services Pandemic Response Toolkit (2023)",
+      "url": "https://www.ahmrc.org.au/resource/aboriginal-community-controlled-health-services-pandemic-response-toolkit/"
+    },
+    {
+      "label": "AH&MRC Emergency Activation Framework & Appendix Version 1.1 (2024)",
+      "url": "https://www.ahmrc.org.au/resource/emergency-activation-framework-appendix-2/"
+    }
+  ],
+  "baseline_guides": {
+    "au-household": "e573be884d8b62d81bc29bf010886a5e1e0c3a5fc05ab73c52ced98da7ae5c1f",
+    "au-rural": "226a16410a4bdbe1b8a6cd2c6357d7b82f9eb25be3480e779aaa87c27fb0d529",
+    "au-health": "20b54d8b74b0ee1ab38835a027859a104b72c77eaa25647fdd364e57f7e80806"
+  },
+  "guide_placements": [
+    {
+      "guide": "au-household",
+      "section": "choice",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-household",
+      "section": "prepare",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-household",
+      "section": "learn",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "section": "choice",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "section": "prepare",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "section": "learn",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-health",
+      "section": "prepare",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    },
+    {
+      "guide": "au-health",
+      "section": "learn",
+      "reference": {
+        "doc": "nsw-aboriginal-planning",
+        "label": "NSW: Aboriginal-led public health emergency planning",
+        "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+      }
+    }
+  ],
+  "base_sources_sha256": {
+    "au-emergency-calls": "5c34e936cb5329b122f52021af3382e4179e6d02c82b23a3ab7c4bd8a5598843",
+    "au-cb-radio": "43a7c493b63d6daf94a9d9065653c3a108baa54792b077bd95ab5519cfb615f2",
+    "qld-emergency-plan": "08aa27738d7b5432fed817d62d59380e7f9a0e92f79652f5883d8adc69424cb7",
+    "qld-emergency-kit": "a8eb11021d99800dc5cb802e1d67837b5ed900e6fa09b01b4684241698832487",
+    "qld-prepare-home": "5bda97a2e8b572b865cb540a80b6741b29550502298e1925199976db7e57f839",
+    "qld-pets": "f5104fb93ee39d9abb5b1d5a0eb8ed5884397a90d3732ff2eb2a6e99adc61bc9",
+    "qld-food-safety": "c1035ab3b7c235cf7d7348002cf47281ffa15f5bdb4762e967c39980406d47f5",
+    "qld-water": "3d3b2948b85b701202141ae7e97ae9ab2b072b481452855319a844b188be84e3",
+    "qld-cyclone": "f092b6b78037bc5bf1b7f528597a591fa9a1bffe4feb8d655501c9725af2b612",
+    "qld-poisons": "171b98051b77b50accef7120a0e01c4f5473b7b61b66af85e0dd202834ddc667",
+    "nsw-bushfire": "777c30a24a5711dbc1cb50b4e0e20fb7b91b143e5f6e45135c3d89c5d8db1cd8",
+    "nsw-flood": "07c56adaec8f48f17c2fc8b1183842c076602abb40c58c5daea3f5d49bc9a67a",
+    "nsw-heatwave": "cc04d70667df3fecaaf0ac77debea8b8ab1d9621fdec4d27b27f68568e3b0f21",
+    "nsw-evacuation": "223c25b1f5d044b009c9289974cfc5f49a956338221f923dd770dd25292fde15",
+    "nsw-rural-bushfire": "3bc901f12f256c7e854e2e2ac6ca67aea343ee307baf3b23fc6d0c1e63b4d12d",
+    "nsw-rural-flood": "8a5334e9f9841b593200d3e99fccb8c16e9490f8a25ee4da139b5a2532ad2130",
+    "nsw-animals": "ebe5d4e2c0e9978b2159b184f6a52318c063fa174c08c36f562383c24888273d",
+    "sa-emergency-numbers": "3cee297df16eddb4ce1374e4e38be96bc9432ab1fe6049a8d5ab37de9af4f01d",
+    "qld-copyright": "825be54e23bdac4832f005ddd17855aeab19e9beffc8ace45d2f98c1b77ec7c3",
+    "nsw-copyright": "8cf03473a1b137ff769e3138d35ea45db328ab266debc46a3a588283cbe116d5",
+    "sa-copyright": "4b707eade921e43963078120d6b03f1dcaa04a6f63dd9264973da7f16d9033bf",
+    "acma-copyright": "0ee37145bb30cab4109cc814431d462d8250d3be0bb31bb7dc92aa39198b0d8f",
+    "au-jurisdictions": "95053e731f4906366d89389646a9f34d476894f1a149c19466ae703da0bdf8a7",
+    "au-reference": "67d1c06302a12be2df9041ce0088f26cfbf6ab11112fe94e4f2096b0cce728cf",
+    "vic-generator": "baa729b16d35e623e19fd13c3095a58bf17bd6e45d8bcf3a76ceabfbf4a7ffa6",
+    "esv-copyright": "02d0c1c283eaa864e72ae4a6af74130c0d20747c69e3cf3c650fe94453cfce9f",
+    "au-remote-travel": "0496580f57a279d5189dcfcb9613608b8c9c848d015087172b7f78e55430b670",
+    "mygov-copyright": "89e80a9b52bd9cf5f326b751ae56a720d8bbc097fd8e5387c8a5c2eb9eb48681",
+    "au-fire-danger-ratings": "d88bf3e421be12d6a0a7f2106f021cf00ff106cb52f02c24744186ff55dfd028",
+    "au-ausalert": "209b8a4354b2cc4d83c755a754c7b814dd45ee063e02be31fef7bf5ab4e229c3",
+    "au-ausalert-operational": "c4f219ada988580e77378ec7573b4031995dd6f1ded9a7e34dcddc2e7d05a75e",
+    "nsw-warning-levels": "3770b8fb07b379cfe3628587a5aab3c9d081fe618b577da8e88e230914acf4fa",
+    "nema-copyright": "2b176fc53d21e5ca96f697b3c2bdcd1ca84af4217a3e69571a93ab39e2fb2094",
+    "sa-ses-copyright": "e820b6c94a3496cedd4ccbc81ea514fda5a6cbf2bd2c70ce3cb744c2bb0195fe",
+    "sa-cfs-copyright": "67bc11b1a247b7faaa175861fcde53865ec6013c3d5f27a29a0c53784e2965ea",
+    "sa-storm-before": "620d46640de504e1cef126bbe4f3c7c9f3394b9c11fd29b4a9ae61beb1474d0a",
+    "sa-storm-during": "f69bccb641658eba8629d89332c176d8e96db614ab9bd33bc52ac664790c4ae1",
+    "sa-storm-after": "9d719b1d7b4e9fa1821ea76e693ee66a8b2d872fbd4d5c04320e2666f6b2d5b3",
+    "sa-flood-before": "aa1995c4d7b908a98dd8921b19a5fd8d496eabb846ac455829285cc24304ad38",
+    "sa-flood-during": "8243a022e5c969b8d9f4b447e8d30b974515cd45b6480b5f2b7d6a4d9df14c09",
+    "sa-flood-after": "b76254fdcbc94ac94521b769ad0b0d1e8a86c82f8009f25253bbc087551c0513",
+    "sa-property-preparation": "219cdf294144f200f920c0b1dd5731d324e264e3d2014a4aebbe224d8203f25f",
+    "sa-animal-planning": "c35c7781d2c593c0e62dff88000b89de69c1b9b750c8af8d33767aec2be1089a",
+    "au-locating-devices": "fdfcc61d070a7c8150272c6eebed7ebb2955f1317c32f19739c30262c19f8a87",
+    "swa-copyright": "8ae6ca9dcb6adf6a148a822135b37c9819109f3c07fce3199aa98380bc19990b",
+    "au-remote-work-overview": "5aac179228ebc839a180623675aecb873e0b5d06e016555f1de20efdc2d2dba2",
+    "au-remote-work-risks": "620471556315626fe44b3b31a2066cc22faa90061e539acd3e0c40b1ffd3377b",
+    "vic-gas-emergencies": "b86d5cb3a5af57954827ca641815dce190a2482a5e2bc1d4028311ce89763bed",
+    "vic-flood-energy": "43b7eca460eef52403cb956961f120be5b3aca19a1b037e29846c8e5a8d0470a",
+    "vic-lpg-cylinders": "11a181518ccaee9290f46984671a468e07da995086e5be92189c22cde335d38e",
+    "vic-lcc27-faq": "1d502fa12e8066f1fa6f2b73412e813220679f37a9776e1a86a7f1ab7aa13793",
+    "qld-road-trip": "3a8018800574f249a70afa6c3815467a86597de7983ce1a4606244a744ff944f",
+    "qld-inclusive-planning": "6678e3714f6e6a14fbb6d93482b42719eb426c7f51cd8faf2940d73f07912db5",
+    "qld-mobility-planning": "5984919ced2d5b2285f07026bc3daa50c750cd4826871c4f39d080bac15e4f5e",
+    "qld-vision-planning": "477067045469e43881ce6c43aa4d43b44afc8708319b096bb063666554fdb7ff",
+    "au-accessible-calls": "4973706cb95f847782ca7d90b9d49eb8f8724fddb3433f4396d10b680ae1fff6",
+    "vic-cfa-fire-risk": "eb868c429b6eede25f84345f51facc9bcc371ed1afb67a16697cbdaa74af961f",
+    "vic-cfa-prepare-leave": "ac79f89f37174b8f9b91fb029eec73d61cc38e3873b8a8c01ddd2230b35b77e3",
+    "vic-cfa-warnings": "a8a24fb1f68fdc5409c9b1f56e424c2fe4158004fc57569cae8ca1f1639948f8",
+    "vic-cfa-during-fire": "62b1d79b7f642db0e96c9fd09f1859166f4f7ae6b5355fe3d210a54b3ef7feda",
+    "cfa-survival-copyright": "2534b0ae56332721b7be920c45b4873a1cb9161ac1460fdc910929101271cb66",
+    "nsw-rainwater-tanks": "4b3c0bdf588ada75203ef699fbfc7be804e549502bc2035cb3d9ff29a4317ca2",
+    "nsw-groundwater": "e8c2d4c79de6cc98506cf14a72b3fcb07827f3b11255d7105f19f805fe22397b",
+    "nsw-tanks-after-flood": "353ba4a665f121cef0c215f6c3525a289ea25bd5ebef48fdd62e58d3c8b3dc70",
+    "nsw-nonpotable-water": "55153c07f9d5f36da33086dcd64e3c48eae16d960d91371d19e7920829654053",
+    "nsw-health-copyright": "f18e0e0ee78a79c1caccb2b88bb74def98bd9e59393a85c30aa8150c900471e3",
+    "act-bushfire": "f9a0576f076d4f0e9ad2cffaf6acea8c4a38591b3d564c0db32085bb18b47c71",
+    "act-flooding": "1000b2bf3e9f56113db242e8d9675e036fdf0a18110000a2105c3d06400c56e9",
+    "act-severe-storm": "724fc195d0ea0af63e1a3c2c1f4f3a303f31bc63864abf2ade543e70c9f29c98",
+    "act-heatwave": "24600ebaac9875905eefa07bbc9b895874b1e48078677fa9f83274bec0ec06c2",
+    "act-copyright": "aa45e8594935158778f2481c4a992bb17955b28435475b53091b87eef77c524b",
+    "au-remote-trip-plan": "d1eacff529a97dc14aa17d5ef3fec7d35257a161d79c496423dd2fa1769b9079",
+    "au-isolation-plan": "23bf3e76b4e1b4cc7471b4e7a7064c6760384e3630549372c27a0ad8e4827ed6",
+    "au-beacon-preparation": "75a07a74d6f95ac03812c1f1c10bcdf96efdfd1c93e0796fa8d71b536e788f42",
+    "qld-yumplatok-bushfires-poster": "d2abff074984c2f7805b888314eacf369cca483cded369e9b071e3c72a42a4b8",
+    "qld-yumplatok-cyclones-poster": "e7578f6ab14d0947fa352f0e0093f36c546d78ae7c698171308cb46762809e95",
+    "qld-wik-mungkan-bushfires-poster": "264f03933cea223198d1645e0cf8edf16ae2149969777dc66897eba89393f906",
+    "qld-wik-mungkan-cyclones-poster": "785c0ae1ae23aa52453e895471d480b2b9e75189b367c766ff56adbe83310ca0",
+    "au-getready-bushfires": "3820227921587448990598a1cb0fada9eafe3fc9c0cd842447b7f6ca7b35bd68",
+    "au-getready-cyclones": "ea2c71fbb6a739d17dc4817f2848f201f858ae6f8f9c325d3f0c8e06a30c18aa",
+    "au-getready-earthquakes": "353f8e2b2e2d669bddb1a67019c9af77c7058b86a015a910214227963dafbe8e",
+    "au-getready-floods": "193926fc6621344b2dfdd796f3362815c83b5e256e6663fbf5fad276e9847eb2",
+    "au-getready-heatwaves": "f34894e127899834ce38985379a9146dc07deb62bc9308250862470a54422aa7",
+    "au-getready-storms": "3a44e89dc9aa445c114c803b2f1f49e0f3008ba28c7e797bb39eabc48c841c7b",
+    "au-getready-tsunamis": "c9d299c30fbc2b59856e43e82627eee4f25252631882856a123c67f55986cc39",
+    "qld-driving-conditions": "f766014e66358b92d4ca473b7306a69b38a7d18bb99f832fa3572dafc0875e63",
+    "qld-motorway-breakdown": "af20f64ad54645546fca7e09569c26f8486536d6486f4a65a8b6d703c92b42cc",
+    "qld-recovery-straps": "db4ab7dbf00d22ef48d2ad62b378037eb680087e9e55b795f783a61c23531541",
+    "qld-long-trip-checks": "c654634417ebdbc99a1320893667be3432a3010f70708d283f1fba1713fdff77",
+    "au-getready-simplified-chinese-bushfires": "86516eb36a396cec95fcaf94b8e79ab15be27997b18fdcef7165006d9ba23149",
+    "au-getready-simplified-chinese-cyclones": "6526c7d3fbe1228dede6d96d6612d101dcb72a8d0a35f3a0cf8849ce10dda94f",
+    "au-getready-simplified-chinese-earthquakes": "1168a05ce8172153571e5f8db65cd7aa67c7d3ee3062c9de4998e873aea2781f",
+    "au-getready-simplified-chinese-floods": "b4c51e0dd6524d1ce6af540024a49fcb0408511181f7e4d95cd143773c45c076",
+    "au-getready-simplified-chinese-heatwaves": "bb7ffb8cd1e4b2653145d0c8f0753f9bd66123a4ef825a8aecbc96954d128d08",
+    "au-getready-simplified-chinese-storms": "673f1e3553698b43670b0aca227442cd29810687cfaad77d5091c1290193e477",
+    "au-getready-simplified-chinese-tsunamis": "d52b4a4d47102c0688a679c07dd19ba20d36954b94e40daae971f354e8e24152",
+    "au-getready-traditional-chinese-bushfires": "4aa92506782b678eae42e417ffb4653cc763a5ddc7644bff423a143fd8e5f92d",
+    "au-getready-traditional-chinese-cyclones": "8d30217f096aa56dedd3370ca716f000fa30cf54f731b8e4b5d9c9885d363dc3",
+    "au-getready-traditional-chinese-earthquakes": "4b0e4118e19dbcb32f5f7d5e0dd705cf8b1a5afcac1c47b3fec895de7e8345f4",
+    "au-getready-traditional-chinese-floods": "226edf959d7c371d89af4e0d24bdbedbdfd2dee16f21a6944a4af816fdf79daa",
+    "au-getready-traditional-chinese-heatwaves": "1128689dad8531a25fb6e8244b7b38a264adca7d6dff8ebda4a81b25528088e4",
+    "au-getready-traditional-chinese-storms": "dbb8195803a16a1bcb6011f7f142d404a6f2602ddb8404dd6540b6e5cd76f92f",
+    "au-getready-traditional-chinese-tsunamis": "33b75beaae3ea5e353c09af25ad7935088c1155af4752f96c6fc3988a43a4796",
+    "au-nt-local-plan": "279dd4a659f410472f5de20dfc022115194f4b9eb658f55aa66fce99bebba928",
+    "fsanz-copyright": "e990fac42bfcb6c47127c4c2212eb8fb8aef7c5e2cc7f8c1ac2f09fd93aa1f63",
+    "fsanz-food-basics": "076b24f85ecc32673d449162f4567eda1de2b069ea8d7083c7be986a22cb0aaa",
+    "fsanz-food-emergency": "d6698362d54d1ed0e6a5448d27a94b9d5a2f52152a5f08719e9501d2e1f73da7",
+    "fsanz-food-flood": "8b99fc0f311cbf856a31355813bf8f15adf594993f98ad7b2d723533ce074034",
+    "au-wa-local-plan": "8d5c5d6f044b630e9cb3e147beb66687f78744570dfd938acc21b696c26b8843",
+    "au-tas-local-plan": "2f750a41cca5e31430ec2c9a5f4a0d96b3cb39114f6ff74136c68f02691c0242",
+    "au-getready-arabic-bushfires": "03849af5c4df26d6fac7cab40d52f7d366fe55f86a9c00fc812ef5b4a5cbdbe3",
+    "au-getready-arabic-cyclones": "c3e9203a9c22a7e895706427c41611e9ee03e42763186b79914146b75fbafb1b",
+    "au-getready-arabic-earthquakes": "5df9343446092a530fec5df1cfa9d5745692d903207f474e715fbd1328ad6a5c",
+    "au-getready-arabic-floods": "214dbe473b6f269e214e079a497a12095a2ecf7b92b06fae7f36c02a9459ac96",
+    "au-getready-arabic-heatwaves": "2a9eec6482d32c822974dfb143d2ba1becabf470c6b9b93eb6d24168711c6c8d",
+    "au-getready-arabic-storms": "f5632ad9d6a534d004bb3a654e6298d14d2f6c6b429df0c6081a823e21ee234c",
+    "au-getready-arabic-tsunamis": "bd31705df86e49195208e5ad3faf4c8aa546274660d54a83967efc4cf93f4e77",
+    "nsw-smoke-protection": "9b85113660897a86bb08a9f2996fe905c625308e1e0fe10e848020d0d5063e2c",
+    "nsw-smoke-higher-risk": "81805a299453756bfb0e1cd7ae33155337eed3a169462641c47fe2a217ac836f",
+    "nsw-p2-n95-masks": "81f512b66f00c8663b29e178c1e02eea419aedfa7037e9fcff93d73d0b1c9494",
+    "nsw-flooded-wastewater": "555e4329c81a8d2dc3b12dde6cdf82edd4c7c402e38c75c2fde8443fdaba99e4",
+    "nsw-bat-lyssavirus": "f1f82413a1ef845ad55cc7458094862283e428b189acd4fa4f5883c11cb865e3",
+    "qld-health-copyright": "c6bf8009eb9dd966beccba1a2e1d35dc982d520848ce4c34a22bc8beef8e4fb3",
+    "cc-by-nd-legalcode": "059d6d9c9cd91224ce39652c1e4074a81e5fca4aeafe4e0d6f5e549f191548ad"
+  },
+  "base_hub_sha256": "67d1c06302a12be2df9041ce0088f26cfbf6ab11112fe94e4f2096b0cce728cf",
+  "counts": {
+    "public_records": 125,
+    "official_practical": 100,
+    "source_rights": 16,
+    "original_records": 9,
+    "guide_references": 8
+  },
+  "scope": "Complete NSW Health written overview, including introductions, five considerations, four strategies, six resource labels and under-review status. Source wording and order unchanged; zero-width layout characters removed. Not a community-authored manual, local emergency plan, clinical protocol or endorsement. Linked guideline/toolkits, images and branding excluded.",
+  "remaining": "Community-led local planning, consent/relationships and actual culturally appropriate service delivery cannot be supplied by this government overview alone. Broader First Nations jurisdiction-specific and language coverage remains incomplete."
+}

@@ -161,6 +161,12 @@ class Reference(unittest.TestCase):
         self.assertEqual(len(audit['guide_placements']), 10)
         for gid, original in guides.items():
             guide = copy.deepcopy(original)
+            # Compare the historical bat increment after removing the later,
+            # separately audited community-planning addition.
+            guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
+            for key in ['prepare', 'learn']:
+                if key in guide:
+                    guide[key] = [r for r in guide[key] if r.get('doc') != 'nsw-aboriginal-planning']
             for key in ['prepare', 'learn']:
                 if key in guide:
                     guide[key] = [r for r in guide[key] if r.get('doc') != 'nsw-bat-lyssavirus']
@@ -1022,6 +1028,69 @@ class Reference(unittest.TestCase):
         self.assertIn('not an ordinary mobile SMS number', calls)
         self.assertIn('0423 677 767', calls)
         self.assertEqual(entries['au-accessible-calls']['license'], 'CC0-1.0')
+
+    def test_aboriginal_planning_preserves_the_complete_source_and_scope(self):
+        audit = json.loads((au.SOURCES / 'ABORIGINAL-PLANNING-SOURCE-AUDIT-20261127.json').read_text(encoding='utf-8'))
+        records = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        record = records[audit['id']]
+        html = (au.SOURCES / record['snapshot']).read_text(encoding='utf-8')
+        body = html.split('<hr>\n', 1)[1].split('<hr>', 1)[0]
+        self.assertEqual(au.digest(body.encode()), audit['reader_body_html_sha256'])
+        self.assertEqual(au.source_text(body), audit['source_text'])
+        self.assertEqual(au.digest(audit['source_text'].encode()), audit['source_text_sha256'])
+        self.assertEqual(record['raw_sha256'], audit['raw']['raw_sha256'])
+        self.assertEqual(record['source_updated'], '2025-10-28')
+        self.assertEqual(record['license'], 'CC-BY-4.0')
+        self.assertTrue(audit['rights']['policy_matches_existing_bundled_body'])
+        lists = re.findall(r'<ul>(.*?)</ul>', body, re.S)
+        self.assertEqual([part.count('<li>') for part in lists], [5, 4, 6])
+        for condition in ['planning led by Aboriginal people', 'self-determination at all 4 stages',
+                          'information for Aboriginal communities is to be informed by Aboriginal people',
+                          'family, housing, and mobility patterns', 'local Lore', 'cultural governance structures',
+                          'formal partnership mechanisms', '(under review)']:
+            self.assertIn(condition, au.source_text(body))
+        self.assertIn('does not establish community endorsement', html)
+        self.assertIn('linked GL2024_016 guideline', html)
+        self.assertEqual(len(audit['linked_resources_excluded']), 7)
+        for resource in audit['linked_resources_excluded']:
+            self.assertIn(resource['url'].replace('&', '&amp;'), html)
+        self.assertNotIn('href="https://', html)
+        for uid, digest in audit['base_sources_sha256'].items():
+            if uid != 'au-reference':
+                self.assertEqual(records[uid]['sha256'], digest, uid)
+
+    def test_aboriginal_planning_addition_preserves_guides_and_follows_actual_availability(self):
+        import copy
+        import server
+        from tools.validate_topics import items
+        audit = json.loads((au.SOURCES / 'ABORIGINAL-PLANNING-SOURCE-AUDIT-20261127.json').read_text(encoding='utf-8'))
+        uid = audit['id']
+        for gid, digest in audit['baseline_guides'].items():
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
+            for key in ['prepare', 'learn']:
+                guide[key] = [r for r in guide[key] if r.get('doc') != uid]
+            self.assertEqual(au.digest(json.dumps(guide, sort_keys=True).encode()), digest)
+        household = [x for x in audit['guide_placements'] if x['guide'] == 'au-household']
+        rural = [x for x in audit['guide_placements'] if x['guide'] == 'au-rural']
+        self.assertEqual([{k:v for k,v in x.items() if k != 'guide'} for x in household],
+                         [{k:v for k,v in x.items() if k != 'guide'} for x in rural])
+        with tempfile.TemporaryDirectory() as d, patch.object(socket, 'socket', side_effect=AssertionError('network')):
+            data = Path(d) / 'LastbookData'; au.build(data); lib = data / 'library-data'
+            source = lib / 'pages/au' / (uid + '.html'); held = Path(d) / 'held.html'
+            with patch.object(server, 'APP', au.ROOT), patch.object(server, 'LIB', lib), \
+                 patch.object(server, '_cat', {'mtime': None}), patch.object(server, 'zim_names', return_value=[]):
+                def refs():
+                    return [r for g in server.topics_resolved() for _,r in items(g) if r.get('doc') == uid]
+                present = refs()
+                self.assertEqual(len(present), 8)
+                self.assertTrue(all(r['src']['id'] == uid for r in present))
+                catalogue = (lib / 'catalog.json').read_bytes()
+                source.rename(held)
+                self.assertEqual(refs(), [])
+                held.rename(source)
+                self.assertEqual(refs(), present)
+                self.assertEqual((lib / 'catalog.json').read_bytes(), catalogue)
 
     def test_existing_output_is_untouched(self):
         with tempfile.TemporaryDirectory() as d:

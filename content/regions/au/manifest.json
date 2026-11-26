@@ -1,6 +1,6 @@
 {
-  "version": 22,
-  "id": "au-reference-bat-exposure-2026-11-27",
+  "version": 23,
+  "id": "au-reference-community-planning-2026-11-27",
   "checked": "2026-11-27",
   "sources": [
     {
@@ -498,8 +498,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "67d1c06302a12be2df9041ce0088f26cfbf6ab11112fe94e4f2096b0cce728cf",
-      "bytes": 21825,
+      "sha256": "0d2bc9632f0005eeac54ef8c9d7a21b3dd40aecb398d921997b47e0330f90f52",
+      "bytes": 22210,
       "snapshot": "sources/au-reference.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-27. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
@@ -2985,6 +2985,30 @@
       "snapshot": "sources/cc-by-nd-legalcode.html",
       "language": "en",
       "notes": "Complete English licence body and accompanying Creative Commons notice. Legal-tool text is CC0; this does not change the licence of Queensland source material."
+    },
+    {
+      "id": "nsw-aboriginal-planning",
+      "title": "NSW: Aboriginal-led public health emergency planning",
+      "kind": "html",
+      "publisher": "NSW Ministry of Health, State of New South Wales",
+      "jurisdiction": "New South Wales",
+      "category": "health",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/nsw-aboriginal-planning.html",
+      "source_url": "https://www.health.nsw.gov.au/pandemic/Pages/engaging_aboriginal_communities.aspx",
+      "final_url": "https://www.health.nsw.gov.au/pandemic/Pages/engaging_aboriginal_communities.aspx",
+      "retrieved_at": "2026-11-27",
+      "source_updated": "2025-10-28",
+      "edition": "Source current as at 28 October 2025",
+      "year": 2025,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "raw_sha256": "fd46fae9b26dbb937133543824ea52068679136e89099a30be7a547dc23adc03",
+      "sha256": "03df12a0449e8b4d522f8bd837be90ddff6d8f9305ea5dd8e795d5ad3e57cba2",
+      "bytes": 5907,
+      "snapshot": "sources/nsw-aboriginal-planning.html",
+      "notes": "Complete dated NSW Health overview; Aboriginal-led planning, self-determination, governance and formal partnerships retained. Linked guidelines and AH&MRC resources excluded; not a local community plan or community endorsement."
     }
   ]
 }

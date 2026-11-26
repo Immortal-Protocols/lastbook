@@ -16,7 +16,7 @@ Other companion runtime PRs: [HTTP #487](https://github.com/Immortal-Protocols/l
 [document language #493](https://github.com/Immortal-Protocols/lastbook/pull/493),
 [Arabic/Han search #494](https://github.com/Immortal-Protocols/lastbook/pull/494).
 Historical runtime/build notes below describe the dated review releases, not the
-current content-only diff. The 124-record data remains usable without those fixes;
+current content diff. The 125-record data remains usable without those fixes;
 matching language search, read-aloud and linked-reader context need the relevant
 runtime PRs (or the existing integrated private review build).
 
@@ -27,6 +27,45 @@ reading, then moves/restores the entire `pages/au` folder while leaving catalogu
 bytes and mtime unchanged. Missing links disappear, the three public regional
 guides hide, ordinary warning text remains, and restoration is immediate. Existing
 explicit remote-video storage keeps its established availability semantics.
+
+## Aboriginal-led public health planning in NSW — 27 November 2026
+
+The public collection now has **125 records: 100 official practical readings,
+16 rights readings and nine original records**. The new complete NSW Health
+web overview is dated 28 October 2025. Its introduction, five planning
+considerations, four additional strategies and six resource labels retain their
+wording and order. Aboriginal leadership, self-determination across all four
+emergency stages, cultural governance, local Lore, family/housing/mobility and
+formal partnerships with the Aboriginal Community Controlled sector remain in
+context. The source's supporting-plan status of "under review" is retained.
+
+Both household and rural guides expose the same new planning choice and the
+same prepare/learn reading. The health-source guide also adds prepare/learn
+access: eight conditional references in total. Existing guide content is
+preserved. The source disappears from guide readings if its file is absent and
+returns on restoration without rewriting the catalogue.
+
+This is a dated NSW government overview. It does not establish community
+endorsement, supply a locally agreed community plan or replace community
+leadership. The linked GL2024_016 guideline, other policies and AH&MRC toolkits
+are not bundled. Their source labels remain, with online addresses clearly
+separated after the body. No linked-resource licence, cultural imagery or
+community-owned knowledge is inferred from the NSW website grant.
+
+The exact page's footer links to NSW Health's own copyright policy. Its complete
+written policy body was reacquired and matched the existing bundled notice,
+including the explicit CC BY 4.0 grant, exclusions and separate formal-permission
+enquiry paragraph. The new reading retains requested credit and states the
+technical changes. All prior source snapshots remain unchanged except the
+contributor-authored hub's new navigation paragraph. Exact raw and selected-body
+hashes, source lists, exclusions and pre-change guide/source baselines are in
+`ABORIGINAL-PLANNING-SOURCE-AUDIT-20261127.json`.
+
+Broader community-led and jurisdiction-specific planning, language/accessibility
+coverage, actual service partnerships and public first-aid rights remain work for
+the full Australian objective. The government overview alone does not close those
+gaps. This increment changes content and bundled guide assets, not production
+Setup, downloader, network policy or dependencies.
 
 ## Bat-exposure factsheet and unchanged-source terms — 27 November 2026
 

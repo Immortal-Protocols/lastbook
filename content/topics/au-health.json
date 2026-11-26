@@ -104,6 +104,11 @@
       "doc": "nsw-bat-lyssavirus",
       "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
       "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
+      "doc": "nsw-aboriginal-planning",
+      "label": "NSW: Aboriginal-led public health emergency planning",
+      "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
     }
   ],
   "learn": [
@@ -131,6 +136,11 @@
       "doc": "nsw-bat-lyssavirus",
       "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
       "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
+      "doc": "nsw-aboriginal-planning",
+      "label": "NSW: Aboriginal-led public health emergency planning",
+      "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
     }
   ],
   "related": [

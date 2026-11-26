@@ -795,3 +795,31 @@ Native review prompted a source-first layout: each complete published-language
 quote now precedes the English date, attribution, licence and context notes.
 The brief opening label identifies the language and excluded artwork. Source
 wording and metadata are unchanged.
+
+
+Final poster verification: **809 required contribution/build tests** and
+**881 combined-source tests** pass, each five skips/eleven upstream expected
+failures;12 focused source tests pass. Both suites were rerun on the final
+source-first reader order. Actual public78/private399 engine checks and all78
+reader hashes pass with sockets forbidden. Household156/rural161 references
+resolve (317 public); all four private Australian guides351,zero errors.
+
+The installed Mac runtime a1847f8 passes i18n,package/privacy scan,strict signature
+and actual399/7outbound-IP-denial self-check. The source-first layout is data-only
+at combined c98c236; no shipped code/guide path changed,so the scanned binary was
+preserved. All85Australian hashes,42personal FTS units and unchanged Victoria map
+hashes/3,054names pass. Full395app/library and subsequent pre-layout399data copies
+are retained. Pinned roots/setup inputs remain unchanged;no newTLS rerun claim.
+
+Selected final installed Mac review opens both language choices in both guides
+and all four readers. Complete five-bullet sets,source spelling/Unicode punctuation,
+printed footer and separate metadata/context appear. Screenshots inspect source-
+first Yumplatok/Wik bushfire readers and rural cards. Outer title/source/Ask follow
+the target;Back returns to the choice. This does not establish all78-native,
+fluent-speaker,cultural/accessibility validation,actual calls/services,Windows/
+Linux-native,notarization or long-idle reliability. Earlier idle-watchdog and HTTP-
+browser navigation limits remain.
+
+[78-record published-language contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-published-language-review-2026-11-26)
+contains public HTML,audits and engine evidence only. Original PDFs/artwork and
+personal-use material are excluded;earlier release assets remain unchanged.

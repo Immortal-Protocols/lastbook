@@ -5,7 +5,8 @@ contain named POINT places. `tools/build_places_gpkg.py` builds the `place` and
 `place_fts` schema that `server.places()` queries, using only Python and SQLite FTS5.
 No extra download, spatial extension or runtime connection is needed.
 
-This complements the PBF-based builder proposed in #63. The GPKG input is useful
+This complements the PBF-based builder merged in #63 as
+`tools/build_places_region.py`. The GPKG input is useful
 when a region builder already has that extract cached. It is less rich: it has the
 primary name and place class, not the PBF's alternative-language tags. It only
 indexes point settlements; it does not manufacture polygon centroids, street
@@ -72,8 +73,17 @@ state/territory extract areas in #38, from the dated 15 November 2026 sources:
 
 These 29,356 rows include overlap between NSW and ACT; they are not a deduplicated
 national place count. All eight actual SQLite/FTS integrity checks, bounds checks
-and capital/selected regional-town queries passed. New whole-extract native UI
-checks remain pending; the native finder check above was for East Melbourne.
+and capital/selected regional-town queries passed. On 26 November 2026 the native
+combined Australian review app (`5c5e501`) also found Mildura in the broader
+Victorian extract, drew detailed streets and showed nearby places with metric
+distances. The other seven broader extracts retain engine/data checks rather
+than native-window checks. The earlier metro check covered East Melbourne.
 [Review sidecars and per-source provenance](https://github.com/pilkster/lastbook/releases/tag/australia-state-maps-review-2026-11-17)
 remain separate from the existing four-file map ZIP contract. External-territory
 completeness and address/postcode search are not established by these builds.
+
+The separate integration proposal #101 builds this index from the same cached
+inputs and box as its map, includes it in the archive inventory, and preserves
+or repairs it through Setup's map lifecycle. Its review builds do not change
+production Setup or replace the older standalone sidecar downloads. The tool
+itself is rebased on main `51658f5`; its four focused tests pass unchanged.

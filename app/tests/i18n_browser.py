@@ -187,7 +187,6 @@ class Browser(unittest.TestCase):
 
         self.configure_setup(current=DATA)
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script("addEventListener('pageshow', event => window.restoredFromCache = event.persisted)")
             page.goto(origin + '/#/guides')
             sidebar = page.locator('.side')
             guides = sidebar.get_by_role('link', name='Guías')
@@ -240,7 +239,6 @@ class Browser(unittest.TestCase):
             page.set_viewport_size({'width': 1280, 'height': 850})
             page.evaluate("location.hash = '#/guides'")
             expect(page.locator('h1')).to_have_text('¿Qué necesitas?')
-            page.evaluate("window.guideView = document.querySelector('.hero')")
             sidebar.get_by_role('link', name='Ajustes').click()
             expect(page.locator('h1')).to_have_text('Biblioteca e IA local')
             expect(page.get_by_role('link', name='Volver a la biblioteca')).to_be_visible()
@@ -265,8 +263,6 @@ class Browser(unittest.TestCase):
             page.evaluate('history.back()')
             page.wait_for_url('**/#/guides', wait_until='commit')
             expect(sidebar.get_by_role('link', name='Guides')).to_be_visible()
-            self.assertTrue(page.evaluate('window.restoredFromCache'))
-            self.assertFalse(page.evaluate("window.guideView === document.querySelector('.hero')"))
             expect(page.locator('html')).to_have_attribute('lang', 'en')
             expect(page.locator('.need[href="#/t/hurt"] small')).to_have_text('First aid for bleeding, burns, breathing, injuries and sudden illness')
             expect(page.locator('.need[href="#/t/water"] small')).to_have_text('Treat, find and store water')
@@ -528,10 +524,9 @@ class Browser(unittest.TestCase):
             expect(page.locator('#sideUpdate')).to_be_visible()
             expect(page.locator('#sideUpdate span')).to_have_text('Hay una actualización disponible')
 
-    def test_bfcache_refresh_translates_encyclopedia_label(self):
+    def test_history_back_translates_encyclopedia_label(self):
         self.configure_setup(current=DATA)
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script("addEventListener('pageshow', event => { if (event.persisted) window.restoredFromCache = true })")
             page.route('**/api/library', lambda route: route.fulfill(
                 status=200, content_type='application/json',
                 body=json.dumps({'zims': ['mdwiki_en_all_maxi_2025-11.zim']})))
@@ -548,7 +543,6 @@ class Browser(unittest.TestCase):
             page.evaluate('history.back()')
             page.wait_for_url('**/#/wiki/wikipedia_fixture/Some_Article', wait_until='commit')
             expect(page.locator('html')).to_have_attribute('lang', 'es-419')
-            # Chromium may decline BFCache for this history entry; the checks below validate the saved-locale reload path too.
             expect(page.locator('.zn')).to_have_text('Wikipedia (solo texto) ·')
             page.evaluate("location.hash = '#/encyclopedias'")
             mdwiki = page.locator('#main .cards2 .card').first
@@ -557,6 +551,28 @@ class Browser(unittest.TestCase):
                 'MDWiki: artículos en lenguaje claro sobre enfermedades, medicamentos y primeros auxilios.')
             page.evaluate("location.hash = '#/wiki/mdwiki_fixture/Some_Article'")
             expect(page.locator('.zn')).to_have_text('Enciclopedia médica (MDWiki) ·')
+
+    def test_bfcache_restore_retranslates_cached_guide_descriptions(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text(json.dumps({'language': 'es-419'}), encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("window.bfcacheRestored = false; addEventListener('pageshow', event => { if (event.persisted) window.bfcacheRestored = true })")
+            page.goto(origin + '/#/guides')
+            expect(page.locator('.need[href="#/t/hurt"] small')).to_have_text(
+                'Primeros auxilios para hemorragias, quemaduras, problemas respiratorios, lesiones y enfermedades repentinas')
+
+            page.goto(origin + '/ui/setup.html#manage')
+            page.locator('#interfaceLanguage').select_option('en')
+            page.locator('#languageSettings button[type="submit"]').click()
+            expect(page.locator('#languageStatus')).to_have_text(
+                'Language saved. Restart Lastbook to update its menus.')
+
+            page.go_back(wait_until='commit')
+            expect(page.locator('.side').get_by_role('link', name='Guides')).to_be_visible()
+            self.assertTrue(page.evaluate('window.bfcacheRestored'))
+            expect(page.locator('html')).to_have_attribute('lang', 'en')
+            expect(page.locator('.need[href="#/t/hurt"] small')).to_have_text(
+                'First aid for bleeding, burns, breathing, injuries and sudden illness')
 
     def test_map_cluster_error_messages_keep_the_resolved_locale(self):
         self.configure_setup(current=DATA)

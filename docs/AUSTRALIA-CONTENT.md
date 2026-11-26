@@ -353,3 +353,26 @@ hashes,original decision matrices,licence evidence,factual-note references and
 exclusions. This expansion improves preparation reading; person-specific support,
 service readiness,more disability audiences and accessible translations remain
 incomplete.
+
+
+After this expansion,the complete required contribution suite,both Australian
+builders and personal-distribution guards passed **797 tests** (five skips,eleven
+upstream expected failures) under `PYTHONUTF8=0`. All six source-integrity tests
+pass. A fresh56-record public build resolves99 household and104 rural references
+(203 total); all four actual private guides resolve237 references without errors.
+Actual public/private engine searches and all56 public reader hashes pass with
+socket creation forbidden.
+
+The updated frozen private Mac app (`426c481`) contains377 records:314 base,
+56 public Australian and7 personal-use. I18n,package/privacy scan,strict signature
+and actual outbound-IP-denial self-check pass,using unchanged verified TLS/setup
+inputs. Native checks opened both support-needs choices and all four new readings;
+the calling note and both decision layouts were visually checked. This verifies
+selected reading/navigation,not an independent assistive-technology/disability
+audit or actual emergency service operation. Full predecessor copies are retained;
+Victoria is unchanged. The earlier idle-page watchdog issue remains unresolved.
+
+[The56-record disability-preparedness review](https://github.com/pilkster/lastbook/releases/tag/australia-disability-preparedness-review-2026-11-26)
+excludes all personal-use material. Earlier52-record energy/remote and other
+review downloads remain unchanged. Contributor reviews are not official Setup
+releases or complete Australian coverage.

@@ -991,7 +991,12 @@ async function reader(id, page, from, view) {
     body.innerHTML = `<iframe class="frame" title="${esc(d.title)}" src="${fileUrl(d.path)}#page=${page}"></iframe><p class="small muted">If the PDF doesn’t show here (some phones can’t), use Page view or open the original file.</p>`;
   } else if (view === 'web') {
     const own = /(^|\/)documents\/lastbook\//.test(d.path);   // Lastbook's own pages (Sources and permissions) take the window's look from the server (engine/saved_pages.py, OWN_LOOK); an older server's stays a white sheet
-    body.innerHTML = `<iframe class="frame${own ? ' own' : ''}" title="${esc(d.title)}" src="${fileUrl(d.path)}"></iframe>`;
+    const links = !IN_WINDOW && window.LastbookReadingLinks;
+    const token = links ? links.token() : '';
+    body.innerHTML = `<iframe class="frame${own ? ' own' : ''}" title="${esc(d.title)}" src="${fileUrl(d.path)}${token ? '?lb-reader=' + token : ''}"></iframe>`;
+    if (links) leaving = links.listen($('iframe', body), id, token, target => {
+      location.hash = target + (target.includes('?') ? '&' : '?') + 'from=' + encodeURIComponent(location.hash);
+    });
   } else {
     body.innerHTML = '<p class="loading">Loading text…</p>';
     try {

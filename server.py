@@ -1791,12 +1791,47 @@ class Handler(library.Handler):
         page = self.saved_page_file()
         if not page:
             return super().send_head()
-        data = saved_pages.rewrite(Path(page).read_bytes(), self.saved_page_part)
+        data = self.reading_links(saved_pages.rewrite(Path(page).read_bytes(), self.saved_page_part))
         self.send_response(200)
         self.send_header('Content-Type', self.guess_type(page))
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         return io.BytesIO(data)
+
+    def reading_link_file_ok(self, path):
+        return path.startswith(tuple(p.lstrip('/') for p in self.LIBRARY_PREFIXES)) and self.file_ok(LIB / path, folders=True) and (LIB / path).is_file()
+
+    def reading_links(self, data):
+        from engine import reading_links
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        tokens = query.get('lb-reader', [])
+        if len(tokens) != 1 or not reading_links.TOKEN.fullmatch(tokens[0]):
+            return data
+        path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path).lstrip('/')
+        cat = catalog()
+        source = cat['by_path'].get(path)
+        if not source or source.get('kind') != 'html':
+            return data
+        return reading_links.rewrite(data, source, cat, tokens[0], self.reading_link_file_ok)
+
+    def send_reading_link(self, query):
+        from engine import reading_links
+        values = urllib.parse.parse_qs(query)
+        if any(len(v) != 1 for v in values.values()):
+            return self.send_json({'error': 'invalid reading link'}, 400)
+        automatic = (self.headers.get('Sec-Fetch-User') == '?1' and self.headers.get('Sec-Fetch-Mode') == 'navigate' and self.headers.get('Sec-Fetch-Dest') == 'iframe')
+        data = reading_links.relay(catalog(), {k: v[0] for k, v in values.items()}, self.reading_link_file_ok, automatic)
+        if data is None:
+            return self.send_json({'error': 'invalid reading link'}, 400)
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+        self.end_headers()
+        if self.command != 'HEAD':
+            self.wfile.write(data)
 
     def saved_page_file(self):
         """The web page this library address shows, if it is one to serve through saved_pages.rewrite."""
@@ -1823,7 +1858,7 @@ class Handler(library.Handler):
     def send_data(self, data, mime='application/json', status=200):
         """engine/library.py sends some saved pages from memory, and every encyclopedia page, through here."""
         if status == 200 and 'html' in mime and len(data) <= saved_pages.MAX_PAGE and urllib.parse.unquote(urllib.parse.urlsplit(self.path).path).startswith(self.LIBRARY_PREFIXES):
-            data = saved_pages.rewrite(data, self.saved_page_part)
+            data = self.reading_links(saved_pages.rewrite(data, self.saved_page_part))
             if '/documents/lastbook/' in urllib.parse.unquote(urllib.parse.urlsplit(self.path).path):
                 data = saved_pages.own_look(data)
         elif status == 200 and ('html' in mime or 'svg' in mime) and urllib.parse.urlsplit(self.path).path.startswith('/zim/'):
@@ -1894,6 +1929,8 @@ class Handler(library.Handler):
             path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
             if not self.path_ok(path):
                 return self.send_error(404)
+            if path == '/ui/reading-link':
+                return self.send_reading_link(urllib.parse.urlsplit(self.path).query)
             if path in ('/', '/index.html', '/sw.js'):
                 return self.send_static(WEB / ('sw.js' if path == '/sw.js' else 'index.html'))
             return super().do_HEAD()
@@ -2027,6 +2064,8 @@ class Handler(library.Handler):
                 return notes.handle(self, 'GET', path)
             if path in ('/', '/index.html'):
                 return self.send_static(WEB / 'index.html')
+            if path == '/ui/reading-link':
+                return self.send_reading_link(url.query)
             if path.startswith('/ui/'):
                 p = (WEB / path[4:]).resolve()
                 if WEB.resolve() in p.parents and p.is_file():

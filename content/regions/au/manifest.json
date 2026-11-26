@@ -1092,10 +1092,10 @@
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "https://www.qld.gov.au/legal/copyright",
       "raw_sha256": "ce1a5a172b1d27a81347c002e517c70fae5dc759cd55052d0d6e681df00b1fe4",
-      "sha256": "f9012a516fda3fd46cab97ffbca1afc061e0ddbc9c0efa5dd13b2a0c7389f8c0",
-      "bytes": 8414,
+      "sha256": "3a8018800574f249a70afa6c3815467a86597de7983ce1a4606244a744ff944f",
+      "bytes": 8315,
       "snapshot": "sources/qld-road-trip.html",
-      "notes": "Complete written article. Interactive vehicle/kit hotspots are flattened to one copy each (9 vehicle and 18 kit points); map-position percentages and repeated responsive views are omitted. Five severe-weather tips and caravan sections remain. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Linked alerts, caravan and boat pages are not bundled."
+      "notes": "Complete written article, including vehicle preparation, emergency kit, severe-weather tips and caravan sections. Interactive illustrations and linked alerts, caravan and boat pages are not bundled. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation."
     }
   ]
 }

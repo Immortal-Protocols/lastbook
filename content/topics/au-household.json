@@ -866,6 +866,18 @@
           "note": "Australian source directory."
         }
       ]
+    },
+    {
+      "id": "bat-exposure",
+      "label": "Read bat-exposure and lyssavirus guidance",
+      "hint": "NSW Health factsheet covers prevention, exposure circumstances, medical assessment and follow-up.",
+      "read": [
+        {
+          "doc": "nsw-bat-lyssavirus",
+          "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+          "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        }
+      ]
     }
   ],
   "limits": [
@@ -1322,6 +1334,11 @@
       "doc": "nsw-flooded-wastewater",
       "label": "NSW: flooded septic and on-site wastewater systems",
       "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
     }
   ],
   "learn": [
@@ -1784,6 +1801,11 @@
       "doc": "nsw-flooded-wastewater",
       "label": "NSW: flooded septic and on-site wastewater systems",
       "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
     }
   ],
   "related": [

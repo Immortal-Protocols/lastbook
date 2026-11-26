@@ -1,6 +1,6 @@
 # Add Australian readings to a copy of your library
 
-The reviewed supplement contains 121 public Australian readings. You can build it
+The reviewed supplement contains 124 public Australian readings. You can build it
 as a separate small library, or add it to a **new copy** of an existing Lastbook
 library. The latter keeps your existing documents, search rows, maps, models and
 other files. It never replaces the original library or changes app settings.
@@ -96,3 +96,6 @@ make the supplement an official Setup download or imply maintainer endorsement.
 The dated [composition review](AUSTRALIA-COMPOSITION-REVIEW-20261127.json) records
 the real-library preservation check and regression/failure tests. It contains
 counts and review limits, without copied library data or private source text.
+That review covers the preceding 121-record source snapshot. The later
+[bat-exposure and unchanged-source increment](AUSTRALIA-VERBATIM-SOURCES.md) adds
+three readings; the same composition tool builds from the current reviewed manifest.

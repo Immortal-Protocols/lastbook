@@ -67,7 +67,7 @@ class Compose(unittest.TestCase):
     def test_real_supplement_preserves_private_base_maps_rows_and_full_checksums(self):
         original, meta = self.hashes(self.base), compose.inventory(self.base)
         r = self.run_compose()
-        self.assertEqual((r['base_records'], r['added_records'], r['records']), (1, 121, 122))
+        self.assertEqual((r['base_records'], r['added_records'], r['records']), (1, 124, 125))
         self.assertEqual(self.hashes(self.base), original)
         self.assertEqual(compose.inventory(self.base), meta)
         changed = {'library-data/catalog.json', 'library-data/search.sqlite', 'library-data/summary.json', 'pack.json', 'pack-manifest.tsv'}
@@ -83,7 +83,7 @@ class Compose(unittest.TestCase):
                              (55, 3, 'Original private searchable material'))
             self.assertEqual(db.execute('SELECT * FROM unrelated').fetchall(), [('keep',)])
             self.assertEqual(db.execute('PRAGMA user_version').fetchone(), (17,))
-            self.assertEqual(db.execute('SELECT count(*) FROM pages').fetchone(), (122,))
+            self.assertEqual(db.execute('SELECT count(*) FROM pages').fetchone(), (125,))
             self.assertGreater(db.execute("SELECT count(*) FROM pages WHERE pages MATCH 'livestock'").fetchone()[0], 0)
         pack = json.loads((self.out / 'pack.json').read_text())
         self.assertEqual(pack['name'], 'local-australia-reference')
@@ -94,7 +94,7 @@ class Compose(unittest.TestCase):
         summary = json.loads((self.out / 'library-data/summary.json').read_text())
         self.assertEqual(summary['extraction_errors'], ['old fixture error'])
         self.assertEqual(summary['other'], 'retain')
-        self.assertEqual(summary['indexed_units'], 122)
+        self.assertEqual(summary['indexed_units'], 125)
         manifest = install.read_pack_manifest(self.out / 'pack-manifest.tsv')
         self.assertEqual({x[0] for x in manifest}, set(self.hashes(self.out)) - {'pack-manifest.tsv'})
         for rel, size, digest in manifest:
@@ -102,7 +102,7 @@ class Compose(unittest.TestCase):
         for rel, size, digest in install.read_pack_manifest(self.out / 'AUSTRALIA-SHA256SUMS.tsv'):
             self.assertEqual((size, digest), ((self.out / rel).stat().st_size, compose.sha256(self.out / rel)))
         contents = (self.out / 'pack-contents.tsv').read_text().splitlines()
-        self.assertEqual(len(contents), 123)
+        self.assertEqual(len(contents), 126)
         before_verify = self.hashes(self.out)
         proof = compose.verify(self.out)
         self.assertEqual(proof['verified_files'], len(manifest))

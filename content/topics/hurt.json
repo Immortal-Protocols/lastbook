@@ -414,6 +414,11 @@
    "phrases": ["rat bite", "rat bites", "rat bit", "rats bit", "bitten by a rat", "rodent bite"],
    "read": [
     {
+     "doc": "nsw-bat-lyssavirus",
+     "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+     "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
      "doc": "med-2e83e22162a9a006",
      "page": 323,
      "label": "IFRC: rinse the bite with clean water",

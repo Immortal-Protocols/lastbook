@@ -22,6 +22,9 @@ class Personal(unittest.TestCase):
     def test_ordinary_first_aid_links_preserve_sources_and_existing_choice_fields(self):
         audit = json.loads((b.ROOT / 'docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json').read_text())
         guide = json.loads((b.ROOT / 'content/topics/hurt.json').read_text())
+        # Later public bat guidance has its own pre-change baseline and availability tests.
+        for c in guide['choices']:
+            c['read'] = [r for r in c.get('read', []) if r.get('doc') != 'nsw-bat-lyssavirus']
         personal = {r['id']: r for r in json.loads(b.MANIFEST.read_text())['sources']}
         self.assertEqual(audit['counts'], dict(choices=6, links=9, existing_public_links=2,
                                              personal_only_links=7, unique_personal_originals=6))

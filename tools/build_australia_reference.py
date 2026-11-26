@@ -12,6 +12,7 @@ import hashlib
 import json
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -22,6 +23,59 @@ SCHEMA = 'fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UN
 ALLOWED = {'html', 'head', 'meta', 'title', 'body', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
            'p', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'table', 'thead', 'tbody', 'tr',
            'th', 'td', 'caption', 'blockquote', 'dl', 'dt', 'dd', 'br', 'sup', 'sub', 'hr', 'a', 'bdi'}
+VERBATIM_START = '<!-- unchanged-source:start -->'
+VERBATIM_END = '<!-- unchanged-source:end -->'
+
+
+class SourceText(HTMLParser):
+    """Text projection for a reviewed unchanged excerpt; no wording normalization."""
+    BLOCKS = {'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'ol', 'dl', 'dt', 'dd',
+              'table', 'tr', 'th', 'td', 'blockquote', 'br', 'hr'}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.BLOCKS:
+            self.parts.append('\n')
+
+    handle_startendtag = handle_starttag
+
+    def handle_endtag(self, tag):
+        if tag in self.BLOCKS:
+            self.parts.append('\n')
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+
+def source_text(html):
+    p = SourceText(); p.feed(html); p.close()
+    # Only whitespace layout changes. Case, punctuation, spelling and wording stay.
+    return re.sub(r'\s+', ' ', ''.join(p.parts)).strip()
+
+
+def check_verbatim(record, data, source_dir):
+    """ND is accepted only with an explicit, separately reviewed unchanged-body audit."""
+    name = record.get('verbatim_audit', '')
+    if record.get('reuse_mode') != 'unchanged-source-text' or not isinstance(name, str) or not name or Path(name).name != name or '\\' in name:
+        raise ValueError('No-derivatives source needs an unchanged-text audit: ' + record['id'])
+    audit = json.loads((source_dir / name).read_text(encoding='utf-8'))
+    if not isinstance(audit, dict) or not isinstance(audit.get('records'), dict):
+        raise ValueError('Invalid unchanged-source audit: ' + record['id'])
+    entry = audit.get('records', {}).get(record['id'])
+    if not isinstance(entry, dict) or entry.get('license') != record['license'] or \
+            entry.get('source_url') != record.get('source_url') or entry.get('raw_sha256') != record.get('raw_sha256'):
+        raise ValueError('Unchanged-source provenance does not match: ' + record['id'])
+    html = data.decode('utf-8')
+    if html.count(VERBATIM_START) != 1 or html.count(VERBATIM_END) != 1 or html.index(VERBATIM_START) >= html.index(VERBATIM_END):
+        raise ValueError('Unchanged-source body markers are missing or ambiguous: ' + record['id'])
+    body = html.split(VERBATIM_START, 1)[1].split(VERBATIM_END, 1)[0]
+    text = source_text(body)
+    if digest(body.encode('utf-8')) != entry.get('reader_body_sha256') or text != entry.get('source_text') or \
+            digest(text.encode('utf-8')) != entry.get('source_text_sha256'):
+        raise ValueError('No-derivatives source body changed; a new source/reuse review is required: ' + record['id'])
 
 
 class Page(HTMLParser):
@@ -44,6 +98,9 @@ class Page(HTMLParser):
             elif name == 'dir':
                 if value not in {'ltr', 'rtl', 'auto'}:
                     raise ValueError('Invalid text direction')
+            elif tag == 'ol' and name == 'type':
+                if value not in {'1', 'a', 'A', 'i', 'I'}:
+                    raise ValueError('Invalid ordered-list numbering')
             elif name not in {'lang', 'charset', 'rowspan', 'colspan', 'start'}:
                 raise ValueError('Unexpected HTML attribute: ' + name)
         self.text.append('\n')
@@ -78,7 +135,9 @@ def checked_sources(source_dir=SOURCES):
         data = (source_dir / r['snapshot']).read_bytes()
         if len(data) != r['bytes'] or digest(data) != r['sha256']:
             raise ValueError('Snapshot changed; review and update manifest: ' + r['id'])
-        if r['license'] not in {'CC-BY-4.0', 'CC-BY-3.0-AU', 'CC0-1.0'}:
+        if r['license'] == 'CC-BY-ND-4.0':
+            check_verbatim(r, data, source_dir)
+        elif r['license'] not in {'CC-BY-4.0', 'CC-BY-3.0-AU', 'CC0-1.0'}:
             raise ValueError('Source needs redistribution permission: ' + r['id'])
         page = Page(); page.feed(data.decode('utf-8')); page.close()
         body = ''.join(page.text).strip()

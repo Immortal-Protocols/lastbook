@@ -60,6 +60,18 @@
           "note": "Stored SCHN demonstration from 2025. Its infant compression technique differs from the checked ANZCOR Guideline 6; qualified clinical review is pending. The source video is unchanged."
         }
       ]
+    },
+    {
+      "id": "bat-exposure",
+      "label": "Read bat-exposure and lyssavirus guidance",
+      "hint": "NSW Health factsheet covers prevention, exposure circumstances, medical assessment and follow-up.",
+      "read": [
+        {
+          "doc": "nsw-bat-lyssavirus",
+          "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+          "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        }
+      ]
     }
   ],
   "limits": [
@@ -87,6 +99,11 @@
       "doc": "qld-emergency-kit",
       "label": "Emergency kit: essential items, all times",
       "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
     }
   ],
   "learn": [
@@ -109,6 +126,11 @@
       "doc": "qld-poisons",
       "label": "Poisons",
       "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete exposure circumstances, medical assessment, prior-vaccination and delayed-presentation advice. NSW public-health arrangements and linked-resource limits remain identified; no treatment methods are combined."
     }
   ],
   "related": [

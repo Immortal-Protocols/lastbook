@@ -17,6 +17,132 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_bat_factsheet_and_reuse_readings_preserve_reviewed_source_blocks(self):
+        audit = json.loads((au.SOURCES / 'VERBATIM-REUSE-AUDIT-20261127.json').read_text())
+        records = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        self.assertEqual(audit['counts'], dict(public_records=124, new_practical=1, new_rights=2, guide_references=10))
+        for selection in audit['selections']:
+            r = records[selection['id']]
+            html = (au.SOURCES / r['snapshot']).read_text()
+            body = html.split('<hr>', 1)[1].split('</body>', 1)[0]
+            self.assertEqual(au.source_text(body), au.source_text('\n'.join(x['text'] for x in selection['source_blocks'])))
+            self.assertEqual(r['sha256'], selection['reader_sha256'])
+            self.assertEqual(r['raw_sha256'], selection['raw']['raw_sha256'])
+        self.assertEqual(records['nsw-bat-lyssavirus']['source_updated'], '2025-11-27')
+        self.assertEqual(records['nsw-bat-lyssavirus']['copyright_source'], records['nsw-health-copyright']['source_url'])
+        self.assertEqual(records['cc-by-nd-legalcode']['license'], 'CC0-1.0')
+        legal = (au.SOURCES / records['cc-by-nd-legalcode']['snapshot']).read_text()
+        for section in range(1, 9):
+            self.assertIn('Section ' + str(section), legal)
+        self.assertIn('Creative Commons is not a party', legal)
+        numbering = [re.search(r'\btype="([aAiI1])"', tag) for tag in re.findall(r'<ol\b[^>]*>', legal)]
+        self.assertEqual([m.group(1) if m else None for m in numbering], audit['legal_ordered_list_types'])
+        self.assertEqual([r['id'] for r in records.values() if r['license'] == 'CC-BY-ND-4.0'], ['qld-health-copyright'])
+        self.assertNotIn('qpic-ticks', records)
+        self.assertNotIn('qpic-bats', records)
+        self.assertIn('remote-removal', audit['clinical_selection']['qpic_ticks'])
+
+    def nd_fixture(self, directory):
+        source = Path(directory) / 'source'
+        shutil.copytree(au.SOURCES, source)
+        manifest = json.loads((source / 'manifest.json').read_text())
+        record = next(r for r in manifest['sources'] if r['id'] == 'qld-health-copyright')
+        return source, manifest, record
+
+    def nd_save(self, source, manifest, record, html=None):
+        if html is not None:
+            data = html.encode()
+            (source / record['snapshot']).write_bytes(data)
+            record.update(bytes=len(data), sha256=au.digest(data))
+        (source / 'manifest.json').write_text(json.dumps(manifest))
+
+    def test_nd_body_edit_is_refused_even_when_the_snapshot_hash_is_updated(self):
+        with tempfile.TemporaryDirectory() as d:
+            source, manifest, r = self.nd_fixture(d)
+            html = (source / r['snapshot']).read_text()
+            self.assertIn('If you alter or adapt', html)
+            html = html.replace('If you alter or adapt', 'You may freely alter or adapt')
+            self.nd_save(source, manifest, r, html)
+            with self.assertRaisesRegex(ValueError, 'body changed'):
+                au.checked_sources(source)
+
+    def test_nd_text_review_is_required_even_if_the_body_hash_is_updated(self):
+        with tempfile.TemporaryDirectory() as d:
+            source, manifest, r = self.nd_fixture(d)
+            html = (source / r['snapshot']).read_text().replace('If you alter or adapt', 'You may freely alter or adapt')
+            audit_path = source / r['verbatim_audit']; audit = json.loads(audit_path.read_text())
+            body = html.split(au.VERBATIM_START, 1)[1].split(au.VERBATIM_END, 1)[0]
+            audit['records'][r['id']]['reader_body_sha256'] = au.digest(body.encode())
+            audit_path.write_text(json.dumps(audit))
+            self.nd_save(source, manifest, r, html)
+            with self.assertRaisesRegex(ValueError, 'body changed'):
+                au.checked_sources(source)
+
+    def test_nd_requires_explicit_mode_safe_audit_and_matching_provenance(self):
+        for key, value in [('reuse_mode', ''), ('verbatim_audit', '../outside.json'), ('verbatim_audit', 4),
+                           ('raw_sha256', '0' * 64), ('source_url', 'https://example.invalid/source')]:
+            with self.subTest(key=key, value=value), tempfile.TemporaryDirectory() as d:
+                source, manifest, r = self.nd_fixture(d)
+                r[key] = value
+                self.nd_save(source, manifest, r)
+                with self.assertRaisesRegex(ValueError, 'audit|provenance'):
+                    au.checked_sources(source)
+
+    def test_nd_missing_or_duplicate_markers_and_malformed_audits_are_refused(self):
+        for changed in ['', au.VERBATIM_START + au.VERBATIM_START]:
+            with tempfile.TemporaryDirectory() as d:
+                source, manifest, r = self.nd_fixture(d)
+                html = (source / r['snapshot']).read_text().replace(au.VERBATIM_START, changed)
+                self.nd_save(source, manifest, r, html)
+                with self.assertRaisesRegex(ValueError, 'markers'):
+                    au.checked_sources(source)
+        for bad in [[], {'records': []}]:
+            with tempfile.TemporaryDirectory() as d:
+                source, manifest, r = self.nd_fixture(d)
+                (source / r['verbatim_audit']).write_text(json.dumps(bad))
+                with self.assertRaisesRegex(ValueError, 'Invalid unchanged-source audit'):
+                    au.checked_sources(source)
+
+    def test_bat_placements_preserve_original_guides_and_equal_household_rural_access(self):
+        import copy
+        audit = json.loads((au.SOURCES / 'VERBATIM-REUSE-AUDIT-20261127.json').read_text())
+        guides = {g: json.loads((au.ROOT / 'content/topics' / (g + '.json')).read_text()) for g in audit['baseline_guides']}
+        self.assertEqual(len(audit['guide_placements']), 10)
+        for gid, original in guides.items():
+            guide = copy.deepcopy(original)
+            for key in ['prepare', 'learn']:
+                if key in guide:
+                    guide[key] = [r for r in guide[key] if r.get('doc') != 'nsw-bat-lyssavirus']
+            guide['choices'] = [c for c in guide['choices'] if c['id'] != 'bat-exposure']
+            for choice in guide['choices']:
+                choice['read'] = [r for r in choice.get('read', []) if r.get('doc') != 'nsw-bat-lyssavirus']
+            self.assertEqual(au.digest(json.dumps(guide, sort_keys=True).encode()), audit['baseline_guides'][gid])
+        household = [x for x in audit['guide_placements'] if x['guide'] == 'au-household']
+        rural = [x for x in audit['guide_placements'] if x['guide'] == 'au-rural']
+        self.assertEqual([{k:v for k,v in x.items() if k != 'guide'} for x in household],
+                         [{k:v for k,v in x.items() if k != 'guide'} for x in rural])
+
+    def test_bat_cards_use_existing_individual_record_availability(self):
+        import server
+        from tools.validate_topics import items
+        audit = json.loads((au.SOURCES / 'VERBATIM-REUSE-AUDIT-20261127.json').read_text())
+        guides = [json.loads((au.ROOT / 'content/topics' / (g + '.json')).read_text()) for g in audit['baseline_guides']]
+        records = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        base = {r['doc']: dict(id=r['doc'], title='Fixture', path='pages/base.html', kind='html')
+                for g in guides for _, r in items(g) if r.get('doc') and r['doc'] != 'nsw-bat-lyssavirus'}
+        # Include required hub records so this tests card filtering within existing guides.
+        base.update({r: records[r] for g in guides for r in g.get('requires_docs', [])})
+        for available, expected in [({}, 0), ({'nsw-bat-lyssavirus': records['nsw-bat-lyssavirus']}, 10)]:
+            with patch.object(server, 'APP', au.ROOT), patch.object(server, 'topics', return_value=guides), \
+                 patch.object(server, 'zim_names', return_value=[]), \
+                 patch.object(server, 'catalog', return_value={'by_id': {**base, **available}}), \
+                 patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                resolved = server.topics_resolved()
+            refs = [r for g in resolved for _, r in items(g) if r.get('doc') == 'nsw-bat-lyssavirus']
+            self.assertEqual(len(refs), expected)
+            for ref in refs:
+                self.assertEqual(ref['src']['id'], 'nsw-bat-lyssavirus')
+
     def test_ordinary_need_links_preserve_existing_choices_and_source_boundaries(self):
         audit = json.loads((au.ROOT / 'docs/AUSTRALIA-GUIDE-LINKS-20261127.json').read_text())
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
@@ -856,7 +982,8 @@ class Reference(unittest.TestCase):
 
     def test_active_content_and_external_or_broken_links_are_refused(self):
         for bad in ['<script>x</script>', '<img src="https://example.invalid/x">',
-                    '<a href="https://example.invalid">x</a>', '<p onclick="x()">x</p>']:
+                    '<a href="https://example.invalid">x</a>', '<p onclick="x()">x</p>',
+                    '<ol type="unknown"><li>x</li></ol>', '<p type="a">x</p>']:
             with self.assertRaises(ValueError):
                 au.Page().feed(bad)
         with tempfile.TemporaryDirectory() as d:

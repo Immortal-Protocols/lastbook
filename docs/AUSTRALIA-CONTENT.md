@@ -4,6 +4,26 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Bat-exposure factsheet and unchanged-source terms — 27 November 2026
+
+The public collection now has **124 records:99 official practical,16 rights and
+9 original records**. The complete NSW Health rabies/Australian bat lyssavirus
+factsheet is dated27 November2025. Ten conditional cards give identical household/
+rural access, health-guide access and an ordinary animal-bite destination. Original
+sources, choices and source conditions remain. No treatment methods are combined.
+
+Queensland Health's unchanged copyright notice and the full CC BY-ND4 English
+legal code/notices are also readable offline. A separate audited unchanged-body
+path protects ND wording and formatting against silent changes; it is not general
+adaptation permission. Only the copyright-policy text uses it. Reviewed Queensland
+medical candidates remain unbundled because of source-context differences or a
+failed exact-source retrieval. No private ANZCOR body is published.
+
+[Source selection and builder contract](AUSTRALIA-VERBATIM-SOURCES.md) explain
+exact-site rights, technical changes, preserved legal numbering and the review
+boundaries. The earlier composition evidence below covers the preceding121-record
+snapshot; its historical counts do not describe the new124-record source build.
+
 ## Compose a new full library — 27 November 2026
 
 The offline [composition tool](AUSTRALIA-COMPOSE.md) can now add these readings to

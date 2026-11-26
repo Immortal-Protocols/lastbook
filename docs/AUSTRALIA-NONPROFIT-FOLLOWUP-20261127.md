@@ -7,3 +7,8 @@ main-based PR includes that unmerged dependency; its linked comparison isolates
 this workflow. The installed private app/data and existing releases are unchanged.
 Previously recorded mixed-profile native observations are historical evidence,
 not new native tests of this branch. See the source instructions for restrictions.
+
+Validation: **857 required tests pass** on Python3.14, with five skips
+and eleven upstream expected failures. 70 focused source/composition/distribution
+checks pass. Required full command is in CONTRIBUTING.md. Source was stable during
+these runs; validation documentation follows. Synthetic fixtures require no originals.

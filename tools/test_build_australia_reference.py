@@ -16,6 +16,16 @@ spec = importlib.util.spec_from_file_location('au_builder', TOOL)
 au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
+def before_later_trauma_extension(guide):
+    uid = 'au-mhfa-adult-traumatic-events'
+    guide['choices'] = [c for c in guide['choices'] if c['id'] != 'adult-traumatic-events']
+    for c in guide['choices']:
+        c['read'] = [r for r in c['read'] if r.get('doc') != uid]
+    for key in ['prepare', 'learn']:
+        guide[key] = [r for r in guide[key] if r.get('doc') != uid]
+    return guide
+
+
 class Reference(unittest.TestCase):
     def test_built_guides_follow_moved_sources_with_catalogue_left_intact(self):
         import server
@@ -160,7 +170,7 @@ class Reference(unittest.TestCase):
         guides = {g: json.loads((au.ROOT / 'content/topics' / (g + '.json')).read_text()) for g in audit['baseline_guides']}
         self.assertEqual(len(audit['guide_placements']), 10)
         for gid, original in guides.items():
-            guide = copy.deepcopy(original)
+            guide = before_later_trauma_extension(copy.deepcopy(original))
             # Compare the historical bat increment after removing the later,
             # separately audited community-planning addition.
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
@@ -354,6 +364,7 @@ class Reference(unittest.TestCase):
         self.assertEqual(earthquake['earthquake_number_action_pairs'], [['1', 'انخفض!'], ['2', 'احتمِ!'], ['3', 'تمسّك!']])
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'arabic-hazards')
             self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
             for key in ['prepare', 'learn']:
@@ -393,6 +404,7 @@ class Reference(unittest.TestCase):
             self.assertIn(condition, tas)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             for cid, uid, hazards in [('wa-planning', 'au-wa-local-plan', ['cyclones','floods','bushfires']),
                                      ('tas-planning', 'au-tas-local-plan', ['floods','storms','bushfires'])]:
                 choice = next(c for c in guide['choices'] if c['id'] == cid)
@@ -462,6 +474,7 @@ class Reference(unittest.TestCase):
             self.assertIn(re.sub(r'\s+', '', condition), emergency)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'food-safety')
             self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
             for key in ['prepare', 'learn']:
@@ -484,6 +497,7 @@ class Reference(unittest.TestCase):
         expected = {'au-nt-local-plan','au-getready-cyclones','au-getready-floods','au-getready-bushfires'}
         for gid in ['au-household','au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'nt-planning')
             self.assertEqual({r['doc'] for r in choice['read']}, expected)
             for key in ['prepare','learn']:
@@ -529,6 +543,7 @@ class Reference(unittest.TestCase):
         self.assertIn('若無法撤離，請前往堅固建築物頂層，該處需高於海平面至少十公尺。', bodies['au-getready-traditional-chinese-tsunamis'])
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             for script in ['simplified', 'traditional']:
                 choice = next(c for c in guide['choices'] if c['id'] == script + '-chinese-hazards')
                 expected = {uid for uid in bodies if script + '-chinese-' in uid}
@@ -577,6 +592,7 @@ class Reference(unittest.TestCase):
             self.assertNotIn(excluded, selected)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'road-recovery')
             self.assertEqual({r['doc'] for r in choice['read']}, set(bodies))
             for key in ['prepare', 'learn']:
@@ -672,6 +688,7 @@ class Reference(unittest.TestCase):
         self.assertIn('Meke sur', by_id['qld-yumplatok-cyclones-poster']['complete_source_text'])
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             for cid, language in [('yumplatok-posters', 'tcs'), ('wik-mungkan-posters', 'wim')]:
                 choice = next(c for c in guide['choices'] if c['id'] == cid)
                 self.assertEqual({r['doc'] for r in choice['read']},
@@ -712,6 +729,7 @@ class Reference(unittest.TestCase):
             self.assertIn(text, beacon)
         for gid in ['au-household', 'au-rural']:
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             choice = next(c for c in guide['choices'] if c['id'] == 'planning-tools')
             self.assertEqual({r['doc'] for r in choice['read']}, ids)
             for key in ['prepare', 'learn']:
@@ -1067,6 +1085,7 @@ class Reference(unittest.TestCase):
         uid = audit['id']
         for gid, digest in audit['baseline_guides'].items():
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            guide = before_later_trauma_extension(guide)
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
             for key in ['prepare', 'learn']:
                 guide[key] = [r for r in guide[key] if r.get('doc') != uid]

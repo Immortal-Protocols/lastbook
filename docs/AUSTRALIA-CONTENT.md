@@ -1272,3 +1272,45 @@ archive extraction, CRC, hashes, FTS, Han and privacy checks accompany the downl
 New choices require matching bundled guide JSON/runtime; a data-only archive
 cannot update an older executable's guide assets. No production manifest, new
 dependency, downloader, TLS or network-policy change. Earlier assets are unchanged.
+
+
+## Mac modal heartbeat accounting — 26 November 2026
+
+A stand-in WebKit completion test reproduced a separate false watchdog verdict:
+three heartbeat answers delayed across app-owned modal waits counted as three
+slow answers after the dialogs had closed. The Mac shell now measures
+heartbeat latency on a clock that excludes only app-owned modal time. Active
+delay before and after a modal still counts toward the original slow threshold.
+A queued answer must still arrive before releasing its byte acknowledgements.
+Twenty-one focused Mac tests cover modal timing/nesting, ordinary slow/unanswered
+termination, byte budgets, stale callbacks and sheet callback order on both the
+development Python and frozen-build Python. These tests create no real window or
+WebKit process. Thresholds, memory/network/frame protections and source data are
+unchanged. No background scheduling policy change is made.
+
+This is not an established cause or complete fix for the historical idle event.
+That single not-answering log event remains unexplained. New native checks must
+retain their selected scope; no long-idle or all-modal WebKit guarantee follows
+from the deterministic completion-order tests.
+
+Independent main-based fix: [PR491](https://github.com/Immortal-Protocols/lastbook/pull/491).
+Final required suite792 passes; Australian contribution842 and combined914 pass,
+each5skips/11upstream expected failures. Nine new heartbeat cases are included.
+The standalone PR also carries the test-only synthetic disk-capacity fixture
+correction already in PR487. The three fixture failures were reproduced against
+unchanged upstream; production storage reserves are unchanged.
+
+Frozen source `f2fb94d` passes package/i18n/privacy, strict signature and the actual
+installed431/7 outbound-IP-denial self-check. All58 bundled content/web/setup assets
+are byte-identical to the prior WA/Tas runtime. All117 Australian content hashes,
+42 personal FTS units,Victoria3,054 names/map hashes and exact infant video hash
+are retained. Catalog,search index,reference manifest,map-set and personal marker
+remain byte-identical even after selected native navigation. Public110/private431
+counts and555 guide references are unchanged. No new data release or asset edits.
+Full prior app is retained for rollback; library data is unchanged.
+
+Selected installed Mac navigation opens rural WA→reader→linked isolation reader,
+sets the matching Ask context and returns through reader history to the expanded
+guide choice. No new page-kill event appears. Actual modal WebKit timing,controlled
+sleep/background behavior and long-idle reliability are not established by these
+selected checks. The earlier one-event idle failure remains unexplained.

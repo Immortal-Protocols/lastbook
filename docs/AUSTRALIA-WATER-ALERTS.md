@@ -38,3 +38,9 @@ See AUSTRALIA-COMPOSE.md for the preserved-base and local Setup limits.
 No current local utility alert, water testing, manufacturer/site-specific procedure,
 full apartment pump/outage-duration manual, independent professional/clinical review
 or public-production Setup listing is claimed. The remaining gaps remain explicit.
+
+Validation:846public and1,059combined tests pass (five skips/eleven expected failures
+each).59focused public/source/composition checks pass on3.14and3.11.18. Actual
+engine/search/scoped retrieval/libq,source-loss/restoration and selected installed
+Mac Page/Text/source-date/Ask/Back checks pass. Source/language/clinical/system
+review limits remain. [Exact dated review](AUSTRALIA-WATER-ALERTS-REVIEW-20261127.json).

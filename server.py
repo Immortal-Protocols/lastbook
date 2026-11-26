@@ -24,6 +24,7 @@ Nothing in library-data is written. Caches go to derived/cache.
 """
 import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
 from array import array
+from contextlib import closing
 from pathlib import Path
 
 if __name__ == '__main__':  # --data must be known before the paths below are worked out
@@ -37,6 +38,7 @@ import engine.paths as lastbook_paths  # noqa: E402  (data folder and program fo
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search, encyclopedias  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
+from engine.setup.install import map_set
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
 LIB = lastbook_paths.LIB
@@ -1536,6 +1538,51 @@ def _distinct(path, sql):
         db.close()
 
 
+@functools.lru_cache(maxsize=4)
+def _place_index_area(path, identity):
+    """Read once per installed file. Older US packs have source credits but no region metadata."""
+    with closing(sqlite3.connect(ro_uri(path), uri=True)) as db:
+        if not db.execute('SELECT 1 FROM place LIMIT 1').fetchone():
+            return None
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='build_meta'").fetchone():
+            region = db.execute("SELECT value FROM build_meta WHERE key='region'").fetchone()
+            if region and isinstance(region[0], str) and region[0].strip():
+                return {'region': region[0].strip()}
+        # The old US builder also imported Southern California OSM rows. An
+        # unqualified OpenStreetMap credit can come from anywhere in the world.
+        sources = {source for source, in db.execute("""SELECT DISTINCT CASE
+            WHEN source IN ('USGS GNIS', 'US Census Bureau') THEN source
+            WHEN source = 'OpenStreetMap' AND detail = 'Southern California (OpenStreetMap)' THEN source
+            END FROM place""")}
+        if sources and None not in sources:
+            return {'country': 'US', 'sources': sorted(sources)}
+        return {}
+
+
+def place_index_coverage():
+    try:
+        stat = PLACEDB.stat()
+        area = _place_index_area(PLACEDB, (stat.st_ino, stat.st_size, stat.st_mtime_ns))
+    except FileNotFoundError:
+        return None
+    except (OSError, sqlite3.Error):
+        return {}
+    if area is None or area:
+        return area
+    # A regional map can be installed beside an independent gazetteer. Only use a
+    # receipt that actually lists the installed place index with its matching size.
+    receipt = map_set(HERE)
+    if receipt and receipt['files'].get('derived/geo/places.sqlite') == stat.st_size:
+        code = receipt.get('country')
+        if not code:
+            # Existing regional receipts use subdivision IDs such as DE-BE and PT-30.
+            match = re.fullmatch(r'([A-Z]{2})-[A-Z0-9]{1,3}', str(receipt.get('name', '')))
+            code = match.group(1) if match else None
+        if isinstance(code, str) and re.fullmatch('[A-Z]{2}', code):
+            return {'country': code}
+    return {}
+
+
 @functools.lru_cache(maxsize=1)
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
@@ -1578,7 +1625,7 @@ def map_info():
         p = LIB / rel
         if p.exists() and label:
             geo.append({'label': label, 'status': status, 'path': rel, 'bytes': p.stat().st_size})
-    geo.append({'label': 'US place names (USGS GNIS) and Census 2025 ZIP-code and county centres', 'status': 'Used by "Find a place", together with named lakes, reservoirs and dams', 'path': 'geography/geographic-names/'})
+    place_area = place_index_coverage()
     if WATERDB.exists():
         try:
             w = dict(sqlite3.connect(ro_uri(WATERDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
@@ -1638,10 +1685,14 @@ def map_info():
     if AERIALDB.exists():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
-    extra = {'aerial': has_aerial()}
+    extra = {'aerial': has_aerial(), 'place_coverage': place_area}
     if pack:
         extra.update(map_contents())
         geo = pack_datasets(extra)
+    if place_area is not None:
+        sources = ', '.join(place_area.get('sources', []))
+        label = f'Place names ({sources})' if sources else 'Installed place names'
+        geo.append({'label': label, 'status': 'Used by the place finder'})
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}
 
 
@@ -1653,8 +1704,6 @@ def pack_datasets(have):
         out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
     else:
         out.append({'label': 'No street detail or help points', 'status': 'This download has only the base map. Hospitals, water taps and side streets are not in it.'})
-    if PLACEDB.exists():
-        out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
     if TERRAINDB.exists():
         out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
     if BLDGDB.exists():

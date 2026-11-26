@@ -1,6 +1,6 @@
 {
-  "version": 18,
-  "id": "au-reference-infant-source-review-2026-11-26",
+  "version": 19,
+  "id": "au-reference-wa-tas-planning-2026-11-26",
   "checked": "2026-11-26",
   "sources": [
     {
@@ -498,8 +498,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "31ecd780f50d19872c4cbf7059db9eb302a19d0e73577664eebe248d6c342f2c",
-      "bytes": 18829,
+      "sha256": "b84d3bd9ef8200802b7399ceb75f3baea4e6f0b8dc34540b3eda85319f76e3ef",
+      "bytes": 19272,
       "snapshot": "sources/au-reference.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
@@ -2569,6 +2569,66 @@
       "bytes": 7962,
       "snapshot": "sources/fsanz-food-flood.html",
       "notes": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
+    },
+    {
+      "id": "au-wa-local-plan",
+      "title": "Western Australia: current warnings, departure and animal planning",
+      "kind": "html",
+      "publisher": "Lastbook Australia contributors",
+      "jurisdiction": "Western Australia",
+      "language": "en-AU",
+      "category": "preparedness",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/au-wa-local-plan.html",
+      "source_url": "",
+      "retrieved_at": "2026-11-26",
+      "authored_at": "2026-11-26",
+      "edition": "Original local planning reading, 26 November 2026; cited sources have separate dates",
+      "year": 2026,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "",
+      "references": [
+        "https://dfes.wa.gov.au/hazard-information/warning-systems/australian-warning-system",
+        "https://www.dfes.wa.gov.au/hazard-information/cyclone/prepare",
+        "https://www.dpird.wa.gov.au/businesses/animal-welfare-businesses/animal-welfare-in-emergencies/",
+        "https://www.dfes.wa.gov.au/copyright",
+        "https://www.mainroads.wa.gov.au/travel-information/"
+      ],
+      "sha256": "8d5c5d6f044b630e9cb3e147beb66687f78744570dfd938acc21b696c26b8843",
+      "bytes": 6711,
+      "snapshot": "sources/au-wa-local-plan.html",
+      "notes": "Original contributor wording, factual summaries and planning prompts. Reserved agency manuals, pages, plans, images and maps are not bundled or relicensed. No current warnings, opening/access guarantees, completed plan storage or independent local professional review."
+    },
+    {
+      "id": "au-tas-local-plan",
+      "title": "Tasmania: access, warnings and distinct shelter arrangements",
+      "kind": "html",
+      "publisher": "Lastbook Australia contributors",
+      "jurisdiction": "Tasmania",
+      "language": "en-AU",
+      "category": "preparedness",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/au-tas-local-plan.html",
+      "source_url": "",
+      "retrieved_at": "2026-11-26",
+      "authored_at": "2026-11-26",
+      "edition": "Original local planning reading, 26 November 2026; cited sources have separate dates",
+      "year": 2026,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "",
+      "references": [
+        "https://www.ses.tas.gov.au/plan-prepare/get-ready/",
+        "https://www.ses.tas.gov.au/keep-safe/warnings/",
+        "https://www.fire.tas.gov.au/Show?pageId=colNearBySaferPlaces",
+        "https://alert.tas.gov.au/know-your-map-icons",
+        "https://www.ses.tas.gov.au/about/ses-storm-warning-system/preparing-for-storms/"
+      ],
+      "sha256": "2f750a41cca5e31430ec2c9a5f4a0d96b3cb39114f6ff74136c68f02691c0242",
+      "bytes": 6780,
+      "snapshot": "sources/au-tas-local-plan.html",
+      "notes": "Original contributor wording, factual summaries and planning prompts. Reserved agency manuals, pages, plans, images and maps are not bundled or relicensed. No current warnings, opening/access guarantees, completed plan storage or independent local professional review."
     }
   ]
 }

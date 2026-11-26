@@ -17,6 +17,37 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_wa_tas_planning_preserves_local_distinctions_and_equal_access(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'WA-TAS-PLANNING-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['reader_id']; entry = entries[uid]
+            body = (au.SOURCES / entry['snapshot']).read_text(encoding='utf-8')
+            self.assertEqual(au.digest(body.encode('utf-8')), selection['sha256'])
+            self.assertEqual(entry['publisher'], 'Lastbook Australia contributors')
+            self.assertEqual(entry['source_url'], '')
+            self.assertIn('does not collect or save a completed plan', body)
+            self.assertNotIn('<form', body)
+            self.assertNotIn('<input', body)
+            bodies[uid] = body
+        wa = bodies['au-wa-local-plan']; tas = bodies['au-tas-local-plan']
+        for condition in ['15 July 2024', 'no longer the WA system', 'does not establish that all hazards have gone',
+                          'recognised assistance animals are a separate exception', 'as an animal booking']:
+            self.assertIn(condition, wa)
+        for condition in ['not evacuation centres or assembly areas', 'Some communities have no identified site',
+                          'rather than its full spread', 'road-closure information is incomplete',
+                          'does not select, rate or promise safe access']:
+            self.assertIn(condition, tas)
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            for cid, uid, hazards in [('wa-planning', 'au-wa-local-plan', ['cyclones','floods','bushfires']),
+                                     ('tas-planning', 'au-tas-local-plan', ['floods','storms','bushfires'])]:
+                choice = next(c for c in guide['choices'] if c['id'] == cid)
+                self.assertEqual({r['doc'] for r in choice['read']}, {uid} | {'au-getready-' + h for h in hazards})
+                for key in ['prepare', 'learn']:
+                    self.assertIn(uid, {r.get('doc') for r in guide[key]})
+
     def test_infant_source_status_is_dated_visible_and_does_not_add_unreviewed_protocols(self):
         manifest = au.checked_sources()[0]
         audit = json.loads((au.SOURCES / 'INFANT-CPR-SOURCE-REVIEW-20261126.json').read_text(encoding='utf-8'))

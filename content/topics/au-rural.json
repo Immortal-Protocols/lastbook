@@ -105,7 +105,13 @@
     "freezer",
     "food thermometer",
     "floodwater contamination",
-    "use-by"
+    "use-by",
+    "Western Australia",
+    "WA planning",
+    "Tasmania",
+    "Tasmanian planning",
+    "Nearby Safer Place",
+    "animal accommodation"
   ],
   "choices": [
     {
@@ -127,6 +133,60 @@
           "doc": "au-beacon-preparation",
           "label": "Land-trip beacon preparation: registration, testing and distress plan",
           "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+        }
+      ]
+    },
+    {
+      "id": "wa-planning",
+      "label": "Plan for Western Australian hazards and animals",
+      "hint": "Current WA warning system, separate wind/water risks, departure and animal accommodation.",
+      "read": [
+        {
+          "doc": "au-wa-local-plan",
+          "label": "Western Australia: current warnings, departure and animal planning",
+          "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+        },
+        {
+          "doc": "au-getready-cyclones",
+          "label": "National cyclones preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "National floods preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-bushfires",
+          "label": "National bushfires preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        }
+      ]
+    },
+    {
+      "id": "tas-planning",
+      "label": "Plan for Tasmanian hazards and access",
+      "hint": "Access and service failures; evacuation centres and bushfire places of last resort are different.",
+      "read": [
+        {
+          "doc": "au-tas-local-plan",
+          "label": "Tasmania: access, warnings and distinct shelter arrangements",
+          "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "National floods preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-storms",
+          "label": "National storms preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-bushfires",
+          "label": "National bushfires preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
         }
       ]
     },
@@ -1138,6 +1198,16 @@
       "doc": "fsanz-food-flood",
       "label": "Floods and food safety: FSANZ consumer guidance",
       "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
+    },
+    {
+      "doc": "au-wa-local-plan",
+      "label": "Western Australia: current warnings, departure and animal planning",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-tas-local-plan",
+      "label": "Tasmania: access, warnings and distinct shelter arrangements",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
     }
   ],
   "learn": [
@@ -1540,6 +1610,16 @@
       "doc": "fsanz-food-flood",
       "label": "Floods and food safety: FSANZ consumer guidance",
       "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
+    },
+    {
+      "doc": "au-wa-local-plan",
+      "label": "Western Australia: current warnings, departure and animal planning",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-tas-local-plan",
+      "label": "Tasmania: access, warnings and distinct shelter arrangements",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
     }
   ],
   "related": [

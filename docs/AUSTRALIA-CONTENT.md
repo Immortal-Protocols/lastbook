@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 84 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 87 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -19,7 +19,7 @@ and remaining work are recorded below so missing information is visible.
   remote-work readings; Queensland road-trip preparation; disability-inclusive
   planning selections and complete mobility and low/no-vision written articles;
   four text-only parts of CFA's currently linked Victorian survival guide;complete NSW Health rainwater,groundwater,flooded-tank and non-potable written readings;four complete ACT portal hazard articles.
-- Thirteen copyright statements, an original accessible-calling navigation note,
+- Fourteen copyright/source-rights statements, an original accessible-calling navigation note,
   the original Australian source hub and a directory
   covering all six states, three internal territories and seven external territories:
   plus three original journey, isolation and beacon planning aids:
@@ -28,7 +28,9 @@ and remaining work are recorded below so missing information is visible.
   plus four Queensland driving, breakdown, recovery-strap and selected vehicle/packing readings:
   plus fourteen publisher-written Chinese hazard factsheet texts:
   plus one original Northern Territory local planning worksheet:
-  **104 searchable HTML records** altogether. Four remote entries provide management
+  plus three complete FSANZ consumer food-safety readings and a rights/disclaimer record:
+  plus two original Western Australian and Tasmanian local planning readings:
+  **110 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -1224,3 +1226,25 @@ pack cannot update an older executable's bundled guide JSON. The hub note is dat
 The [108-record source-status review](https://github.com/pilkster/lastbook/releases/tag/australia-infant-source-review-2026-11-26) includes the updated hub and
 checksums. Earlier release assets remain unchanged. Contributor prerelease,
 not official Setup publication or maintainer acceptance.
+
+
+## Western Australia and Tasmania local planning — 26 November 2026
+
+Two original contributor readings fill a local-planning gap equally in household
+and rural guides. WA covers the 15 July 2024 warning-system transition, separate
+cyclone wind/water risks, departure, animal accommodation and service purposes.
+Tasmania covers access/service dependencies, distinct evacuation/last-resort
+arrangements, map-symbol limits, warning backups and human/animal support.
+Each choice also links three retained national factsheets. The hub links both.
+
+DFES requires written reproduction permission. Tasmania's general grant is
+noncommercial; no unrestricted manual grant is inferred. No DPIRD grant is assumed.
+Only original writing and brief attributed facts are published; agency bodies,
+manuals, plans, images and maps remain research only. Eleven successful raw
+acquisitions and the reported Tasmanian policy403 are pinned in the source audit.
+That policy was separately read on the official site through the web tool.
+TFS's dynamically generated footer time is not treated as a substantive review date.
+
+Public collection:110 =87 official practical+14 rights+9 original records.
+Full WA/Tas manuals, local/professional/community review and actual warnings,
+access, centres, animal places and completed plans remain outstanding.

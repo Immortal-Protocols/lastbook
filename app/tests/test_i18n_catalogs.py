@@ -198,15 +198,38 @@ class NativeLocaleSettings(unittest.TestCase):
         self.addCleanup(setattr, i18n_native, '_catalogs', old_catalogs)
         self.addCleanup(setattr, i18n_native, '_locale', old_locale)
         with tempfile.TemporaryDirectory() as tmp:
+            settings = Path(tmp) / 'settings'
+            settings.mkdir()
+            (settings / 'ui-language.json').write_text(
+                json.dumps({'language': 'es-419'}), encoding='utf-8')
             bad = Path(tmp) / 'bad.json'
+            unreadable = Path(tmp) / 'unreadable.json'
             packaged = Path(tmp) / 'packaged.json'
             bad.write_text('{ broken', encoding='utf-8')
-            packaged.write_text(json.dumps({'en': {'native.probe': 'Packaged English'}, 'locales': {}}), encoding='utf-8')
-            with mock.patch.object(i18n_native, '_candidates', return_value=iter((bad, packaged))):
+            unreadable.write_text('{}', encoding='utf-8')
+            packaged.write_text(json.dumps({
+                'en': {'native.probe': 'Packaged English'},
+                'locales': {'es-419': {'native.probe': 'Texto traducido'}},
+            }), encoding='utf-8')
+            read_text = Path.read_text
+
+            def read_catalogue(path, *args, **kwargs):
+                if path == unreadable:
+                    # Simulate a permission error even when the test runs as root.
+                    raise PermissionError('catalogue is not readable')
+                return read_text(path, *args, **kwargs)
+
+            with (mock.patch.object(i18n_native, '_candidates',
+                                    return_value=iter((bad, unreadable, packaged))),
+                  mock.patch.object(Path, 'read_text', new=read_catalogue)):
                 i18n_native._catalogs = None
-                self.assertEqual(i18n_native.native_t('native.probe', 'Source English'), 'Packaged English')
-            with mock.patch.object(i18n_native, '_candidates', return_value=iter((bad,))):
+                self.assertEqual(i18n_native.configure(settings), 'es-419')
+                self.assertEqual(i18n_native.native_t('native.probe', 'Source English'), 'Texto traducido')
+            with (mock.patch.object(i18n_native, '_candidates',
+                                    return_value=iter((bad, unreadable))),
+                  mock.patch.object(Path, 'read_text', new=read_catalogue)):
                 i18n_native._catalogs = None
+                self.assertEqual(i18n_native.configure(settings), 'en')
                 self.assertEqual(i18n_native.native_t('native.probe', 'Source English'), 'Source English')
             malformed_shape = Path(tmp) / 'malformed-shape.json'
             malformed_shape.write_text(json.dumps({
@@ -215,7 +238,7 @@ class NativeLocaleSettings(unittest.TestCase):
             }), encoding='utf-8')
             with mock.patch.object(i18n_native, '_candidates', return_value=iter((malformed_shape,))):
                 i18n_native._catalogs = None
-                self.assertEqual(i18n_native.set_locale('de'), 'en')
+                self.assertEqual(i18n_native.configure(settings), 'en')
                 self.assertEqual(i18n_native.native_t('native.probe', 'Source English'), 'Source English')
 
 

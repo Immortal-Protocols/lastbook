@@ -91,7 +91,14 @@ const MapView = (() => {
     if (!askedHome && !IN_WINDOW) { askedHome = true; try { const r = await fetch('/ui/home-area.json'); if (r.ok) HOME = await r.json() } catch { } }
     return HOME;
   }
-  const wholeMap = () => st.bounds || US;
+  function regionExtent(info) {
+    const text = info.meta?.bounds;
+    if (typeof text !== 'string') return null;
+    const parts = text.split(','), b = parts.map(Number);
+    return parts.length === 4 && parts.every(v => v.trim() !== '') && b.every(Number.isFinite) &&
+      -180 <= b[0] && b[0] < b[2] && b[2] <= 180 && -90 <= b[1] && b[1] < b[3] && b[3] <= 90 ? b : null;
+  }
+  const wholeMap = () => st.bounds || st.regionBounds || (st.region ? [-180, -80, 180, 80] : US);
   async function page(main, q, current = () => true) {   // current(): false once the router has moved on
     await localHome();
     if (!current()) return;   // left while the home area loaded: build nothing
@@ -181,7 +188,7 @@ const MapView = (() => {
       describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw(); nearby();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
-    }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
+    }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(wholeMap(), 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
@@ -194,6 +201,7 @@ const MapView = (() => {
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
   function describe(info) {
     st.region = info.region || null;
+    st.regionBounds = st.region ? regionExtent(info) : null;
     if (info.region) {
       document.querySelector('.maphead p').textContent = 'Offline map. Current damage, closures and hazards are not shown.';
       document.querySelector('.mapattr').textContent = '© OpenStreetMap contributors · ODbL 1.0 · Natural Earth';
@@ -205,7 +213,9 @@ const MapView = (() => {
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
     layerCount();
     if (!st.have.size) $('near').closest('section').hidden = true;
-    if (info.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
+    const b = $('map-us'), regional = Boolean(info.bounds || st.region);
+    b.textContent = regional ? 'All' : 'US'; b.title = regional ? 'Whole map' : 'Whole US';
+    b.setAttribute('aria-label', regional ? 'Whole map' : 'Whole United States');
   }
   const offered = l => !st.have || (l && l.cls.some(c => st.have.has(c)));
   function toastMap(m) { if (typeof toast === 'function') toast(m) }

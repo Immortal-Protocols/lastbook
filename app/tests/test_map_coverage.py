@@ -112,6 +112,36 @@ class MapCoverage(unittest.TestCase):
         legacy = ['500 m','1000 m','2.6 mi','6.2 mi']
         self.assertEqual(json.loads(result.stdout), [metric,metric,legacy,legacy])
 
+    @unittest.skipUnless(shutil.which('node'), 'requires Node for actual map camera policy')
+    def test_missing_regional_detail_keeps_camera_and_button_out_of_us_fallback(self):
+        code = (Path(__file__).resolve().parents[2] / 'web/map.js').read_text()
+        constants = '\n'.join(line for line in code.splitlines() if line.startswith(('  const US =', '  const wholeMap =')))
+        describe = code[code.index('  function describe(info) {'):code.index('  const offered =')]
+        helper = ''
+        if '  function regionExtent(info) {' in code:
+            helper = code[code.index('  function regionExtent(info) {'):code.index('  const wholeMap =')]
+        script = """
+          let st, nodes;
+          const node=()=>({textContent:'US',title:'Whole US',attrs:{'aria-label':'Whole United States'},setAttribute(k,v){this.attrs[k]=v;},querySelector(){return this;},closest(){return this;}});
+          const $=id=>nodes[id]||(nodes[id]=node());
+          const document={querySelector:()=>node()};
+          const LAYERS=[]; const offered=()=>true; const layerCount=()=>{};
+        """ + constants + helper + describe + """
+          const box=[140.96,-39.2,149.97,-33.98];
+          const common={region:'au-vic',layers:['hospital'],bounds:null,meta:{bounds:box.join(',')}};
+          const cases=[common,{...common,bounds:box},{...common,meta:{}},{layers:['hospital'],bounds:null},
+            {...common,meta:{bounds:'140,,150,-30'}},{...common,meta:{bounds:'150,-40,140,-30'}}];
+          const results=cases.map(info=>{nodes={};st={on:new Set()};describe(info);const button=$('map-us');return [wholeMap(),button.title,button.attrs['aria-label']];});
+          console.log(JSON.stringify(results));
+        """
+        result = subprocess.run([shutil.which('node'), '-e', script], capture_output=True, text=True, timeout=10, check=True)
+        values = json.loads(result.stdout)
+        box = [140.96,-39.2,149.97,-33.98]
+        self.assertEqual(values[:2], [[box,'Whole map','Whole map']]*2)
+        self.assertEqual(values[2], [[-180,-80,180,80],'Whole map','Whole map'])
+        self.assertEqual(values[3], [[-124.8,24.4,-66.9,49.4],'Whole US','Whole United States'])
+        self.assertEqual(values[4:], [values[2],values[2]])
+
     def test_pack_regional_identity_also_survives_missing_coverage(self):
         (self.root / 'map-set.json').unlink()
         (self.root / 'pack.json').write_text(json.dumps({'map': 'au-act'}))

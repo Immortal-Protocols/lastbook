@@ -877,3 +877,35 @@ response hashes, licensed-host equality, footer/policy chain, all source panels
 and exclusions are in NATIONAL-HAZARDS-SOURCE-AUDIT-20261126.json. The four earlier
 language posters' English context now says “quoted words” after their source-first
 layout; no published-language wording changed.
+
+
+Final verification of this national-hazard addition: **810 contribution/build tests
+and882 combined-source tests pass**, each five skips/eleven upstream expected
+failures;13focused source tests pass. Both final full suites include the native
+review's tsunami-heading correction. Public85/private406 engine searches and all85
+public reader hashes pass with socket creation forbidden. Household/rural177/182,
+health13and personal21references resolve393total with zero errors. Personal7/42FTS,
+all92AUcontent hashes and Victoria's3,054names/per-file map hashes remain intact.
+
+The private Mac app freezes combined725dee3. Reader-only data correction is at
+combineda497514; no shipped runtime or guide path changed, so that scanned and
+strictly verified binary is preserved. i18n, package/privacy scan and actual
+installed406/7 IP-denial self-check pass. Pinned roots/setup manifest are unchanged;
+no new TLS rerun is claimed. Previous full399app/data and pre-layout406data remain
+available privately for rollback. The entire private library is PERSONAL USE ONLY.
+
+Selected installed Mac checks open both seven-reading choices and all seven
+readers. Screenshots inspect earthquake steps/fallback, heatstroke conditions,
+final tsunami signs/immediate action/conditional building fallback and rural cards.
+Native review found three tsunami labels running into their answers; separate
+headings now preserve all original words/order and have been rechecked. Reader
+source/Ask targets and Back-to-guide context remain. No all85reader/native-platform,
+professional/accessibility,live-service,notarization,newTLS or long-idle claim.
+Earlier idle-watchdog and HTTP-browser navigation gaps remain unresolved.
+
+The matching public85HTML-only contributor prerelease is
+https://github.com/pilkster/lastbook/releases/tag/australia-national-hazards-review-2026-11-26
+with source audits/checksums. It is not an official Setup pack or maintainer
+acceptance. Extract supplements into a new folder; never replace an existing
+installed catalog with this smaller collection. No personal-use PDFs/text or
+original agency PDFs are distributed. Earlier assets remain unchanged.

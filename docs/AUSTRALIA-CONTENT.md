@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 70 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 84 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -26,7 +26,7 @@ and remaining work are recorded below so missing information is visible.
   plus four published-language poster texts in Yumplatok and Wik-Mungkan:
   plus seven complete national Get Ready standard English factsheet texts:
   plus four Queensland driving, breakdown, recovery-strap and selected vehicle/packing readings:
-  **89 searchable HTML records** altogether. Four remote entries provide management
+  **103 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -958,3 +958,22 @@ with source audits/checksums. Extract into a new folder; never replace an instal
 catalog with this smaller supplement. No personal-use PDFs/text, original agency
 PDFs, images/video or manufacturer manuals are distributed. Contributor review,
 not officialSetup/maintainer acceptance. Earlier release assets remain unchanged.
+
+
+## Chinese national hazard factsheets — 26 November 2026
+
+Fourteen complete publisher-written standard factsheet texts add all seven national
+hazards in Simplified Chinese and Traditional Chinese, equally in household/rural
+guides. Each PDF has a byte-identical direct Get Ready Queensland copy; linked
+Queensland CC BY 4.0 policy, State/QRA credit and exclusions are documented. No
+original PDFs, imagery or branding are bundled. CHINESE-HAZARDS-SOURCE-AUDIT-20261126.json
+pins source receipts, 28 visually inspected pages, panel associations, character
+counters and individual March/April file dates. Source text is not newly translated,
+corrected or converted. The interface and contributor notes remain English.
+
+Han substring search fixes short Chinese terms inside unsegmented text in reader
+search, assistant keyword retrieval and libq without replacing the index or Latin
+FTS behavior. Use the matching updated runtime: a data-only supplement cannot add
+this search behavior to an older application. No script conversion, Chinese word
+segmentation or independent translation/accessibility review is claimed. Other
+languages, community review and accessible/offline audio formats remain gaps.

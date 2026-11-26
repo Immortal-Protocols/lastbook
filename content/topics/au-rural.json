@@ -83,7 +83,16 @@
     "snatch strap",
     "road train",
     "unsealed",
-    "tyre"
+    "tyre",
+    "简体中文",
+    "繁體中文",
+    "Chinese",
+    "地震",
+    "洪水",
+    "热浪",
+    "熱浪",
+    "海啸",
+    "海嘯"
   ],
   "choices": [
     {
@@ -147,6 +156,90 @@
           "doc": "au-getready-tsunamis",
           "label": "Get Ready Australia: tsunamis preparedness",
           "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        }
+      ]
+    },
+    {
+      "id": "simplified-chinese-hazards",
+      "label": "Read Simplified Chinese / 简体中文 hazard factsheets",
+      "hint": "Seven national factsheet texts; English interface and source notes remain. Source script retained.",
+      "read": [
+        {
+          "doc": "au-getready-simplified-chinese-bushfires",
+          "label": "丛林火灾 — Simplified Chinese / bushfires preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-cyclones",
+          "label": "气旋 — Simplified Chinese / cyclones preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-earthquakes",
+          "label": "地震 — Simplified Chinese / earthquakes preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-floods",
+          "label": "洪水 — Simplified Chinese / floods preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-heatwaves",
+          "label": "热浪 — Simplified Chinese / heatwaves preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-storms",
+          "label": "暴风雨 — Simplified Chinese / storms preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-tsunamis",
+          "label": "海啸 — Simplified Chinese / tsunamis preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        }
+      ]
+    },
+    {
+      "id": "traditional-chinese-hazards",
+      "label": "Read Traditional Chinese / 繁體中文 hazard factsheets",
+      "hint": "Seven national factsheet texts; English interface and source notes remain. Source script retained.",
+      "read": [
+        {
+          "doc": "au-getready-traditional-chinese-bushfires",
+          "label": "山火 — Traditional Chinese / bushfires preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-cyclones",
+          "label": "熱帶氣旋 — Traditional Chinese / cyclones preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-earthquakes",
+          "label": "地震 — Traditional Chinese / earthquakes preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-floods",
+          "label": "洪水 — Traditional Chinese / floods preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-heatwaves",
+          "label": "熱浪 — Traditional Chinese / heatwaves preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-storms",
+          "label": "風暴 — Traditional Chinese / storms preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-tsunamis",
+          "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
         }
       ]
     },
@@ -893,6 +986,76 @@
       "doc": "qld-long-trip-checks",
       "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
       "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-bushfires",
+      "label": "丛林火灾 — Simplified Chinese / bushfires preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-cyclones",
+      "label": "气旋 — Simplified Chinese / cyclones preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-earthquakes",
+      "label": "地震 — Simplified Chinese / earthquakes preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-floods",
+      "label": "洪水 — Simplified Chinese / floods preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-heatwaves",
+      "label": "热浪 — Simplified Chinese / heatwaves preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-storms",
+      "label": "暴风雨 — Simplified Chinese / storms preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-tsunamis",
+      "label": "海啸 — Simplified Chinese / tsunamis preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-bushfires",
+      "label": "山火 — Traditional Chinese / bushfires preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-cyclones",
+      "label": "熱帶氣旋 — Traditional Chinese / cyclones preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-earthquakes",
+      "label": "地震 — Traditional Chinese / earthquakes preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-floods",
+      "label": "洪水 — Traditional Chinese / floods preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-heatwaves",
+      "label": "熱浪 — Traditional Chinese / heatwaves preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-storms",
+      "label": "風暴 — Traditional Chinese / storms preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-tsunamis",
+      "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
     }
   ],
   "learn": [
@@ -1205,6 +1368,76 @@
       "doc": "qld-long-trip-checks",
       "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
       "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-bushfires",
+      "label": "丛林火灾 — Simplified Chinese / bushfires preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-cyclones",
+      "label": "气旋 — Simplified Chinese / cyclones preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-earthquakes",
+      "label": "地震 — Simplified Chinese / earthquakes preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-floods",
+      "label": "洪水 — Simplified Chinese / floods preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-heatwaves",
+      "label": "热浪 — Simplified Chinese / heatwaves preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-storms",
+      "label": "暴风雨 — Simplified Chinese / storms preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-tsunamis",
+      "label": "海啸 — Simplified Chinese / tsunamis preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-bushfires",
+      "label": "山火 — Traditional Chinese / bushfires preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-cyclones",
+      "label": "熱帶氣旋 — Traditional Chinese / cyclones preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-earthquakes",
+      "label": "地震 — Traditional Chinese / earthquakes preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-floods",
+      "label": "洪水 — Traditional Chinese / floods preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-heatwaves",
+      "label": "熱浪 — Traditional Chinese / heatwaves preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-storms",
+      "label": "風暴 — Traditional Chinese / storms preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-tsunamis",
+      "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
     }
   ],
   "related": [

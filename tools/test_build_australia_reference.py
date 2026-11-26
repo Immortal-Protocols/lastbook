@@ -17,6 +17,53 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_chinese_factsheets_preserve_script_characters_conditions_and_guide_access(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'CHINESE-HAZARDS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        self.assertEqual((audit['source_pages'], audit['source_characters']), (28, 20838))
+        self.assertEqual(len(audit['selections']), 14)
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['reader_id']; r = entries[uid]
+            html = (au.SOURCES / r['snapshot']).read_text(encoding='utf-8')
+            body = html.split('<hr>', 1)[1].split('<h2 lang="en-AU">Source, dates and reuse</h2>', 1)[0]
+            self.assertEqual(au.digest(body.encode('utf-8')), selection['body_html_sha256'])
+            page = au.Page(); page.feed(re.sub(r'<h2 lang="en-AU">Source page [12]</h2>', '', body)); page.close()
+            text = ''.join(page.text)
+            self.assertEqual(Counter(re.sub(r'[\s\ufeff\x00-\x1f•]', '', text)), Counter(selection['source_character_counts']), uid)
+            source = selection['source']
+            self.assertTrue(source['licensed_host_identical'])
+            self.assertEqual(r['raw_sha256'], source['factsheet']['sha256'])
+            self.assertEqual(r['raw_sha256'], source['licensed_source']['sha256'])
+            self.assertEqual(r['source_url'], source['licensed_source']['url'])
+            self.assertEqual(r['language'], selection['language'])
+            self.assertIn('<html lang="' + r['language'] + '">', html)
+            expected_date = '2026-04-01' if r['language'] == 'zh-Hans' else '2026-04-08' if uid.endswith('tsunamis') else '2026-04-02'
+            self.assertEqual(r['source_updated'], expected_date)
+            self.assertEqual(r['license'], 'CC-BY-4.0')
+            self.assertIn('131 450', text)
+            self.assertIn('000', text)
+            bodies[uid] = re.sub(r'\s+', '', text)
+            if uid.endswith('tsunamis'):
+                labels = ['如果您感到大地震动', '如果您看到海平面下降', '如果您听到异常的轰鸣声'] if r['language'] == 'zh-Hans' else ['若感覺地面震動', '若看見海水驟退', '若聽見異常轟鳴聲']
+                for label in labels: self.assertIn('<h4>' + label + '</h4>', body)
+            if not uid.endswith('heatwaves'):
+                items = re.findall(r'<li>([^<]+)</li>', body)
+                for item in (['衣物', '贵重物品', '现金和银行卡', '常用药物'] if r['language'] == 'zh-Hans' else ['衣物', '貴重物品', '現金和銀行卡', '藥物']): self.assertIn(item, items)
+        self.assertIn('如果他们神志清醒且能做出反应，可让他们频繁小口饮水。', bodies['au-getready-simplified-chinese-heatwaves'])
+        self.assertIn('若患者神志清醒且反應良好，可讓其頻繁少量飲水。', bodies['au-getready-traditional-chinese-heatwaves'])
+        self.assertIn('清潔知悉', bodies['au-getready-traditional-chinese-heatwaves'])
+        self.assertIn('如果无法撤离，请前往坚固建筑物顶层，并确保所在位置至少高于海平面十米。', bodies['au-getready-simplified-chinese-tsunamis'])
+        self.assertIn('若無法撤離，請前往堅固建築物頂層，該處需高於海平面至少十公尺。', bodies['au-getready-traditional-chinese-tsunamis'])
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            for script in ['simplified', 'traditional']:
+                choice = next(c for c in guide['choices'] if c['id'] == script + '-chinese-hazards')
+                expected = {uid for uid in bodies if script + '-chinese-' in uid}
+                self.assertEqual(len(expected), 7)
+                self.assertEqual({r['doc'] for r in choice['read']}, expected)
+                for key in ['prepare', 'learn']: self.assertTrue(expected <= {r.get('doc') for r in guide[key]})
+
     def test_road_sources_preserve_conditions_transcripts_ratings_and_dated_selection(self):
         entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
         audit = json.loads((au.SOURCES / 'ROAD-RECOVERY-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))

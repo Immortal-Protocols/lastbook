@@ -1,6 +1,6 @@
 {
-  "version": 10,
-  "id": "au-reference-act-hazards-2026-11-26",
+  "version": 11,
+  "id": "au-reference-planning-tools-2026-11-26",
   "checked": "2026-11-26",
   "sources": [
     {
@@ -498,8 +498,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "a62ddb23d7356134829a7ba70f8d095908dfcf31f22cd91924e8d28af639de5a",
-      "bytes": 11420,
+      "sha256": "8fe9be77aff5f51b36f10f99aba954721dcd8436f7ac54f4599f8cfe36af0a94",
+      "bytes": 12061,
       "snapshot": "sources/au-reference.html",
       "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
@@ -1571,6 +1571,89 @@
       "bytes": 7244,
       "snapshot": "sources/act-copyright.html",
       "notes": "Complete written ACT portal copyright/reuse body, including explicit CC BY 4.0 grant, attribution, exceptions, external-site/translation/security/liability conditions and contact text. No imagery or third-party content is relicensed."
+    },
+    {
+      "id": "au-remote-trip-plan",
+      "title": "Remote land journey: route, supplies and check-in worksheet",
+      "kind": "html",
+      "publisher": "Lastbook Australia contributors",
+      "jurisdiction": "Australia",
+      "category": "preparedness",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/au-remote-trip-plan.html",
+      "source_url": "",
+      "retrieved_at": "2026-11-26",
+      "authored_at": "2026-11-26",
+      "edition": "Original planning aid, 26 November 2026",
+      "year": 2026,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "",
+      "references": [
+        "https://my.gov.au/en/services/living-arrangements/coming-to-australia/coming-to-australia-to-visit/tips-when-you-visit/staying-safe-when-you-visit-australia/safety-while-you-re-travelling-in-australia",
+        "https://www.getready.qld.gov.au/prepare/travel",
+        "https://www.police.tas.gov.au/what-we-do/missing-persons/",
+        "https://parks.qld.gov.au/parks/moorrinya/visiting-safely"
+      ],
+      "sha256": "d1eacff529a97dc14aa17d5ef3fec7d35257a161d79c496423dd2fa1769b9079",
+      "bytes": 7577,
+      "snapshot": "sources/au-remote-trip-plan.html",
+      "notes": "Original contributor-authored planning prompts and factual summary; cited agency text/manuals are not reproduced or relicensed. No completed personal plan is stored. Device/route/person-specific verification remains necessary."
+    },
+    {
+      "id": "au-isolation-plan",
+      "title": "Home and property isolation: dependency and backup worksheet",
+      "kind": "html",
+      "publisher": "Lastbook Australia contributors",
+      "jurisdiction": "Australia",
+      "category": "preparedness",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/au-isolation-plan.html",
+      "source_url": "",
+      "retrieved_at": "2026-11-26",
+      "authored_at": "2026-11-26",
+      "edition": "Original planning aid, 26 November 2026",
+      "year": 2026,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "",
+      "references": [
+        "https://www.nsw.gov.au/regional-and-primary-industries/climate-and-emergencies/flood-advice-for-landholders/prepare-your-farm-and-property-for-flood"
+      ],
+      "sha256": "23bf3e76b4e1b4cc7471b4e7a7064c6760384e3630549372c27a0ad8e4827ed6",
+      "bytes": 7389,
+      "snapshot": "sources/au-isolation-plan.html",
+      "notes": "Original contributor-authored planning prompts and factual summary; cited agency text/manuals are not reproduced or relicensed. No completed personal plan is stored. Device/route/person-specific verification remains necessary."
+    },
+    {
+      "id": "au-beacon-preparation",
+      "title": "Land-trip beacon preparation: registration, testing and distress plan",
+      "kind": "html",
+      "publisher": "Lastbook Australia contributors",
+      "jurisdiction": "Australia",
+      "category": "preparedness",
+      "collection": "Australian emergency reference",
+      "path": "pages/au/au-beacon-preparation.html",
+      "source_url": "",
+      "retrieved_at": "2026-11-26",
+      "authored_at": "2026-11-26",
+      "edition": "Original planning aid, 26 November 2026",
+      "year": 2026,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "copyright_source": "",
+      "references": [
+        "https://beacons.amsa.gov.au/",
+        "https://beacons.amsa.gov.au/registration/index.asp",
+        "https://beacons.amsa.gov.au/maintenance/index.asp",
+        "https://beacons.amsa.gov.au/activation/",
+        "https://beacons.amsa.gov.au/activation/deployment.asp",
+        "https://beacons.amsa.gov.au/about/how-they-work.asp"
+      ],
+      "sha256": "75a07a74d6f95ac03812c1f1c10bcdf96efdfd1c93e0796fa8d71b536e788f42",
+      "bytes": 5961,
+      "snapshot": "sources/au-beacon-preparation.html",
+      "notes": "Original contributor-authored planning prompts and factual summary; cited agency text/manuals are not reproduced or relicensed. No completed personal plan is stored. Device/route/person-specific verification remains necessary."
     }
   ]
 }

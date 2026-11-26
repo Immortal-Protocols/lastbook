@@ -22,7 +22,8 @@ and remaining work are recorded below so missing information is visible.
 - Thirteen copyright statements, an original accessible-calling navigation note,
   the original Australian source hub and a directory
   covering all six states, three internal territories and seven external territories:
-  **71 searchable HTML records** altogether. Four remote entries provide management
+  plus three original journey, isolation and beacon planning aids:
+  **74 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -79,7 +80,7 @@ for myGov (including its copyright statement). The manifest records each version
 and licence URL. The builder accepts those explicitly reviewed licence identifiers.
 Those statements are included offline. All publisher credits, original addresses,
 licence references, changes and non-endorsement notices appear on the adaptations.
-Original hub/directory text is also CC BY 4.0. Source content is not relicensed under
+Original hub/directory and planning-aid text is also CC BY 4.0. Source content is not relicensed under
 the source code licence. Logos, images, third-party files, scripts, forms and web
 link destinations are excluded. No third-party download is assumed covered by a
 parent government site's licence. Hyperlink labels remain source text, with a notice
@@ -668,3 +669,46 @@ HTTP-browser navigation and the earlier idle-watchdog issue retain their limits.
 [71-record ACT hazard contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-act-hazards-review-2026-11-26)
 contains public HTML,audits and engine evidence only. Personal-use material and
 original PDFs remain excluded;earlier release assets remain unchanged.
+
+
+## Original practical planning aids — 26 November 2026
+
+Three contributor-authored readings add a remote land-journey worksheet, a
+home/property isolation dependency worksheet and a land-trip beacon checklist.
+Both guides expose the same three-reading choice plus prepare/learn references.
+The collection now has **74 records: 55 official practical readings, 13 copyright
+statements and 6 original records**. The original planning aids are CC BY 4.0;
+this grant covers the new writing, prompts and organisation, not cited agencies'
+manuals, wording, imagery or branding. No new agency body is reproduced.
+
+The journey worksheet records legs, verified resupply, chosen consumption and
+water inputs, check-ins, missed-contact action and changed-plan decisions.
+Its simple arithmetic gives no safe allowance, default reserve, route approval
+or universal drinking-water minimum. Concern for a missing person's welfare
+must not be postponed to a planned deadline or a presumed 24-hour waiting period.
+The isolation worksheet follows essential activities through dependencies,
+verified backups, actual duration, help and departure triggers. It does not
+prescribe medical runtime, medication changes, wiring or generator size.
+
+The beacon checklist distinguishes registration from battery expiry, borrowed
+units from owner information, manufacturer-approved self-test from distress
+activation, genuine distress from accidental cancellation, and one group from
+separated groups. It preserves model-specific operating requirements, land scope,
+rescue-authority keep-on instructions and variable rescue time. It provides no
+button sequence, fixed test interval, marine/aviation compliance or overseas
+permission. The exact factual source URLs/raw-response hashes and claim scopes
+are in PLANNING-TOOLS-SOURCE-AUDIT-20261126.json. Queensland Parks' remote
+breakdown context was available through the primary search result; the direct
+raw fetch returned403, which is recorded rather than assigned a fabricated hash.
+
+AMSA's beacon-site policy requires permission to reproduce its material. The
+new writing summarises facts in original language and cites the sources; it
+is not an agency-licensed adaptation or a copied operating manual. Tasmania SES's
+general non-commercial policy and DFES's permission requirement also do not grant
+redistribution of their manuals. Their bodies are excluded. Earlier licensed
+agency readings retain their exact credits and source wording.
+
+These are reading-only planning aids. They do not save a completed personal plan,
+register a beacon, lodge an itinerary, place a call or check live roads/services.
+Detailed remote driving/recovery, person/route/device-specific validation,
+translated/First Nations planning and public first-aid rights remain incomplete.

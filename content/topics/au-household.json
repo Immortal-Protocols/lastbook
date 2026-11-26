@@ -59,9 +59,39 @@
     "ACT",
     "Canberra",
     "thunderstorm asthma",
-    "recovery"
+    "recovery",
+    "itinerary",
+    "check-in",
+    "fuel worksheet",
+    "water worksheet",
+    "beacon registration",
+    "PLB",
+    "dependency",
+    "backup duration"
   ],
   "choices": [
+    {
+      "id": "planning-tools",
+      "label": "Make a journey, isolation or beacon plan",
+      "hint": "Original planning worksheets connect the readings to your own route, supplies, support needs and equipment.",
+      "read": [
+        {
+          "doc": "au-remote-trip-plan",
+          "label": "Remote land journey: route, supplies and check-in worksheet",
+          "note": "Original blank route/supply/check-in worksheet. No universal fuel/water allowance; missed-contact welfare concerns need prompt action."
+        },
+        {
+          "doc": "au-isolation-plan",
+          "label": "Home and property isolation: dependency and backup worksheet",
+          "note": "Original dependency/backup worksheet for household needs, support, animals and early departure. Verify actual backup duration and assistance."
+        },
+        {
+          "doc": "au-beacon-preparation",
+          "label": "Land-trip beacon preparation: registration, testing and distress plan",
+          "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+        }
+      ]
+    },
     {
       "id": "contacts",
       "label": "Find Australian emergency information",
@@ -634,6 +664,21 @@
       "doc": "act-heatwave",
       "label": "ACT: heatwave preparation, response and recovery",
       "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
+    },
+    {
+      "doc": "au-remote-trip-plan",
+      "label": "Remote land journey: route, supplies and check-in worksheet",
+      "note": "Original blank route/supply/check-in worksheet. No universal fuel/water allowance; missed-contact welfare concerns need prompt action."
+    },
+    {
+      "doc": "au-isolation-plan",
+      "label": "Home and property isolation: dependency and backup worksheet",
+      "note": "Original dependency/backup worksheet for household needs, support, animals and early departure. Verify actual backup duration and assistance."
+    },
+    {
+      "doc": "au-beacon-preparation",
+      "label": "Land-trip beacon preparation: registration, testing and distress plan",
+      "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
     }
   ],
   "learn": [
@@ -851,6 +896,21 @@
       "doc": "act-heatwave",
       "label": "ACT: heatwave preparation, response and recovery",
       "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
+    },
+    {
+      "doc": "au-remote-trip-plan",
+      "label": "Remote land journey: route, supplies and check-in worksheet",
+      "note": "Original blank route/supply/check-in worksheet. No universal fuel/water allowance; missed-contact welfare concerns need prompt action."
+    },
+    {
+      "doc": "au-isolation-plan",
+      "label": "Home and property isolation: dependency and backup worksheet",
+      "note": "Original dependency/backup worksheet for household needs, support, animals and early departure. Verify actual backup duration and assistance."
+    },
+    {
+      "doc": "au-beacon-preparation",
+      "label": "Land-trip beacon preparation: registration, testing and distress plan",
+      "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
     }
   ],
   "related": [

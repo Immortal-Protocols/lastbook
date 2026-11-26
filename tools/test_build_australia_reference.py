@@ -16,6 +16,44 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_original_planning_aids_keep_decision_limits_and_distress_cancellation_separate(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        def body(uid):
+            return (au.SOURCES / entries[uid]['snapshot']).read_text(encoding='utf-8')
+        ids = {'au-remote-trip-plan', 'au-isolation-plan', 'au-beacon-preparation'}
+        for uid in ids:
+            self.assertEqual(entries[uid]['license'], 'CC-BY-4.0')
+            self.assertEqual(entries[uid]['publisher'], 'Lastbook Australia contributors')
+            self.assertEqual(entries[uid]['source_url'], '')
+            self.assertTrue(entries[uid]['references'])
+            self.assertIn('not reproduced or relicensed', body(uid))
+        trip = body('au-remote-trip-plan')
+        for text in ['no universal daily minimum', 'before additional allowances',
+                     'not a reason to delay urgent help', 'does not establish a public, passable road']:
+            self.assertIn(text, trip)
+        isolation = body('au-isolation-plan')
+        for text in ['Do not disconnect essential medical equipment',
+                     'not a promise that roads or services will return',
+                     'not specify a generator size', 'before a route or essential backup is lost']:
+            self.assertIn(text, isolation)
+        beacon = body('au-beacon-preparation')
+        genuine = beacon.split('<h2>Genuine distress:', 1)[1].split('<h2>Accidental activation:', 1)[0]
+        accidental = beacon.split('<h2>Accidental activation:', 1)[1].split('<h2>Bundled readings', 1)[0]
+        self.assertIn('until rescue authorities tell you otherwise', genuine)
+        self.assertNotIn('switch the beacon off', genuine)
+        self.assertIn('switch the beacon off promptly', accidental)
+        self.assertIn('1800 641 792', accidental)
+        for text in ['4 November 2024', "does not extend the battery's expiry date",
+                     'separated groups should each activate a beacon',
+                     'no guaranteed rescue time', "manufacturer's self-test instructions"]:
+            self.assertIn(text, beacon)
+        for gid in ['au-household', 'au-rural']:
+            guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            choice = next(c for c in guide['choices'] if c['id'] == 'planning-tools')
+            self.assertEqual({r['doc'] for r in choice['read']}, ids)
+            for key in ['prepare', 'learn']:
+                self.assertTrue(ids <= {r.get('doc') for r in guide[key]})
+
     def test_real_sources_build_without_network_and_search_opens_the_same_text(self):
         with tempfile.TemporaryDirectory() as d, patch.object(socket, 'socket', side_effect=AssertionError('network')):
             out = Path(d) / 'LastbookData'
@@ -32,6 +70,9 @@ class Reference(unittest.TestCase):
                                         ('"water pooling"', 'act-flooding'),
                                         ('"thunderstorm asthma"', 'act-severe-storm'),
                                         ('"1800MEDICARE"', 'act-heatwave'),
+                                        ('"chosen consumption"', 'au-remote-trip-plan'),
+                                        ('"Verified backup"', 'au-isolation-plan'),
+                                        ('"Accidental activation"', 'au-beacon-preparation'),
                                         ('"radiological quality"', 'nsw-groundwater'),
                                         ('"structural integrity"', 'nsw-tanks-after-flood'),
                                         ('"Boiling will not make"', 'nsw-nonpotable-water'),

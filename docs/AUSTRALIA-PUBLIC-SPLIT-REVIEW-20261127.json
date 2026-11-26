@@ -1,0 +1,45 @@
+{
+  "checked": "2026-11-27",
+  "scope": "public-only source split; browser on macOS; light mode 1280px; six uncropped full-page screenshots",
+  "public_records": 125,
+  "public_manifest_and_HTML_unchanged_from": "b240e571c01b5d5229eb9799ccd5c799b6fdf758",
+  "unchanged_files": 126,
+  "states": {
+    "installed": {
+      "regional_reference_counts": {
+        "au-health": 16,
+        "au-household": 297,
+        "au-rural": 302
+      },
+      "personal_or_nonprofit_cards": 0,
+      "catalogue_retained": true
+    },
+    "absent": {
+      "regional_reference_counts": {},
+      "personal_or_nonprofit_cards": 0,
+      "catalogue_retained": true
+    }
+  },
+  "screenshots_sha256": {
+    "rural-installed.jpg": "c0d295c18897a3532038a8dbccdafb19599bd27baafe1e33e8540ecad7bfff60",
+    "guides-installed.jpg": "ddd635040b1dcc83991d4a8232589b7d15d164b943b40f7b8c32255b90b10970",
+    "household-absent.jpg": "b35d816eb64f3c9329a857a37f9097b54148b6ed60af068442d019c20f54eb26",
+    "household-installed.jpg": "b4e2e4f1285b916bd84c759aafeaccb50bbb03a33117910c2385f82e20317674",
+    "rural-absent.jpg": "dbd0055f661dfdb9b024cf67e64a6f7668ab866b754a9029525015a437bc44d7",
+    "guides-absent.jpg": "765c2d6364eb0caeda71e2f71a2f47daf17775bdc2f0a56e88c9b89ea30e3a7a"
+  },
+  "private_material_used": false,
+  "installed_app_or_library_modified": false,
+  "native_or_Windows_or_dark_mode_claim": false,
+  "tests": {
+    "required": 843,
+    "skipped": 5,
+    "expected_failures": 11,
+    "focused_each": 70,
+    "focused_python": [
+      "3.14.2",
+      "3.11.18"
+    ],
+    "passed": true
+  }
+}

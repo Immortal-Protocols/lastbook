@@ -72,6 +72,16 @@
    "hint": "Heat wave, no air conditioning or aircon, older people or babies at home",
    "read": [
     {
+     "doc": "act-heatwave",
+     "label": "Australian Capital Territory: ACT: heatwave preparation, response and recovery",
+     "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE. Retrieved 2026-11-26; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "nsw-heatwave",
+     "label": "New South Wales: Preparing for heatwaves",
+     "note": "NSW guidance; local services and rules apply. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
+    {
      "doc": "1c0d7a149286b5",
      "page": 2,
      "label": "Stay safe in extreme heat",
@@ -157,6 +167,11 @@
    "hint": "Power outage, space heater, kerosene or paraffin heater, camp stove, headache or dizziness indoors, carbon monoxide",
    "read": [
     {
+     "doc": "vic-generator",
+     "label": "Victoria: Using a portable generator: Victorian source guidance",
+     "note": "Victorian source reviewed 16 March 2026. Complete generator-use section; outdoor siting, wiring and refuelling conditions remain. Source siting descriptions differ from the nearby US distance rule; read each source in full."
+    },
+    {
      "doc": "18bf4604bf28c4",
      "page": 2,
      "label": "Avoid carbon monoxide poisoning in an outage",
@@ -186,6 +201,21 @@
    "label": "Wildfire smoke or bad air outside",
    "hint": "Smoky sky, smog, ash falling, air quality alert, asthma",
    "read": [
+    {
+     "doc": "nsw-smoke-protection",
+     "label": "New South Wales: NSW: protect yourself from bushfire smoke",
+     "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled. Retrieved 2026-11-27; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "nsw-smoke-higher-risk",
+     "label": "New South Wales: NSW: higher risk from bushfire smoke",
+     "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled. Retrieved 2026-11-27; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "nsw-p2-n95-masks",
+     "label": "New South Wales: NSW: P2/N95 masks, fit and limitations",
+     "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled. Retrieved 2026-11-27; source and retrieval dates are distinct."
+    },
     {
      "doc": "a90ff7e6f3cf01",
      "label": "Protect yourself from wildfire smoke",

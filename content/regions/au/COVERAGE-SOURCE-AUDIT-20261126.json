@@ -1,0 +1,266 @@
+{
+  "checked": "2026-11-26",
+  "scope": "Nine source readings and two exact-site copyright statements. No source wording rewrite; images/media/linked downloads excluded.",
+  "selections": [
+    {
+      "id": "sa-ses-copyright",
+      "url": "https://www.ses.sa.gov.au/about-us/privacy-copyright-and-disclaimer/",
+      "final_url": "https://www.ses.sa.gov.au/about-us/privacy-copyright-and-disclaimer/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "5eeabd8be27846a652385b44b57e3ce24bfeaf6345a5c6ae69cd53d2e8d35ebd",
+      "selectors": [
+        "#main_body"
+      ],
+      "normalized_selected_text_sha256": "98ce664f33b5ff182ea0148ed6a385ef1decb140716c533f265a376dd2fa26bf",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Privacy, Copyright and Disclaimer"
+    },
+    {
+      "id": "sa-cfs-copyright",
+      "url": "https://www.cfs.sa.gov.au/home/copyright/",
+      "final_url": "https://www.cfs.sa.gov.au/home/copyright/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "8d835482e35a657aff8c0d4d3518a28ced1301705feb3b82800c9750661f86e1",
+      "selectors": [
+        "#main_body"
+      ],
+      "normalized_selected_text_sha256": "6e936aa2ec69ca573ec92ebafcaa1e5bf81f254469eb4dbc58d8202082a87c7a",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Copyright"
+    },
+    {
+      "id": "sa-storm",
+      "url": "https://www.ses.sa.gov.au/storm/",
+      "final_url": "https://www.ses.sa.gov.au/storm/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "d036afc96f509097a60555688bd825e7623642f7fc4808bcd04d98c3709b0862",
+      "selectors": [
+        "#main_body",
+        "#main_body_footer"
+      ],
+      "normalized_selected_text_sha256": "3d03c149c7a9462c07d9e1307b2216b5dd374c0c4c5e7650d2a5c0f4f614cdbd",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Prepare for storms"
+    },
+    {
+      "id": "sa-storm-during",
+      "url": "https://www.ses.sa.gov.au/public/redirect.jsp?id=26220",
+      "final_url": "https://www.ses.sa.gov.au/storm/during-a-storm/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "93c34faa852d3312f8853e4f67df518ab6cefe75c65ba78996bdc7fe7a555a1c",
+      "selectors": [
+        "#main_body",
+        "#main_body_footer"
+      ],
+      "normalized_selected_text_sha256": "4a98e058578307f62ea162a23dcef085a55bdedd03e389262b58ef176f7438e4",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Prepare for storms"
+    },
+    {
+      "id": "sa-storm-after",
+      "url": "https://www.ses.sa.gov.au/public/redirect.jsp?id=26223",
+      "final_url": "https://www.ses.sa.gov.au/storm/after-a-storm/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "970f628c6499d100464478a0a5c0c7825e4ca91d7a970228de692fd954704ebf",
+      "selectors": [
+        "#main_body",
+        "#main_body_footer"
+      ],
+      "normalized_selected_text_sha256": "a1bb4326f546d89bbec72da85d3ec42e3c837808581d4b65c6a46c8256c5f4b0",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Prepare for storms"
+    },
+    {
+      "id": "sa-flood",
+      "url": "https://www.ses.sa.gov.au/flood/",
+      "final_url": "https://www.ses.sa.gov.au/flood/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "17cd0df0388672eda9d22be119d9a86aab3a8d4f2e4cf5e94f8e3585765577c7",
+      "selectors": [
+        "#main_body",
+        "#main_body_footer"
+      ],
+      "normalized_selected_text_sha256": "580242c92c45303646cd69e487af08efa9fed66755767c59300107926b603fb8",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Prepare for floods"
+    },
+    {
+      "id": "sa-flood-during",
+      "url": "https://www.ses.sa.gov.au/public/redirect.jsp?id=26229",
+      "final_url": "https://www.ses.sa.gov.au/flood/during-a-flood/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "e3bbb450d9f48290c94810c4db4084cd4a6e9b5a53c2e65e7809e576d1b55758",
+      "selectors": [
+        "#main_body",
+        "#main_body_footer"
+      ],
+      "normalized_selected_text_sha256": "05d4ae8dd62a40711a971b38a246d2ff6eb4bde3e0c7ae295a60aff6142d9956",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Prepare for floods"
+    },
+    {
+      "id": "sa-flood-after",
+      "url": "https://www.ses.sa.gov.au/public/redirect.jsp?id=26233",
+      "final_url": "https://www.ses.sa.gov.au/flood/after-a-flood/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "1ffbdd75b897df34d52b05bda1ca3433427ce4f466fd1b6bfa02f3759530ce01",
+      "selectors": [
+        "#main_body",
+        "#main_body_footer"
+      ],
+      "normalized_selected_text_sha256": "665c72014f8346e34ff4aa54e4c68ed7bdca06526f2b917c7bb8baa86f9e3ef8",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Prepare for floods"
+    },
+    {
+      "id": "sa-property",
+      "url": "https://www.cfs.sa.gov.au/plan-prepare/before-a-fire-be-prepared/preparing-your-home-property.jsp",
+      "final_url": "https://www.cfs.sa.gov.au/plan-prepare/before-a-fire-be-prepared/preparing-your-home-property.jsp",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "a2dc0041e0aa897aad694c37d1be982efe5000bde6025154ac762b85eef460f4",
+      "selectors": [
+        "#main_intro",
+        "#main_content_1",
+        "#main_content_2",
+        "#main_content_3"
+      ],
+      "normalized_selected_text_sha256": "4487e4a76826d47549e33027e9a45a47586e5381ae807894e6fc16a310625819",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Preparing your home & property"
+    },
+    {
+      "id": "sa-animals",
+      "url": "https://www.cfs.sa.gov.au/plan-prepare/before-a-fire-be-prepared/pets-livestock/",
+      "final_url": "https://www.cfs.sa.gov.au/plan-prepare/before-a-fire-be-prepared/pets-livestock/",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "ef38fdc1611a14fd943b5895823943f8ae9c1777093679616d8f566b49a8bf7a",
+      "selectors": [
+        "#main_intro",
+        "#main_content_1",
+        "#main_content_2"
+      ],
+      "normalized_selected_text_sha256": "5066f0cd3eac1f37661c99e24645222b6d34084c27c5d2027456037f73dc3257",
+      "source_wording_preserved_after_html_simplification": true,
+      "original_title": "Pets & livestock"
+    },
+    {
+      "id": "acma-locating",
+      "url": "https://www.acma.gov.au/emergency-locating-devices",
+      "final_url": "https://www.acma.gov.au/emergency-locating-devices",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "d42c9805edbc03201d9e66b809ec2e0f9fc916836f2d9bc8fc4a0bd806bd1c09",
+      "selectors": [
+        ".field--name-field-content"
+      ],
+      "normalized_selected_text_sha256": "d5323f57f16f769222d5a0b3bc27172972c144ccceff1f1a74dc5d1f38f2c3a0",
+      "source_wording_preserved_after_html_simplification": true
+    }
+  ],
+  "acma_policy": {
+    "id": "acma-copyright",
+    "url": "https://www.acma.gov.au/copyright-notice",
+    "final_url": "https://www.acma.gov.au/copyright-notice",
+    "retrieved_at": "2026-11-26",
+    "bytes": 52075,
+    "raw_sha256": "f176d7cb9ff03f58861592db3f472115001fa75e9e8dc970dc239c522712b9ec",
+    "links": [
+      {
+        "text": "Carrier licences and carriage service providers",
+        "href": "/carrier-licences-and-carriage-service-providers"
+      },
+      {
+        "text": "Radiocommunications licences",
+        "href": "/radiocommunications-licences"
+      },
+      {
+        "text": "south_east Copyright",
+        "href": "#copyright"
+      },
+      {
+        "text": "south_east Third party copyright",
+        "href": "#third-party-copyright"
+      },
+      {
+        "text": "Creative Commons Attribution 4.0 International (CC BY 4.0) licence",
+        "href": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      {
+        "text": "Copyright notice",
+        "href": "/copyright-notice"
+      },
+      {
+        "text": "Copyright",
+        "href": "/copyright-notice"
+      },
+      {
+        "text": "Register of Radiocommunications Licences",
+        "href": "/register-radiocommunication-licences-rrl"
+      }
+    ]
+  },
+  "cfs_policy_and_disclaimer_checked": [
+    {
+      "id": "sa-cfs-copyright",
+      "url": "https://www.cfs.sa.gov.au/home/copyright/",
+      "final_url": "https://www.cfs.sa.gov.au/home/copyright/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 37735,
+      "raw_sha256": "8d835482e35a657aff8c0d4d3518a28ced1301705feb3b82800c9750661f86e1",
+      "links": [
+        {
+          "text": "Alert SA Download the app",
+          "href": "https://www.alert.sa.gov.au"
+        },
+        {
+          "text": "Pets & livestock",
+          "href": "/plan-prepare/before-a-fire-be-prepared/pets-livestock/"
+        },
+        {
+          "text": "Copyright",
+          "href": "/home/copyright/"
+        },
+        {
+          "text": "Creative Commons Attribution 4.0 Licence",
+          "href": "https://creativecommons.org/licenses/by/4.0/"
+        },
+        {
+          "text": "Creative Commons Licence",
+          "href": "https://creativecommons.org/licenses"
+        },
+        {
+          "text": "Alert SA Download the app",
+          "href": "https://www.alert.sa.gov.au"
+        }
+      ]
+    },
+    {
+      "id": "sa-cfs-disclaimer",
+      "url": "https://www.cfs.sa.gov.au/home/disclaimer/",
+      "final_url": "https://www.cfs.sa.gov.au/home/disclaimer/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 38838,
+      "raw_sha256": "a222e4145400d158df84751bfdec95fba85fbf0e4658296c365ff14a6e2da0c7",
+      "links": [
+        {
+          "text": "Alert SA Download the app",
+          "href": "https://www.alert.sa.gov.au"
+        },
+        {
+          "text": "Pets & livestock",
+          "href": "/plan-prepare/before-a-fire-be-prepared/pets-livestock/"
+        },
+        {
+          "text": "Alert SA Download the app",
+          "href": "https://www.alert.sa.gov.au"
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    "AMSA land/copyright raw retrieval returned403; no PLB manual bundled.",
+    "SecureNT/NT copyright raw retrieval returned403; no NT licence inferred.",
+    "Tasmanian SES links old government copyright policy; raw policy returned403, no open grant established.",
+    "ACT copyright route contains privacy text without an explicit reuse grant.",
+    "SA dam page only links manuals; those manuals have not been acquired/reviewed here."
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "checked": "2026-11-27",
+  "public_records": 124,
+  "official_practical": 99,
+  "source_rights": 16,
+  "original_records": 9,
+  "new_readers": ["nsw-bat-lyssavirus", "qld-health-copyright", "cc-by-nd-legalcode"],
+  "clinical_source": {
+    "publisher": "NSW Ministry of Health",
+    "source_updated": "2025-11-27",
+    "medical_body": "Unchanged selected written blocks, including summary and complete main body",
+    "source_caveat": "Four-case introduction and three-case symptoms wording both retained; visible editorial note says statistics are not live",
+    "card_description": "Previous vaccination, uncertain bat contact and medical assessment; no separate delayed-presentation protocol claimed",
+    "independent_clinical_review": false
+  },
+  "unchanged_source_path": {
+    "license": "CC-BY-ND-4.0",
+    "only_current_record": "qld-health-copyright",
+    "requires": ["explicit reuse mode", "safe audit filename", "matching licence/source URL/raw hash", "unique ordered body markers", "reviewed body hash", "original text projection and hash"],
+    "ordinary_snapshot_hash_update_is_sufficient": false,
+    "clinical_ND_pages_imported": false,
+    "legal_text_itself": "CC0-1.0 under Creative Commons legal-tool policy; does not relicense Queensland content",
+    "original_legal_list_numbering": "retained and observed in native accessibility text"
+  },
+  "regressions": {
+    "full_contribution": 911,
+    "full_combined": 983,
+    "each_skipped": 5,
+    "each_expected_failures": 11,
+    "full_test_contribution_commit": "d39f6a4cb77f817fb58443a45785ffb38edb5710",
+    "full_test_combined_commit_prefix": "2124d1f",
+    "subsequent_data_change": "Original directory date only:26→27November2026 and matching own-source metadata; no code,guide or third-party clinical/rights body changes",
+    "subsequent_focused_checks": 62,
+    "focused_breakdown": {"source_and_guides":31,"personal":6,"composition":22,"public_distribution":3},
+    "focused_python_versions": ["3.14", "3.11.18"],
+    "result": "PASS"
+  },
+  "engine": {
+    "public_reader_hashes": 124,
+    "private_all_AU_hashes": 131,
+    "queries": ["previously vaccinated", "No Derivatives", "technical modifications"],
+    "search_snippets_scoped_assistant_and_libq": "PASS",
+    "conditional_new_cards": 10,
+    "household_and_rural_placements": "identical",
+    "private_AU_guide_references": {"household":294,"rural":299,"health":16,"personal":21},
+    "private_AU_reference_errors": 0,
+    "standalone_public_guide_references": {"household":294,"rural":299,"health":14},
+    "original_base_and_personal_FTS_rows": 12792,
+    "original_nonpublic_FTS_rowids_pages_bodies": "unchanged",
+    "personal_records":7,
+    "personal_FTS_units":42,
+    "actual_314_record_fallback": "new source cards absent",
+    "network": "socket creation forbidden in engine process; libq reads local files"
+  },
+  "real_composition": {
+    "source_commit": "d39f6a4cb77f817fb58443a45785ffb38edb5710",
+    "scope_note": "124-source increment before the subsequent own-directory date-only correction; composition code unchanged",
+    "base_records":314,"added_records":124,"output_records":438,
+    "original_FTS_rows":12750,"output_FTS_rows":12874,
+    "retained_base_files":1256,"retained_base_bytes":9287617106,
+    "base_inventory_and_every_file_hash": "unchanged",
+    "original_catalog_records_FTS_rowids_pages_bodies": "unchanged",
+    "existing_map_metadata_and_engine_check": "unchanged",
+    "verified_manifest_files":1512,
+    "public_archive_created_from_base":false
+  },
+  "private_desktop": {
+    "records":445,"public":124,"personal":7,
+    "runtime_source_prefix":"2124d1f",
+    "later_directory_update":"data only; app binary unchanged",
+    "changed_bundled_assets":5,"ship_assets":58,
+    "core_runtime_changed":false,
+    "package_i18n_privacy_strict_signature_and_actual_offline_self_check":"PASS",
+    "Victoria":"per-file hashes and3054named places preserved",
+    "infant_video":"unchanged",
+    "complete_442_predecessor_and_later_445_rollback":"retained",
+    "publicly_uploaded":false
+  },
+  "native_selected_review": {
+    "choices":["au-household/bat-exposure","au-rural/bat-exposure","au-health/bat-exposure","hurt/animal-bite"],
+    "all_three_new_readers_opened":true,
+    "Page_Text_Ask_Back":"PASS; correct document and page1 scope; returns to expanded animal-bite choice",
+    "rights_companion_links":"hub→Queensland notice→full legal code passed",
+    "source_dates_and_visible_case_count_note":"verified",
+    "final_directory_date":"27November2026 visible after final data update",
+    "native_search":"lyssavirus finds source,hub,and three Australian guide choices",
+    "questions_submitted":0,"audio_tested":false,
+    "limits":"Selected Mac review only; no independent clinical/legal/community or all-browser/platform certification"
+  },
+  "public_archive": {
+    "name":"Lastbook-Australia-Bat-Exposure-reference.zip",
+    "bytes":1551585,
+    "sha256":"e15a5a3e3b292cbb2f3879ec7620d213add861c05288a3ca9bf46a886cabd1f6",
+    "crc_inventory_extraction_124_reader_hashes_SQLite_FTS_and_privacy":"PASS",
+    "private_files":0,
+    "official_setup_pack":false
+  },
+  "remaining_limits":[
+    "Public Australian first-aid coverage remains incomplete",
+    "Reviewed Queensland clinical candidates remain unbundled for source-context or retrieval reasons",
+    "Private ANZCOR originals/extracted text/index and raw clinical comparison responses are excluded",
+    "ARC enquiry remains unsent; no rights inferred",
+    "Official publication and maintainer acceptance pending",
+    "No live warnings,individual treatment plans,service availability or broad professional certification",
+    "No production manifest,downloader,TLS/network-policy change or new shipped dependency"
+  ]
+}

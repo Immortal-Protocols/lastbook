@@ -4,6 +4,17 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Reading maintenance after app use — 27 November 2026
+
+The [separate offline reading check](AUSTRALIA-READING-CHECK.md) verifies installed
+Australian source metadata, conditions, files and every source search page after
+normal app use. It reconstructs matching-version sources locally and checks the
+search index on a private temporary copy. It changes no library files. The
+existing full-snapshot verifiers retain their exact-copy behavior; normal log
+changes remain full-snapshot differences. Explicit `--require` options detect an
+expected collection that has been removed completely. App/runtime assets and
+source datasets are unchanged by this tool addition.
+
 ## Optional nonprofit adult traumatic-event source — 27 November 2026
 
 A separate explicit nonprofit source path adds the unchanged seven-page MHFA adult

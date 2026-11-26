@@ -234,3 +234,10 @@ PDFs,index and library are unchanged. This remains navigation evidence,not a new
 clinical review. Exact candidate policies and source differences are recorded in
 `docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json`;raw research/private renders are
 not contributed.
+
+## Check readings after normal app use
+
+For the Australian readings, source conditions and stored search pages, use the
+[separate offline reading check](AUSTRALIA-READING-CHECK.md). It tolerates unrelated
+app-log/history changes while retaining source and index checks. The existing
+matching `--verify` command still checks the exact full creation snapshot.

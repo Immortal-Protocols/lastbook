@@ -121,3 +121,10 @@ original search rows remain unchanged; the1,514-file manifest verifies. The
 optional personal step then verifies439→446records and42added search units.
 These are private test copies, not public archives or native-window tests of
 those copies. The installed private review has separate native verification.
+
+## Check readings after normal app use
+
+For the Australian readings, source conditions and stored search pages, use the
+[separate offline reading check](AUSTRALIA-READING-CHECK.md). It tolerates unrelated
+app-log/history changes while retaining source and index checks. The existing
+matching `--verify` command still checks the exact full creation snapshot.

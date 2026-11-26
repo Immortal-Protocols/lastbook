@@ -21,10 +21,12 @@ documented in [AUSTRALIA-COMPOSE.md](docs/AUSTRALIA-COMPOSE.md). Run
 
 The separate nonprofit adult traumatic-event source, explicit-purpose controls and matching composition verifier are documented in [AUSTRALIA-TRAUMA-REFERENCE.md](docs/AUSTRALIA-TRAUMA-REFERENCE.md). Its original stays outside general public packs.
 
+The offline reading-maintenance check and its scope are documented in [AUSTRALIA-READING-CHECK.md](docs/AUSTRALIA-READING-CHECK.md). Run `tools.test_verify_australia_readings` when changing it.
+
 ## Test
 
 ```bash
-python3 -B -m unittest app.tests.test_readable app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts app.tests.test_video_moments app.tests.test_video_watched app.tests.test_library_extract app.tests.test_shell_macos app.tests.test_run_source_linux app.tests.test_i18n_catalogs app.tests.test_page_tables tools.test_build_australia_reference tools.test_build_au_personal_first_aid tools.test_build_au_trauma_reference tools.test_compose_australia_reference tools.test_compose_au_personal_first_aid packaging.test_personal_distribution
+python3 -B -m unittest app.tests.test_readable app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts app.tests.test_video_moments app.tests.test_video_watched app.tests.test_library_extract app.tests.test_shell_macos app.tests.test_run_source_linux app.tests.test_i18n_catalogs app.tests.test_page_tables tools.test_build_australia_reference tools.test_build_au_personal_first_aid tools.test_build_au_trauma_reference tools.test_verify_australia_readings tools.test_compose_australia_reference tools.test_compose_au_personal_first_aid packaging.test_personal_distribution
 ```
 
 Run these before you open a pull request (`test_topic_search`, `test_video_moments` and `test_video_watched` need Node and are skipped without it; `test_shell_macos` needs a Mac with PyObjC and is skipped elsewhere; `test_run_source_linux` needs bash and is skipped on Windows). If you change the packaging, also run the build for your platform: it ends

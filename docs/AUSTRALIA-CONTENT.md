@@ -146,7 +146,10 @@ dates are not authoring or independent clinical-review dates.
 
 The energy/remote expansion retains complete ESV gas-emergency, flood-energy,
 outdoor-cylinder and LCC27 FAQ written selections. The gas page keeps its
-safe-to-do-so conditions and Victorian distributor table. The flood page keeps
+safe-to-do-so conditions and Victorian distributor contacts. The four-column
+contact table is displayed as three distributor sections to keep phone numbers
+readable; all twelve source label/value pairs are retained and tested against
+the original matrix in the audit receipt. The flood page keeps
 all before/after sections, including solar/battery live-system cautions and
 qualified inspection; translation lists/downloads are excluded. The cylinder
 page keeps written compatibility/no-adaptor cautions; artwork and third-party
@@ -283,3 +286,32 @@ These are selected native reader checks, not all-article or clinical verificatio
 [The separate 44-record regional review](https://github.com/pilkster/lastbook/releases/tag/australia-regional-reference-review-2026-11-26)
 excludes personal-use material. Its actual extracted ZIP passed CRC, all 44 source
 size/hash checks and SQLite/FTS checks. Earlier 24/28/33-record reviews are unchanged.
+
+
+The later energy/remote expansion contains **52 public records**: 40 official
+readings, ten copyright statements and two original hub/directory records.
+Both household and rural guides include all seven new readings. The required
+contribution/build suite including personal-distribution guards passed 796 tests
+(five skips, eleven upstream expected failures) under `PYTHONUTF8=0`. Five final
+source-integrity tests passed after the contact-layout fix. The fresh public
+52-record build has 179 valid household/rural references; the actual private
+373-record library has 213 valid references across four guides. Actual public
+and private engine searches, guide resolution and all public reader hashes pass
+with socket creation forbidden.
+
+The updated frozen private Mac app (`83d467e`) passed i18n, package/privacy scan,
+strict ad-hoc signature and an outbound-IP-denial self-check. The unchanged TLS
+roots and pinned setup manifest retain the preceding verified build inputs.
+Native checks opened all seven new readers: gas contacts (visually checked after
+reformatting), flood electricity/solar/battery cautions, outdoor LPG, all nine
+valve FAQ questions, both remote-work articles and the flattened Queensland
+travel checklists (visually checked). Attribution, retrieval dates and regional
+scope are present. Full predecessor app/data copies remain available; Victoria
+is unchanged. Before this update, the preceding app recovered from one
+unresponsive-page watchdog event after long inactivity; its cause remains
+unresolved. Short reader checks do not establish long-idle reliability.
+
+[The 52-record energy/remote review](https://github.com/pilkster/lastbook/releases/tag/australia-energy-remote-review-2026-11-26)
+contains only public material. Earlier 44-record and other review releases remain
+unchanged. These are contributor reviews, not official Setup releases, all-reader
+native verification or independent clinical/electrical/engineering review.

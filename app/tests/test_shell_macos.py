@@ -100,11 +100,21 @@ class PagePulse(unittest.TestCase):
 
     def test_short_modal_between_ticks_also_excludes_the_deferred_reply(self):
         self.pulse.tick()
-        self.now += S.SLOW_ANSWER
         self.pulse.pause()
+        self.now += S.SLOW_ANSWER
         self.pulse.resume()
         self.reply()
         self.assertEqual(self.pulse.slow, 0)
+
+    def test_real_slow_time_before_and_after_a_modal_still_counts(self):
+        for _ in range(S.SLOW_IN_A_ROW):
+            self.pulse.tick()
+            self.now += 2
+            self.pulse.pause()
+            self.now += 30
+            self.pulse.resume()
+            self.reply(2)
+        self.assertEqual((self.pulse.slow, self.ended), (S.SLOW_IN_A_ROW, ['stuck']))
 
     def test_nested_modals_and_a_question_started_while_paused(self):
         self.pulse.pause()
@@ -115,8 +125,9 @@ class PagePulse(unittest.TestCase):
             self.now += 1
             self.pulse.tick()
         self.assertEqual((self.pulse.paused, self.ended), (1, []))
+        self.now += 30
         self.pulse.resume()
-        self.reply(30)
+        self.reply()
         self.assertEqual((self.pulse.slow, self.ended), (0, []))
 
     def test_unanswered_page_is_still_ended_after_dismissal_without_releasing_bytes(self):

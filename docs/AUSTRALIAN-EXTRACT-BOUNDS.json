@@ -140,7 +140,7 @@
       "snapshot_review": "2026-11-24",
       "source_archive_sha256": "1fe46d2111502ccca7058ea30c3193e629571d0fa73bf507d018bc6bd5d1d5ad",
       "source_name": "ashmore-cartier",
-      "named_points": 0
+      "source_place_point_rows": 0
     },
     {
       "code": "au-cx",
@@ -160,7 +160,7 @@
       "snapshot_review": "2026-11-24",
       "source_archive_sha256": "d10524057c1a245013e52814356b3f2d0c230cc1e65ec44d2eda5d809889a291",
       "source_name": "christmas-island",
-      "named_points": 2
+      "source_place_point_rows": 2
     },
     {
       "code": "au-cc",
@@ -180,7 +180,7 @@
       "snapshot_review": "2026-11-24",
       "source_archive_sha256": "8f4ea778d6b8042f5f6a101a8626fed4b2d152091d158a1487121013de8d6fc0",
       "source_name": "cocos-islands",
-      "named_points": 3
+      "source_place_point_rows": 3
     },
     {
       "code": "au-csi",
@@ -200,7 +200,7 @@
       "snapshot_review": "2026-11-24",
       "source_archive_sha256": "4f0e237ee85a66595ae21f92f63ba2194b632d8fe0cd21263515d955308133e7",
       "source_name": "coral-sea-islands",
-      "named_points": 0
+      "source_place_point_rows": 0
     },
     {
       "code": "au-hm",
@@ -220,7 +220,7 @@
       "snapshot_review": "2026-11-24",
       "source_archive_sha256": "c0532fd63c71fefadf3125aaba75302fa93b7965687360ea02aaf1aa1de7e602",
       "source_name": "heard-mcdonald",
-      "named_points": 20
+      "source_place_point_rows": 20
     },
     {
       "code": "au-nf",
@@ -240,7 +240,7 @@
       "snapshot_review": "2026-11-24",
       "source_archive_sha256": "965f6f193a1518057ab7f079ffc92b7db756e5dbd13b0fa5b6a652c00ee7c72e",
       "source_name": "norfolk-island",
-      "named_points": 18
+      "source_place_point_rows": 18
     }
   ]
 }

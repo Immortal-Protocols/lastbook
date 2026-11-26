@@ -1,7 +1,7 @@
 # Australian capital and state/territory extract maps
 
 This contribution proposes offline maps around Australia's eight state and territory capitals,
-plus eight broader state/territory extract areas for regional and rural use.
+plus fourteen broader state/territory and external-territory extract areas.
 The design discussion is [#36](https://github.com/Immortal-Protocols/lastbook/issues/36).
 It uses the region-map implementation proposed in #35 and the local review and extract-cache work in #30.
 These definitions alone do not add downloads to the released app.
@@ -150,3 +150,47 @@ points respectively. Ashmore/Cartier and Coral Sea stay four-file geometry sets;
 no empty finder or invented polygon-centroid places are added. These sparse
 extracts still need map/archive/engine review; counts do not imply complete
 settlement or island naming.
+
+
+## External-territory review results — 26 November 2026
+
+The six separate24 November Geofabrik snapshots build7,776 feature rows and42
+eligible named points in total. Four have place indexes; Ashmore/Cartier and
+Coral Sea remain geometry-only sets. All six actual ZIPs pass privacy/inventory,
+SQLite/FTS/bounds,full Setup unpack/CRC and per-file SHA checks,plus real engine
+tile/search queries with sockets forbidden. A real five-file→four-file→five-file
+map switch removes stale place data and restores the new index without changing
+the library catalog. These are source envelopes and sparse mapped features,not
+complete island names,shorelines,reefs,marine navigation,access rights,operating
+facilities or rescue arrangements. Australian Antarctic Territory remains a gap.
+
+Native review caught and corrected two display defects before publication:
+source island/islet polygons now supply ground where Natural Earth's coarse
+world base omits an island; populated-place polygons are not treated as land.
+Protected-area polygons use a separate boundary layer,rendered as dashed outlines
+without land fill,so marine reserves cannot recolour ocean as land. The server
+keeps their polygon/hole clipping. Older sources without the optional places-area
+layer remain supported; the callable converter API used by Spain is retained.
+The matching renderer/server source is needed for protected-area outlines.
+
+The required contribution/regional suite passed831 tests(five skips,eleven
+upstream expected failures) under PYTHONUTF8=0 after the corrections. Integration
+and converter checks passed9 tests; the upstream PBF-builder suite passed9 with
+its optional development dependency. No new shipped dependency or runtime
+connection was added. Web syntax,ship-app files,i18n,package/privacy scan,strict
+ad-hoc signature and outbound-IP-denial self-check passed for the matching private
+frozen Mac app. TLS/setup inputs are unchanged from their verified predecessors.
+
+Final Norfolk,Bantam on Cocos and Flying Fish Cove on Christmas Island were
+checked natively at street zoom:finder,streets/buildings,land/ocean rendering,
+protected boundaries,source attribution and metric nearby distances. Victoria
+was restored byte-for-byte,with its3,054 named points and seven original layers.
+The private377-record library and237 guide references remain intact. Other three
+new territory maps have archive/engine checks,not native-window review. These
+checks do not establish complete coastal coverage,facility operation,Windows,
+notarization or long-idle stability; the earlier idle-page incident is unresolved.
+
+[Six external-territory review downloads,provenance and checksums](https://github.com/pilkster/lastbook/releases/tag/australia-territory-maps-review-2026-11-26)
+are contributor files,not official Setup downloads. All earlier state/capital
+review downloads remain unchanged. Official scanning/publication/manifest listing
+still belongs to the release maintainer.

@@ -79,6 +79,74 @@ class Personal(unittest.TestCase):
                 self.assertEqual(ref['src']['id'], ref['doc'])
                 self.assertEqual(ref['src']['path'], available[ref['doc']]['path'])
 
+    def test_expanded_metadata_covers_both_indexes_and_preserves_the_default(self):
+        audit = json.loads((b.ROOT / 'content/regions/au/PERSONAL-EXTENDED-SOURCE-AUDIT-20261127.json').read_text())
+        default = b.source_records()
+        expanded = b.source_records('bls-first-aid')
+        self.assertEqual((len(expanded), sum(r['pages'] for r in expanded)), (35, 263))
+        self.assertEqual(b.digest(b.MANIFEST.read_bytes()), audit['basic_default']['manifest_sha256'])
+        by_id = {r['id']: r for r in expanded}
+        self.assertEqual([by_id[r['id']] for r in default], default)
+        self.assertTrue(all(r['distribution'] == 'personal-only' for r in expanded))
+        self.assertEqual({s['number'] for s in audit['sources'] if s['section'] == 'bls'},
+                         {'2', '3', '4', '5', '6', '7', '8'})
+        self.assertEqual(len([s for s in audit['sources'] if s['section'] == 'first-aid']), 28)
+        seizure = next(s for s in audit['sources'] if s['number'] == '9.2.4')
+        self.assertIn('/first-aid/9-2-4-', seizure['page']['url'])
+        for source in audit['sources']:
+            record = by_id[source['id']]
+            self.assertEqual((record['sha256'], record['bytes'], record['pages']),
+                             (source['pdf']['raw_sha256'], source['pdf']['bytes'], source['pages']))
+        with self.assertRaisesRegex(ValueError, 'Unknown personal source collection'):
+            b.source_records('unknown')
+
+    def test_expanded_guide_preserves_basic_routes_and_follows_individual_files(self):
+        import copy
+        import server
+        from tools.validate_topics import items
+        audit = json.loads((b.ROOT / 'content/regions/au/PERSONAL-EXTENDED-SOURCE-AUDIT-20261127.json').read_text())
+        guide = json.loads((b.ROOT / 'content/topics/au-personal-first-aid.json').read_text())
+        restored = copy.deepcopy(guide)
+        restored['choices'] = [c for c in restored['choices'] if not c['id'].startswith('extended-')]
+        additions = {r['id'] for r in b.source_records('bls-first-aid')} - {r['id'] for r in b.source_records()}
+        for key in ['prepare', 'learn']:
+            restored[key] = [r for r in restored[key] if r.get('doc') not in additions]
+        self.assertEqual(b.digest(json.dumps(restored, sort_keys=True).encode()), audit['guide_baseline_sha256'])
+        for selection, expected in [('basic', 21), ('bls-first-aid', 108)]:
+            records = {r['id']:r for r in b.source_records(selection)}
+            records['personal-au-reference'] = dict(id='personal-au-reference',kind='html',path='pages/personal-au/index.html',title='Source directory')
+            with tempfile.TemporaryDirectory() as d, patch.object(server, 'LIB', Path(d)), \
+                 patch.object(server, 'topics', return_value=[guide]), patch.object(server, 'zim_names', return_value=[]), \
+                 patch.object(server, 'catalog', return_value={'by_id': records}), \
+                 patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                for record in records.values():
+                    path = Path(d) / record['path'];path.parent.mkdir(parents=True,exist_ok=True);path.write_text('fixture')
+                resolved = server.topics_resolved()[0]
+                self.assertEqual(len(list(items(resolved))), expected)
+                if selection == 'bls-first-aid':
+                    path = Path(d) / records['personal-au-guideline-4']['path']
+                    held = Path(d) / 'held';path.rename(held)
+                    missing = server.topics_resolved()[0]
+                    self.assertEqual(len(list(items(missing))), 105)
+                    self.assertFalse(any(r.get('doc') == 'personal-au-guideline-4' for _,r in items(missing)))
+                    held.rename(path)
+                    self.assertEqual(server.topics_resolved()[0], resolved)
+
+    def test_collection_selection_reaches_the_builder_without_changing_basic_hub(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);record,data=self.source(root)
+            for name in ['basic','bls-first-aid']:
+                with patch.object(b, 'source_records', return_value=[record]) as selected, \
+                     patch.object(b, 'pdf_pages', return_value=['Synthetic source body']), \
+                     patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                    self.assertEqual(b.build(root/name,root,collection=name),(1,1))
+                    selected.assert_called_once_with(name)
+                notice=json.loads((root/name/'PERSONAL-USE-ONLY.json').read_text())
+                self.assertEqual(notice.get('source_collection'),None if name=='basic' else name)
+                body=(root/name/'library-data/pages/personal-au/index.html').read_text()
+                self.assertEqual('Optional Basic Life Support' in body,name=='bls-first-aid')
+                self.assertEqual((root/name/'library-data/documents/personal-au/personal-au-test.pdf').read_bytes(),data)
+
     def source(self, cache):
         data = b'%PDF-1.7\nsynthetic preservation fixture'
         (cache / 'personal-au-test.pdf').write_bytes(data)
@@ -121,7 +189,7 @@ class Personal(unittest.TestCase):
     def test_public_reference_builder_excludes_personal_sources(self):
         public = module('public_au', HERE / 'build_australia_reference.py')
         _, checked = public.checked_sources()
-        personal = json.loads(b.MANIFEST.read_text(encoding='utf-8'))['sources']
+        personal = b.source_records('bls-first-aid')
         self.assertTrue({r['id'] for r in personal}.isdisjoint({r['id'] for r, *_ in checked}))
         self.assertFalse(any(r['kind'] == 'pdf' or r.get('distribution') == 'personal-only' for r, *_ in checked))
 

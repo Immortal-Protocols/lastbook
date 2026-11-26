@@ -107,6 +107,17 @@ class PersonalComposition(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'compose_au_personal_first_aid.py --verify'):
             pc.common.verify(self.out)
 
+    def test_optional_collection_is_recorded_and_still_uses_a_new_private_copy(self):
+        before=self.hashes(self.base)
+        with patch.object(pc.personal, 'source_records', return_value=[self.source]) as selected:
+            report=pc.compose(self.base,self.out,cache=self.cache,collection='bls-first-aid')
+        selected.assert_called_once_with('bls-first-aid')
+        self.assertEqual(report['source_collection'],'bls-first-aid')
+        notice=json.loads((self.out/pc.SOURCES).read_text())
+        self.assertEqual(notice['source_collection'],'bls-first-aid')
+        self.assertEqual(pc.verify(self.out)['records'],3)
+        self.assertEqual(self.hashes(self.base),before)
+
     def test_personal_marker_is_added_to_a_previously_public_base(self):
         (self.base / pc.MARKER).unlink(); self.renew_manifest(self.base)
         before = self.hashes(self.base)

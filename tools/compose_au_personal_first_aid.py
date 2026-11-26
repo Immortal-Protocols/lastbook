@@ -59,7 +59,7 @@ def verify(root):
     return result
 
 
-def compose(base, output, *, cache=None, download=False, records=None):
+def compose(base, output, *, cache=None, download=False, records=None, collection='basic'):
     if bool(download) == (cache is not None):
         raise ValueError('Choose exactly one personal source mode: --pdf-cache or --download')
     base, output = Path(base).absolute(), Path(output).absolute()
@@ -80,7 +80,9 @@ def compose(base, output, *, cache=None, download=False, records=None):
     summary = json.loads((base / 'library-data/summary.json').read_text(encoding='utf-8'))
     if not isinstance(pack, dict) or not isinstance(summary, dict):
         raise ValueError('Base pack and summary metadata must be objects')
-    sources = records if records is not None else json.loads(personal.MANIFEST.read_text(encoding='utf-8'))['sources']
+    if collection not in personal.COLLECTIONS:
+        raise ValueError('Unknown personal source collection: ' + str(collection))
+    sources = records if records is not None else personal.source_records(collection)
     if not sources:
         raise ValueError('Personal source list must not be empty')
     ids = {r['id'] for r in sources} | {'personal-au-reference'}
@@ -101,7 +103,7 @@ def compose(base, output, *, cache=None, download=False, records=None):
     work = Path(tempfile.mkdtemp(prefix='.au-personal-compose-', dir=output.parent))
     try:
         supplement, staged = work / 'personal', work / 'combined'
-        docs, pages = personal.build(supplement, cache, sources)
+        docs, pages = personal.build(supplement, cache, sources, collection=collection)
         additions = common.read_records(supplement)
         shutil.copytree(base, staged, copy_function=common.clone_or_copy)
         if common.inventory(base) != original:
@@ -146,6 +148,8 @@ def compose(base, output, *, cache=None, download=False, records=None):
                    'notice': 'Do not redistribute this complete copy, PDFs, extracted text or index. All base-library restrictions still apply.',
                    'setup': 'Local composition, not an official Setup pack. Setup Check/Repair are unavailable. Recreate from the closed original.',
                    'checksums': 'The personal checksums cover new source files. pack-manifest.tsv covers the complete private copy. Base receipts describe the retained source snapshot.'}
+        if collection != 'basic':
+            receipt['source_collection'] = collection
         pack.update(name=LOCAL_NAME, content_revision='local-personal-au-' + revision, counts=dict(counts),
                     personal_first_aid_composition={'distribution': 'personal-only', 'base_name': receipt['base_pack_name'],
                                                    'base_content_revision': receipt['base_content_revision']})
@@ -177,9 +181,10 @@ def main():
     source = ap.add_mutually_exclusive_group()
     source.add_argument('--download', action='store_true', help='explicitly request the pinned official originals')
     source.add_argument('--pdf-cache', type=Path, help='use already obtained originals offline')
+    ap.add_argument('--collection', choices=personal.COLLECTIONS, help='optional collection; default basic keeps the existing six originals')
     ap.add_argument('--output', type=Path)
     a = ap.parse_args()
-    if a.verify and (a.output or a.download or a.pdf_cache):
+    if a.verify and (a.output or a.download or a.pdf_cache or a.collection is not None):
         ap.error('--verify does not accept output or source options')
     if a.base and (not a.output or not (a.download or a.pdf_cache is not None)):
         ap.error('--base requires --output and exactly one of --pdf-cache or --download')
@@ -188,7 +193,7 @@ def main():
             r = verify(a.verify)
             print(f"{r['verified_files']} files verified; {r['records']} personal-use library records. No files changed.")
         else:
-            r = compose(a.base, a.output, cache=a.pdf_cache, download=a.download)
+            r = compose(a.base, a.output, cache=a.pdf_cache, download=a.download, collection=a.collection or 'basic')
             print(f"{r['original_pdfs']} original PDFs, {r['original_pdf_pages']} PDF pages added to a NEW copy; {r['records']} total records. Base unchanged.")
             print('PERSONAL USE ONLY: do not redistribute this library, PDFs, extracted text or index.')
     except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as e:

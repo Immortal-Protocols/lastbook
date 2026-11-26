@@ -17,7 +17,7 @@ packs = importlib.util.module_from_spec(spec); spec.loader.exec_module(packs)
 class Distribution(unittest.TestCase):
     def test_actual_first_aid_guide_links_never_promote_originals_into_public_packs(self):
         root = HERE.parent
-        private = json.loads((root / 'content/regions/au/personal-sources.json').read_text())['sources']
+        private = json.loads((root / 'content/regions/au/personal-bls-first-aid-sources.json').read_text())['sources']
         public = next(r for r in json.loads((root / 'content/regions/au/manifest.json').read_text())['sources']
                       if r['id'] == 'qld-poisons')
         self.assertTrue({r['id'] for r in private} <= packs.guide_ids())

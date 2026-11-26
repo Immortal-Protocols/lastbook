@@ -121,6 +121,215 @@
           "page": 2
         }
       ]
+    },
+    {
+      "id": "extended-bls",
+      "label": "Read basic life support source guidance",
+      "hint": "Available with the optional expanded personal collection. Original audiences and training conditions remain.",
+      "read": [
+        {
+          "doc": "personal-au-guideline-2",
+          "label": "Guideline 2 – Managing an Emergency",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-3",
+          "label": "Guideline 3 – Recognition and First Aid Management of the Unconscious Person",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-4",
+          "label": "Guideline 4 – Airway",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-5",
+          "label": "Guideline 5 – Breathing",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-6",
+          "label": "Guideline 6 – Compressions",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-7",
+          "label": "Guideline 7 – Automated External Defibrillation in Basic Life Support",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "extended-injury",
+      "label": "Read bleeding, burns and injury source guidance",
+      "hint": "Available with the optional expanded personal collection. Original audiences and training conditions remain.",
+      "read": [
+        {
+          "doc": "personal-au-guideline-9-1-1",
+          "label": "Guideline 9.1.1 – First Aid for Management of Bleeding",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-1-3",
+          "label": "Guideline 9.1.3 – First Aid for Burns",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-1-4",
+          "label": "Guideline 9.1.4 – First Aid Management of Head Injury",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-1-5",
+          "label": "Guideline 9.1.5 – First Aid Management of Harness Suspension Trauma",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-1-6",
+          "label": "Guideline 9.1.6 – First Aid Management of Suspected Spinal Injury",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-1-7",
+          "label": "Guideline 9.1.7 - First Aid Management of Crush Injury",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "extended-illness",
+      "label": "Read sudden-illness source guidance",
+      "hint": "Available with the optional expanded personal collection. Original audiences and training conditions remain.",
+      "read": [
+        {
+          "doc": "personal-au-guideline-9-2-1",
+          "label": "Guideline 9.2.1 – Recognition and First Aid Management of Suspected Heart Attack",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-2",
+          "label": "Guideline 9.2.2 – Stroke",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-3",
+          "label": "Guideline 9.2.3 – Recognition and First Aid Management of the Seriously Ill person, including Shock and Sepsis",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-4",
+          "label": "Guideline 9.2.4 - First Aid Management of a Seizure",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-5",
+          "label": "Guideline 9.2.5 – First Aid for Asthma",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-8",
+          "label": "Guideline 9.2.8 - First Aid Management of Rapid Breathing (including Panic Attack)",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-9",
+          "label": "Guideline 9.2.9 – First Aid Management of a Diabetic Emergency",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-10",
+          "label": "Guideline 9.2.10 – The Use of Oxygen in Emergencies",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten. Includes equipment and training requirements.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-11",
+          "label": "Guideline 9.2.11 – First Aid Management of The Agitated Person",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-2-13",
+          "label": "Guideline 9.2.13 – First Aid Recognition and Management of Presyncope",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "extended-environment",
+      "label": "Read drowning, temperature and diving sources",
+      "hint": "Available with the optional expanded personal collection. Original audiences and training conditions remain.",
+      "read": [
+        {
+          "doc": "personal-au-guideline-9-3-2",
+          "label": "Guideline 9.3.2 – Resuscitation in Drowning",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-3-3",
+          "label": "Guideline 9.3.3 - First Aid Management of Hypothermia and Cold-Related Injuries",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-3-4",
+          "label": "Guideline 9.3.4 – Heat Induced Illness (Hyperthermia)",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-3-5",
+          "label": "Guideline 9.3.5 – First Aid and Resuscitation for Divers who have Breathed Compressed Gas",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "extended-poison-stings",
+      "label": "Read tick, sting, poisoning and overdose sources",
+      "hint": "Available with the optional expanded personal collection. Original audiences and training conditions remain.",
+      "read": [
+        {
+          "doc": "personal-au-guideline-9-4-3",
+          "label": "Guideline 9.4.3 – Envenomation from Tick Bites and Bee, Wasp and Ant Stings",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-5-1",
+          "label": "Guideline 9.5.1 – First Aid Management of Poisoning",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+          "page": 1
+        },
+        {
+          "doc": "personal-au-guideline-9-5-2",
+          "label": "Guideline 9.5.2 – First Aid Management of Suspected Opioid Overdose",
+          "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten. Includes trained naloxone users in its audience.",
+          "page": 1
+        }
+      ]
     }
   ],
   "limits": [
@@ -152,6 +361,180 @@
       "doc": "personal-au-reference",
       "label": "What the personal source collection includes",
       "note": "Original source directory, usage restriction and scope."
+    },
+    {
+      "doc": "personal-au-guideline-2",
+      "label": "Guideline 2 – Managing an Emergency",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-3",
+      "label": "Guideline 3 – Recognition and First Aid Management of the Unconscious Person",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-4",
+      "label": "Guideline 4 – Airway",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-5",
+      "label": "Guideline 5 – Breathing",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-6",
+      "label": "Guideline 6 – Compressions",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-7",
+      "label": "Guideline 7 – Automated External Defibrillation in Basic Life Support",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-1",
+      "label": "Guideline 9.1.1 – First Aid for Management of Bleeding",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-3",
+      "label": "Guideline 9.1.3 – First Aid for Burns",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-4",
+      "label": "Guideline 9.1.4 – First Aid Management of Head Injury",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-5",
+      "label": "Guideline 9.1.5 – First Aid Management of Harness Suspension Trauma",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-6",
+      "label": "Guideline 9.1.6 – First Aid Management of Suspected Spinal Injury",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-7",
+      "label": "Guideline 9.1.7 - First Aid Management of Crush Injury",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-1",
+      "label": "Guideline 9.2.1 – Recognition and First Aid Management of Suspected Heart Attack",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-2",
+      "label": "Guideline 9.2.2 – Stroke",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-3",
+      "label": "Guideline 9.2.3 – Recognition and First Aid Management of the Seriously Ill person, including Shock and Sepsis",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-4",
+      "label": "Guideline 9.2.4 - First Aid Management of a Seizure",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-5",
+      "label": "Guideline 9.2.5 – First Aid for Asthma",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-8",
+      "label": "Guideline 9.2.8 - First Aid Management of Rapid Breathing (including Panic Attack)",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-9",
+      "label": "Guideline 9.2.9 – First Aid Management of a Diabetic Emergency",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-10",
+      "label": "Guideline 9.2.10 – The Use of Oxygen in Emergencies",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten. Includes equipment and training requirements.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-11",
+      "label": "Guideline 9.2.11 – First Aid Management of The Agitated Person",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-13",
+      "label": "Guideline 9.2.13 – First Aid Recognition and Management of Presyncope",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-2",
+      "label": "Guideline 9.3.2 – Resuscitation in Drowning",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-3",
+      "label": "Guideline 9.3.3 - First Aid Management of Hypothermia and Cold-Related Injuries",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-4",
+      "label": "Guideline 9.3.4 – Heat Induced Illness (Hyperthermia)",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-5",
+      "label": "Guideline 9.3.5 – First Aid and Resuscitation for Divers who have Breathed Compressed Gas",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-4-3",
+      "label": "Guideline 9.4.3 – Envenomation from Tick Bites and Bee, Wasp and Ant Stings",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-5-1",
+      "label": "Guideline 9.5.1 – First Aid Management of Poisoning",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-5-2",
+      "label": "Guideline 9.5.2 – First Aid Management of Suspected Opioid Overdose",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten. Includes trained naloxone users in its audience.",
+      "page": 1
     }
   ],
   "learn": [
@@ -184,6 +567,180 @@
       "doc": "personal-au-anaphylaxis",
       "label": "Guideline 9.2.7 – First Aid Management of Anaphylaxis",
       "note": "Original ANZCOR guideline, downloaded unchanged for personal use. Original audience and review dates remain in the PDF."
+    },
+    {
+      "doc": "personal-au-guideline-2",
+      "label": "Guideline 2 – Managing an Emergency",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-3",
+      "label": "Guideline 3 – Recognition and First Aid Management of the Unconscious Person",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-4",
+      "label": "Guideline 4 – Airway",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-5",
+      "label": "Guideline 5 – Breathing",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-6",
+      "label": "Guideline 6 – Compressions",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-7",
+      "label": "Guideline 7 – Automated External Defibrillation in Basic Life Support",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-1",
+      "label": "Guideline 9.1.1 – First Aid for Management of Bleeding",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-3",
+      "label": "Guideline 9.1.3 – First Aid for Burns",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-4",
+      "label": "Guideline 9.1.4 – First Aid Management of Head Injury",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-5",
+      "label": "Guideline 9.1.5 – First Aid Management of Harness Suspension Trauma",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-6",
+      "label": "Guideline 9.1.6 – First Aid Management of Suspected Spinal Injury",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-1-7",
+      "label": "Guideline 9.1.7 - First Aid Management of Crush Injury",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-1",
+      "label": "Guideline 9.2.1 – Recognition and First Aid Management of Suspected Heart Attack",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-2",
+      "label": "Guideline 9.2.2 – Stroke",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-3",
+      "label": "Guideline 9.2.3 – Recognition and First Aid Management of the Seriously Ill person, including Shock and Sepsis",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-4",
+      "label": "Guideline 9.2.4 - First Aid Management of a Seizure",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-5",
+      "label": "Guideline 9.2.5 – First Aid for Asthma",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-8",
+      "label": "Guideline 9.2.8 - First Aid Management of Rapid Breathing (including Panic Attack)",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-9",
+      "label": "Guideline 9.2.9 – First Aid Management of a Diabetic Emergency",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-10",
+      "label": "Guideline 9.2.10 – The Use of Oxygen in Emergencies",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten. Includes equipment and training requirements.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-11",
+      "label": "Guideline 9.2.11 – First Aid Management of The Agitated Person",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-2-13",
+      "label": "Guideline 9.2.13 – First Aid Recognition and Management of Presyncope",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-2",
+      "label": "Guideline 9.3.2 – Resuscitation in Drowning",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-3",
+      "label": "Guideline 9.3.3 - First Aid Management of Hypothermia and Cold-Related Injuries",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-4",
+      "label": "Guideline 9.3.4 – Heat Induced Illness (Hyperthermia)",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-3-5",
+      "label": "Guideline 9.3.5 – First Aid and Resuscitation for Divers who have Breathed Compressed Gas",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-4-3",
+      "label": "Guideline 9.4.3 – Envenomation from Tick Bites and Bee, Wasp and Ant Stings",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-5-1",
+      "label": "Guideline 9.5.1 – First Aid Management of Poisoning",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten.",
+      "page": 1
+    },
+    {
+      "doc": "personal-au-guideline-9-5-2",
+      "label": "Guideline 9.5.2 – First Aid Management of Suspected Opioid Overdose",
+      "note": "Optional personal-use original. Read the complete source audience, conditions and dates; procedures are not rewritten. Includes trained naloxone users in its audience.",
+      "page": 1
     }
   ],
   "route": [],

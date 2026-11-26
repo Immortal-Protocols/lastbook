@@ -68,7 +68,11 @@ can add your pinned personal-use originals to another new full copy. It preserve
 these public sources and their receipts, merges all physical PDF pages into search
 and marks the complete result as personal-use-only. It requires an explicit offline
 cache or download choice; the public command and public assets do not include PDFs.
-Use the personal command's verifier for that later private snapshot.
+Use the personal command's verifier for that later private snapshot. Its default
+six-source collection remains unchanged; explicitly choose `--collection
+bls-first-aid` for the separately pinned 35-source/263-page selection. The matching
+personal instructions describe rebuilding from the retained original when a base
+already contains personal sources.
 
 ## Integrity, Setup and privacy
 

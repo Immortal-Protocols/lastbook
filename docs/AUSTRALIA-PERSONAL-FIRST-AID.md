@@ -60,6 +60,62 @@ review. Do not treat the existence of this fetch tool as permission to redistrib
 its output or as approval from ANZCOR or the Lastbook maintainers.
 
 
+## Optional Basic Life Support and First Aid collection
+
+The original default remains **six PDFs / 41 pages**, plus the source hub. Select
+`--collection bls-first-aid` explicitly for **35 PDFs / 263 pages**, plus the hub.
+This follows the seven Basic Life Support and 28 First Aid entries on ANZCOR’s two
+section indexes checked 27 November 2026. It adds source access for airway/choking,
+bleeding, burns, injuries, sudden illness, drowning, temperature exposure, diving,
+other bites/stings, poisoning and overdose. Other ANZCOR sections and external
+resources cited inside the PDFs are not included. Each original’s audience,
+training conditions, dates and illustrations remain in the unchanged file.
+
+All six default records and PDF hashes remain identical. The expanded manifest
+contains metadata only; no original PDF, extracted body or private index is in
+the public contribution. The extra source links appear only when their actual
+files are present. The existing six-source guide routes retain their content.
+
+Build a separate small personal library, using either an already obtained cache
+or an explicit request for the originals:
+
+```sh
+python3 -B tools/build_au_personal_first_aid.py \
+  --collection bls-first-aid --pdf-cache "/path/to/originals" \
+  --output "/new/PersonalFirstAidData"
+
+# Alternatively, explicitly download the pinned originals:
+python3 -B tools/build_au_personal_first_aid.py \
+  --collection bls-first-aid --download --output "/new/PersonalFirstAidData"
+```
+
+For a new full-library copy, use the same selection with the composition command:
+
+```sh
+python3 -B tools/compose_au_personal_first_aid.py \
+  --base "/path/to/public-composed/LastbookData" \
+  --collection bls-first-aid --pdf-cache "/path/to/originals" \
+  --output "/new/PersonalAustralianLastbookData"
+
+python3 -B tools/compose_au_personal_first_aid.py \
+  --verify "/new/PersonalAustralianLastbookData"
+```
+
+The full example becomes 314 base + 125 public + 36 personal = **475 records**;
+the personal index adds 264 units. This is still an initial addition: if the base
+already has the six-source personal collection, recreate the public copy from the
+retained original first, then select the expanded collection into a new output.
+Existing outputs and personal ID/path collisions remain refused. The verifier
+reads the copy’s own receipt; do not supply `--collection` with `--verify`.
+
+The complete output remains personal-use only, inherits all base restrictions,
+and has no official Setup Check/Repair. A selection of official documents is not
+first-aid training, clinical approval or a claim that every guideline applies to
+every reader or situation. No procedures have been combined or rewritten. Source
+hash changes stop the build for review; they are not accepted automatically.
+Metadata, section membership and review limits are in
+`content/regions/au/PERSONAL-EXTENDED-SOURCE-AUDIT-20261127.json`.
+
 ## Add the originals to a full library
 
 `tools/compose_au_personal_first_aid.py` adds the six pinned originals and their

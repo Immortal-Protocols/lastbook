@@ -23,8 +23,19 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'content/regions/au/personal-sources.json'
+COLLECTIONS = {'basic': MANIFEST, 'bls-first-aid': ROOT / 'content/regions/au/personal-bls-first-aid-sources.json'}
 MAX_PDF = 10_000_000
 SCHEMA = 'fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="unicode61")'
+
+
+def source_records(collection='basic'):
+    if collection not in COLLECTIONS:
+        raise ValueError('Unknown personal source collection: ' + str(collection))
+    manifest = json.loads(COLLECTIONS[collection].read_text(encoding='utf-8'))
+    records = manifest.get('sources')
+    if manifest.get('distribution') != 'personal-only' or not isinstance(records, list) or not records:
+        raise ValueError('Expected a nonempty personal-only source collection')
+    return records
 
 
 def digest(data):
@@ -82,11 +93,13 @@ def pdf_pages(data):
         doc.close()
 
 
-def build(output, cache=None, records=None):
+def build(output, cache=None, records=None, *, collection='basic'):
     output = Path(output).absolute()
     if output.exists():
         raise ValueError('Output already exists; choose a separate new folder')
-    records = records if records is not None else json.loads(MANIFEST.read_text(encoding='utf-8'))['sources']
+    if collection not in COLLECTIONS:
+        raise ValueError('Unknown personal source collection: ' + str(collection))
+    records = records if records is not None else source_records(collection)
     output.parent.mkdir(parents=True, exist_ok=True)
     staged = Path(tempfile.mkdtemp(prefix='.personal-au-', dir=output.parent))
     try:
@@ -113,6 +126,9 @@ def build(output, cache=None, records=None):
                                (r['id'], r['title'], r['collection'], r['category'], r['path'], n, text))
                 catalog.append(r); total += len(pages)
             body = '<h1>Australian personal-use first aid references</h1><p>Unmodified official ANZCOR guidelines, retrieved 17 November 2026. The original publication, review and version dates remain in each PDF. These are static offline references.</p>'
+            if collection == 'bls-first-aid':
+                body = '<h1>Australian personal-use first aid references</h1><p>Optional Basic Life Support and First Aid collection: unchanged official ANZCOR originals. The two section indexes were checked 27 November 2026. Original publication, review and version dates remain in each PDF; an index check is not a new clinical review.</p>'
+                body += '<p>This collection follows the Basic Life Support and First Aid guideline entries listed on the checked indexes. Other ANZCOR sections and external resources cited inside the PDFs are not included. Read each original audience and scope; the collection is not training or a statement that every guideline applies to every reader or situation.</p>'
             body += '<p><strong>Personal-use copies only. Do not redistribute this library or upload its PDFs or extracted text. Public distribution needs written permission from the rights holder.</strong> Terms: https://www.anzcor.org/disclaimer-and-copyright .</p><ul>'
             for r in catalog:
                 body += '<li><a href="/' + r['path'] + '">' + html.escape(r['title']) + '</a></li>'
@@ -132,10 +148,13 @@ def build(output, cache=None, records=None):
         (lib / 'catalog.json').write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         (lib / 'summary.json').write_text(json.dumps({'resources': len(catalog), 'pdfs': len(records), 'pdf_pages': total,
             'web_pages': 1, 'indexed_units': total + 1, 'extraction_errors': [], 'missing_files': []}, indent=2) + '\n', encoding='utf-8')
-        (staged / 'PERSONAL-USE-ONLY.json').write_text(json.dumps({'distribution': 'personal-only',
+        notice = {'distribution': 'personal-only',
             'permission_url': 'https://www.anzcor.org/disclaimer-and-copyright',
             'notice': 'Do not redistribute PDFs, extracted source text or this library without rights-holder permission.',
-            'sources': records}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+            'sources': records}
+        if collection != 'basic':
+            notice['source_collection'] = collection
+        (staged / 'PERSONAL-USE-ONLY.json').write_text(json.dumps(notice, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         staged.rename(output)
     except BaseException:
         shutil.rmtree(staged)
@@ -148,10 +167,11 @@ def main():
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument('--download', action='store_true', help='request the pinned original PDFs for personal use')
     mode.add_argument('--pdf-cache', type=Path, help='read already downloaded originals without a connection')
+    ap.add_argument('--collection', choices=COLLECTIONS, default='basic', help='basic keeps the original six PDFs; bls-first-aid selects all 35 checked section entries')
     ap.add_argument('--output', required=True, type=Path)
     a = ap.parse_args()
     try:
-        docs, pages = build(a.output, a.pdf_cache)
+        docs, pages = build(a.output, a.pdf_cache, collection=a.collection)
         print(f'{docs} personal-use PDFs, {pages} pages; separate library built. Do not redistribute it.')
     except (OSError, ValueError, sqlite3.Error) as e:
         ap.exit(1, str(e) + '\n')

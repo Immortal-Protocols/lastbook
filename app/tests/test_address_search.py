@@ -3,6 +3,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+import unicodedata
 from pathlib import Path
 from unittest.mock import patch
 
@@ -655,6 +656,36 @@ class GermanAddressSearchTests(unittest.TestCase):
             self.assertEqual(server.places('18003 nine mile'), [])
             hit, = server.places('Unter den Linden 77')
             self.assertEqual((hit['name'], hit['kind']), ('Unter den Linden 77', 'Street address'))
+
+
+class VietnamCitySearchTests(unittest.TestCase):
+    def test_lookup_without_an_installed_index(self):
+        import server
+        cities = [
+            ('Hà Nội', 21.02450, 105.84117, ['Ha Noi', 'Hanoi']),
+            ('Đà Nẵng', 16.06778, 108.22083, ['Da Nang', 'Danang', 'ĐÀ NẴNG']),
+            ('Thành phố Hồ Chí Minh', 10.82302, 106.62965,
+             ['Hồ Chí Minh City', 'Ho Chi Minh City', 'Thanh pho Ho Chi Minh', 'Sài Gòn', 'Saigon']),
+        ]
+        with tempfile.TemporaryDirectory() as tmp, patch.object(server, 'PLACEDB', Path(tmp) / 'absent.sqlite'):
+            for name, lat, lon, aliases in cities:
+                for query in [name, unicodedata.normalize('NFD', name), *aliases]:
+                    with self.subTest(query=query):
+                        hit, = server.places(query)
+                        self.assertEqual((hit['name'], hit['lat'], hit['lon'], hit['source']), (name, lat, lon, 'GeoNames'))
+            for query in ('', 'Ha', 'Da', 'Hanoi Road'):
+                self.assertEqual(server.places(query), [])
+
+    def test_exact_city_precedes_partial_matches_and_keeps_homonyms(self):
+        import server
+        city, = server.places('Hanoi')[:1]
+        partial = dict(city, name='Hale County', kind='county', lat=32.76, lon=-87.63)
+        homonym = dict(city, name='Ha Noi', lat=42, lon=-90)
+        duplicate = dict(city, name='Ha Noi', source='OpenStreetMap')
+        with patch.object(server, 'installed_places', return_value=[partial, homonym, duplicate]):
+            self.assertEqual(server.places('Hà Nội'), [city, partial, homonym])
+            self.assertEqual(server.places('Ha Noi', limit=1), [city])
+            self.assertEqual(server.places('Hale County'), [partial, homonym, duplicate])
 
 
 if __name__ == '__main__':

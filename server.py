@@ -25,6 +25,7 @@ Nothing in library-data is written. Caches go to derived/cache.
 import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
 from array import array
 from pathlib import Path
+import unicodedata
 
 if __name__ == '__main__':  # --data must be known before the paths below are worked out
     _pre = argparse.ArgumentParser(add_help=False)
@@ -1405,7 +1406,45 @@ def water_places(q, limit=10, near=None):
     return [o for _, o in out[:limit]]
 
 
+def city_name_key(name):
+    letters = unicodedata.normalize('NFD', name.casefold().replace('đ', 'd'))
+    return ' '.join(''.join(c for c in letters if not unicodedata.combining(c)).split())
+
+
+@functools.lru_cache(maxsize=1)
+def vietnam_city_index():
+    """Whole-name aliases for the three GeoNames city points shipped with the base map."""
+    try:
+        rows = json.loads((WEB / 'vietnam-cities.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}   # an incomplete app copy can still search the installed library
+    index = {}
+    for row in rows:
+        city = {'name': row['name'], 'lat': row['lat'], 'lon': row['lon'], 'kind': 'City',
+                'detail': 'Việt Nam · GeoNames (CC BY 4.0)', 'source': 'GeoNames', 'onMap': True, 'zoom': 7}
+        for name in [row['name'], *row['aliases']]:
+            index[city_name_key(name)] = city
+    return index
+
+
 def places(q, limit=20, near=None):
+    found = installed_places(q, limit, near)
+    cities = vietnam_city_index()
+    city = cities.get(city_name_key(q))
+    if not city:
+        return found
+    # Put the full city name ahead of partial-word matches from the installed
+    # gazetteer. Keep homonyms elsewhere, and show the same point only once.
+    results = [city]
+    for place in found:
+        if cities.get(city_name_key(place['name'])) is city:
+            if round(place['lat'], 2) == round(city['lat'], 2) and round(place['lon'], 2) == round(city['lon'], 2):
+                continue
+        results.append(place)
+    return results[:limit]
+
+
+def installed_places(q, limit, near):
     if address_search.is_address_query(q):
         found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
         if found or not address_search.is_german_postcode_query(q, HERE / 'derived' / 'geo'):

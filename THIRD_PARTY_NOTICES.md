@@ -14,6 +14,7 @@ Versions are the pins in `packaging/requirements*.txt`, `packaging/llm/*.sh`, `p
 
 | Component | Version | Licence | Source | Checked |
 |---|---|---|---|---|
+| Vietnam city locations (`web/vietnam-cities.json`) | Three city records, 26 November 2026 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | GeoNames: [Hà Nội](https://www.geonames.org/1581130/), [Đà Nẵng](https://www.geonames.org/1583992/), [Thành phố Hồ Chí Minh](https://www.geonames.org/1566083/) | [Upstream terms](https://www.geonames.org/export/). Selected coordinates and names, with Vietnamese display names and search aliases. |
 | Nunito (`web/Nunito-Variable.woff2`, the Ask page's headings; the same file as `website-next/fonts/`), copied into the app with `web/` | variable, as in `website-next/fonts/` | SIL Open Font License 1.1 | https://github.com/googlefonts/nunito | Checked: `web/Nunito-OFL.txt` |
 | pypdfium2 (Mac source fallback and app bundle) | 5.15.2 | Apache-2.0 or BSD-3-Clause. Data files CC-BY-4.0 | https://github.com/pypdfium2-team/pypdfium2/releases/tag/5.15.2 | Checked: `engine/vendor-macos/pypdfium2-5.15.2.dist-info/licenses/` |
 | PDFium and its bundled libraries (Mac) | 159.0.8149.0 | BSD-3-Clause (The PDFium Authors). Each bundled library has its own licence | https://pdfium.googlesource.com/pdfium | Checked: `engine/vendor-macos/pypdfium2-5.15.2.dist-info/licenses/BUILD_LICENSES/` |

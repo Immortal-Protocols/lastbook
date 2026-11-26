@@ -915,13 +915,6 @@ function wireMoments({ video = null, player = null, available = null, start = nu
 }
 
 /* ------------------------------------------------------------- reader -- */
-function plainReadingText(text) {
-  // Isolate numeric runs: in RTL paragraphs even a phone number's space can
-  // reorder its groups. The indexed and spoken text, and every digit, stay as-is.
-  return String(text).split(/([+\-−]?(?:\p{Nd}|\.\p{Nd})(?:[\p{Nd} \t.,:/+\-−٫٬]*\p{Nd})?)/gu)
-    .map((part, i) => i % 2 ? `<bdi dir="ltr">${esc(part)}</bdi>` : esc(part)).join('');
-}
-
 async function reader(id, page, from, view) {
   const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
   if (stale(me)) return;   // the person has gone to another page
@@ -967,14 +960,14 @@ async function reader(id, page, from, view) {
       hadText = !!(t.text || '').trim();
       if (!hadText) toast('This page has no text that can be read aloud.');
       return hadText ? (isPdf ? `Page ${page}. ` : '') + t.text : 'This page has no text that can be read aloud.';
-    }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null, d.language);
+    }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null);
     let goingOn = null;
     try { goingOn = sessionStorage.getItem('sg.speakOn'); sessionStorage.removeItem('sg.speakOn') } catch { }
     // Reading went on to this page by itself: keyboard focus goes back to Stop when route() has finished and put it on the page's
     // start (startHere), so stopping is one key away, not a walk through the sidebar and toolbar while the voice goes on.
     if (goingOn === id) {
       focusAfterRoute = sb;
-      Speak.ready(d.language).then(ok => {
+      Speak.ready().then(ok => {
         if (!ok || !sb.isConnected) return;
         sb.click();
         if (document.activeElement === $('#pageTop')) sb.focus({ preventScroll: true });   // the voices were listed after the page settled
@@ -998,19 +991,13 @@ async function reader(id, page, from, view) {
     body.innerHTML = `<iframe class="frame" title="${esc(d.title)}" src="${fileUrl(d.path)}#page=${page}"></iframe><p class="small muted">If the PDF doesn’t show here (some phones can’t), use Page view or open the original file.</p>`;
   } else if (view === 'web') {
     const own = /(^|\/)documents\/lastbook\//.test(d.path);   // Lastbook's own pages (Sources and permissions) take the window's look from the server (engine/saved_pages.py, OWN_LOOK); an older server's stays a white sheet
-    const links = !IN_WINDOW && window.LastbookReadingLinks;
-    const token = links ? links.token() : '';
-    body.innerHTML = `<iframe class="frame${own ? ' own' : ''}" title="${esc(d.title)}" src="${fileUrl(d.path)}${token ? '?lb-reader=' + token : ''}"></iframe>`;
-    if (links) leaving = links.listen($('iframe', body), id, token, target => {
-      location.hash = target + (target.includes('?') ? '&' : '?') + 'from=' + encodeURIComponent(location.hash);
-    });
+    body.innerHTML = `<iframe class="frame${own ? ' own' : ''}" title="${esc(d.title)}" src="${fileUrl(d.path)}"></iframe>`;
   } else {
     body.innerHTML = '<p class="loading">Loading text…</p>';
     try {
       const t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`);
       const txt = (t.text || '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-      const language = typeof d.language === 'string' && d.language.trim() ? ` lang="${esc(d.language)}"` : '';
-      body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext"${language} dir="auto">${plainReadingText(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
+      body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, 'Couldn’t load the text.') }
   }
   if (!isPdf) return;

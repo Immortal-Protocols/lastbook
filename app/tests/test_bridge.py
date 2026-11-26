@@ -9,7 +9,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 from unittest.mock import patch
-from urllib.parse import parse_qs
 
 sys.dont_write_bytecode = True
 faulthandler.dump_traceback_later(600, exit=True)
@@ -997,49 +996,6 @@ class Both:
         self.assertEqual(nw(o + '/pages/s.html', True, False), ('nothing', None))
         for u in (nw(o + '/pages/s.html', True, True)[1], nw(o + '/documents/s.pdf', True, True)[1], nw(o + '/zim/a/b', True, True)[1]):
             self.assertTrue(self.b.top_url_ok(u), u)
-
-    def test_linked_html_reading_keeps_document_context_and_back_destination(self):
-        o = self.b.origin
-        records = [dict(id='first',kind='html',path='pages/first.html'),
-                   dict(id='next ?#%',kind='html',path='pages/next é.html'),
-                   dict(id='manual',kind='pdf',path='documents/manual.pdf')]
-        cat = dict(by_id={r['id']:r for r in records},by_path={r['path']:r for r in records})
-        top = o + '/#/read/first?from=%23%2Ft%2Fexample'
-        with mock.patch.object(self.b.server,'catalog',return_value=cat):
-            route = self.b.linked_reading(o + '/pages/next%20%C3%A9.html',top,True)
-            self.assertEqual(route.split('?',1)[0], '#/read/next%20%3F%23%25')
-            query = parse_qs(route.split('?',1)[1])
-            self.assertEqual(query['from'],['#/read/first?from=%23%2Ft%2Fexample'])
-            pdf = self.b.linked_reading(o + '/documents/manual.pdf#page=7',top,True)
-            self.assertTrue(pdf.startswith('#/read/manual?p=7&view=pdf&from='))
-            self.assertTrue(self.b.top_url_ok(o + '/' + route))
-
-    def test_linked_reader_does_not_route_initial_loads_self_anchors_or_other_views(self):
-        o = self.b.origin
-        records = [dict(id='first',kind='html',path='pages/first.html'),
-                   dict(id='next',kind='html',path='pages/next.html'),
-                   dict(id='pdf',kind='pdf',path='documents/manual.pdf')]
-        cat = dict(by_id={r['id']:r for r in records},by_path={r['path']:r for r in records})
-        with mock.patch.object(self.b.server,'catalog',return_value=cat):
-            target = o + '/pages/next.html'
-            for clicked in (False,None,1):
-                self.assertIsNone(self.b.linked_reading(target,o + '/#/read/first',clicked))
-            self.assertIsNone(self.b.linked_reading(o + '/pages/first.html#section',o + '/#/read/first',True))
-            for view in ('#/read/pdf','#/read/missing','#/wiki/demo/A','#/guides','#/ask'):
-                self.assertIsNone(self.b.linked_reading(target,o + '/' + view,True))
-
-    def test_linked_reader_keeps_external_api_unknown_and_popup_refusals(self):
-        o = self.b.origin
-        records = [dict(id='first',kind='html',path='pages/first.html')]
-        cat = dict(by_id={r['id']:r for r in records},by_path={r['path']:r for r in records})
-        with mock.patch.object(self.b.server,'catalog',return_value=cat):
-            top = o + '/#/read/first'
-            for target in ('https://example.org/a','file:///etc/hosts','data:text/html,x',
-                           o + '/api/health',o + '/ui/setup.html',o + '/pages/%2e%2e/ui/setup.html',
-                           o + '/pages/missing.html',o + '/reports/private.html','about:blank'):
-                self.assertIsNone(self.b.linked_reading(target,top,True),target)
-                self.assertEqual(self.b.new_window(target,False,True),('nothing',None))
-            self.assertIsNone(self.b.linked_reading(o + '/pages/first.html','https://example.org/#/read/first',True))
 
     def test_project_repository_requires_a_top_frame_popup_with_a_user_gesture(self):
         origin, new_window = self.b.origin, self.b.new_window

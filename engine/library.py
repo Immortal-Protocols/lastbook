@@ -35,7 +35,6 @@ try:from engine import safe_paths
 except ImportError:  # run as a script (python3 engine/library.py): the engine folder is on the path, not the project
  sys.path.insert(0,str(Path(__file__).resolve().parents[1]));from engine import safe_paths
 from engine.safe_paths import RESERVED_NAMES,real_path,parts_below,name_refused,segments_ok  # noqa: E402  (also used as library.segments_ok)
-from engine.search_text import has_han, han_search_rows, needs_text_search, text_search_rows, query_terms
 
 def load_remote_storage():
  """Videos this Mac has moved to other machines. That code stays in the library's own tools and is never packaged."""
@@ -77,7 +76,6 @@ def zim_main_path(arc):
   entry=entry.get_redirect_entry()
  return entry.path
 DB=ROOT/'search.sqlite'
-
 STYLE='''body{font:17px/1.65 system-ui,sans-serif;color:#202b30;background:#f8f6ef;max-width:1100px;margin:32px auto;padding:0 24px}a{color:#166456}aside{background:#e6ede4;padding:14px;margin-bottom:26px;font-size:14px}table{border-collapse:collapse;max-width:100%;overflow:auto;display:block}td,th{border:1px solid #bbc4bb;padding:8px}img,video{max-width:100%;height:auto}h1,h2,h3{line-height:1.2}pre{white-space:pre-wrap}'''
 
 def catalog():

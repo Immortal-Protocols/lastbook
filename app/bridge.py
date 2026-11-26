@@ -861,35 +861,6 @@ class Bridge:
             return f'#/read/{rid}?p={m.group(1) if m else 1}&view=pdf'
         return f'#/read/{rid}'
 
-    def linked_reading(self, url, top_url, clicked):
-        """A user following a catalogued link in an HTML reader opens its own reader.
-
-        The saved page stays opaque and script-free. Only existing library
-        addresses and catalog records qualify; popups,initial frame loads and
-        links inside PDF/encyclopedia viewers keep their existing rules.
-        """
-        if clicked is not True or not self.top_url_ok(top_url) or not self.frame_url_ok(url):
-            return None
-        current = urllib.parse.urlsplit(top_url).fragment
-        parts = current.split('?', 1)[0].split('/')
-        if len(parts) != 3 or parts[:2] != ['', 'read']:
-            return None
-        cat = self.server.catalog()
-        source = cat['by_id'].get(urllib.parse.unquote(parts[2]))
-        if not source or source.get('kind') != 'html':
-            return None
-        target = self.target_of(url)
-        if target is None:
-            return None
-        path = urllib.parse.unquote(urllib.parse.urlsplit(target).path).lstrip('/')
-        record = cat['by_path'].get(path)
-        if not record or record['id'] == source['id'] or record.get('kind') not in ('html', 'pdf', 'video', 'transcript', 'pptx'):
-            return None
-        route = self.inside_route(url)
-        if not route:
-            return None
-        return route + ('&' if '?' in route else '?') + urllib.parse.urlencode({'from': '#' + current})
-
     def give_ticket(self, url):
         """A navigation the app's own top frame started: its target may get a whole big answer, once, within TICKET_LIFE seconds."""
         target = self.target_of(url)

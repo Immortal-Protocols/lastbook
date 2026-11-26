@@ -155,11 +155,8 @@ class _Pulse:
         self.view, self.on_stuck = view, on_stuck
         self.waiting = []
         self.asked_at = None
-        self.asked_active_at = None
         self.misses = self.slow = 0
         self.paused = 0
-        self.pause_started = None
-        self.pause_total = 0.0
         self.acks_out = []
 
     def add(self, ack):
@@ -170,17 +167,16 @@ class _Pulse:
     def ask(self):
         acks, self.waiting = self.waiting, []
         self.asked_at = time.monotonic()
-        self.asked_active_at = self.active_time()
         generation = self.asked_at
 
         def answered(result, error):
             if self.asked_at != generation:     # reset() already released these
                 return
-            late = self.active_time() - self.asked_active_at
+            late = time.monotonic() - self.asked_at
             self.asked_at = None
             self.acks_out = []
             self.misses = 0
-            self.slow = self.slow + 1 if late >= SLOW_ANSWER else 0
+            self.slow = self.slow + 1 if late >= SLOW_ANSWER and not self.paused else 0
             self.release(acks)
             if self.slow >= SLOW_IN_A_ROW:
                 self.on_stuck()
@@ -193,24 +189,6 @@ class _Pulse:
     def release(self, acks):
         for ack in acks:
             ack()
-
-    def active_time(self):
-        """The heartbeat's clock excludes only time in app-owned modal sheets."""
-        now = time.monotonic()
-        return now - self.pause_total - (now - self.pause_started if self.paused else 0)
-
-    def pause(self):
-        """An app-owned modal may defer the outstanding reply until after dismissal."""
-        if not self.paused:
-            self.pause_started = time.monotonic()
-        self.paused += 1
-        self.misses = 0
-
-    def resume(self):
-        self.paused -= 1
-        if not self.paused:
-            self.pause_total += time.monotonic() - self.pause_started
-            self.pause_started = None
 
     def tick(self):
         """Every PULSE_EVERY seconds. Ticks, not the clock: a Mac asleep is not a page that is stuck."""
@@ -226,7 +204,6 @@ class _Pulse:
     def reset(self):
         """The page's process has gone, and any question to it with it."""
         self.asked_at = None
-        self.asked_active_at = None
         self.misses = self.slow = 0
         out, self.acks_out = self.acks_out, []
         waiting, self.waiting = self.waiting, []
@@ -599,12 +576,6 @@ class Shell:
             return POLICY_CANCEL
         if not self.bridge.frame_url_ok(url):
             return POLICY_CANCEL
-        if not from_top and action.sourceFrame() is not None and action.navigationType() == LINK_ACTIVATED and gesture is not False:
-            current = self.view.URL()
-            route = self.bridge.linked_reading(url, str(current.absoluteString()) if current else '', True)
-            if route:
-                self.view.evaluateJavaScript_completionHandler_('location.hash=' + json.dumps(route), None)
-                return POLICY_CANCEL
         if from_top:
             self.bridge.give_ticket(url)   # only the app's own page earns a whole large answer
         return POLICY_ALLOW
@@ -670,10 +641,10 @@ class Shell:
         alert.addButtonWithTitle_('OK')
         if kind == 'confirm':
             alert.addButtonWithTitle_('Cancel')
-        self.pulse.pause()      # the page's reply may arrive only after the modal is dismissed
+        self.pulse.paused += 1      # an alert from the app's own page holds its process until it is answered: that is not a page stuck
 
         def answered(r):
-            self.pulse.resume()
+            self.pulse.paused -= 1
             done(r == MODAL_FIRST_BUTTON)
 
         alert.beginSheetModalForWindow_completionHandler_(self.window, answered)

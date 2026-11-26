@@ -1023,12 +1023,6 @@ class Shell:
             uri = str(e.Uri)
             allowed = self.b.frame_url_ok(uri)
             note(kind='app-frame-nav', uri=uri[:300], allowed=allowed, first=first[0])
-            if allowed and not first[0]:
-                route = self.b.linked_reading(uri, str(self.core.Source), bool(getattr(e, 'IsUserInitiated', False)))
-                if route:
-                    e.Cancel = True
-                    self.act('inside', self.b.origin + '/' + route)
-                    return
             if not allowed:
                 e.Cancel = True     # this frame's own event: a Cancel on the web view's FrameNavigationStarting alone did not hold here
             elif uri.startswith(self.b.origin + '/'):

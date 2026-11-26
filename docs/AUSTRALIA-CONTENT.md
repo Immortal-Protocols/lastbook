@@ -4,6 +4,30 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Current review scope — 27 November 2026
+
+This branch contains Australian content, offline builders/composition, personal-use
+handling and guide availability checks. It no longer includes the independently
+reviewed HTTP reader (#487), Mac modal heartbeat (#491), document language (#493),
+Arabic/Han search (#494) or native linked-reading navigation changes. The native
+reader extraction is [PR #497](https://github.com/Immortal-Protocols/lastbook/pull/497).
+Other companion runtime PRs: [HTTP #487](https://github.com/Immortal-Protocols/lastbook/pull/487),
+[Mac timing #491](https://github.com/Immortal-Protocols/lastbook/pull/491),
+[document language #493](https://github.com/Immortal-Protocols/lastbook/pull/493),
+[Arabic/Han search #494](https://github.com/Immortal-Protocols/lastbook/pull/494).
+Historical runtime/build notes below describe the dated review releases, not the
+current content-only diff. The 124-record data remains usable without those fixes;
+matching language search, read-aloud and linked-reader context need the relevant
+runtime PRs (or the existing integrated private review build).
+
+Guide links and `requires_docs` now check each actual source file on every
+resolution. A catalogue entry alone is insufficient. A regression builds the full
+public library, warms the real catalogue cache, removes/restores an individual
+reading, then moves/restores the entire `pages/au` folder while leaving catalogue
+bytes and mtime unchanged. Missing links disappear, the three public regional
+guides hide, ordinary warning text remains, and restoration is immediate. Existing
+explicit remote-video storage keeps its established availability semantics.
+
 ## Bat-exposure factsheet and unchanged-source terms — 27 November 2026
 
 The public collection now has **124 records:99 official practical,16 rights and

@@ -19,8 +19,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "ambulancia",
@@ -58,7 +57,7 @@
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
       "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free_source": "https://www.bcn.cl/leychile/navegar?idNorma=1036936",
       "keywords": {
         "es": [
           "bomberos",
@@ -92,8 +91,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "carabineros",
@@ -126,8 +124,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "pdi",
@@ -160,8 +157,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "incendio forestal",
@@ -194,8 +190,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "rescate marítimo",
@@ -243,8 +238,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "socorro andino",
@@ -281,8 +275,7 @@
         "landline"
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
-      "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free": null,
       "keywords": {
         "es": [
           "rescate aéreo",
@@ -323,7 +316,7 @@
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
       "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free_source": "https://www.chileatiende.gob.cl/fichas/385-fono-ninos-147",
       "keywords": {
         "es": [
           "niños",
@@ -407,7 +400,7 @@
       ],
       "works_from_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=173931&idParte=8511373",
       "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free_source": "https://www.chileatiende.gob.cl/fichas/11937-fono-de-orientacion-en-violencias-de-genero-1455",
       "keywords": {
         "es": [
           "violencia contra la mujer",
@@ -553,7 +546,7 @@
       ],
       "works_from_source": "https://www.minsal.cl/linea-de-atencion-4141-no-estas-solo-no-estas-sola/",
       "free": true,
-      "free_source": "https://www.bcn.cl/leychile/navegar/imprimir?idNorma=1059429&idParte=9406426",
+      "free_source": "https://www.minsal.cl/linea-de-atencion-4141-no-estas-solo-no-estas-sola/",
       "keywords": {
         "es": [
           "suicidio",

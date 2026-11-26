@@ -1418,3 +1418,52 @@ CRC/inventory/extraction,117readerhashes,SQLite/FTS and privacy checks pass. Dat
 only;matching updated runtime is needed for new guide choices and existing
 language/speech/Han/HTTP behavior. Extract into a new folder. Earlier releases
 unchanged;official Setup/maintainer acceptance remains pending.
+
+
+## Arabic diacritic search and independent Chinese search — 27 November 2026
+
+[Independent PR494](https://github.com/Immortal-Protocols/lastbook/pull/494) makes
+unmarked Arabic words find marked source words and retains short Han substring
+matching. For example, مبكرا and مبكرًا now find the same bushfire reading instead
+of a miss versus fragmented broad matches. The query parser preserves Arabic
+combining marks inside words; matching ignores only U+064B–U+0652 and U+0670.
+Hamza, maddah and different letters remain distinct. There is no stemming,
+translation, spelling correction or general Unicode normalization.
+
+Reader snippets highlight the original source word with its marks. Overlapping
+matches merge; saved markup is escaped. Scope/ID filters apply before LIMIT,
+including an empty scope; video/transcript mapping and existing group relaxation
+remain. Mixed Han/Arabic/Latin queries use Han substrings, Arabic whole words and
+the existing FTS path for other terms. SQL parameters and escaped literal patterns
+retain query safety. No source/index/schema/dependency/network change is made.
+The read-only title/body scan can cost more than indexed FTS on larger libraries.
+
+Final stable-source suites pass **805 standalone, 876 contribution/build and948
+combined tests**, each5skips/11upstream expected failures. Fourteen Arabic/eight Han
+tests are required; all29 Arabic/Han/libq tests pass on development and frozen-build
+Python3.11. The setup capacity-fixture correction is shared with PR487/491/493;
+production disk reserves remain. A source-AST audit proves unrelated server,
+library and assistant logic matches the prior baselines, including map provenance.
+The independent PR adds both script paths against current main51658f5; #89 had
+already carried the earlier Han-only path.
+
+Actual public117/private438 checks forbid sockets and compare four marked/unmarked
+query pairs through reader search, original marked highlights, scoped assistant
+retrieval and libq. The private queries took approximately50–70ms on this host;
+these are local observations, not a general performance guarantee. All124 AU hashes,
+42personalFTS,Victoria3054names/map hashes and exact infant video remain verified.
+All438/117 records and597 AU guide references remain; no new content/data release.
+
+Installed frozen code`fc75c0eb18f228b364e296dce8520409cdceaf4b` passes package/i18n/
+privacy, strict signature and438/7 outbound-IP-denial self-check. All58 bundled
+web/content/setup assets are byte-identical to the prior Arabic runtime. The five
+catalog/search/reference/map/personal-marker hashes remain identical after native
+checks; a complete prior438app is retained for rollback, without changing data.
+
+Selected native Mac checks compare marked/unmarked مبكرا/مبكرًا, inspect the original
+marked highlight, find دوّار from دوار and Arabic readings from تعرف, retain 飲水's
+Traditional Chinese result, then open the cyclone source and follow matching Ask/
+Back context. No audio or all-query/browser/language/accessibility review is claimed.
+Historical idle cause and broader rights/clinical/community/local/remote coverage
+remain open. The prior117-record Arabic review assets are unchanged; matching
+updated runtime supplies this fix. The older data-only archive cannot update code.

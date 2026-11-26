@@ -274,7 +274,7 @@ const Terrain3D = (() => {
       else { cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.12, Math.min(1.5, cam.pitch + dy * 0.004)) }
       render();
     });
-    const up = e => { pts.delete(e.pointerId); pinch = 0 };
+    const up = e => { pts.delete(e.pointerId); pinch = 0; if (pts.size === 1) last = [...pts.values()][0] };  // the finger still down drags on from where it is
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
     cv.addEventListener('contextmenu', e => e.preventDefault());
     cv.addEventListener('wheel', e => { e.preventDefault(); cam.dist = Math.max(W * 0.08, Math.min(W * 4, cam.dist * Math.exp(e.deltaY * 0.0015))); render() }, { passive: false });

@@ -130,4 +130,3 @@ def text_search_rows(con, groups, ids=None, limit=600, any_group=False, markers=
 
 # Keep the earlier curator/test entry point while sharing mixed-script matching.
 han_search_rows = text_search_rows
-

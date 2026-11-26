@@ -1,3 +1,7 @@
+# Current household and rural scenario follow-up —27November2026
+
+The current public collection has129readings. Two original plans give equal priority to a household without mains power for seven days and a rural property isolated by floods. See [scenario scope,coverage and verification](AUSTRALIA-SCENARIO-PLANS.md). Prior counts below describe their dated increments. Existing official words,dates,conditions and source restrictions remain unchanged.
+
 # Australian public reference supplement
 
 This follow-up contains127 public readings (102 official practical sources,16 rights readings

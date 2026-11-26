@@ -53,3 +53,5 @@ Build this supplement into a **new folder**, using the existing builder and
 composition instructions. Do not overwrite an installed full catalogue with the
 supplement. Generic composition remains an initial-addition workflow, not an
 in-place updater. This contributor review is not official Setup publication.
+
+Validation on 27November2026:849public and1,062integrated tests pass (five skips and11existing expected failures each). All62focused public/source/composition controls pass on Python3.14 and3.11.18. Actual offline build/search/scoped retrieval,individual source loss/restoration and unchanged catalogue checks pass. Both installed native readers,table layouts,source details,Page/Text,Ask/Back and the linked farm-flood source pass selected checks. Post-use read-only source verification checks166Australianreadings/400searchpages without network or target SQLite connections. See the [review receipt](AUSTRALIA-SCENARIO-PLANS-REVIEW-20261127.json). No professional certification is implied.

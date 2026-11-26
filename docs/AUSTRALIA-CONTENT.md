@@ -1248,3 +1248,27 @@ TFS's dynamically generated footer time is not treated as a substantive review d
 Public collection:110 =87 official practical+14 rights+9 original records.
 Full WA/Tas manuals, local/professional/community review and actual warnings,
 access, centres, animal places and completed plans remain outstanding.
+
+Validation: **833 contribution/build and 905 combined tests pass**, each with
+5 skips and 11 upstream expected failures. Nineteen focused source, 8 Han and
+9 reader-link tests pass. Actual public110/private431 engine checks forbid sockets;
+all110 reader hashes, new WA/Tas queries/scoped retrieval, both local choices and
+retained earlier choices pass. All555 guide references resolve without errors:
+258 household,263 rural,13 health,21 personal. All117 AU content hashes,42 personal
+FTS units,Victoria3,054 names/map hashes and exact infant video hash are preserved.
+Frozen source `ca150fa` passes package/i18n/privacy, strict signature and installed
+431/7 outbound-IP-denial self-check. Pinned roots/setup inputs are unchanged.
+Full429 predecessor app/library backups remain.
+
+Selected native Mac checks verify both new readers and matching source details,
+current WA warnings/contact purposes, Tasmanian last-resort/evacuation distinctions,
+both local choices in both guides, Tasmanian Ask context and Back navigation.
+Native screenshots inspect readable text and source panels. App remains open on
+rural planning with both new choices expanded. No independent local/professional/
+community/accessibility review or long-idle reliability is established.
+
+[110-record public local-planning review](https://github.com/pilkster/lastbook/releases/tag/australia-wa-tas-planning-review-2026-11-26):
+archive extraction, CRC, hashes, FTS, Han and privacy checks accompany the download.
+New choices require matching bundled guide JSON/runtime; a data-only archive
+cannot update an older executable's guide assets. No production manifest, new
+dependency, downloader, TLS or network-policy change. Earlier assets are unchanged.

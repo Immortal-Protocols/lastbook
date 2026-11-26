@@ -207,12 +207,30 @@ def zim_names():
     return encyclopedias.list_files(LIB)
 
 
+def doc_here(doc):
+    """A catalogue entry can outlive a moved or disconnected source folder.
+
+    Check the file on every resolution, independently of the catalogue's mtime,
+    so moving it back also restores its guide links without an index rebuild.
+    Developer libraries may explicitly store their videos on another machine.
+    """
+    record = catalog()['by_id'].get(doc)
+    if not record or not record.get('path'):
+        return False
+    if record.get('kind') == 'video' and record['path'] in remote_records():
+        return True
+    try:
+        return (LIB / record['path']).is_file()
+    except (OSError, ValueError):
+        return False
+
+
 def item_here(i, zims):
     """Is what this guide item opens in this library? An item that opens nothing is hidden, not sent Home with no message."""
     if i.get('zim'):
         parts = i['zim'].split('/')
         return len(parts) > 1 and parts[1] in zims
-    return not i.get('doc') or i['doc'] in catalog()['by_id']
+    return not i.get('doc') or doc_here(i['doc'])
 
 
 def resolve_item(i):
@@ -242,7 +260,7 @@ def topics_resolved():
     for t in topics():
         # Optional regional guides are useful only when their source supplement is installed.
         # Check before keeping source-free introductions and warnings in smaller libraries.
-        if any(doc not in catalog()['by_id'] for doc in t.get('requires_docs', [])):
+        if any(not doc_here(doc) for doc in t.get('requires_docs', [])):
             continue
         t = dict(t)
         t['gaps'] = gaps.get(t['id'], {})

@@ -102,12 +102,24 @@ class Guides(unittest.TestCase):
     def test_regional_guide_requires_its_sources_before_showing_warnings(self):
         topic = {'id': 'regional', 'requires_docs': ['source-a', 'source-b'],
                  'intro': 'A regional introduction', 'limits': [{'text': 'A regional limit'}]}
-        with patch.object(server, 'topics', return_value=[topic]):
+        with tempfile.TemporaryDirectory() as d, patch.object(server, 'LIB', Path(d)), \
+             patch.object(server, 'topics', return_value=[topic]):
+            records = {name: {'path': name + '.html'} for name in ('source-a', 'source-b')}
+            for name in records:
+                (Path(d) / records[name]['path']).write_text('Source', encoding='utf-8')
             for ids in ([], ['source-a']):
-                with patch.object(server, 'catalog', return_value={'by_id': dict.fromkeys(ids)}):
+                with patch.object(server, 'catalog', return_value={'by_id': {name: records[name] for name in ids}}):
                     self.assertEqual(server.topics_resolved(), [])
-            with patch.object(server, 'catalog', return_value={'by_id': dict.fromkeys(['source-a', 'source-b'])}):
+            with patch.object(server, 'catalog', return_value={'by_id': records}):
                 self.assertEqual(server.topics_resolved()[0]['id'], 'regional')
+                (Path(d) / records['source-a']['path']).unlink()
+                self.assertEqual(server.topics_resolved(), [])
+
+    def test_explicit_remote_video_keeps_its_guide_link(self):
+        record = {'kind': 'video', 'path': 'videos/remote.mp4'}
+        with patch.object(server, 'catalog', return_value={'by_id': {'remote': record}}), \
+             patch.object(server, 'remote_records', return_value={record['path']: {'host': 'configured'}}):
+            self.assertTrue(server.item_here({'doc': 'remote'}, []))
 
     def test_not_a_pack_offers_everything(self):
         self.assertIsNone(server.pack_info())

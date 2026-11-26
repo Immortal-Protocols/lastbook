@@ -17,6 +17,48 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_built_guides_follow_moved_sources_with_catalogue_left_intact(self):
+        import server
+        from tools.validate_topics import items
+        with tempfile.TemporaryDirectory() as d, patch.object(socket, 'socket', side_effect=AssertionError('network')):
+            out = Path(d) / 'LastbookData'
+            au.build(out)
+            lib = out / 'library-data'
+            catalogue = lib / 'catalog.json'
+            original_bytes, original_mtime = catalogue.read_bytes(), catalogue.stat().st_mtime_ns
+            with patch.object(server, 'APP', au.ROOT), patch.object(server, 'LIB', lib), \
+                 patch.object(server, '_cat', {'mtime': None}), patch.object(server, 'zim_names', return_value=[]):
+                def resolve():
+                    return {t['id']: t for t in server.topics_resolved()}
+                def links(guides):
+                    return [r['doc'] for g in guides.values() for _, r in items(g) if r.get('doc')]
+                present = resolve()  # Warm the real catalogue cache, not a mocked dictionary.
+                regional = {'au-household', 'au-rural', 'au-health'}
+                self.assertTrue(regional <= present.keys())
+                self.assertIn('nsw-bat-lyssavirus', links(present))
+                source = lib / 'pages/au/nsw-bat-lyssavirus.html'
+                held = Path(d) / 'bat.html'
+                source.rename(held)
+                without_one = resolve()
+                self.assertTrue(regional <= without_one.keys())
+                self.assertNotIn('nsw-bat-lyssavirus', links(without_one))
+                held.rename(source)
+                self.assertEqual(resolve(), present)
+                folder, moved = lib / 'pages/au', Path(d) / 'moved-au'
+                folder.rename(moved)
+                missing = resolve()
+                self.assertFalse(regional & missing.keys())
+                self.assertFalse(links(missing))
+                self.assertEqual(set(missing), set(present) - regional)
+                for gid, guide in missing.items():
+                    self.assertEqual([r['text'] for r in guide['limits']],
+                                     [r['text'] for r in present[gid]['limits']])
+                folder.parent.mkdir(parents=True, exist_ok=True)
+                moved.rename(folder)
+                self.assertEqual(resolve(), present)
+                self.assertEqual(catalogue.read_bytes(), original_bytes)
+                self.assertEqual(catalogue.stat().st_mtime_ns, original_mtime)
+
     def test_bat_factsheet_and_reuse_readings_preserve_reviewed_source_blocks(self):
         audit = json.loads((au.SOURCES / 'VERBATIM-REUSE-AUDIT-20261127.json').read_text())
         records = {r['id']: r for r in au.checked_sources()[0]['sources']}
@@ -142,10 +184,14 @@ class Reference(unittest.TestCase):
         # Include required hub records so this tests card filtering within existing guides.
         base.update({r: records[r] for g in guides for r in g.get('requires_docs', [])})
         for available, expected in [({}, 0), ({'nsw-bat-lyssavirus': records['nsw-bat-lyssavirus']}, 10)]:
-            with patch.object(server, 'APP', au.ROOT), patch.object(server, 'topics', return_value=guides), \
+            with tempfile.TemporaryDirectory() as d, patch.object(server, 'LIB', Path(d)), \
+                 patch.object(server, 'APP', au.ROOT), patch.object(server, 'topics', return_value=guides), \
                  patch.object(server, 'zim_names', return_value=[]), \
                  patch.object(server, 'catalog', return_value={'by_id': {**base, **available}}), \
                  patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                for record in {**base, **available}.values():
+                    path = Path(d) / record['path']; path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text('Source fixture', encoding='utf-8')
                 resolved = server.topics_resolved()
             refs = [r for g in resolved for _, r in items(g) if r.get('doc') == 'nsw-bat-lyssavirus']
             self.assertEqual(len(refs), expected)
@@ -194,9 +240,13 @@ class Reference(unittest.TestCase):
                     c['read'] = c['read'][count:]
         def resolve(available, source=topics):
             cat = {'by_id': {**base, **available}, 'by_path': {}, 'video_tx': {}, 'thumbs': {}}
-            with patch.object(server, 'APP', au.ROOT), patch.object(server, 'topics', return_value=source), \
+            with tempfile.TemporaryDirectory() as d, patch.object(server, 'LIB', Path(d)), \
+                 patch.object(server, 'APP', au.ROOT), patch.object(server, 'topics', return_value=source), \
                  patch.object(server, 'catalog', return_value=cat), patch.object(server, 'zim_names', return_value=[]), \
                  patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                for record in cat['by_id'].values():
+                    path = Path(d) / record['path']; path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text('Source fixture', encoding='utf-8')
                 return {t['id']: t for t in server.topics_resolved()}
         absent = resolve({}); baseline = resolve({}, originals)
         for gid in audit['baseline_topic_sha256']:

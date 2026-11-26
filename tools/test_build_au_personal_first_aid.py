@@ -64,10 +64,14 @@ class Personal(unittest.TestCase):
                  ({'personal-au-snakebite': sources['personal-au-snakebite']}, 1), (sources, 9)]
         for available, expected in cases:
             with self.subTest(available=len(available)), \
+                 tempfile.TemporaryDirectory() as d, patch.object(server, 'LIB', Path(d)), \
                  patch.object(server, 'APP', b.ROOT), patch.object(server, 'topics', return_value=[guide]), \
                  patch.object(server, 'zim_names', return_value=[]), \
                  patch.object(server, 'catalog', return_value={'by_id': {**base, **available}}), \
                  patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                for record in {**base, **available}.values():
+                    path = Path(d) / record['path']; path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text('Source fixture', encoding='utf-8')
                 resolved = server.topics_resolved()[0]
             refs = [r for c in resolved['choices'] for r in c['read'] if r['doc'] in added_ids]
             self.assertEqual(len(refs), expected)

@@ -154,6 +154,71 @@ class VideoTranscripts(unittest.TestCase):
                 with self.subTest(short=short, route=route):
                     self.assertEqual(text, short + ' ' + following)
 
+    def test_payload_line_is_not_dropped_as_another_words_suffix(self):
+        for first, second in (('The first label says 112', '12 is on the second label.'),
+                              ('The first label says something', 'thing is on the second label.')):
+            # Put the short suffix on its own line, where the reader used to mistake it for a repeat.
+            short, rest = second.split(' ', 1)
+            data = ('WEBVTT\n\n00:20.000 --> 00:25.000\n' + first + '\n' + short + '\n' + rest + '\n').encode()
+            expected = first + ' ' + second
+            for route, text in self.texts(data).items():
+                with self.subTest(first=first, route=route):
+                    self.assertEqual(text, expected)
+            with self.subTest(first=first, route='reader timestamp'), patch.object(server, 'LIB', self.root):
+                self.assertEqual(server.vtt_cues('captions.vtt'), [{'t': 20, 'text': expected}])
+            with self.subTest(first=first, route='retrieval timestamp'):
+                self.assertEqual(retrieval.vtt_windows(self.path), [(20, expected)])
+
+    def test_repeated_payload_lines_still_merge_at_word_boundaries(self):
+        data = (b'WEBVTT\n\n00:20.000 --> 00:25.000\nThe label reads\n'
+                b'12 litres.\n12 litres.\nThe next label differs.\n')
+        expected = 'The label reads 12 litres. The next label differs.'
+        for route, text in self.texts(data).items():
+            with self.subTest(route=route):
+                self.assertEqual(text, expected)
+        with patch.object(server, 'LIB', self.root):
+            self.assertEqual(server.vtt_cues('captions.vtt'), [{'t': 20, 'text': expected}])
+
+    def test_cached_video_windows_are_refreshed_with_the_unchanged_track(self):
+        expected = 'The first label says 112 12 is on the second label.'
+        self.path.write_text('WEBVTT\n\n00:20.000 --> 00:25.000\n'
+                             'The first label says 112\n12\nis on the second label.\n', encoding='utf-8')
+        before = self.path.read_bytes(), self.path.stat().st_mtime_ns
+        video = {'id': 'video-test', 'kind': 'video', 'path': 'videos/test.mp4', 'captions': ['captions.vtt']}
+        cat = {'by_id': {video['id']: video}, 'video_tx': {}}
+
+        class CaptionEmbedder:
+            def embed(self, texts):
+                return retrieval.np.zeros((len(texts), retrieval.DIM), dtype='float32')
+
+        with patch.object(retrieval, 'LIB', self.root), patch.object(retrieval, 'IDX', self.root / 'index'), \
+                patch.object(retrieval, 'AVAILABLE', True), patch.object(retrieval, 'Embedder', CaptionEmbedder):
+            index = retrieval.Index(lambda: cat, lambda record: ('', 1), self.root / 'search.sqlite')
+            try:
+                # Seed the signature and text an older reader kept, using no real model.
+                with patch.object(index, 'sources', return_value=[(video['id'], 'vtt:captions.vtt', -1,
+                                                                  ('vtt', 'captions.vtt'))]):
+                    self.assertEqual(index.update(), 1)
+                db = index._db()
+                try:
+                    db.execute('UPDATE chunk SET text=?', ('The first label says 112 is on the second label.',))
+                finally:
+                    db.close()
+
+                self.assertEqual(index.update(), 1)
+                db = index._db()
+                try:
+                    self.assertEqual(db.execute('SELECT t,text FROM chunk WHERE active=1').fetchall(), [(20, expected)])
+                    self.assertEqual(db.execute('SELECT count(*) FROM chunk WHERE active=0').fetchone(), (1,))
+                finally:
+                    db.close()
+                self.assertEqual(index.update(), 0)
+                self.assertEqual((self.path.read_bytes(), self.path.stat().st_mtime_ns), before)
+            finally:
+                reader = getattr(index._tls, 'ro', None)
+                if reader is not None:
+                    reader.close()
+
     def test_empty_or_metadata_only_track_has_no_transcript(self):
         for data in (b'', b'WEBVTT\n\n', b'WEBVTT\n\nNOTE\nEditor notes only.\n'):
             for route, text in self.texts(data).items():

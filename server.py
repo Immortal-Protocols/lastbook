@@ -663,7 +663,7 @@ def vtt_cues(path):
         cur = {'t': t, 'text': ''}
         for line in lines:
             txt = html.unescape(re.sub(r'<[^>]+>', '', line)).strip()
-            if txt and not cur['text'].endswith(txt):
+            if txt and not (cur['text'] == txt or cur['text'].endswith(' ' + txt)):
                 cur['text'] = (cur['text'] + ' ' + txt).strip()
         cues.append(cur)
     # auto captions repeat lines across cues; drop repeats and merge into ~sentence chunks

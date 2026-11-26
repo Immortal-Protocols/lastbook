@@ -92,17 +92,18 @@ class PersonalComposition(unittest.TestCase):
 
     def test_existing_public_composition_is_retained_and_matching_verifier_is_clear(self):
         public = self.root / 'public'
+        public_count = len(json.loads((pc.common.au.SOURCES / 'manifest.json').read_text())['sources'])
         pc.common.compose(self.base, public)
         prior = {name: (public / name).read_bytes() for name in pc.common.RESERVED}
         before = self.hashes(public)
         report = self.compose(public)
-        self.assertEqual((report['base_records'], report['records'], report['search_units']), (125, 127, 128))
+        self.assertEqual((report['base_records'], report['records'], report['search_units']), (public_count + 1, public_count + 3, public_count + 4))
         self.assertEqual(self.hashes(public), before)
         for name, data in prior.items():
             self.assertEqual((self.out / name).read_bytes(), data)
         self.assertEqual(set(report['base_receipts']), set(pc.common.RESERVED))
-        self.assertEqual(pc.common.verify(public)['records'], 125)
-        self.assertEqual(pc.verify(self.out)['records'], 127)
+        self.assertEqual(pc.common.verify(public)['records'], public_count + 1)
+        self.assertEqual(pc.verify(self.out)['records'], public_count + 3)
         with self.assertRaisesRegex(ValueError, 'compose_au_personal_first_aid.py --verify'):
             pc.common.verify(self.out)
 
@@ -118,6 +119,7 @@ class PersonalComposition(unittest.TestCase):
 
     def test_public_pack_selection_cannot_promote_composed_original_or_hub(self):
         public = self.root / 'public'
+        public_count = len(json.loads((pc.common.au.SOURCES / 'manifest.json').read_text())['sources'])
         pc.common.compose(self.base, public)
         self.compose(public)
         records = pc.common.read_records(self.out)

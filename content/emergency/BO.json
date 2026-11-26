@@ -254,6 +254,39 @@
       "verified": "official"
     },
     {
+      "kind": "ambulance",
+      "name": "Auxilio La Paz 167, La Paz municipal ambulance network (Red de Ambulancias)",
+      "number": "167",
+      "how": [
+        "call"
+      ],
+      "works_from": [],
+      "free": null,
+      "keywords": {
+        "es": [
+          "ambulancia",
+          "auxilio la paz",
+          "red de ambulancias",
+          "urgencia",
+          "emergencia médica",
+          "la paz"
+        ],
+        "en": [
+          "ambulance",
+          "medical emergency",
+          "emergency"
+        ]
+      },
+      "when": "Municipality of La Paz only: the municipal pre-hospital emergency and ambulance service (Sistema Municipal de Atención Prehospitalaria y de Emergencias) of the Gobierno Autónomo Municipal de La Paz, listed as \"Red de Ambulancias 167\" among the municipality's emergency numbers. Not for El Alto, which has SUMA 161. The municipality calls 167 a free line (\"línea gratuita\") answered 24 hours a day, every day; no page says whether the ambulance care itself is charged.",
+      "source": [
+        "https://lapaz.bo/direcciones-telefonos/",
+        "https://lapaz.bo/auxilio-la-paz-167-presto-mas-de-8-mil-atenciones-prehospitalarias-y-de-emergencia/"
+      ],
+      "area": "Municipality of La Paz",
+      "checked_on": "2026-11-25",
+      "verified": "official"
+    },
+    {
       "kind": "other",
       "name": "Línea de Emergencia a la Violencia 156 (Defensoría Municipal de La Paz)",
       "number": "156",

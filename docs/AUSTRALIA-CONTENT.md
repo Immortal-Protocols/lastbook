@@ -4,6 +4,17 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Optional nonprofit adult traumatic-event source — 27 November 2026
+
+A separate explicit nonprofit source path adds the unchanged seven-page MHFA adult
+traumatic-event guideline (2019; Version 2.3, 2022). Its own physical-page-7 grant
+permits nonprofit reproduction with source acknowledgement. It is excluded from
+the 125-record public supplement and all general pack sizes. The source PDF,
+audience/date conditions and requested credit remain intact; commercial permission
+and independent clinical approval are not inferred. Household and rural guides
+receive matching conditional access. See [commands and restrictions](AUSTRALIA-TRAUMA-REFERENCE.md)
+and [exact source/guide audit](../content/regions/au/TRAUMA-SOURCE-AUDIT-20261127.json).
+
 ## Current scope audit — 27 November 2026
 
 The [requirement-by-requirement audit](AUSTRALIA-SCOPE-AUDIT-20261127.md) reconciles

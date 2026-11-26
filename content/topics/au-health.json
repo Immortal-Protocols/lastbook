@@ -72,6 +72,19 @@
           "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
         }
       ]
+    },
+    {
+      "id": "adult-traumatic-events",
+      "label": "Support an adult after a traumatic event",
+      "hint": "Read the unchanged MHFA adult guideline and its source conditions.",
+      "read": [
+        {
+          "doc": "au-mhfa-adult-traumatic-events",
+          "page": 1,
+          "label": "Adult traumatic events: unchanged MHFA original",
+          "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+        }
+      ]
     }
   ],
   "limits": [
@@ -109,6 +122,12 @@
       "doc": "nsw-aboriginal-planning",
       "label": "NSW: Aboriginal-led public health emergency planning",
       "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+    },
+    {
+      "doc": "au-mhfa-adult-traumatic-events",
+      "page": 1,
+      "label": "Adult traumatic events: unchanged MHFA original",
+      "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
     }
   ],
   "learn": [
@@ -141,6 +160,12 @@
       "doc": "nsw-aboriginal-planning",
       "label": "NSW: Aboriginal-led public health emergency planning",
       "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+    },
+    {
+      "doc": "au-mhfa-adult-traumatic-events",
+      "page": 1,
+      "label": "Adult traumatic events: unchanged MHFA original",
+      "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
     }
   ],
   "related": [

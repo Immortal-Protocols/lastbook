@@ -1,0 +1,185 @@
+{
+  "checked": "2026-11-27",
+  "source": {
+    "id": "au-mhfa-adult-traumatic-events",
+    "title": "Traumatic Events (Adults): Mental Health First Aid Guidelines",
+    "kind": "pdf",
+    "publisher": "Mental Health First Aid International",
+    "collection": "Australian nonprofit source references",
+    "category": "health",
+    "edition": "Revised 2019; Version 2.3 (2022); checked 27 November 2026",
+    "source_url": "https://mhfainternational.org/guidelines/",
+    "pdf_url": "https://mhfainternational.org/wp-content/uploads/Traumatic-Events-Adult-Mental-Health-First-Aid-Guidelines-2019-1.pdf",
+    "bytes": 223480,
+    "sha256": "4001b126c7940bd75581f7ac5217846646536c5a4bcbfa0907aae2506767b560",
+    "pages": 7,
+    "distribution": "nonprofit-only",
+    "license": "LicenseRef-MHFA-nonprofit-reproduction",
+    "rights": "Copyright retained by Mental Health First Aid International. Reproduction permitted for non-profit purposes with source acknowledgement;no commercial-use grant inferred.",
+    "attribution": "Mental Health First Aid Australia. Traumatic Events: Mental Health First Aid Guidelines (revised 2019). Melbourne: Mental Health First Aid Australia; 2019.",
+    "rights_physical_page": 7,
+    "note": "Unmodified adult traumatic-event guideline, including adolescent considerations. General recommendations most suitable for high-income countries with developed health systems. Revised 2019, Version 2.3 (2022); retrieval is not a new clinical review. Companion sources are not bundled. Nonprofit reproduction only with source acknowledgement; not training or independent clinical review."
+  },
+  "official_index": {
+    "file": "mhfa-index.html",
+    "url": "https://mhfainternational.org/guidelines/",
+    "final_url": "https://mhfainternational.org/guidelines/",
+    "bytes": 266929,
+    "sha256": "21974767e9665dc611aff74a5530dbc491eabe5046edaea4103b9409e5a9e12a",
+    "content_type": "text/html; charset=UTF-8"
+  },
+  "original_pdf": {
+    "file": "mhfa-adult-traumatic-events.pdf",
+    "url": "https://mhfainternational.org/wp-content/uploads/Traumatic-Events-Adult-Mental-Health-First-Aid-Guidelines-2019-1.pdf",
+    "final_url": "https://mhfainternational.org/wp-content/uploads/Traumatic-Events-Adult-Mental-Health-First-Aid-Guidelines-2019-1.pdf",
+    "bytes": 223480,
+    "sha256": "4001b126c7940bd75581f7ac5217846646536c5a4bcbfa0907aae2506767b560",
+    "content_type": "application/pdf"
+  },
+  "grant": {
+    "physical_page": 7,
+    "conditions": "Non-profit reproduction with source acknowledgement;commercial-use permission is not inferred.",
+    "exact_grant": "Although these guidelines are copyright, they can be freely reproduced for non-profit purposes provided the source is acknowledged."
+  },
+  "scope": {
+    "audience": "Public support for adults after potentially traumatic events;adolescent considerations onphysical6;not a general child disaster manual.",
+    "context": "Most suitable for high-income countries with developed health systems. Allsevenpages,development/citation conditions and companion references remain in the original. No treatment wording rewritten.",
+    "dates": "Guidelines revised2019;Version2.3,2022;acquired27November2026;no new clinical-review date inferred."
+  },
+  "layout": "All7physicalpages rendered and inspected at1400px;allpages yield text. The diagnostic box continues fromphysical1to2;the four-week discussion and urgent professional-help statements retain their completephysical5context;adolescentphysical6andrightsphysical7retained.",
+  "excluded_candidate": {
+    "record": {
+      "file": "redcross-guide.pdf",
+      "url": "https://www.redcross.org.au/globalassets/cms/documents/emergency-services/psychological-first-aid-guide-2024.pdf",
+      "final_url": "https://www.redcross.org.au/globalassets/cms/documents/emergency-services/psychological-first-aid-guide-2024.pdf",
+      "bytes": 1454356,
+      "sha256": "127f194340196010d51934a5bc0508445067f5ab22f2a0879de6ccaa20723d51",
+      "content_type": "application/pdf"
+    },
+    "rights_physical_page": 2,
+    "decision": "RedCross thirdedition2020 PDF linked under2024filename reserves reproduction/storage/transmission without prior written consent. No source body/render/PDF bundled or published.",
+    "not_inferred": "An agency link,download button or later URL filename is not a reuse grant or a new edition."
+  },
+  "guide_baseline_sha256": {
+    "au-household": "48ebbf2541845b935933652f422bf2efcade007eec1ce40c066ff7df8067a07c",
+    "au-rural": "9bbe66635f8317b2eaf570cd0503cc643a4c6c070549ebce872c4ea49e3cf4bc",
+    "au-health": "2c66a2b29d0a97f0d867a28f7bd3ba6597730cc960395e64dcd82e589528d8b6",
+    "health": "2609b7dc908daf50774c7f44d194db17084b097386b50adb03bdbeb38a8cff19"
+  },
+  "guide_placements": [
+    {
+      "guide": "au-household",
+      "section": "choice",
+      "choice": "adult-traumatic-events",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-household",
+      "section": "prepare",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-household",
+      "section": "learn",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "section": "choice",
+      "choice": "adult-traumatic-events",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "section": "prepare",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-rural",
+      "section": "learn",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-health",
+      "section": "choice",
+      "choice": "adult-traumatic-events",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-health",
+      "section": "prepare",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "au-health",
+      "section": "learn",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    },
+    {
+      "guide": "health",
+      "section": "choice",
+      "choice": "mind",
+      "reference": {
+        "doc": "au-mhfa-adult-traumatic-events",
+        "page": 1,
+        "label": "Adult traumatic events: unchanged MHFA original",
+        "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations;general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits;not training or independent clinical review."
+      }
+    }
+  ],
+  "unchanged": "Removing the newchoice/refs restores all4guides exactly. Allpreexisting choices,source references,labels,fields,warnings/order preserved.",
+  "distribution": "Separate explicit nonprofit source path;not in125record manifest/archive. General pack selectors/verifier exclude nonprofit-only alongside existing personal restrictions. Whole mixed personal library remains private.",
+  "not_claimed": "RedCrossPFAmanualcoverage,allchildtopics,independentclinicalapproval,commercialreusepermission,training,localmentalhealthserviceavailability or publicdistribution of privatebase/index.",
+  "gaps_baseline_sha256": "6cac560ea391f3d5578425d10620b0abf3712ddfb8050324d85afdac5443c204",
+  "gap_update": {
+    "guide": "hurt",
+    "index": 1,
+    "before": "No stand-alone psychological first aid guide. The medical encyclopedia has an overview article (under Go deeper), but not a guide to follow.",
+    "after": "No full stand-alone psychological first aid manual. The optional nonprofit MHFA adult traumatic-event guideline appears when separately installed; it is not the Australian Red Cross PFA manual. Existing encyclopedia material remains an overview."
+  }
+}

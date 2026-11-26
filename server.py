@@ -737,40 +737,77 @@ _socal = {'cells': None}
 
 
 @functools.lru_cache(maxsize=1)
-def detail_cells():
-    """A region map's own box and 0.05° cells (detail-cells.json), or None for a US map."""
+def _read_detail_cells(path, stamp):
+    """Cache the parsed cells only while the source file's identity is unchanged."""
     try:
-        d = json.loads((HERE / 'derived/geo/detail-cells.json').read_text(encoding='utf-8'))
-        if isinstance(d, dict) and isinstance(d.get('bbox'), list) and len(d['bbox']) == 4 and isinstance(d.get('cells'), list):
+        d = json.loads(path.read_text(encoding='utf-8'))
+        if (isinstance(d, dict) and isinstance(d.get('bbox'), list) and len(d['bbox']) == 4
+                and all(type(v) in (int, float) and math.isfinite(v) for v in d['bbox'])
+                and -180 <= d['bbox'][0] < d['bbox'][2] <= 180 and -90 <= d['bbox'][1] < d['bbox'][3] <= 90
+                and isinstance(d.get('cells'), list) and all(type(v) is int for v in d['cells'])):
             return d
-    except (OSError, ValueError):
+    except (OSError, ValueError, OverflowError):
         pass
     return None
 
 
+def detail_cells():
+    """The regional detail coverage, or None when absent/unreadable; no US inference."""
+    path = HERE / 'derived/geo/detail-cells.json'
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return _read_detail_cells(path, (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_mode))
+
+
+detail_cells.cache_clear = _read_detail_cells.cache_clear
+
+
+@functools.lru_cache(maxsize=1)
+def _regional_map_name(root, stamps):
+    name = setup_api.install.map_name(root)
+    return name if re.fullmatch(r'[a-z]{2}-[a-z0-9-]+', name) else None
+
+
+def regional_map_name():
+    """Declared regional identity, cached only while map/pack metadata is unchanged."""
+    stamps = []
+    for name in ('map-set.json', 'pack.json'):
+        try:
+            stat = (HERE / name).stat()
+            stamps.append((stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+        except OSError:
+            stamps.append(None)
+    return _regional_map_name(HERE, tuple(stamps))
+
+
 def detail_bbox():
-    """(west, south, east, north) the detailed map covers: a region's box, else Southern California."""
+    """Regional coverage or None if unavailable; retain the legacy US/SoCal box."""
     d = detail_cells()
-    return tuple(d['bbox']) if d is not None else SOCAL_BBOX
+    return tuple(d['bbox']) if d is not None else None if regional_map_name() else SOCAL_BBOX
 
 
 def socal_cells():
-    """0.05° cells holding detailed map features; national rows inside them are duplicates and are skipped."""
+    """Known detail cells; unavailable regional coverage never uses the SoCal mask."""
+    d = detail_cells()
+    if d is not None:
+        if _socal.get('region') is not d:
+            _socal.update(region=d, regional_cells=frozenset(d['cells']))
+        return _socal['regional_cells']
+    if regional_map_name():
+        return frozenset()
     if _socal['cells'] is None:
-        d = detail_cells()
-        if d is not None:
-            _socal['cells'] = {int(c) for c in d['cells']}
-        else:
-            cache = HERE / 'derived/geo/socal-cells.json'
-            try:
-                _socal['cells'] = set(json.loads(cache.read_text(encoding='utf-8')))
-            except (OSError, ValueError):
-                db = mapdb()
-                cells = set() if db is None else {r[0] for r in db.execute(
-                    'SELECT DISTINCT CAST((minx+180)/? AS INT)*100000+CAST((miny+90)/? AS INT) FROM feat_idx WHERE maxx-minx<?',
-                    (SOCAL_CELL, SOCAL_CELL, SOCAL_CELL))}
-                cache.write_text(json.dumps(sorted(cells)))
-                _socal['cells'] = cells
+        cache = HERE / 'derived/geo/socal-cells.json'
+        try:
+            cells = set(json.loads(cache.read_text(encoding='utf-8')))
+        except (OSError, ValueError):
+            db = mapdb()
+            cells = set() if db is None else {r[0] for r in db.execute(
+                'SELECT DISTINCT CAST((minx+180)/? AS INT)*100000+CAST((miny+90)/? AS INT) FROM feat_idx WHERE maxx-minx<?',
+                (SOCAL_CELL, SOCAL_CELL, SOCAL_CELL))}
+            cache.write_text(json.dumps(sorted(cells)))
+        _socal['cells'] = cells
     return _socal['cells']
 
 
@@ -1192,12 +1229,16 @@ def socal_classes():
 def _poi_sources(west, south, east, north):
     """(connection, skip-detail-duplicates) pairs for service points: the detailed map and, where built, the national one."""
     out = []
-    w, s, e, n = detail_bbox()
-    if mapdb() is not None and east >= w and west <= e and north >= s and south <= n:
-        out.append((mapdb(), False))
+    box = detail_bbox()
+    overlaps = box is not None and east >= box[0] and west <= box[2] and north >= box[1] and south <= box[3]
+    db = mapdb()
+    if db is not None and (box is None or overlaps):
+        # An unknown coverage box does not erase real points: the caller's
+        # spatial SQL still clips them. It only disables coverage-based dedupe.
+        out.append((db, False))
     nat = national_mapdb()
     if nat is not None:
-        dedupe = east >= w and west <= e and north >= s and south <= n and mapdb() is not None
+        dedupe = overlaps and db is not None
         if dedupe and not getattr(_tls, 'socal_fn', False):
             nat.create_function('socal', 3, lambda cls, lo, la: 1 if cls in socal_classes() and in_socal(lo, la) else 0, deterministic=True)
             _tls.socal_fn = True
@@ -1663,12 +1704,17 @@ def map_info():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
     extra = {'aerial': has_aerial(), 'place_search': PLACEDB.is_file()}
-    if pack:
+    region = detail_cells()
+    name = (region or {}).get('name') or regional_map_name()
+    if pack or name:
         extra.update(map_contents())
-        region = detail_cells()
-        if region:
-            extra['region'] = region.get('name')
-            geo = [{'label': 'Regional streets, buildings, water and help points', 'status': meta.get('source', 'OpenStreetMap contributors')}]
+        if name:
+            extra['region'] = name
+            status = meta.get('source', 'OpenStreetMap contributors')
+            if region is None:
+                extra.update(detail=False, bounds=None)
+                status += ' · Detail coverage unavailable'
+            geo = [{'label': 'Regional streets, buildings, water and help points', 'status': status}]
         else:
             geo = pack_datasets(extra)
     return {**extra, 'meta': meta, 'datasets': geo, 'national': {k: v for k, v in national_status().items() if k not in ('source', 'database')}, 'version': data_version(), 'aerial_detail': detail, 'aerial_rev': rev, 'terrain_circle': tdetail}

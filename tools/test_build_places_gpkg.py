@@ -78,5 +78,44 @@ class Places(unittest.TestCase):
                 b.build([], out, 'Region')
             self.assertEqual(out.read_bytes(), b'keep')
 
+    def test_first_completed_overlapping_build_keeps_its_output(self):
+        with tempfile.TemporaryDirectory() as d:
+            src, out = Path(d) / 'source.gpkg', Path(d) / 'places.sqlite'; fixture(src)
+            rows = b.place_rows
+            winner = []
+            def overlapping(source, region, bbox):
+                # The outer build already passed its output check and owns a
+                # temporary database. Complete a second build before it places.
+                if region == 'Losing region':
+                    with patch.object(b, 'place_rows', rows):
+                        self.assertEqual(b.build([src], out, 'Winning region'), 5)
+                    winner.append(out.read_bytes())
+                yield from rows(source, region, bbox)
+            with patch.object(b, 'place_rows', overlapping), self.assertRaisesRegex(ValueError, 'already exists'):
+                b.build([src], out, 'Losing region')
+            self.assertEqual(out.read_bytes(), winner[0])
+            with closing(sqlite3.connect(out)) as db:
+                self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
+                self.assertEqual(db.execute('SELECT DISTINCT detail FROM place').fetchall(), [('Winning region (OpenStreetMap)',)])
+            self.assertEqual(out.stat().st_nlink, 1)
+            self.assertEqual(list(Path(d).glob('.places-*')), [])
+
+    def test_dangling_output_link_is_preserved_even_if_it_appears_at_final_placement(self):
+        with tempfile.TemporaryDirectory() as d:
+            src, out = Path(d) / 'source.gpkg', Path(d) / 'places.sqlite'; fixture(src)
+            real_link = b.os.link
+            def late_link(staged, target):
+                out.symlink_to('missing.sqlite')
+                return real_link(staged, target)
+            with patch.object(b.os, 'link', late_link), self.assertRaisesRegex(ValueError, 'already exists'):
+                b.build([src], out, 'Region')
+            self.assertTrue(out.is_symlink()); self.assertEqual(out.readlink(), Path('missing.sqlite'))
+            self.assertFalse((out.parent / 'missing.sqlite').exists())
+            self.assertEqual(list(Path(d).glob('.places-*')), [])
+            # An already dangling link is refused before any source is opened.
+            with self.assertRaisesRegex(ValueError, 'already exists'):
+                b.build([], out, 'Region')
+            self.assertTrue(out.is_symlink()); self.assertEqual(list(Path(d).glob('.places-*')), [])
+
 
 if __name__ == '__main__': unittest.main()

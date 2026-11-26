@@ -106,7 +106,7 @@ class MapCoverage(unittest.TestCase):
             st={region}; values.push([0.5,1,4.2,10].map(dist));
           }
           console.log(JSON.stringify(values));
-        """.replace('\n+', '\n')
+        """
         result = subprocess.run([shutil.which('node'), '-e', script], capture_output=True, text=True, timeout=10, check=True)
         metric = ['500 m','1.0 km','4.2 km','10 km']
         legacy = ['500 m','1000 m','2.6 mi','6.2 mi']

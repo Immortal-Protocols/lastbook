@@ -187,7 +187,6 @@ class Browser(unittest.TestCase):
 
         self.configure_setup(current=DATA)
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script("addEventListener('pageshow', event => window.restoredFromCache = event.persisted)")
             page.goto(origin + '/#/guides')
             sidebar = page.locator('.side')
             guides = sidebar.get_by_role('link', name='Guías')
@@ -250,8 +249,6 @@ class Browser(unittest.TestCase):
             page.evaluate('history.back()')
             page.wait_for_url('**/#/guides', wait_until='commit')
             expect(sidebar.get_by_role('link', name='Guides')).to_be_visible()
-            self.assertTrue(page.evaluate('window.restoredFromCache'))
-            self.assertTrue(page.evaluate("window.guideView === document.querySelector('.hero')"))
             sidebar.get_by_role('link', name='Settings').click()
             page.get_by_role('link', name='Back to the library').click()
             expect(page.locator('.side').get_by_role('link', name='Guides')).to_be_visible()

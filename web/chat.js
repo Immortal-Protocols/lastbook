@@ -769,7 +769,14 @@ const Chat = (() => {
     const y = scrollY, active = document.activeElement, message = active?.closest?.('.msg'), action = active?.dataset?.act;
     const messageId = message?.id || '', id = active?.id || '';
     const list = $('#csList'), listTop = list?.scrollTop || 0;
+    const disclosures = new Map([...document.querySelectorAll('#chatLog .msg[id]')].map(el => [
+      el.id, [...el.querySelectorAll('details.also')].map(item => item.open),
+    ]));
     renderSide(); renderCtx(); renderLog(); setBusy(!!busy());
+    for (const [messageId, openStates] of disclosures) {
+      const fresh = document.getElementById(messageId);
+      fresh?.querySelectorAll('details.also').forEach((item, index) => { item.open = !!openStates[index]; });
+    }
     if (list) list.scrollTop = listTop;
     const focus = id ? document.getElementById(id) : (messageId && action ? document.querySelector(`#${CSS.escape(messageId)} [data-act=\"${CSS.escape(action)}\"]`) : null);
     if (focus?.isConnected) focus.focus({ preventScroll: true });

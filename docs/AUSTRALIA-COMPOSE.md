@@ -92,3 +92,7 @@ separate and exclude private originals and personal index material.
 
 This contributor workflow is available before upstream acceptance. It does not
 make the supplement an official Setup download or imply maintainer endorsement.
+
+The dated [composition review](AUSTRALIA-COMPOSITION-REVIEW-20261127.json) records
+the real-library preservation check and regression/failure tests. It contains
+counts and review limits, without copied library data or private source text.

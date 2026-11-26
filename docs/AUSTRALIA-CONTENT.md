@@ -4,6 +4,23 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## Compose a new full library — 27 November 2026
+
+The offline [composition tool](AUSTRALIA-COMPOSE.md) can now add these readings to
+a new copy of an existing closed library, retaining its sources, maps, models,
+search rows and private-use markers. It refuses collisions, detects base changes,
+uses an exclusive rename and gives the copy a local identity and full integrity
+manifest. A read-only verification command replaces official Setup Check/Repair
+for this local composition. All base privacy/reuse restrictions still apply.
+
+The [composition review](AUSTRALIA-COMPOSITION-REVIEW-20261127.json) records 904
+contribution and 976 combined tests, plus all 22 focused cases on Python 3.14/3.11.
+A real 314-record base becomes a separate 435-record library; its original 12,750
+search rows and 1,256 retained files (9,287,617,106 bytes) are unchanged. All 121 new
+reader hashes and the 1,506-file manifest verify. No private copy is published.
+The installed 442-record Mac review remains unchanged. This is contributor tooling,
+not an official Setup listing or a new runtime/data release.
+
 ## First-aid source navigation and selection — 27 November 2026
 
 The ordinary injury/illness guide now adds nine source links across six existing

@@ -99,27 +99,27 @@
     {
       "id": "vic-bushfire",
       "label": "Read Victorian bushfire survival guidance",
-      "hint": "Four dated CFA text parts: risk,preparation,warnings and last resort. Graphics are excluded; this library does not receive warnings.",
+      "hint": "CFA’s dated Victorian guide covers fire risk, preparation, warnings and last-resort dangers. Maps and illustrations are excluded.",
       "read": [
         {
           "doc": "vic-cfa-fire-risk",
           "label": "Victoria: CFA fire risk, decisions and property preparation",
-          "note": "Written text and annotation lists from source pages2-7:fire risk,district names,four rating rows,ten decisions and property preparation. District map and imagery are excluded. All eight rating-cell associations retain their labels. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 2-7. Fire risk, leave-early decisions and property preparation. Source maps and illustrations are excluded."
         },
         {
           "doc": "vic-cfa-prepare-leave",
           "label": "Victoria: CFA preparation, kit and leaving checklists",
-          "note": "Written text from source pages8-10:all12 before-summer items,pet and emergency-kit lists,and both fire-risk-day checklists. Original conditions,including only-if-you-have-time,remain. Photographs/imagery are excluded. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions."
         },
         {
           "doc": "vic-cfa-warnings",
           "label": "Victoria: CFA warning information and watch zones",
-          "note": "Written text from source pages11-13,including all four WHEN/WHAT TO DO rows. Retains July2022 Emergency Alert,relay,broadcaster/social-media descriptions; separate bundled2026 NEMA/accessible-calling context is linked. No current service/reception test. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 11-13. Dated warning descriptions, with links to the 2026 NEMA announcement and accessible-calling readings."
         },
         {
           "doc": "vic-cfa-during-fire",
           "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
-          "note": "Written body from source pages14-19,including full building/car procedures and all last-resort warnings. Illustrations/diagram labels are excluded. Dated July2022 source; current CFA defending-property context retained separately. Leaving early remains the safest option; safety is not guaranteed. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
         }
       ]
     },
@@ -514,22 +514,22 @@
     {
       "doc": "vic-cfa-fire-risk",
       "label": "Victoria: CFA fire risk, decisions and property preparation",
-      "note": "Written text and annotation lists from source pages2-7:fire risk,district names,four rating rows,ten decisions and property preparation. District map and imagery are excluded. All eight rating-cell associations retain their labels. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 2-7. Fire risk, leave-early decisions and property preparation. Source maps and illustrations are excluded."
     },
     {
       "doc": "vic-cfa-prepare-leave",
       "label": "Victoria: CFA preparation, kit and leaving checklists",
-      "note": "Written text from source pages8-10:all12 before-summer items,pet and emergency-kit lists,and both fire-risk-day checklists. Original conditions,including only-if-you-have-time,remain. Photographs/imagery are excluded. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions."
     },
     {
       "doc": "vic-cfa-warnings",
       "label": "Victoria: CFA warning information and watch zones",
-      "note": "Written text from source pages11-13,including all four WHEN/WHAT TO DO rows. Retains July2022 Emergency Alert,relay,broadcaster/social-media descriptions; separate bundled2026 NEMA/accessible-calling context is linked. No current service/reception test. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 11-13. Dated warning descriptions, with links to the 2026 NEMA announcement and accessible-calling readings."
     },
     {
       "doc": "vic-cfa-during-fire",
       "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
-      "note": "Written body from source pages14-19,including full building/car procedures and all last-resort warnings. Illustrations/diagram labels are excluded. Dated July2022 source; current CFA defending-property context retained separately. Leaving early remains the safest option; safety is not guaranteed. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
     }
   ],
   "learn": [
@@ -691,22 +691,22 @@
     {
       "doc": "vic-cfa-fire-risk",
       "label": "Victoria: CFA fire risk, decisions and property preparation",
-      "note": "Written text and annotation lists from source pages2-7:fire risk,district names,four rating rows,ten decisions and property preparation. District map and imagery are excluded. All eight rating-cell associations retain their labels. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 2-7. Fire risk, leave-early decisions and property preparation. Source maps and illustrations are excluded."
     },
     {
       "doc": "vic-cfa-prepare-leave",
       "label": "Victoria: CFA preparation, kit and leaving checklists",
-      "note": "Written text from source pages8-10:all12 before-summer items,pet and emergency-kit lists,and both fire-risk-day checklists. Original conditions,including only-if-you-have-time,remain. Photographs/imagery are excluded. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions."
     },
     {
       "doc": "vic-cfa-warnings",
       "label": "Victoria: CFA warning information and watch zones",
-      "note": "Written text from source pages11-13,including all four WHEN/WHAT TO DO rows. Retains July2022 Emergency Alert,relay,broadcaster/social-media descriptions; separate bundled2026 NEMA/accessible-calling context is linked. No current service/reception test. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 11-13. Dated warning descriptions, with links to the 2026 NEMA announcement and accessible-calling readings."
     },
     {
       "doc": "vic-cfa-during-fire",
       "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
-      "note": "Written body from source pages14-19,including full building/car procedures and all last-resort warnings. Illustrations/diagram labels are excluded. Dated July2022 source; current CFA defending-property context retained separately. Leaving early remains the safest option; safety is not guaranteed. Text-only adaptation; source wording retained,with visually verified extraction corrections. Source edition July2022; retrieved26November2026."
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
     }
   ],
   "related": [

@@ -93,7 +93,7 @@ No source procedure or original PDF is rewritten.
 
 If you also need the public readings, first use the
 [public composition command](AUSTRALIA-COMPOSE.md), then pass that new full copy as
-`--base` here. A 314-record base becomes 438 after the public addition, then 445
+`--base` here. A 314-record base becomes 439 after the public addition, then 446
 after the six originals and their directory. The personal step adds 42 searchable
 units: 41 physical PDF pages and one directory entry. This is an explicit personal
 workflow; the public builder and public downloads still exclude these originals.

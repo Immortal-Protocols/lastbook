@@ -20,8 +20,9 @@ class Reference(unittest.TestCase):
     def test_text_direction_is_explicit_and_rejects_nonstandard_values(self):
         for direction in ['rtl', 'ltr', 'auto']:
             page = au.Page()
-            page.feed('<html lang="ar" dir="' + direction + '"><body><p>استعد للفيضانات</p></body></html>')
+            page.feed('<html lang="ar" dir="' + direction + '"><body><p>استعد للفيضانات <bdi dir="ltr">131 450</bdi></p></body></html>')
             self.assertIn('استعد للفيضانات', ''.join(page.text))
+            self.assertIn('131 450', ''.join(page.text))
         for direction in ['sideways', '', 'RTL', 'rtl onload=alert(1)']:
             with self.assertRaisesRegex(ValueError, 'Invalid text direction'):
                 au.Page().feed('<p dir="' + direction + '">Text</p>')

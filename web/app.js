@@ -915,6 +915,13 @@ function wireMoments({ video = null, player = null, available = null, start = nu
 }
 
 /* ------------------------------------------------------------- reader -- */
+function plainReadingText(text) {
+  // Isolate numeric runs: in RTL paragraphs even a phone number's space can
+  // reorder its groups. The indexed and spoken text, and every digit, stay as-is.
+  return String(text).split(/([+\-−]?(?:\p{Nd}|\.\p{Nd})(?:[\p{Nd} \t.,:/+\-−٫٬]*\p{Nd})?)/gu)
+    .map((part, i) => i % 2 ? `<bdi dir="ltr">${esc(part)}</bdi>` : esc(part)).join('');
+}
+
 async function reader(id, page, from, view) {
   const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
   if (stale(me)) return;   // the person has gone to another page
@@ -1003,7 +1010,7 @@ async function reader(id, page, from, view) {
       const t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`);
       const txt = (t.text || '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       const language = typeof d.language === 'string' && d.language.trim() ? ` lang="${esc(d.language)}"` : '';
-      body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext"${language} dir="auto">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
+      body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext"${language} dir="auto">${plainReadingText(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, 'Couldn’t load the text.') }
   }
   if (!isPdf) return;

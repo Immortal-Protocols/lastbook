@@ -21,7 +21,7 @@ SOURCES = ROOT / 'content/regions/au'
 SCHEMA = 'fts5(doc_id UNINDEXED,title,collection,category,path UNINDEXED,page UNINDEXED,body,tokenize="unicode61")'
 ALLOWED = {'html', 'head', 'meta', 'title', 'body', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
            'p', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'table', 'thead', 'tbody', 'tr',
-           'th', 'td', 'caption', 'blockquote', 'dl', 'dt', 'dd', 'br', 'sup', 'sub', 'hr', 'a'}
+           'th', 'td', 'caption', 'blockquote', 'dl', 'dt', 'dd', 'br', 'sup', 'sub', 'hr', 'a', 'bdi'}
 
 
 class Page(HTMLParser):

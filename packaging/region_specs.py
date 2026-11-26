@@ -157,6 +157,7 @@ REGIONS = {
     },
     'au-cx': {
         'country': 'Australia',
+        'places': True,
         'title': 'Christmas Island extract area',
         'bbox': [105.29, -10.83, 106.0, -10.17],
         'extract': 'https://download.geofabrik.de/australia-oceania/australia/christmas-island-latest-free.gpkg.zip',
@@ -164,6 +165,7 @@ REGIONS = {
     },
     'au-cc': {
         'country': 'Australia',
+        'places': True,
         'title': 'Cocos (Keeling) Islands extract area',
         'bbox': [96.45, -12.56, 97.25, -11.54],
         'extract': 'https://download.geofabrik.de/australia-oceania/australia/cocos-islands-latest-free.gpkg.zip',
@@ -178,6 +180,7 @@ REGIONS = {
     },
     'au-hm': {
         'country': 'Australia',
+        'places': True,
         'title': 'Heard Island and McDonald Islands extract area',
         'bbox': [71.99, -53.55, 74.46, -52.66],
         'extract': 'https://download.geofabrik.de/australia-oceania/australia/heard-mcdonald-latest-free.gpkg.zip',
@@ -185,6 +188,7 @@ REGIONS = {
     },
     'au-nf': {
         'country': 'Australia',
+        'places': True,
         'title': 'Norfolk Island extract area',
         'bbox': [167.62, -29.47, 168.35, -28.75],
         'extract': 'https://download.geofabrik.de/australia-oceania/australia/norfolk-island-latest-free.gpkg.zip',

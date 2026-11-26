@@ -142,3 +142,11 @@ permit,rescue,facility-availability or emergency-contact assumptions follow from
 a feature on the map. Australian Antarctic Territory remains a separate gap.
 Jervis Bay remains included with the NSW extract; it is a distinct internal
 territory,not part of ACT and not an external territory.
+
+
+The #101 integration opts in named-point indexes for Christmas,Cocos,Norfolk and
+Heard/McDonald only. Their24 November source supplies2,2,18 and20 eligible named
+points respectively. Ashmore/Cartier and Coral Sea stay four-file geometry sets;
+no empty finder or invented polygon-centroid places are added. These sparse
+extracts still need map/archive/engine review; counts do not imply complete
+settlement or island naming.

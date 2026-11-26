@@ -919,7 +919,7 @@ const MapView = (() => {
     let n = 0; for (const p of st.pins) if (inView(p)) n += p.count;
     renderLayers();
     if (!n) { statusLine(message('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.')); return }
-    const count = message('map.placesInView', { count: n.toLocaleString(), extra: '' }, '{count} places in view{extra}');
+    const count = message('map.placesInView', { count: n, extra: '' }, '{count} places in view{extra}');
     const extra = st.truncated ? message('map.cappedPlacesInView', null, ' (busiest shown — zoom in for all)') : null;
     statusLine(extra ? { segments: [count, extra] } : count);
   }

@@ -16,17 +16,6 @@ spec = importlib.util.spec_from_file_location('au_builder', TOOL)
 au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
-def before_later_trauma_extension(guide):
-    """Restore dated baseline; the later extension has its own exact audit."""
-    uid = 'au-mhfa-adult-traumatic-events'
-    guide['choices'] = [c for c in guide['choices'] if c['id'] != 'adult-traumatic-events']
-    for choice in guide['choices']:
-        choice['read'] = [r for r in choice['read'] if r.get('doc') != uid]
-    for key in ['prepare', 'learn']:
-        guide[key] = [r for r in guide[key] if r.get('doc') != uid]
-    return guide
-
-
 class Reference(unittest.TestCase):
     def test_built_guides_follow_moved_sources_with_catalogue_left_intact(self):
         import server
@@ -172,12 +161,6 @@ class Reference(unittest.TestCase):
         self.assertEqual(len(audit['guide_placements']), 10)
         for gid, original in guides.items():
             guide = copy.deepcopy(original)
-            guide = before_later_trauma_extension(guide)
-            if gid == 'hurt':
-                extension = json.loads((au.ROOT / 'docs/AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json').read_text())
-                later = {p['reference']['doc'] for p in extension['placements']}
-                for choice in guide['choices']:
-                    choice['read'] = [r for r in choice['read'] if r.get('doc') not in later]
             # Compare the historical bat increment after removing the later,
             # separately audited community-planning addition.
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
@@ -254,7 +237,7 @@ class Reference(unittest.TestCase):
         from tools.validate_topics import items
         base = {r['doc']: dict(id=r['doc'], title='Baseline source', path='pages/baseline.html', kind='html')
                 for t in topics for _, r in items(t)
-                if r.get('doc') and r['doc'] not in australian and not r['doc'].startswith('personal-au-')}
+                if r.get('doc') and r['doc'] not in australian}
         originals = copy.deepcopy(topics)
         for t in originals:
             for c in t.get('choices', []):
@@ -1084,7 +1067,6 @@ class Reference(unittest.TestCase):
         uid = audit['id']
         for gid, digest in audit['baseline_guides'].items():
             guide = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
-            guide = before_later_trauma_extension(guide)
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']
             for key in ['prepare', 'learn']:
                 guide[key] = [r for r in guide[key] if r.get('doc') != uid]

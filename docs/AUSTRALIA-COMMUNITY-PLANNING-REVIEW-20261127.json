@@ -40,44 +40,7 @@
     "audio_used": false,
     "clinical_or_community_endorsement_claim": false
   },
-  "installed_private": {
-    "records": 446,
-    "public": 125,
-    "personal": 7,
-    "AU_hashes": 132,
-    "personal_search_units": 42,
-    "original_nonpublic_search_rows_preserved": 12792,
-    "AU_guide_references": 638,
-    "victoria": "per-file hashes and3054names preserved",
-    "profile": "PERSONAL USE ONLY;not published"
-  },
   "not_claimed": "Community endorsement,local community plans,clinical review,linked manuals/toolkits,current service status,official Setup availability or complete Australian coverage",
-  "real_personal_composition": {
-    "base_records": 439,
-    "records": 446,
-    "original_pdfs": 6,
-    "original_pdf_pages": 41,
-    "added_search_units": 42,
-    "base_search_units": 12875,
-    "search_units": 12917,
-    "all_base_inventory_and_hashes_unchanged": true,
-    "retained_files": 1509,
-    "retained_file_bytes": 9289475282,
-    "base_public_receipts_unchanged": true,
-    "original_pdf_hashes": 6,
-    "personal_flags": 7,
-    "verified_files": 1532,
-    "engine_search_personal_pdfs": 6,
-    "guide_reference_counts": {
-      "au-health": 18,
-      "au-household": 297,
-      "au-personal-first-aid": 21,
-      "au-rural": 302
-    },
-    "network_attempts": 0,
-    "installed_profile_hashes_unchanged": true,
-    "native_window_claim": false
-  },
   "real_public_composition": {
     "base_records": 314,
     "added_records": 125,
@@ -95,5 +58,6 @@
     "verified_existing_snapshot": true,
     "outer_preflight_note": "Initial outer metadata inventory assertion changed after successful composition; exact path delta was not captured. Composer own before/after guards passed. Read-only resumption verifies current base bytes, retained files, catalogue hash and every original search row; no rebuild.",
     "limits": "Private local test copy only. No native-window, Windows/Linux-native, official Setup or redistribution claim."
-  }
+  },
+  "scope_after_public_split": "Historical public source/composition review; personal-original workflow review moved to a follow-up."
 }

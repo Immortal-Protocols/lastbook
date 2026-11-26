@@ -35,13 +35,13 @@
   "hurt": {
     "missing": [
       "No simple mass-casualty triage method (such as START) written for the public. The medical encyclopedia’s START article (under Go deeper) explains it, but is written for responders.",
-      "No full stand-alone psychological first aid manual. The optional nonprofit MHFA adult traumatic-event guideline appears when separately installed; it is not the Australian Red Cross PFA manual. Existing encyclopedia material remains an overview.",
+      "No full stand-alone psychological first aid manual. Existing encyclopedia material remains an overview.",
       "No agency videos on carbon monoxide or burns.",
       "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available.",
-      "Australian ANZCOR CPR,anaphylaxis,snake,spider,marine and pressure-immobilisation originals appear only when separately installed for personal use. Public redistribution rights and complete Australian first-aid coverage remain unresolved; source links do not replace training or clinical assessment."
+      "Australian ANZCOR originals are not in the public supplement. Public redistribution rights and complete Australian first-aid coverage remain unresolved; source links do not replace training or clinical assessment."
     ],
     "disagree": [
-      "Snakebite: IFRC’s limited-resource section includes washing the wound; ANZCOR’s Australian snakebite guideline advises against washing. These are different source contexts. The unchanged Australian originals appear only when separately installed for personal use; they are not in the public supplement.",
+      "Snakebite: IFRC’s limited-resource section includes washing the wound; ANZCOR’s Australian snakebite guideline advises against washing. These are different source contexts. Australian originals are not in the public supplement.",
       "Heat stroke: the CERT manual says give no fluids; New Where There Is No Doctor says give drinks once the person is alert. Follow trained help if you can reach it.",
       "CPR: the 2025 Red Cross/Red Crescent guidelines say checking for a pulse is unreliable for first aiders; New Where There Is No Doctor says to check for a pulse.",
       "Poisoning: this guide follows the 2025 Red Cross/Red Crescent guidelines: do not induce vomiting, and give no milk, water or charcoal unless a poison centre says to. The First Aid chapter of New Where There Is No Doctor (2020) instead advises water and activated charcoal for most poisons."
@@ -153,16 +153,9 @@
   },
   "au-health": {
     "missing": [
-      "NSW Health’s complete bat-exposure factsheet appears when installed. Other Australian first-aid topics remain incomplete. ANZCOR originals are separate personal-use copies. The source audits record site-specific rights and remaining clinical-context differences; the Queensland medical candidates are not bundled.",
+      "NSW Health’s complete bat-exposure factsheet appears when installed. Other Australian first-aid topics remain incomplete. ANZCOR originals are not bundled. The source audits record site-specific rights and remaining clinical-context differences; the Queensland medical candidates are not bundled.",
       "Queensland’s older general bites-and-stings page was reviewed and not selected; do not use a generic overseas snakebite guide as an Australian substitute.",
       "The two SCHN CPR videos are existing optional library resources, not new media included in this text supplement."
-    ]
-  },
-  "au-personal-first-aid": {
-    "missing": [
-      "These source PDFs and their extracted text are personal-use copies, not part of the public reference download. Public redistribution needs rights-holder permission.",
-      "The source set does not include every cross-referenced guideline or all first-aid topics. Original publication/review dates and audience restrictions remain in each PDF.",
-      "The guide describes readings and cites original pages; it has not undergone an independent clinical review."
     ]
   }
 }

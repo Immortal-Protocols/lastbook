@@ -451,7 +451,7 @@
     "au-household": "f52a627c8504137ff1f62144e9bd4aee3ab23aee2ff28f313dd75e5f1fe6ba97",
     "au-rural": "4f0c3c2a3d782b2f1a53959a7443d16366cec0f8a9e6600ab0b968d63937e3e2",
     "au-health": "9f9d220f6be6c4803459a5ce3f82f83ff44d78f4315e1cd883525cb63341702f",
-    "hurt": "24d939f40d9b51d026c156eddcae6a7a16ab74459eb37e0605f55d1940ef8ff0"
+    "hurt": "c03a6fff5cf02cca15aa64b1e4e835485a7a36800b641743ca5beeab92bbdb5c"
   },
   "counts": {
     "public_records": 124,
@@ -477,5 +477,13 @@
     null,
     "a",
     "a"
-  ]
+  ],
+  "public_scope_projection": {
+    "checked": "2026-11-27",
+    "reason": "Move all personal source links to a follow-up PR; retain public bat increment baseline comparison.",
+    "hurt_original_baseline_sha256": "24d939f40d9b51d026c156eddcae6a7a16ab74459eb37e0605f55d1940ef8ff0",
+    "baseline_source_commit": "61b8d7b0e89e7d8b630bfe40b3888629e718918d",
+    "excluded_doc_prefix": "personal-au-",
+    "source_variation_note": "Australian originals are not included in the public supplement."
+  }
 }

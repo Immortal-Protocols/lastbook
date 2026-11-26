@@ -57,22 +57,7 @@ the separate map/place runtime PRs. Maps already in the base are copied unchange
 
 Search for `Australian household`, `livestock`, `Triple Zero` or `CB radio`.
 Household and rural guides have equal coverage. Source cards retain jurisdiction,
-dates, licences and limits. The tool adds no personal first-aid PDFs: cards for
-separately installed originals appear only if those records are present.
-
-## Optional personal originals
-
-After building the public full-library copy, the separate
-[personal composition command](AUSTRALIA-PERSONAL-FIRST-AID.md#add-the-originals-to-a-full-library)
-can add your pinned personal-use originals to another new full copy. It preserves
-these public sources and their receipts, merges all physical PDF pages into search
-and marks the complete result as personal-use-only. It requires an explicit offline
-cache or download choice; the public command and public assets do not include PDFs.
-Use the personal command's verifier for that later private snapshot. Its default
-six-source collection remains unchanged; explicitly choose `--collection
-bls-first-aid` for the separately pinned 35-source/263-page selection. The matching
-personal instructions describe rebuilding from the retained original when a base
-already contains personal sources.
+dates, licences and limits. This public workflow adds no clinical-source originals.
 
 ## Integrity, Setup and privacy
 
@@ -115,16 +100,10 @@ That review covers the preceding 121-record source snapshot. The later
 three readings; the same composition tool builds from the current reviewed manifest.
 
 
-The [current community-planning review](AUSTRALIA-COMMUNITY-PLANNING-REVIEW-20261127.json)
-verifies the current314→439public composition: all1,256retained files and12,750
-original search rows remain unchanged; the1,514-file manifest verifies. The
-optional personal step then verifies439→446records and42added search units.
-These are private test copies, not public archives or native-window tests of
-those copies. The installed private review has separate native verification.
+The [community-planning review](AUSTRALIA-COMMUNITY-PLANNING-REVIEW-20261127.json)
+records a 314-to-439 public composition, retaining 1,256 files and 12,750 original
+search rows. It is preservation evidence, not a public full-library download.
 
-## Check readings after normal app use
-
-For the Australian readings, source conditions and stored search pages, use the
-[separate offline reading check](AUSTRALIA-READING-CHECK.md). It tolerates unrelated
-app-log/history changes while retaining source and index checks. The existing
-matching `--verify` command still checks the exact full creation snapshot.
+Exact snapshot verification reports ordinary later log/history changes too. Close
+the app and interpret mismatches according to the named file; this command does
+not repair or fetch changed sources.

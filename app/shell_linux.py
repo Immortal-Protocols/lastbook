@@ -522,6 +522,11 @@ class Shell:
         self.actions[url] = (kind, gesture)
         if len(self.actions) > 64:
             self.actions.pop(next(iter(self.actions)))
+        route = self.bridge.linked_reading(url, str(self.view.get_uri() or ''), kind == WebKit2.NavigationType.LINK_CLICKED and gesture)
+        if route:
+            decision.ignore()
+            self.js('location.hash=' + json.dumps(route))
+            return True
         if self.bridge.top_url_ok(url):
             decision.use()
         elif url.startswith('blob:' + B.ORIGIN_MAC + '/') and gesture:

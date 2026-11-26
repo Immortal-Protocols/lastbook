@@ -485,6 +485,7 @@
   "map.layer.pond": "Estanques sin nombre (1+ acre, todo el año)",
   "map.layer.dam": "Presas (con almacenamiento y uso)",
   "map.layer.spring": "Manantiales (agua no comprobada)",
+  "map.layer.pump": "Bombas manuales y pozos de agua (agua no analizada)",
   "map.layer.food": "Supermercados y tiendas de comida",
   "map.layer.hardware": "Ferreterías",
   "map.layer.fuel": "Estaciones de servicio",

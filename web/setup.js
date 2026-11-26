@@ -224,7 +224,7 @@
     return best || (path ? null : ds[0] || null);   // a folder on a disk the engine did not report: its free space is not known here
   }
   const diskName = d => !d ? tr('setup.thisDisk', null, 'this disk') : d.name || (WIN ? (String(d.path).match(/^[A-Z]:/i) || [tr('setup.thisDisk', null, 'this disk')])[0].toUpperCase()   // C:, D:
-    : /^\/Volumes\/[^/]+/.test(d.path) ? d.path.split('/')[2] : /Linux/.test(navigator.platform || '') ? 'this computer' : tr('setup.thisMac', null, 'this Mac'));
+    : /^\/Volumes\/[^/]+/.test(d.path) ? d.path.split('/')[2] : /Linux/.test(navigator.platform || '') ? tr('setup.thisComputerDisk', null, 'this computer') : tr('setup.thisMac', null, 'this Mac'));
 
   function plan() {   // what the current choice adds: bytes to download, space it needs (download + unpacked + 2 GB, as the engine counts)
     const c = cur() || {};
@@ -321,10 +321,15 @@
     }
     return `<section class="s-pc" aria-label="${tr('setup.thisComputer', null, "This computer")}">${tiles.map(t => `<div class="s-tile">${t[0]}<b>${t[1]}</b><small>${t[2]}</small></div>`).join('')}</section>`;
   }
+  function aiWhy() {
+    const ai = S.hardware && S.hardware.ai || {};
+    return ai.why_key ? tr(ai.why_key, ai.why_params || null, ai.why || '')
+      : ai.why || tr('setup.notEnoughMemory', null, 'This computer does not have enough memory for it.');
+  }
   function recommendLine() {
     const r = S.recommend || {}, p = packById(r.pack);
     if (!p) return (r.why || r.why_key || (r.why_parts && r.why_parts.length)) ? `<p class="s-rec bad">${ico('warn')}<span>${esc(recommendWhy(r))}</span></p>` : '';
-    const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
+    const what = `${p.title}${r.ai && aiFits() ? ' ' + tr('setup.withLocalAi', null, 'with the local AI') : ''}`;
     return `<p class="s-rec">${ico('ok')}<span><b>${esc(tr('setup.suggested', { what }, 'Suggested: {what}.'))}</b> ${esc(recommendWhy(r))}</span></p>`;
   }
 
@@ -350,7 +355,7 @@
             <small>${tr('setup.aiLead', null, 'Answers questions from the library, in plain words. Works offline.')}</small>
             <span class="s-sizes">${has ? tr('setup.onThisComputer', null, 'On this computer') : foundFor('model') ? '<span>' + tr('setup.alreadyDownloaded', null, 'Already downloaded') + '</span>' : `<span>${tr('setup.aboutDownload', { size: size(m.size) }, 'About {size} download')}</span>`}</span></span></label>`
         : `<div class="s-opt s-ai off" role="group" aria-label="${tr('setup.localAi', null, "Local AI")}"><span class="s-opt-in"><span class="s-opt-h"><b>${tr('setup.localAi', null, 'Local AI')}</b><span class="s-badge later">${tr('setup.notForThisComputer', null, 'Not for this computer')}</span></span>
-            <small>${esc((S.hardware.ai && S.hardware.ai.why) || tr('setup.notEnoughMemory', null, 'This computer does not have enough memory for it.'))}</small></span></div>`;
+            <small>${esc(aiWhy())}</small></span></div>`;
     }
     const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · ${tr('setup.doesntMatch', null, 'doesn’t match the published file, so it is not used')}</small></span></div>`
       : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? packById(f.id).title + ' ' + tr('library.itemTypeLibrary', null, 'library') : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>

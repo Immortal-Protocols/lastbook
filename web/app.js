@@ -1609,7 +1609,10 @@ async function savedPage() {
   try { all = VideoMoments.readSaved() } catch (e) { savedError = e.message }
   const moments = all.filter(VideoMoments.isMoment);
   const s = all.filter(x => x && x.kind !== 'video-moment'), r = await recents();
-  const li = x => `<li><a class="row" href="${esc(x.href)}"><span class="k">${ico(x.key[0] === 'v' ? 'video' : x.key[0] === 'w' ? 'wiki' : x.key[0] === 't' ? 'book' : x.key[0] === 'a' ? 'ask' : 'page')}</span><span><b>${esc(x.title)}</b><small>${esc(rowSub(x))}</small></span></a></li>`;
+  const title = x => x.key[0] === 'a'
+    ? tr('chat.answerPrefix', { text: x.title_params?.text ?? String(x.title).replace(/^Answer: /, '') }, 'Answer: {text}')
+    : x.title;
+  const li = x => `<li><a class="row" href="${esc(x.href)}"><span class="k">${ico(x.key[0] === 'v' ? 'video' : x.key[0] === 'w' ? 'wiki' : x.key[0] === 't' ? 'book' : x.key[0] === 'a' ? 'ask' : 'page')}</span><span><b>${esc(title(x))}</b><small>${esc(rowSub(x))}</small></span></a></li>`;
   const cont = await resumable();
   const available = new Set(await held([...new Set(moments.map(x => x.videoId))]));
   if (stale(me)) return;

@@ -145,6 +145,34 @@ class Browser(unittest.TestCase):
                                           settings_dir=self.tmp, default_parent=self.tmp, manifest=setup_manifest or Manifest(remote=None),
                                           pick_folder=lambda files=False: str(library))
 
+    @staticmethod
+    def local_ai_manifest():
+        from engine.setup import manifest as setup_manifest
+
+        data = {'version': 1, 'packs': [{
+            'id': 'small', 'title': 'Small', 'summary': 'The essentials.', 'available': True,
+            'installed_bytes': 100, 'files': [{'name': 'small.zip', 'size': 1, 'sha256': '0' * 64,
+                'url': 'https://downloads.lastbook.org/small.zip'}],
+        }], 'models': [{
+            'id': 'local', 'title': 'Local AI', 'file': 'model.gguf', 'size': 17_000_000_000,
+            'sha256': '1' * 64, 'url': 'https://huggingface.co/lastbook/model.gguf',
+            'memory_bytes': 12_000_000_000, 'available': True,
+        }]}
+        bundled = setup_manifest.validate(data)
+        if bundled is None:
+            raise AssertionError('test manifest must be valid')
+        return Manifest(bundled=bundled, remote=None)
+
+    def set_hardware(self, setup, *, fits, disk_path=None):
+        why = 'The local AI needs about 20 GB of this computer’s memory, and it has 8 GB. Lastbook works without it: search and reading are the same.'
+        setup.hardware = lambda: {
+            'os': 'linux', 'ram_bytes': 8_000_000_000, 'unified_memory': False, 'gpus': [],
+            'disks': [{'path': str(disk_path or self.tmp), 'name': None,
+                       'free_bytes': 80_000_000_000, 'total_bytes': 100_000_000_000}],
+            'ai': {'fits': fits, 'needs_bytes': 20_000_000_000, 'estimate': True, 'why': why,
+                   'why_key': 'setup.why.aiNeedsMemoryShort', 'why_params': {'needs': '20 GB', 'ram': '8 GB'}},
+        }
+
     @contextlib.contextmanager
     def page(self, origin, http, locale='en-US'):
         context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850}, accept_downloads=True)

@@ -38,6 +38,7 @@
     apply,
     resolve(key, params) { return engine.resolve(key, params); },
     t(key, params) { return engine.t(key, params); },
+    direction(locale) { return engine.direction(locale); },
     number(value, options) { return engine.number(value, options); },
     date(value, options) { return engine.date(value, options); },
     get locale() { return engine.locale; },

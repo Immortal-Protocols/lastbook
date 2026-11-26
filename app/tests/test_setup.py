@@ -4722,7 +4722,7 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
         self.assertIn('Retry later', html)
         self.assertNotIn('internet connection dropped', html)
         for k in ('File', 'Size', 'Address', 'SHA-256'):
-            self.assertIn(f'<dt>{k}</dt>', html)
+            self.assertIn(f'<dt><span lang="en">{k}</span></dt>', html)
         self.assertIn('16,947,541,728 bytes', html)                       # exact, to check a copy fetched elsewhere
         self.assertIn('ab' * 32, html)
         self.assertIn('&amp;a=&lt;b>', html)                              # the address is escaped
@@ -4731,7 +4731,7 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
 
     def test_a_library_file_points_to_choose_again(self):
         html = self.box('pack')
-        self.assertIn('<dt>SHA-256</dt>', html)
+        self.assertIn('<dt><span lang="en">SHA-256</span></dt>', html)
         self.assertNotIn('data-act="model-file"', html)
         self.assertIn('Choose a library zip or AI model file', html)
 

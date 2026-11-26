@@ -11,7 +11,10 @@ NODE = shutil.which('node')
 RUN = r"""
 const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
-const esc = app.split('\n').find(l => /^const esc\s*=/.test(l));
+const esc = new Function(app.split('\n').find(l => /^const esc\s*=/.test(l)) + '\nreturn esc;')();
+const resultFor = (_key, params, fallback) => ({ text: String(fallback ?? '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => params?.[n] ?? '{' + n + '}'), locale: 'en' });
+const localizedHtml = result => '<span lang="' + result.locale + '">' + esc(result.text) + '</span>';
+const trHtml = (key, params, fallback) => localizedHtml(resultFor(key, params, fallback));
 const i = chat.indexOf('function md('), j = chat.indexOf('\n  function wire(');
 const helpers = `${esc}\nconst tr = (_key, params, fallback) => String(fallback ?? '').replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_, n) => params?.[n] ?? '{' + n + '}');\nconst trResult = (key, params, fallback) => ({ text: tr(key, params, fallback), locale: 'en' });\nconst trHtml = (key, params, fallback) => '<span lang=\"en\">' + esc(tr(key, params, fallback)) + '</span>';`;
 const md = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn md;')();

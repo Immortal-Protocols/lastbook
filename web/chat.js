@@ -85,6 +85,23 @@ function contentText(m) {
 }
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
+  const chatResult = (key, params, fallback) => globalThis.LastbookI18n?.resolve?.(key, params)
+    || { text: tr(key, params, fallback), locale: 'en' };
+  const chatHtml = result => {
+    const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+    return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+  };
+  const chatDate = (value, options) => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    try {
+      const formatted = globalThis.LastbookI18n?.date?.(date, options);
+      if (formatted != null) return formatted;
+      return options && ('dateStyle' in options || 'timeStyle' in options)
+        ? date.toLocaleString(undefined, options)
+        : date.toLocaleDateString(undefined, options);
+    } catch { return '' }
+  };
   const STARTERS = [
     ['water', 'The tap water is off. How do I make water safe to drink?'],
     ['hurt', 'Someone has a deep cut that won’t stop bleeding. What do I do?'],
@@ -207,6 +224,7 @@ const Chat = (() => {
     leaving = () => { document.removeEventListener('keydown', escStop) };
     document.addEventListener('keydown', escStop);
     statusLine();
+    setBusy(!!busy());
     const initial = q.get('q');
     if (initial && !cur) { history.replaceState(null, '', '#/ask'); send(initial) }
     else if (!options.preserveFocus && matchMedia('(hover:hover)').matches) setTimeout(() => ta.focus({ preventScroll: true }), 60);
@@ -267,7 +285,7 @@ const Chat = (() => {
     if (!show) return;
     box.innerHTML = l.state === 'off'
       ? `<p>${esc(tr('chat.aiTurnedOff', null, 'The local AI is turned off.'))}</p><div class="row"><button class="btn" data-ai="on">${esc(tr('about.turnOn', null, 'Turn on'))}</button></div>`
-      : l.state === 'error' ? `<p>${esc(l.message || tr('chat.startFailed', null, 'The local AI could not start.'))}</p><div class="row"><button class="btn" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>`
+      : l.state === 'error' ? `<p>${esc(localLine(l)[1])}</p><div class="row"><button class="btn" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>`
       : `<p><b>${esc(tr('chat.addAiToGetAnswers', null, 'Add the local AI to get written answers.'))}</b> ${esc(tr('chat.addAiRunsOnThisComputer', null, 'It is about 17 GB, and runs on this computer only.'))}</p>
          <div class="row"><a class="btn" href="/ui/setup.html#manage">${esc(tr('about.addTheLocalAi', null, 'Add the local AI'))}</a><button class="btn plain" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>
          <p class="small">${esc(tr('chat.alreadyHaveModelLead', null, 'Already downloaded'))} <code>${esc(l.file)}</code>? ${esc(tr('chat.alreadyHaveModelHint', null, 'Move it into the models folder inside your LastbookData folder, then Look again. Or open Add the local AI and pick the file you already have.'))}</p>`;
@@ -746,11 +764,26 @@ const Chat = (() => {
     try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += tr('chat.fallbackNothing', null, ' The library search also found nothing for this question.') }
     catch { m.fallback = [] }
   }
+  function refreshLanguage() {
+    if (!document.getElementById('chatLog')) return;
+    const y = scrollY, active = document.activeElement, message = active?.closest?.('.msg'), action = active?.dataset?.act;
+    const messageId = message?.id || '', id = active?.id || '';
+    const list = $('#csList'), listTop = list?.scrollTop || 0;
+    renderSide(); renderCtx(); renderLog(); setBusy(!!busy());
+    if (list) list.scrollTop = listTop;
+    const focus = id ? document.getElementById(id) : (messageId && action ? document.querySelector(`#${CSS.escape(messageId)} [data-act=\"${CSS.escape(action)}\"]`) : null);
+    if (focus?.isConnected) focus.focus({ preventScroll: true });
+    scrollTo(0, y);
+  }
+  document.addEventListener('lastbook:languagechange', refreshLanguage);
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }
   function setBusy(on) {
     const b = $('#sendBtn'); if (!b) return;
     b.innerHTML = on ? '<span class="stopsq"></span>' : ico('up');
+    b.dataset.i18nAriaLabel = on ? 'chat.stopAnswer' : 'chat.send';
     b.setAttribute('aria-label', on ? tr('chat.stopAnswer', null, 'Stop the answer') : tr('chat.send', null, 'Send'));
+    b.title = on ? tr('chat.stopAnswer', null, 'Stop the answer') : status && !status.online
+      ? tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead') : tr('chat.send', null, 'Send');
     b.classList.toggle('stop', on);
   }
   function scrollEnd(force) {
@@ -759,5 +792,5 @@ const Chat = (() => {
   }
   function throttle(f, ms) { let t = 0, p = null; return () => { const n = Date.now(); if (n - t > ms) { t = n; f() } else { clearTimeout(p); p = setTimeout(() => { t = Date.now(); f() }, ms) } } }
 
-  return { page, count };
+  return { page, count, refreshLanguage };
 })();

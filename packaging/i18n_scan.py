@@ -61,6 +61,8 @@ PYTHON_SURFACES = {
     'assistant': [ROOT / 'assistant.py'],
     'server': [ROOT / 'server.py'],
 }
+DESKTOP_LOCALES = {'de', 'es_419', 'zh_Hans'}
+DESKTOP_TRANSLATED_FIELDS = {'GenericName', 'Comment', 'Keywords'}
 
 C_FILES = [ROOT / 'packaging' / 'setup_stub' / 'lastbook_setup_stub.c']
 DESKTOP_LOCALES = {'de', 'es_419', 'zh_Hans'}

@@ -28,6 +28,16 @@ class Coverage(unittest.TestCase):
         self.assertIn('setup.packSummary.small', self.english)
         self.assertIn('setup.packSummary.medium', self.english)
 
+    def test_bundled_manifest_summary_has_catalogue_key(self):
+        source = (ROOT / 'packaging' / 'release_manifest.py').read_text(encoding='utf-8')
+        self.assertIn("SMALL_SUMMARY_KEY = 'setup.packSummary.small'", source)
+        self.assertIn("'summary_key': SMALL_SUMMARY_KEY", source)
+        self.assertIn("MEDIUM_SUMMARY_KEY = 'setup.packSummary.medium'", source)
+        self.assertIn('SUMMARY_KEYS = {', source)
+        self.assertIn("pack.setdefault('summary_key', key)", source)
+        self.assertIn('setup.packSummary.small', self.english)
+        self.assertIn('setup.packSummary.medium', self.english)
+
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
 
@@ -95,6 +105,41 @@ class Coverage(unittest.TestCase):
         # The inventory should keep seeing the desktop surfaces even when chrome is 0.
         self.assertGreater(self.totals['wired'], 1000)
         self.assertEqual(self.totals['chrome'], 0)
+
+    def test_catalogued_helper_fallbacks_are_wired_but_missing_keys_are_not(self):
+        for source, literal, expected in [
+            ("el.innerHTML = `${tHtml('map.clickToList', null, 'Click to list them')}`;",
+             'Click to list them', 'wired'),
+            ("el.innerHTML = `${keyedMessage('setup.noAnswer', null, 'Lastbook did not answer.')}`;",
+             'Lastbook did not answer.', 'wired'),
+            ("el.innerHTML = `${tHtml('missing.newKey', null, 'Brand new visible string')}`;",
+             'Brand new visible string', 'chrome'),
+        ]:
+            with self.subTest(literal=literal):
+                _pos, text, pre = next(item for item in scan.iter_js_strings(source) if item[1] == literal)
+                self.assertEqual(scan.classify(text, pre), expected)
+        self.assertEqual(scan.classify('{…} ({…})', "return `<dt>${size(value)} (${trMarkup("), 'technical')
+        self.assertEqual(scan.classify('Amount {…} ({…})', 'el.innerHTML = `'), 'chrome')
+
+    def test_scanner_does_not_hide_visible_markup_after_a_translated_expression(self):
+        sample = "main.innerHTML = `<div><h1>Map</h1>${tr('map.heading', null, 'Map')}<section><h2>Nearest to the map center</h2>" + (
+            '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</section>`;'
+        hits = list(scan.iter_js_strings(sample))
+        pos, text, pre = next(item for item in hits if 'Nearest to the map center' in item[1])
+        end = scan._skip_template(sample, pos) if sample[pos] == '`' else scan._skip_string(sample, pos)
+        post = sample[pos:min(len(sample), end + 600)]
+        self.assertEqual(scan.classify(text, pre, post), 'chrome')
+
+    def test_scanner_finds_ask_offer_text_inside_a_long_dynamic_template(self):
+        sample = "el.innerHTML = `<a><b>Ask the library: “${esc(q)}”</b><small>Get a written answer with the exact pages it came from</small>" + (
+            '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</a>`;'
+        hits = list(scan.iter_js_strings(sample))
+        for text in ('Ask the library: “{…}”', 'Get a written answer with the exact pages it came from'):
+            with self.subTest(text=text):
+                pos, found, pre = next(item for item in hits if item[1] == text)
+                end = scan._skip_template(sample, pos) if sample[pos] == '`' else scan._skip_string(sample, pos)
+                post = sample[pos:min(len(sample), end + 600)]
+                self.assertEqual(scan.classify(found, pre, post), 'chrome')
 
     def test_catalogued_helper_fallbacks_are_wired_but_missing_keys_are_not(self):
         for source, literal, expected in [

@@ -91,6 +91,10 @@ class Catalogues(unittest.TestCase):
     def test_source_staging_and_missing_or_stale_assets(self):
         generated = catalogues.generate()
         catalogues.check_assets(ROOT / 'web', generated)
+        desktop = generated['desktop'].decode('utf-8')
+        self.assertIn('GenericName[es_419]=Biblioteca de supervivencia sin conexión', desktop)
+        self.assertIn('Comment[de]=Die Survival-Bibliothek auf diesem Computer ohne Internet durchsuchen und lesen', desktop)
+        self.assertIn('Keywords[zh_Hans]=生存;资料库;离线;急救;', desktop)
         stage = self.work / 'stage'
         subprocess.run([sys.executable, '-I', '-B', str(ROOT / 'packaging' / 'ship_app_files.py'), str(stage)],
                        check=True, capture_output=True)
@@ -319,6 +323,41 @@ class SimplifiedChineseWording(unittest.TestCase):
         })
 
 
+class SimplifiedChineseWording(unittest.TestCase):
+    """The zh-Hans catalogue keeps the conventions in docs/i18n.md#simplified-chinese-zh-hans."""
+
+    @classmethod
+    def setUpClass(cls):
+        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
+        cls.en, cls.zh = load('en.json'), load('zh-Hans.json')
+
+    def test_setup_and_settings_are_different_words(self):
+        self.assertEqual(self.zh['nav.settings'], '设置')
+        self.assertIn('初始设置', self.zh['setup.title'])
+        self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
+        self.assertIn('初始设置', self.zh['language.preview'])
+        self.assertIn('设置', self.zh['language.preview'])
+
+    def test_simplified_characters_only(self):
+        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網線說檔電腦檢區換'
+        everything = ' '.join(self.zh.values())
+        self.assertEqual([character for character in traditional if character in everything], [])
+
+    def test_everyday_words_and_formatting(self):
+        self.assertIn('这台电脑', self.zh['setup.loading'])
+        self.assertIn('州或地区', self.zh['setup.chooseIntro'])
+        self.assertIn('Lastbook 会', self.zh['setup.chooseIntro'])
+        self.assertEqual(self.zh['setup.settingsTitle'], '资料库与本地 AI')
+        everything = ' '.join(self.zh.values())
+        for bad in (' ,', ' 。', ' ，', ' ；', ' …', '\u3000', '..'):
+            self.assertNotIn(bad, everything)
+        self.assertTrue(self.zh['language.saving'].endswith('…'))
+
+    def test_no_message_is_left_in_english(self):
+        same = {key for key in self.zh if self.zh[key] == self.en[key]}
+        self.assertEqual(same, set())
+
+
 class SpanishWording(unittest.TestCase):
     """The shipped es-419 catalogue keeps the terms docs/i18n.md#sample-locale-wording-es-419 asks for."""
 
@@ -326,6 +365,12 @@ class SpanishWording(unittest.TestCase):
     def setUpClass(cls):
         load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
         cls.en, cls.es = load('en.json'), load('es-419.json')
+
+    def test_language_preview_describes_complete_interface(self):
+        preview = self.es['language.preview']
+        self.assertNotIn('parcial', preview.casefold())
+        self.assertIn('menús de Lastbook', preview)
+        self.assertIn('su idioma original', preview)
 
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.es['nav.settings'], 'Ajustes')

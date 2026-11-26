@@ -11,6 +11,9 @@ The source uses four recorded cases in its introduction and retains three-case
 wording in its symptoms discussion. Both are preserved, with a visible editorial
 source note; they are not presented as live statistics.
 
+The original directory records its own additions as 27 November 2026; each
+third-party reading retains its separate source date.
+
 The same source is available in household, rural and health prepare/learn lists
 and choices, and the ordinary injury guide's animal-bite choice. Ten conditional
 cards use existing record-availability filtering. Original choices and references

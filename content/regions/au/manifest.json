@@ -494,14 +494,14 @@
       "collection": "Australian emergency reference",
       "path": "pages/au/au-reference.html",
       "source_url": "",
-      "retrieved_at": "2026-11-26",
+      "retrieved_at": "2026-11-27",
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "copyright_source": "",
-      "sha256": "2699e694282d397d4923f3c45dbe7317cd2cc1ae3a0a2620cdddc03a3d5af464",
+      "sha256": "67d1c06302a12be2df9041ce0088f26cfbf6ab11112fe94e4f2096b0cce728cf",
       "bytes": 21825,
       "snapshot": "sources/au-reference.html",
-      "notes": "Original factual source directory and descriptions, updated 2026-11-26. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
+      "notes": "Original factual source directory and descriptions, updated 2026-11-27. Per-entry dates and service-specific limits retained; remote management entries do not establish local emergency arrangements. Not a live warning service."
     },
     {
       "id": "vic-generator",

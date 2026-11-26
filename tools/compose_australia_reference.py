@@ -182,6 +182,8 @@ def checksums(root, paths):
 def verify(root, *, receipt_name='AUSTRALIA-COMPOSITION.json', local_name=LOCAL_NAME):
     """Read-only integrity check for the complete local composition, not publisher authentication."""
     root = Path(root).resolve()
+    if receipt_name == 'AUSTRALIA-COMPOSITION.json' and (root / 'AUSTRALIA-PERSONAL-FIRST-AID-COMPOSITION.json').is_file():
+        raise ValueError('Use tools/compose_au_personal_first_aid.py --verify for this personal first-aid composition')
     tree = inventory(root)
     lines = (root / 'pack-manifest.tsv').read_text(encoding='utf-8').splitlines()
     if not lines or lines[0] != 'path\tbytes\tsha256':

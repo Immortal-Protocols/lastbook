@@ -1,0 +1,336 @@
+{
+  "checked": "2026-11-27",
+  "decision": "No new first-aid article imported. Add source navigation to existing public calling/poisons and separately installed unmodified personal ANZCOR originals; flag a verified regional snakebite source difference.",
+  "placements": [
+    {
+      "choice": "check",
+      "reference": {
+        "doc": "au-emergency-calls",
+        "label": "Australia: emergency calling source",
+        "note": "ACMA source guidance; Australian emergency numbers and calling limitations. Static source copy, not an emergency-calling function."
+      },
+      "distribution": "existing-public",
+      "source_sha256": null
+    },
+    {
+      "choice": "breathing",
+      "reference": {
+        "doc": "personal-au-cpr",
+        "page": 1,
+        "label": "Australia/New Zealand: ANZCOR CPR original",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. General bystander source; specifically trained paediatric providers are directed to other guidelines. Read the complete five-page original."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "51c783f654a22156078df67df3838c00650a7bf38085e5ccafdb092ae414c873"
+    },
+    {
+      "choice": "allergy",
+      "reference": {
+        "doc": "personal-au-anaphylaxis",
+        "page": 1,
+        "label": "Australia/New Zealand: ANZCOR anaphylaxis original",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Four-page source; recognition and management continue beyond the opening page. Medication and training conditions remain in the original."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "79190e5db27e68b7cf41ae496d9c6c85acfd2d2ac05afe34f74aa7e2cc9349d2"
+    },
+    {
+      "choice": "snakebite",
+      "reference": {
+        "doc": "personal-au-snakebite",
+        "page": 3,
+        "label": "Australia: ANZCOR snakebite management original",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Physical PDF page 3 contains management and cautions. Its wound-washing advice differs from the overseas IFRC reading below."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "925168a5e436afe090212ac7bc34d715f977ffa70039a28a222ae05df87bc37f"
+    },
+    {
+      "choice": "snakebite",
+      "reference": {
+        "doc": "personal-au-pressure-immobilisation",
+        "page": 1,
+        "label": "Australia: ANZCOR pressure-immobilisation uses and exclusions",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Opens the uses/exclusions page; technique and conditions continue in the full five-page source."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "18823fc84dca59ced5f25b1fb6ab187d624b0c9d3ddbc4b0122ab3e36a7573e6"
+    },
+    {
+      "choice": "sting",
+      "reference": {
+        "doc": "personal-au-spiderbite",
+        "page": 1,
+        "label": "Australia: ANZCOR spider-bite original",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Eight-page source distinguishes funnel-web from other spider bites."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "6c4034536a5fe50b0a1df99e59c49f66c2b3ee7ee5612110335d2cf8736c8728"
+    },
+    {
+      "choice": "sting",
+      "reference": {
+        "doc": "personal-au-marine-stings",
+        "page": 1,
+        "label": "Australia/New Zealand: ANZCOR marine-envenomation original",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Fourteen-page source; recommendations vary by creature and location. This is not one treatment for all marine stings."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "9629d703ded2eb70fe1bbb591a00045652843f56514e4cf865bc010e9c8d59e9"
+    },
+    {
+      "choice": "sting",
+      "reference": {
+        "doc": "personal-au-pressure-immobilisation",
+        "page": 1,
+        "label": "Australia: ANZCOR pressure-immobilisation uses and exclusions",
+        "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Read the source exclusions before applying the technique to a bite or sting."
+      },
+      "distribution": "personal-only",
+      "source_sha256": "18823fc84dca59ced5f25b1fb6ab187d624b0c9d3ddbc4b0122ab3e36a7573e6"
+    },
+    {
+      "choice": "poison",
+      "reference": {
+        "doc": "qld-poisons",
+        "label": "Queensland: poisoning source guidance",
+        "note": "Queensland source; local services and requirements apply. Complete source instructions remain in their original context."
+      },
+      "distribution": "existing-public",
+      "source_sha256": null
+    }
+  ],
+  "counts": {
+    "choices": 6,
+    "links": 9,
+    "existing_public_links": 2,
+    "personal_only_links": 7,
+    "unique_personal_originals": 6
+  },
+  "baseline_guide_sha256": "ed6795803fca5d6c8a20bedfbd80ac0a8bad6ffd459ea43dcbe7d7c30e105b81",
+  "changed_existing_reference": {
+    "doc": "med-2e83e22162a9a006",
+    "page": 342,
+    "old_note": "IFRC 2025 caution: these may cause further harm. Also washing the wound and carrying the person when help is far away, and telling medical staff the type of snake.",
+    "new_note": "IFRC 2025 cautions and limited-resource guidance. This section includes wound washing, which differs from ANZCOR’s Australian snakebite guidance. Keep the complete country-specific source context; Australian originals are separately linked when installed."
+  },
+  "source_receipts": [
+    {
+      "id": "qpic-snake",
+      "url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/snake-bites",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "qpic-spider",
+      "url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/spider-bites",
+      "final_url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/spider-bites",
+      "bytes": 51842,
+      "raw_sha256": "8235f6e4572de9ee629a65c65639f02448491eef1918b33c449a27fefc45631c",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "qpic-marine",
+      "url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/sea-creature-bites-and-stings",
+      "final_url": "https://www.poisonsinfo.health.qld.gov.au/bites-and-stings/sea-creature-bites-and-stings",
+      "bytes": 59779,
+      "raw_sha256": "4b84e8ee74e4d587f467176653c74b37ea80e9e5046ce795edebd373bff0c200",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "qld-health-copyright",
+      "url": "https://www.health.qld.gov.au/global/copyright-statement",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "cc-by-nd-legalcode",
+      "url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en",
+      "final_url": "https://creativecommons.org/licenses/by-nd/4.0/legalcode.en",
+      "bytes": 49531,
+      "raw_sha256": "c8d6a35b8b2f92d99ffe2b12497263a142d314440d1b94c072d96862f41d64a5",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "schn-snake",
+      "url": "https://www.schn.health.nsw.gov.au/factsheets/snake-bites",
+      "final_url": "https://www.schn.health.nsw.gov.au/factsheets/snake-bites",
+      "bytes": 72622,
+      "raw_sha256": "c9f01d32e8a02123a817bc35b83f0a3b503c0a82b98199111c5db6c1c6612a78",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "schn-marine",
+      "url": "https://www.schn.health.nsw.gov.au/factsheets/marine-bites-stings",
+      "final_url": "https://www.schn.health.nsw.gov.au/factsheets/marine-bites-stings",
+      "bytes": 89118,
+      "raw_sha256": "274eebb7e47b43fd0115dfc8f5080d13d2868c6a5edbe1e4aea7f1ea5affd9ef",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "schn-copyright",
+      "url": "https://www.schn.health.nsw.gov.au/copyright",
+      "final_url": "https://www.schn.health.nsw.gov.au/copyright",
+      "bytes": 53920,
+      "raw_sha256": "4eff49a56702ac52c1a9d80d1b39d274f013f2e071798e167d657b491b2e7c57",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "betterhealth-bites",
+      "url": "https://www.betterhealth.vic.gov.au/health/healthyliving/bites-and-stings-first-aid",
+      "final_url": "https://www.betterhealth.vic.gov.au/health/healthyliving/bites-and-stings-first-aid",
+      "bytes": 1064996,
+      "raw_sha256": "b3f9ec88e7c204b4f0b1df1728b6e786aa8a57ad2769e56549c5b1e4749966e7",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "betterhealth-terms",
+      "url": "https://www.betterhealth.vic.gov.au/about/terms-of-use",
+      "final_url": "https://www.betterhealth.vic.gov.au/about/terms-of-use",
+      "bytes": 884414,
+      "raw_sha256": "f036b9d9297b1a4de4007ea2fa155910a08f6a870e8b299266bee441c8e1b375",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "healthywa-bites",
+      "url": "https://www.healthywa.wa.gov.au/Articles/F_I/First%20aid%20for%20bites%20and%20stings",
+      "final_url": "https://www.healthywa.wa.gov.au/Articles/F_I/First%20aid%20for%20bites%20and%20stings",
+      "bytes": 69220,
+      "raw_sha256": "675712d1746da067b3ee811c76d5a04bc05b59b2ee75e4e32bf584a9bdc9bcae",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "healthywa-copyright",
+      "url": "https://www.healthywa.wa.gov.au/Global-Items/Copyright",
+      "final_url": "https://www.healthywa.wa.gov.au/Global-Items/Copyright",
+      "bytes": 60195,
+      "raw_sha256": "72aaa3a70609349b712d74b951aa9b0cdb230650b2b6e787ba1c315bfde86efa",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "anzcor-snake",
+      "url": "https://www.anzcor.org/home/first-aid/guideline-9-4-1-first-aid-management-of-australian-snake-bite",
+      "final_url": "https://www.anzcor.org/home/first-aid/guideline-9-4-1-first-aid-management-of-australian-snake-bite",
+      "bytes": 60450,
+      "raw_sha256": "3cf8fb86580ff27f769d3ae932c2d7283ba73793d68a97cf9c613687cd57216e",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "anzcor-cpr",
+      "url": "https://www.anzcor.org/home/basic-life-support/guideline-8-cardiopulmonary-resuscitation-cpr",
+      "final_url": "https://www.anzcor.org/home/basic-life-support/guideline-8-cardiopulmonary-resuscitation-cpr",
+      "bytes": 58000,
+      "raw_sha256": "fdb98d1619a56fa3714ff86216b55057c2e69f507acffba5e32981db8100bb66",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "anzcor-pressure",
+      "url": "https://www.anzcor.org/home/first-aid/guideline-9-4-8-envenomation-pressure-immobilisation-technique",
+      "final_url": "https://www.anzcor.org/home/first-aid/guideline-9-4-8-envenomation-pressure-immobilisation-technique",
+      "bytes": 58667,
+      "raw_sha256": "36723ec28cc47cf5aa5a4ca0f54b8206748a2a42be18c744f3a18242190950c8",
+      "retrieved_at": "2026-11-27"
+    },
+    {
+      "id": "anzcor-copyright",
+      "url": "https://www.anzcor.org/disclaimer-and-copyright",
+      "final_url": "https://www.anzcor.org/disclaimer-and-copyright",
+      "bytes": 12993,
+      "raw_sha256": "4848fb63ed9c90e374ea8eb6a20543c437a51f37079beaf415a01fe69e6fea6c",
+      "retrieved_at": "2026-11-27"
+    }
+  ],
+  "observed_footer_links": [
+    {
+      "id": "qpic-spider",
+      "links": [
+        {
+          "text": "Copyright",
+          "href": "https://www.health.qld.gov.au/global/copyright-statement"
+        }
+      ]
+    },
+    {
+      "id": "qpic-marine",
+      "links": [
+        {
+          "text": "Copyright",
+          "href": "https://www.health.qld.gov.au/global/copyright-statement"
+        }
+      ]
+    },
+    {
+      "id": "schn-snake",
+      "links": [
+        {
+          "text": "Copyright",
+          "href": "/copyright"
+        }
+      ]
+    },
+    {
+      "id": "schn-marine",
+      "links": [
+        {
+          "text": "Copyright",
+          "href": "/copyright"
+        }
+      ]
+    },
+    {
+      "id": "betterhealth-bites",
+      "links": [
+        {
+          "text": "Terms of use",
+          "href": "/about/terms-of-use"
+        }
+      ]
+    },
+    {
+      "id": "healthywa-bites",
+      "links": [
+        {
+          "text": "Copyright",
+          "href": "/Global-Items/Copyright"
+        }
+      ]
+    }
+  ],
+  "public_candidates": [
+    {
+      "site": "Queensland Poisons Information Centre",
+      "policy": "https://www.health.qld.gov.au/global/copyright-statement",
+      "scope": "Policy explicitly includes Queensland Health subdomains; the two acquired article footers link directly to it.",
+      "terms": "CC BY-ND 4.0,not CC BY 4.0. Attribution and notices required; third-party images excluded. Policy observed via web tool,raw policy and snake requests returned403.",
+      "technical_modifications": "CC BY-ND4 legalcode2(a)(1) permits unmodified sharing in whole or part;2(a)(4) permits technical medium/format changes. ND is not a blanket ban on offline copies. The current public builder does not accept ND material; no new format/import approval is inferred here.",
+      "content_review": "November2024 sources. Bandage-material preference differs from current ANZCOR9.4.8. Snake-page CPR wording needs joint review with ANZCOR8 response/breathing conditions. No medical wording is edited or exported; WA Poisons photo credits do not grant photo rights.",
+      "next": "An unchanged licensed-source approach with a verified format boundary and clinical/source review remains possible; do not call this universally permission-blocked."
+    },
+    {
+      "site": "Sydney Children’s Hospitals Network",
+      "policy": "https://www.schn.health.nsw.gov.au/copyright",
+      "terms": "Specific site reserves major/full reproduction and modification beyond stated personal-use terms. Do not inherit the separate NSW Ministry CC BY policy.",
+      "next": "Written permission or another suitable source needed for the planned full public adaptation."
+    },
+    {
+      "site": "Better Health Channel",
+      "policy": "https://www.betterhealth.vic.gov.au/about/terms-of-use",
+      "terms": "Public reproduction/adaptation requires permission; printing permission retains branding and does not permit public distribution. The selected bites/stings article is dated12October2022.",
+      "next": "Permission or another suitable source; no public body or graphics imported."
+    },
+    {
+      "site": "HealthyWA",
+      "policy": "https://www.healthywa.wa.gov.au/Global-Items/Copyright",
+      "terms": "Specific site reserves reuse/reformatting beyond permitted exceptions without written permission. An unrelated WA Government open licence is not inherited.",
+      "next": "Permission or another suitable source; no public body or graphics imported."
+    }
+  ],
+  "comparison": {
+    "australian_source": "https://www.anzcor.org/home/first-aid/guideline-9-4-1-first-aid-management-of-australian-snake-bite",
+    "australian_physical_pdf_page": 3,
+    "overseas_source": "https://www.ifrc.org/sites/default/files/2026-03/IFRC%20International%20First%20Aid%2C%20Resuscitation%20and%20Education%20Guidelines%202025.pdf",
+    "overseas_physical_pdf_page": 342,
+    "verified": "Actual stored IFRCpage342 contains wound washing in its limited-resource subsection. Actual unchanged ANZCORpage3 and current official management HTML contain the contrary Australian caution. This is a source-context comparison,not an independent clinical review or a new treatment algorithm."
+  },
+  "native_citation_preparation": "Six original cited PDF pages rendered and inspected; an additional anaphylaxis management page inspected for continuation context. No PDF bytes changed. Renders/raw HTML/extracted text remain outside the public repository.",
+  "rights": "ANZCOR terms refreshed27November; personal viewing/download permission does not permit public PDF/text redistribution. Existing selector exclusions remain. Public code adds metadata references only; no private clinical text,index,PDF,images or raw research pages.",
+  "not_claimed": "Publisher permission,independent legal/clinical approval,all first-aid topics,complete public Australian pack or maintainer acceptance. ARC enquiry remains unsent."
+}

@@ -161,6 +161,12 @@ class Reference(unittest.TestCase):
         self.assertEqual(len(audit['guide_placements']), 10)
         for gid, original in guides.items():
             guide = copy.deepcopy(original)
+            if gid == 'hurt':
+                for choice in guide['choices']:
+                    choice['read'] = [r for r in choice['read'] if not r.get('doc', '').startswith('personal-au-')]
+                    for ref in choice['read']:
+                        if 'note' in ref:
+                            ref['note'] = ref['note'].replace('Australian originals are separately linked when installed.', 'Australian originals are not included in the public supplement.')
             # Compare the historical bat increment after removing the later,
             # separately audited community-planning addition.
             guide['choices'] = [c for c in guide['choices'] if c['id'] != 'aboriginal-planning']

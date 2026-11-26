@@ -930,6 +930,12 @@
           "page": 144,
           "label": "Normal stress reactions to disaster",
           "note": "CERT 2019 on common disaster stress reactions in survivors and helpers, including vicarious trauma and burnout."
+        },
+        {
+          "doc": "au-mhfa-adult-traumatic-events",
+          "page": 1,
+          "label": "Adult traumatic events: unchanged MHFA original",
+          "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations; general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits; not training or independent clinical review."
         }
       ]
     },

@@ -169,6 +169,7 @@ def guides(snap, packs):
         for d in sorted(docs - ids):
             r = snapshot.get(d)
             why['not in the snapshot' if r is None else 'not redistributable' if r.get('distribution') == 'personal-only'
+                else 'nonprofit source excluded from general packs' if r.get('distribution') == 'nonprofit-only'
                 else 'known gap' if r['path'] in gone else 'video the rules leave out' if r['kind'] == 'video' else 'MISSING'].append(d)
         bad += len(why['MISSING'])
         print(json.dumps({'pack': pack.name, 'cards': len(docs), 'in_pack': len(docs & ids), 'absent': {k: (len(v), v[:8]) for k, v in why.items()},

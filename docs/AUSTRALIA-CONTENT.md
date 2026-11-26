@@ -1037,3 +1037,33 @@ directory check is refreshed to26November;the other original state/ACT dates rem
 Public collection now104=84official practical+13copyright+7original records. Full
 NT/local manuals,professional/community review and actual routes/shelters/supplies
 remain open work.
+
+NT planning validation: **821 contribution/build and 893 combined-source tests
+pass**, each five skips and eleven upstream expected failures;16 focused source
+and8 Han tests pass. Actual public104/private425 engine checks forbid sockets and
+verify NT searches,all104 public reader hashes,the same four-reading NT choice
+in household/rural guides and retained Chinese query/retrieval/libq behavior.
+Guide references resolve237 household,242 rural,13 health,21 personal:513 total,
+zero errors. Private all111 Australian content hashes,42 personal FTS units and
+Victoria's3,054 names/per-file map hashes pass.
+
+Installed Mac runtime22942c1 passes package/i18n/privacy scan,strict signature
+and actual425/7 outbound-IP-denial self-check. Full prior424 app/data retained;
+pinned roots/setup inputs unchanged. Selected native review inspects the new
+worksheet's contact table,shelter-opening/car-park distinction,supply conditions,
+source/authorship notes and both guide choices;actual search,reader,Ask and Back
+context pass. App remains open on rural NT choice. No all104-reader visual QA,
+independent fire/building/veterinary/clinical/accessibility/community review,
+actual local opening/route/service assessment,Windows/Linux-native,notarization,
+newTLS or long-idle claim. Earlier watchdog/HTTP-browser navigation gaps remain.
+
+Public104 original-NT/text-only review,audits and checksums:
+https://github.com/pilkster/lastbook/releases/tag/australia-nt-planning-review-2026-11-26
+Extract into a new folder;never replace a full installed catalog with this smaller
+supplement. Matching updated runtime is still required for short-Han search.
+No reserved NT agency article,PDF,shelter map,translation or branding is bundled;
+CC BY4.0 covers only the new original contributor worksheet. Personal-use ANZCOR
+PDFs/extracted text,private profile,maps,models and videos are excluded. Contributor
+prerelease,not official Setup availability or maintainer acceptance;earlier assets
+unchanged. Broader NT/local manuals,language/community/accessibility,remote and
+public first-aid rights/review remain open work.

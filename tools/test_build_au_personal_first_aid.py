@@ -19,6 +19,59 @@ b = module('personal_au', HERE / 'build_au_personal_first_aid.py')
 
 
 class Personal(unittest.TestCase):
+    def test_ordinary_first_aid_links_preserve_sources_and_existing_choice_fields(self):
+        audit = json.loads((b.ROOT / 'docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json').read_text())
+        guide = json.loads((b.ROOT / 'content/topics/hurt.json').read_text())
+        personal = {r['id']: r for r in json.loads(b.MANIFEST.read_text())['sources']}
+        self.assertEqual(audit['counts'], dict(choices=6, links=9, existing_public_links=2,
+                                             personal_only_links=7, unique_personal_originals=6))
+        for choice in guide['choices']:
+            added = [p for p in audit['placements'] if p['choice'] == choice['id']]
+            self.assertEqual(choice['read'][:len(added)], [p['reference'] for p in added])
+            for p in added:
+                ref = p['reference']
+                if p['distribution'] == 'personal-only':
+                    record = personal[ref['doc']]
+                    self.assertEqual(record['sha256'], p['source_sha256'])
+                    self.assertLessEqual(ref['page'], record['pages'])
+                    self.assertIn('personal use only', ref['note'])
+            choice['read'] = choice['read'][len(added):]
+        changed = audit['changed_existing_reference']
+        ref = next(r for c in guide['choices'] for r in c['read']
+                   if r.get('doc') == changed['doc'] and r.get('page') == changed['page'])
+        self.assertEqual(ref['note'], changed['new_note'])
+        self.assertIn('differs from ANZCOR', ref['note'])
+        ref['note'] = changed['old_note']
+        self.assertEqual(b.digest(json.dumps(guide, sort_keys=True).encode()), audit['baseline_guide_sha256'])
+        self.assertEqual(len(audit['public_candidates']), 4)
+        self.assertIn('technical medium/format changes', audit['public_candidates'][0]['technical_modifications'])
+
+    def test_first_aid_cards_follow_individual_source_availability(self):
+        import server
+        audit = json.loads((b.ROOT / 'docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json').read_text())
+        guide = json.loads((b.ROOT / 'content/topics/hurt.json').read_text())
+        public = module('first_aid_public', HERE / 'build_australia_reference.py').checked_sources()[0]['sources']
+        personal = json.loads(b.MANIFEST.read_text())['sources']
+        sources = {r['id']: r for r in public + personal}
+        added_ids = {p['reference']['doc'] for p in audit['placements']}
+        base = {r['doc']: dict(id=r['doc'], title='Baseline source', path='pages/baseline.html', kind='html')
+                for c in guide['choices'] for r in c['read'] if r['doc'] not in added_ids}
+        cases = [({}, 0), ({r['id']: r for r in public}, 2),
+                 ({r['id']: r for r in personal}, 7),
+                 ({'personal-au-snakebite': sources['personal-au-snakebite']}, 1), (sources, 9)]
+        for available, expected in cases:
+            with self.subTest(available=len(available)), \
+                 patch.object(server, 'APP', b.ROOT), patch.object(server, 'topics', return_value=[guide]), \
+                 patch.object(server, 'zim_names', return_value=[]), \
+                 patch.object(server, 'catalog', return_value={'by_id': {**base, **available}}), \
+                 patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                resolved = server.topics_resolved()[0]
+            refs = [r for c in resolved['choices'] for r in c['read'] if r['doc'] in added_ids]
+            self.assertEqual(len(refs), expected)
+            for ref in refs:
+                self.assertEqual(ref['src']['id'], ref['doc'])
+                self.assertEqual(ref['src']['path'], available[ref['doc']]['path'])
+
     def source(self, cache):
         data = b'%PDF-1.7\nsynthetic preservation fixture'
         (cache / 'personal-au-test.pdf').write_bytes(data)

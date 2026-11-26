@@ -91,6 +91,11 @@
    "hint": "Accident, collapse, several injured people, you need a calm order of steps",
    "read": [
     {
+     "doc": "au-emergency-calls",
+     "label": "Australia: emergency calling source",
+     "note": "ACMA source guidance; Australian emergency numbers and calling limitations. Static source copy, not an emergency-calling function."
+    },
+    {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 1,
      "label": "Stay calm, make the place safe, check breathing then bleeding",
@@ -234,6 +239,12 @@
    "urgent": ["not breathing", "stopped breathing", "isn't breathing", "isnt breathing", "unconscious", "cardiac arrest", "heart stopped", "heart has stopped"],
    "read": [
     {
+     "doc": "personal-au-cpr",
+     "page": 1,
+     "label": "Australia/New Zealand: ANZCOR CPR original",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. General bystander source; specifically trained paediatric providers are directed to other guidelines. Read the complete five-page original."
+    },
+    {
      "doc": "med-2e83e22162a9a006",
      "page": 159,
      "label": "Unresponsive and not breathing normally: start CPR",
@@ -346,6 +357,12 @@
    "hint": "Swollen lips or throat, trouble breathing or can't breathe, hives after a sting, food or medicine",
    "read": [
     {
+     "doc": "personal-au-anaphylaxis",
+     "page": 1,
+     "label": "Australia/New Zealand: ANZCOR anaphylaxis original",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Four-page source; recognition and management continue beyond the opening page. Medication and training conditions remain in the original."
+    },
+    {
      "doc": "med-443ae5cfaa6ecc68",
      "page": 55,
      "label": "Mild allergy vs anaphylaxis",
@@ -365,6 +382,18 @@
    "hint": "Bitten by a snake, rattlesnake, fang marks, venomous or harmless",
    "read": [
     {
+     "doc": "personal-au-snakebite",
+     "page": 3,
+     "label": "Australia: ANZCOR snakebite management original",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Physical PDF page 3 contains management and cautions. Its wound-washing advice differs from the overseas IFRC reading below."
+    },
+    {
+     "doc": "personal-au-pressure-immobilisation",
+     "page": 1,
+     "label": "Australia: ANZCOR pressure-immobilisation uses and exclusions",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Opens the uses/exclusions page; technique and conditions continue in the full five-page source."
+    },
+    {
      "doc": "med-2e83e22162a9a006",
      "page": 340,
      "label": "IFRC: keep the person as still as possible",
@@ -374,7 +403,7 @@
      "doc": "med-2e83e22162a9a006",
      "page": 342,
      "label": "No tourniquet, sucking, cold compress, rubbing or cutting",
-     "note": "IFRC 2025 caution: these may cause further harm. Also washing the wound and carrying the person when help is far away, and telling medical staff the type of snake."
+     "note": "IFRC 2025 cautions and limited-resource guidance. This section includes wound washing, which differs from ANZCOR’s Australian snakebite guidance. Keep the complete country-specific source context; Australian originals are separately linked when installed."
     }
    ]
   },
@@ -404,6 +433,24 @@
    "hint": "Bee or wasp sting or stinger, ticks, mosquito or spider bite, scorpion, jellyfish or stinging fish",
    "read": [
     {
+     "doc": "personal-au-spiderbite",
+     "page": 1,
+     "label": "Australia: ANZCOR spider-bite original",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Eight-page source distinguishes funnel-web from other spider bites."
+    },
+    {
+     "doc": "personal-au-marine-stings",
+     "page": 1,
+     "label": "Australia/New Zealand: ANZCOR marine-envenomation original",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Fourteen-page source; recommendations vary by creature and location. This is not one treatment for all marine stings."
+    },
+    {
+     "doc": "personal-au-pressure-immobilisation",
+     "page": 1,
+     "label": "Australia: ANZCOR pressure-immobilisation uses and exclusions",
+     "note": "Unmodified ANZCOR original, retrieved 17 November 2026 for personal use only. Original audience, approval dates and full conditions remain in the PDF; related guidelines are not all included. No independent clinical review. Read the source exclusions before applying the technique to a bite or sting."
+    },
+    {
      "doc": "med-2e83e22162a9a006",
      "page": 328,
      "label": "IFRC: removing a tick or a bee stinger",
@@ -428,6 +475,11 @@
    "label": "Poisoning: swallowed a chemical, medicine or pesticide",
    "hint": "Poisoned by a cleaning product, rat poison, too many pills (overdose), fuel, button battery, a child got into something",
    "read": [
+    {
+     "doc": "qld-poisons",
+     "label": "Queensland: poisoning source guidance",
+     "note": "Queensland source; local services and requirements apply. Complete source instructions remain in their original context."
+    },
     {
      "doc": "med-2e83e22162a9a006",
      "page": 348,

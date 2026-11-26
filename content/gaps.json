@@ -37,9 +37,11 @@
       "No simple mass-casualty triage method (such as START) written for the public. The medical encyclopedia’s START article (under Go deeper) explains it, but is written for responders.",
       "No stand-alone psychological first aid guide. The medical encyclopedia has an overview article (under Go deeper), but not a guide to follow.",
       "No agency videos on carbon monoxide or burns.",
-      "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available."
+      "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available.",
+      "Australian ANZCOR CPR,anaphylaxis,snake,spider,marine and pressure-immobilisation originals appear only when separately installed for personal use. Public redistribution rights and complete Australian first-aid coverage remain unresolved; source links do not replace training or clinical assessment."
     ],
     "disagree": [
+      "Snakebite: IFRC’s limited-resource section includes washing the wound; ANZCOR’s Australian snakebite guideline advises against washing. These are different source contexts. The unchanged Australian originals appear only when separately installed for personal use; they are not in the public supplement.",
       "Heat stroke: the CERT manual says give no fluids; New Where There Is No Doctor says give drinks once the person is alert. Follow trained help if you can reach it.",
       "CPR: the 2025 Red Cross/Red Crescent guidelines say checking for a pulse is unreliable for first aiders; New Where There Is No Doctor says to check for a pulse.",
       "Poisoning: this guide follows the 2025 Red Cross/Red Crescent guidelines: do not induce vomiting, and give no milk, water or charcoal unless a poison centre says to. The First Aid chapter of New Where There Is No Doctor (2020) instead advises water and activated charcoal for most poisons."
@@ -151,7 +153,7 @@
   },
   "au-health": {
     "missing": [
-      "Current Australian snakebite, spiderbite, marine-stinger, adult CPR and anaphylaxis offline materials need permission and clinical review. ANZCOR publicly restricts redistribution; its full guidelines are not bundled.",
+      "Complete redistributable Australian first-aid coverage remains unresolved. ANZCOR originals are optional personal-use copies. Specific government health sites have different reuse conditions; the 27 November 2026 public-source selection audit records reserved sites, Queensland Health’s CC BY-ND terms and source variations. No new government first-aid body is bundled from that review.",
       "Queensland’s older general bites-and-stings page was reviewed and not selected; do not use a generic overseas snakebite guide as an Australian substitute.",
       "The two SCHN CPR videos are existing optional library resources, not new media included in this text supplement."
     ]

@@ -15,6 +15,23 @@ packs = importlib.util.module_from_spec(spec); spec.loader.exec_module(packs)
 
 
 class Distribution(unittest.TestCase):
+    def test_actual_first_aid_guide_links_never_promote_originals_into_public_packs(self):
+        root = HERE.parent
+        private = json.loads((root / 'content/regions/au/personal-sources.json').read_text())['sources']
+        public = next(r for r in json.loads((root / 'content/regions/au/manifest.json').read_text())['sources']
+                      if r['id'] == 'qld-poisons')
+        self.assertTrue({r['id'] for r in private} <= packs.guide_ids())
+        with tempfile.TemporaryDirectory() as d:
+            snap = Path(d); (snap / 'remote-videos.json').write_text('{}')
+            with patch.object(packs, 'video_groups', return_value=({}, {})), \
+                 patch.dict(packs.SIZES, {'small': {**packs.SIZES['small'], 'video_include': [], 'video_exclude': []}}):
+                for size in ['small', 'medium', 'all']:
+                    chosen, left, _ = packs.select(size, [public] + private, snap, 0)
+                    self.assertIn(public['id'], chosen)
+                    self.assertTrue({r['id'] for r in private}.isdisjoint(chosen))
+                    self.assertTrue(all('not redistributable' in why for uid, _, why in left
+                                        if uid in {r['id'] for r in private}))
+
     def test_guide_verifier_distinguishes_restricted_sources_from_missing_public_sources(self):
         spec = importlib.util.spec_from_file_location('verify', HERE / 'verify_packs.py')
         verify = importlib.util.module_from_spec(spec); spec.loader.exec_module(verify)

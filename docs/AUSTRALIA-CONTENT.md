@@ -4,6 +4,36 @@ This contribution adds a reviewed starting collection for Australian households 
 rural properties. It does **not** make Lastbook complete for Australia. Its coverage
 and remaining work are recorded below so missing information is visible.
 
+## First-aid source navigation and selection — 27 November 2026
+
+The ordinary injury/illness guide now adds nine source links across six existing
+choices: two existing public calling/poisoning readings and seven conditional links
+to six separately installed ANZCOR originals. Original PDFs and extracted text
+remain personal-use only. Public121 and base314 libraries hide the missing personal
+cards. Source links do not cause restricted originals to enter any public pack.
+
+The snakebite choice now identifies the difference between IFRC's limited-resource
+washing advice and ANZCOR's Australian source. The actual IFRC physical page342 and
+unchanged Australian PDF page3 were checked; the current official ANZCOR HTML was
+also reviewed. This is source context,not a newly authored treatment procedure.
+Six cited original pages were rendered and inspected. Original audience,approval/
+review dates,continuations and medication/training conditions remain in each PDF.
+
+The separate public-source selection audit records exact candidate/policy URLs,
+raw hashes or explicit403 retrieval failures,and observed footer links. SCHN,
+Better Health Channel and HealthyWA have their own reserved-site terms; they do
+not inherit another agency's open licence. Queensland Health expressly covers its
+subdomains with CC BY-ND4.0. That licence permits unmodified sharing and technical
+format changes; ND is not a blanket ban on offline copies. No new ND-format import
+or medical wording adaptation is approved by this audit. Bandage/CPR source
+variations require further review. No new government first-aid body,source image,
+raw research page or private guideline text is imported into the public collection.
+The builder's existing licence allow-list remains unchanged.
+
+See `docs/AUSTRALIA-FIRST-AID-SELECTION-20261127.json` for the nine placements and
+source decisions. ARC enquiry remains unsent; no permission,endorsement or
+independent clinical/legal approval is claimed.
+
 ## Australian readings in ordinary needs — 27 November 2026
 
 Forty links across 25 existing choices in seven ordinary guides now expose relevant

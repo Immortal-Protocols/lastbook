@@ -58,3 +58,21 @@ Public redistribution still needs explicit rights-holder permission. Any propose
 public guide should cite verified physical PDF pages and undergo content/clinical
 review. Do not treat the existence of this fetch tool as permission to redistribute
 its output or as approval from ANZCOR or the Lastbook maintainers.
+
+
+## Ordinary first-aid choices — 27 November 2026
+
+The injury/illness guide now links installed originals from its breathing,
+anaphylaxis,snakebite and sting choices. Seven cards reference six originals;
+the pressure-immobilisation source is relevant in both snake and sting choices.
+Each card says personal use only and retains source/audience limits. Anaphylaxis
+opens its first page and directs readers to the complete four-page source;
+management is not presented as a complete procedure on one PDF page. The snakebite
+card opens physical page3; pressure-immobilisation opens its uses/exclusions page.
+
+These cards use existing per-document availability filtering. They disappear in
+libraries without the separately installed originals. The ordinary guide's two
+public Australian calling/poisons additions remain available when their records
+are installed. No PDF,extracted text,index or medical procedure is added to the
+public supplement by these links. Public pack-selection checks retain the explicit
+personal-use exclusions,even when shipped guides cite all six originals.

@@ -29,7 +29,15 @@
     "South Australia",
     "Adelaide",
     "satellite beacon",
-    "EPIRB"
+    "EPIRB",
+    "LPG",
+    "LCC27",
+    "POL",
+    "gas leak",
+    "battery",
+    "solar",
+    "working alone",
+    "road trip"
   ],
   "choices": [
     {
@@ -214,6 +222,62 @@
       ]
     },
     {
+      "id": "energy-safety",
+      "label": "Read Victorian gas, LPG and flood-energy safety",
+      "hint": "Read the full source cautions and check the actual appliance, cylinder and regional requirements.",
+      "read": [
+        {
+          "doc": "vic-gas-emergencies",
+          "label": "Gas emergencies: Energy Safe Victoria source guidance",
+          "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor table and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "vic-flood-energy",
+          "label": "Floods, electricity, solar, batteries and gas: Victorian source guidance",
+          "note": "Complete introduction and written before/after-flood safety sections, including electricity, solar, batteries, gas and LPG cautions. Translation listings/downloads and their separate pages are excluded. Source contacts and evacuation-authority statements apply to Victoria. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "vic-lpg-cylinders",
+          "label": "BBQ and outdoor LPG cylinders: Victorian source guidance",
+          "note": "Complete written article, including old/new connection compatibility, no-adaptor cautions and valve safety. Images, connector diagrams, timeline artwork and third-party videos are not bundled. Read the accompanying FAQ and manufacturer instructions for the actual appliance/valve; this is not a visual connector-identification guide. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "vic-lcc27-faq",
+          "label": "LCC27 and POL compatibility: Victorian source questions and answers",
+          "note": "All nine complete question/answer pairs, with questions retained as headings. The distinction between a new cylinder valve and a new appliance connector, and the no-adaptor cautions, remain. This dated source describes the 2021/2022 transition; manufacturer instructions and relevant gasfitter requirements still apply. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "remote-work",
+      "label": "Plan for working alone or remotely",
+      "hint": "Workplace guidance, including farms and home-based work. Model WHS duties and local laws differ.",
+      "read": [
+        {
+          "doc": "au-remote-work-overview",
+          "label": "Remote and isolated work: Safe Work Australia overview",
+          "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "au-remote-work-risks",
+          "label": "Managing remote and isolated work risks: Safe Work Australia",
+          "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "travel",
+      "label": "Prepare for a Queensland road trip",
+      "hint": "A source checklist with regional quantities; plan the actual route, conditions and reserve supplies.",
+      "read": [
+        {
+          "doc": "qld-road-trip",
+          "label": "Prepare for a Queensland road trip: Get Ready source guidance",
+          "note": "Complete written article. Interactive vehicle/kit hotspots are flattened to one copy each (9 vehicle and 18 kit points); map-position percentages and repeated responsive views are omitted. Five severe-weather tips and caravan sections remain. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Linked alerts, caravan and boat pages are not bundled. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
       "id": "poisons",
       "label": "Someone may have been poisoned",
       "hint": "Read the source guidance and its regional limits.",
@@ -325,6 +389,41 @@
       "doc": "au-locating-devices",
       "label": "Emergency locating devices: ACMA explanation",
       "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-gas-emergencies",
+      "label": "Gas emergencies: Energy Safe Victoria source guidance",
+      "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor table and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-flood-energy",
+      "label": "Floods, electricity, solar, batteries and gas: Victorian source guidance",
+      "note": "Complete introduction and written before/after-flood safety sections, including electricity, solar, batteries, gas and LPG cautions. Translation listings/downloads and their separate pages are excluded. Source contacts and evacuation-authority statements apply to Victoria. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lpg-cylinders",
+      "label": "BBQ and outdoor LPG cylinders: Victorian source guidance",
+      "note": "Complete written article, including old/new connection compatibility, no-adaptor cautions and valve safety. Images, connector diagrams, timeline artwork and third-party videos are not bundled. Read the accompanying FAQ and manufacturer instructions for the actual appliance/valve; this is not a visual connector-identification guide. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lcc27-faq",
+      "label": "LCC27 and POL compatibility: Victorian source questions and answers",
+      "note": "All nine complete question/answer pairs, with questions retained as headings. The distinction between a new cylinder valve and a new appliance connector, and the no-adaptor cautions, remain. This dated source describes the 2021/2022 transition; manufacturer instructions and relevant gasfitter requirements still apply. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-overview",
+      "label": "Remote and isolated work: Safe Work Australia overview",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-risks",
+      "label": "Managing remote and isolated work risks: Safe Work Australia",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "qld-road-trip",
+      "label": "Prepare for a Queensland road trip: Get Ready source guidance",
+      "note": "Complete written article. Interactive vehicle/kit hotspots are flattened to one copy each (9 vehicle and 18 kit points); map-position percentages and repeated responsive views are omitted. Five severe-weather tips and caravan sections remain. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Linked alerts, caravan and boat pages are not bundled. Retrieved 26 November 2026."
     }
   ],
   "learn": [
@@ -427,6 +526,41 @@
       "doc": "au-locating-devices",
       "label": "Emergency locating devices: ACMA explanation",
       "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-gas-emergencies",
+      "label": "Gas emergencies: Energy Safe Victoria source guidance",
+      "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor table and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-flood-energy",
+      "label": "Floods, electricity, solar, batteries and gas: Victorian source guidance",
+      "note": "Complete introduction and written before/after-flood safety sections, including electricity, solar, batteries, gas and LPG cautions. Translation listings/downloads and their separate pages are excluded. Source contacts and evacuation-authority statements apply to Victoria. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lpg-cylinders",
+      "label": "BBQ and outdoor LPG cylinders: Victorian source guidance",
+      "note": "Complete written article, including old/new connection compatibility, no-adaptor cautions and valve safety. Images, connector diagrams, timeline artwork and third-party videos are not bundled. Read the accompanying FAQ and manufacturer instructions for the actual appliance/valve; this is not a visual connector-identification guide. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lcc27-faq",
+      "label": "LCC27 and POL compatibility: Victorian source questions and answers",
+      "note": "All nine complete question/answer pairs, with questions retained as headings. The distinction between a new cylinder valve and a new appliance connector, and the no-adaptor cautions, remain. This dated source describes the 2021/2022 transition; manufacturer instructions and relevant gasfitter requirements still apply. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-overview",
+      "label": "Remote and isolated work: Safe Work Australia overview",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-risks",
+      "label": "Managing remote and isolated work risks: Safe Work Australia",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "qld-road-trip",
+      "label": "Prepare for a Queensland road trip: Get Ready source guidance",
+      "note": "Complete written article. Interactive vehicle/kit hotspots are flattened to one copy each (9 vehicle and 18 kit points); map-position percentages and repeated responsive views are omitted. Five severe-weather tips and caravan sections remain. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Linked alerts, caravan and boat pages are not bundled. Retrieved 26 November 2026."
     }
   ],
   "related": [

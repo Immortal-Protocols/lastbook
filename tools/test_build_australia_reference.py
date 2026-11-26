@@ -36,7 +36,11 @@ class Reference(unittest.TestCase):
                                         ('"qualified electrician"', 'sa-flood-after'),
                                         ('"small animals"', 'sa-animal-planning'),
                                         ('"seasonal preparation"', 'sa-property-preparation'),
-                                        ('"short range devices"', 'au-locating-devices')]:
+                                        ('"short range devices"', 'au-locating-devices'),
+                                        ('"not be compatible"', 'vic-lcc27-faq'),
+                                        ('"solar system"', 'vic-flood-energy'),
+                                        ('"emergency assistance"', 'au-remote-work-risks'),
+                                        ('"Spare fuel"', 'qld-road-trip')]:
                     ids = {r[0] for r in db.execute('SELECT doc_id FROM pages WHERE pages MATCH ?', (query,))}
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):
@@ -48,6 +52,19 @@ class Reference(unittest.TestCase):
                              {'AU-ACT', 'AU-NSW', 'AU-NT', 'AU-QLD', 'AU-SA', 'AU-TAS', 'AU-VIC', 'AU-WA'})
             self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
             self.assertEqual(cat['vic-generator']['license'], 'CC-BY-4.0')
+
+    def test_new_sources_keep_connector_questions_and_flatten_only_trip_controls(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        faq = (au.SOURCES / entries['vic-lcc27-faq']['snapshot']).read_text(encoding='utf-8')
+        self.assertEqual(faq.count('<h3>'), 9)
+        self.assertIn('If I buy a gas appliance with the new connection', faq)
+        self.assertIn('Adaptors must not be used', faq)
+        trip = (au.SOURCES / entries['qld-road-trip']['snapshot']).read_text(encoding='utf-8')
+        self.assertEqual(trip.count('<h4>'), 27)
+        self.assertEqual(trip.count('<h4>Food and water</h4>'), 1)
+        self.assertIn('20 litres', trip)
+        self.assertNotIn('48.00%', trip)
+        self.assertNotIn('Hover over', trip)
 
     def test_existing_output_is_untouched(self):
         with tempfile.TemporaryDirectory() as d:

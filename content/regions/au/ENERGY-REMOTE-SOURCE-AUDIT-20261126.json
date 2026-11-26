@@ -1,0 +1,246 @@
+{
+  "checked": "2026-11-26",
+  "selections": [
+    {
+      "id": "swa-copyright",
+      "url": "https://www.safeworkaustralia.gov.au/copyright",
+      "final_url": "https://www.safeworkaustralia.gov.au/copyright",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "b2469af940d3ac9027abe5b421804c739d7e8cfa89f8caf278111742ce45448c",
+      "selectors": [
+        [
+          "article",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "cb6db16c6275d45196a0c1edd745cc388ffdaf4a8c5047f284615deb4515bd4e",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "swa-remote-overview",
+      "url": "https://www.safeworkaustralia.gov.au/safety-topic/hazards/remote-and-isolated-work/overview",
+      "final_url": "https://www.safeworkaustralia.gov.au/safety-topic/hazards/remote-and-isolated-work/overview",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "7e0be9454ca22a79acf173188c44ce4a2117a97ff96e4bc299d66cadbd860d02",
+      "selectors": [
+        [
+          "article",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "b2fcd163f92e71365249eeca85737031c2dcc4067899cea088d286d3c3549079",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "swa-remote-risks",
+      "url": "https://www.safeworkaustralia.gov.au/safety-topic/hazards/remote-and-isolated-work/managing-risks",
+      "final_url": "https://www.safeworkaustralia.gov.au/safety-topic/hazards/remote-and-isolated-work/managing-risks",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "8af9907f6556d95f299b01f13389b472d1298c2d0d32a272e59a5bf48c5e518b",
+      "selectors": [
+        [
+          "article",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "be31c1a7feeed9ce0aa7ba5220eb76b49c564f48713d62eab23918985db1e219",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "vic-gas-emergencies",
+      "url": "https://www.energysafe.vic.gov.au/community-safety/emergencies/gas-emergencies",
+      "final_url": "https://www.energysafe.vic.gov.au/community-safety/emergencies/gas-emergencies",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "dcfa107b4650e60f6a816692534a7d02dc2aa32d412e7d043fceb5412dcf3df1",
+      "selectors": [
+        [
+          "main .rpl-content",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "e8298b5f4c35d66db810f391d03028d01f8c275bc6b33f5e197516f2bde867ae",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "vic-flood-energy",
+      "url": "https://www.energysafe.vic.gov.au/community-safety/emergencies/energy-safety-during-floods",
+      "final_url": "https://www.energysafe.vic.gov.au/community-safety/emergencies/energy-safety-during-floods",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "b8d68749576074ebfe4b5d4e66b8c4e2c593eeeeec01b5cff53f2644c210902a",
+      "selectors": [
+        [
+          "main .rpl-content",
+          0,
+          3
+        ],
+        [
+          "main .rpl-content",
+          2,
+          3
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "c69771a268fc8c41203c01190e098dbafa9de1443e9cb7d6b82ec75a6c78f032",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "vic-cylinder",
+      "url": "https://www.energysafe.vic.gov.au/community-safety/energy-safety-guides/home-safety/bbq-gas-cylinders",
+      "final_url": "https://www.energysafe.vic.gov.au/community-safety/energy-safety-guides/home-safety/bbq-gas-cylinders",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "00c9ba9fad58c88672d8415741189084b8c218dd5a533296f09f0cac576f4853",
+      "selectors": [
+        [
+          "main .rpl-content",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "2cf9736fc8a5f655683d8c9da01b3b01bbd370cc35331a63fa6c9036ca2f81b4",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "vic-lcc27",
+      "url": "https://www.energysafe.vic.gov.au/community-safety/frequently-asked-questions/new-lcc27-valve-and-connections",
+      "final_url": "https://www.energysafe.vic.gov.au/community-safety/frequently-asked-questions/new-lcc27-valve-and-connections",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "0a45a9fc6b59880ac3f834cd4d3102892a8274c2cd220c14df91044c08251bdc",
+      "selectors": [
+        [
+          "main .rpl-accordion",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": 9,
+      "trip_unique_checklist_points": null,
+      "normalized_selected_text_sha256": "ec7c9deed7272e0541426051286764ecad1bb5c6103f1e90936917e634633f62",
+      "wording_unchanged_after_technical_simplification": true
+    },
+    {
+      "id": "qld-travel",
+      "url": "https://www.getready.qld.gov.au/prepare/travel",
+      "final_url": "https://www.getready.qld.gov.au/prepare/travel",
+      "retrieved_at": "2026-11-26",
+      "raw_sha256": "ce1a5a172b1d27a81347c002e517c70fae5dc759cd55052d0d6e681df00b1fe4",
+      "selectors": [
+        [
+          "article .node__content",
+          0,
+          1
+        ]
+      ],
+      "faq_questions_retained": null,
+      "trip_unique_checklist_points": [
+        9,
+        18
+      ],
+      "normalized_selected_text_sha256": "a32412672f0772b29c72267782d966a543c65649a37558f5064d3e0943f8501f",
+      "wording_unchanged_after_technical_simplification": true
+    }
+  ],
+  "current_policies_checked": {
+    "esv-current-copyright": {
+      "id": "esv-current-copyright",
+      "url": "https://www.energysafe.vic.gov.au/about-us/policy-and-copyright/copyright",
+      "final_url": "https://www.energysafe.vic.gov.au/about-us/policy-and-copyright/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 211253,
+      "raw_sha256": "7a03ab708b418b0023f167a7d9d4ee3a79be6c4cef095057acb302b9f22119c8",
+      "links": [
+        {
+          "text": "Policy and copyright",
+          "href": "/topic/policy-and-copyright"
+        },
+        {
+          "text": "Electrical licences",
+          "href": "/licensing/electrical-licences"
+        },
+        {
+          "text": "Gasfitter licences",
+          "href": "/licensing/gasfitter-licences"
+        },
+        {
+          "text": "Copyright",
+          "href": "/about-us/policy-and-copyright/copyright"
+        }
+      ]
+    },
+    "swa-copyright": {
+      "id": "swa-copyright",
+      "url": "https://www.safeworkaustralia.gov.au/copyright",
+      "final_url": "https://www.safeworkaustralia.gov.au/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 84818,
+      "raw_sha256": "b2469af940d3ac9027abe5b421804c739d7e8cfa89f8caf278111742ce45448c",
+      "links": [
+        {
+          "text": "Creative Commons Attribution 4.0 International Licence",
+          "href": "https://creativecommons.org/licenses/by/4.0"
+        },
+        {
+          "text": "CC BY 4.0 licence",
+          "href": "https://creativecommons.org/licenses/by/4.0"
+        },
+        {
+          "text": "CC BY licence button",
+          "href": "https://creativecommons.org/about/downloads"
+        },
+        {
+          "text": "Copyright",
+          "href": "/copyright"
+        }
+      ]
+    },
+    "qld-current-copyright": {
+      "id": "qld-current-copyright",
+      "url": "https://www.qld.gov.au/legal/copyright",
+      "final_url": "https://www.qld.gov.au/legal/copyright",
+      "retrieved_at": "2026-11-26",
+      "bytes": 182764,
+      "raw_sha256": "e2292d811c0965add789345105d9c4e491c42fb60fbc7d81099d4f2a4ad3e20a",
+      "links": [
+        {
+          "text": "Driver licence",
+          "href": "https://www.qld.gov.au/transport/licensing"
+        },
+        {
+          "text": "Copyright",
+          "href": "https://www.qld.gov.au/legal/copyright"
+        },
+        {
+          "text": "Creative Commons Attribution 4.0 International licence (CC BY 4.0)",
+          "href": "https://creativecommons.org/licenses/by/4.0/"
+        },
+        {
+          "text": "Copyright",
+          "href": "https://www.qld.gov.au/legal/copyright"
+        }
+      ]
+    }
+  },
+  "excluded": [
+    "WorkSafe ACT own site permits narrower unaltered personal/educational/organisational uses; genericACTCC policy not applied.",
+    "WorkSafe WA links noncommercial WA terms; remote-tour PDF has no separate open grant established.",
+    "OlderWA2014remote bulletin includes a usually24h reporting delay; not bundled.",
+    "CFA2022survivalPDF has explicitCCBY4text/imagesexcluded, but current-catalogue edition notconfirmed and selectedtext has missing ligatures; not bundled in this revision.",
+    "CFAFireReadyKitPDF2022 has no separate open grant established; not bundled.",
+    "VICSES commercial reuse requireswrittenpermission; not bundled.",
+    "ParksQueenslandwalking raw retrieval403; not bundled."
+  ]
+}

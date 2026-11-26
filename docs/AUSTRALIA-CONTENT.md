@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 33 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 40 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -15,9 +15,10 @@ and remaining work are recorded below so missing information is visible.
   written fire-danger rating and AusAlert articles; the complete 10 November 2026
   AusAlert operational announcement; NSW's warning-level definitions; six SA SES
   before/during/after storm and flood pages; and SA CFS property and animal-planning
-  sections.
-- Nine copyright statements, the original Australian source hub and a directory
-  covering all six states, ACT and NT: **44 searchable HTML records** altogether.
+  sections; four Victorian energy/gas/LPG readings; two Safe Work Australia
+  remote-work readings; and Queensland road-trip preparation.
+- Ten copyright statements, the original Australian source hub and a directory
+  covering all six states, ACT and NT: **52 searchable HTML records** altogether.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
   documents are installed. The health guide also points to the library's existing
@@ -143,6 +144,33 @@ resources and active external links are excluded; referenced brochures, maps,
 translations and manufacturers' instructions are not silently bundled. Retrieval
 dates are not authoring or independent clinical-review dates.
 
+The energy/remote expansion retains complete ESV gas-emergency, flood-energy,
+outdoor-cylinder and LCC27 FAQ written selections. The gas page keeps its
+safe-to-do-so conditions and Victorian distributor table. The flood page keeps
+all before/after sections, including solar/battery live-system cautions and
+qualified inspection; translation lists/downloads are excluded. The cylinder
+page keeps written compatibility/no-adaptor cautions; artwork and third-party
+videos are excluded. All nine FAQ questions are retained as headings with their
+complete answers, preserving the direction of compatibility between old cylinders
+and new appliance connectors. The dated 2021/2022 transition is not relabelled as
+a new change. Manufacturer instructions and regional requirements still apply.
+
+Safe Work Australia's complete remote/isolated-work overview and risk-management
+article are workplace/PCBU readings, including farms and home-based work. They
+are model-WHS guidance, not a claim that laws are identical in every jurisdiction.
+SWA is not a regulator. Its exact-site CC BY 4.0 copyright statement is included;
+linked model Codes have separate publication rights and are not bundled.
+
+The Get Ready Queensland travel article's written content is retained while its
+interactive hotspots are flattened to one copy each: nine vehicle-check points,
+18 kit points and five severe-weather tips. Map-position percentages, repeated
+responsive copies, hover/print controls and imagery are excluded. Source typos
+and quantities remain unchanged. These regional reference amounts are not a
+route/climate-specific supply calculation. The page links directly to the
+Queensland CC BY 4.0 copyright statement. Raw hashes, selectors, FAQ/point counts,
+selected-text hashes and exclusions are recorded in
+`ENERGY-REMOTE-SOURCE-AUDIT-20261126.json` beside the snapshots.
+
 Reviewed but **not bundled**:
 
 - ANZCOR full guidelines: its copyright page limits public redistribution without
@@ -159,6 +187,16 @@ Reviewed but **not bundled**:
   that permission scope remains unresolved.
 - AMSA remote land-travel material: candidate primary source; full source/permission
   snapshot acquisition still needed. Its address appears as an unbundled reference.
+- WorkSafe ACT's own policy permits narrower unaltered personal/educational or
+  organisational uses; it does not inherit the general ACT portal's open grant.
+  WorkSafe WA links noncommercial WA terms; no separate open grant was established
+  in the remote-tour PDF. Neither is bundled. The older WA bulletin also describes
+  a usually-24-hour contact delay and was not adopted as current missing-person advice.
+- CFA's July 2022 Version 6 survival PDF explicitly licenses text under CC BY 4.0,
+  excluding imagery/branding. Current-catalogue edition confirmation and reliable
+  transcription/layout QA remain incomplete; its text layer drops some ligatures.
+  No CFA PDF or transcription is bundled here. VICSES commercial reuse needs
+  written permission; its general site grant was not treated as open CC material.
 
 To refresh: retrieve the official source and its exact site's copyright statement,
 check changed instructions, dates, attribution and third-party notices, review the
@@ -173,11 +211,11 @@ an instruction to accept a new live page automatically.
 | --- | --- | --- |
 | Emergency calls and communications | ACMA 000/112/106, coverage/accessibility/power loss, CB class licence; NEMA AusAlert explanations and operational notice | Satellite phone/PLB operation, detailed device support and local radio frequency coverage |
 | Household planning and supplies | Qld plans, kit, home and pets; NSW evacuation; SA property and animal-planning selections | Licensed detailed local guides for remaining jurisdictions; disability and translated materials |
-| Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov remote-travel basics; ACMA locating-device explanation | Detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
+| Rural preparation | NSW rural bushfire, flood/isolation, animals; SA CFS property and larger-animal planning; myGov basics; Qld trip/kit source; SWA remote-work risks; ACMA locating-device explanation | More detailed remote driving, route-specific water/fuel calculations, beacon activation manuals, pastoral and First Nations community-specific sources |
 | Fire, flood, cyclone and heat | Dated NSW/Qld texts; six SA SES before/during/after storm/flood readings; current-source national fire-danger/No Rating explanation and warning-level definitions | More detailed regional manuals for ACT/NT/Tas/WA/Vic; hazard-specific and accessible/translated warnings materials |
 | Food and water | Qld food-safety source and drinking-water section | Rainwater-tank/bore testing, extended remote supply and jurisdiction-specific recovery guidance |
 | Health | Emergency calls, Qld poisons, references to existing SCHN videos | Permission-cleared current Australian snakebite/marine-stinger/adult CPR/anaphylaxis material and clinical review |
-| Power, gas and repairs | Energy Safe Victoria generator-use section, with its complete cautions | Broader electrical and gas safety; equipment-specific instructions and local professional assessment |
+| Power, gas and repairs | ESV generator use, gas emergencies, flood electricity/solar/battery/gas, outdoor LPG cylinders and all nine LCC27 FAQ pairs | More jurisdiction-specific material; equipment-specific instructions, repairs and local professional assessment |
 | Geographic directory | Six states, ACT and NT | External territories, including Jervis Bay's distinct arrangements |
 | Maps | Separate #38 now has eight capital and eight broader extract definitions; #90 provides point-place sidecars alongside #63 | Official release/scanner/switch/repair integration and external-territory verification; this supplement contains no map files |
 

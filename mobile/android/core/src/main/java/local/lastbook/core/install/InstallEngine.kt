@@ -85,20 +85,33 @@ class InstallEngine(
 
         if (modelId != null && wantAI) {
             val model = catalog.model(modelId)
-            val fitsRam = model != null && model.memoryBytes < totalRam
-            val st = when {
-                model == null -> ItemState.UNAVAILABLE
-                hasLib && modelInstalled(model, root) -> ItemState.INSTALLED
-                !fitsRam -> ItemState.UNAVAILABLE
-                model.available -> ItemState.TO_DOWNLOAD
-                else -> ItemState.UNAVAILABLE
-            }
-            items += PlanItem("model:${modelId}", CatalogEntry.Kind.MODEL, "Local AI (${model?.title ?: modelId})", model, false, st,
-                note = if (!fitsRam) "This device may not have enough memory; you can still install it and Lastbook will check the fit." else null)
+            val installed = model != null && hasLib && modelInstalled(model, root)
+            items += planModelItem(modelId, model, installed, totalRam)
         } else {
             items += PlanItem("model:none", CatalogEntry.Kind.MODEL, "Local AI", null, false, ItemState.OPTED_OUT)
         }
         return Plan(packId, stateId, if (wantAI) modelId else null, items, free)
+    }
+
+    companion object {
+        internal fun planModelItem(modelId: String, model: CatalogEntry?, installed: Boolean, totalRam: Long): PlanItem {
+            val fitsRam = model != null && model.memoryBytes < totalRam
+            val st = when {
+                model == null -> ItemState.UNAVAILABLE
+                installed -> ItemState.INSTALLED
+                model.available -> ItemState.TO_DOWNLOAD
+                else -> ItemState.UNAVAILABLE
+            }
+            val note = when {
+                model == null || !model.available -> "The local AI isn't on the download site right now."
+                !fitsRam && st == ItemState.TO_DOWNLOAD ->
+                    "This device may not have enough memory; you can still install it and Lastbook will check the fit."
+                !fitsRam ->
+                    "This device may not have enough memory; Lastbook will check the fit when starting AI."
+                else -> null
+            }
+            return PlanItem("model:$modelId", CatalogEntry.Kind.MODEL, "Local AI (${model?.title ?: modelId})", model, false, st, note = note)
+        }
     }
 
     private fun totalMemory(): Long = runCatching {

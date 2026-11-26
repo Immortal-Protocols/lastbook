@@ -2,6 +2,7 @@ package local.lastbook.core
 
 import local.lastbook.core.install.CatalogEntry
 import local.lastbook.core.install.InstallCatalog
+import local.lastbook.core.install.InstallEngine
 import local.lastbook.core.install.ItemState
 import local.lastbook.core.install.Plan
 import local.lastbook.core.install.PlanItem
@@ -148,6 +149,25 @@ class CoreEngineTest {
 
         val tightPlan = Plan("small", "RI", "gemma-4-e2b", items, freeBytes = 5_000_000_000L)
         assertFalse(tightPlan.fits)
+    }
+
+    @Test
+    fun `low RAM model stays installable with memory warning note`() {
+        val cat = InstallCatalog.parse(sampleManifest)
+        val e2b = cat.model("gemma-4-e2b")!!
+
+        val lowRamItem = InstallEngine.planModelItem("gemma-4-e2b", e2b, installed = false, totalRam = 4L * 1024 * 1024 * 1024)
+        assertEquals(ItemState.TO_DOWNLOAD, lowRamItem.state)
+        assertNotNull(lowRamItem.note)
+        assertTrue(lowRamItem.note!!.contains("enough memory"))
+
+        val enoughRamItem = InstallEngine.planModelItem("gemma-4-e2b", e2b, installed = false, totalRam = 8L * 1024 * 1024 * 1024)
+        assertEquals(ItemState.TO_DOWNLOAD, enoughRamItem.state)
+        assertNull(enoughRamItem.note)
+
+        val unavailableItem = InstallEngine.planModelItem("gemma-4-e2b", e2b.copy(available = false), installed = false, totalRam = 8L * 1024 * 1024 * 1024)
+        assertEquals(ItemState.UNAVAILABLE, unavailableItem.state)
+        assertNotNull(unavailableItem.note)
     }
 
     @Test

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import local.lastbook.android.ui.ChatScreen
 import local.lastbook.android.ui.LibraryScreen
@@ -37,9 +38,9 @@ class LastbookUiTest {
             }
             composeRule.onNodeWithText("An install was interrupted").assertIsDisplayed()
             composeRule.onNodeWithText("Resume install").assertIsDisplayed()
-            composeRule.onNodeWithText("Choose your state").assertIsDisplayed()
-            composeRule.onNodeWithText("Small").assertIsDisplayed()
-            composeRule.onNodeWithText("Add local AI").assertIsDisplayed()
+            composeRule.onNodeWithText("Choose your state").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Small").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Add local AI").performScrollTo().assertIsDisplayed()
         } finally {
             jobFile.delete()
         }

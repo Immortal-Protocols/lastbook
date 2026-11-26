@@ -43,7 +43,7 @@ HEAD="$(git -C "$L" rev-parse HEAD)"
 git -C "$L" diff --quiet HEAD -- || { echo "error: llama.cpp has local modifications" >&2; exit 1; }
 
 JOBS="$(sysctl -n hw.ncpu)"
-MAP="-ffile-prefix-map=$L=llama.cpp -ffile-prefix-map=$HERE=lastbook-ipad"   # no folder of this Mac inside the app
+MAP_ARGS=("-ffile-prefix-map=$L=llama.cpp" "-ffile-prefix-map=$HERE=lastbook-ipad")   # no folder of this Mac inside the app
 
 build_one() {
   local plat="$1" sys target sdk dep
@@ -61,17 +61,27 @@ build_one() {
   local SYSROOT; SYSROOT="$(xcrun --sdk "$sdk" --show-sdk-path)"
   local extra=()
   [ "$sys" = iOS ] && extra+=(-DCMAKE_SYSTEM_NAME=iOS -DGGML_METAL_TARGET_OS=ios)
+  # Pass prefix-map flags via add_compile_options so paths containing spaces are never split by CMake or the shell.
+  local prefix_cmake="$B/prefix-map.cmake"
+  cat > "$prefix_cmake" <<'EOF'
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  add_compile_options(
+    "$<$<COMPILE_LANGUAGE:C,CXX,OBJC>:-ffile-prefix-map=${LB_LLAMA_DIR}=llama.cpp>"
+    "$<$<COMPILE_LANGUAGE:C,CXX,OBJC>:-ffile-prefix-map=${LB_HERE_DIR}=lastbook-ipad>"
+  )
+endif()
+EOF
   echo "llama ($plat): configuring and building (first time takes a few minutes)"
   cmake -S "$L" -B "$B" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
     -DLLAMA_BUILD_COMMON=OFF -DLLAMA_BUILD_APP=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF \
     -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_MTMD=OFF -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF -DGGML_RPC=OFF \
     -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CCACHE=OFF \
     -DCMAKE_OSX_SYSROOT="$SYSROOT" -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$dep" ${extra[@]+"${extra[@]}"} \
-    -DCMAKE_C_FLAGS="$MAP" -DCMAKE_CXX_FLAGS="$MAP" -DCMAKE_OBJC_FLAGS="$MAP" > "$OUT/cmake-$plat.log"
+    -DLB_LLAMA_DIR="$L" -DLB_HERE_DIR="$HERE" -DCMAKE_PROJECT_INCLUDE="$prefix_cmake" > "$OUT/cmake-$plat.log"
   cmake --build "$B" -j "$JOBS" --target llama > "$OUT/build-$plat.log"
 
   local objs="$OUT/obj-$plat"; rm -rf "$objs"; mkdir -p "$objs"
-  local CXX=(xcrun --sdk "$sdk" clang++ -std=c++17 -O2 -DNDEBUG $MAP -target "$target" -isysroot "$SYSROOT"
+  local CXX=(xcrun --sdk "$sdk" clang++ -std=c++17 -O2 -DNDEBUG "${MAP_ARGS[@]}" -target "$target" -isysroot "$SYSROOT"
              -I"$HERE/llm/include" -I"$L/include" -I"$L/ggml/include" -I"$L/common" -I"$L/vendor" -I"$L/src")
   "${CXX[@]}" -c "$BRIDGE" -o "$objs/bridge.o"
   "${CXX[@]}" -c "$L/common/fit.cpp" -o "$objs/fit.o"
@@ -80,11 +90,13 @@ build_one() {
   # fit.cpp's common_measure_memory() needs three functions of common.cpp, which is not built in. Nothing calls it; a static
   # library keeps the reference, so the desktop's stand-ins (they stop the app if ever reached) resolve it.
   "${CXX[@]}" -c "$SRCROOT_LB/packaging/llm/fit_unused_win.cpp" -o "$objs/fit_unused.o"
-  local libs; libs="$(find "$B" -name '*.a' | sort)"
+  local libs=() a
+  while IFS= read -r a; do
+    [ -n "$a" ] && libs+=("$a")
+  done < <(find "$B" -name '*.a' | sort)
   rm -f "$lib"
-  # shellcheck disable=SC2086
-  xcrun libtool -static -no_warning_for_no_symbols -o "$lib" "$objs"/*.o $libs
-  if echo "$libs" | grep -qi rpc; then echo "error: an RPC backend was built" >&2; rm -f "$lib"; exit 1; fi
+  xcrun libtool -static -no_warning_for_no_symbols -o "$lib" "$objs"/*.o "${libs[@]}"
+  if printf '%s\n' "${libs[@]}" | grep -qi rpc; then echo "error: an RPC backend was built" >&2; rm -f "$lib"; exit 1; fi
   # Nothing in it may reach a network: no socket calls, no name lookups, no network classes.
   if nm -u "$lib" 2>/dev/null | grep -E '_(socket|connect|bind|listen|accept|getaddrinfo|gethostbyname|sendto|recvfrom)$|CFNetwork|CFSocket|NSURLSession|NSURLConnection|_nw_'; then
     echo "error: the local AI library imports network calls" >&2; rm -f "$lib"; exit 1

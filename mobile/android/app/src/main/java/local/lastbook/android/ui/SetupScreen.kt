@@ -319,6 +319,14 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
                             })
                         }
                     }
+                    val selectedModel = catalog.model(modelId ?: "")
+                    if (customName == null && selectedModel != null && selectedModel.memoryBytes >= totalRam) {
+                        Text(
+                            "This phone may not have enough memory for ${selectedModel.title}; you can still install it and Lastbook will check the fit.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                     if (customName != null) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Selected: $customName (unverified file you chose)", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
@@ -387,9 +395,22 @@ fun SetupScreen(manage: Boolean = false, onDone: () -> Unit) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("What will be installed", fontWeight = FontWeight.SemiBold)
                     for (i in preview.items) if (i.state != ItemState.OPTED_OUT) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(i.title, modifier = Modifier.weight(1f))
-                            Text(itemStateLabel(i.state, i), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text(i.title, modifier = Modifier.weight(1f))
+                                Text(itemStateLabel(i.state, i), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            i.note?.let { note ->
+                                Text(
+                                    note,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (i.state == ItemState.UNAVAILABLE || i.kind == CatalogEntry.Kind.MODEL) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
                         }
                     }
                     if (customName != null && wantAI) {

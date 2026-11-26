@@ -222,7 +222,7 @@
     },
     {
       "kind": "ambulance",
-      "name": "SUMA 161 (Sistema de Urgencias Médicas El Alto)",
+      "name": "SUMA 161, El Alto municipal ambulance (Servicio de Urgencias y Emergencias Médicas El Alto)",
       "number": "161",
       "how": [
         "call"
@@ -243,7 +243,7 @@
           "emergency"
         ]
       },
-      "when": "Municipal pre-hospital emergency and ambulance service of El Alto (Gobierno Autónomo Municipal de El Alto), covering the city's 14 districts. Only for El Alto; Bolivia has no single national ambulance number. The municipality calls 161 a free line (\"línea gratuita\"); no page says whether the ambulance care itself is charged.",
+      "when": "El Alto only: the municipal pre-hospital emergency and ambulance service of the Gobierno Autónomo Municipal de El Alto, covering the city's 14 districts. Do not use it outside El Alto. This table leaves national ambulance coverage unverified. The municipality calls 161 a free line (\"línea gratuita\"); no page says whether the ambulance care itself is charged.",
       "source": [
         "https://elalto.gob.bo/noticias/?p=20933",
         "https://elalto.gob.bo/noticias/?p=17389",
@@ -255,14 +255,14 @@
     },
     {
       "kind": "other",
-      "name": "Línea Segura 156 (Defensoría Municipal de La Paz)",
+      "name": "Línea de Emergencia a la Violencia 156 (Defensoría Municipal de La Paz)",
       "number": "156",
       "how": [
         "call"
       ],
       "works_from": [],
       "free": true,
-      "free_source": "https://www.unicef.org/bolivia/comunicados-prensa/unicef-y-el-municipio-de-la-paz-unen-sus-l%C3%ADneas-gratuitas-familia-segura-y-l%C3%ADnea",
+      "free_source": "https://lapaz.bo/paif-de-emergencia-linea-156/",
       "keywords": {
         "es": [
           "línea segura",
@@ -271,7 +271,10 @@
           "niños",
           "niñas",
           "denuncia",
-          "maltrato"
+          "maltrato",
+          "línea 156",
+          "slim",
+          "dna"
         ],
         "en": [
           "violence",
@@ -281,11 +284,12 @@
           "helpline"
         ]
       },
-      "when": "Free 24-hour line of the Defensoría Municipal of the municipality of La Paz for reports of violence that need immediate attention; for emotional support it refers callers to Familia Segura.",
-      "source": "https://www.unicef.org/bolivia/comunicados-prensa/unicef-y-el-municipio-de-la-paz-unen-sus-l%C3%ADneas-gratuitas-familia-segura-y-l%C3%ADnea",
+      "when": "Free line of the Defensoría Municipal of the municipality of La Paz (DNA, SLIM) for people facing violence in the family, against women, or against children and adolescents. Open every day, 24 hours. It serves people who live in the municipality of La Paz.",
+      "source": "https://lapaz.bo/paif-de-emergencia-linea-156/",
+      "url": "https://lapaz.bo/paif-de-emergencia-linea-156/",
       "area": "Municipality of La Paz",
       "checked_on": "2026-11-24",
-      "verified": "found_online"
+      "verified": "official"
     }
   ]
 }

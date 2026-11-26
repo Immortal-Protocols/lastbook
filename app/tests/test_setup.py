@@ -4692,11 +4692,12 @@ class UnreachableScreen(unittest.TestCase):
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8'), kind = process.argv[2];
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
 const diskName = () => 'this disk', errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
 const tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 const tHtml = (_key, _params, fallback) => fallback;
-const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
+const interpolate = (fallback, params) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
+const trMarkup = (_key, params, fallback) => `<span lang="en">${esc(interpolate(fallback, params))}</span>`;
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const error = {code: 'unreachable', message: 'Lastbook could not reach huggingface.co from this network.', host: 'huggingface.co',
@@ -4716,7 +4717,7 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
             self.assertIn(f'<dt><span lang="en">{k}</span></dt>', html)
         self.assertIn('16,947,541,728 bytes', html)                       # exact, to check a copy fetched elsewhere
         self.assertIn('ab' * 32, html)
-        self.assertIn('&amp;a=&lt;b>', html)                              # the address is escaped
+        self.assertIn('&amp;a=&lt;b&gt;', html)                         # every HTML metacharacter in the address is escaped
         self.assertIn('data-act="model-file"', html)
         self.assertIn('data-act="retry"', html)
 

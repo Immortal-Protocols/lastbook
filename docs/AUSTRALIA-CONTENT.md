@@ -169,3 +169,14 @@ python3 tools/validate_topics.py --data /path/to/full/review/LastbookData conten
 `requires_docs` keeps the entire regional guide (including its warnings and intro)
 out of libraries without the supplement; ordinary missing optional readings are
 still hidden by the existing resolver. No platform packaging script is changed.
+
+Native review on 26 November 2026 used the separate 354-record Australian review
+library and combined runtime commit `5c5e501`. Both household and rural guides
+exposed all four warning readings. All four warning pages, the Victorian
+generator-use page and myGov remote-travel page opened with their source dates,
+credits and selection limits. The personal first-aid guide opened the original
+snakebite PDF at its cited physical page in Page, Text and Whole PDF views, with
+the personal-use restriction visible in source details. The integrated Victorian
+map found Mildura, drew street detail and displayed nearby distances in metres
+and kilometres. This does not claim native checks of the other seven broader
+extracts, clinical review, or a platform release build of the current-main rebase.

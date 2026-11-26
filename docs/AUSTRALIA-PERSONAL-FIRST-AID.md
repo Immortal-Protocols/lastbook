@@ -48,6 +48,12 @@ first pages rendered with Poppler and visually inspected. The separate built
 library's hashes, page counts and searches were checked. Native app checks remain
 separate; an offline build test does not claim a native platform release test.
 
+On 26 November 2026 the native Australian review app displayed the optional
+first-aid guide and opened its cited snakebite PDF page 3 in Page, Text and Whole
+PDF views. The source details showed the unmodified-original and personal-use
+restriction. This was the combined runtime at `5c5e501`, not a frozen production
+bundle or clinical review; it does not extend the native check to all six PDFs.
+
 Public redistribution still needs explicit rights-holder permission. Any proposed
 public guide should cite verified physical PDF pages and undergo content/clinical
 review. Do not treat the existence of this fetch tool as permission to redistribute

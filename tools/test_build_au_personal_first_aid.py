@@ -33,7 +33,7 @@ class Personal(unittest.TestCase):
             with patch.object(socket, 'socket', side_effect=AssertionError('network')), \
                     patch.object(b, 'pdf_pages', return_value=['Synthetic source body']):
                 self.assertEqual(b.build(out, root, [r]), (1, 1))
-            lib = out / 'library-data'; cat = json.loads((lib / 'catalog.json').read_text())
+            lib = out / 'library-data'; cat = json.loads((lib / 'catalog.json').read_text(encoding='utf-8'))
             self.assertEqual((lib / cat[0]['path']).read_bytes(), data)
             self.assertTrue(all(x['distribution'] == 'personal-only' for x in cat))
             self.assertTrue((out / 'PERSONAL-USE-ONLY.json').is_file())
@@ -51,9 +51,9 @@ class Personal(unittest.TestCase):
 
     def test_existing_library_and_unapproved_hosts_are_refused(self):
         with tempfile.TemporaryDirectory() as d:
-            out = Path(d); (out / 'keep').write_text('keep')
+            out = Path(d); (out / 'keep').write_text('keep', encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'already exists'): b.build(out, records=[])
-            self.assertEqual((out / 'keep').read_text(), 'keep')
+            self.assertEqual((out / 'keep').read_text(encoding='utf-8'), 'keep')
         for url in ['http://www.anzcor.org/x', 'https://example.invalid/x', 'https://user@www.anzcor.org/x',
                     'https://www.anzcor.org:444/x']:
             with self.assertRaises(ValueError): b.allowed_url(url)
@@ -61,7 +61,7 @@ class Personal(unittest.TestCase):
     def test_public_reference_builder_excludes_personal_sources(self):
         public = module('public_au', HERE / 'build_australia_reference.py')
         _, checked = public.checked_sources()
-        personal = json.loads(b.MANIFEST.read_text())['sources']
+        personal = json.loads(b.MANIFEST.read_text(encoding='utf-8'))['sources']
         self.assertTrue({r['id'] for r in personal}.isdisjoint({r['id'] for r, *_ in checked}))
         self.assertFalse(any(r['kind'] == 'pdf' or r.get('distribution') == 'personal-only' for r, *_ in checked))
 

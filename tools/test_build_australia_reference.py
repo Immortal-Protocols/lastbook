@@ -20,7 +20,7 @@ class Reference(unittest.TestCase):
             out = Path(d) / 'LastbookData'
             count = au.build(out)
             lib = out / 'library-data'
-            cat = {r['id']: r for r in json.loads((lib / 'catalog.json').read_text())}
+            cat = {r['id']: r for r in json.loads((lib / 'catalog.json').read_text(encoding='utf-8'))}
             self.assertEqual(count, len(cat))
             with sqlite3.connect(lib / 'search.sqlite') as db:
                 self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
@@ -36,9 +36,9 @@ class Reference(unittest.TestCase):
                     self.assertIn(expected, ids)
                 for uid, path, body in db.execute('SELECT doc_id,path,body FROM pages'):
                     self.assertEqual(path, cat[uid]['path'])
-                    self.assertEqual(body, (lib / cat[uid]['text_path']).read_text())
+                    self.assertEqual(body, (lib / cat[uid]['text_path']).read_text(encoding='utf-8'))
                     self.assertEqual(au.digest((lib / path).read_bytes()), cat[uid]['sha256'])
-            directory = json.loads((au.SOURCES / 'jurisdictions.json').read_text())
+            directory = json.loads((au.SOURCES / 'jurisdictions.json').read_text(encoding='utf-8'))
             self.assertEqual({r['id'] for r in directory['jurisdictions']},
                              {'AU-ACT', 'AU-NSW', 'AU-NT', 'AU-QLD', 'AU-SA', 'AU-TAS', 'AU-VIC', 'AU-WA'})
             self.assertEqual(cat['au-remote-travel']['license'], 'CC-BY-3.0-AU')
@@ -46,15 +46,15 @@ class Reference(unittest.TestCase):
 
     def test_existing_output_is_untouched(self):
         with tempfile.TemporaryDirectory() as d:
-            out = Path(d); sentinel = out / 'catalog.json'; sentinel.write_text('keep me')
+            out = Path(d); sentinel = out / 'catalog.json'; sentinel.write_text('keep me', encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'already exists'):
                 au.build(out)
-            self.assertEqual(sentinel.read_text(), 'keep me')
+            self.assertEqual(sentinel.read_text(encoding='utf-8'), 'keep me')
 
     def test_changed_source_cannot_be_built(self):
         with tempfile.TemporaryDirectory() as d:
             sources = Path(d) / 'sources'; shutil.copytree(au.SOURCES, sources)
-            (sources / 'sources/au-emergency-calls.html').write_text('changed source')
+            (sources / 'sources/au-emergency-calls.html').write_text('changed source', encoding='utf-8')
             out = Path(d) / 'LastbookData'
             with self.assertRaisesRegex(ValueError, 'Snapshot changed'):
                 au.build(out, sources)
@@ -67,11 +67,11 @@ class Reference(unittest.TestCase):
                 au.Page().feed(bad)
         with tempfile.TemporaryDirectory() as d:
             sources = Path(d) / 'sources'; shutil.copytree(au.SOURCES, sources)
-            m = json.loads((sources / 'manifest.json').read_text())
+            m = json.loads((sources / 'manifest.json').read_text(encoding='utf-8'))
             r = m['sources'][0]; file = sources / r['snapshot']
             data = file.read_bytes() + b'<a href="/pages/au/missing.html">missing</a>'
             file.write_bytes(data); r.update(bytes=len(data), sha256=au.digest(data))
-            (sources / 'manifest.json').write_text(json.dumps(m))
+            (sources / 'manifest.json').write_text(json.dumps(m), encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'Unbundled local link'):
                 au.checked_sources(sources)
 

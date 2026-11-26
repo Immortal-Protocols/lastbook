@@ -22,16 +22,16 @@ class Distribution(unittest.TestCase):
             root = Path(d); (root / 'packaging').mkdir(); (root / 'content/topics').mkdir(parents=True)
             for name in ['ship_app_files.py', 'ship_edits.json']:
                 shutil.copy2(HERE / name, root / 'packaging' / name)
-            (root / 'content/topics/example.json').write_text(json.dumps({'learn': [{'doc': 'public-document'}, {'doc': 'personal-au-example'}]}))
+            (root / 'content/topics/example.json').write_text(json.dumps({'learn': [{'doc': 'public-document'}, {'doc': 'personal-au-example'}]}), encoding='utf-8')
             snap = root / 'snapshot'; snap.mkdir()
             public = {'id': 'public-document', 'kind': 'pdf', 'path': 'documents/public.pdf'}
             personal = {'id': 'personal-au-example', 'kind': 'pdf', 'path': 'documents/personal.pdf', 'distribution': 'personal-only'}
-            (snap / 'catalog.json').write_text(json.dumps([public, personal]))
+            (snap / 'catalog.json').write_text(json.dumps([public, personal]), encoding='utf-8')
             lib = root / 'pack/library-data'; lib.mkdir(parents=True)
             with patch.object(verify, 'PROJECT', root), redirect_stdout(io.StringIO()) as output:
-                (lib / 'catalog.json').write_text('[]')
+                (lib / 'catalog.json').write_text('[]', encoding='utf-8')
                 self.assertEqual(verify.guides(snap, [lib.parent]), 1)
-                (lib / 'catalog.json').write_text(json.dumps([public]))
+                (lib / 'catalog.json').write_text(json.dumps([public]), encoding='utf-8')
                 self.assertEqual(verify.guides(snap, [lib.parent]), 0)
             self.assertIn('not redistributable', output.getvalue())
 
@@ -48,7 +48,7 @@ class Distribution(unittest.TestCase):
                       'video_path': video['path']}
         rows = [public, private, hub, video, transcript]
         with tempfile.TemporaryDirectory() as d:
-            snap = Path(d); (snap / 'remote-videos.json').write_text('{}')
+            snap = Path(d); (snap / 'remote-videos.json').write_text('{}', encoding='utf-8')
             with patch.object(packs, 'video_groups', return_value=({video['id']: {'verdict': 'keep'}}, {video['id']: ''})), \
                     patch.object(packs, 'guide_ids', return_value={r['id'] for r in rows}), \
                     patch.dict(packs.SIZES, {'small': {**packs.SIZES['small'], 'video_include': [], 'video_exclude': []}}):

@@ -25,7 +25,7 @@ LANDUSE_KEEP = {'park': 'park', 'forest': 'green', 'grass': 'green', 'meadow': '
                 'recreation_ground': 'park', 'cemetery': 'park', 'allotments': 'farm', 'farmland': 'farm',
                 'orchard': 'farm', 'vineyard': 'farm', 'farmyard': 'farm', 'residential': 'res', 'commercial': 'com',
                 'retail': 'com', 'industrial': 'ind', 'military': 'ind', 'quarry': 'ind', 'landfill': 'ind'}
-PLACE_Z = {'county': 7, 'city': 6, 'town': 9, 'suburb': 12, 'village': 11, 'hamlet': 14, 'locality': 14, 'island': 11,
+PLACE_Z = {'county': 7, 'national_capital': 6, 'city': 6, 'town': 9, 'suburb': 12, 'village': 11, 'hamlet': 14, 'locality': 14, 'island': 11,
            'farm': 15, 'region': 5}
 # Points people look for when services fail. Names shown in the app come from the app, not from here.
 POI_KEEP = {'hospital', 'clinic', 'doctors', 'pharmacy', 'chemist', 'dentist', 'veterinary', 'fire_station', 'police',
@@ -191,7 +191,7 @@ def build(src, dst, metadata, clip=None):
     for parts, (cls, pop, name) in each('gis_osm_places_free', 'fclass,population,name'):
         if name:
             z = PLACE_Z.get(cls, 14)
-            if cls in ('city', 'town') and pop and int(pop) > 300000:
+            if cls in ('national_capital', 'city', 'town') and pop and int(pop) > 300000:
                 z = 5
             add('place', cls, name, z, parts)
     pid = 0

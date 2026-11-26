@@ -20,9 +20,9 @@ def source(db):
               'railways', 'roads', 'buildings_a', 'places', 'pois', 'pois_a', 'natural')
     for name in tables:
         db.execute(f'CREATE TABLE gis_osm_{name}_free (geom BLOB, fclass TEXT, name TEXT, population INTEGER, ref TEXT)')
-    for name, lon, lat in [('Melbourne', 144.96, -37.81), ('Sydney', 151.21, -33.87)]:
+    for name, kind, lon, lat in [('Melbourne', 'city', 144.96, -37.81), ('Canberra', 'national_capital', 149.13, -35.28)]:
         point = b'GP\x00\x01' + struct.pack('<iBIdd', 4326, 1, 1, lon, lat)
-        db.execute('INSERT INTO gis_osm_places_free VALUES (?, ?, ?, ?, ?)', (point, 'city', name, 0, None))
+        db.execute('INSERT INTO gis_osm_places_free VALUES (?, ?, ?, ?, ?)', (point, kind, name, 0, None))
     db.commit()
 
 
@@ -37,7 +37,8 @@ class MapBuilder(unittest.TestCase):
             source(src)
             with redirect_stdout(io.StringIO()):
                 self.assertEqual(module.build(src, dst, metadata), 2)
-            self.assertEqual(dst.execute('SELECT name FROM feat ORDER BY name').fetchall(), [('Melbourne',), ('Sydney',)])
+            self.assertEqual(dst.execute('SELECT name FROM feat ORDER BY name').fetchall(), [('Canberra',), ('Melbourne',)])
+            self.assertEqual(dict(dst.execute('SELECT name,minz FROM feat')), {'Canberra': 6, 'Melbourne': 6})
             self.assertEqual(dict(dst.execute('SELECT key,value FROM meta')), metadata)
 
     def test_regional_cli_clips_without_changing_source_and_keeps_explicit_snapshot_date(self):

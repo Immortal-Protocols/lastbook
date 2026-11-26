@@ -790,3 +790,8 @@ community/language or supply locally agreed plans. More detailed translated
 manuals, fluent-speaker/community review, accessible formats and offline audio
 remain incomplete. Earlier source rights, personal-use distribution boundaries,
 map assets and remaining remote/clinical gaps are unchanged.
+
+Native review prompted a source-first layout: each complete published-language
+quote now precedes the English date, attribution, licence and context notes.
+The brief opening label identifies the language and excluded artwork. Source
+wording and metadata are unchanged.

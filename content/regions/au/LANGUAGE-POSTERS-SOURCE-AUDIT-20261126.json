@@ -48,7 +48,7 @@
       ],
       "source_normalized_text_sha256": "cbc95ccc31c517cff9adea8bc3503de9ec893fbc4f8c0ce2b231ce98a19f507a",
       "adapted_normalized_text_sha256": "cbc95ccc31c517cff9adea8bc3503de9ec893fbc4f8c0ce2b231ce98a19f507a",
-      "reader_sha256": "f1e921abd453f9590bb8c4e2e24b0559d8904b24ea8a8818a8337642b255f9fb"
+      "reader_sha256": "456868ca1d927f1bd1ba42cf7ee1fd40babd0072a2b00514ddf6e5555da64c31"
     },
     {
       "id": "qld-yumplatok-cyclones-poster",
@@ -76,7 +76,7 @@
       ],
       "source_normalized_text_sha256": "dcc0020a05730314a723a08c47b771b9ea1991b5db0ff3218810ae69e1220027",
       "adapted_normalized_text_sha256": "dcc0020a05730314a723a08c47b771b9ea1991b5db0ff3218810ae69e1220027",
-      "reader_sha256": "8600d88ebf70cd5b8a0184528447ed1a6ab87bdd6f5aa246f800123a35d265a0"
+      "reader_sha256": "ca401c10155abbbf482f1d8400937cd51da516446f9bfc088871bc2eeab83ce3"
     },
     {
       "id": "qld-wik-mungkan-bushfires-poster",
@@ -104,7 +104,7 @@
       ],
       "source_normalized_text_sha256": "56502e29e9acafd3b502cb29f0570c421c601827098bc1242e110f06bc88e721",
       "adapted_normalized_text_sha256": "56502e29e9acafd3b502cb29f0570c421c601827098bc1242e110f06bc88e721",
-      "reader_sha256": "c34aad5e1d5dac5ac673c315981c39d2fcd07c0fac9c4a2f7c5ea94456b4b375"
+      "reader_sha256": "12f91fd348eb5e187f52144135273bdbe6cc5f17680a33596b4e57719746d65a"
     },
     {
       "id": "qld-wik-mungkan-cyclones-poster",
@@ -132,7 +132,7 @@
       ],
       "source_normalized_text_sha256": "52a6054e5252b59d2c85ddfb651601ea6f8890863b78edbce7f090f49a0d2806",
       "adapted_normalized_text_sha256": "52a6054e5252b59d2c85ddfb651601ea6f8890863b78edbce7f090f49a0d2806",
-      "reader_sha256": "300c4994fb2415bec3eb43ac11ca69e9c413c946fda59ef1087b5ed22da281b0"
+      "reader_sha256": "ca7eec31b05582ddd479dbde59665bcea549c3077138e830b5c5cbd2a9a092ab"
     }
   ],
   "total_posters": 4,
@@ -169,5 +169,6 @@
     ],
     "decision": "Separate getready.gov.au site has no footer copyright link in retrieved English pages. Resource guide is67MB;not yet acquired/reviewed. No licence inferred from NEMA announcement or Queensland branding. National manual bodies not included in this update."
   },
-  "limits": "Two named language sets and two short preparedness posters per language,not every First Nations community/language,complete hazard response,validated accessible edition,current service access or live alerts. Printed Queensland recovery contact is distinct from emergency000."
+  "limits": "Two named language sets and two short preparedness posters per language,not every First Nations community/language,complete hazard response,validated accessible edition,current service access or live alerts. Printed Queensland recovery contact is distinct from emergency000.",
+  "reader_order": "Published language text first;English context,dates,licence and navigation follow the complete quote. No source wording changed."
 }

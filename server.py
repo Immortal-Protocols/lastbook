@@ -374,8 +374,16 @@ def find(q, kind='all', limit=30):
            " ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT 600")
     rows, mode = [], 'all words'
     try:
-        rows = con.execute(sql, (fts_expr(groups),) + only).fetchall()
-        if len(rows) < 8 and len(groups) > 1:
+        if library.has_han(groups):
+            rows = library.han_search_rows(con, groups, only[0] if only else None)
+            if len(rows) < 8 and len(groups) > 1:
+                mode = 'some words'
+                extra = library.han_search_rows(con, groups, only[0] if only else None, any_group=True)
+                seen = {(r[0], r[1]) for r in rows}
+                rows += [r for r in extra if (r[0], r[1]) not in seen]
+        else:
+            rows = con.execute(sql, (fts_expr(groups),) + only).fetchall()
+        if not library.has_han(groups) and len(rows) < 8 and len(groups) > 1:
             # relax: any of the ideas, rank documents that have more of them higher
             mode = 'some words'
             rows += con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),) + only).fetchall()

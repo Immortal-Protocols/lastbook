@@ -1,0 +1,6065 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "surface": "app/bridge",
+      "file": "app/bridge.py",
+      "text": "Lastbook stays offline and does not ask where you are.",
+      "count": 1
+    },
+    {
+      "surface": "app/main",
+      "file": "app/main.py",
+      "text": "Choose",
+      "count": 1
+    },
+    {
+      "surface": "app/main",
+      "file": "app/main.py",
+      "text": "Lastbook could not find its library.\n\nIt looked in:\n{data}\n\nThat folder must hold {CATALOG}.",
+      "count": 1
+    },
+    {
+      "surface": "app/main",
+      "file": "app/main.py",
+      "text": "Lastbook could not start: {type(e).__name__}: {e}",
+      "count": 1
+    },
+    {
+      "surface": "app/main",
+      "file": "app/main.py",
+      "text": "The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py",
+      "count": 2
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "\nDocument id for tools: {d}",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "\nVideo id for tools: {v}",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "\n[…shortened to fit]",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": " | doc_id={d['doc_id']}",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": " — outside the offline street map",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "Initial library search results for the latest question (already retrieved — search again only if these are not enough; use read_pages or read_encyclopedia to check exact wording):\n\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "Offline map data (may be outdated; does not show closures or damage):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The local model stopped responding.",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The model did not produce an answer. The passages it found are listed below.",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The person is looking at this page right now (questions like 'this' refer to it):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The person is on the guide “{t['title']}”. Curated pages they can see (use read_pages to cite them):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "The person is watching this video (around {t // 60}:{t % 60:02d}):\n",
+      "count": 1
+    },
+    {
+      "surface": "assistant",
+      "file": "assistant.py",
+      "text": "[Note from the Lastbook app, not from the person]\n",
+      "count": 1
+    },
+    {
+      "surface": "desktop",
+      "file": "packaging/linux/lastbook.desktop",
+      "text": "Offline survival library",
+      "count": 1
+    },
+    {
+      "surface": "desktop",
+      "file": "packaging/linux/lastbook.desktop",
+      "text": "Search and read the survival library on this computer, with no internet",
+      "count": 1
+    },
+    {
+      "surface": "desktop",
+      "file": "packaging/linux/lastbook.desktop",
+      "text": "survival;library;offline;first aid;",
+      "count": 1
+    },
+    {
+      "surface": "engine/model-server",
+      "file": "engine/model_server.py",
+      "text": "Lastbook only uses a model server on this computer. Use an address like 127.0.0.1:11434.",
+      "count": 1
+    },
+    {
+      "surface": "engine/model-server",
+      "file": "engine/model_server.py",
+      "text": "Nothing answers at {where}. Check that the model server is running and the port is right.",
+      "count": 1
+    },
+    {
+      "surface": "engine/model-server",
+      "file": "engine/model_server.py",
+      "text": "The server at {where} answered, but not with a list of models (error {e.code}).",
+      "count": 1
+    },
+    {
+      "surface": "engine/model-server",
+      "file": "engine/model_server.py",
+      "text": "The server at {where} answered, but not with a list of models.",
+      "count": 2
+    },
+    {
+      "surface": "engine/model-server",
+      "file": "engine/model_server.py",
+      "text": "The server at {where} asks for a key. Lastbook cannot send one yet. Start it without a key.",
+      "count": 1
+    },
+    {
+      "surface": "engine/model-server",
+      "file": "engine/model_server.py",
+      "text": "The server at {where} has no models loaded.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": " The local AI fits this computer’s memory, but not on the disk as well.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": " These files are still open and were left in place: ",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": " What was unpacked is kept in {kept}.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": " Your files could not be moved and are still in ",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": " address search",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "A check changes nothing, so there is nothing to open.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "A copy has no library to open here. It is on the drive.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "A download is already under way. Pause or cancel it first.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "A download is under way. Pause or cancel it first.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "An update is waiting for Lastbook to restart. Restart it, then copy.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "App updates are set in the desktop app.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Choose a library first.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Choose a library folder, the one called {DATA_NAME}, not a file.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Choose a place outside this library, such as a USB drive.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Copy of the {title} library",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Downloading {name} needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot find that drive or folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot find that file or folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot make a folder there ({type(e).__name__}).",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot save in that folder. Choose another.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot save in “{lib.name}”. Move it somewhere you can save to, then choose it there.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot save there. Choose a drive you can write to.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot tell which library this is, so it cannot {'check' if check_only else 'repair'} it. Download a library instead.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook cannot use that place. Choose a drive or folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook could not read one of the files it was checking ({type(e).__name__}: {e.strerror or e}).",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook could not read or write a file for the copy ({type(e).__name__}: {e.strerror or e}). Check the drive is still connected, then copy again to the same place to carry on.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook could not remove the model file ({type(e).__name__}). Quit anything using it, then try again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook could not write a file ({type(e).__name__}: {e.strerror or e}).",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook is copying a library here. Copy again to the same place to carry on.\n",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Lastbook only deletes an old library it moved aside itself.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "No local AI is offered for this version.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Nothing to add: this library and the local AI are already here.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Setup has not finished yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Setup is only open on this computer.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Setup stopped on an internal error ({type(e).__name__}).",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Small is selected to get started. You can choose a larger library.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Something else is under way. Let it finish, or cancel it, first.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That drive cannot hold files larger than 4 GB (it is FAT32), and this library has some. Use a drive formatted as exFAT.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That file is {_gb(p.stat().st_size)}, not the {_gb(f['size'])} of the published {name}. The download may not have finished.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That file is {p.stat().st_size:,} bytes, not the {m['size']:,} of the model. The download may not have finished.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That folder is too deep for Windows: the library’s longest file name would not fit. Choose a folder whose path is at most {room} characters long, such as Documents.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That is not an old library.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That library is not available in this version.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That library is not available yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That library is the one open now.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That state’s address search is not available yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "That state’s map is not available yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The address index download is incomplete.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The disk filled up. Free some space, then try again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The drive filled up. What was copied is kept: use a larger drive, or free some space and copy again to the same place.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The setup folder contains a link or special file. Choose a different library folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The {DATA_NAME} folder there is a link. Choose another drive or folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The {cur['map']} map in this library is damaged, and this version does not offer it to download again. Choose a map again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "The {name} in {folder} doesn’t match the published file, so it was not used. It was left as it is. Download it instead?",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is already a file called {DATA_NAME} there. Choose another drive or folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is already a folder called {DATA_NAME} there that is not a library. Choose another place.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is already a {DATA_NAME} folder there. Choose another drive or folder.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is no library to check yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is no library to copy yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is no library to repair yet.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "There is no local AI in this library to remove.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "This computer’s own disk has {_gb(home_free)} free, not enough for any library, so {choice['title']} goes on {name}. Keep that disk connected: Lastbook reads the library from it.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "This library has no list of its files, so it cannot be copied. Check and repair it first.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "This needs {_gb(left)} free, and that drive has {_gb(free)}. Choose a larger drive.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "This needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space or choose another disk.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "notify is true or false.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "{len(bad)} files need fetching again. That needs {_gb(need)} free, and the disk has {_gb(free)}.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "{name} did not match its published checksum twice. The file on the server may be damaged; try again later.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/api.py",
+      "text": "“{p.name}” is not a Lastbook library. Choose the folder called {DATA_NAME}.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "Lastbook could not confirm it is talking to the download server, so it stopped. A network that intercepts secure connections (some offices, hotels) can cause this.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "Lastbook could not reach {host} from this network.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "Lastbook refused to download from an address it does not know.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "The connection kept breaking ({type(e).__name__}). Check the internet connection, then try again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "The disk filled up while downloading. Free some space, then try again.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "The download server answered with a move to nowhere.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "The download server refused the file (HTTP {r.status}).",
+      "count": 3
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "The download server sent Lastbook round in circles.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "The download server stayed busy ({b}). Try again later.",
+      "count": 2
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/download.py",
+      "text": "This copy of Lastbook is missing its list of trusted download servers, so it cannot download. Download Lastbook again.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/hardware.py",
+      "text": " plus its graphics memory.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/hardware.py",
+      "text": "The battery is only shown on this computer.",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/install.py",
+      "text": " These files could not be moved back and are still here: ",
+      "count": 1
+    },
+    {
+      "surface": "engine/setup",
+      "file": "engine/setup/install.py",
+      "text": " These files of yours are still in the new library: ",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Check for an update again before opening the installer page.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Check for an update again first.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Lastbook could not confirm it was talking to the real download site, so it stopped. A network that intercepts secure connections (some offices, hotels) can cause this.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Lastbook could not open your browser. Copy the download link and open it there.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Lastbook could not save this setting. Try again.",
+      "count": 2
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Lastbook refused to check an address it does not know.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "No update information yet. Try again later.",
+      "count": 2
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Open lastbook.org/download/ in your browser for the installer.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "The check stopped on an internal error ({type(e).__name__}).",
+      "count": 2
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "The download site did not answer properly. Try again later.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "The update information on the download site could not be read. Try again later.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "This copy of Lastbook cannot update itself. Use the download page instead.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Updates are for the Mac, Windows and Linux app.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Updates are only open on this computer.",
+      "count": 1
+    },
+    {
+      "surface": "engine/update",
+      "file": "engine/update.py",
+      "text": "Version {offer['version']} needs {OS_NAMES.get(self.key, self.key)} {offer['min_os']} or later{built_on}.",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Cancel",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Close",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Find it in the Start menu.",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Install",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Install Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Install folder",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook Setup",
+      "count": 2
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook Setup could not start.\n\n{failure[0]}",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook could not be installed.\n\n{outcome[1]}",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook could not be opened.\n\n{e}",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook could not be removed.\n\n{e}",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook is installed",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Lastbook is removed.",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Open Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Remove Lastbook from this computer?\n\nYour library (LastbookData) and settings stay.",
+      "count": 1
+    },
+    {
+      "surface": "installer",
+      "file": "packaging/lastbook_setup.py",
+      "text": "Version {VERSION}",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Chat",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Check for Updates…",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Choose Folder…",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Find…",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Full Screen",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Lastbook Help",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Lastbook is already open.",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Map",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Menu",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Quit",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Quit Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Show or Hide Sidebar",
+      "count": 1
+    },
+    {
+      "surface": "native/linux",
+      "file": "app/shell_linux.py",
+      "text": "Videos",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "About Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Back",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Bring All to Front",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Cancel",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Check for Updates…",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Choose",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Choose Folder…",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Close",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Copy",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Cut",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Edit",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Enter Full Screen",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Forward",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Go",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Help",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Hide Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Hide Sidebar",
+      "count": 2
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Lastbook Help",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Minimize",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "OK",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Paste",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Quit",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Redo",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Show Sidebar",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Undo",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "View",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Window",
+      "count": 1
+    },
+    {
+      "surface": "native/macos",
+      "file": "app/shell_macos.py",
+      "text": "Zoom",
+      "count": 1
+    },
+    {
+      "surface": "native/windows",
+      "file": "app/shell_windows.py",
+      "text": "Lastbook could not open its window.\n\n{args.InitializationException.Message}",
+      "count": 1
+    },
+    {
+      "surface": "native/windows",
+      "file": "app/shell_windows.py",
+      "text": "The window part of Lastbook stopped working, so Lastbook will close. Your library is not affected.",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " County",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " features (buildings come from Microsoft, below)",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · also called {d['other_names']}",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · building",
+      "count": 2
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · downloading",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · historical stocking record",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · nearby",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · {int(h):,} OpenStreetMap buildings with measured heights in 3D",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": " · {km / 1.609:,.0f} mi away",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "All videos",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Coalcracker Bushcraft",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Converting — ",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Corporals Corner",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Courses, lectures & more",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Dave Canterbury",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "First aid & health",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Growing & preserving food",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Making things by hand",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Picked for the guides",
+      "count": 2
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Police",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Power, generators & solar",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Primitive Technology",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Server error ({sys.exc_info()[0].__name__}).",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Shelter, fire & outdoor skills",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Shown on this map — ",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "The assistant stopped on an internal error ({type(e).__name__}).",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "The local assistant model is not running right now.",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "This item is not in the library catalog.",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Tools, engines & repair",
+      "count": 1
+    },
+    {
+      "surface": "server",
+      "file": "server.py",
+      "text": "Water & sanitation",
+      "count": 2
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/comms.json",
+      "text": "Communicate & find your way",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/comms.json",
+      "text": "Family contact, emergency radio, ham radio, map and compass",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/disaster.json",
+      "text": "Earthquake, tsunami, hurricane, tornado, thunderstorm, avalanche, landslide, volcano, wildfire, home and high-rise fire, flood, nuclear explosion, bombing, shelter-in-place",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/disaster.json",
+      "text": "Stay safe in an earthquake, storm, fire, flood or tsunami",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/energy.json",
+      "text": "Electricity basics, batteries, solar, generators",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/energy.json",
+      "text": "Make and manage power",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/food.json",
+      "text": "Fridge and freezer in an outage, safe cooking, emergency food",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/food.json",
+      "text": "Keep food safe and cook without power",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/grow.json",
+      "text": "Containers, beds, soil, water, staple crops and seed saving",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/grow.json",
+      "text": "Grow staple food",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/health.json",
+      "text": "Care for health over time without a doctor",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/health.json",
+      "text": "Examining the sick, medicines, chronic illness, teeth, pregnancy, mental health, disability",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/hurt.json",
+      "text": "First aid for bleeding, burns, breathing, injuries and sudden illness",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/hurt.json",
+      "text": "Someone is hurt or sick",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/land.json",
+      "text": "Find safe land and natural resources",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/land.json",
+      "text": "Local hazards, soil, water sources, wild plants and finding your way",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/power.json",
+      "text": "Outages, generators, batteries and gas safety",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/power.json",
+      "text": "Power is out — light, phones & power",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/preserve.json",
+      "text": "Canning, drying, freezing, pickling and fermenting safely",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/preserve.json",
+      "text": "Preserve and store food",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/repair.json",
+      "text": "Hand tools, sharpening, home fixes, woodworking, engines, welding, simple structures",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/repair.json",
+      "text": "Repair and build",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/sanitation.json",
+      "text": "Emergency toilets, handwashing, garbage, diarrhea",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/sanitation.json",
+      "text": "Toilets, waste and hygiene when plumbing fails",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/shelter.json",
+      "text": "Heat, cold, smoke, carbon monoxide, damaged homes and outdoor shelter",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/shelter.json",
+      "text": "Stay warm, cool and sheltered",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/water.json",
+      "text": "Get safe drinking water",
+      "count": 1
+    },
+    {
+      "surface": "topic-data",
+      "file": "content/topics/water.json",
+      "text": "Treat, find and store water",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " (and page images when it asks to)",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " It uses {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " and the {…} guide",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " saved conversation",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " saved item",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " to read",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " {…} videos are stored on a remote drive and play only when that computer is reachable.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " · <a href=\"/ui/setup.html#manage\">Library and local AI</a>",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " · <a id=\"wopen\" href=\"{…}\" target=\"_blank\" rel=\"noopener\">open on its own</a>",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " · Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " · Not in this library",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " · showing pages with some of your words",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " · transcript",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": " — page ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "(online; not needed here)",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "(online; not needed to read this copy)",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": ", p. ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": ", where you can delete it.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": ", {…} still to index",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": ": every publisher in this library, where it came from, and how to ask for something to be removed.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "A reference copy, not advice checked for your situation. Check the date; older material can conflict with current guidance.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "A shopping list or cart isn’t the same as supplies you own, and reading isn’t the same as a practised plan.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "A video shows how one person did something. Watching isn’t practice, and it may not match current safety guidance — check a manual for anything risky.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "About this library",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "About this library and its sources",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "About this source",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "About this video",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Add the local AI",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "All skills",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "All videos",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Also looked for: {…}{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Appropriate technology: water, sanitation, energy and building projects.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Ask",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Ask about this video",
+      "count": 3
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Ask the library",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Ask the library: “{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Assistant",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Automatic captions",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Cancel",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Captions",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Captions written by the publisher",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Channel",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Chats",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Choose Save on any page, video, article or answer to keep it here.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Clear recent list",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Community-written encyclopedia",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Community-written; check safety-critical steps against a manual{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Continue watching",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Contribute to Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Copied",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Couldn’t load the text.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Delete",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Delete all",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Delete all {…} notes?",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Delete the note “{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Describe it in everyday words",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Details",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Edition",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Encyclopedia",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Encyclopedia search isn’t available right now ({…}).",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Encyclopedias",
+      "count": 4
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Everything",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Example searches",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Filter",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Filter by title or publisher",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Find a place",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Find help nearby",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Find in transcript",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Find words in the transcript",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "For example, tools needed",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Four complete encyclopedias",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "From the {…} guide · ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Gap closure report",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Get a written answer with the exact pages it came from",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Get an answer built from the manuals, with the exact pages and video moments it came from",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Get ready before it happens",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Getting-ready readings from every guide",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Go deeper: full manuals & articles",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Government guidance",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Guide",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Guides",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Has a transcript",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Hesperian community health guide",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Hospitals, pharmacies, water taps and fire stations on an offline map",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "How sources are labelled",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "How to show it",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "If the PDF doesn’t show here (some phones can’t), use Page view or open the original file.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "If this keeps happening, close Lastbook and open it again.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "In the manuals and saved pages",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "International health & humanitarian guidance",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "It points to original pages; the guides don’t write their own medical, chemical or electrical instructions. The assistant’s answers mark which sentences come from a cited page and which are its own wording.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "I’ve practised it with someone who knows",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "I’ve read this",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Keep a note of this",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Keep them",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Kept on this device only.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Kept. It’s in Library →",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Kind",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Learn a skill",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Learning pathways report",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Learning route",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Length",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Library",
+      "count": 3
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Loading text…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Loading transcript…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Loading videos…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Loading…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Local AI: {…} {…}{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Local AI: {…}, {…}.{…} It reads text only.\n      <span class=\"row\">{…}{…}</span>",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Local model {…} — available.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Looked for but not found when this guide was put together (October 2026):",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "MDWiki: plain-language articles on conditions, medicines and first aid.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Main roads, towns and water on an offline map",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Make one focused change in a fork: ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Manuals & pages",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Manufacturer manual",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Mark as unwatched",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Mark as watched",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Mark watched",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Marked as unwatched",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Marked as watched",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Matched by meaning as well as by words",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Matched by your words",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Meaning-based index: {…} passages from {…} documents{…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Medical encyclopedia",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Model server on this computer: {…} at {…}, {…}. Change it in Library and local AI.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Moment at ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "More like this",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Most relevant pages",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Name",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Need help now",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "No articles found",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "No notes",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "No results for “{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "No text on this page (it may be a picture or blank).",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "No video moments saved.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "No videos match. Try another word or length.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Normal",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Not in this library",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Note",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Notes you chose to keep when a search found nothing. They stay on this computer, and nothing is sent anywhere.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Notes you kept when a search found nothing",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Nothing here matches. Try another word.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Nothing here replaces trained help. Each guide shows the sources’ own limits.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Nothing picked for this yet — try searching.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Nothing saved yet",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "One complete encyclopedia",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Online original",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Only videos already downloaded are shown. Many have no captions, so the transcript search and the assistant can’t see what’s said in them.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Open textbooks and how-to manuals, from cooking to electronics.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Open the full guide",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Open {…} at {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Other ways in",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Page",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Page ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Page number",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Page {…} of {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Page {…}. ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Page {…}:",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Pages you open will appear here.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Pause at a useful part, then choose Save this moment.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Phones on the same Wi-Fi (no internet needed) can use the guide when this computer starts it with",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Pick what’s happening, search in your own words, or ask the library a question.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Picked pages with exact page numbers and safety limits",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Play {…} at {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Playback speed",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Prepare your household",
+      "count": 3
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Prompt copied.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Prompt selected. Press your copy shortcut.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Public manuals, health guides, courses, videos and encyclopedias kept on this computer, so it works when the internet and phones don’t.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Publisher",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Read aloud",
+      "count": 5
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Reading and watching are not the same as practising. Your ticks stay on this device.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Readings for getting ready before water, power or services stop — gathered from each guide. One area at a time.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Recently opened",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Related guides",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Remove",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Remove {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Removed from Saved",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Rename",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Rename moment",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Rename {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Results",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Resume",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Resume at ",
+      "count": 3
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Safety",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Save",
+      "count": 4
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Save changes",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Save moment",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Save this moment",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Saved",
+      "count": 6
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Saved moments",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Saved on this device",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Saves “{…}”{…} on this computer only, under Library →",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Search",
+      "count": 3
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Search isn’t responding.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Search the library",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Search them",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Search these videos",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Search video titles",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Searching the encyclopedias…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Searching…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "See all",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "See all {…}",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Server error ",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Shopping lists and carts in older reports are plans, not proof of supplies you own.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Show",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Show all {…} warnings",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Show more",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Show more videos",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Show or hide the source details",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Show the text instead",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Sort",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Sources and credits",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Sources and permissions",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Sources disagree",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Start over",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Start with a guide",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Still arriving",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Store water and food, plan for outages, pack kits",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Stored on the remote drive “{…}”. It plays only while that computer is reachable.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Supplies planning",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "That page isn’t here",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "The full English encyclopedia, text only (no pictures).",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "The library may be busy rebuilding its index. Try again in a minute.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "The library sent an unreadable reply.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "The link may be from an older version of the guide.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "The local AI is turned off. {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Things I couldn’t find",
+      "count": 6
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This download has no encyclopedias.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This is a scanned document without searchable text, so search and the assistant can’t read it. Use the Page view.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This page could not be opened",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This page could not be read aloud. Try again.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This page has no text that can be read aloud.",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This page image couldn’t be made.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This video file couldn’t be played here. <a href=\"{…}\" target=\"_blank\" rel=\"noopener\">Open the file directly</a>.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "This video is on the remote drive “{…}”, which isn’t reachable right now. The transcript below still works.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Three complete encyclopedias",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Ticks are your own notes on this device. Reading or watching is not the same as practising safely.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Transcript",
+      "count": 3
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Try another word for the same thing.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Try fewer words, or another word for the same thing.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Two complete encyclopedias",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "University / extension service",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Use the words you’d use with a friend. For example:",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Using it on a phone",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Video moments",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Video · ",
+      "count": 2
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Videos",
+      "count": 4
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Videos for this",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Videos picked for the guides",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Videos: “",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Watch how it’s done",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Watch it done — practical how-tos first, then channels and courses.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Watched",
+      "count": 6
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "What do you need?",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "What the assistant can’t see",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "What this guide does not do",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "What’s in it",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "When a search finds nothing, you can keep a note of it here, to remember what the library was missing.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Wikibooks",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Year",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "You stopped at {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Your learning route",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "Your saved things, learning routes, encyclopedias and every manual in the collection.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "cut won’t stop bleeding",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "e.g. boil water",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "of {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} Kept on this device.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} PDF manuals ({…} pages), {…} saved web pages, {…} downloaded videos and {…} complete encyclopedias.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} gave no readable text when indexed",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} h {…} min",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} min",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} more videos are queued and {…} downloading. Queued videos are not in the library yet — they appear only once downloaded.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} note{…} on this computer",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} of {…} {…} no captions or transcript",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} on this device",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} on {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} picked video{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} s",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} steps",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} video{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} without text",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} ·",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} · {…} item{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} · {…} steps",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…} — may contain errors.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…}. Community-written: good for background — use the guides’ manuals for safety-critical steps.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…}It also can’t see pictures in videos or raw map data. It reads text{…} and says when it finds nothing.{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…}Open the original file",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "{…}Stop and get help when…",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "· {…} · community-written",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "— FEMA, CDC, EPA, USDA, NOAA, National Park Service and similar.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "— WHO, Red Cross / Red Crescent, MSF, UNICEF, Sphere, St John Ambulance.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "— background; check anything risky against a manual.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "— e.g. National Center for Home Food Preservation, UC extension.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "— only for the exact model named.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "— “Where There Is No Doctor” and related books.",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "“{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/app.js",
+      "file": "",
+      "text": "” · ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "\n## Answer\n\n{…}\n",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "\n## Question\n\n{…}\n",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": " The library search also found nothing for this question.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": " title=\"Not linked to a source\"",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": " {…}%",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": " · <span class=\"muted\">still indexing ({…} passages so far)</span>",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": " · Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "# {…}\n\nExported from Lastbook (offline library) on {…}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "(no answer: ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": ", at ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": ", p. ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": ", page ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": ", {…}s",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "? Move it into the",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Add the local AI",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Add the local AI to get written answers.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "All",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "All skills",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Already downloaded",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Also looked at ({…}, not used)",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Answers from the guides, manuals and videos on this computer, with the page or video moment for each point.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Ask a question…",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Ask again",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Assistant offline",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Chat",
+      "count": 3
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Chats",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Chats will be forgotten when you close this page",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Chats will be kept on this device",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Checking the local AI file{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Close chat list",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Conversation",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Conversations",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Copied",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Copy",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Couldn’t copy",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Delete all chats",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Delete all chats on this device?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Delete this chat",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Don’t use this as context",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Encyclopedias",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Export chat",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Guide",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "How do I change the oil on a Honda EU2200i generator?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "How do I run a generator safely during a power outage?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "How it searched ({…} {…}{…})",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "It is about 17 GB, and runs on this computer only.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Keep chat history on this device",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Keep learning",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Local assistant ready",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Look again",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Looked at the picture of {…}, page {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Looked up “{…}” on the offline map",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Matched {…} passage{…} for your question",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "New",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "New chat",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "No chats yet.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "No transcript for {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Page ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Pages",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Pages found so far — you can open them while the answer is written:",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Phones are down. How can our household stay in contact?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Places",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Read the encyclopedia article “{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Read the transcript of {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Read {…}, page{…} {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Runs on this computer. Nothing you ask leaves it.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Saved as a file on this device",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Searched the encyclopedias for “{…}” — {…} article{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Searched “{…}”{…} — {…} passage{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Send",
+      "count": 4
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Show chats",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Show sources by type",
+      "count": 2
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Someone has a deep cut that won’t stop bleeding. What do I do?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Source {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Sources ({…})",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Start with what matters",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Starting the local AI{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Step-by-step guide",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Stop the answer",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The assistant is offline; you will get matching pages instead",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The fridge has been off for 6 hours. What food is still safe?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The local AI could not start.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The local AI is turned off.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The local AI needs about {…} of memory.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The model referred to sources that don’t exist ({…}); those markers were removed.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The model server at {…} is not answering",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The model server at {…} is not answering. Check that it is running.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The server refused the question (",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The tap water is off. How do I make water safe to drink?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "The toilets don’t work. How do we make an emergency toilet?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "This answer has no linked sources. Treat it as unverified.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Turn on",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Video at ",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Videos",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "What do you need to know?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "What vegetables can I plant this month?",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "You can keep browsing and searching. Here are the pages that best match your question:",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "Your question",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "[{…}] {…} — {…}{…}{…}{…}  {…}/{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "and pick the file you already have.",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "folder, then Look again. Or open",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "p. {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "page {…}{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "the model’s own wording, not linked to a source",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "{…} · {…} question{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "{…}<span>Asking about: <b>{…}</b> <span class=\"muted\">{…}</span></span>{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "{…}>",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "{…}New chat",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "{…}Save answer",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "— search and browsing still work",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "— search and reading still work",
+      "count": 1
+    },
+    {
+      "surface": "web/chat.js",
+      "file": "",
+      "text": "“{…}{…}”",
+      "count": 1
+    },
+    {
+      "surface": "web/index.html",
+      "file": "",
+      "text": "Offline survival and rebuilding guide: first aid, water, food, power, shelter, videos, maps and skills — works without internet.",
+      "count": 1
+    },
+    {
+      "surface": "web/index.html",
+      "file": "",
+      "text": "Opening the guide…",
+      "count": 1
+    },
+    {
+      "surface": "web/index.html",
+      "file": "",
+      "text": "Update available",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": " (busiest shown — zoom in for all)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": " · {…} GB",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": " · {…} records · click to list",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "3D terrain view",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "3D view",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Add your state’s address search",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Address not found in your offline data. Check the house number and street.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Aerial photos",
+      "count": 4
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Aerial photos (USGS / USDA)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "All",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Berries & asparagus",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Boating facilities (California)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Campsites",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Click to list them",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Click to zoom in",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Clinics & doctors",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Close details",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Close layers",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Community centers, town halls & libraries",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Contour lines (from zoom 11)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Copied ✓",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Copy failed — select the numbers above",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Couldn’t load places for this view — move the map to retry.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Couldn’t load the list. Zoom in to see individual places.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Dams (with storage & purpose)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Dentists",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Drinking-water taps",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Elevation ",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Elevation…",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Emergency",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Emergency help",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Exit full screen",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Exit full screen (Esc)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Find an address, town or ZIP",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Find an address, town, ZIP code or place",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Fire stations",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Fish-stocking sites (California)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Food that keeps growing (2025 crop maps)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Food trees",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "For the layers you have on. Straight-line distance, not by road.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Fuel stations",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Full screen",
+      "count": 6
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Go to my area",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Group",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Hardware stores",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Hospitals",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Layers",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Loading places…",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Loading…",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Location unavailable: ",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Make the map center my area",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Map & nearby help",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Map details unavailable.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Map downloads",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Map style",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Map · Lastbook",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text.",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Mine-tailings dam:",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Minerals & mines (US)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "My area",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Natural resources (historical records)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Nearby search is unavailable.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Nearest to the map center",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "No layers are on.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "No layers on — open Layers to choose what to show.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "None",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Not a water source:",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Not drawn yet: forest types. ",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Nothing from your layers in this view — zoom out or turn on more layers.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Nothing from your layers within about 100 miles of the map center.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Numbers are places in the current view.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Oil & gas wells (California)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Orchard & vineyard areas (coloured)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Orchards: nuts, fruit, citrus, olives",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Pharmacies",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Place finder unavailable.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Police",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Remove marker",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Reservoirs & named lakes",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Resources",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Search",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Searching…",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Shaded relief (hills & valleys)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Shelters (structures)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Show on map",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Showing the {…} nearest of {…}{…}. Zoom in to see the rest.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Springs (untested water)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Supermarkets & food shops",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Supplies",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Supplies & camping",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "The home button returns here. Saved on this device only.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "US streets still being converted ({…}M roads & features so far) — gaps fill in automatically.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Unnamed ",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Unnamed ponds (1+ acre, year-round)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Use my location",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Vineyards (grapes)",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Water",
+      "count": 3
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "What this map covers",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Whole US",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Whole United States",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Whole map",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Your area",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Zoom",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Zoom here",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Zoom in",
+      "count": 4
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "Zoom out",
+      "count": 4
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "it holds mine waste, not usable water. Do not drink, swim or fish here.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "this is a {…}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} from your area",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} match{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} places",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} places here",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} place{…} in view{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} records at one spot",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} record{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} source records at this spot",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} · click to list them",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…} · {…} {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…}, {…}",
+      "count": 2
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…}<div class=\"kind\">{…}{…}</div><h3>{…}</h3>\n      {…}\n      {…}{…}{…}{…}{…}\n      <div class=\"acts\"><button data-a=\"zoom\">Zoom here</button><button data-a=\"copy\">Copy coordinates</button></div>",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "{…}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "· none",
+      "count": 1
+    },
+    {
+      "surface": "web/map.js",
+      "file": "",
+      "text": "← {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " Nothing was changed or downloaded.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " Street-address search is not available for this state yet.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " Used once setup is done.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " and $1",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " at {…} of {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " free there",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " with the local AI",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": " {…} min",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": ", $1, and ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": ", and ",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": ", so the last files are written.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": ": this needs {…}, and {…} is free",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "About {…} download",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Add",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Address",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "All good",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "All includes every state map. Choose your state for offline street-address search.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Already downloaded",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Already on this computer: {…} to check{…}",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Answers questions from the library, in plain words. Works offline.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "App updates",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Back",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Back to Library and local AI",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Cancel",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Can’t change here",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Change",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Change…",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Chat now answers with {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Chat will answer with {…} once setup is done.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Check now",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Checked",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Checking stopped",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Checking what is already downloaded: {…} so far",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Checking: {…} of {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Choose AI model file",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Choose again",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Choose an existing library folder",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Choose your state",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Choose your state to continue",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Choose…",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Coming later",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Copied",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Copy",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Copy the {…} library{…} to {…}, with a START-HERE.txt that says how to set it up on another computer.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Delete",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Delete it for good?",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Detailed map: ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Download",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Download and install",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Download and install update",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Eject the drive before you unplug it",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Every file matches the published library. Nothing was downloaded.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Finishing stopped",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "For example: {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Found on this computer",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Free on {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Get ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Installed",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Installed. Ready to open.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Installed: {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "It may be down for a while; if other websites open on this computer, this network may also be blocking it. Retry later, or download the file below on another network or computer, ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Keep",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Keep going",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Last checked {…} · {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Lastbook asks only this computer, and only when you press List models.{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Lastbook can’t reach {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Lastbook checks once a day while the app is open and online.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Lastbook could not save this setting. Try again.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Lastbook did not answer. Close it and open it again.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Lastbook sent an unreadable reply.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Library",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Library check",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "List again",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "List models",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Local AI",
+      "count": 8
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Local streets, buildings, water and places to get help. Available offline.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Model",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Model server on this computer",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "None",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not available.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not enough room on {…}{…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not enough room: this needs {…}, and {…} has {…} free. Pick a smaller library or another folder.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not for this computer",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not installed · about ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Not now",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Nothing to add",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Notify me about app updates",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Ollama uses port 11434, llama.cpp port 8080. A server that needs a key does not work yet.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "On this computer · ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Open the library",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Opening your library…",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Optional",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Ready",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Remove",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Repair {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Repaired",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Repaired. Ready to open.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Saves to",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Setup could not start.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Something needs repair",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Space needed",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Steps",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Stop",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Stop using",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Suggested",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Suggested: {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The check found damage.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The check was stopped. Nothing was changed.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The copy was stopped. What was copied is on the drive.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The download was cancelled.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The drive now holds the library ({…} files{…}, each read back and checked) and {…}, which says how to set it up on another computer.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The largest",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The library did not open. Try again.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The library was checked and is complete. Anything that was damaged was downloaded again.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The library was checked.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The library was checked. All good.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The local AI file will be used. No need to download it.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The old library is still here",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The picker could not open. Try choosing the file or folder again.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The server is busy. Retrying in {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "The {…}{…} doesn’t match the published file, so it was not used.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "This computer",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "This computer does not have enough memory for it.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Unpacking stopped",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Unpacking: {…} of {…}{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Update available",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Update {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Updated edition available · ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Use the file you already have",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Use this model",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Uses {…} percent of the free space",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "Your local map",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "a detailed map of ",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "about {…} h{…} left",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "about {…} min left",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "free on {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "graphics: {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "the {…} map",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}\n             <button class=\"btn plain\" data-act=\"cancel\">{…}Cancel</button>",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} ({…} bytes)",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} at {…} · answers instead of the local AI.{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} at {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} comes later",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} damaged or missing",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} damaged or missing, repaired",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} download · {…} on disk.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} download · {…} on disk{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} map",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} of this library {…} only in iCloud{…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} of {…}",
+      "count": 2
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} of {…} copied and checked",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} on disk",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} to copy",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} to download{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} will not open without internet. Move the LastbookData folder out of iCloud Drive, or in Finder choose Keep Downloaded for it (macOS 15 or later).",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} {…} damaged or missing",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} · doesn’t match the published file, so it is not used",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} — skip for now",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…} — {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}. Nothing was changed or downloaded. {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Check and repair",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Delete it",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Download it",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Get {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Pause",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Repair",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Resume",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Retry",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Use a model server on this computer",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}Your local map",
+      "count": 1
+    },
+    {
+      "surface": "web/setup.js",
+      "file": "",
+      "text": "{…}{…}. Nothing to download.",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": " (nearest shown)",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": " · loading buildings…",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "3D needs WebGL, which this browser has turned off.",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "; {…} without one shown one storey tall",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "Exaggerate heights",
+      "count": 2
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "Height ×",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "Loading elevation…",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "Loading elevation… {…}/{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "Reset view",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "{…} buildings{…} · {…}satellite estimates{…}",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "{…} with mapped heights (OpenStreetMap), the rest ",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "{…} · {…}–{…} ft",
+      "count": 1
+    },
+    {
+      "surface": "web/terrain3d.js",
+      "file": "",
+      "text": "✕ Exit 3D",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": " (found by an earlier check)",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Address selected",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Check for updates",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Copy download link",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Download page opened in your browser.",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Lastbook app",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Lastbook could not ask about updates.",
+      "count": 2
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Lastbook could not open the download page. Try copying the download link.",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Lastbook could not start the update.",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Lastbook could not start the update. Use the download page instead.",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Link copied",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Open download page",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "The updater is opening. Confirm in its window to install; Lastbook restarts when it is done.",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Try again",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Update available",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Update available: version {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Update now",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "Version {…}.",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "{…} Checking for updates…",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "{…} Lastbook is up to date. {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "{…} No update information yet. {…}",
+      "count": 1
+    },
+    {
+      "surface": "web/update.js",
+      "file": "",
+      "text": "{…}{…} Version {…} is available{…}.\n      <span class=\"upd-line\">{…}</span>\n      {…}\n      <span class=\"upd-actions\">\n        {…}\n        {…}\n        {…}\n        {…}\n      </span>\n      <span class=\"upd-line\" data-upd-status role=\"status\"></span>\n      <span class=\"upd-line\" data-upd-address hidden>{…}</span>",
+      "count": 1
+    },
+    {
+      "surface": "web/video-moments.js",
+      "file": "",
+      "text": "Could not update Saved. Your saved items were left unchanged.",
+      "count": 1
+    },
+    {
+      "surface": "web/video-moments.js",
+      "file": "",
+      "text": "Saved items could not be read. Nothing was changed.",
+      "count": 1
+    },
+    {
+      "surface": "web/video-moments.js",
+      "file": "",
+      "text": "This moment is no longer saved.",
+      "count": 2
+    },
+    {
+      "surface": "web/video-moments.js",
+      "file": "",
+      "text": "This saved item could not be changed.",
+      "count": 1
+    },
+    {
+      "surface": "web/video-moments.js",
+      "file": "",
+      "text": "This video position could not be saved.",
+      "count": 1
+    },
+    {
+      "surface": "web/video-moments.js",
+      "file": "",
+      "text": "Use a name between 1 and 120 characters.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Lastbook Setup",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not find itself.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not find the temporary folder.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not make a temporary folder.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not read itself.",
+      "count": 2
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not start. Windows may have blocked it.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not unpack itself. Check there is room on the disk.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "Setup could not write to the temporary folder.",
+      "count": 1
+    },
+    {
+      "surface": "windows-setup-stub",
+      "file": "packaging/setup_stub/lastbook_setup_stub.c",
+      "text": "This copy of Setup is damaged. Download it again.",
+      "count": 5
+    }
+  ]
+}

@@ -66,6 +66,9 @@ def validate(m, allowed=None, *, bundled=False):
     for p in m.get('packs') or []:
         if not isinstance(p, dict) or not isinstance(p.get('id'), str) or not NAME.match(p['id']):
             return None
+        summary_key = p.get('summary_key')
+        if summary_key is not None and not (isinstance(summary_key, str) and NAME.fullmatch(summary_key)):
+            return None
         revision = p.get('revision', '')
         if not isinstance(revision, str) or (revision and not NAME.fullmatch(revision)):
             return None

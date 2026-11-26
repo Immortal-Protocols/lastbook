@@ -78,6 +78,10 @@ class Catalogues(unittest.TestCase):
     def test_source_staging_and_missing_or_stale_assets(self):
         generated = catalogues.generate()
         catalogues.check_assets(ROOT / 'web', generated)
+        desktop = generated['desktop'].decode('utf-8')
+        self.assertIn('GenericName[es_419]=Biblioteca de supervivencia sin conexión', desktop)
+        self.assertIn('Comment[de]=Die Survival-Bibliothek auf diesem Computer ohne Internet durchsuchen und lesen', desktop)
+        self.assertIn('Keywords[zh_Hans]=生存;资料库;离线;急救;', desktop)
         stage = self.work / 'stage'
         subprocess.run([sys.executable, '-I', '-B', str(ROOT / 'packaging' / 'ship_app_files.py'), str(stage)],
                        check=True, capture_output=True)
@@ -196,6 +200,10 @@ class SpanishWording(unittest.TestCase):
     def setUpClass(cls):
         load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
         cls.en, cls.es = load('en.json'), load('es-419.json')
+
+    def test_language_preview_warns_translation_is_partial(self):
+        self.assertIn('La traducción al español todavía es parcial.', self.es['language.preview'])
+        self.assertIn('menús nativos', self.es['language.preview'])
 
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.es['nav.settings'], 'Ajustes')

@@ -42,7 +42,7 @@
   "setup.tryAgain": "Try again",
   "setup.copyTitle": "Copy for someone else",
   "language.label": "Interface language",
-  "language.preview": "Buttons and messages update now. The native menus use this language after you restart Lastbook. Library text, search results and model answers stay in their original language.",
+  "language.preview": "The Spanish translation is still partial. Some interface text and native menus may appear in English.",
   "language.save": "Save language",
   "language.saving": "Saving language…",
   "language.saved": "Language saved. Restart Lastbook to update its menus.",

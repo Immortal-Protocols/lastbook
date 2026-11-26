@@ -97,6 +97,23 @@ const MapView = (() => {
   const markNameHtml = mark => mark?.nameKey ? tHtml(mark.nameKey, mark.nameParams || null, mark.nameFallback || '') : escH(mark?.name || '');
   const markKindHtml = mark => mark?.kindKey ? tHtml(mark.kindKey, mark.kindParams || null, mark.kindFallback || '') : mark?.kind ? escH(mark.kind) : tHtml('map.place', null, 'Place');
   const $ = id => document.getElementById(id);
+  const message = (key, params, fallback) => {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    if (result) return result;
+    return { text: globalThis.lastbookTr?.(key, params, fallback) ?? fallback ?? '', locale: 'en' };
+  };
+  const messageHtml = value => {
+    const result = typeof value === 'string' ? { text: value, locale: 'en' } : value || { text: '', locale: 'en' };
+    if (Array.isArray(result.segments)) return result.segments.filter(part => part.text).map(messageHtml).join('');
+    const locale = result.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result.text ?? '')}</span>`;
+  };
+  const markName = mark => mark?.nameKey ? message(mark.nameKey, mark.nameParams || null, mark.nameFallback || '').text : (mark?.name || '');
+  const markNameHtml = mark => mark?.nameKey ? messageHtml(message(mark.nameKey, mark.nameParams || null, mark.nameFallback || '')) : escH(mark?.name || '');
+  const markKindHtml = mark => mark?.kindKey ? messageHtml(message(mark.kindKey, mark.kindParams || null, mark.kindFallback || '')) : mark?.kind ? escH(mark.kind) : messageHtml(message('map.place', null, 'Place'));
+  const layerMessage = layer => layer.id
+    ? message('map.layer.' + layer.id, null, layer.label)
+    : { text: layer.label || '', locale: 'en' };
   const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
@@ -278,9 +295,9 @@ const MapView = (() => {
   }
   function statusLine(msg) {
     const el = $('mstatus'); if (!el || !st) return;
-    if (msg != null) st.pinMsg = msg;
-    const parts = [st.pinMsg, st.coverNote].filter(Boolean);
-    el.innerHTML = parts.map(escH).join('<br>'); el.hidden = !parts.length;
+    if (msg != null) st.pinMsg = typeof msg === 'string' ? { text: msg, locale: 'en' } : msg;
+    const parts = [st.pinMsg, st.coverNote].filter(part => part && (typeof part !== 'object' || part.text));
+    el.innerHTML = parts.map(messageHtml).join('<br>'); el.hidden = !parts.length;
   }
 
   // ---------------------------------------------------------------- layers ----

@@ -645,6 +645,7 @@ const Chat = (() => {
     document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
     toast(tr('chat.savedAsFile', null, 'Saved as a file on this device'));
   }
+
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
     return c.messages.filter(m => contentText(m)).map(m => {
@@ -728,6 +729,18 @@ const Chat = (() => {
     try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += tr('chat.fallbackNothing', null, ' The library search also found nothing for this question.') }
     catch { m.fallback = [] }
   }
+  function refreshLanguage() {
+    if (!document.getElementById('chatLog')) return;
+    const y = scrollY, active = document.activeElement, message = active?.closest?.('.msg'), action = active?.dataset?.act;
+    const messageId = message?.id || '', id = active?.id || '';
+    const list = $('#csList'), listTop = list?.scrollTop || 0;
+    renderSide(); renderCtx(); renderLog(); setBusy(!!busy());
+    if (list) list.scrollTop = listTop;
+    const focus = id ? document.getElementById(id) : (messageId && action ? document.querySelector(`#${CSS.escape(messageId)} [data-act=\"${CSS.escape(action)}\"]`) : null);
+    if (focus?.isConnected) focus.focus({ preventScroll: true });
+    scrollTo(0, y);
+  }
+  document.addEventListener('lastbook:languagechange', refreshLanguage);
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }
   function setBusy(on) {
     const b = $('#sendBtn'); if (!b) return;
@@ -744,5 +757,5 @@ const Chat = (() => {
   }
   function throttle(f, ms) { let t = 0, p = null; return () => { const n = Date.now(); if (n - t > ms) { t = n; f() } else { clearTimeout(p); p = setTimeout(() => { t = Date.now(); f() }, ms) } } }
 
-  return { page, count };
+  return { page, count, refreshLanguage };
 })();

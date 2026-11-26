@@ -20,6 +20,30 @@ tank-source variations remain visible. Existing overseas sources remain separate
 no new combined medical, electrical or water-treatment procedure is written.
 The placement audit is `docs/AUSTRALIA-GUIDE-LINKS-20261127.json`.
 
+Local validation: **879 contribution/build and 951 combined tests pass**, each
+with five skips and eleven expected failures. All24 source/guide tests pass on
+Python3.14 and frozen-build3.11. Availability tests cover full,absent and partial AU
+source sets; frozen pre-change guide hashes protect all original choices and ranking
+fields. Actual442-record engine checks forbid sockets, resolve all40 new links and
+verify source hashes, then remove all AU records to check the actual314-record
+fallback. The validator checks the40 added references with zero errors; this does
+not claim every raw pre-existing guide reference exists in Small. The four AU guides
+still resolve621references,zero errors.
+
+Frozen combined source `93ab7d6` passes package/i18n/privacy/signature and installed
+442/7 outbound-IP-denial checks. Exactly8of58 bundled assets change: seven ordinary
+guide JSON files and gaps.json. Core code,121public source records,all128AU content
+hashes,42personalFTS,Victoria/map hashes and five data hashes remain unchanged.
+The previous442app is retained for rollback; the prior full438app/data copies remain.
+Native selected checks open a representative choice and matching reader/source panel
+in each of the7guides and verify smoke Ask/Back context. Engine checks cover all40;
+no all-links visual,all-browser,clinical,engineering,accessibility/audio/community or
+historical long-idle approval is inferred.
+
+The121-record smoke/sanitation data archive and its three uploaded assets remain
+byte-identical. These additional guide links require the matching updated source/
+runtime from PR89; there is no new data release or production Setup change.
+
 ## Smoke health and flooded wastewater — 27 November 2026
 
 Four additional NSW Health readings cover smoke exposure reduction, higher-risk

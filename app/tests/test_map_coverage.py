@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -93,6 +95,22 @@ class MapCoverage(unittest.TestCase):
         self.assertNotIn('region', info)
         self.assertEqual(info['bounds'], list(server.SOCAL_BBOX)); self.assertTrue(info['detail'])
         self.assertNotIn('unavailable', str(info['datasets']))
+
+    @unittest.skipUnless(shutil.which('node'), 'requires Node for actual map distance function')
+    def test_australian_metric_distances_and_legacy_units(self):
+        code = (Path(__file__).resolve().parents[2] / 'web/map.js').read_text()
+        distance = next(line for line in code.splitlines() if line.startswith('  const dist = km =>'))
+        script = "let st=null;" + distance + """
+          let values=[];
+          for (const region of ['au-act','au-vic',null,'ca-ns']) {
+            st={region}; values.push([0.5,1,4.2,10].map(dist));
+          }
+          console.log(JSON.stringify(values));
+        """.replace('\n+', '\n')
+        result = subprocess.run([shutil.which('node'), '-e', script], capture_output=True, text=True, timeout=10, check=True)
+        metric = ['500 m','1.0 km','4.2 km','10 km']
+        legacy = ['500 m','1000 m','2.6 mi','6.2 mi']
+        self.assertEqual(json.loads(result.stdout), [metric,metric,legacy,legacy])
 
     def test_pack_regional_identity_also_survives_missing_coverage(self):
         (self.root / 'map-set.json').unlink()

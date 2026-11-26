@@ -209,5 +209,10 @@ its existing box and cell-mask behavior.
 `python3 -B -m unittest app.tests.test_map_coverage` covers an ACT map with a
 conflicting underlying CA pack, warmed-cache loss/restoration, invalid and
 unreadable files, declared pack identity, query sources and the SoCal control.
-Thirty focused map/region/builder tests pass on development3.14 and app-build3.11.18.
+Thirty-one focused map/region/builder tests pass on development3.14 and app-build3.11.18.
 No archive/Setup manifest,source extract,download policy or dataset hash changes.
+
+Australian metric-distance formatting and the regional nearby-empty message
+now live with this map PR, rather than the map/index lifecycle integration.
+A Node check executes the actual distance function for ACT/Victoria and legacy
+US/other-region controls. Existing US units remain unchanged.

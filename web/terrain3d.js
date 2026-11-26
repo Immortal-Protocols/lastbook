@@ -248,7 +248,7 @@ const Terrain3D = (() => {
     function render() {
       if (!me.alive) return;
       const w = cv.clientWidth, h = cv.clientHeight, R = Math.min(2, devicePixelRatio || 1);
-      if (cv.width !== Math.round(w * R)) { cv.width = Math.round(w * R); cv.height = Math.round(h * R) }
+      if (cv.width !== Math.round(w * R) || cv.height !== Math.round(h * R)) { cv.width = Math.round(w * R); cv.height = Math.round(h * R) }
       gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0.62, 0.76, 0.84, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const zc = (hmax - hmin) * ex * 0.3, e = [Math.sin(cam.yaw) * Math.cos(cam.pitch) * cam.dist, -Math.cos(cam.yaw) * Math.cos(cam.pitch) * cam.dist, Math.sin(cam.pitch) * cam.dist + zc];
       const mvp = mat(0.8, w / h, e, [0, 0, zc]);

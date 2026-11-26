@@ -8,6 +8,7 @@ import socket
 import sqlite3
 import tempfile
 import unittest
+from collections import Counter
 from unittest.mock import patch
 
 TOOL = Path(__file__).with_name('build_australia_reference.py')
@@ -16,6 +17,61 @@ au = importlib.util.module_from_spec(spec); spec.loader.exec_module(au)
 
 
 class Reference(unittest.TestCase):
+    def test_national_factsheets_keep_all_source_words_and_conditional_actions(self):
+        entries = {r['id']: r for r in au.checked_sources()[0]['sources']}
+        audit = json.loads((au.SOURCES / 'NATIONAL-HAZARDS-SOURCE-AUDIT-20261126.json').read_text(encoding='utf-8'))
+        self.assertEqual(audit['source_pages'], 14)
+        self.assertEqual(audit['source_word_tokens'], 4944)
+        self.assertEqual(len(audit['selections']), 7)
+        bodies = {}
+        for selection in audit['selections']:
+            uid = selection['reader_id']; r = entries[uid]
+            html = (au.SOURCES / r['snapshot']).read_text(encoding='utf-8')
+            body = html.split('<hr>', 1)[1].split('<h2>Source, dates and reuse</h2>', 1)[0]
+            self.assertIn('Source page 1', body)
+            self.assertIn('Source page 2', body)
+            page = au.Page()
+            page.feed(re.sub(r'<h2>Source page [12]</h2>', '', body)); page.close()
+            text = re.sub(r'\s+', ' ', ''.join(page.text)).strip()
+            expected = Counter()
+            for p in selection['pages']:
+                for blocks in p['panels'].values():
+                    for b in blocks:
+                        expected.update(b['text'].replace('•', ' ').split())
+            self.assertEqual(Counter(text.split()), expected, uid)
+            self.assertEqual(r['source_url'], selection['licensed_source']['url'])
+            self.assertTrue(r['source_url'].startswith('https://www.getready.qld.gov.au/'))
+            self.assertTrue(selection['licensed_source']['identical_to_national_source'])
+            self.assertEqual(r['raw_sha256'], selection['national_source']['factsheet']['sha256'])
+            self.assertEqual(r['license'], 'CC-BY-4.0')
+            self.assertEqual(r['copyright_source'], 'https://www.qld.gov.au/legal/copyright')
+            self.assertEqual(r['source_created'], '2026-02-19')
+            self.assertEqual(r['source_updated'], '2026-03-06' if uid.endswith('tsunamis') else '2026-02-20')
+            self.assertIn('not the separate illustrated Easy Read edition', html)
+            self.assertIn('call 000 immediately.', text)
+            self.assertIn('131 450', text)
+            self.assertNotRegex(body, r'<li>[^<]*Where will you go\?')
+            bodies[uid] = text
+        for text in ['If fully alert and responsive, give them frequent small drinks of water.',
+                     'call 000 immediately.', 'Warning signs of heat stroke']:
+            self.assertIn(text, bodies['au-getready-heatwaves'])
+        for text in ['If you cannot leave, move to the top floor of a strong building at least ten metres above sea level.',
+                     'Leave straight away — do not wait for official warnings.', 'eastern costs of Australia']:
+            self.assertIn(text, bodies['au-getready-tsunamis'])
+        self.assertIn('If you can’t get under furniture, use your arms or a cushion to cover your head.', bodies['au-getready-earthquakes'])
+        self.assertIn('Leaving early is the safest option.', bodies['au-getready-bushfires'])
+        for uid, text in bodies.items():
+            self.assertIn('at least three days of supplies', text)
+            if not uid.endswith('heatwaves'):
+                self.assertIn('Water (at least 3 litres per person, per day)', text)
+        expected_ids = set(bodies)
+        for gid in ['au-household', 'au-rural']:
+            g = json.loads((au.ROOT / 'content/topics' / (gid + '.json')).read_text(encoding='utf-8'))
+            c = next(c for c in g['choices'] if c['id'] == 'national-hazards')
+            self.assertEqual({r['doc'] for r in c['read']}, expected_ids)
+            for key in ['prepare', 'learn']:
+                self.assertTrue(expected_ids <= {r.get('doc') for r in g[key]})
+
     def test_published_language_posters_keep_complete_wording_language_and_metadata(self):
         manifest, checked = au.checked_sources()
         entries = {r['id']: r for r in manifest['sources']}
@@ -116,6 +172,13 @@ class Reference(unittest.TestCase):
                                         ('"cyclone or flood"', 'qld-yumplatok-cyclones-poster'),
                                         ('"ngantam"', 'qld-wik-mungkan-bushfires-poster'),
                                         ('"kaap"', 'qld-wik-mungkan-cyclones-poster'),
+                                        ('"ember attacks"', 'au-getready-bushfires'),
+                                        ('"typhoons"', 'au-getready-cyclones'),
+                                        ('"aftershocks"', 'au-getready-earthquakes'),
+                                        ('"centralised"', 'au-getready-floods'),
+                                        ('"fully alert"', 'au-getready-heatwaves'),
+                                        ('"trampolines"', 'au-getready-storms'),
+                                        ('"Onslow"', 'au-getready-tsunamis'),
                                         ('"radiological quality"', 'nsw-groundwater'),
                                         ('"structural integrity"', 'nsw-tanks-after-flood'),
                                         ('"Boiling will not make"', 'nsw-nonpotable-water'),

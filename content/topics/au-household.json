@@ -71,7 +71,11 @@
     "Yumplatok",
     "Torres Strait Creole",
     "Wik-Mungkan",
-    "published-language posters"
+    "published-language posters",
+    "earthquake",
+    "tsunami",
+    "national factsheets",
+    "Get Ready Australia"
   ],
   "choices": [
     {
@@ -93,6 +97,48 @@
           "doc": "au-beacon-preparation",
           "label": "Land-trip beacon preparation: registration, testing and distress plan",
           "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+        }
+      ]
+    },
+    {
+      "id": "national-hazards",
+      "label": "Read national natural-hazard preparedness factsheets",
+      "hint": "Seven standard English source texts cover bushfire, cyclone, earthquake, flood, heatwave, storm and tsunami preparation.",
+      "read": [
+        {
+          "doc": "au-getready-bushfires",
+          "label": "Get Ready Australia: bushfires preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-cyclones",
+          "label": "Get Ready Australia: cyclones preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-earthquakes",
+          "label": "Get Ready Australia: earthquakes preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "Get Ready Australia: floods preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-heatwaves",
+          "label": "Get Ready Australia: heatwaves preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-storms",
+          "label": "Get Ready Australia: storms preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-tsunamis",
+          "label": "Get Ready Australia: tsunamis preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
         }
       ]
     },
@@ -737,6 +783,41 @@
       "doc": "qld-wik-mungkan-cyclones-poster",
       "label": "Wik-Mungkan: preparing for cyclones and floods",
       "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "au-getready-bushfires",
+      "label": "Get Ready Australia: bushfires preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-cyclones",
+      "label": "Get Ready Australia: cyclones preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-earthquakes",
+      "label": "Get Ready Australia: earthquakes preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-floods",
+      "label": "Get Ready Australia: floods preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-heatwaves",
+      "label": "Get Ready Australia: heatwaves preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-storms",
+      "label": "Get Ready Australia: storms preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-tsunamis",
+      "label": "Get Ready Australia: tsunamis preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
     }
   ],
   "learn": [
@@ -989,6 +1070,41 @@
       "doc": "qld-wik-mungkan-cyclones-poster",
       "label": "Wik-Mungkan: preparing for cyclones and floods",
       "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "au-getready-bushfires",
+      "label": "Get Ready Australia: bushfires preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-cyclones",
+      "label": "Get Ready Australia: cyclones preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-earthquakes",
+      "label": "Get Ready Australia: earthquakes preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-floods",
+      "label": "Get Ready Australia: floods preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-heatwaves",
+      "label": "Get Ready Australia: heatwaves preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-storms",
+      "label": "Get Ready Australia: storms preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-tsunamis",
+      "label": "Get Ready Australia: tsunamis preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
     }
   ],
   "related": [

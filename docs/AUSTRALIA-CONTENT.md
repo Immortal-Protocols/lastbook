@@ -6,7 +6,7 @@ and remaining work are recorded below so missing information is visible.
 
 ## Included
 
-- 59 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
+- 66 dated official text readings: ACMA emergency calls, CB radio and locating devices; Queensland
   household planning, emergency kit, home and pet preparation, cyclone/storm,
   food safety, drinking-water safety and poisons; NSW bushfire, flood, heatwave,
   evacuation, rural bushfire, rural flood and animal preparation; South Australian
@@ -24,7 +24,8 @@ and remaining work are recorded below so missing information is visible.
   covering all six states, three internal territories and seven external territories:
   plus three original journey, isolation and beacon planning aids:
   plus four published-language poster texts in Yumplatok and Wik-Mungkan:
-  **78 searchable HTML records** altogether. Four remote entries provide management
+  plus seven complete national Get Ready standard English factsheet texts:
+  **85 searchable HTML records** altogether. Four remote entries provide management
   references, without establishing local emergency numbers or services.
 - Three optional guides: Australian household preparation, rural isolation and
   emergency-health sources. They appear only when both supplement directory
@@ -823,3 +824,56 @@ browser navigation limits remain.
 [78-record published-language contributor review](https://github.com/pilkster/lastbook/releases/tag/australia-published-language-review-2026-11-26)
 contains public HTML,audits and engine evidence only. Original PDFs/artwork and
 personal-use material are excluded;earlier release assets remain unchanged.
+
+
+## National Get Ready standard factsheet texts — 26 November 2026
+
+Seven complete two-page standard English factsheet texts add national bushfire,
+cyclone, earthquake, flood, heatwave, storm and tsunami preparedness. Both guides
+expose the same seven-reading choice plus prepare/learn references. The public
+collection now has **85 records: 66 official practical readings, 13 copyright
+statements and 6 original records**. These are standard English factsheets, not
+the separate illustrated Easy Read editions or new translations.
+
+The permission review established a direct licensed source rather than inheriting
+terms from the national microsite. All seven PDFs are served byte-for-byte
+identically on getready.qld.gov.au. Its current footer explicitly links to
+qld.gov.au/legal/copyright, whose CC BY4.0 grant covers material on or through
+that site unless otherwise noted. The exact copies identify Queensland
+Reconstruction Authority as author and show no separate text licence/third-party
+text credit. State/QRA credit and exclusions are retained. All photos, artwork,
+branding, diagrams, icons, QR codes and original PDFs are excluded. No blanket
+licence is inferred for all getready.gov.au assets or for another agency.
+
+The 55-page national resource guide was acquired and its sharing guidance
+inspected. Pilot cyclone/flood Easy Read originals explicitly reserve stock/custom
+image reuse to permission from Information Access Group. Those originals/images,
+Easy Read text adaptations, other translations, videos and audio are excluded
+from this addition. Further language/community and accessible-format review
+remains incomplete.
+
+All14standard factsheet pages were rendered at1800px and inspected. All4,944
+nonbranding source word tokens compare between raw extraction, coordinate-based
+panels and final HTML. Column/panel reading order becomes linear; lists/questions
+remain distinct. Checkboxes become lists; earthquake graphic step numbers retain
+their action associations. Typography/line-wrap artifacts are normalized without
+correcting source spelling, quantities or conditions. An overlapping fi ligature
+and fragmented checklist initials were caught by the independent comparison.
+The tsunami source's printed “eastern costs” typo remains. Source statistics and
+simple hazard descriptions remain source statements, not independent research.
+
+Complete warning labels, planning prompts, leaving/floodwater/aftershock
+conditions, heat-stroke escalation and alert/responsive-only drinking condition,
+tsunami immediate-action/route/distance/last-resort building conditions, kit lists
+and TIS/emergency distinctions remain. Source three-day/3litre assumptions stay
+separate from other readings and person/place-specific needs. These short
+preparedness readings do not establish detailed property defence, clinical or
+engineering review, safe local roads, open shelters or actual service access.
+
+PDF metadata records creation19February2026; modification is20February for six
+factsheets and6March for tsunami. The national project was announced in September;
+November retrieval does not mean a new clinical or engineering review. Exact raw
+response hashes, licensed-host equality, footer/policy chain, all source panels
+and exclusions are in NATIONAL-HAZARDS-SOURCE-AUDIT-20261126.json. The four earlier
+language posters' English context now says “quoted words” after their source-first
+layout; no published-language wording changed.

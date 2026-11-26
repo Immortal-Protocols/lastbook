@@ -181,3 +181,20 @@ notarization or long-idle stability; the earlier idle-page incident is unresolve
 are contributor files,not official Setup downloads. All earlier state/capital
 review downloads remain unchanged. Official scanning/publication/manifest listing
 still belongs to the release maintainer.
+
+
+## Missing regional coverage file — 27 November 2026
+
+A declared regional map keeps its identity when detail-cells.json is missing,
+unreadable or invalid. It reports unavailable detail coverage (no coverage box)
+rather than Southern California's box or cached cell mask. Restoring a valid
+file restores coverage; the parsing cache follows file identity/metadata. The
+regional map's actual points remain queryable using their spatial SQL bounds,
+without coverage-based national deduplication. Legacy Southern California keeps
+its existing box and cell-mask behavior.
+
+`python3 -B -m unittest app.tests.test_map_coverage` covers an ACT map with a
+conflicting underlying CA pack, warmed-cache loss/restoration, invalid and
+unreadable files, declared pack identity, query sources and the SoCal control.
+Thirty focused map/region/builder tests pass on development3.14 and app-build3.11.18.
+No archive/Setup manifest,source extract,download policy or dataset hash changes.

@@ -1,5 +1,7 @@
 # Lastbook
 
+[Tiếng Việt · Hướng dẫn cài đặt và sử dụng ngoại tuyến](docs/quickstart.vi.md)
+
 Lastbook is a community built and maintained offline survival library for Mac, Windows and Linux. Point your AI to our repo and contribute to humanity's survival. It puts manuals, videos, encyclopedias, an offline map and
 short practical guides on one computer. After setup, it works offline. The desktop sidebar opens Videos, Map and Chat.
 Chat answers questions using the library, including the offline encyclopedias when they are present, and links to its sources.

@@ -482,6 +482,22 @@ class Browser(unittest.TestCase):
             expect(page.locator('#newChat2')).to_be_focused()
             self.assertTrue(page.locator('details.also').first.evaluate('(el) => el.open'))
 
+    def test_chat_local_ai_fit_diagnostic_uses_server_catalogue_key(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/assistant/status', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({
+                    'online': False, 'index': {'state': 'off'},
+                    'local': {'state': 'too_big', 'message': 'The local AI needs about 20 GB of this computer’s memory, and it has 8 GB.',
+                              'why_key': 'setup.why.aiNeedsMemoryShort',
+                              'why_params': {'needs': '20 GB', 'ram': '8 GB'}},
+                })))
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#chatStatus')).to_contain_text(
+                'La IA local necesita unos 20 GB de la memoria de esta computadora, y esta tiene 8 GB. Lastbook funciona sin ella: la búsqueda y la lectura son las mismas.')
+            self.assertNotIn('The local AI needs about', page.locator('#chatStatus').inner_text())
+
     def test_single_map_place_uses_singular_translation(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')

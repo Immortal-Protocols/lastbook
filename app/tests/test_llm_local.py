@@ -86,6 +86,19 @@ class Clock:
         self.tick()
 
 
+class LocalStatus(Base):
+    def test_status_exposes_the_fit_diagnostic_key_for_chat(self):
+        self.local.state = 'too_big'
+        self.local.message = 'The local AI needs 20 GB of memory.'
+        self.local.fit = {'needs': 20_000_000_000, 'why_key': 'setup.why.aiNeedsMemoryShort',
+                          'why_params': {'needs': '20 GB', 'ram': '8 GB'}}
+
+        status = self.local.status()
+
+        self.assertEqual(status['why_key'], 'setup.why.aiNeedsMemoryShort')
+        self.assertEqual(status['why_params'], {'needs': '20 GB', 'ram': '8 GB'})
+
+
 class SlowLoad(Base):
     """ensure_running gives up START_WAIT seconds after the load last got further, not START_WAIT seconds after it began."""
 

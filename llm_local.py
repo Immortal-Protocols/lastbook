@@ -126,6 +126,7 @@ class Local:
             return {'name': NAME, 'file': FILE, 'size': SIZE, 'state': self.state, 'pct': self.pct, 'message': self.message,
                     'found_at': self.path and _folder_name(self.path), 'enabled': self.enabled(), 'runtime': bool(self.runner),
                     'needs_bytes': fit.get('needs'), 'ram_total': fit.get('ram_total'), 'placement': fit.get('placement'),
+                    'why_key': fit.get('why_key'), 'why_params': fit.get('why_params'),
                     'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]]}
 
     def enabled(self):

@@ -221,6 +221,11 @@ const Chat = (() => {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
     const translated = (key, params, fallback) => trResult(key, params, fallback);
     const english = text => ({ text, locale: 'en' });
+    const diagnostic = (key, params, fallback) => {
+      const messageKey = l.message_key || l.why_key;
+      if (messageKey) return translated(messageKey, l.message_params || l.why_params || params, l.message || fallback);
+      return l.message ? english(l.message) : translated(key, params, fallback);
+    };
     return ({
       ready: [true, translated('chat.ready', null, 'Local AI ready')],
       stopped: [true, translated('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
@@ -228,10 +233,10 @@ const Chat = (() => {
       checking: [false, translated('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
       measuring: [false, translated('chat.checkingMemory', null, 'Checking this computer’s memory…')],
       absent: [false, translated('chat.notAdded', null, 'No local AI added')],
-      wrong: [false, l.message ? english(l.message) : translated('chat.wrongFile', null, 'The local AI file is not the right one.')],
-      too_big: [false, l.message ? english(l.message) : translated('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
+      wrong: [false, diagnostic('chat.wrongFile', null, 'The local AI file is not the right one.')],
+      too_big: [false, diagnostic('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
       off: [false, translated('chat.isOff', null, 'Local AI is off')],
-      error: [false, l.message ? english(l.message) : translated('chat.startFailed', null, 'The local AI could not start.')],
+      error: [false, diagnostic('chat.startFailed', null, 'The local AI could not start.')],
     })[l.state] || [false, l.message ? english(l.message) : translated('chat.unavailable', null, 'Local AI unavailable')];
   }
   let polling = null;

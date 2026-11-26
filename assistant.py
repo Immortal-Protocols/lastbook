@@ -94,8 +94,16 @@ def _fts(q, limit=80, ids=None):
            "ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT ?")
     rows = []
     try:
-        rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
-        if len(rows) < 10 and len(groups) > 1:
+        if S.library.needs_text_search(groups):
+            found = S.library.text_search_rows(con, groups, ids, limit, markers=('', ''))
+            if len(found) < 10 and len(groups) > 1:
+                extra = S.library.text_search_rows(con, groups, ids, limit, any_group=True, markers=('', ''))
+                seen = {(r[0], r[1]) for r in found}
+                found += [r for r in extra if (r[0], r[1]) not in seen]
+            rows = [r[:3] for r in found]
+        else:
+            rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
+        if not S.library.needs_text_search(groups) and len(rows) < 10 and len(groups) > 1:
             rows += con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups),) + only + (limit,)).fetchall()
     except sqlite3.OperationalError:
         pass

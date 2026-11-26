@@ -39,10 +39,20 @@ def pages(id):
     return t.split('\n\f\n') if r['kind'] != 'pdf' or '\n\f\n' in t else t.split('\f')
 def main(a):
     if a[0] == 'search':
-        terms = re.findall(r'[\w-]+', a[1])
+        sys.path.insert(0, str(HERE))
+        from engine import search_text
+        terms = search_text.query_terms(a[1], apostrophes=False)
         expr = ' AND '.join('"%s"' % t for t in terms)
         con = sqlite3.connect(DB.resolve().as_uri() + '?mode=ro', uri=True)   # a plain f'file:{DB}' breaks on '#', '%' and '?' in a folder name
-        rows = con.execute("SELECT doc_id,title,collection,page,snippet(pages,6,'[',']','…',20),bm25(pages,0,5,2,1,0,0,1) s FROM pages WHERE pages MATCH ? ORDER BY s LIMIT 300", (expr,)).fetchall()
+        groups = [[t] for t in terms]
+        if search_text.needs_text_search(groups):
+            found = search_text.text_search_rows(con, groups, limit=300, markers=('[', ']'))
+            records = cat()
+            rows = [(d, records[d]['title'], records[d].get('collection', ''), p, sn, score)
+                    for d, p, sn, score in found if d in records]
+        else:
+            rows = con.execute("SELECT doc_id,title,collection,page,snippet(pages,6,'[',']','…',20),bm25(pages,0,5,2,1,0,0,1) s FROM pages WHERE pages MATCH ? ORDER BY s LIMIT 300", (expr,)).fetchall()
+        con.close()
         g = {}
         for d, t, c, p, sn, s in rows:
             if d.startswith('metadata-'): continue

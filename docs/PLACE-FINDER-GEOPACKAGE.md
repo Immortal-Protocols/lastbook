@@ -21,7 +21,11 @@ python3 -B -m unittest tools.test_build_places_gpkg
 
 The box is **west,south,east,north**, in longitude/latitude degrees. Only WGS84
 longitude/latitude point layers are accepted. The input files are read-only. An
-existing output is refused. Multiple extracts can be passed in one build, and
+existing output is refused, including dangling links. Final placement atomically
+links the completed database into the output folder without replacing an entry
+that appeared during the build; the losing build removes only its own temporary
+file. The output filesystem must support hard links; unsupported placement fails
+without replacing a destination. Multiple extracts can be passed in one build, and
 overlapping copies of the same named/classed point are deduplicated.
 
 The schema/rank order agrees with the existing place finder and #63: city before

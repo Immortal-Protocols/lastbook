@@ -13,6 +13,7 @@ spatial dependency. Output uses server.places()'s place/place_fts contract.
 import argparse
 from contextlib import closing
 import math
+import os
 from pathlib import Path
 import sqlite3
 import struct
@@ -86,7 +87,7 @@ def box(value):
 
 def build(inputs, output, region, bbox=None):
     output = Path(output).absolute()
-    if output.exists():
+    if output.exists() or output.is_symlink():
         raise ValueError('Output already exists; choose a new file')
     if not region.strip():
         raise ValueError('A public region label is required')
@@ -94,7 +95,6 @@ def build(inputs, output, region, bbox=None):
         bbox = box(','.join(map(str, bbox)))
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix='.places-', suffix='.sqlite', dir=output.parent)
-    import os
     os.close(fd)
     staged = Path(name)
     try:
@@ -113,7 +113,14 @@ def build(inputs, output, region, bbox=None):
             db.commit()
             if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                 raise ValueError('SQLite integrity check failed')
-        staged.rename(output)
+        # The destination can appear after the initial check. A hard link places
+        # the closed, complete database atomically without replacing any entry,
+        # including a dangling symlink. Both names are on the same filesystem;
+        # the finally block removes only this build's unique temporary name.
+        try:
+            os.link(staged, output)
+        except FileExistsError:
+            raise ValueError('Output already exists; choose a new file') from None
     finally:
         staged.unlink(missing_ok=True)
     return count

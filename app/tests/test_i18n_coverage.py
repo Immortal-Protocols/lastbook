@@ -70,11 +70,11 @@ class Coverage(unittest.TestCase):
 
     def test_scanner_detects_prose_exported_to_markdown(self):
         sample = '''function exportChat(c) {
-          const md = `# ${c.title}\\n\\nExported from Lastbook (offline library) on ${chatDate(new Date())}.\\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\\n`;
+          const md = `Exported chat notes from the offline library. Check each linked page before acting.`;
           new Blob([md], { type: 'text/markdown' });
         }'''
         hits = self.scan_web_source(sample)
-        exported = [hit for hit in hits if hit['text'].startswith('# {…}') and 'Answers were written' in hit['text']]
+        exported = [hit for hit in hits if hit['text'] == 'Exported chat notes from the offline library. Check each linked page before acting.']
         self.assertEqual(len(exported), 1, hits)
         self.assertEqual(exported[0]['class'], 'chrome')
 

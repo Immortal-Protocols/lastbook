@@ -112,6 +112,21 @@ class Adversarial(unittest.TestCase):
         missing = scan.scan_python_text(f"T = ('nav.notAKey', {text!r})\n", 'server.py')
         self.assertTrue(unapproved_texts(missing), missing)
 
+    def test_being_next_to_a_keyed_call_does_not_wire_a_literal(self):
+        """Only the literal that is the English of the key counts as wired, never its neighbours."""
+        samples = [
+            "def f():\n    raise RuntimeError('%s')\n    raise Refused('unpack', 'Kept text.', key='setup.err.x')\n",
+            "def f():\n    raise Failed('x', 'Kept text.', key='setup.err.x')\n    raise Failed('x', '%s')\n",
+            "def f():\n    other = '%s'\n    parts.append(why_part('setup.why.x', 'Kept text.'))\n",
+            "def f():\n    return {'error': '%s', 'why': 'Kept text.', 'why_key': 'setup.why.x'}\n",
+        ]
+        for sample in samples:
+            with self.subTest(sample=sample):
+                hits = scan.scan_python_text(sample % INJECTED, 'engine/setup/api.py')
+                self.assertIn(INJECTED, {h['text'] for h in scan.unapproved(hits, [])})
+        wired = scan.scan_python_text("def f():\n    raise Refused('unpack', 'Kept text.', key='setup.err.x')\n", 'engine/setup/api.py')
+        self.assertNotIn('Kept text.', {h['text'] for h in scan.unapproved(wired, [])})
+
     def test_map_labels_are_wired_only_in_the_renderer(self):
         self.assertEqual(scan.classify('Police', "const LAYERS = [['police', ", '', 'web/map.js'), 'wired')
         hits = scan.scan_python_text("HELP = {'police': 'Police'}\n", 'server.py')

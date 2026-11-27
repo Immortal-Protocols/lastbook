@@ -1123,6 +1123,11 @@
   },
   {
    "file": "engine/setup/api.py",
+   "string": "::ffff:127.0.0.1",
+   "why": "IPv4-mapped loopback address compared with the client address; never displayed."
+  },
+  {
+   "file": "engine/setup/api.py",
    "string": "A check changes nothing, so there is nothing to open.",
    "pending": "#388 or #389",
    "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
@@ -1284,8 +1289,7 @@
   {
    "file": "engine/setup/api.py",
    "string": "Lastbook is copying a library here. Copy again to the same place to carry on.\n",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "Content of the copy-in-progress marker file Setup writes on the target drive and removes when the copy finishes; plain English like START-HERE.txt."
   },
   {
    "file": "engine/setup/api.py",
@@ -1337,14 +1341,12 @@
   {
    "file": "engine/setup/api.py",
    "string": "START-HERE (Lastbook {n}).txt",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "File name of the START-HERE note written next to a copied library; file names stay the same in every language."
   },
   {
    "file": "engine/setup/api.py",
    "string": "START-HERE (Lastbook).txt",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "File name of the START-HERE note written next to a copied library; file names stay the same in every language."
   },
   {
    "file": "engine/setup/api.py",
@@ -1606,6 +1608,12 @@
   },
   {
    "file": "engine/setup/api.py",
+   "string": "This needs {_gb(left)} free, and that drive has {_gb(free)}. Choose a larger drive.",
+   "pending": "#388 or #389",
+   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+  },
+  {
+   "file": "engine/setup/api.py",
    "string": "This needs {_gb(need)} free on that disk, and it has {_gb(free)}. Free some space or choose another disk.",
    "pending": "#388 or #389",
    "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
@@ -1615,6 +1623,16 @@
    "string": "Unpacking needs {_gb(still)} free, and the disk has {_gb(free)}. Free some space, then try again.",
    "pending": "#388 or #389",
    "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "bad request",
+   "why": "Local Setup API protocol error for a malformed request; the Setup page never sends one, so no person sees it."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "request too large",
+   "why": "Local Setup API protocol error for an oversized request; the Setup page never sends one, so no person sees it."
   },
   {
    "file": "engine/setup/api.py",
@@ -1652,8 +1670,7 @@
   {
    "file": "engine/setup/download.py",
    "string": "HTTP {r.status} to a check of the bytes at {a}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "Exception detail; it can only appear as the \"(OSError: …)\" detail inside a keyed setup.err.* message, and the download retries first."
   },
   {
    "file": "engine/setup/download.py",
@@ -1681,8 +1698,7 @@
   {
    "file": "engine/setup/download.py",
    "string": "Range",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "HTTP request header name; never displayed."
   },
   {
    "file": "engine/setup/download.py",
@@ -1723,8 +1739,7 @@
   {
    "file": "engine/setup/download.py",
    "string": "The downloaded file did not match its published checksum.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "BadChecksum message; the download catches it and fetches the file again, then reports a keyed setup.err.* message."
   },
   {
    "file": "engine/setup/download.py",
@@ -1777,6 +1792,11 @@
    "string": " plus its graphics memory.",
    "pending": "#388 or #389",
    "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+  },
+  {
+   "file": "engine/setup/hardware.py",
+   "string": "::ffff:127.0.0.1",
+   "why": "IPv4-mapped loopback address compared with the client address; never displayed."
   },
   {
    "file": "engine/setup/hardware.py",
@@ -1950,8 +1970,7 @@
   {
    "file": "engine/setup/install.py",
    "string": "An archive part ended early",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "Exception detail; it can only appear as the \"(OSError: …)\" detail inside a keyed setup.err.* message, and the download retries first."
   },
   {
    "file": "engine/setup/install.py",
@@ -2153,14 +2172,12 @@
   {
    "file": "engine/update.py",
    "string": ", or a system built on it",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "English part of the update.tooOldOsLinux message; the page shows message_key/message_params, this English goes only to logs and old clients."
   },
   {
    "file": "engine/update.py",
    "string": "::ffff:127.0.0.1",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "why": "IPv4-mapped loopback address compared with the client address; never displayed."
   },
   {
    "file": "engine/update.py",

@@ -613,22 +613,107 @@ def _markdown_blob_export(source: str, pos: int, end: int, value: str) -> bool:
     return looks_ui(prose)
 
 
+_PY_STR = re.compile(r"""[rbfu]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")""")
+
+
+def _mask_strings(text: str) -> str:
+    return _PY_STR.sub(lambda m: '_' * len(m.group(0)), text)
+
+
+def _enclosing_call(pre: str, post: str):
+    """(name, argument text) of the call whose parentheses hold the literal, or (None, '')."""
+    window = re.sub(r"[rbfuRBFU]{1,2}$", '', pre[-1500:])
+    masked = _mask_strings(window)
+    depth = 0
+    for i in range(len(masked) - 1, -1, -1):
+        c = masked[i]
+        if c == ')':
+            depth += 1
+        elif c == '(':
+            if depth == 0:
+                name = re.search(r'([A-Za-z_][\w.]*)\s*$', masked[:i])
+                rest, d = _after_literal(post, pre)[:1500], 1
+                mrest = _mask_strings(rest)
+                end = len(rest)
+                for j, ch in enumerate(mrest):
+                    if ch == '(':
+                        d += 1
+                    elif ch == ')':
+                        d -= 1
+                        if d == 0:
+                            end = j
+                            break
+                return (name.group(1).rsplit('.', 1)[-1] if name else None), window[i + 1:] + rest[:end]
+            depth -= 1
+        elif c in '\n' and depth == 0 and re.match(r'\s*(?:def|class)\b', masked[i + 1:i + 12] or ''):
+            break
+    return None, ''
+
+
+def _after_literal(post: str, pre: str = '') -> str:
+    """Source after the literal: post starts with the whole literal, or only with its closing
+    quote when pre already ends with the opening one."""
+    if re.search(r"['\"]$", pre) and post[:1] in ('"', "'"):
+        return post[1:]
+    m = _PY_STR.match(post)
+    if m:
+        return post[m.end():]
+    return post[1:] if post[:1] in ('"', "'") else post
+
+
+def _same_dict_rest(post: str) -> str:
+    """The rest of the dict literal the literal sits in (up to its closing brace)."""
+    masked, depth = _mask_strings(post[:1500]), 0
+    for j, ch in enumerate(masked):
+        if ch in '{[(':
+            depth += 1
+        elif ch in '}])':
+            if depth == 0:
+                return post[:j]
+            depth -= 1
+    return post[:1500]
+
+
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
-    """Recognize literal fallbacks paired with an explicit translation key."""
-    source = pre[-2000:] + post[:1000]
-    if re.search(r"why_part\s*\(\s*['\"]setup\.", source):
+    """A literal fallback that is itself the English of an explicit catalogue key.
+
+    Anchored to the literal: it must be the value next to the key in the same dict,
+    an argument of the same call that names the key, the note['error'] whose very next
+    line sets note['key'], or a variable that is passed straight to why_part/message_key.
+    Being merely near a keyed call proves nothing.
+    """
+    tail = pre[-300:]
+    rest = _after_literal(post, pre)
+    field = re.search(r"['\"](error|message|title)['\"]\s*:\s*f?['\"]?$", tail)
+    if field:
+        field = field.group(1)
+        keyname = {'error': 'error_key', 'message': 'message_key', 'title': 'title_key'}[field]
+        if re.search(r"['\"]%s['\"]\s*:\s*['\"](?:setup|update|hardware)\." % keyname, _same_dict_rest(rest)):
+            return True
+    if re.search(r"note\[['\"]error['\"]\]\s*=\s*f?['\"]?$", tail):
+        if re.match(r"[^\n]*\n\s*note\[['\"]key['\"]\]\s*=\s*['\"]setup\.", rest):
+            return True
+    name, args = _enclosing_call(pre, post)
+    if name in {'Failed', 'Refused', '_fail', '_refuse_carried_back'} and re.search(r"\bkey\s*=\s*['\"](?:setup|update)\.", args):
         return True
-    if re.search(r"title_key['\"]?\s*:\s*['\"]setup\.copyJobTitle", source):
+    if name == '_set' and re.search(r"\bmessage_key\s*=\s*['\"]update\.", args):
         return True
-    if re.search(r"(?:Failed|Refused|_fail|_refuse_carried_back)\s*\([\s\S]{0,1400}?\bkey\s*=\s*['\"](?:setup|update)\.", source):
-        return True
-    if re.search(r"_set\s*\([\s\S]{0,1200}?\bmessage_key\s*=\s*['\"]update\.", source):
-        return True
-    if re.search(r"\bkey\s*=\s*['\"]update\.[A-Za-z0-9_.-]+['\"]", pre[-1600:]) and re.search(r"message_key\s*=\s*key", post[:1600]):
-        return True
-    if re.search(r"['\"]error['\"]\s*:\s*f?['\"]?[\s\S]{0,600}?['\"]error_key['\"]\s*:\s*['\"](?:setup|update|hardware)\.", source):
-        return True
-    return bool(re.search(r"note\[['\"]error['\"]\]\s*=\s*['\"][\s\S]{0,600}?note\[['\"]key['\"]\]\s*=\s*['\"]setup\.", source))
+    var = re.search(r"\b([A-Za-z_]\w*)\s*\+?=\s*\(?\s*f?['\"]?$", tail)
+    if var:
+        v = re.escape(var.group(1))
+        scope = post[:2500].split('\n    def ', 1)[0]
+        if re.search(r"why_part\s*\(\s*['\"]setup\.[\w.]+['\"]\s*,\s*%s\b" % v, scope):
+            return True
+        # The variable is part of the message of the very next Refused/Failed call, which names its key.
+        nxt = re.search(r"\b(?:Refused|Failed)\s*\(", scope)
+        if nxt:
+            _, call_args = _enclosing_call(scope[:nxt.end()] + ' ', scope[nxt.end():])
+            if re.search(r"\b%s\b" % v, call_args) and re.search(r"\bkey\s*=\s*(?:['\"](?:setup|update)\.|['\"]setup\.[\w.]+['\"]\s+if\b)", call_args):
+                return True
+        if (re.search(r"\bmessage\s*=\s*%s\b" % v, scope) and re.search(r"message_key\s*=\s*key\b", scope)
+                and re.search(r"\bkey\s*=\s*['\"]update\.[A-Za-z0-9_.-]+['\"]", pre[-1600:])):
+            return True
+    return False
 
 
 def _inside_refused_keyed_message(pre: str, post: str) -> bool:

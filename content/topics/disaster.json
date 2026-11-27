@@ -373,7 +373,9 @@
   {
    "id": "landslide",
    "label": "Landslide, mudslide or rockfall",
-   "hint": "Landslide warning, mudflow, debris flow, rock slide, bulging ground, rumbling",
+   "hint": "Landslide warning, mudflow, debris flow, rock slide, rumbling, ground that bulges",
+   "phrases": ["bulging ground", "ground bulging", "ground is bulging", "bulging slope", "slope bulging", "ground cracking", "cracking ground"],
+   "context": ["cracks", "cracking", "crack", "slope", "slopes", "hillside", "hill", "yard", "driveway", "retaining", "wall", "moving", "shifting", "rumbling", "rumble", "noise", "trees", "leaning", "tilting", "after", "rain", "storm"],
    "read": [
     {
      "doc": "d0fbb2e051cd46",

@@ -503,6 +503,24 @@ OUT_AND_RAT_UNDISTURBED = {
 }
 TOPS = sorted({*TOPS, *OUT_AND_RAT, *OUT_AND_RAT_UNDISTURBED})
 
+# #449: "bulging ground" is the right wording for a landslide, but a hint word counts on its own, so every search
+# holding "bulging" reached the landslide choice -- a swollen tin, which is the botulism warning, and "bulging disc",
+# which is a back injury. The warning sign is a phrase now and the hint reads "ground that bulges", which no everyday
+# search names. [guide, choice] that must come first.
+BULGING = {
+    'bulging ground': ['disaster', 'landslide'], 'ground bulging': ['disaster', 'landslide'],
+    'ground rumbling': ['disaster', 'landslide'], 'mudflow': ['disaster', 'landslide'],
+    'mudslide injured': ['disaster', 'landslide'], 'rock slide': ['disaster', 'landslide'],
+    'debris flow': ['disaster', 'landslide'], 'rockfall': ['disaster', 'landslide'],
+    'bulging can': ['preserve', 'jarcheck'], 'can is bulging': ['preserve', 'jarcheck'],
+    'bulging cans': ['food', 'throwout'], 'bulging lid': ['preserve', 'jarcheck'],
+}
+# Searches that must not reach the landslide choice at all, anywhere in the three results. Where "bulging disc"
+# does rank is a separate question, so it is not pinned to a result; "cracks" guards the wording of the new hint.
+NOT_LANDSLIDE = ['bulging can', 'bulging cans', 'can is bulging', 'bulging disc', 'bulging',
+                 'cracks in the wall', 'cracked wall', 'cracks', 'cracks in the foundation']
+TOPS = sorted({*TOPS, *BULGING, *NOT_LANDSLIDE})
+
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
     'rankOwn': RANK_OWN, 'rankForms': [[q, FORM_TOPICS] for q in RANK_FORMS],
@@ -801,6 +819,16 @@ class TopicSearch(unittest.TestCase):
             for q, first in {**OUT_AND_RAT, **OUT_AND_RAT_UNDISTURBED}.items():
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
+
+    def test_bulging_reaches_the_landslide_choice_only_about_the_ground(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in BULGING.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
+            for q in NOT_LANDSLIDE:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotIn(['disaster', 'landslide'], top[q])
 
     def test_avalanche_landslide_and_volcano(self):
         for r in self.modes:

@@ -722,6 +722,7 @@
   "setup.repaired": "Repaired",
   "setup.ready": "Ready",
   "setup.theLocalAi": "the local AI",
+  "setup.addressSearchFor": "Address search for {name}",
   "setup.offlineAddressSearch": "offline address search",
   "setup.copyTo": "Lastbook to {disk}",
   "about.lead": "Public manuals, health guides, courses, videos and encyclopedias kept on this computer, so it works when the internet and phones don’t.",

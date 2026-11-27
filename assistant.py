@@ -662,12 +662,16 @@ def chat(messages, about, emit, cancelled):
         msgs[0] = {'role': 'system', 'content': SYSTEM_TEXT_ONLY}
     if local:
         set_state('starting')
-        shown = [None]
+        shown, on_cpu = [None], [False]
 
-        def loading(pct):   # how far the model has loaded, each time it changes
-            if pct != shown[0]:
-                shown[0] = pct
-                emit({'type': 'state', 'state': 'starting', 'pct': pct})
+        def loading(pct):   # how far the model has loaded, each time it changes, and when a failed graphics load moves to the processor
+            cpu = bool(getattr(LOCAL, 'cpu_fallback', False))
+            if pct != shown[0] or cpu != on_cpu[0]:
+                shown[0], on_cpu[0] = pct, cpu
+                ev = {'type': 'state', 'state': 'starting', 'pct': pct}
+                if cpu:
+                    ev['cpu'] = True
+                emit(ev)
         why = LOCAL.ensure_running(loading, cancelled)
         if why == 'stopped':
             emit({'type': 'stopped'})

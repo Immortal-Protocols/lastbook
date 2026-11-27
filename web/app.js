@@ -1460,8 +1460,9 @@ function localAbout(st) {
   const gb = n => (n / 1e9).toFixed(1) + ' GB';
   const where = (l.placement || []).filter(p => p.bytes > 2e8).map(p => `${gb(p.bytes)} on ${esc(p.device)}`).join(', ');
   const line = { ready: 'running now', stopped: 'available; your first question loads it and may take a while; it stops after 15 minutes unused', loading: 'starting' }[l.state];
+  const onProcessor = l.cpu_fallback && (l.state === 'ready' || l.state === 'loading') ? ' on the processor' : '';
   const btn = (a, t) => `<button class="btn plain" onclick="localAI('${a}')">${t}</button>`;
-  return line ? `Local AI: ${esc(l.name)}, ${line}.${where ? ` It uses ${where}.` : ''} It reads text only.
+  return line ? `Local AI: ${esc(l.name)}, ${line}${onProcessor}.${where ? ` It uses ${where}.` : ''} It reads text only.
       <span class="row">${l.state === 'ready' ? btn('stop', 'Stop it now') : ''}${btn('off', 'Turn off')}</span>`
     : l.state === 'off' ? `The local AI is turned off. ${btn('on', 'Turn on')}`
     : `Local AI: ${esc(l.message || { absent: 'not added. Add it in Library and local AI (about 17 GB).', checking: 'checking the file…', measuring: 'checking this computer’s memory…' }[l.state] || l.state)} ${l.state === 'absent' ? '<a class="btn plain" href="/ui/setup.html#manage">Add the local AI</a>' : ''}${btn('rescan', 'Look again')}`;

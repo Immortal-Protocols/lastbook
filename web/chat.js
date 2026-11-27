@@ -19,6 +19,7 @@ const Chat = (() => {
     video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
     topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
   const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
+  const workState = m => m.cpu && m.state === 'starting' ? 'The graphics chip could not load the model. Starting on the processor…' : (STATES[m.state] || 'Working…');
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
   const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
   // The stage the answer is at, and how far the local AI has loaded (null: no figure, so the bar sweeps).
@@ -119,9 +120,13 @@ const Chat = (() => {
   function localLine(l) {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
     return ({
-      ready: [true, 'Local AI ready'],
-      stopped: [true, 'Local AI available · your first question loads it and may take a while'],
-      loading: [true, `Starting the local AI${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
+      ready: [true, l.cpu_fallback ? 'Local AI ready · on the processor' : 'Local AI ready'],
+      stopped: [true, l.cpu_fallback
+        ? 'Local AI available · the graphics chip could not load the model, so the next question uses the processor'
+        : 'Local AI available · your first question loads it and may take a while'],
+      loading: [true, l.cpu_fallback
+        ? `The graphics chip could not load the model. Starting on the processor${l.pct != null ? ' ' + l.pct + '%' : '…'}`
+        : `Starting the local AI${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       checking: [false, `Checking the local AI file${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       measuring: [false, 'Checking this computer’s memory…'],
       absent: [false, 'No local AI added'],
@@ -317,7 +322,7 @@ const Chat = (() => {
       work.append(doc.createElement('b'), ol, bar);
       el.prepend(work);
     }
-    const label = esc(STATES[m.state] || 'Working…') + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
+    const label = esc(workState(m)) + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
     if (b.lbHtml !== label) { b.innerHTML = label; b.lbHtml = label }
     // The stage list and the bar keep their elements, so the spinner and the bar's sweep carry on.
     [...kid(work, 'wk-stages').children].forEach((li, k) => { const c = stageClass(k, at); if (li.className !== c) li.className = c });
@@ -346,7 +351,7 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (running) h += `<div class="working"><b>${esc(workState(m))}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
@@ -589,7 +594,7 @@ const Chat = (() => {
     if (cur === c) { updateBot(idx); setBusy(false); scrollEnd(); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }
   }
   function onEvent(m, ev) {
-    if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct }
+    if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct; if (ev.cpu) m.cpu = true }
     else if (ev.type === 'found') m.steps.push({ name: 'found', count: ev.count });
     else if (ev.type === 'tool') { if (ev.phase === 'start') m.steps.push({ name: ev.name, args: ev.args }); else { const s = [...m.steps].reverse().find(x => x.name === ev.name && !x.summary); if (s) s.summary = ev.summary } m.state = 'searching' }
     else if (ev.type === 'sources') m.sources = ev.sources;

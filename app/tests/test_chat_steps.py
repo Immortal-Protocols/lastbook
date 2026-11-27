@@ -286,6 +286,13 @@ class Streaming(unittest.TestCase):
         self.assertEqual(seen[0]['label'], 'Starting the local AI… 40%')
         self.assertEqual(seen[0]['stages'], ['', '', ''])
 
+    def test_a_processor_fallback_is_named_while_the_model_starts(self):
+        seen = self.run_steps([{'state': 'starting', 'pct': 10}, {'cpu': True, 'pct': None},
+                               {'state': 'thinking', 'pct': None}])
+        self.assertEqual(seen[0]['label'], 'Starting the local AI… 10%')
+        self.assertEqual(seen[1]['label'], 'The graphics chip could not load the model. Starting on the processor…')
+        self.assertEqual(seen[2]['label'], 'Thinking…')
+
     def test_a_reset_clears_the_draft_and_keeps_the_sources(self):
         # The model writes a little, then calls a tool: the server sends reset, and the draft must go while the tool runs.
         seen = self.run_steps([

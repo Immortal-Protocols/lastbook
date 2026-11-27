@@ -6,6 +6,9 @@
 // On start it fits the model to this computer's memory with llama.cpp's own fitting (common/fit.cpp, the same as llama-server's
 // default --fit), prints {"ev":"fit",...} with what it measured, then loads the model and prints {"ev":"ready",...}.
 // --measure stops after the fit line and loads nothing.
+// An integrated Vulkan GPU is loaded with mmap. ggml-vulkan says that kind of GPU cannot map the file, so the default
+// (load_mode auto) copies the whole model into device memory, and that copy fails on some integrated GPUs. A discrete
+// GPU keeps the default. The app retries on the processor if a graphics load still fails.
 //
 // Requests, one a line on standard input:
 //   {"op":"gen","id":1,"segments":[["<|turn>",true],["text",false],...],"max_tokens":1800,"temp":0.2,"top_k":64,"top_p":0.95,
@@ -365,6 +368,32 @@ static bool on_abort(void * data) {
     return ((Inbox *) data)->cancel.load();
 }
 
+// True when this computer's graphics are an integrated Vulkan GPU and nothing else. llama.cpp uses an integrated GPU
+// only when it finds no discrete GPU (llama_prepare_model_devices), and ggml-vulkan then reports mmap_support = false,
+// so load_mode auto becomes a full copy into device memory. Mapping the file is what loads and runs on that GPU.
+// A discrete GPU or Metal is type GPU and returns false, so those loads keep llama.cpp's default. The caller does not
+// ask when the start is already --cpu-only.
+static bool vulkan_integrated_only() {
+    bool integrated = false;
+    for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
+        ggml_backend_dev_t dev = ggml_backend_dev_get(i);
+        if (!dev) {
+            continue;
+        }
+        ggml_backend_reg_t reg = ggml_backend_dev_backend_reg(dev);
+        const char * backend = reg ? ggml_backend_reg_name(reg) : nullptr;
+        const auto type = ggml_backend_dev_type(dev);
+        if (type == GGML_BACKEND_DEVICE_TYPE_GPU) {
+            if (!backend || std::strcmp(backend, "RPC") != 0) {
+                return false;   // a discrete GPU is what will be used; leave its load mode alone
+            }
+        } else if (type == GGML_BACKEND_DEVICE_TYPE_IGPU && backend && std::strcmp(backend, "Vulkan") == 0) {
+            integrated = true;
+        }
+    }
+    return integrated;
+}
+
 static bool on_progress(float p, void * data) {
     static int last = -1;
     int pct = (int) (p * 100);
@@ -436,6 +465,12 @@ int main(int argc, char ** argv) {
     if (cpu_only) {
         mp.devices = no_devices;
         mp.n_gpu_layers = 0;
+    } else if (vulkan_integrated_only()) {
+        // Set before the fit so the load uses this same params object. The fit's own measurement copy forces
+        // load_mode none (it only counts bytes); it does not put this value back.
+        mp.load_mode = LLAMA_LOAD_MODE_MMAP;
+        fprintf(stderr, "lastbook-llm: integrated Vulkan GPU; load_mode=mmap\n");
+        fflush(stderr);
     }
 
     // Fit: only settings left at llama.cpp's defaults are changed, and the context stays the size asked for.
@@ -452,7 +487,8 @@ int main(int argc, char ** argv) {
         return 3;
     }
     json fit = {{"ev", "fit"}, {"status", st == COMMON_PARAMS_FIT_STATUS_SUCCESS ? "fits" : "does_not_fit"}, {"n_ctx", n_ctx},
-                {"n_gpu_layers", mp.n_gpu_layers}, {"cpu_only", cpu_only}, {"ram_total", ram_total()}, {"ram_free", ram_free()}};
+                {"n_gpu_layers", mp.n_gpu_layers}, {"cpu_only", cpu_only}, {"load_mode", llama_load_mode_name(mp.load_mode)},
+                {"ram_total", ram_total()}, {"ram_free", ram_free()}};
     int n_over = 0;
     for (const auto & o : overrides) {
         if (!o.pattern) {

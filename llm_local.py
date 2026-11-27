@@ -8,6 +8,12 @@ when turned off, and when the app quits (the program leaves when its standard in
 assistant.py calls round() for each model turn, with OpenAI-shaped messages. This file turns them into Gemma 4's own prompt
 format, sends that as segments (template markup, where special tokens count, or plain text, where they never do: a document
 cannot start a turn of its own), and turns Gemma's tool calls back into the shape assistant.py already handles.
+
+On an integrated Vulkan GPU the runner maps the model file instead of copying it into graphics memory. If a graphics
+load still fails (the device is lost, or it runs out of device memory), the next start uses the processor, once.
+Turning local AI off before that start cancels it for every question still waiting. A graphics child that exits
+before the question records it is still started once on the processor, as long as local AI stays on. Questions
+already waiting share that one processor start. Stopping one of them leaves the others on it.
 """
 import hashlib
 import json
@@ -115,6 +121,8 @@ class Local:
         self.furthest = 0         # the highest percentage this load has reported
         self.next_id = 0
         self.failed_loads = 0     # loads in a row that ended before the model was ready
+        self.cpu_fallback = False      # a graphics load failed; this start and later ones use the processor
+        self.fallback_pending = False  # the graphics program has exited and the waiter should start the processor
         self.saved = _load()
         self.runner = runner_path()
         self._started = False
@@ -126,7 +134,8 @@ class Local:
             return {'name': NAME, 'file': FILE, 'size': SIZE, 'state': self.state, 'pct': self.pct, 'message': self.message,
                     'found_at': self.path and _folder_name(self.path), 'enabled': self.enabled(), 'runtime': bool(self.runner),
                     'needs_bytes': fit.get('needs'), 'ram_total': fit.get('ram_total'), 'placement': fit.get('placement'),
-                    'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]]}
+                    'load_s': (self.ready_info or {}).get('load_s'), 'cpu_fallback': bool(self.cpu_fallback),
+                    'places': [_folder_name(p) for p in places()[:6]]}
 
     def enabled(self):
         return self.saved.get('enabled', True)
@@ -228,7 +237,7 @@ class Local:
                 return
             self.state, self.pct, self.message = 'measuring', None, ''
         try:
-            out = subprocess.run(self._argv(['--measure']), stdin=subprocess.DEVNULL, capture_output=True, timeout=180, **_quiet())
+            out = subprocess.run(self._argv(['--measure'], cpu=False), stdin=subprocess.DEVNULL, capture_output=True, timeout=180, **_quiet())
             fit = next((json.loads(l) for l in out.stdout.decode('utf-8', 'replace').splitlines() if l.startswith('{"ev":"fit"')), None)
         except (OSError, subprocess.SubprocessError, ValueError) as e:
             fit, out = None, None
@@ -248,9 +257,15 @@ class Local:
             else:
                 self.state, self.message = 'too_big', self.fit['why']
 
-    def _argv(self, extra=()):
+    def _argv(self, extra=(), cpu=None):
+        """The runner command. cpu=False keeps a measurement on the graphics chip even after a processor fallback."""
+        if cpu is None:
+            cpu = self.cpu_fallback
         threads = max(4, min(16, (os.cpu_count() or 8) // 2))   # about the number of performance cores; more only contend
-        return [str(self.runner), '--model', str(self.path), '--ctx', str(CTX), '--threads', str(threads), *extra]
+        argv = [str(self.runner), '--model', str(self.path), '--ctx', str(CTX), '--threads', str(threads)]
+        if cpu:
+            argv.append('--cpu-only')
+        return argv + list(extra)
 
     # -- running ----------------------------------------------------------------------------------------------------------
     def ensure_running(self, on_wait=None, cancelled=lambda: False):
@@ -265,20 +280,43 @@ class Local:
                 return self.message or 'The local AI is not set up on this computer.'
             if self.state != 'loading':
                 self._spawn()
-        t0 = time.time()
-        # Progress is timestamped by the reader under the same lock. Check the
-        # deadline and stop atomically so progress at the boundary cannot be lost.
-        with self.lock:
-            waiting_for = self.proc
+            # Recorded before this request lets the reader publish the exit. If the child has already
+            # gone, this is None and fallback_pending is set, and the loop still starts the processor once.
+            waiting_for = self._record_child()
+            t0 = time.time()
         while True:
             with self.lock:
+                # Off after a failed graphics child, or at any later point in this wait: do not start
+                # the processor. The model stays off and the question ends with that.
+                if not self.enabled():
+                    self.fallback_pending = False
+                    return 'The local AI is turned off.'
+                # A graphics load has just exited. Start the processor in this same wait, instead of
+                # handing the question an error and trying the graphics chip again next time.
+                # A question that was stopped does not start it, and does not take the retry away from
+                # one that is still waiting. The next question starts it if nobody else did.
+                # proc is None when the recorded child has exited, and also when it exited before it
+                # was recorded: either way one processor child is enough for every question waiting.
+                if getattr(self, 'fallback_pending', False) and self.proc is None:
+                    if cancelled():
+                        return 'stopped'
+                    self._spawn()
+                    waiting_for = self.proc
+                    t0 = time.time()
                 if self.proc is not waiting_for:
-                    return self.message or 'The local AI start was interrupted.'
+                    # Another question already started the shared processor child. Follow that one.
+                    if self.proc is not None and self.state in ('loading', 'ready'):
+                        waiting_for = self.proc
+                        t0 = time.time()
+                    else:
+                        return self.message or 'The local AI start was interrupted.'
                 if self.state == 'ready':
                     self.last_used = time.time()
                     return None
                 if self.state != 'loading':
                     return self.message or 'The local AI did not start.'
+                # Progress is timestamped by the reader under the same lock. Check the
+                # deadline and stop atomically so progress at the boundary cannot be lost.
                 if time.time() - max(t0, self.t_progress) >= START_WAIT:
                     # Detach atomically with the deadline check, then let the
                     # potentially slow child shutdown happen outside this lock.
@@ -296,13 +334,20 @@ class Local:
                 on_wait(pct)
             time.sleep(0.25)
 
+    def _record_child(self):
+        """The child this wait is following. The caller holds the lock, just after the start.
+        None means that child has already exited."""
+        return self.proc
+
     def _spawn(self):
         import queue
+        self.fallback_pending = False
         self.state, self.pct, self.message = 'loading', None, ''
         logs = paths.DATA / 'derived' / 'logs'
         logs.mkdir(parents=True, exist_ok=True)
         err = open(logs / 'local-ai.log', 'ab')
-        err.write(f'\n--- {time.strftime("%Y-%m-%d %H:%M:%S")} start\n'.encode())
+        how = ' cpu-only' if self.cpu_fallback else ''
+        err.write(f'\n--- {time.strftime("%Y-%m-%d %H:%M:%S")} start{how}\n'.encode())
         err.flush()
         self.proc = subprocess.Popen(self._argv(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err, bufsize=0, **_quiet())
         _tie_to_this_process(self.proc)
@@ -341,7 +386,13 @@ class Local:
             elif kind == 'error' and ev.get('id') is None:
                 with self.lock:
                     if self.proc is proc and self.state == 'loading':
-                        self.state, self.message = 'error', _plain_error(ev)
+                        # A graphics load or its working space failed: stay 'loading' until the program exits, so this
+                        # wait can start the processor instead of returning the error and retrying the same load.
+                        # Any other startup error (a quit, a file that cannot be read) still ends the wait now.
+                        if ev.get('code') in ('load', 'context'):
+                            self.message = _plain_error(ev)
+                        else:
+                            self.state, self.message = 'error', _plain_error(ev)
                 events.put(ev)
             else:
                 events.put(ev)
@@ -353,6 +404,17 @@ class Local:
                 print(f'local AI: the program ended with code {code}', flush=True)
                 if self.state == 'ready':      # it was answering or waiting: the next question starts it again
                     self.state, self.message = 'stopped', ''
+                elif self.state == 'loading' and self._graphics_load_failed(code):
+                    self.cpu_fallback = True
+                    self.fallback_pending = True
+                    self.state, self.pct = 'stopped', None
+                    self.message = 'The graphics chip could not load the model, so it is starting on the processor.'
+                    print(f'local AI: graphics load failed with code {code}; starting on the processor', flush=True)
+                elif self.state == 'loading' and code in (4, 5):
+                    # The processor, or a fit that placed nothing on a graphics chip, failed the same way.
+                    # Another try with the same settings would fail again.
+                    self.state, self.pct = 'error', None
+                    self.message = self.message or 'The local AI could not start. Look again after closing other programs.'
                 elif self.state == 'loading':
                     self.failed_loads += 1
                     if self.failed_loads < 2:  # once may be chance (it was stopped from outside): the next question tries again
@@ -360,6 +422,13 @@ class Local:
                     else:                      # twice in a row: it would fail the same way again
                         self.state = 'error'
                         self.message = self.message or 'The local AI could not start. Look again after closing other programs.'
+
+    def _graphics_load_failed(self, code):
+        """A graphics load died the way a lost device (exit 4) or a short device budget (exit 5) does.
+        Already on the processor, or a fit that placed nothing on a graphics chip: do not switch again."""
+        if code not in (4, 5) or getattr(self, 'cpu_fallback', False):
+            return False
+        return ((getattr(self, 'fit', None) or {}).get('n_gpu_layers') or 0) != 0
 
     def stop(self, why=''):
         with self.lock:
@@ -391,6 +460,8 @@ class Local:
         else:
             self.stop('turned off')
             with self.lock:
+                # The graphics child may already have failed. Do not leave a processor start waiting.
+                self.fallback_pending = False
                 self.state, self.message = 'off', ''
 
     def _idle_watch(self):
@@ -484,6 +555,8 @@ def judge(fit):
     placement.append({'device': 'memory' if unified else 'computer memory', 'bytes': host + mapped})
     out = {'status': fit.get('status'), 'ram_total': total, 'device_bytes': dev, 'host_bytes': host, 'needs': int(needs),
            'model_bytes': dev + host, 'placement': placement, 'host_overrides': fit.get('host_overrides'), 'n_gpu_layers': fit.get('n_gpu_layers')}
+    if fit.get('load_mode'):
+        out['load_mode'] = fit['load_mode']
     if fit.get('status') != 'fits':
         out['fits'] = False
         out['why'] = 'The model does not fit this computer’s graphics memory together with its own memory.'

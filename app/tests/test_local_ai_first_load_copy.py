@@ -10,7 +10,8 @@ WEB = Path(__file__).resolve().parents[2] / "web"
 class LocalAiFirstLoadCopy(unittest.TestCase):
     def test_chat_stopped_status_describes_first_load(self):
         source = (WEB / "chat.js").read_text(encoding="utf-8")
-        self.assertIn("stopped: [true, 'Local AI available · your first question loads it and may take a while']", source)
+        self.assertIn("'Local AI available · your first question loads it and may take a while'", source)
+        self.assertIn('the graphics chip could not load the model, so the next question uses the processor', source)
         self.assertNotIn("Local AI ready · it starts when you ask", source)
 
     def test_settings_stopped_status_describes_first_load_and_idle_stop(self):
@@ -21,8 +22,11 @@ class LocalAiFirstLoadCopy(unittest.TestCase):
     def test_running_and_loading_states_remain_distinct(self):
         chat = (WEB / "chat.js").read_text(encoding="utf-8")
         settings = (WEB / "app.js").read_text(encoding="utf-8")
-        self.assertIn("ready: [true, 'Local AI ready']", chat)
-        self.assertIn("loading: [true, `Starting the local AI", chat)
+        self.assertIn("'Local AI ready'", chat)
+        self.assertIn('Local AI ready · on the processor', chat)
+        self.assertIn("`Starting the local AI", chat)
+        self.assertIn('Starting on the processor', chat)
+        self.assertIn('The graphics chip could not load the model. Starting on the processor…', chat)
         self.assertIn("ready: 'running now'", settings)
         self.assertIn("loading: 'starting'", settings)
 

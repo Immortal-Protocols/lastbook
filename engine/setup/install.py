@@ -300,6 +300,16 @@ def read_pack_manifest(path):
     return rows
 
 
+def read_library_manifest(lib):
+    """The rows of an installed library's own pack-manifest.tsv, read as read_pack_manifest reads it. Copy and repair
+    use it. A list that does not name the library catalog raises ValueError as well: a folder is a library only with its
+    catalog, so such a list lost rows, and the files it leaves out would be neither copied nor checked."""
+    rows = read_pack_manifest(Path(lib) / 'pack-manifest.tsv')
+    if not any(rel == CATALOG.as_posix() for rel, _, _ in rows):
+        raise ValueError(f'{Path(lib) / "pack-manifest.tsv"} does not list {CATALOG.as_posix()}')
+    return rows
+
+
 def compare_pack_manifests(installed, new):
     """What an upgrade from one pack to another would need, from their manifests alone. Read-only: it looks at no file on
     disk and downloads nothing. Nothing in setup calls it yet (issue #144).

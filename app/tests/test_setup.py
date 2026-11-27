@@ -2662,6 +2662,20 @@ class PackCompare(unittest.TestCase):
         with self.assertRaises(OSError):
             install.read_pack_manifest(self.tmp / 'missing.tsv')
 
+    def test_a_library_manifest_must_list_the_catalog(self):
+        """#363 and #353 review: Copy and Repair share one check, so a list without the catalog's row is damaged for both."""
+        x, lib = sha(b'x'), self.tmp / 'lib'
+        lib.mkdir()
+        listing = lib / 'pack-manifest.tsv'
+        listing.write_text(self.HEADER + f'pack.json\t5\t{x}\nlibrary-data/catalog.json\t5\t{x}\n', encoding='utf-8')
+        self.assertEqual(install.read_library_manifest(lib), [('pack.json', 5, x), ('library-data/catalog.json', 5, x)])
+        listing.write_text(self.HEADER + f'pack.json\t5\t{x}\n', encoding='utf-8')
+        with self.assertRaises(ValueError):
+            install.read_library_manifest(lib)
+        listing.unlink()
+        with self.assertRaises(OSError):
+            install.read_library_manifest(lib)
+
     def test_tool(self):
         """tools/compare_packs.py as a maintainer runs it, as its own process."""
         tool = ROOT / 'tools' / 'compare_packs.py'
@@ -2851,6 +2865,21 @@ class Manage(Base):
         self.assertFalse(api._pending_file(self.settings).exists())
         self.assertTrue((lib / 'models' / 'model.gguf').is_file())
 
+    def test_repair_restores_a_header_only_pack_manifest(self):
+        lib = self.installed_library()
+        listing = lib / 'pack-manifest.tsv'
+        original = listing.read_bytes()
+        listing.write_bytes(original.splitlines(keepends=True)[0])
+
+        s = self.setup('manage', current=lib)
+        s.start(repair=True)
+        j = self.wait(s)
+        self.assertEqual(j['state'], 'done', j)
+        self.assertEqual([n for n, _, _ in self.files.log], ['Lastbook-Small.zip'])
+        new, note = api.startup(self.settings)
+        self.assertIsNone(note.get('error'), note)
+        self.assertEqual((new / listing.name).read_bytes(), original)
+
     def test_repair_damaged_file_and_model(self):
         lib = self.installed_library()
         for path in (lib / 'library-data' / 'big.bin', lib / 'models' / 'model.gguf'):
@@ -2948,6 +2977,28 @@ class Manage(Base):
         d = self.tmp / 'drive'
         d.mkdir()
         return d
+
+    def test_copy_refuses_a_manifest_without_the_catalog(self):
+        lib = self.installed_library()
+        listing = lib / 'pack-manifest.tsv'
+        lines = listing.read_text(encoding='utf-8').splitlines()
+        catalog_prefix = install.CATALOG.as_posix() + '\t'
+        drive = self.drive()
+        cases = {
+            'header-only': lines[:1],
+            'missing-catalog': [line for line in lines if not line.startswith(catalog_prefix)],
+        }
+        for name, rows in cases.items():
+            with self.subTest(name=name):
+                listing.write_text('\n'.join(rows) + '\n', encoding='utf-8')
+                target = drive / name
+                target.mkdir()
+                s = self.setup('manage', current=lib)
+                result = s.start(copy_to=str(target))
+                if result.get('copy'):
+                    result = self.wait(s)
+                self.assertEqual(result.get('code'), 'unavailable', result)
+                self.assertEqual(list(target.iterdir()), [])
 
     def test_copy_to_a_drive_holds_the_library_and_nothing_personal(self):
         lib = self.installed_library()
@@ -3852,6 +3903,27 @@ class Maps(Base):
         self.assertTrue((new / 'library-data' / 'big.bin').is_file())
         self.assertEqual(install.map_name(new), 'CA')
         self.assertEqual((new / 'derived/geo/map.sqlite').read_bytes(), map_files['derived/geo/map.sqlite'])
+
+    def test_repair_restores_a_manifest_without_the_catalog_and_keeps_the_map_and_model(self):
+        """#353 and #363 review: a pack-manifest.tsv that lost the catalog's row is damaged for Repair as it is for Copy.
+        Repair fetches the pack again, puts its list back whole, and keeps the separately installed map and the model."""
+        lib, mf, map_files = self.library_with_state_map()
+        (lib / 'models').mkdir()
+        (lib / 'models' / 'model.gguf').write_bytes(self.model)
+        listing = lib / 'pack-manifest.tsv'
+        shipped = listing.read_bytes()
+        catalog_prefix = install.CATALOG.as_posix() + '\t'
+        listing.write_text(''.join(l for l in shipped.decode().splitlines(True) if not l.startswith(catalog_prefix)), encoding='utf-8')
+        s = self.setup('manage', current=lib, manifest=mf)
+        s.start(repair=True)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual([n for n, _, _ in self.files.log], ['Lastbook-Small.zip'])     # the model and the map were whole
+        new, _ = api.startup(self.settings)
+        self.assertEqual((new / 'pack-manifest.tsv').read_bytes(), shipped)
+        self.assertEqual(install.map_name(new), 'CA')
+        self.assertEqual((new / 'derived/geo/map.sqlite').read_bytes(), map_files['derived/geo/map.sqlite'])
+        self.assertEqual(sha((new / 'models' / 'model.gguf').read_bytes()), sha(self.model))
+        self.assertEqual(s._check_library({'state': '', 'bytes_done': 0}, new, Control()), [])
 
     def test_repair_fetches_a_missing_state_map_file(self):
         lib, mf, map_files = self.library_with_state_map()

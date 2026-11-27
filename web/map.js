@@ -106,6 +106,9 @@ const MapView = (() => {
   const layerMessage = layer => layer.id
     ? message('map.layer.' + layer.id, null, layer.label)
     : { text: layer.label || '', locale: 'en' };
+  const DIRECTION_KEY = { north: 'map.direction.north', 'north-east': 'map.direction.northeast', east: 'map.direction.east',
+    'south-east': 'map.direction.southeast', south: 'map.direction.south', 'south-west': 'map.direction.southwest',
+    west: 'map.direction.west', 'north-west': 'map.direction.northwest' };
   const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
@@ -942,7 +945,11 @@ const MapView = (() => {
       box.classList.remove('busy');
       if (!Array.isArray(r) || !r.length) { box.innerHTML = `<p class="muted small">${messageHtml(message('map.nothingNearby', null, 'Nothing from your layers within about 100 miles of the map center.'))}</p>`; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
-      box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${tLayerHtml(layerOf(p.cls))} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
+      box.innerHTML = list.map((p, i) => {
+        const directionKey = DIRECTION_KEY[p.dir], direction = directionKey ? message(directionKey, null, p.dir).text : p.dir;
+        const distance = message('map.nearbyDistance', { distance: dist(p.km), direction }, '{distance} {direction}');
+        return `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${messageHtml(layerMessage(layerOf(p.cls)))}<span class="near-distance">${messageHtml(distance)}</span></small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`;
+      }).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
         const p = list[+b.dataset.i]; box.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
         st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }); settle(true); b.classList.add('on');

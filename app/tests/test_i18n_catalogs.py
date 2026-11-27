@@ -251,6 +251,10 @@ class SpanishWording(unittest.TestCase):
             'kind.pdf', 'kind.video', 'poi.hospital', 'map.summary.acres',
         })
 
+    def test_catalogue_covers_every_english_message(self):
+        self.assertEqual(set(self.es), set(self.en),
+                         f'missing: {sorted(set(self.en) - set(self.es))}; extra: {sorted(set(self.es) - set(self.en))}')
+
     def test_everyday_words_cover_the_full_catalogue(self):
         everything = ' '.join(self._texts(self.es))
         for avoid in (

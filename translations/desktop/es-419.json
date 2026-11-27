@@ -1409,6 +1409,7 @@
   "setup.mapAndIndexIncluded": "El mapa de tu estado y el índice de direcciones disponible ya están incluidos.",
   "map.cappedPlacesInView": " (se muestran los más concurridos; acerca el mapa para ver todos)",
   "setup.mapItemName": "Mapa de {name}",
+  "setup.pack.libraryName": "Biblioteca {title}",
   "map3d.buildingHeightSummary": {
     "one": "{count} edificio: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}",
     "other": "{count} edificios: {mapped} alturas mapeadas en OpenStreetMap y {satellite} estimaciones satelitales. Los {guessed} sin altura estimada se muestran con un piso de altura.{nearest}"

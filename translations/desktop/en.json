@@ -1409,6 +1409,7 @@
   "setup.mapAndIndexIncluded": "Your state map and available address index are already included.",
   "map.cappedPlacesInView": " (busiest shown — zoom in for all)",
   "setup.mapItemName": "{name} map",
+  "setup.pack.libraryName": "{title} library",
   "map3d.buildingHeightSummary": {
     "one": "{count} building: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}",
     "other": "{count} buildings: {mapped} heights mapped in OpenStreetMap and {satellite} satellite estimates. {guessed} without an estimated height are shown as one storey tall.{nearest}"

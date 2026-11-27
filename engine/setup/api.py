@@ -198,7 +198,7 @@ class Setup:
         self.manifest = manifest or Manifest(allowed=allowed, context=context)
         self.allowed, self.context = allowed, context
         self.on_finish, self.pick_folder, self.look_for_libraries = on_finish, pick_folder, look_for_libraries
-        self.restarting = False     # Restart Lastbook was accepted: this run only waits to end (restart)
+        self.restarting = False     # a relaunch was accepted (restart, or finish's Open): this run only waits to end
         self.default_why = default_why     # why the default folder is not the usual one (a long Windows user folder), for the screen
         self.on_model_server = on_model_server   # (base, model) or (None, None): the open library's assistant switches at once (manage)
         self._llm = llm_local
@@ -677,7 +677,7 @@ class Setup:
 
     def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, copy_to=None, check=False):
         if self.restarting:      # Restart Lastbook was accepted: nothing new starts in this run (a copy, check or repair included)
-            return {'error': 'Lastbook is restarting.', 'code': 'restarting'}
+            return dict(RESTARTING)
         if copy_to:
             return self._start_copy(copy_to)
         if repair or check:
@@ -1079,7 +1079,7 @@ class Setup:
     def resume(self):
         with self.lock:
             if self.restarting:
-                return {'error': 'Lastbook is restarting.', 'code': 'restarting'}
+                return dict(RESTARTING)
             if self.job and self.job['state'] == 'paused':
                 self.job['state'] = 'waiting'
                 for it in self.job['items']:
@@ -1091,7 +1091,7 @@ class Setup:
     def retry(self):
         with self.lock:
             if self.restarting:
-                return {'error': 'Lastbook is restarting.', 'code': 'restarting'}
+                return dict(RESTARTING)
             if self.job and self.job['state'] == 'failed':
                 self.job['state'], self.job['error'] = 'waiting', None
                 self.job['plan']['retried'] = {}
@@ -1166,7 +1166,10 @@ class Setup:
     def use(self, path, library_only=False):
         """A library or file already on this computer. library_only (Library and local AI's "Open another library folder", #266):
         only an existing library, or the folder that holds one, is accepted. A folder holding a pack zip, or a file, is refused
-        and nothing starts, so choosing a folder can never begin replacing the open library."""
+        and nothing starts, so choosing a folder can never begin replacing the open library. Once a restart was accepted (restart,
+        finish) nothing is chosen: the folder would drop the waiting switch, and its Open would be a second relaunch."""
+        if self.restarting:
+            return dict(RESTARTING)
         p = Path(path or '').expanduser()
         if not str(path or '').strip() or not p.exists():
             return {'error': 'Lastbook cannot find that file or folder.', 'code': 'missing'}
@@ -1190,6 +1193,8 @@ class Setup:
             if not os.access(lib, os.W_OK):
                 return {'error': f'Lastbook cannot save in “{lib.name}”. Move it somewhere you can save to, then choose it there.', 'code': 'folder'}
             with self.lock:
+                if self.restarting:      # accepted in another window since the check above
+                    return dict(RESTARTING)
                 if self.job and self.job['state'] in ACTIVE:
                     return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
                 self._drop_deferred_switch(keep_for=lib)
@@ -1252,7 +1257,11 @@ class Setup:
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
 
     def finish(self):
+        """Open the library a finished job made or chose: the app relaunches into it. One relaunch per run, shared with restart:
+        a second Open, or an Open after Restart Lastbook in another window, starts nothing more."""
         with self.lock:
+            if self.restarting:
+                return dict(RESTARTING)
             job = self.job
             if not job or job['state'] != 'done':
                 return {'error': 'Setup has not finished yet.', 'code': 'not_done'}
@@ -1262,8 +1271,9 @@ class Setup:
                 return {'error': 'A copy has no library to open here. It is on the drive.', 'code': 'nothing'}
             plan = job['plan']
             folder = plan.get('use_library') or plan['target']
-        if not self.on_finish:
-            return {'ok': True, 'restart': True, 'folder': folder}
+            if not self.on_finish:
+                return {'ok': True, 'restart': True, 'folder': folder}
+            self.restarting = True       # as restart: from here on nothing new starts in this run
         threading.Timer(0.4, self.on_finish, [folder]).start()     # after this answer has reached the window
         return {'ok': True, 'folder': folder}
 
@@ -1928,6 +1938,7 @@ def _carried_on(job):
 _CARRIED = ('downloads', 'unpack-addresses')     # what a job that stages nothing writes in the work folder (Setup._clean)
 
 
+RESTARTING = {'error': 'Lastbook is restarting.', 'code': 'restarting'}   # the answer to anything new once a relaunch was accepted
 SWITCH_PROBLEM = None   # this run's: what startup could not put in place ({kind, message, again, pack, kept}; see _switch_problem), shown in Library and local AI
 
 

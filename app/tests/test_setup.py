@@ -2631,6 +2631,34 @@ class Switching(Base):
         self.assertEqual(s.restart(switch)['code'], 'nothing')
         self.assertEqual(opened, [str(lib)])
 
+    def test_open_another_library_waits_for_an_accepted_restart(self):
+        """wonderdawg's case on 48211bb: one window accepts Restart Lastbook while another is finishing a choice in Open
+        another library folder. The choice is refused, so the waiting switch (its staged library and pending record) stays,
+        and that window's Open is refused too: one relaunch. In the other order, Open first, nothing relaunches twice."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend = self.waiting_switch()
+        staged = self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData'
+        other = self.lib(self.parent / 'elsewhere' / 'LastbookData', 'other')
+        opened = []
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        switch = s.current_info()['switch_problem']['switch']
+        self.assertEqual(s.restart(switch), {'ok': True})
+        self.assertEqual(s.use(str(other), library_only=True)['code'], 'restarting')
+        self.assertEqual(s.use(str(other.parent), library_only=True)['code'], 'restarting')
+        self.assertEqual(s.finish()['code'], 'restarting')
+        time.sleep(0.6)
+        self.assertEqual(opened, [str(lib)])                              # once, into the waiting switch
+        self.assertTrue(pend.is_file())
+        self.assertTrue(install.is_library(staged))
+        self.assertEqual(s.current_info()['switch_problem']['switch'], switch)
+        s = self.setup('manage', current=lib, on_finish=opened.append)   # the other order: the other library chosen and opened
+        self.assertEqual(s.use(str(other), library_only=True)['state'], 'done')
+        self.assertEqual(s.finish(), {'ok': True, 'folder': str(other)})
+        self.assertEqual(s.finish()['code'], 'restarting')                # a second Open
+        self.assertTrue(s.restart(switch).get('already'))                 # Restart in another window
+        time.sleep(0.6)
+        self.assertEqual(opened, [str(lib), str(other)])
+
     def test_a_switch_that_gave_up_names_the_library_it_kept(self):
         """The last refused start: the switch is not tried again, and the window can name the library set aside, which
         Open another library folder can open. The full path stays in the engine's message."""

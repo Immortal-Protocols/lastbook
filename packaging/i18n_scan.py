@@ -62,7 +62,7 @@ DESKTOP_LOCALES = {'de', 'es_419', 'zh_Hans'}
 DESKTOP_TRANSLATED_FIELDS = {'GenericName', 'Comment', 'Keywords'}
 
 CONTENT = {
-    'Lastbook', 'LastbookData', 'Lastbook videos', 'Español (Latinoamérica)',
+    'Lastbook', ' · Lastbook', 'LastbookData', 'Lastbook videos', 'Español (Latinoamérica)',
     'English', 'Deutsch', '简体中文', 'US', '3D', 'CC', 'PDF', 'AI', 'ZIP', 'GB', 'SHA-256',
     'Almonds', 'Walnuts', 'Pecans', 'Pistachios', 'Cherries', 'Peaches',
     'Apples', 'Pears', 'Prunes', 'Nectarines', 'Plums', 'Apricots',
@@ -259,14 +259,86 @@ def _inside_catalogued_fallback(pre: str, names) -> bool:
             if not remains_open(match.start()):
                 continue
             args = source[match.end():]
-            direct = (re.match(r"\s*'([A-Za-z][A-Za-z0-9_.-]+)'\s*,", args) or
-                      re.match(r'\s*"([A-Za-z][A-Za-z0-9_.-]+)"\s*,', args))
+            if name == 'setError':
+                direct = (re.match(r"\s*[^,]+,\s*'([A-Za-z][A-Za-z0-9_.-]+)'\s*,", args) or
+                          re.match(r'\s*[^,]+,\s*"([A-Za-z][A-Za-z0-9_.-]+)"\s*,', args))
+            else:
+                direct = (re.match(r"\s*'([A-Za-z][A-Za-z0-9_.-]+)'\s*,", args) or
+                          re.match(r'\s*"([A-Za-z][A-Za-z0-9_.-]+)"\s*,', args))
             if direct and direct.group(1) in keys:
                 return True
             if (name == 'tHtml' and re.match(r"\s*n\s*\?\s*PRESET_KEY\[n\][\s\S]*?:\s*['\"]map\.preset\.none['\"]\s*,", args)
                     and 'map.preset.none' in keys):
                 return True
     return False
+
+
+def _inside_uncatalogued_chat_fallback(pre: str) -> bool:
+    """Recognize a user-facing third argument to chatTr when its key is missing."""
+    source = pre[-2000:]
+    keys = _english_keys()
+    for match in reversed(list(re.finditer(r'\bchatTr\s*\(', source))):
+        args = source[match.end():]
+        depth = {'(': 0, '[': 0, '{': 0}
+        commas = 0
+        i = 0
+        while i < len(args):
+            c = args[i]
+            if c in "'\"":
+                i = _skip_string(args, i)
+                continue
+            if c == '`':
+                i = _skip_template(args, i)
+                continue
+            if c == '(':
+                depth['('] += 1
+            elif c == ')':
+                if depth['('] == depth['['] == depth['{'] == 0:
+                    break
+                depth['('] = max(0, depth['('] - 1)
+            elif c == '[':
+                depth['['] += 1
+            elif c == ']':
+                depth['['] = max(0, depth['['] - 1)
+            elif c == '{':
+                depth['{'] += 1
+            elif c == '}':
+                depth['{'] = max(0, depth['{'] - 1)
+            elif c == ',' and not any(depth.values()):
+                commas += 1
+            i += 1
+        if commas != 2:
+            continue
+        first = args.split(',', 1)[0]
+        key = re.fullmatch(r"\s*['\"]([A-Za-z][A-Za-z0-9_.-]+)['\"]\s*", first)
+        if key and key.group(1) not in keys:
+            return True
+    return False
+
+
+def _short_visible_word(s: str) -> bool:
+    """A short title-case word can be UI even though it resembles an identifier."""
+    return (2 <= len(s) <= 12 and s.isascii() and s.isalpha()
+            and s[0].isupper() and s[1:].islower())
+
+
+def _markdown_blob_export(source: str, pos: int, end: int, value: str) -> bool:
+    """Whether a string template is prose assigned to a text/markdown Blob."""
+    before = source[max(0, pos - 240):pos]
+    assignment = re.search(r'\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$', before)
+    if not assignment:
+        return False
+    name = re.escape(assignment.group(1))
+    tail = source[end:end + 5000]
+    blob = re.search(
+        r'\bnew\s+Blob\s*\(\s*\[\s*' + name +
+        r'\s*\]\s*,\s*\{[^}]{0,600}?\btype\s*:\s*[\'\"]text/markdown[\'\"]',
+        tail, re.S,
+    )
+    if not blob:
+        return False
+    prose = re.sub(r'[#>*_`]+', ' ', value).strip()
+    return looks_ui(prose)
 
 
 def _inside_keyed_error_call(pre: str, post: str) -> bool:
@@ -287,6 +359,14 @@ def _inside_keyed_error_call(pre: str, post: str) -> bool:
     return bool(re.search(r"note\[['\"]error['\"]\]\s*=\s*['\"][\s\S]{0,600}?note\[['\"]key['\"]\]\s*=\s*['\"]setup\.", source))
 
 
+def _inside_refused_keyed_message(pre: str, post: str) -> bool:
+    """Recognize a message fragment passed to Refused with its catalogue key."""
+    return bool(
+        re.search(r'\bmessage\s*\+=\s*$', pre[-120:])
+        and re.search(r"raise\s+Refused\s*\(\s*['\"]activate['\"]\s*,\s*message\s*,\s*key\s*=\s*key_stuck\s+or\s+key", post[:700])
+    )
+
+
 def looks_technical(s: str) -> bool:
     # Numeric detail templates such as “16.9 GB (16,947,541,728 bytes)”. The
     # words come from the size formatter and a catalogue-backed byte label;
@@ -294,6 +374,27 @@ def looks_technical(s: str) -> bool:
     if s == '{…} ({…})':
         return True
     if s in TECHNICAL_EXACT:
+        return True
+    # Source fragments that are emitted as markup attributes or formatting,
+    # rather than text a person reads, still appear in flattened templates.
+    if re.fullmatch(r'(?:class|data-i|lang|title)\s*=\s*[\'"]?\{…\}[\'"]?', s.strip()):
+        return True
+    if re.fullmatch(r'and \$\d+', s.strip()):
+        return True
+    if re.fullmatch(r'(?:·\s*)?\{…\}\s*%', s.strip()):
+        return True
+    if re.fullmatch(r'·\s*\{…\}\s*GB', s.strip()):
+        return True
+    # A markup-only wrapper around translated/dynamic text has no independent
+    # copy. Strip tags first so a leading separator does not hide the shape.
+    if '<' in s and '>' in s:
+        visible = re.sub(r'<[^>]*>', ' ', s)
+        visible = re.sub(r'\{…\}', ' ', visible)
+        if not re.search(r'[A-Za-z]{2,}', visible):
+            return True
+    if re.match(r'^(?:GET|POST|PUT|DELETE|PATCH|HEAD) /[^\r\n]* HTTP/\d(?:\.\d)?\r?\nHost:', s):
+        return True
+    if s.startswith('sandbox allow-scripts;'):
         return True
     if re.fullmatch(r'[A-Za-z0-9_.-]+\.py --[A-Za-z0-9_-]+', s):
         return True
@@ -408,20 +509,42 @@ def classify(s: str, pre: str, post: str = '') -> str:
         return 'wired'
     mapped_error = bool(re.search(r"_fail\([^)]*\bkey\s*=\s*['\"](?:setup|native|installer)\.", pre))
     if ('__i18n_bound' in pre or _inside_translation_call(pre) or _inside_keyed_error_call(pre, post)
+            or _inside_refused_keyed_message(pre, post)
             or _inside_catalogued_fallback(pre, {'message', 'tHtml', 'chatResult', 'chatTr', 'setError', 'trMarkup', 'keyedMessage'})
             or mapped_error or already_wired(prefix)
             or _has_i18n_marker_in_tag(pre, post) or 'data-i18n' in s):
         return 'wired'
+    if s in CONTENT:
+        return 'content'
+    # Setup's restart-recovery notes and protocol helpers are retained for
+    # diagnostics/tests; the UI renders their catalogue key (when applicable)
+    # or never displays these internal values directly.
+    if (re.search(r"note\[['\"]error['\"]\]\s*=\s*str\(note\[['\"]error['\"]\]\)\s*\+", pre)
+            or 'def _keep_unpacked(' in pre[-1200:]
+            or 'def _refuse_carried_back(' in pre[-1200:]
+            or 'viewer_csp(self)' in pre[-500:]):
+        return 'technical'
+    # Address-index titles are names of downloadable data assets, not UI copy.
+    if s.strip() == 'address search' and "addresses['title']" in pre[-500:]:
+        return 'content'
+    if _inside_uncatalogued_chat_fallback(pre):
+        return 'chrome' if looks_ui(s.strip()) and not looks_technical(s.strip()) else 'technical'
     if '__visible_attribute__' in pre:
         return 'chrome' if looks_ui(s) else 'technical'
+    if s.strip() != s:
+        fragment = s.strip()
+        if fragment and fragment not in CONTENT and looks_ui(fragment) and not looks_technical(fragment):
+            return 'chrome'
+    if s not in TECHNICAL_EXACT and s not in CONTENT and _short_visible_word(s) and display_context(pre):
+        return 'chrome'
+    if len(s) == 2 and s.isascii() and s.isalpha() and s[0].isupper() and display_context(pre):
+        return 'chrome'
     if TOKEN.match(s) or CSS_LIKE.match(s) or s == 'use strict':
         return 'technical'
     # Only the current literal's enclosing call makes it a log. A nearby print
     # in the same function must not hide a later MessageBox or other display sink.
     if _inside_named_call(pre, LOG_CALLS):
         return 'technical'
-    if s in CONTENT:
-        return 'content'
     if looks_technical(s):
         return 'technical'
     if looks_ui(s) and display_context(pre):
@@ -1009,8 +1132,11 @@ def scan_web():
             # inspect the remainder of the current attribute/tag from here.
             post = text[pos:min(len(text), end + 600)]
             line = text[:pos].count('\n') + 1
+            kind = classify(s, pre, post)
+            if kind == 'technical' and _markdown_blob_export(text, pos, end, s):
+                kind = 'chrome'
             hits.append({'surface': f'web/{name}', 'line': line, 'text': s,
-                         'class': classify(s, pre, post)})
+                         'class': kind})
     return hits
 
 

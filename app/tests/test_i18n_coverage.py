@@ -1,13 +1,33 @@
 """Hard-coded web and Setup chrome should not regress once those surfaces are wired."""
+import ast
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'packaging'))
 import i18n_scan as scan  # noqa: E402
+
+
+def duplicate_test_methods(source, relative_path):
+    tree = ast.parse(source, filename=relative_path)
+    duplicates = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        methods = {}
+        for child in node.body:
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith('test_'):
+                methods.setdefault(child.name, []).append(child.lineno)
+        duplicates.extend(
+            f'{relative_path}:{node.name}.{name} ({len(lines)} definitions at lines {", ".join(map(str, lines))})'
+            for name, lines in methods.items() if len(lines) > 1
+        )
+    return duplicates
 
 
 def _is_later_surface(loc):
@@ -28,6 +48,80 @@ class Coverage(unittest.TestCase):
             text: locs for text, locs in cls.chrome.items()
             if any(not _is_later_surface(loc) for loc in locs)
         }
+
+    def scan_web_source(self, source):
+        with tempfile.TemporaryDirectory(prefix='i18n-scan-web-') as temporary:
+            web = Path(temporary)
+            (web / 'audit.js').write_text(source, encoding='utf-8')
+            with patch.object(scan, 'WEB', web), patch.object(scan, 'WEB_FILES', ['audit.js']):
+                return scan.scan_web()
+
+    def test_scanner_detects_leading_space_ui_fragments(self):
+        sample = '''function recommendLine() {
+          const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
+          return `<p class="s-rec">Suggested: ${what}</p>`;
+        }'''
+        hits = self.scan_web_source(sample)
+        fragment = [hit for hit in hits if hit['text'] == ' with the local AI']
+        self.assertEqual(len(fragment), 1, hits)
+        self.assertEqual(fragment[0]['class'], 'chrome')
+
+        self.assertEqual(scan.classify(' --lan', 'const command = '), 'technical')
+
+    def test_scanner_detects_prose_exported_to_markdown(self):
+        sample = '''function exportChat(c) {
+          const md = `# ${c.title}\\n\\nExported from Lastbook (offline library) on ${chatDate(new Date())}.\\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\\n`;
+          new Blob([md], { type: 'text/markdown' });
+        }'''
+        hits = self.scan_web_source(sample)
+        exported = [hit for hit in hits if hit['text'].startswith('# {…}') and 'Answers were written' in hit['text']]
+        self.assertEqual(len(exported), 1, hits)
+        self.assertEqual(exported[0]['class'], 'chrome')
+
+    def test_scanner_detects_short_rendered_button_labels(self):
+        sample = '''root.innerHTML = `${canAdd ? `<button>Add</button>` : ''}`;'''
+        hits = self.scan_web_source(sample)
+        add = [hit for hit in hits if hit['text'] == 'Add']
+        self.assertEqual(len(add), 1, hits)
+        self.assertEqual(add[0]['class'], 'chrome')
+        self.assertEqual(scan.classify('Add', 'const action = '), 'technical')
+        self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
+
+    def test_scanner_recognizes_chat_tr_keyed_fallbacks(self):
+        sample = '''
+          const known = chatTr('chat.exportTitle', { title }, 'Chat: {title}');
+          const missing = chatTr('audit.missingKey', null, 'A new visible label');
+        '''
+        hits = self.scan_web_source(sample)
+        known = [hit for hit in hits if hit['text'] == 'Chat: {title}']
+        missing = [hit for hit in hits if hit['text'] == 'A new visible label']
+        self.assertEqual(len(known), 1, hits)
+        self.assertEqual(known[0]['class'], 'wired')
+        self.assertEqual(len(missing), 1, hits)
+        self.assertEqual(missing[0]['class'], 'chrome')
+
+    def test_scanner_recognizes_other_keyed_message_helpers(self):
+        sample = '''
+          setError(message, 'chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.');
+          trMarkup('setup.error', null, 'Setup could not start.');
+        '''
+        hits = self.scan_web_source(sample)
+        by_text = {hit['text']: hit['class'] for hit in hits}
+        self.assertEqual(by_text['The answer stopped unexpectedly.'], 'wired')
+        self.assertEqual(by_text['Setup could not start.'], 'wired')
+
+    def test_python_test_method_names_are_unique_and_duplicate_fixtures_are_detected(self):
+        fixture = '''class Duplicate(unittest.TestCase):
+    def test_same(self): pass
+    def test_same(self): pass
+'''
+        self.assertEqual(duplicate_test_methods(fixture, 'fixture.py'), [
+            'fixture.py:Duplicate.test_same (2 definitions at lines 2, 3)'])
+        duplicates = []
+        for path in sorted((ROOT / 'app' / 'tests').rglob('*.py')):
+            duplicates.extend(duplicate_test_methods(
+                path.read_text(encoding='utf-8'), str(path.relative_to(ROOT))))
+        self.assertEqual(duplicates, [], 'duplicate unittest methods: ' + '; '.join(duplicates))
 
     def test_bundled_manifest_summary_has_catalogue_key(self):
         source = (ROOT / 'packaging' / 'release_manifest.py').read_text(encoding='utf-8')

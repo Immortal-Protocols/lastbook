@@ -22,7 +22,7 @@ requests, and adds a few read-only endpoints:
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
-import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
+import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, tempfile, threading, time, traceback, urllib.parse, zlib
 from array import array
 from pathlib import Path
 
@@ -2155,11 +2155,16 @@ def lan_key(kf):
     if key:
         return key
     key = secrets.token_urlsafe(18)
-    tmp = kf.with_name(kf.name + '.tmp')
-    tmp.unlink(missing_ok=True)   # O_CREAT keeps an old file's mode
-    with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w', encoding='utf-8') as f:
-        f.write(key)
-    os.replace(tmp, kf)
+    # Each write gets its own new file, readable by this user only, so two starts at once never share or remove
+    # each other's temporary file. A failed write removes its own.
+    fd, tmp = tempfile.mkstemp(prefix='.' + kf.name + '.', suffix='.tmp', dir=kf.parent)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(key)
+        os.replace(tmp, kf)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return key
 
 

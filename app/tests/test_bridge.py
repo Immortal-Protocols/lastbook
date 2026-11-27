@@ -1096,6 +1096,26 @@ class LanKey(unittest.TestCase):
         self.assertEqual(self.kf.stat().st_mode & 0o777, 0o600)
         self.assertEqual([p.name for p in self.dir.iterdir()], ['lan-key'])   # no temporary file left
 
+    def test_a_failed_write_leaves_no_temporary_file(self):
+        with patch.object(server.os, 'replace', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                server.lan_key(self.kf)
+        self.assertEqual(list(self.dir.iterdir()), [])
+
+    def test_an_overlapping_start_keeps_its_own_temporary_file(self):
+        # Another start is between writing its temporary file and moving it into place. This start must not remove,
+        # reuse or overwrite that file, under the old shared name or any other.
+        synthetic = 'synthetic-key-of-another-start'
+        others = [self.dir / 'lan-key.tmp', self.dir / '.lan-key.other.tmp']
+        for p in others:
+            p.write_text(synthetic, encoding='utf-8')
+        key = server.lan_key(self.kf)
+        self.assertNotEqual(key, synthetic)
+        self.assertEqual(self.kf.read_text(encoding='utf-8'), key)
+        for p in others:
+            self.assertEqual(p.read_text(encoding='utf-8'), synthetic)
+        self.assertEqual(sorted(p.name for p in self.dir.iterdir()), sorted(['lan-key'] + [p.name for p in others]))
+
 
 class ServerMode(unittest.TestCase):
     """server.py run on its own (--lan, the library server): the map asks for 20 or more tiles at once."""

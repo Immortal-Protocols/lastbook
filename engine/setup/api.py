@@ -407,8 +407,27 @@ class Setup:
                 model = m['id']
         return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', []),
                 'checked': self._settings().get('checks', {}).get(str(self.current)),   # the last full check of this library (Check now, Repair)
-                'switch_problem': SWITCH_PROBLEM,     # a downloaded library or map that this start could not put in place
+                'switch_problem': self._switch_problem(),     # a downloaded library or map that this start could not put in place
                 **self._cloud_only()}
+
+    def _switch_problem(self):
+        """This run's SWITCH_PROBLEM, until it no longer holds: a waiting switch that a later job dropped is not waiting."""
+        p = SWITCH_PROBLEM
+        if p and p.get('kind') == 'waiting' and not _pending_file(self.settings_dir).is_file():
+            return None
+        return p
+
+    def restart(self):
+        """Restart into a library switch that startup kept for the next start (Library and local AI's Restart Lastbook)."""
+        with self.lock:
+            if self.mode != 'manage' or not self._switch_problem() or self._switch_problem().get('kind') != 'waiting':
+                return {'error': 'Nothing is waiting for Lastbook to restart.', 'code': 'nothing'}
+            if self.job and self.job['state'] in ACTIVE:
+                return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
+        if not self.on_finish:      # server.py: it cannot start itself again
+            return {'ok': True, 'restart': True}
+        threading.Timer(0.4, self.on_finish, [str(self.current)]).start()     # after this answer has reached the window
+        return {'ok': True}
 
     def _cloud_only(self):
         """What of the open library is only in iCloud (#362): {'cloud_only': the count or None, 'cloud_counting': True while a first
@@ -1808,6 +1827,8 @@ def _keep_unpacked(work, note):
             return
     else:
         note['error'] = str(note['error']).replace(str(staged), str(kept))
+        if install.is_library(kept / DATA_NAME):
+            note['kept'] = str(kept / DATA_NAME)     # a whole library: the window can name it, for Open another library folder
     note['error'] = str(note['error']) + f' What was unpacked is kept in {kept}.'
 
 
@@ -1864,7 +1885,7 @@ def _clear_work(work, s):
         s.pop('work', None)
 
 
-SWITCH_PROBLEM = None   # this run's: what startup could not put in place ({message, again}), shown in Library and local AI
+SWITCH_PROBLEM = None   # this run's: what startup could not put in place ({kind, message, again, pack, kept}; see _switch_problem), shown in Library and local AI
 
 
 def opened(settings_dir, data, note):
@@ -1906,13 +1927,33 @@ def opened(settings_dir, data, note):
                 _job_file(settings_dir).unlink()
             except OSError:
                 pass
-    SWITCH_PROBLEM = {'message': str(note['error']), 'again': bool(note.get('again'))} if note and note.get('error') else None
+    SWITCH_PROBLEM = _switch_problem(note, work)
     s['old'] = [o for o in s.get('old', []) if Path(o).exists()]
     try:
         settings_dir.mkdir(parents=True, exist_ok=True)
         install._write_json(settings_dir / 'setup.json', s)
     except OSError:
         pass
+
+
+def _switch_problem(note, work):
+    """What the window says about a switch startup could not make, or None. kind: 'waiting' (a library kept for the next
+    start: restart is the way on), 'map' (a map exchange; the library itself is fine) or 'gave_up' (a library switch that
+    will not be tried again). pack: the waiting library's pack, so the window does not offer to download it again.
+    kept: a whole library a given-up switch set aside. message: the engine's own words, with full paths, for the details."""
+    if not note or not note.get('error'):
+        return None
+    kind = 'map' if note.get('kind') == 'map' else 'waiting' if note.get('again') else 'gave_up'
+    p = {'kind': kind, 'message': str(note['error']), 'again': kind == 'waiting'}
+    if kind == 'waiting' and work:
+        try:
+            pack = json.loads((work / 'unpack' / DATA_NAME / 'pack.json').read_text(encoding='utf-8')).get('name')
+            p['pack'] = pack if isinstance(pack, str) else None
+        except (OSError, ValueError, AttributeError):
+            p['pack'] = None
+    if kind == 'gave_up' and note.get('kept') and os.path.isdir(note['kept']):
+        p['kept'] = str(note['kept'])
+    return p
 
 
 def saved_model_server(settings_dir):
@@ -1968,6 +2009,7 @@ ROUTES = {
     ('POST', 'retry'): lambda s, b: s.retry(),
     ('POST', 'use'): lambda s, b: s.use(b.get('path'), library_only=b.get('library') is True),
     ('POST', 'finish'): lambda s, b: s.finish(),
+    ('POST', 'restart'): lambda s, b: s.restart(),
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),

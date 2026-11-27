@@ -483,14 +483,47 @@
 
   /* ---- manage */
   /* What was downloaded before the restart could not be put in place (api.opened), so this library opened again. Without this
-     the screen offered the same download once more, as if the finished one had never happened (#311). */
+     the screen offered the same download once more, as if the finished one had never happened (#311). Three cases, each with
+     its own next step: a library kept for the next start (restart is the way on), a map exchange (the library itself is fine),
+     and a library switch that will not be tried again. Fixed words go through the translation layer (data-i18n); the
+     engine's own message, with its full paths, stays in Details. */
+  const SWITCH_WORDS = {
+    waiting: ['setup.switchWaitTitle', 'Your download is ready. Restart Lastbook to use it.',
+              'setup.switchWaitBody', 'Some library files were still in use when Lastbook started, so this library opened for now. Close any window showing the library folder, then restart.'],
+    map: ['setup.mapProblemTitle', 'The new map could not be put in place.',
+          'setup.mapProblemBody', 'Your library and its current map are unchanged. You can try again from Detailed map.'],
+    gave_up: ['setup.switchGaveUpTitle', 'The downloaded library could not be put in place.',
+              'setup.switchGaveUpBody', 'Lastbook stopped trying and kept this library open.'],
+  };
+  const shortPath = p => { const s = String(p || ''), sep = s.includes('\\') ? '\\' : '/', parts = s.split(sep).filter(Boolean);
+    return parts.length > 2 ? '…' + sep + parts.slice(-2).join(sep) : s };   // the last two folders; the whole path is in Details
   function switchNote(c) {
     const p = c.switch_problem;
     if (!p || !p.message) return '';
-    return `<p class="s-short" role="alert">${ico('warn')}<span><b>What you downloaded is not in use yet.</b>
-      ${p.again ? 'Lastbook tries again the next time it opens. Close any window showing the library folder, then close Lastbook and open it again.'
-                : 'Lastbook opened this library instead.'}
-      <br><small>${esc(p.message)}</small></span></p>`;
+    const w = SWITCH_WORDS[p.kind] || SWITCH_WORDS.gave_up;
+    const kept = p.kind === 'gave_up' && p.kept;
+    return `<div class="s-note s-switch" role="alert" id="switchNote"><p class="s-switch-head">${ico('warn')}<b data-i18n="${w[0]}">${w[1]}</b></p>
+      <p data-i18n="${w[2]}">${w[3]}</p>
+      ${p.kind === 'waiting' ? `<p data-i18n="setup.switchWaitOther">Downloading another library or map first replaces this download.</p>
+        <div class="s-go left"><button class="btn" id="switchRestart"><span data-i18n="setup.switchRestart">Restart Lastbook</span></button></div>` : ''}
+      ${kept ? `<p data-i18n="setup.switchKept">What was downloaded is kept here. To use it, choose Open another library folder:</p>
+        <p><code class="s-path" title="${esc(p.kept)}">${esc(shortPath(p.kept))}</code></p>` : ''}
+      <details><summary data-i18n="setup.switchDetails">Details</summary><p><small>${esc(p.message)}</small></p>${kept ? `<p><code class="s-path">${esc(p.kept)}</code></p>` : ''}</details></div>`;
+  }
+  /* A library download waiting for the restart: its own Get or Update button would start it over (and drop the one waiting),
+     so restart is the action for it. A pack the engine could not name ('*') is treated as the one waiting. */
+  function waitingFor(c, id) {
+    const p = c.switch_problem;
+    return !!(p && p.kind === 'waiting' && (!p.pack || p.pack === id));
+  }
+  async function restartIntoSwitch() {
+    const b = $('#switchRestart'); if (!b) return;
+    b.disabled = true;
+    const r = await call('restart', {}).catch(e => ({ error: e.message }));
+    if (!r || r.error) { b.disabled = false; note = (r && r.error) || 'Lastbook could not restart. Close it and open it again.'; noteOk = false; manageView(); return }
+    b.firstElementChild.dataset.i18n = r.restart ? 'setup.switchRestartManual' : 'setup.switchRestarting';
+    b.firstElementChild.textContent = r.restart ? 'Close Lastbook and open it again to finish.' : 'Restarting…';
+    globalThis.LastbookI18n?.apply(b);
   }
 
   // #362: files of this library whose contents are only in iCloud do not open offline. The engine counts them from metadata alone.
@@ -526,11 +559,12 @@
     const o = [].concat(c.old || [])[0], old = o ? (typeof o === 'string' ? { path: o } : o) : null;   // the engine lists the paths it moved aside
     const larger = packs().filter(x => (x.installed_bytes || 0) > ((p && p.installed_bytes) || 0));
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
+    const waitBadge = '<span class="s-badge here" data-i18n="setup.switchWaitBadge">Waiting for restart</span>';
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       ${switchNote(c)}
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
-          ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
+          ${libraryUpdate ? (waitingFor(c, c.pack) ? waitBadge : `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>`) : bigger.length ? (waitingFor(c, bigger[0].id) ? waitBadge : `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>`) : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
@@ -549,6 +583,7 @@
       ${U && U.supported ? `<h2>App updates</h2>${updatesBox()}` : ''}`;
     wireUpdates();
     cloudPoll(c);
+    if ($('#switchRestart')) $('#switchRestart').onclick = restartIntoSwitch;
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { setPack(c.pack); choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { setPack(bigger[0].id); choice.ai = !!c.model; go('choose') };

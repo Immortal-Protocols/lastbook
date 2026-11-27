@@ -2426,23 +2426,31 @@ class Switching(Base):
         self.assertIn(str(kept[0]), note['error'])                          # the person is told where the files are
         self.assertEqual((cur / 'library-data' / 'catalog.json').read_text(), 'old')
 
-    def test_a_refused_switch_is_shown_in_library_and_local_ai(self):
-        """#311 left the old library opening again with nothing said, so a finished download looked as if it had never
-        happened. The refusal now reaches the Manage screen for this run, and a later start that switches clears it."""
-        cur, new = self.with_files()
-        pend = api._pending_file(self.settings)
-        install.stage_switch(pend, new, cur)
-        self.failed_switch_settings()
+    def refuse_old_library(self, cur):
+        """os.replace refusing to move the open library aside, as Windows does while a file in it is still held."""
         real = os.replace
 
         def replace(a, b):
             if Path(a) == cur:
                 raise PermissionError(13, 'in use')
             return real(a, b)
-        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), mock.patch.object(install.os, 'replace', replace):
+        return mock.patch.object(install.os, 'replace', replace)
+
+    def test_a_refused_switch_is_shown_in_library_and_local_ai(self):
+        """#311 left the old library opening again with nothing said, so a finished download looked as if it had never
+        happened. The refusal now reaches the Manage screen for this run as a switch waiting for a restart, naming the pack
+        that waits, and a later start that switches clears it."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        cur, new = self.with_files()
+        (new / 'pack.json').write_text('{"name": "all"}')
+        install.stage_switch(api._pending_file(self.settings), new, cur)
+        self.failed_switch_settings()
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), self.refuse_old_library(cur):
             lib, note = api.startup(self.settings)
         api.opened(self.settings, lib, note)
         shown = self.setup('manage', current=lib).current_info()['switch_problem']
+        self.assertEqual(shown['kind'], 'waiting')
+        self.assertEqual(shown['pack'], 'all')                       # the window keeps its own Get All from starting it over
         self.assertEqual(shown['message'], note['error'])
         self.assertIn('could not move the old library aside', shown['message'])
         self.assertTrue(shown['again'])
@@ -2451,28 +2459,120 @@ class Switching(Base):
         self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
         self.assertIsNone(self.setup('manage', current=lib).current_info()['switch_problem'])
 
+    def test_restart_is_the_way_on_for_a_waiting_switch(self):
+        """Restart Lastbook in the notice: the app starts again into the same library, and startup tries the kept switch.
+        Without a waiting switch there is nothing to restart into; once a later job dropped it, it is no longer shown."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        cur, new = self.with_files()
+        pend = api._pending_file(self.settings)
+        install.stage_switch(pend, new, cur)
+        self.failed_switch_settings()
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), self.refuse_old_library(cur):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        opened = []
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        self.assertIsNone(s.current_info()['switch_problem']['pack'])     # a staged library without pack.json: unnamed
+        self.assertEqual(s.restart(), {'ok': True})
+        time.sleep(0.6)
+        self.assertEqual(opened, [str(cur)])
+        self.assertTrue(pend.is_file())                                   # the restart's startup makes the switch
+        self.assertEqual(self.setup('manage', current=lib).restart(), {'ok': True, 'restart': True})     # server.py: the person restarts it
+        pend.unlink()                                                     # what a library or map download does (_drop_deferred_switch)
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        self.assertIsNone(s.current_info()['switch_problem'])
+        self.assertEqual(s.restart()['code'], 'nothing')
+
+    def test_a_switch_that_gave_up_names_the_library_it_kept(self):
+        """The last refused start: the switch is not tried again, and the window can name the library set aside, which
+        Open another library folder can open. The full path stays in the engine's message."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        cur, new = self.with_files()
+        install.stage_switch(api._pending_file(self.settings), new, cur)
+        work = self.failed_switch_settings()
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), mock.patch.object(install, 'SWITCH_ATTEMPTS', 1), \
+                self.refuse_old_library(cur):
+            lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        shown = self.setup('manage', current=lib).current_info()['switch_problem']
+        self.assertEqual(shown['kind'], 'gave_up')
+        self.assertFalse(shown['again'])
+        kept = Path(shown['kept'])
+        self.assertEqual(kept.name, 'LastbookData')
+        self.assertTrue(kept.parent.name.startswith('kept-') and kept.parent.parent == work)
+        self.assertEqual((kept / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertIn(str(kept.parent), shown['message'])
+
+    def test_a_map_that_could_not_be_put_in_place_is_not_a_library_problem(self):
+        """A failed map exchange reaches the same field, but the library itself is fine: the window says the map."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        cur = self.parent / 'LastbookData'
+        (cur / 'library-data').mkdir(parents=True)
+        (cur / 'library-data/catalog.json').write_text('{}')
+        (cur / 'derived/geo').mkdir(parents=True)
+        (cur / 'derived/geo/map.sqlite').write_bytes(b'old')
+        work = self.parent / 'LastbookData.setup'
+        new = work / 'unpack-map' / 'LastbookData'
+        (new / 'derived/geo').mkdir(parents=True)
+        (new / 'map-set.json').write_text(json.dumps({'name': 'CA', 'files': {'derived/geo/map.sqlite': 999}}))
+        (new / 'derived/geo/map.sqlite').write_bytes(b'short')
+        self.settings.mkdir(parents=True)
+        install.stage_switch(api._pending_file(self.settings), new, cur, kind='map')
+        (self.settings / 'setup.json').write_text(json.dumps({'work': str(work)}))
+        lib, note = api.startup(self.settings)
+        api.opened(self.settings, lib, note)
+        shown = self.setup('manage', current=lib).current_info()['switch_problem']
+        self.assertEqual(shown['kind'], 'map')
+        self.assertFalse(shown['again'])
+        self.assertNotIn('pack', shown)
+        self.assertEqual((cur / 'derived/geo/map.sqlite').read_bytes(), b'old')
+
     @unittest.skipUnless(shutil.which('node'), 'needs Node')
     def test_switch_note_words(self):
-        """setup.js's own switchNote: nothing when all went well, a plain line plus the engine's reason when not, and what
-        happens next only when Lastbook will try again."""
+        """setup.js's own switchNote: nothing when all went well; otherwise a headline and next step for each case, in fixed
+        words marked for the translation layer, with the engine's message (escaped) and the full path kept in Details."""
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const esc = s => String(s == null ? '' : s).replace(/</g, '&lt;'), ico = () => '';
-eval(section('  function switchNote(', '  function cloudNote('));
-console.log(JSON.stringify({none: switchNote({}), again: switchNote({switch_problem: {message: 'Could not move <it>.', again: true}}),
-                            given_up: switchNote({switch_problem: {message: 'Kept in X.', again: false}})}));
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'), ico = () => '';
+eval(section('  const SWITCH_WORDS = {', '  async function restartIntoSwitch(') + ';globalThis.T = {switchNote, shortPath, waitingFor}');   // const is local to eval
+const t = globalThis.T;   // function declarations from eval are already global; SWITCH_WORDS and shortPath are not
+const kept = 'Z:\\LastbookData.setup\\kept-20261127-010203\\LastbookData';
+console.log(JSON.stringify({
+  none: switchNote({}),
+  waiting: switchNote({switch_problem: {kind: 'waiting', message: 'Could not move <it>.', again: true, pack: 'all'}}),
+  map: switchNote({switch_problem: {kind: 'map', message: 'Lastbook could not put the new map in place (PermissionError).', again: false}}),
+  gave_up: switchNote({switch_problem: {kind: 'gave_up', message: 'Refused. What was unpacked is kept in ' + kept, again: false, kept}}),
+  short: [t.shortPath(kept), t.shortPath('/home/me/LastbookData.setup/kept-1/LastbookData'), t.shortPath('LastbookData')],
+  waits: [waitingFor({switch_problem: {kind: 'waiting', pack: 'all'}}, 'all'), waitingFor({switch_problem: {kind: 'waiting', pack: 'all'}}, 'medium'),
+          waitingFor({switch_problem: {kind: 'waiting', pack: null}}, 'medium'), waitingFor({switch_problem: {kind: 'gave_up'}}, 'all'), waitingFor({}, 'all')],
+}));
 """
         r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js')],
                            check=True, capture_output=True, text=True, encoding='utf-8')
         out = json.loads(r.stdout)
         self.assertEqual(out['none'], '')
-        self.assertIn('What you downloaded is not in use yet.', out['again'])
-        self.assertIn('tries again the next time it opens', out['again'])
-        self.assertIn('Could not move &lt;it>.', out['again'])           # the engine's words, escaped
-        self.assertNotIn('tries again', out['given_up'])
-        self.assertIn('opened this library instead', out['given_up'])
-        self.assertIn('Kept in X.', out['given_up'])
+        self.assertIn('Restart Lastbook to use it.', out['waiting'])
+        self.assertIn('id="switchRestart"', out['waiting'])
+        self.assertIn('Could not move &lt;it>.', out['waiting'])            # the engine's words, escaped, in Details
+        self.assertIn('<summary data-i18n="setup.switchDetails">', out['waiting'])
+        self.assertIn('The new map could not be put in place.', out['map'])
+        self.assertNotIn('library could not', out['map'])
+        self.assertNotIn('switchRestart', out['map'])
+        self.assertIn('The downloaded library could not be put in place.', out['gave_up'])
+        self.assertNotIn('switchRestart', out['gave_up'])
+        self.assertIn('>…\\kept-20261127-010203\\LastbookData</code>', out['gave_up'])     # short in the notice
+        head, details = out['gave_up'].split('<details>')
+        self.assertNotIn('Z:\\LastbookData.setup', head.replace('title="Z:\\LastbookData.setup', ''))   # the full path only as its title
+        self.assertIn('<code class="s-path">Z:\\LastbookData.setup\\kept-20261127-010203\\LastbookData</code>', details)
+        self.assertEqual(out['short'], ['…\\kept-20261127-010203\\LastbookData', '…/kept-1/LastbookData', 'LastbookData'])
+        self.assertEqual(out['waits'], [True, False, True, False, False])
+        english = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        for kind in ('waiting', 'map', 'gave_up'):                     # every fixed word is the catalogue's English
+            marked = re.findall(r'data-i18n="([^"]+)">([^<]*)<', out[kind])
+            self.assertTrue(marked)
+            for key, text in marked:
+                self.assertEqual(english.get(key), text.strip(), key)
 
     def test_ai_only_in_manage_mode(self):
         cur = self.lib(self.parent / 'LastbookData', '{}')

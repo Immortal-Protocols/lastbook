@@ -23,8 +23,8 @@ jobs:
       - name: Check generated catalogues
         run: python3 -I -B packaging/i18n_catalogs.py --check
       - name: Check scanner and catalogue contracts
-        run: python3 -B -m unittest app.tests.test_i18n_catalogs app.tests.test_i18n_coverage
+        run: python3 -B -m unittest app.tests.test_i18n_catalogs app.tests.test_i18n_coverage app.tests.test_i18n_default_deny
       - name: Reject new hard-coded UI copy
-        run: python3 -B packaging/i18n_scan.py
+        run: python3 -B packaging/i18n_scan.py --check
       - name: Check localization engine
         run: node --test app/tests/i18n_core_test.cjs

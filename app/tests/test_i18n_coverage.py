@@ -30,24 +30,14 @@ def duplicate_test_methods(source, relative_path):
     return duplicates
 
 
-def _is_later_surface(loc):
-    later = ('shell_linux.py', 'shell_macos.py', 'shell_windows.py', 'main.py',
-             'lastbook_setup.py', 'lastbook.desktop', 'native/')
-    return any(part in loc for part in later)
-
-
 class Coverage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         english, _ = scan.load_english()
         cls.english = english
-        cls.hits = scan.scan_web() + scan.scan_python()
+        cls.hits = scan.scan_all()
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
-        cls.web_setup_chrome = {
-            text: locs for text, locs in cls.chrome.items()
-            if any(not _is_later_surface(loc) for loc in locs)
-        }
 
     def scan_web_source(self, source):
         with tempfile.TemporaryDirectory(prefix='i18n-scan-web-') as temporary:
@@ -136,16 +126,17 @@ class Coverage(unittest.TestCase):
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
 
-    def test_no_unique_hardcoded_web_or_setup_chrome(self):
-        leftover = {text: [loc for loc in locs if not _is_later_surface(loc)]
-                    for text, locs in self.web_setup_chrome.items()}
-        leftover = {t: locs for t, locs in leftover.items() if locs}
+    def test_no_unique_hardcoded_chrome(self):
+        # Default-deny: every chrome, content or unknown literal is either wired or listed
+        # with a reason in packaging/i18n_allowlist.json, and every allowlist row still matches.
+        leftover = scan.unique_unapproved(self.hits)
         self.assertEqual(
             leftover, {},
-            'hard-coded web or Setup chrome left untranslated:\n' + '\n'.join(
+            'hard-coded UI text that is neither wired nor allowlisted:\n' + '\n'.join(
                 f'  {text!r}\n    {", ".join(locs)}' for text, locs in sorted(leftover.items())
             ),
         )
+        self.assertEqual(scan.stale_allowlist(self.hits), [])
 
     def test_dynamic_chat_action_selector_is_technical(self):
         selector = '#{…} [data-act="{…}"]'
@@ -178,6 +169,7 @@ class Coverage(unittest.TestCase):
     def test_scanner_still_classifies_surfaces(self):
         self.assertGreater(self.totals['wired'], 1000)
         self.assertGreater(self.totals['technical'], 0)
+        self.assertEqual(scan.unapproved(self.hits), [])
 
     def test_catalogued_helper_fallbacks_are_wired_but_missing_keys_are_not(self):
         for source, literal, expected in [

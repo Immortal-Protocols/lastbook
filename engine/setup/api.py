@@ -972,11 +972,10 @@ class Setup:
 
     def _check_library(self, it, lib, control):
         """Missing or changed files, or the pack manifest itself if it cannot be read or is invalid."""
-        pack_manifest = lib / 'pack-manifest.tsv'
         try:
-            rows = install.read_pack_manifest(pack_manifest)
+            rows = install.read_library_manifest(lib)
         except (OSError, ValueError):
-            return [pack_manifest.name]
+            return ['pack-manifest.tsv']
         if _separate_map(lib):        # a state map replaced the pack's own: _start_repair checks it against map-set.json instead
             rows = [r for r in rows if not install.map_member(r[0])]
         total = sum(r[1] for r in rows) or 1

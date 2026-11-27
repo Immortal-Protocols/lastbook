@@ -301,9 +301,9 @@ def read_pack_manifest(path):
 
 
 def read_library_manifest(lib):
-    """The rows of an installed library's own pack-manifest.tsv, read as read_pack_manifest reads it. Copy uses it. A list
-    that does not name the library catalog raises ValueError as well: a folder is a library only with its catalog, so such
-    a list lost rows, and the files it leaves out would not be copied."""
+    """The rows of an installed library's own pack-manifest.tsv, read as read_pack_manifest reads it. Copy and repair
+    use it. A list that does not name the library catalog raises ValueError as well: a folder is a library only with its
+    catalog, so such a list lost rows, and the files it leaves out would be neither copied nor checked."""
     rows = read_pack_manifest(Path(lib) / 'pack-manifest.tsv')
     if not any(rel == CATALOG.as_posix() for rel, _, _ in rows):
         raise ValueError(f'{Path(lib) / "pack-manifest.tsv"} does not list {CATALOG.as_posix()}')

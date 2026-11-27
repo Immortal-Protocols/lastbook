@@ -3904,6 +3904,27 @@ class Maps(Base):
         self.assertEqual(install.map_name(new), 'CA')
         self.assertEqual((new / 'derived/geo/map.sqlite').read_bytes(), map_files['derived/geo/map.sqlite'])
 
+    def test_repair_restores_a_manifest_without_the_catalog_and_keeps_the_map_and_model(self):
+        """#353 and #363 review: a pack-manifest.tsv that lost the catalog's row is damaged for Repair as it is for Copy.
+        Repair fetches the pack again, puts its list back whole, and keeps the separately installed map and the model."""
+        lib, mf, map_files = self.library_with_state_map()
+        (lib / 'models').mkdir()
+        (lib / 'models' / 'model.gguf').write_bytes(self.model)
+        listing = lib / 'pack-manifest.tsv'
+        shipped = listing.read_bytes()
+        catalog_prefix = install.CATALOG.as_posix() + '\t'
+        listing.write_text(''.join(l for l in shipped.decode().splitlines(True) if not l.startswith(catalog_prefix)), encoding='utf-8')
+        s = self.setup('manage', current=lib, manifest=mf)
+        s.start(repair=True)
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual([n for n, _, _ in self.files.log], ['Lastbook-Small.zip'])     # the model and the map were whole
+        new, _ = api.startup(self.settings)
+        self.assertEqual((new / 'pack-manifest.tsv').read_bytes(), shipped)
+        self.assertEqual(install.map_name(new), 'CA')
+        self.assertEqual((new / 'derived/geo/map.sqlite').read_bytes(), map_files['derived/geo/map.sqlite'])
+        self.assertEqual(sha((new / 'models' / 'model.gguf').read_bytes()), sha(self.model))
+        self.assertEqual(s._check_library({'state': '', 'bytes_done': 0}, new, Control()), [])
+
     def test_repair_fetches_a_missing_state_map_file(self):
         lib, mf, map_files = self.library_with_state_map()
         (lib / 'derived/geo/terrain.sqlite').unlink()

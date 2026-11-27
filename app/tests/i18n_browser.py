@@ -707,7 +707,7 @@ class Browser(unittest.TestCase):
             page.goto(origin + '/#/ask?about=video:clip:90')
             expect(page.locator('#ctxChip .muted span[lang="en"]')).to_have_text('Video at 1:30')
             page.evaluate("location.hash = '#/ask'")
-            expect(page.locator('#askMore .ask-cards .ac-t span[lang="en"]').first).to_be_visible()
+            expect(page.locator('#askMore .ask-cards .ask-card .ac-t span[lang="en"]').first).to_be_visible()
 
     def test_early_saved_language_hint_updates_meta_description(self):
         self.configure_setup(current=DATA)
@@ -798,59 +798,7 @@ class Browser(unittest.TestCase):
             expect(page.locator('#videoSpeed option[value="1"]')).to_have_attribute('lang', 'en')
             expect(page.locator('#videoSpeed option[value="1"]')).to_have_text('Normal')
 
-    def test_map_cluster_error_messages_keep_the_resolved_locale(self):
-        self.configure_setup(current=DATA)
-        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
-                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
-        points = {'points': [{'lat': 37.7749, 'lon': -122.4194, 'count': 2, 'kinds': {'hospital': 2},
-                              'cls': 'hospital', 'bbox': [-122.421, 37.773, -122.418, 37.776]}], 'truncated': False}
-        cases = [
-            ('es-419', 'es-419', '2 lugares aquí', 'No se pudo cargar la lista. Acerca el mapa para ver los lugares uno a uno.'),
-            ('de', 'en', '2 places here', 'Couldn’t load the list. Zoom in to see individual places.'),
-            ('zh-Hans', 'en', '2 places here', 'Couldn’t load the list. Zoom in to see individual places.'),
-        ]
-        for locale, expected_locale, title, failure in cases:
-            with self.subTest(locale=locale):
-                self.language_file.write_text(json.dumps({'language': locale}), encoding='utf-8')
-                with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-                    page.route('**/api/map/info', lambda route: route.fulfill(
-                        status=200, content_type='application/json', body=json.dumps(info)))
-                    page.route('**/api/map/pins*', lambda route: route.fulfill(
-                        status=200, content_type='application/json', body=json.dumps(points)))
-                    page.route('**/api/map/near*', lambda route: route.fulfill(
-                        status=200, content_type='application/json', body='[]'))
-                    page.route('**/api/map/members*', lambda route: route.fulfill(
-                        status=503, content_type='application/json', body='not-json'))
-                    pin_requests = []
-                    page.on('request', lambda request: pin_requests.append(request.url)
-                            if '/api/map/pins?' in request.url else None)
-                    page.goto(origin + '/#/map?lat=37.7749&lon=-122.4194&z=17&layers=hospital')
-                    expect(page.locator('html')).to_have_attribute('lang', locale)
-                    page.wait_for_load_state('networkidle')
-                    expect(page.locator('#mstatus')).to_contain_text('2')
-                    canvas = page.locator('#mapc')
-                    box = canvas.bounding_box()
-                    with page.expect_response(lambda response: '/api/map/members?' in response.url):
-                        page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
-                    heading = page.locator('#card h3 span')
-                    expect(heading).to_have_text(title)
-                    expect(heading).to_have_attribute('lang', expected_locale)
-                    failure_copy = page.locator('#card p span')
-                    expect(failure_copy).to_have_text(failure)
-                    expect(failure_copy).to_have_attribute('lang', expected_locale)
 
-    def test_map_panels_use_the_selected_interface_language(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.goto(origin + '/#/map')
-            expect(page.locator('.maptools h2')).to_have_text([
-                'Más cercanos al centro del mapa', 'Tu zona', 'Cobertura de este mapa'])
-            expect(page.locator('.maptools section.panel:nth-of-type(1) p')).to_have_text(
-                'Según las capas activadas. Distancia en línea recta, no por carretera.')
-            expect(page.locator('.maptools section.panel:nth-of-type(2) p')).to_have_text(
-                'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
-            expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
 
     def test_nearby_distance_fragment_uses_catalogue_locale(self):
         self.configure_setup(current=DATA)
@@ -928,12 +876,6 @@ class Browser(unittest.TestCase):
             expect(page.locator('#mstatus span[lang="de"]')).to_have_text('1 Orte in Ansicht')
             expect(page.locator('#mstatus span[lang="en"]')).to_have_text(' (busiest shown — zoom in for all)')
 
-    def test_chat_guide_label_uses_the_selected_interface_language(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.goto(origin + '/#/ask')
-            expect(page.locator('.ask-learn small')).to_have_text(['Guía paso a paso'] * 3)
 
     def test_chat_empty_state_and_citation_name_use_resolved_catalogue_locale(self):
         self.configure_setup(current=DATA)
@@ -955,23 +897,7 @@ class Browser(unittest.TestCase):
             expect(page.locator('.srcfilter button')).to_have_text(['Todas 2', 'Páginas 1', 'Videos 1'])
             expect(page.locator('.srcfilter button span[lang="es-419"]')).to_have_count(3)
 
-    def test_chat_context_starters_use_catalogue_copy(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.goto(origin + '/#/ask?about=topic:water')
-            expect(page.locator('.starter').first).to_have_text('¿Qué debería hacer primero?')
 
-    def test_library_note_count_uses_catalogue_plural_and_language(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.route('**/api/not-found', lambda route: route.fulfill(
-                status=200, content_type='application/json',
-                body=json.dumps({'notes': [{'id': 'note-1'}, {'id': 'note-2'}]})))
-            page.goto(origin + '/#/library')
-            expect(page.locator('#nfCount')).to_have_text('2 notas en esta computadora')
-            expect(page.locator('#nfCount span[lang="es-419"]')).to_have_text('2 notas en esta computadora')
 
     def test_empty_search_hint_and_source_language_tags_use_catalogue_metadata(self):
         self.configure_setup(current=DATA)
@@ -1003,44 +929,8 @@ class Browser(unittest.TestCase):
             expect(page.locator('#sres .empty p span[lang="en"]')).to_have_text(
                 'Try fewer words, or another word for the same thing.')
 
-    def test_small_pack_summary_uses_the_selected_interface_language(self):
-        from engine.setup import manifest as setup_manifest
 
-        bundled = setup_manifest.validate({'version': 1, 'packs': [{
-            'id': 'small', 'title': 'Small',
-            'summary': 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.',
-            'summary_key': 'setup.packSummary.small', 'available': False, 'files': [],
-        }], 'models': []})
-        self.assertIsNotNone(bundled)
-        server.setup_api.configure(mode='first-run', current=None, settings_dir=self.tmp, default_parent=self.tmp,
-                                   manifest=Manifest(bundled=bundled, remote=None), pick_folder=lambda files=False: str(DATA))
-        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.goto(origin + '/ui/setup.html')
-            expect(page.locator('[data-pack-summary="small"]')).to_have_text(
-                'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
 
-    def test_selected_interface_language_formats_chat_and_note_dates(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script("localStorage.setItem('sg.chats', JSON.stringify([{id:'old', title:'Saved chat', updated:'2026-11-17T12:00:00Z', messages:[{role:'user',content:'Question'}]}]))")
-            page.goto(origin + '/#/ask')
-            expect(page.locator('#csList li a small').first).to_contain_text('17 nov')
-            page.route('**/api/not-found', lambda route: route.fulfill(
-                status=200, content_type='application/json',
-                body=json.dumps({'notes': [{'id': 'note-1', 'words': 'water filter', 'at': '2026-11-17', 'guide': None}]})))
-            page.goto(origin + '/#/not-found')
-            expect(page.locator('.row.nf small')).to_contain_text('17 de noviembre de 2026')
-
-    def test_chat_list_recovers_from_invalid_saved_dates(self):
-        self.configure_setup(current=DATA)
-        chat = {'id': 'invalid-date', 'title': 'Saved chat', 'messages': [{'role': 'user', 'content': 'Question'}]}
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
-            page.goto(origin + '/#/ask')
-            expect(page.locator('#csList li b')).to_have_text('Saved chat')
-            expect(page.locator('#csList li small')).to_contain_text('1 question')
 
     def test_chat_export_survives_without_i18n_date_adapter(self):
         self.configure_setup(current=DATA)
@@ -1054,59 +944,8 @@ class Browser(unittest.TestCase):
                 page.locator('[data-act="export"]').click()
             self.assertTrue(download_info.value.suggested_filename.endswith('.md'))
 
-    def test_chat_context_and_home_fallbacks_tag_their_language(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.route('**/api/doc/**', lambda route: route.fulfill(
-                status=200, content_type='application/json', body=json.dumps({'title': 'Reference'})))
-            page.goto(origin + '/#/ask?about=video:clip:90')
-            expect(page.locator('#ctxChip .muted span[lang="en"]')).to_have_text('Video at 1:30')
-            page.evaluate("location.hash = '#/ask'")
-            expect(page.locator('#askMore .ask-card .ac-t span[lang="en"]').first).to_be_visible()
 
-    def test_search_results_arriving_after_route_change_do_not_touch_old_dom(self):
-        self.configure_setup(current=DATA)
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script(r"""window.auditSearchRequests = [];
-                window.auditSearchCompleted = 0;
-                const realFetch = window.fetch.bind(window);
-                window.fetch = (resource, init) => {
-                    const url = typeof resource === 'string' ? resource : resource.url;
-                    if (url.includes('/api/find?') || url.includes('/api/retrieve?')) {
-                        window.auditSearchRequests.push(url);
-                        return new Promise((resolve, reject) => setTimeout(
-                            () => realFetch(resource, init).then(response => {
-                                window.auditSearchCompleted++;
-                                resolve(response);
-                            }, error => {
-                                window.auditSearchCompleted++;
-                                reject(error);
-                            }), 500));
-                    }
-                    return realFetch(resource, init);
-                };""")
-            page_errors = []
-            page.on('pageerror', lambda error: page_errors.append(str(error)))
-            page.goto(origin + '/#/guides')
-            expect(page.locator('h1')).to_have_text('What do you need?')
-            page.evaluate("location.hash = '#/search?q=zzqzxqwv'")
-            page.wait_for_function('window.auditSearchRequests.length >= 2')
-            page.evaluate("location.hash = '#/guides'")
-            expect(page.locator('h1')).to_have_text('What do you need?')
-            page.wait_for_function('window.auditSearchCompleted === window.auditSearchRequests.length')
-            expect(page.locator('#main .results')).to_have_count(0)
-            expect(page.locator('#main .result')).to_have_count(0)
-            self.assertEqual(page_errors, [])
 
-    def test_video_speed_fallback_is_tagged_as_english(self):
-        self.configure_setup(current=DATA)
-        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
-        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.goto(origin + '/#/watch/vida')
-            expect(page.locator('.video-speed label span[lang="en"]')).to_have_text('Playback speed')
-            expect(page.locator('#videoSpeed option[value="1"]')).to_have_attribute('lang', 'en')
-            expect(page.locator('#videoSpeed option[value="1"]')).to_have_text('Normal')
 
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()

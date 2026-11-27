@@ -1309,6 +1309,7 @@
   "setup.err.mapListsNonMap": "The map lists a file that is not part of a map ({name}).",
   "setup.err.mapFileMissingOrWrongSize": "The map’s {name} is missing or the wrong size.",
   "setup.err.cannotPlaceMap": "Lastbook could not put the new map in place ({error}).",
+  "setup.err.cannotSetAsidePrevious": "Lastbook could not set your files aside from the previous download. Close anything that may be using them, then try again.",
   "setup.err.copyDataFolderIsLink": "The {name} folder on the drive is a link, so nothing was written there. Choose another drive or folder.",
   "setup.err.copyRelThroughLink": "On the drive, {name} goes through a link that could lead outside the copy, so nothing more was written. Choose another drive or folder.",
   "setup.err.copyPartialIsLink": "On the drive, {name}.partial is a link, so nothing more was written. Choose another drive or folder.",

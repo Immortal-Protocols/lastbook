@@ -1758,7 +1758,8 @@ def _fresh_unpack(staged, stamp):
     if not same and Path(staged).exists():
         if _set_aside(staged, _kept_name(Path(staged).parent)):     # a model a failed switch left here: kept, never emptied away
             raise install.Refused('unpack', 'Lastbook could not set your files aside from the previous download. '
-                                            'Close anything that may be using them, then try again.')
+                                            'Close anything that may be using them, then try again.',
+                                  key='setup.err.cannotSetAsidePrevious')
         try:
             note.unlink(missing_ok=True)
             shutil.rmtree(staged)

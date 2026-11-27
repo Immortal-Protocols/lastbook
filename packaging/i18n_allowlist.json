@@ -1060,12 +1060,6 @@
   },
   {
    "file": "engine/setup/api.py",
-   "string": "Lastbook could not set your files aside from the previous download. Close anything that may be using them, then try again.",
-   "pending": "#389",
-   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/api.py",
    "string": "Lastbook is copying a library here. Copy again to the same place to carry on.\n",
    "why": "Content of the copy-in-progress marker file Setup writes on the target drive and removes when the copy finishes; plain English like START-HERE.txt."
   },

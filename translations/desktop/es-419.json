@@ -1309,6 +1309,7 @@
   "setup.err.mapListsNonMap": "El mapa lista un archivo que no forma parte de un mapa ({name}).",
   "setup.err.mapFileMissingOrWrongSize": "El {name} del mapa falta o tiene el tamaño incorrecto.",
   "setup.err.cannotPlaceMap": "Lastbook no pudo poner el mapa nuevo en su lugar ({error}).",
+  "setup.err.cannotSetAsidePrevious": "Lastbook no pudo apartar tus archivos de la descarga anterior. Cierra lo que pueda estar usándolos y vuelve a intentarlo.",
   "setup.err.copyDataFolderIsLink": "La carpeta {name} de la unidad es un enlace, así que no se escribió nada ahí. Elige otra unidad o carpeta.",
   "setup.err.copyRelThroughLink": "En la unidad, {name} pasa por un enlace que podría salir de la copia, así que no se escribió nada más. Elige otra unidad o carpeta.",
   "setup.err.copyPartialIsLink": "En la unidad, {name}.partial es un enlace, así que no se escribió nada más. Elige otra unidad o carpeta.",

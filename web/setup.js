@@ -497,15 +497,18 @@
   };
   const shortPath = p => { const s = String(p || ''), sep = s.includes('\\') ? '\\' : '/', parts = s.split(sep).filter(Boolean);
     return parts.length > 2 ? '…' + sep + parts.slice(-2).join(sep) : s };   // the last two folders; the whole path is in Details
-  function switchNote(c) {
+  function switchNote(c, job) {
     const p = c.switch_problem;
+    const unfinished = !!job && job.state !== 'done' && !(job.state === 'failed' && job.error && job.error.code === 'cancelled');   // the restart would cut it short: resume or cancel it first (api._unfinished)
     if (!p || !p.message) return '';
     const w = SWITCH_WORDS[p.kind] || SWITCH_WORDS.gave_up;
     const kept = p.kind === 'gave_up' && p.kept;
     return `<div class="s-note s-switch" role="alert" id="switchNote"><p class="s-switch-head">${ico('warn')}<b data-i18n="${w[0]}">${w[1]}</b></p>
       <p data-i18n="${w[2]}">${w[3]}</p>
       ${p.kind === 'waiting' ? `<p data-i18n="setup.switchWaitOther">Downloading another library or map first replaces this download.</p>
-        <div class="s-go left"><button class="btn" id="switchRestart"><span data-i18n="setup.switchRestart">Restart Lastbook</span></button></div>` : ''}
+        ${unfinished ? `<p data-i18n="setup.switchWaitJob">A download is not finished. Resume it or cancel it, then restart.</p>
+        <div class="s-go left"><button class="btn" id="switchJob"><span data-i18n="setup.switchShowJob">Show the download</span></button></div>`
+        : `<div class="s-go left"><button class="btn" id="switchRestart"><span data-i18n="setup.switchRestart">Restart Lastbook</span></button></div>`}` : ''}
       ${kept ? `<p data-i18n="setup.switchKept">What was downloaded is kept here. To use it, choose Open another library folder:</p>
         <p><code class="s-path" title="${esc(p.kept)}">${esc(shortPath(p.kept))}</code></p>` : ''}
       <details><summary data-i18n="setup.switchDetails">Details</summary><p><small>${esc(p.message)}</small></p>${kept ? `<p><code class="s-path">${esc(p.kept)}</code></p>` : ''}</details></div>`;
@@ -519,7 +522,11 @@
   async function restartIntoSwitch() {
     const b = $('#switchRestart'); if (!b) return;
     b.disabled = true;
-    const r = await call('restart', {}).catch(e => ({ error: e.message }));
+    const p = (cur() || {}).switch_problem || {};
+    const r = await call('restart', { switch: p.switch }).catch(e => ({ error: e.message }));
+    if (r && (r.code === 'unfinished' || r.code === 'changed')) {   // the screen was out of date: show what is there now
+      S = await call('state').catch(() => S); manageView(); const n = $('#switchNote'); if (n) { n.tabIndex = -1; n.focus() } return;
+    }
     if (!r || r.error) { b.disabled = false; note = (r && r.error) || 'Lastbook could not restart. Close it and open it again.'; noteOk = false; manageView(); return }
     b.firstElementChild.dataset.i18n = r.restart ? 'setup.switchRestartManual' : 'setup.switchRestarting';
     b.firstElementChild.textContent = r.restart ? 'Close Lastbook and open it again to finish.' : 'Restarting…';
@@ -561,7 +568,7 @@
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     const waitBadge = '<span class="s-badge here" data-i18n="setup.switchWaitBadge">Waiting for restart</span>';
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
-      ${switchNote(c)}
+      ${switchNote(c, S.job)}
       <div class="s-have">
         <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? (waitingFor(c, c.pack) ? waitBadge : `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>`) : bigger.length ? (waitingFor(c, bigger[0].id) ? waitBadge : `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>`) : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
@@ -584,6 +591,7 @@
     wireUpdates();
     cloudPoll(c);
     if ($('#switchRestart')) $('#switchRestart').onclick = restartIntoSwitch;
+    if ($('#switchJob')) $('#switchJob').onclick = () => go('job');
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
     if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { setPack(c.pack); choice.ai = !!c.model; go('choose') };
     if ($('#upgrade')) $('#upgrade').onclick = () => { setPack(bigger[0].id); choice.ai = !!c.model; go('choose') };

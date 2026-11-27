@@ -2459,10 +2459,8 @@ class Switching(Base):
         self.assertEqual((lib / 'library-data' / 'catalog.json').read_text(), 'new')
         self.assertIsNone(self.setup('manage', current=lib).current_info()['switch_problem'])
 
-    def test_restart_is_the_way_on_for_a_waiting_switch(self):
-        """Restart Lastbook in the notice: the app starts again into the same library, and startup tries the kept switch.
-        Without a waiting switch there is nothing to restart into; once a later job dropped it, it is no longer shown."""
-        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+    def waiting_switch(self):
+        """A library switch refused at startup and kept for the next start, as Library and local AI then shows it."""
         cur, new = self.with_files()
         pend = api._pending_file(self.settings)
         install.stage_switch(pend, new, cur)
@@ -2470,18 +2468,92 @@ class Switching(Base):
         with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), self.refuse_old_library(cur):
             lib, note = api.startup(self.settings)
         api.opened(self.settings, lib, note)
+        return lib, pend
+
+    def test_restart_is_the_way_on_for_a_waiting_switch(self):
+        """Restart Lastbook in the notice: the app starts again into the same library, and startup tries the kept switch.
+        Without a waiting switch there is nothing to restart into; once a later job dropped it, it is no longer shown."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend = self.waiting_switch()
         opened = []
         s = self.setup('manage', current=lib, on_finish=opened.append)
-        self.assertIsNone(s.current_info()['switch_problem']['pack'])     # a staged library without pack.json: unnamed
-        self.assertEqual(s.restart(), {'ok': True})
+        shown = s.current_info()['switch_problem']
+        self.assertIsNone(shown['pack'])                                  # a staged library without pack.json: unnamed
+        self.assertEqual(s.restart(shown['switch']), {'ok': True})
         time.sleep(0.6)
-        self.assertEqual(opened, [str(cur)])
+        self.assertEqual(opened, [str(lib)])
         self.assertTrue(pend.is_file())                                   # the restart's startup makes the switch
-        self.assertEqual(self.setup('manage', current=lib).restart(), {'ok': True, 'restart': True})     # server.py: the person restarts it
+        self.assertEqual(self.setup('manage', current=lib).restart(shown['switch']), {'ok': True, 'restart': True})   # server.py
         pend.unlink()                                                     # what a library or map download does (_drop_deferred_switch)
         s = self.setup('manage', current=lib, on_finish=opened.append)
         self.assertIsNone(s.current_info()['switch_problem'])
-        self.assertEqual(s.restart()['code'], 'nothing')
+        self.assertEqual(s.restart(shown['switch'])['code'], 'nothing')
+
+    def test_restart_waits_for_a_paused_download(self):
+        """wonderdawg's case on #504: a separate download paused part-way, then Restart. The next start clears the work folder
+        and the job, so the partial file went with them. Restart now refuses until the person resumes or cancels it, and the
+        paused download, its partial file and its saved job are all still there."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend = self.waiting_switch()
+        (lib / 'pack.json').write_text('{"name": "small"}')
+        (lib / 'models' / 'model.gguf').unlink()                          # no local AI yet: the person adds it while the switch waits
+        opened = []
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        switch = s.current_info()['switch_problem']['switch']
+        self.files.pace = 0.01
+        s.start('small', True)                                            # the local AI on its own: it leaves the waiting switch alone
+        time.sleep(0.3)
+        j = s.pause()
+        self.assertEqual(j['state'], 'paused')
+        done = j['items'][0]['bytes_done']
+        self.assertGreater(done, 0)
+        partial = [f for f in (self.parent / 'LastbookData.setup').rglob('*') if f.is_file() and f.stat().st_size == done]
+        self.assertTrue(partial)
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), self.refuse_old_library(lib):
+            lib2, note = api.startup(self.settings)                      # closed and opened again with the library still held
+        api.opened(self.settings, lib2, note)
+        self.assertTrue(note.get('again'))
+        self.assertTrue(api._job_file(self.settings).is_file())           # the paused download is not the finished job that goes
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        self.assertEqual(s.public_job()['state'], 'paused')
+        switch = s.current_info()['switch_problem']['switch']             # the pending record counted one more attempt
+        r = s.restart(switch)
+        self.assertEqual(r['code'], 'unfinished')
+        time.sleep(0.6)
+        self.assertEqual(opened, [])                                       # nothing restarted
+        self.assertTrue(pend.is_file())
+        self.assertTrue(api._job_file(self.settings).is_file())
+        self.assertTrue(all(f.is_file() for f in partial))
+        self.assertEqual(s.public_job()['items'][0]['bytes_done'], done)
+        s.cancel()                                                        # the person's choice: cancelled, nothing is left to lose
+        self.assertTrue(pend.is_file())                                   # the waiting switch is untouched by it
+        self.assertEqual(s.restart(switch), {'ok': True})
+        time.sleep(0.6)
+        self.assertEqual(opened, [str(lib)])
+
+    def test_restart_is_one_operation_for_one_switch(self):
+        """A second Restart while the first is under way restarts nothing more, and nothing new starts in this run. A
+        switch replaced since the screen was drawn is refused and no longer shown as waiting."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend = self.waiting_switch()
+        opened = []
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        switch = s.current_info()['switch_problem']['switch']
+        self.assertEqual(s.restart('0' * 16)['code'], 'changed')         # not the switch the page was shown
+        self.assertEqual(s.restart(None)['code'], 'changed')
+        self.assertEqual(s.restart(switch), {'ok': True})
+        self.assertEqual(s.restart(switch), {'ok': True, 'already': True})
+        self.assertEqual(s.start('small', True)['code'], 'restarting')
+        self.assertEqual(s.start(None, False, check=True)['code'], 'restarting')
+        time.sleep(0.6)
+        self.assertEqual(opened, [str(lib)])                              # once
+        d = json.loads(pend.read_text())                                  # the waiting switch replaced (staged again)
+        d.pop('attempts')
+        pend.write_text(json.dumps(d))
+        s = self.setup('manage', current=lib, on_finish=opened.append)
+        self.assertIsNone(s.current_info()['switch_problem'])
+        self.assertEqual(s.restart(switch)['code'], 'nothing')
+        self.assertEqual(opened, [str(lib)])
 
     def test_a_switch_that_gave_up_names_the_library_it_kept(self):
         """The last refused start: the switch is not tried again, and the window can name the library set aside, which
@@ -2540,7 +2612,9 @@ const t = globalThis.T;   // function declarations from eval are already global;
 const kept = 'Z:\\LastbookData.setup\\kept-20261127-010203\\LastbookData';
 console.log(JSON.stringify({
   none: switchNote({}),
-  waiting: switchNote({switch_problem: {kind: 'waiting', message: 'Could not move <it>.', again: true, pack: 'all'}}),
+  waiting: switchNote({switch_problem: {kind: 'waiting', message: 'Could not move <it>.', again: true, pack: 'all'}}, {state: 'done'}),
+  paused: switchNote({switch_problem: {kind: 'waiting', message: 'Could not move it.', again: true, pack: 'all'}}, {state: 'paused'}),
+  cancelled: switchNote({switch_problem: {kind: 'waiting', message: 'Could not move it.', again: true}}, {state: 'failed', error: {code: 'cancelled'}}),
   map: switchNote({switch_problem: {kind: 'map', message: 'Lastbook could not put the new map in place (PermissionError).', again: false}}),
   gave_up: switchNote({switch_problem: {kind: 'gave_up', message: 'Refused. What was unpacked is kept in ' + kept, again: false, kept}}),
   short: [t.shortPath(kept), t.shortPath('/home/me/LastbookData.setup/kept-1/LastbookData'), t.shortPath('LastbookData')],
@@ -2556,6 +2630,11 @@ console.log(JSON.stringify({
         self.assertIn('id="switchRestart"', out['waiting'])
         self.assertIn('Could not move &lt;it>.', out['waiting'])            # the engine's words, escaped, in Details
         self.assertIn('<summary data-i18n="setup.switchDetails">', out['waiting'])
+        self.assertIn('id="switchJob"', out['paused'])                  # a paused download: resume or cancel it first
+        self.assertIn('A download is not finished. Resume it or cancel it, then restart.', out['paused'])
+        self.assertNotIn('switchRestart', out['paused'])
+        self.assertNotIn('switchJob', out['waiting'])
+        self.assertIn('id="switchRestart"', out['cancelled'])            # a cancelled download has nothing left to lose
         self.assertIn('The new map could not be put in place.', out['map'])
         self.assertNotIn('library could not', out['map'])
         self.assertNotIn('switchRestart', out['map'])
@@ -2568,7 +2647,7 @@ console.log(JSON.stringify({
         self.assertEqual(out['short'], ['…\\kept-20261127-010203\\LastbookData', '…/kept-1/LastbookData', 'LastbookData'])
         self.assertEqual(out['waits'], [True, False, True, False, False])
         english = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
-        for kind in ('waiting', 'map', 'gave_up'):                     # every fixed word is the catalogue's English
+        for kind in ('waiting', 'paused', 'map', 'gave_up'):                     # every fixed word is the catalogue's English
             marked = re.findall(r'data-i18n="([^"]+)">([^<]*)<', out[kind])
             self.assertTrue(marked)
             for key, text in marked:

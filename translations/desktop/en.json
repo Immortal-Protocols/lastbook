@@ -62,6 +62,8 @@
   "setup.switchRestart": "Restart Lastbook",
   "setup.switchRestarting": "Restarting…",
   "setup.switchRestartManual": "Close Lastbook and open it again to finish.",
+  "setup.switchWaitJob": "A download is not finished. Resume it or cancel it, then restart.",
+  "setup.switchShowJob": "Show the download",
   "setup.mapProblemTitle": "The new map could not be put in place.",
   "setup.mapProblemBody": "Your library and its current map are unchanged. You can try again from Detailed map.",
   "setup.switchGaveUpTitle": "The downloaded library could not be put in place.",

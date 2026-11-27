@@ -211,6 +211,7 @@ class Setup:
         self.rejected = {}         # path -> (size, mtime) of a file already here that failed its SHA-256: not offered or used again
         self.cloud, self.cloud_thread = None, None   # (folder, time, hardware.cloud_only) of the open library, counted in the background
         self.job = self._load_job()
+        self._job_manifest = self.manifest.current    # the manifest the saved job was checked against (_job_again)
 
     # ------------------------------------------------------------------------------------------------- saved state --
     def _settings(self):
@@ -249,6 +250,15 @@ class Setup:
                 it['rate_bps'], it['eta_s'] = 0, None
                 it.pop('retry_at', None)
         return job
+
+    def _job_again(self):
+        """The saved job, checked again once the manifest it needs has arrived. Run from source nothing is bundled, so at
+        start no pack or model is known and a paused download would not be picked up: it would look as if it never started,
+        and a restart would clear it (opened). Only while no job is loaded, and once for each manifest."""
+        with self.lock:
+            if self.job is None and self.manifest.current is not self._job_manifest:
+                self._job_manifest = self.manifest.current
+                self.job = self._load_job()
 
     def _checked_job(self, job):
         """A job as this program would have written it, or None. Nothing from disk is used as a path or a file name unless it is
@@ -424,6 +434,7 @@ class Setup:
         One operation for that one switch: `switch` must name the pending switch the page was shown (a replaced one is
         refused), a second request while the first is under way restarts nothing more, and a download that is not finished
         stops it, because the next start clears the work folder and the job with it (the person resumes or cancels first)."""
+        self._job_again()
         with self.lock:
             if self.restarting:
                 return {'ok': True, 'already': True}
@@ -604,6 +615,7 @@ class Setup:
 
     def state(self):
         self.manifest.fetch_once()
+        self._job_again()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
                 'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(), 'model_server': self.model_server()}
@@ -1889,17 +1901,31 @@ def _drop_except(p, keep, blocked=None):
     return blocked
 
 
-def _clear_work(work, s):
-    """A setup that worked: what jobs made goes. A folder a failed switch set aside stays: it may hold the person's model."""
+def _clear_work(work, s, keep=()):
+    """A setup that worked: what jobs made goes. A folder a failed switch set aside stays: it may hold the person's model.
+    So do the folders in `keep`: what another download, not finished yet, has written (_carried_on)."""
     if work.is_symlink():     # never follow it: it may point at a library (rmtree refused it before, too)
         s.pop('work', None)
         return
     for p in (work.iterdir() if work.is_dir() else ()):
-        if not p.name.startswith('kept-'):
+        if not p.name.startswith('kept-') and p.name not in keep:
             shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
-    if not any(work.glob('kept-*')):
+    if not any(work.glob('kept-*')) and not any((work / k).exists() for k in keep):
         shutil.rmtree(work, ignore_errors=True)
         s.pop('work', None)
+
+
+def _carried_on(job):
+    """A saved job that a switch must not cut short: not finished (_unfinished), and not one that stages a library or a map
+    itself (Setup._stages), so the switch is not its own. A download of the local AI or of addresses started while a switch
+    waited, say: its downloads and unpack-addresses folders, and its job, stay for the person to resume or cancel."""
+    try:
+        return _unfinished(job) and not (job['plan'].get('pack') or job['plan'].get('map'))
+    except (TypeError, KeyError, AttributeError):
+        return False
+
+
+_CARRIED = ('downloads', 'unpack-addresses')     # what a job that stages nothing writes in the work folder (Setup._clean)
 
 
 SWITCH_PROBLEM = None   # this run's: what startup could not put in place ({kind, message, again, pack, kept}; see _switch_problem), shown in Library and local AI
@@ -1938,14 +1964,16 @@ def opened(settings_dir, data, note):
         except (OSError, ValueError):
             job = None
         if note or (isinstance(job, dict) and job.get('state') == 'done' and not job.get('check')):   # a check installed nothing
+            carried = _carried_on(job)      # a paused download of the local AI, say: it stays, with its job, for the person
             if note and note.get('error'):
                 _keep_unpacked(work, note)
             else:
-                _clear_work(work, s)
-            try:
-                _job_file(settings_dir).unlink()
-            except OSError:
-                pass
+                _clear_work(work, s, _CARRIED if carried else ())
+            if not carried:
+                try:
+                    _job_file(settings_dir).unlink()
+                except OSError:
+                    pass
     SWITCH_PROBLEM = _switch_problem(note, work, _pending_file(settings_dir))
     s['old'] = [o for o in s.get('old', []) if Path(o).exists()]
     try:

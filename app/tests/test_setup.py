@@ -2531,6 +2531,82 @@ class Switching(Base):
         time.sleep(0.6)
         self.assertEqual(opened, [str(lib)])
 
+    def paused_ai_while_waiting(self):
+        """A waiting switch, and the local AI added on its own while it waits, paused part-way and still paused after a
+        start that the held library refused again (what the Windows check on #504 did)."""
+        lib, pend = self.waiting_switch()
+        (lib / 'pack.json').write_text('{"name": "small"}')
+        (lib / 'models' / 'model.gguf').unlink()
+        s = self.setup('manage', current=lib)
+        self.files.pace = 0.01
+        s.start('small', True)
+        time.sleep(0.3)
+        done = s.pause()['items'][0]['bytes_done']
+        self.assertGreater(done, 0)
+        partial = [f for f in (self.parent / 'LastbookData.setup').rglob('*') if f.is_file() and f.stat().st_size == done]
+        self.assertTrue(partial)
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), self.refuse_old_library(lib):
+            lib2, note = api.startup(self.settings)
+        api.opened(self.settings, lib2, note)
+        self.assertTrue(note.get('again'))
+        return lib, pend, done, partial
+
+    def test_a_paused_download_is_picked_up_once_the_manifest_arrives(self):
+        """Run from source nothing is bundled: at start no model is known, so the saved job was dropped as unusable and the
+        paused download looked as if it never started, with Restart offered over it. Once the fetched manifest arrives the
+        saved job is checked again: it shows as paused, and Restart waits for it."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend, done, partial = self.paused_ai_while_waiting()
+        empty = {'version': 1, 'published': '', 'packs': [], 'models': [], 'maps': []}
+        m = manifest.Manifest(bundled=empty, remote=None, allowed=ALLOWED, context=self.ctx)
+        opened = []
+        s = self.setup('manage', current=lib, manifest=m, on_finish=opened.append)
+        self.assertIsNone(s.public_job())                                  # nothing to check it against yet
+        switch = s.current_info()['switch_problem']['switch']
+        m.current = self.manifest().current                                # what Manifest._fetch does when the fetch arrives
+        self.assertEqual(s.state()['job']['state'], 'paused')
+        self.assertEqual(s.public_job()['items'][0]['bytes_done'], done)
+        self.assertEqual(s.restart(switch)['code'], 'unfinished')
+        m2 = manifest.Manifest(bundled=empty, remote=None, allowed=ALLOWED, context=self.ctx)
+        s = self.setup('manage', current=lib, manifest=m2, on_finish=opened.append)
+        m2.current = self.manifest().current
+        self.assertEqual(s.restart(switch)['code'], 'unfinished')          # Restart checks again too, without a state() first
+        time.sleep(0.6)
+        self.assertEqual(opened, [])
+        self.assertTrue(all(f.is_file() for f in partial))
+
+    def test_a_switch_keeps_a_paused_download_that_is_not_its_own(self):
+        """The switch is made at a later start (the library no longer held), or gives up: either way the local AI paused
+        meanwhile keeps its partial file and its saved job, and resumes into the library now open."""
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend, done, partial = self.paused_ai_while_waiting()
+        lib2, note = api.startup(self.settings)                           # nothing holds the library now: the switch is made
+        api.opened(self.settings, lib2, note)
+        self.assertFalse(pend.exists())
+        self.assertEqual((lib2 / 'library-data' / 'catalog.json').read_text(), 'new')
+        self.assertTrue(api._job_file(self.settings).is_file())
+        self.assertTrue(all(f.is_file() for f in partial))
+        self.assertFalse((self.parent / 'LastbookData.setup' / 'unpack').exists())   # the switch's own unpack still goes
+        s = self.setup('manage', current=lib2)
+        self.assertEqual(s.public_job()['state'], 'paused')
+        self.assertEqual(s.public_job()['items'][0]['bytes_done'], done)
+        self.files.pace = 0
+        s.resume()
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual((lib2 / 'models' / 'model.gguf').read_bytes(), self.model)
+
+    def test_a_switch_that_gives_up_keeps_a_paused_download_too(self):
+        self.addCleanup(setattr, api, 'SWITCH_PROBLEM', None)
+        lib, pend, done, partial = self.paused_ai_while_waiting()
+        with mock.patch.object(install, 'RENAME_WAITS', (0,), create=True), mock.patch.object(install, 'SWITCH_ATTEMPTS', 1), \
+                self.refuse_old_library(lib):
+            lib2, note = api.startup(self.settings)
+        api.opened(self.settings, lib2, note)
+        self.assertEqual(api.SWITCH_PROBLEM['kind'], 'gave_up')
+        self.assertTrue(api._job_file(self.settings).is_file())
+        self.assertTrue(all(f.is_file() for f in partial))
+        self.assertEqual(self.setup('manage', current=lib2).public_job()['state'], 'paused')
+
     def test_restart_is_one_operation_for_one_switch(self):
         """A second Restart while the first is under way restarts nothing more, and nothing new starts in this run. A
         switch replaced since the screen was drawn is refused and no longer shown as waiting."""

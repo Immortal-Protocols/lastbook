@@ -2662,6 +2662,20 @@ class PackCompare(unittest.TestCase):
         with self.assertRaises(OSError):
             install.read_pack_manifest(self.tmp / 'missing.tsv')
 
+    def test_a_library_manifest_must_list_the_catalog(self):
+        """#363 and #353 review: Copy and Repair share one check, so a list without the catalog's row is damaged for both."""
+        x, lib = sha(b'x'), self.tmp / 'lib'
+        lib.mkdir()
+        listing = lib / 'pack-manifest.tsv'
+        listing.write_text(self.HEADER + f'pack.json\t5\t{x}\nlibrary-data/catalog.json\t5\t{x}\n', encoding='utf-8')
+        self.assertEqual(install.read_library_manifest(lib), [('pack.json', 5, x), ('library-data/catalog.json', 5, x)])
+        listing.write_text(self.HEADER + f'pack.json\t5\t{x}\n', encoding='utf-8')
+        with self.assertRaises(ValueError):
+            install.read_library_manifest(lib)
+        listing.unlink()
+        with self.assertRaises(OSError):
+            install.read_library_manifest(lib)
+
     def test_tool(self):
         """tools/compare_packs.py as a maintainer runs it, as its own process."""
         tool = ROOT / 'tools' / 'compare_packs.py'

@@ -813,9 +813,7 @@ class Setup:
         and, where a state map replaced the pack's map, that map's files as map-set.json lists them (path, bytes, None). Nothing of
         the person's own is on either list: no settings, saved items, chats, notes, address indexes or local AI."""
         lib = Path(lib)
-        rows = install.read_pack_manifest(lib / 'pack-manifest.tsv')
-        if not any(rel == install.CATALOG.as_posix() for rel, _, _ in rows):
-            raise ValueError('The file list must include the library catalog.')
+        rows = install.read_library_manifest(lib)
         mp = install.map_set(lib)
         if mp:
             rows = [r for r in rows if not install.map_member(r[0])]

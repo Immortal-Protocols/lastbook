@@ -129,6 +129,14 @@ class RegionCache(unittest.TestCase):
             self.fetch()
         self.assertFalse(list(self.folder.glob(f'{self.zipped.name}.tmp*')))
 
+    def test_interrupted_extraction_cleans_scratch(self):
+        self.archive(self.zipped, self.good)
+        with patch.object(zipfile.ZipFile, 'extractall', side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                self.fetch()
+        self.assertFalse(list(self.folder.glob('extract.tmp*')))
+        self.assertTrue(self.zipped.exists())
+
     def invalid_archive_retry(self, payload, name='region.gpkg'):
         self.archive(self.zipped, payload, name)
         with self.assertRaises(SystemExit):

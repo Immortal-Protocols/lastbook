@@ -1533,18 +1533,19 @@ def fetch_region_gpkg(spec):
     tmpdir = folder / f'extract.tmp{os.getpid()}'
     shutil.rmtree(tmpdir, ignore_errors=True)
     tmpdir.mkdir()
-    with zipfile.ZipFile(zipped) as z:
-        z.extractall(tmpdir)
-    extracted = next(tmpdir.glob('*.gpkg'), None)
-    if extracted is None or not gpkg_ok(extracted):
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        zipped.unlink()      # the extract's own ZIP failed, so the next run fetches the repaired source
-        if extracted is None:
-            raise SystemExit(f'{name} contains no GeoPackage, so it is not kept')
-        raise SystemExit(f'{extracted.name} extracted incomplete, so it is not kept')
-    gpkg = folder / extracted.name
-    os.replace(extracted, gpkg)
-    shutil.rmtree(tmpdir, ignore_errors=True)
+    try:
+        with zipfile.ZipFile(zipped) as z:
+            z.extractall(tmpdir)
+        extracted = next(tmpdir.glob('*.gpkg'), None)
+        if extracted is None or not gpkg_ok(extracted):
+            zipped.unlink()      # the extract's own ZIP failed, so the next run fetches the repaired source
+            if extracted is None:
+                raise SystemExit(f'{name} contains no GeoPackage, so it is not kept')
+            raise SystemExit(f'{extracted.name} extracted incomplete, so it is not kept')
+        gpkg = folder / extracted.name
+        os.replace(extracted, gpkg)
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)   # an interrupted extraction leaves no scratch folder behind
     return gpkg
 
 
@@ -1568,26 +1569,37 @@ def region_set(dest, code):
 def build_map(name):
     dest = OUT / 'maps' / name
     start = time.time()
-    if dest.exists():
-        shutil.rmtree(dest)
+    previous = dest.with_name(dest.name + '.prev')      # the last usable map, kept until the new one is ready
+    shutil.rmtree(previous, ignore_errors=True)
+    had = dest.exists()
+    if had:
+        os.replace(dest, previous)
     os.makedirs(dest)
-    if name in REGION_SPECS.REGIONS:
-        region_set(dest, name)
-    else:
-        src = geo_source()
-        if name == 'base':
-            base_set(src, dest)
-        elif name == 'us':
-            us_set(src, dest)
-        elif re.fullmatch(r'[A-Z]{2}', name):
-            state_set(src, dest, name)
-        elif name in COUNTRIES:
-            state_set(src, dest, name, country_box(name))
+    try:
+        if name in REGION_SPECS.REGIONS:
+            region_set(dest, name)
         else:
-            raise SystemExit(f'unknown map set {name}')
-    size = {f.relative_to(dest).as_posix(): f.stat().st_size for f in dest.rglob('*') if f.is_file()}
-    (dest / 'map-set.json').write_text(json.dumps({'name': name, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - start)}, indent=1), encoding='utf-8')
-    print(json.dumps({'map': name, 'bytes': sum(size.values()), 'files': size, 'seconds': round(time.time() - start)}, indent=1))
+            src = geo_source()
+            if name == 'base':
+                base_set(src, dest)
+            elif name == 'us':
+                us_set(src, dest)
+            elif re.fullmatch(r'[A-Z]{2}', name):
+                state_set(src, dest, name)
+            elif name in COUNTRIES:
+                state_set(src, dest, name, country_box(name))
+            else:
+                raise SystemExit(f'unknown map set {name}')
+        size = {f.relative_to(dest).as_posix(): f.stat().st_size for f in dest.rglob('*') if f.is_file()}
+        (dest / 'map-set.json').write_text(json.dumps({'name': name, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - start)}, indent=1), encoding='utf-8')
+        print(json.dumps({'map': name, 'bytes': sum(size.values()), 'files': size, 'seconds': round(time.time() - start)}, indent=1))
+    except BaseException:
+        shutil.rmtree(dest, ignore_errors=True)
+        if had:
+            os.replace(previous, dest)
+        raise
+    if had:
+        shutil.rmtree(previous, ignore_errors=True)
 
 
 def main():

@@ -2662,6 +2662,20 @@ class PackCompare(unittest.TestCase):
         with self.assertRaises(OSError):
             install.read_pack_manifest(self.tmp / 'missing.tsv')
 
+    def test_a_library_manifest_must_list_the_catalog(self):
+        """#363 and #353 review: Copy and Repair share one check, so a list without the catalog's row is damaged for both."""
+        x, lib = sha(b'x'), self.tmp / 'lib'
+        lib.mkdir()
+        listing = lib / 'pack-manifest.tsv'
+        listing.write_text(self.HEADER + f'pack.json\t5\t{x}\nlibrary-data/catalog.json\t5\t{x}\n', encoding='utf-8')
+        self.assertEqual(install.read_library_manifest(lib), [('pack.json', 5, x), ('library-data/catalog.json', 5, x)])
+        listing.write_text(self.HEADER + f'pack.json\t5\t{x}\n', encoding='utf-8')
+        with self.assertRaises(ValueError):
+            install.read_library_manifest(lib)
+        listing.unlink()
+        with self.assertRaises(OSError):
+            install.read_library_manifest(lib)
+
     def test_tool(self):
         """tools/compare_packs.py as a maintainer runs it, as its own process."""
         tool = ROOT / 'tools' / 'compare_packs.py'
@@ -2948,6 +2962,28 @@ class Manage(Base):
         d = self.tmp / 'drive'
         d.mkdir()
         return d
+
+    def test_copy_refuses_a_manifest_without_the_catalog(self):
+        lib = self.installed_library()
+        listing = lib / 'pack-manifest.tsv'
+        lines = listing.read_text(encoding='utf-8').splitlines()
+        catalog_prefix = install.CATALOG.as_posix() + '\t'
+        drive = self.drive()
+        cases = {
+            'header-only': lines[:1],
+            'missing-catalog': [line for line in lines if not line.startswith(catalog_prefix)],
+        }
+        for name, rows in cases.items():
+            with self.subTest(name=name):
+                listing.write_text('\n'.join(rows) + '\n', encoding='utf-8')
+                target = drive / name
+                target.mkdir()
+                s = self.setup('manage', current=lib)
+                result = s.start(copy_to=str(target))
+                if result.get('copy'):
+                    result = self.wait(s)
+                self.assertEqual(result.get('code'), 'unavailable', result)
+                self.assertEqual(list(target.iterdir()), [])
 
     def test_copy_to_a_drive_holds_the_library_and_nothing_personal(self):
         lib = self.installed_library()

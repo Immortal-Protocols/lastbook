@@ -331,7 +331,7 @@ class SpanishWording(unittest.TestCase):
         load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
         cls.en, cls.es = load('en.json'), load('es-419.json')
 
-    def test_language_preview_describes_complete_interface(self):
+    def test_language_preview_says_the_translation_is_partial(self):
         preview = self.es['language.preview']
         self.assertIn('parcial', preview.casefold())
         self.assertIn('algunos textos de la interfaz', preview.casefold())

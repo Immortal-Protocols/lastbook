@@ -427,7 +427,7 @@ class Browser(unittest.TestCase):
         self.language_file.write_text('{"language":"de"}', encoding='utf-8')
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
             page.goto(origin + '/#/ask')
-            expect(page.locator('#askMore .ask-card .ac-t span[lang="en"]').first).to_be_visible()
+            expect(page.locator('#askMore .ask-cards .ask-card .ac-t span[lang="en"]').first).to_be_visible()
             expect(page.locator('#askMore .ask-learn a b span[lang="en"]').first).to_be_visible()
 
     def test_chat_list_recovers_from_invalid_saved_dates(self):

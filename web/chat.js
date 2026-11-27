@@ -538,17 +538,22 @@ const Chat = (() => {
   // What a source is, for the filter above an answer's sources: a page (manuals, PDFs, saved pages), a video, an encyclopedia article or a place on the map.
   const SRC_TYPE_KEYS = { page: 'pages', video: 'videos', wiki: 'encyclopedias', place: 'places' };
   const srcType = s => s.kind === 'video' ? 'video' : s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'place' : 'page';
+  // Server messages carry their catalogue key next to the English text (server.py msg(), trustKey).
+  const keyedText = (key, params, text) => key ? tr(key, params, text || '') : (text || '');
+  const excerptText = s => Array.isArray(s.excerptParts)
+    ? s.excerptParts.map(x => x && typeof x === 'object' ? keyedText(x.key, x.params, x.text) : String(x ?? '')).join(' · ')
+    : (s.excerpt || '');
   function srcCards(list, compact, type) {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
       let pv;
-      if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
+      if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : esc(tr('common.video', null, 'Video'))}</span></span>`;
       else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">${esc(tr('reader.pagePrefix', { page: s.page }, 'Page {page}'))}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
       const where = s.kind === 'video' ? (s.t != null ? tr('chat.atTime', { time: clock(s.t) }, 'at {time}') : '') : s.page ? (s.pages ? tr('reader.pageOfTotal', { page: s.page, total: s.pages }, 'Page {page} of {total}') : tr('reader.pagePrefix', { page: s.page }, 'Page {page}')) : '';
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
-        <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
-         ${!compact && s.excerpt ? `<span class="sc-ex">${tr('chat.sourceExcerpt', { excerpt: esc(s.excerpt.slice(0, 220)) + (s.excerpt.length > 220 ? '…' : '') }, '“{excerpt}”')}</span>` : ''}
-        ${s.image ? '<span class="sc-tag">diagram viewed</span>' : ''}</span></a>`;
+        <small>${esc(keyedText(s.publisherKey, null, s.publisher))}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(keyedText(s.trustKey, null, s.trust)) : ''}</small>
+         ${!compact && s.excerpt ? (ex => `<span class="sc-ex">${tr('chat.sourceExcerpt', { excerpt: esc(ex.slice(0, 220)) + (ex.length > 220 ? '…' : '') }, '“{excerpt}”')}</span>`)(excerptText(s)) : ''}
+        ${s.image ? `<span class="sc-tag">${esc(tr('chat.diagramViewed', null, 'diagram viewed'))}</span>` : ''}</span></a>`;
     }).join('')}</div>`;
   }
   // Buttons that show one type of source at a time, with how many of each. Only when the sources are of two types or more.

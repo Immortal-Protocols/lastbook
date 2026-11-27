@@ -37,7 +37,7 @@ MAX_BODY = 4096
 WEBSITE = 'lastbook.org'
 DOWNLOAD_URL = f'https://{WEBSITE}/download/'
 
-OFFLINE = 'Lastbook could not reach the internet. Everything else in Lastbook still works without it; try again when you are online.'
+OFFLINE_KEY, OFFLINE = 'update.offline', 'Lastbook could not reach the internet. Everything else in Lastbook still works without it; try again when you are online.'
 
 
 def _ver(s):

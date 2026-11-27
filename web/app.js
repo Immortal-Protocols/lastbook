@@ -23,15 +23,18 @@ function trLang(key, params, fallback) {
   return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(text)}</span>`;
 }
 function trLocale(key, params) { return globalThis.LastbookI18n?.resolve?.(key, params)?.locale || 'en' }
-const videoRowKey = (id, fallback) => id === 'guides' || fallback === 'Picked for the guides' ? 'home.videosPicked'
-  : id === 'all' || fallback === 'All videos' ? 'home.allVideos' : `videos.row.${id}`;
+const videoRowKey = id => id === 'guides' ? 'home.videosPicked' : id === 'all' || !id ? 'home.allVideos' : `videos.row.${id}`;
 const videoRowTitle = (id, fallback) => tr(videoRowKey(id, fallback), null, fallback);
 const videoRowTitleHtml = (id, fallback) => trLang(videoRowKey(id, fallback), null, fallback);
 function videoRowNoteHtml(id, fallback) {
   const key = ({ coalcracker: 'videos.rowNote.hobbyist', corporals: 'videos.rowNote.hobbyist',
-    canterbury: 'videos.rowNote.hobbyist', primitive: 'videos.rowNote.primitive', courses: 'videos.rowNote.courses' })[id];
+    canterbury: 'videos.rowNote.hobbyist', primitive: 'videos.rowNote.primitive', courses: 'videos.rowNote.courses',
+    guides: 'videos.rowNote.guides' })[id];
   return key ? trLang(key, null, fallback) : esc(fallback);
 }
+// Server messages carry their catalogue key next to the English text (server.py msg(), trustKey, titleKey).
+const keyed = (key, params, text) => key ? tr(key, params, text || '') : (text || '');
+const keyedHtml = (key, params, text) => key ? trLang(key, params, text || '') : esc(text || '');
 const i18nParams = params => params ? ` data-i18n-params='${esc(JSON.stringify(params))}'` : '';
 const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';   // the desktop app, not a browser over the server
 if (IN_WINDOW) $('#sideSettings').hidden = false;   // Library and local AI (web/setup.html) is in the desktop app only
@@ -1086,7 +1089,7 @@ async function reader(id, page, from, view) {
   if (stale(me)) return;   // the person has gone to another page
   if (d.kind === 'video') { swap('#/watch/' + encodeURIComponent(id) + (from ? '?from=' + encodeURIComponent(from) : '')); return }
   if (d.kind === 'transcript' && d.videoId) { swap('#/watch/' + encodeURIComponent(d.videoId) + (from ? '?from=' + encodeURIComponent(from) : '')); return }
-  setTitle(d.title, [d.publisher, d.year, d.trust].filter(Boolean).join(' · '));
+  setTitle(d.title, [d.publisher, d.year, keyed(d.trustKey, null, d.trust)].filter(Boolean).join(' · '));
   const isPdf = d.kind === 'pdf', total = d.pages || 1;
   const isWeb = d.kind === 'html' && /\.x?html?$/i.test(d.path);   // a plain text file, such as a lecture transcript, reads as text in the page itself
   page = Math.min(Math.max(page || 1, 1), total);
@@ -1099,7 +1102,7 @@ async function reader(id, page, from, view) {
   main.innerHTML = `
     <div class="rtop">${backButton(from)}</div>
     <h1 class="rtitle">${esc(d.title)}</h1>
-    <div class="rsrc"><b>${esc(d.publisher || '')}</b>${d.year ? ' · ' + esc(d.year) : ''} · ${esc(d.trust)}</div>
+    <div class="rsrc"><b>${esc(d.publisher || '')}</b>${d.year ? ' · ' + esc(d.year) : ''} · ${keyedHtml(d.trustKey, null, d.trust)}</div>
     <div class="rmodes">${views.length ? `<div class="seg dock" role="group" aria-label="${tr('reader.howToShow', null, "How to show it")}">${views.map(([v, l]) => `<button data-view="${v}" aria-pressed="${v === view}">${l}</button>`).join('')}</div>` : ''}<span class="vactions dock">${askLink('doc:' + id + ':' + (isPdf ? page : 1), 'common.ask', 'Ask')}${saveButton({ key, title: d.title + (isPdf ? ' ' + tr('reader.pageDash', { page }, '— page {page}') : ''), href: selfHref, sub: d.publisher || d.kindLabel })}<button class="tb-btn insp-btn" data-insp aria-label="${esc(tr('reader.toggleDetails', null, 'Show or hide the source details'))}" title="${esc(tr('common.details', null, 'Details'))}">${ico('insp')}</button></span></div>
     <div id="docbody"></div>
     ${d.imageOnly ? `<div class="notice">${esc(tr('reader.scanNoText', null, 'This is a scanned document without searchable text, so search and the assistant can’t read it. Use the Page view.'))}</div>` : ''}
@@ -1107,7 +1110,7 @@ async function reader(id, page, from, view) {
       <span class="pnum"><label class="sr" for="pg">${esc(tr('reader.pageNumber', null, 'Page number'))}</label>${esc(tr('reader.pageView', null, 'Page'))} <input id="pg" inputmode="numeric" value="${page}"> ${esc(tr('common.of', null, 'of'))} ${total}</span>
       <a class="btn nav" href="${go(page + 1)}" ${page >= total ? 'aria-disabled="true" style="opacity:.35;pointer-events:none"' : ''} aria-label="${esc(tr('nav.nextPage', null, 'Next page'))}" data-i18n-aria-label="nav.nextPage" data-i18n-lang><span data-i18n="nav.next">Next</span>${ico('right')}</a></div>` : ''}
     <details class="about-src"><summary>${esc(tr('reader.aboutSource', null, 'About this source'))}</summary><div class="in"><p class="insp-h">${esc(d.title)}</p>
-      <dl><dt>${esc(tr('reader.publisher', null, 'Publisher'))}</dt><dd>${esc(d.publisher || '—')}</dd><dt>${esc(tr('reader.kind', null, 'Kind'))}</dt><dd>${esc(d.trust)} · ${esc(d.kindLabel)}</dd>
+      <dl><dt>${esc(tr('reader.publisher', null, 'Publisher'))}</dt><dd>${esc(d.publisher || '—')}</dd><dt>${esc(tr('reader.kind', null, 'Kind'))}</dt><dd>${keyedHtml(d.trustKey, null, d.trust)} · ${keyedHtml(d.kindKey, null, d.kindLabel)}</dd>
       ${d.edition ? `<dt>${esc(tr('reader.edition', null, 'Edition'))}</dt><dd>${esc(d.edition)}</dd>` : ''}${d.year ? `<dt>${esc(tr('reader.year', null, 'Year'))}</dt><dd>${esc(d.year)}</dd>` : ''}
       <dt>${esc(tr('reader.savedOn', null, 'Saved'))}</dt><dd>${esc((d.retrieved_at || '').slice(0, 10) || tr('reader.unknownDate', null, 'unknown date'))} · ${esc(d.collection)}</dd>
       ${d.notes ? `<dt>${esc(tr('videos.note', null, 'Note'))}</dt><dd>${esc(d.notes)}</dd>` : ''}
@@ -1363,7 +1366,7 @@ async function encyclopedias(q) {
   if (stale(me)) return;
   if (!zims.length) { main.innerHTML = `<h1>${tr('wiki.title', null, 'Encyclopedias')}</h1><p class="lead">${tr('wiki.noneHere', null, 'This download has no encyclopedias.')}</p>`; return }
   main.innerHTML = `<h1>${tr('wiki.title', null, 'Encyclopedias')}</h1><p class="lead">${['', tr('wiki.one', null, 'One complete encyclopedia'), tr('wiki.two', null, 'Two complete encyclopedias'), tr('wiki.three', null, 'Three complete encyclopedias'), tr('wiki.four', null, 'Four complete encyclopedias')][zims.length]}. ${tr('wiki.communitySafetyNotice', null, 'Community-written: good for background — use the guides’ manuals for safety-critical steps.')}</p>
-  <div style="margin:16px 0">${searchBox('zq', q, 'e.g. tetanus, solar panel, sourdough')}</div><div id="zres"></div>
+  <div style="margin:16px 0">${searchBox('zq', q, tr('wiki.searchPlaceholder', null, 'e.g. tetanus, solar panel, sourdough'))}</div><div id="zres"></div>
   ${secHead(tr('wiki.openOne', null, 'Open one'))}<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/encyclopedias')}"><span class="ico">${ico(z[3])}</span><b>${esc(zimTitle(z))}</b><small>${esc(zimAbout(z))}</small></a>`).join('')}</div>`;
   $('#zqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/encyclopedias?q=' + encodeURIComponent($('#zq').value.trim()) });
   if (q) zimResults(q, $('#zres'), 40);
@@ -1524,7 +1527,7 @@ function resultCard(r) {
     try { language = Intl.getCanonicalLocales(candidate)[0] || ''; } catch { language = ''; }
   }
   return `<article class="result"${language ? ` lang="${esc(language)}"` : ''}><h3><a href="${hrefFor({ ...base, page: r.hits[0] && r.hits[0].page })}">${esc(r.title)}</a></h3>
-    <div class="rsrc">${srcText(r)} · ${esc(r.trust)}</div>
+    <div class="rsrc">${srcText(r)} · ${keyedHtml(r.trustKey, null, r.trust)}</div>
     ${r.hits.slice(0, 2).map(h => `<a class="hit" href="${hrefFor({ ...base, page: h.page })}">${h.page ? `<b>${esc(tr('reader.pagePrefix', { page: h.page }, 'Page {page}'))}:</b> ` : ''}${h.snippet}</a>`).join('')}</article>`;
 }
 
@@ -1554,7 +1557,7 @@ async function library() {
   try {
     const sh = await api('/api/shelves');
     if (stale(me)) return;
-    $('#shelves').innerHTML = sh.filter(s => s.read + s.video).map(s => `<a class="shelfrow" href="#/shelf/${s.id}"><span><b>${esc(s.title)}</b><small>${s.read ? tr('library.toRead', { count: s.read }, '{count} to read') : ''}${s.read && s.video ? ' · ' : ''}${s.video ? tr('library.shelfVideos', { count: s.video }, '{count} videos') : ''}</small></span>${ico('right')}</a>`).join('');
+    $('#shelves').innerHTML = sh.filter(s => s.read + s.video).map(s => `<a class="shelfrow" href="#/shelf/${s.id}"><span><b>${keyedHtml(s.titleKey, null, s.title)}</b><small>${s.read ? tr('library.toRead', { count: s.read }, '{count} to read') : ''}${s.read && s.video ? ' · ' : ''}${s.video ? tr('library.shelfVideos', { count: s.video }, '{count} videos') : ''}</small></span>${ico('right')}</a>`).join('');
   } catch (e) { if (!stale(me)) $('#shelves').innerHTML = errorBox(e) }
 }
 async function prepareHub() {
@@ -1569,8 +1572,9 @@ async function shelfPage(id, kind, q) {
   const me = routeSeq, sh = (await api('/api/shelves')).find(s => s.id === id);
   if (stale(me)) return;   // the person has gone to another page
   if (!sh) return notFound();
-  setTitle(sh.title);
-  main.innerHTML = `${backButton('#/library')}${crumbs([[tr('nav.library', null, 'Library'), '#/library'], [sh.title]])}<h1>${esc(sh.title)}</h1>
+  const shelfTitle = keyed(sh.titleKey, null, sh.title);
+  setTitle(shelfTitle);
+  main.innerHTML = `${backButton('#/library')}${crumbs([[tr('nav.library', null, 'Library'), '#/library'], [shelfTitle]])}<h1>${keyedHtml(sh.titleKey, null, sh.title)}</h1>
   <div style="margin:14px 0 10px">${searchBox('shq', q, tr('library.filterShelf', null, 'Filter by title or publisher'), ['search.filter', tr('search.filter', null, 'Filter')])}</div>
   <div class="chips">${[['all', tr('library.everything', null, 'Everything')], ['read', tr('library.toReadFilter', null, 'To read')], ['video', tr('nav.videos', null, 'Videos')]].map(([k, l]) => `<a class="chip ${k === kind ? 'on' : ''}" href="#/shelf/${id}?kind=${k}&q=${encodeURIComponent(q)}">${l}</a>`).join('')}</div><div id="shres"><p class="loading" data-i18n="common.loading">Loading…</p></div>`;
   $('#shqF').addEventListener('submit', e => { e.preventDefault(); location.hash = `#/shelf/${id}?kind=${kind}&q=` + encodeURIComponent($('#shq').value.trim()) });
@@ -1578,7 +1582,7 @@ async function shelfPage(id, kind, q) {
   const load = async () => {
     const d = await api(`/api/shelf/${id}?kind=${kind}&q=${encodeURIComponent(q)}&offset=${off}`);
     if (stale(me)) return;
-    const html = d.collections.map(c => `<section class="collection"><h3>${esc(c.collection)}</h3><div class="small muted">${esc(c.trust)} · ${tr('library.itemCount', { count: c.count }, '{count} items')}</div><ul class="list">${c.items.map(r => rowItem({ src: r })).join('')}</ul>${c.count > c.items.length ? `<a class="btn ghost" href="#/collection?name=${encodeURIComponent(c.collection)}&${fromQ()}">${tr('library.seeAllCount', { count: c.count }, 'See all {count}')}</a>` : ''}</section>`).join('');
+    const html = d.collections.map(c => `<section class="collection"><h3>${keyedHtml(c.collectionKey, null, c.collection)}</h3><div class="small muted">${keyedHtml(c.trustKey, null, c.trust)} · ${tr('library.itemCount', { count: c.count }, '{count} items')}</div><ul class="list">${c.items.map(r => rowItem({ src: r })).join('')}</ul>${c.count > c.items.length ? `<a class="btn ghost" href="#/collection?name=${encodeURIComponent(c.collection)}&${fromQ()}">${tr('library.seeAllCount', { count: c.count }, 'See all {count}')}</a>` : ''}</section>`).join('');
     if (!off) $('#shres').innerHTML = d.collections.length ? '' : `<div class="empty">${esc(tr('library.nothingMatches', null, 'Nothing here matches. Try another word.'))}</div>`;
     $('#shres').insertAdjacentHTML('beforeend', html);
     $('#moreb')?.remove();

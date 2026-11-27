@@ -382,6 +382,8 @@ class SpanishWording(unittest.TestCase):
             'native.appFileDescription', 'installer.productName', 'installer.companyName',
             'setup.facts.sha256', 'setup.facts.bytes', 'videos.videoCount',
             'videos.row.coalcracker', 'videos.row.corporals', 'videos.row.canterbury', 'videos.row.primitive',
+            # Server-sent labels whose Spanish is the same word.
+            'kind.pdf', 'kind.video', 'poi.hospital', 'map.summary.acres',
         })
 
     def test_catalogue_covers_every_english_message(self):

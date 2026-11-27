@@ -187,13 +187,16 @@ class Coverage(unittest.TestCase):
                          f'catalogue references without English messages: {sorted(referenced - keys)}')
 
     def test_no_unique_hardcoded_chrome(self):
-        leftover = {text: locs for text, locs in self.chrome.items()}
+        # Default-deny: every chrome, content or unknown literal is either wired or listed
+        # with a reason in packaging/i18n_allowlist.json, and every allowlist row still matches.
+        leftover = scan.unique_unapproved(self.hits)
         self.assertEqual(
             leftover, {},
-            'hard-coded UI chrome left untranslated:\n' + '\n'.join(
+            'hard-coded UI text that is neither wired nor allowlisted:\n' + '\n'.join(
                 f'  {text!r}\n    {", ".join(locs)}' for text, locs in sorted(leftover.items())
             ),
         )
+        self.assertEqual(scan.stale_allowlist(self.hits), [])
 
     def test_dynamic_chat_action_selector_is_technical(self):
         selector = '#{…} [data-act="{…}"]'
@@ -226,7 +229,7 @@ class Coverage(unittest.TestCase):
     def test_scanner_still_classifies_surfaces(self):
         # The inventory should keep seeing the desktop surfaces even when chrome is 0.
         self.assertGreater(self.totals['wired'], 1000)
-        self.assertEqual(self.totals['chrome'], 0)
+        self.assertEqual(scan.unapproved(self.hits), [])
 
     def test_catalogued_helper_fallbacks_are_wired_but_missing_keys_are_not(self):
         for source, literal, expected in [
@@ -389,7 +392,9 @@ class Coverage(unittest.TestCase):
                 self.assertEqual(scan.classify(label, source), 'chrome')
         self.assertEqual(scan.classify('Go', "button.textContent = '"), 'chrome')
         self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
-        self.assertEqual(scan.classify('Hospitals', "const LAYERS = [['hospital', "), 'wired')
+        # The LAYERS id -> map.layer.* mapping is true only in map.js, which renders it.
+        self.assertEqual(scan.classify('Hospitals', "const LAYERS = [['hospital', ", '', 'web/map.js'), 'wired')
+        self.assertEqual(scan.classify('Hospitals', "const LAYERS = [['hospital', ", '', 'server.py'), 'chrome')
         self.assertEqual(scan._map_data_catalogue_classes()['Berries & asparagus'], 'wired')
         self.assertEqual(scan._map_data_catalogue_classes()['Dt'], 'technical')
         self.assertEqual(set(scan._chat_starter_classes().values()), {'wired'})

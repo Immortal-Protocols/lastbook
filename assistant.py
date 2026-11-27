@@ -175,7 +175,7 @@ def hybrid(q, k=8, kind='any', doc=None):
                 info = dict(info, excerpt=best[0]['text'])
         pub = S.public(r)
         res.append({'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'],
-                    'trust': pub['trust'], 'pages': pub['pages'], 'page': p, 't': t, 'duration': pub.get('duration'),
+                    'trust': pub['trust'], 'trustKey': pub.get('trustKey'), 'pages': pub['pages'], 'page': p, 't': t, 'duration': pub.get('duration'),
                     'thumb': pub.get('thumb'), 'excerpt': re.sub(r'\s+', ' ', info.get('excerpt') or '')[:900],
                     'found_by': e['ranks'], 'score': round(score * 1000, 2), 'notes': (r.get('notes') or '')[:300],
                     'imageOnly': (r.get('searchability') or '').startswith('image-only')})
@@ -203,6 +203,7 @@ def wiki_row(hit, text=None):
         'year': str(year) if year else None,
         'kind': 'zim',
         'trust': hit.get('trust') or encyclopedias.TRUST,
+        'trustKey': S.trust_key(hit.get('trust') or encyclopedias.TRUST),
         'pages': None,
         'page': None,
         't': None,
@@ -365,7 +366,7 @@ def run_tool(name, args, sess, extra_msgs, root=None):
                 out.append(f'(page {p} does not exist; the document has {len(texts)} pages)')
                 continue
             body = page_body(texts[p - 1], 3500) or '(no text on this page — it may be a picture; use view_page)'
-            src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'],
+            src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'], 'trustKey': pub.get('trustKey'),
                    'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
             out.append(_src_block(sess.add(src), src, body))
         return '\n\n'.join(out), {'doc_id': d, 'title': pub['title'], 'pages': pages}
@@ -376,7 +377,7 @@ def run_tool(name, args, sess, extra_msgs, root=None):
             return 'That page is not available as an image (only PDF pages within the document can be viewed).', {'doc_id': d, 'page': p, 'error': 'unavailable'}
         png = S.render_page(r, p, 900)
         pub = S.public(r)
-        src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'pdf', 'trust': pub['trust'],
+        src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'pdf', 'trust': pub['trust'], 'trustKey': pub.get('trustKey'),
                'pages': pub['pages'], 'page': p, 't': None, 'excerpt': '', 'image': True, 'notes': (r.get('notes') or '')[:300]}
         k = sess.add(src)
         extra_msgs.append({'role': 'user', 'content': [
@@ -398,7 +399,7 @@ def run_tool(name, args, sess, extra_msgs, root=None):
             wins = [{'t': c['t'], 'text': c['text']} for c in cues[:12]]
         out = []
         for w in sorted(wins, key=lambda w: w['t'] or 0):
-            src = {'doc_id': v, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'video', 'trust': pub['trust'],
+            src = {'doc_id': v, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'video', 'trust': pub['trust'], 'trustKey': pub.get('trustKey'),
                    'page': None, 't': w['t'], 'duration': pub.get('duration'), 'thumb': pub.get('thumb'), 'excerpt': w['text'][:600], 'notes': (r.get('notes') or '')[:300]}
             out.append(_src_block(sess.add(src), src, w['text'][:1200]))
         return '\n\n'.join(out), {'video_id': v, 'title': pub['title']}
@@ -436,9 +437,13 @@ def run_tool(name, args, sess, extra_msgs, root=None):
             lines.append(f"[{k}] {p['name']} ({p['kind']}, {p['detail']}) at {p['lat']:.4f},{p['lon']:.4f}" + ('' if p['onMap'] else ' — outside the offline street map'))
         kinds = [c.strip() for c in str(args.get('nearby') or '').split(',') if c.strip() in S.HELP]
         if kinds and pl[0]['onMap']:
+            osm = S.msg('chat.place.osmPublisher', None, 'OpenStreetMap (data as of 25 Oct 2026)')
             for h in S.near(pl[0]['lat'], pl[0]['lon'], kinds, 3):
-                k = sess.add({'kind': 'place', 'title': h['name'] or h['label'], 'publisher': 'OpenStreetMap (data as of 25 Oct 2026)', 'lat': h['lat'], 'lon': h['lon'],
-                              'excerpt': f"{h['label']} · {h['km']} km {h['dir']} of {pl[0]['name']} (straight line)"})
+                where = {'km': h['km'], 'dir': h['dir'], 'place': pl[0]['name']}
+                parts = [{'key': h.get('labelKey'), 'params': None, 'text': h['label']},
+                         S.msg('chat.place.straightLine', where, '{km} km {dir} of {place} (straight line)')]
+                k = sess.add({'kind': 'place', 'title': h['name'] or h['label'], 'publisher': osm['text'], 'publisherKey': osm['key'],
+                              'lat': h['lat'], 'lon': h['lon'], 'excerpt': S.joined(parts), 'excerptParts': parts})
                 lines.append(f"[{k}] {h['label']}: {h['name'] or '(no name recorded)'} — {h['km']} km {h['dir']} (straight-line)")
         return 'Offline map data (may be outdated; does not show closures or damage):\n' + '\n'.join(lines), {'query': q, 'count': len(pl)}
     return f'Unknown tool {name}.', {'error': 'unknown tool'}
@@ -473,7 +478,7 @@ def context_for(about, sess):
         texts, pub = S.page_texts(r), S.public(r)
         p = int(p or 1)
         body = page_body(texts[p - 1], 4000) if 0 < p <= len(texts) else ''
-        src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'],
+        src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': r['kind'], 'trust': pub['trust'], 'trustKey': pub.get('trustKey'),
                'pages': pub['pages'], 'page': p if r['kind'] == 'pdf' else None, 't': None, 'excerpt': re.sub(r'\s+', ' ', body)[:600], 'notes': (r.get('notes') or '')[:300]}
         k = sess.add(src)
         return f"The person is looking at this page right now (questions like 'this' refer to it):\n" + _src_block(k, src, body or '(no extractable text on this page; use view_page)') + f"\nDocument id for tools: {d}"
@@ -489,7 +494,7 @@ def context_for(about, sess):
         if not near:
             return f"The person is watching the video “{pub['title']}” (id {v}), which has no transcript, so its content cannot be read."
         txt = ' '.join(c['text'] for c in near)
-        src = {'doc_id': v, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'video', 'trust': pub['trust'],
+        src = {'doc_id': v, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'video', 'trust': pub['trust'], 'trustKey': pub.get('trustKey'),
                'page': None, 't': near[0]['t'], 'duration': pub.get('duration'), 'thumb': pub.get('thumb'), 'excerpt': txt[:600], 'notes': (r.get('notes') or '')[:300]}
         k = sess.add(src)
         return f"The person is watching this video (around {t // 60}:{t % 60:02d}):\n" + _src_block(k, src, txt[:3000]) + f"\nVideo id for tools: {v}"

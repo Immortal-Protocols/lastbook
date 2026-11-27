@@ -302,6 +302,37 @@ class Browser(unittest.TestCase):
             page.get_by_role('link', name='Back to the library').click()
             expect(page.locator('.side').get_by_role('link', name='Guides')).to_be_visible()
 
+    def test_live_language_switch_retranslates_hardware_tiles_and_repair_without_reload(self):
+        setup = self.configure_setup(current=DATA)
+        self.set_hardware(setup, fits=False, disk_path=DATA)
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin)
+            tiles = page.locator('.s-pc')
+            repair = page.locator('#repair')
+            expect(repair).to_have_text('Check and repair')
+            expect(tiles).to_contain_text('memory')
+            expect(tiles).to_contain_text('free on')
+            expect(tiles).to_contain_text('graphics card for the AI')
+            expect(tiles).to_have_attribute('aria-label', 'This computer')
+            page.evaluate('window.__sameDocument = true')
+            page.get_by_label('Interface language').select_option('es-419')
+            page.get_by_role('button', name='Save language').click()
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
+            expect(repair).to_have_text('Comprobar y reparar')
+            expect(tiles).to_contain_text('memoria')
+            expect(tiles).to_contain_text('libres en')
+            expect(tiles).to_contain_text('tarjeta gráfica para la IA')
+            expect(tiles).not_to_contain_text('memory')
+            expect(tiles).to_have_attribute('aria-label', 'Esta computadora')
+            self.assertTrue(page.evaluate('window.__sameDocument === true'), 'the page reloaded')
+            page.get_by_label('Idioma de la interfaz').select_option('en')
+            page.get_by_role('button', name='Guardar idioma').click()
+            expect(repair).to_have_text('Check and repair')
+            expect(tiles).to_contain_text('graphics card for the AI')
+            expect(tiles).not_to_contain_text('memoria')
+            self.assertTrue(page.evaluate('window.__sameDocument === true'), 'the page reloaded')
+            self.assertEqual(json.loads(self.language_file.read_bytes()), {'language': 'en'})
+
     def test_copy_start_api_error_is_translated_in_spanish(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
@@ -658,6 +689,54 @@ class Browser(unittest.TestCase):
                     failure_copy = page.locator('#card p span')
                     expect(failure_copy).to_have_text(failure)
                     expect(failure_copy).to_have_attribute('lang', expected_locale)
+
+    def test_server_keyed_library_and_map_labels_follow_a_live_language_switch(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        engine_hook = """(() => {
+          let factory;
+          Object.defineProperty(window, 'createI18n', {
+            configurable: true,
+            get: () => factory,
+            set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+          });
+        })();"""
+        switch = """(locale) => {
+          const engine = window.__testI18nEngine;
+          engine.usePreferredLocales(locale);
+          document.documentElement.lang = engine.locale;
+          LastbookI18n.apply();
+          document.dispatchEvent(new Event('lastbook:languagechange'));
+        }"""
+        shelves = [{'id': 'health', 'titleKey': 'library.shelf.health', 'title': 'Health & first aid', 'read': 2, 'video': 0},
+                   {'id': 'water', 'titleKey': 'library.shelf.water', 'title': 'Water & sanitation', 'read': 1, 'video': 0}]
+        info = {'layers': [], 'bounds': [-125, 24, -66, 50], 'datasets': [
+            {'labelKey': 'map.data.baseMap', 'labelParams': None, 'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)',
+             'statusKey': 'map.data.areaDownloading', 'statusParams': {'area': 'California'}, 'status': 'California · downloading'}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script(engine_hook)
+            page.route('**/api/shelves*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(shelves)))
+            page.goto(origin + '/#/library')
+            rows = page.locator('#shelves .shelfrow b')
+            expect(rows).to_have_text(['Salud y primeros auxilios', 'Agua y saneamiento'])
+            expect(rows.first.locator('[lang="es-419"]')).to_have_count(1)
+
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(info)))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.evaluate("location.hash = '#/map'")
+            data = page.locator('#mdata li').first
+            expect(data).to_contain_text('Carreteras principales, pueblos y agua de todo EE. UU.')
+            expect(data).to_contain_text('California · descargando')
+            page.evaluate(switch, 'en')
+            expect(data).to_contain_text('Main roads, towns and water for the whole US')
+            expect(data).to_contain_text('California · downloading')
+            page.evaluate("location.hash = '#/library'")
+            expect(rows).to_have_text(['Health & first aid', 'Water & sanitation'])
 
     def test_map_panels_use_the_selected_interface_language(self):
         self.configure_setup(current=DATA)
@@ -1557,7 +1636,7 @@ class Browser(unittest.TestCase):
         manifest = self.local_ai_manifest()
         self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
         setup = self.configure_setup(setup_manifest=manifest)
-        self.set_hardware(setup, fits=False)
+        self.set_hardware(setup, fits=False, disk_path=DATA)
         setup.recommend = lambda _hw: {'pack': 'small', 'ai': False, 'why_key': 'setup.why.smallToStart'}
         with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
             page.goto(origin)

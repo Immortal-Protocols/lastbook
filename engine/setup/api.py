@@ -198,6 +198,7 @@ class Setup:
         self.manifest = manifest or Manifest(allowed=allowed, context=context)
         self.allowed, self.context = allowed, context
         self.on_finish, self.pick_folder, self.look_for_libraries = on_finish, pick_folder, look_for_libraries
+        self.restarting = False     # a relaunch was accepted (restart, or finish's Open): this run only waits to end
         self.default_why = default_why     # why the default folder is not the usual one (a long Windows user folder), for the screen
         self.on_model_server = on_model_server   # (base, model) or (None, None): the open library's assistant switches at once (manage)
         self._llm = llm_local
@@ -210,6 +211,7 @@ class Setup:
         self.rejected = {}         # path -> (size, mtime) of a file already here that failed its SHA-256: not offered or used again
         self.cloud, self.cloud_thread = None, None   # (folder, time, hardware.cloud_only) of the open library, counted in the background
         self.job = self._load_job()
+        self._job_manifest = self.manifest.current    # the manifest the saved job was checked against (_job_again)
 
     # ------------------------------------------------------------------------------------------------- saved state --
     def _settings(self):
@@ -248,6 +250,15 @@ class Setup:
                 it['rate_bps'], it['eta_s'] = 0, None
                 it.pop('retry_at', None)
         return job
+
+    def _job_again(self):
+        """The saved job, checked again once the manifest it needs has arrived. Run from source nothing is bundled, so at
+        start no pack or model is known and a paused download would not be picked up: it would look as if it never started,
+        and a restart would clear it (opened). Only while no job is loaded, and once for each manifest."""
+        with self.lock:
+            if self.job is None and self.manifest.current is not self._job_manifest:
+                self._job_manifest = self.manifest.current
+                self.job = self._load_job()
 
     def _checked_job(self, job):
         """A job as this program would have written it, or None. Nothing from disk is used as a path or a file name unless it is
@@ -407,7 +418,38 @@ class Setup:
                 model = m['id']
         return {'folder': str(self.current), 'pack': pack, 'content_revision': revision, 'map_bytes': install.map_bytes(self.current), 'model': model, 'map': install.map_name(self.current), 'address_indexes': self.address_indexes(), 'old': self._settings().get('old', []),
                 'checked': self._settings().get('checks', {}).get(str(self.current)),   # the last full check of this library (Check now, Repair)
+                'switch_problem': self._switch_problem(),     # a downloaded library or map that this start could not put in place
                 **self._cloud_only()}
+
+    def _switch_problem(self):
+        """This run's SWITCH_PROBLEM, until it no longer holds: a waiting switch that a later job dropped or replaced is not
+        the one waiting any more (a replacement is a new download, which says itself when it is ready)."""
+        p = SWITCH_PROBLEM
+        if p and p.get('kind') == 'waiting' and (not p.get('switch') or p['switch'] != _switch_id(_pending_file(self.settings_dir))):
+            return None
+        return p
+
+    def restart(self, switch=None):
+        """Restart into the library switch that startup kept for the next start (Library and local AI's Restart Lastbook).
+        One operation for that one switch: `switch` must name the pending switch the page was shown (a replaced one is
+        refused), a second request while the first is under way restarts nothing more, and a download that is not finished
+        stops it, because the next start clears the work folder and the job with it (the person resumes or cancels first)."""
+        self._job_again()
+        with self.lock:
+            if self.restarting:
+                return {'ok': True, 'already': True}
+            p = self._switch_problem()
+            if self.mode != 'manage' or not p or p.get('kind') != 'waiting':
+                return {'error': 'Nothing is waiting for Lastbook to restart.', 'code': 'nothing'}
+            if not switch or switch != p.get('switch'):     # p holds only while its switch is the pending one (_switch_problem)
+                return {'error': 'What is waiting has changed. Look at Library and local AI again.', 'code': 'changed'}
+            if _unfinished(self.job):
+                return {'error': 'A download is not finished. Resume it or cancel it, then restart.', 'code': 'unfinished'}
+            if not self.on_finish:      # server.py: it cannot start itself again
+                return {'ok': True, 'restart': True}
+            self.restarting = True       # from here on nothing new starts in this run (start, resume, retry)
+        threading.Timer(0.4, self.on_finish, [str(self.current)]).start()     # after this answer has reached the window
+        return {'ok': True}
 
     def _cloud_only(self):
         """What of the open library is only in iCloud (#362): {'cloud_only': the count or None, 'cloud_counting': True while a first
@@ -573,6 +615,7 @@ class Setup:
 
     def state(self):
         self.manifest.fetch_once()
+        self._job_again()
         hw = self.hardware()
         return {'mode': self.mode, 'hardware': hw, 'manifest': self.manifest.public(), 'current': self.current_info(),
                 'found': self.found(), 'recommend': self.recommend(hw), 'job': self.public_job(), 'model_server': self.model_server()}
@@ -633,6 +676,8 @@ class Setup:
         return self.current.parent if self.current else self.default_parent
 
     def start(self, pack_id=None, ai=False, folder=None, sources=None, explicit=False, repair=False, map_id=None, address_id=None, copy_to=None, check=False):
+        if self.restarting:      # Restart Lastbook was accepted: nothing new starts in this run (a copy, check or repair included)
+            return dict(RESTARTING)
         if copy_to:
             return self._start_copy(copy_to)
         if repair or check:
@@ -1033,6 +1078,8 @@ class Setup:
 
     def resume(self):
         with self.lock:
+            if self.restarting:
+                return dict(RESTARTING)
             if self.job and self.job['state'] == 'paused':
                 self.job['state'] = 'waiting'
                 for it in self.job['items']:
@@ -1043,6 +1090,8 @@ class Setup:
 
     def retry(self):
         with self.lock:
+            if self.restarting:
+                return dict(RESTARTING)
             if self.job and self.job['state'] == 'failed':
                 self.job['state'], self.job['error'] = 'waiting', None
                 self.job['plan']['retried'] = {}
@@ -1117,7 +1166,10 @@ class Setup:
     def use(self, path, library_only=False):
         """A library or file already on this computer. library_only (Library and local AI's "Open another library folder", #266):
         only an existing library, or the folder that holds one, is accepted. A folder holding a pack zip, or a file, is refused
-        and nothing starts, so choosing a folder can never begin replacing the open library."""
+        and nothing starts, so choosing a folder can never begin replacing the open library. Once a restart was accepted (restart,
+        finish) nothing is chosen: the folder would drop the waiting switch, and its Open would be a second relaunch."""
+        if self.restarting:
+            return dict(RESTARTING)
         p = Path(path or '').expanduser()
         if not str(path or '').strip() or not p.exists():
             return {'error': 'Lastbook cannot find that file or folder.', 'code': 'missing'}
@@ -1141,6 +1193,8 @@ class Setup:
             if not os.access(lib, os.W_OK):
                 return {'error': f'Lastbook cannot save in “{lib.name}”. Move it somewhere you can save to, then choose it there.', 'code': 'folder'}
             with self.lock:
+                if self.restarting:      # accepted in another window since the check above
+                    return dict(RESTARTING)
                 if self.job and self.job['state'] in ACTIVE:
                     return {'error': 'A download is under way. Pause or cancel it first.', 'code': 'busy'}
                 self._drop_deferred_switch(keep_for=lib)
@@ -1203,7 +1257,11 @@ class Setup:
         return {'error': 'That is not a file Lastbook knows. Choose a Lastbook library zip or the model file.', 'code': 'unknown'}
 
     def finish(self):
+        """Open the library a finished job made or chose: the app relaunches into it. One relaunch per run, shared with restart:
+        a second Open, or an Open after Restart Lastbook in another window, starts nothing more."""
         with self.lock:
+            if self.restarting:
+                return dict(RESTARTING)
             job = self.job
             if not job or job['state'] != 'done':
                 return {'error': 'Setup has not finished yet.', 'code': 'not_done'}
@@ -1213,8 +1271,9 @@ class Setup:
                 return {'error': 'A copy has no library to open here. It is on the drive.', 'code': 'nothing'}
             plan = job['plan']
             folder = plan.get('use_library') or plan['target']
-        if not self.on_finish:
-            return {'ok': True, 'restart': True, 'folder': folder}
+            if not self.on_finish:
+                return {'ok': True, 'restart': True, 'folder': folder}
+            self.restarting = True       # as restart: from here on nothing new starts in this run
         threading.Timer(0.4, self.on_finish, [folder]).start()     # after this answer has reached the window
         return {'ok': True, 'folder': folder}
 
@@ -1807,6 +1866,8 @@ def _keep_unpacked(work, note):
             return
     else:
         note['error'] = str(note['error']).replace(str(staged), str(kept))
+        if install.is_library(kept / DATA_NAME):
+            note['kept'] = str(kept / DATA_NAME)     # a whole library: the window can name it, for Open another library folder
     note['error'] = str(note['error']) + f' What was unpacked is kept in {kept}.'
 
 
@@ -1850,21 +1911,42 @@ def _drop_except(p, keep, blocked=None):
     return blocked
 
 
-def _clear_work(work, s):
-    """A setup that worked: what jobs made goes. A folder a failed switch set aside stays: it may hold the person's model."""
+def _clear_work(work, s, keep=()):
+    """A setup that worked: what jobs made goes. A folder a failed switch set aside stays: it may hold the person's model.
+    So do the folders in `keep`: what another download, not finished yet, has written (_carried_on)."""
     if work.is_symlink():     # never follow it: it may point at a library (rmtree refused it before, too)
         s.pop('work', None)
         return
     for p in (work.iterdir() if work.is_dir() else ()):
-        if not p.name.startswith('kept-'):
+        if not p.name.startswith('kept-') and p.name not in keep:
             shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
-    if not any(work.glob('kept-*')):
+    if not any(work.glob('kept-*')) and not any((work / k).exists() for k in keep):
         shutil.rmtree(work, ignore_errors=True)
         s.pop('work', None)
 
 
+def _carried_on(job):
+    """A saved job that a switch must not cut short: not finished (_unfinished), and not one that stages a library or a map
+    itself (Setup._stages), so the switch is not its own. A download of the local AI or of addresses started while a switch
+    waited, say: its downloads and unpack-addresses folders, and its job, stay for the person to resume or cancel."""
+    try:
+        return _unfinished(job) and not (job['plan'].get('pack') or job['plan'].get('map'))
+    except (TypeError, KeyError, AttributeError):
+        return False
+
+
+_CARRIED = ('downloads', 'unpack-addresses')     # what a job that stages nothing writes in the work folder (Setup._clean)
+
+
+RESTARTING = {'error': 'Lastbook is restarting.', 'code': 'restarting'}   # the answer to anything new once a relaunch was accepted
+SWITCH_PROBLEM = None   # this run's: what startup could not put in place ({kind, message, again, pack, kept}; see _switch_problem), shown in Library and local AI
+
+
 def opened(settings_dir, data, note):
-    """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder."""
+    """The library opened. Record the old one for deleting later, mark the model checked, and clear the work folder.
+    A switch that could not be made is kept in SWITCH_PROBLEM for this run, so the window can say so: without it the old
+    library just opens again, and a finished download looks as if it never happened (#311)."""
+    global SWITCH_PROBLEM
     settings_dir = Path(settings_dir)
     try:
         s = json.loads((settings_dir / 'setup.json').read_text(encoding='utf-8'))
@@ -1880,9 +1962,11 @@ def opened(settings_dir, data, note):
     if note and note.get('old') and note['old'] not in s.get('old', []):
         s.setdefault('old', []).append(note['old'])
     if work and note and note.get('again'):      # a switch kept for the next start keeps its pending file and its unpack;
-        try:                                     # its finished job goes, so setup manages the library in use meanwhile
-            _job_file(settings_dir).unlink()
-        except OSError:
+        try:                                     # its finished job goes, so setup manages the library in use meanwhile.
+            job = json.loads(_job_file(settings_dir).read_text(encoding='utf-8'))
+            if not _unfinished(job):             # Another download, paused or stopped part-way (the local AI, say), stays
+                _job_file(settings_dir).unlink() # for the person to resume or cancel.
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
             pass
     elif work:
         install.confirm(_pending_file(settings_dir))
@@ -1891,20 +1975,62 @@ def opened(settings_dir, data, note):
         except (OSError, ValueError):
             job = None
         if note or (isinstance(job, dict) and job.get('state') == 'done' and not job.get('check')):   # a check installed nothing
+            carried = _carried_on(job)      # a paused download of the local AI, say: it stays, with its job, for the person
             if note and note.get('error'):
                 _keep_unpacked(work, note)
             else:
-                _clear_work(work, s)
-            try:
-                _job_file(settings_dir).unlink()
-            except OSError:
-                pass
+                _clear_work(work, s, _CARRIED if carried else ())
+            if not carried:
+                try:
+                    _job_file(settings_dir).unlink()
+                except OSError:
+                    pass
+    SWITCH_PROBLEM = _switch_problem(note, work, _pending_file(settings_dir))
     s['old'] = [o for o in s.get('old', []) if Path(o).exists()]
     try:
         settings_dir.mkdir(parents=True, exist_ok=True)
         install._write_json(settings_dir / 'setup.json', s)
     except OSError:
         pass
+
+
+def _unfinished(job):
+    """A job the next start would cut short: running, paused, or stopped by a failure it can still carry on from (Try again).
+    A finished job, or one the person cancelled, has nothing left to lose."""
+    if not job or job['state'] == 'done':
+        return False
+    return not (job['state'] == 'failed' and (job.get('error') or {}).get('code') == 'cancelled')
+
+
+def _switch_id(pend):
+    """Names one staged switch: the pending record as written (each refused start adds to its attempts). None without one."""
+    try:
+        return hashlib.sha256(Path(pend).read_bytes()).hexdigest()[:16]
+    except OSError:
+        return None
+
+
+def _switch_problem(note, work, pend=None):
+    """What the window says about a switch startup could not make, or None. kind: 'waiting' (a library kept for the next
+    start: restart is the way on), 'map' (a map exchange; the library itself is fine) or 'gave_up' (a library switch that
+    will not be tried again). pack: the waiting library's pack, so the window does not offer to download it again.
+    switch: names the waiting switch, so Restart Lastbook restarts into that one and no other (see Setup.restart).
+    kept: a whole library a given-up switch set aside. message: the engine's own words, with full paths, for the details."""
+    if not note or not note.get('error'):
+        return None
+    kind = 'map' if note.get('kind') == 'map' else 'waiting' if note.get('again') else 'gave_up'
+    p = {'kind': kind, 'message': str(note['error']), 'again': kind == 'waiting'}
+    if kind == 'waiting':
+        p['switch'] = _switch_id(pend) if pend else None
+    if kind == 'waiting' and work:
+        try:
+            pack = json.loads((work / 'unpack' / DATA_NAME / 'pack.json').read_text(encoding='utf-8')).get('name')
+            p['pack'] = pack if isinstance(pack, str) else None
+        except (OSError, ValueError, AttributeError):
+            p['pack'] = None
+    if kind == 'gave_up' and note.get('kept') and os.path.isdir(note['kept']):
+        p['kept'] = str(note['kept'])
+    return p
 
 
 def saved_model_server(settings_dir):
@@ -1960,6 +2086,7 @@ ROUTES = {
     ('POST', 'retry'): lambda s, b: s.retry(),
     ('POST', 'use'): lambda s, b: s.use(b.get('path'), library_only=b.get('library') is True),
     ('POST', 'finish'): lambda s, b: s.finish(),
+    ('POST', 'restart'): lambda s, b: s.restart(b.get('switch') if isinstance(b.get('switch'), str) else None),
     ('POST', 'pick'): lambda s, b: s.pick(files=b.get('files') is True),
     ('POST', 'delete-old'): lambda s, b: s.delete_old(b.get('path')),
     ('POST', 'remove-ai'): lambda s, b: s.remove_ai(),

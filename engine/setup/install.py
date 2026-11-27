@@ -666,6 +666,7 @@ def _apply_map(work, pend, d, target, note):
     """A state map staged for the open library: swap its files in; if the library then does not check out, swap the old ones back."""
     old_dir = Path(work) / 'map-old'
     note['map_old'] = str(old_dir)
+    note['kind'] = 'map'      # a map exchange: the window says the map, not the whole library, could not be put in place
     if not d.get('switched'):
         try:
             swap_map(target, d['new'], old_dir)

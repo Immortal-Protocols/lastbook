@@ -356,12 +356,6 @@ def run_tool(name, args, sess, extra_msgs, root=None):
             return f'No document with id {d!r} in the library.', {'doc_id': d, 'error': 'unknown'}
         texts = S.page_texts(r)
         pages = [int(p) for p in (args.get('pages') or [1])][:3]
-        if not texts:
-            # A failed extraction keeps the catalog record but writes no text file (engine/library.py). Say so, so the
-            # model can fall back to view_page instead of losing the turn to an IndexError.
-            hint = ' Use view_page to look at a page.' if r['kind'] == 'pdf' else ''
-            return ('This document has no readable text in this library (it may be a scan, or its text was not extracted).' + hint,
-                    {'doc_id': d, 'error': 'no text'})
         pub = S.public(r)
         out = []
         if not texts:

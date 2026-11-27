@@ -1045,6 +1045,11 @@
   },
   {
    "file": "engine/setup/api.py",
+   "string": "::ffff:127.0.0.1",
+   "why": "IPv4-mapped loopback address compared with the client address; never displayed."
+  },
+  {
+   "file": "engine/setup/api.py",
    "string": "Application Support",
    "why": "File or folder name on disk (LastbookData, Application Support, Start Menu, Uninstall Lastbook.exe); must stay identical in every language."
   },
@@ -1055,8 +1060,39 @@
   },
   {
    "file": "engine/setup/api.py",
+   "string": "Lastbook could not set your files aside from the previous download. Close anything that may be using them, then try again.",
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "Lastbook is copying a library here. Copy again to the same place to carry on.\n",
+   "why": "Content of the copy-in-progress marker file Setup writes on the target drive and removes when the copy finishes; plain English like START-HERE.txt."
+  },
+  {
+   "file": "engine/setup/api.py",
    "string": "Lastbook: an offline survival library\n\nThis drive holds a copy of a Lastbook library: the {title} library, {size} in {files} files, copied {date}.\nIt works with no internet: manuals, videos, encyclopedias and maps.\n\nTo use it on another computer:\n1. Install the Lastbook app on that computer. This drive does not hold the app: get it from\n   lastbook.org, or from someone who has the installer.\n2. Open Lastbook. In setup, choose to use a library that is already on this computer,\n   and choose the folder called {data} on this drive. You can copy that folder onto the\n   computer first, or use it from the drive.\n3. To make sure every file arrived whole, use Library and local AI, then Check and repair.\n   It reads every file, and downloads something only if a file is damaged.\n\nThis drive holds only the library's own files, as they were published. Nothing personal\nfrom the computer it was copied from is on it: no settings, saved pages, chats, notes,\naddress search or local AI.\n",
    "why": "START-HERE.txt written onto a copied drive for any reader who opens it without the app; a document file, not interface text."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "START-HERE (Lastbook {n}).txt",
+   "why": "File name of the START-HERE note written next to a copied library; file names stay the same in every language."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "START-HERE (Lastbook).txt",
+   "why": "File name of the START-HERE note written next to a copied library; file names stay the same in every language."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "bad request",
+   "why": "Local Setup API protocol error for a malformed request; the Setup page never sends one, so no person sees it."
+  },
+  {
+   "file": "engine/setup/api.py",
+   "string": "request too large",
+   "why": "Local Setup API protocol error for an oversized request; the Setup page never sends one, so no person sees it."
   },
   {
    "file": "engine/setup/api.py",
@@ -1075,8 +1111,23 @@
   },
   {
    "file": "engine/setup/download.py",
+   "string": "HTTP {r.status} to a check of the bytes at {a}",
+   "why": "Exception detail; it can only appear as the \"(OSError: …)\" detail inside a keyed setup.err.* message, and the download retries first."
+  },
+  {
+   "file": "engine/setup/download.py",
    "string": "HTTP {status}",
    "why": "Low-level exception text (OSError / TimeoutError). Setup shows a keyed setup.err.* sentence; this text can appear only as the technical \"(OSError: …)\" detail inside it, like any operating-system error string."
+  },
+  {
+   "file": "engine/setup/download.py",
+   "string": "Range",
+   "why": "HTTP request header name; never displayed."
+  },
+  {
+   "file": "engine/setup/download.py",
+   "string": "The downloaded file did not match its published checksum.",
+   "why": "BadChecksum message; the download catches it and fetches the file again, then reports a keyed setup.err.* message."
   },
   {
    "file": "engine/setup/download.py",
@@ -1117,6 +1168,11 @@
    "file": "engine/setup/download.py",
    "string": "timed out",
    "why": "Low-level exception text (OSError / TimeoutError). Setup shows a keyed setup.err.* sentence; this text can appear only as the technical \"(OSError: …)\" detail inside it, like any operating-system error string."
+  },
+  {
+   "file": "engine/setup/hardware.py",
+   "string": "::ffff:127.0.0.1",
+   "why": "IPv4-mapped loopback address compared with the client address; never displayed."
   },
   {
    "file": "engine/setup/hardware.py",
@@ -1235,6 +1291,11 @@
   },
   {
    "file": "engine/setup/install.py",
+   "string": "An archive part ended early",
+   "why": "Exception detail; it can only appear as the \"(OSError: …)\" detail inside a keyed setup.err.* message, and the download retries first."
+  },
+  {
+   "file": "engine/setup/install.py",
    "string": "LastbookData",
    "why": "File or folder name on disk (LastbookData, Application Support, Start Menu, Uninstall Lastbook.exe); must stay identical in every language."
   },
@@ -1267,6 +1328,16 @@
    "file": "engine/setup/install.py",
    "string": "{path} lists no files",
    "why": "Developer diagnostic: written to the log or raised internally and caught; never shown in a window or page."
+  },
+  {
+   "file": "engine/update.py",
+   "string": ", or a system built on it",
+   "why": "English part of the update.tooOldOsLinux message; the page shows message_key/message_params, this English goes only to logs and old clients."
+  },
+  {
+   "file": "engine/update.py",
+   "string": "::ffff:127.0.0.1",
+   "why": "IPv4-mapped loopback address compared with the client address; never displayed."
   },
   {
    "file": "engine/update.py",

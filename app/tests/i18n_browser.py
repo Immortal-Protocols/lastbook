@@ -8,6 +8,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -270,7 +271,7 @@ class Browser(unittest.TestCase):
             sidebar.get_by_role('link', name='Ajustes').click()
             expect(page.locator('h1')).to_have_text('Biblioteca e IA local')
             expect(page.get_by_role('link', name='Volver a la biblioteca')).to_be_visible()
-            expect(page.locator('.s-have .s-row').first).to_contain_text('biblioteca')
+            expect(page.locator('.s-have .s-row b').first).to_have_text(re.compile(r'^Biblioteca\b'))
             expect(page.locator('.s-have .s-row').first).to_contain_text('La más grande')
             expect(page.get_by_role('button', name='Comprobar y reparar')).to_be_visible()
             expect(page.get_by_role('button', name='Abrir otra carpeta de biblioteca')).to_be_visible()

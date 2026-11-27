@@ -74,6 +74,30 @@ test("3D building height summaries are complete and use singular/plural grammar"
   assert.match(es.t("map3d.buildingHeightSummary", values), /^2 edificios:/);
 });
 
+test("visible Setup diagnostics and Chat export labels have translations in each shipped catalog", () => {
+  const root = resolve(__dirname, "../../translations/desktop");
+  const catalogs = Object.fromEntries(["en", "es-419", "de", "zh-Hans"].map(locale =>
+    [locale, JSON.parse(readFileSync(resolve(root, locale + ".json"), "utf8"))]));
+  const required = [
+    "setup.addLocalAi", "setup.thisComputerDisk", "setup.withLocalAi", "setup.notEnoughMemory", "setup.packSummary.small",
+    "setup.addressSearchFor", "setup.why.aiFitsMemoryNotDisk", "setup.why.aiMeasuredFits", "setup.why.aiMeasuredShort",
+    "setup.why.aiNeedsMemoryFits", "setup.why.aiNeedsMemoryFitsGraphics", "setup.why.aiNeedsMemoryShort",
+    "setup.why.goesOnOtherDisk", "setup.why.modelNoFitGraphics", "setup.why.noLibraryReady",
+    "setup.why.savesToShortPath", "setup.why.smallToStart", "setup.why.smallestNeeds", "setup.why.unknownMemory",
+    "chat.answerPrefix", "chat.exportTitle", "chat.exportedFrom", "chat.exportNotice",
+    "chat.exportQuestion", "chat.exportAnswer", "chat.exportNoAnswer",
+  ];
+  for (const locale of ["de", "zh-Hans"]) {
+    const i18n = createI18n({ catalogs, locale });
+    for (const key of required) {
+      assert.ok(Object.hasOwn(catalogs[locale], key), `${locale} needs a translation for ${key}`);
+      assert.equal(i18n.resolve(key)?.locale, locale, `${locale} should not fall back for ${key}`);
+    }
+  }
+  const es = createI18n({ catalogs, locale: "es-419" });
+  assert.equal(es.t("search.results"), "Resultados de búsqueda");
+});
+
 test("plural selection uses exact counts and the grammar of the matched catalog", () => {
   for (const [locale, expected] of [
     ["en", ["No files", "1 file", "2 files"]],

@@ -1196,6 +1196,7 @@
   "setup.nothingToDownload": "Nothing to download.",
   "setup.notifyMustBeBoolean": "notify is true or false.",
   "setup.offlineAddressSearch": "offline address search",
+  "setup.addressSearchFor": "Address search for {name}",
   "setup.oldLibraryDelete": "Delete it",
   "setup.oldLibraryDeleteConfirm": "Delete it for good?",
   "setup.oldLibraryDeleting": "The old library is being deleted.",

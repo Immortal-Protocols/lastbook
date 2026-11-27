@@ -1255,6 +1255,7 @@
   "setup.serverBusy": "El servidor de descarga siguió ocupado.",
   "setup.serverBusyHint": "Tu conexión a internet está bien y lo descargado se conserva. Vuelve a intentarlo en un rato.",
   "setup.settingsTitle": "Biblioteca e IA local",
+  "setup.addressSearchFor": "Búsqueda de direcciones en {name}",
   "setup.sizeDownload": "{size} de descarga",
   "setup.sizeOnDisk": "{size} en disco",
   "setup.sizeToCopy": "{size} para copiar",

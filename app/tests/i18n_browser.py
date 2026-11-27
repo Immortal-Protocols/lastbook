@@ -1368,7 +1368,7 @@ class Browser(unittest.TestCase):
             page.goto(origin + '/#/ask?about=video:clip:90')
             expect(page.locator('#ctxChip .muted span[lang="en"]')).to_have_text('Video at 1:30')
             page.evaluate("location.hash = '#/ask'")
-            expect(page.locator('#askMore .ask-card .ac-t span[lang="en"]').first).to_be_visible()
+            expect(page.locator('#askMore .ask-cards .ask-card .ac-t span[lang="en"]').first).to_be_visible()
 
     def test_chat_context_starters_use_catalogue_copy(self):
         self.configure_setup(current=DATA)

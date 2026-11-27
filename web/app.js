@@ -689,7 +689,7 @@ async function topicPage(id, open) {
     : `<div class="sit${open === c.id ? ' open' : ''}" id="c-${esc(c.id)}">
       <button aria-expanded="${open === c.id}" aria-controls="cb-${esc(c.id)}" data-choice="${esc(c.id)}"><span class="dot"></span><span class="tx"><b>${esc(c.label)}</b>${c.hint ? `<span>${esc(c.hint)}</span>` : ''}</span><span class="chev">${ico('down')}</span></button>
       <div class="body" id="cb-${esc(c.id)}"><div class="rcards">${(c.read || []).map(rcard).join('') || `<p class="muted">${esc(tr('guide.nothingPicked', null, 'Nothing picked for this yet — try searching.'))}</p>`}</div></div></div>`).join('');
-  const limLi = l => `<li>${esc(l.text)}${l.src ? ` <span class="lim-src">— <a href="${hrefFor(l)}">${esc(l.src.publisher || l.src.title)}${l.page ? ', p. ' + l.page : ''}</a></span>` : l.zim ? ` <span class="lim-src">— <a href="${hrefFor(l)}">encyclopedia</a></span>` : ''}</li>`;
+  const limLi = l => `<li>${esc(l.text)}${l.src ? ` <span class="lim-src">— <a href="${hrefFor(l)}">${esc(l.src.publisher || l.src.title)}${l.page ? ', ' + tr('saved.pageAbbr', { page: l.page }, 'p. {page}') : ''}</a></span>` : l.zim ? ` <span class="lim-src">— <a href="${hrefFor(l)}">encyclopedia</a></span>` : ''}</li>`;
   const LIM = 4, lims = t.limits || [];
   const limits = lims.length ? `<section class="limits" aria-labelledby="lim"><h2 id="lim">${ico('warn')}${esc(tr('guide.stopAndGetHelp', null, 'Stop and get help when…'))}</h2><ul>${lims.slice(0, LIM).map(limLi).join('')}</ul>${lims.length > LIM ? `<details><summary>${esc(tr('guide.showAllWarnings', { count: lims.length }, 'Show all {count} warnings'))}</summary><ul>${lims.slice(LIM).map(limLi).join('')}</ul></details>` : ''}</section>` : '';
   const disagree = (t.gaps?.disagree || []).length ? `<div class="disagree"><b>${esc(tr('guide.sourcesDisagree', null, 'Sources disagree'))}</b><ul>${t.gaps.disagree.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
@@ -1015,7 +1015,7 @@ function wireMoments({ video = null, player = null, available = null, start = nu
     $('form', editor).onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); close() } };
     $('form', editor).onsubmit = e => {
       e.preventDefault();
-      const title = $('#momentName', editor).value.trim() || 'Moment at ' + clock(editing.time);
+      const title = $('#momentName', editor).value.trim() || tr('moment.at', { time: clock(editing.time) }, 'Moment at {time}');
       try {
         const item = editing.key ? VideoMoments.rename(editing.key, title) : VideoMoments.save(video, editing.time, title);
         editing = null; editor.replaceChildren(); draw(); savedCount(); focusRow(item.key);
@@ -1093,14 +1093,14 @@ async function reader(id, page, from, view) {
   view = isPdf ? view || 'page' : isWeb ? view || 'web' : 'text';
   const key = 'd:' + id + (isPdf ? ':' + page : '');
   const selfHref = `#/read/${encodeURIComponent(id)}?p=${page}`;
-  remember({ key: 'd:' + id, title: d.title, href: selfHref, sub: (isPdf ? 'Page ' + page + ' · ' : '') + (d.publisher || '') });
+  remember({ key: 'd:' + id, title: d.title, href: selfHref, sub: (isPdf ? tr('reader.pagePrefix', { page }, 'Page {page}') + ' · ' : '') + (d.publisher || '') });
   const go = (p, v = view) => `#/read/${encodeURIComponent(id)}?p=${p}&view=${v}${from ? '&from=' + encodeURIComponent(from) : ''}`;
   const views = isPdf ? [['page', tr('reader.pageView', null, 'Page')], ['text', tr('reader.textView', null, 'Text')], ['pdf', tr('reader.wholePdf', null, 'Whole PDF')]] : isWeb ? [['web', tr('reader.pageView', null, 'Page')], ['text', tr('reader.textOnly', null, 'Text only')]] : [];
   main.innerHTML = `
     <div class="rtop">${backButton(from)}</div>
     <h1 class="rtitle">${esc(d.title)}</h1>
     <div class="rsrc"><b>${esc(d.publisher || '')}</b>${d.year ? ' · ' + esc(d.year) : ''} · ${esc(d.trust)}</div>
-    <div class="rmodes">${views.length ? `<div class="seg dock" role="group" aria-label="${tr('reader.howToShow', null, "How to show it")}">${views.map(([v, l]) => `<button data-view="${v}" aria-pressed="${v === view}">${l}</button>`).join('')}</div>` : ''}<span class="vactions dock">${askLink('doc:' + id + ':' + (isPdf ? page : 1), 'common.ask', 'Ask')}${saveButton({ key, title: d.title + (isPdf ? ' — page ' + page : ''), href: selfHref, sub: d.publisher || d.kindLabel })}<button class="tb-btn insp-btn" data-insp aria-label="${esc(tr('reader.toggleDetails', null, 'Show or hide the source details'))}" title="${esc(tr('common.details', null, 'Details'))}">${ico('insp')}</button></span></div>
+    <div class="rmodes">${views.length ? `<div class="seg dock" role="group" aria-label="${tr('reader.howToShow', null, "How to show it")}">${views.map(([v, l]) => `<button data-view="${v}" aria-pressed="${v === view}">${l}</button>`).join('')}</div>` : ''}<span class="vactions dock">${askLink('doc:' + id + ':' + (isPdf ? page : 1), 'common.ask', 'Ask')}${saveButton({ key, title: d.title + (isPdf ? ' ' + tr('reader.pageDash', { page }, '— page {page}') : ''), href: selfHref, sub: d.publisher || d.kindLabel })}<button class="tb-btn insp-btn" data-insp aria-label="${esc(tr('reader.toggleDetails', null, 'Show or hide the source details'))}" title="${esc(tr('common.details', null, 'Details'))}">${ico('insp')}</button></span></div>
     <div id="docbody"></div>
     ${d.imageOnly ? `<div class="notice">${esc(tr('reader.scanNoText', null, 'This is a scanned document without searchable text, so search and the assistant can’t read it. Use the Page view.'))}</div>` : ''}
     ${isPdf && view !== 'pdf' ? `<div class="rbar"><a class="btn plain nav" href="${go(page - 1)}" ${page <= 1 ? 'aria-disabled="true" style="opacity:.35;pointer-events:none"' : ''} aria-label="${esc(tr('nav.previousPage', null, 'Previous page'))}" data-i18n-aria-label="nav.previousPage" data-i18n-lang>${ico('back')}<span data-i18n="nav.previous">Previous</span></a>
@@ -1545,7 +1545,7 @@ async function library() {
   <div class="needs">${learnTopics().map(t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${topicLabelHtml(t.id, 'title', t.title)}</b><small>${topicLabelHtml(t.id, 'short', t.short || '')} · ${tr('guide.stepCount', { count: (t.route || []).length }, '{count} steps')}</small></a>`).join('')}</div>
   ${zims.length ? secHead(`<span data-i18n="wiki.title">Encyclopedias</span>`, `<span data-i18n="library.encyclopediasLead">Complete offline copies</span>`, `<a href="#/encyclopedias" data-i18n="library.searchThem">Search them</a>`) + `<div class="cards2">${zims.map(z => `<a class="card" href="#/wiki/${z[0]}/?from=${encodeURIComponent('#/library')}"><span class="ico">${ico(z[3])}</span><b>${esc(zimTitle(z))}</b><small>${esc(zimAbout(z))}</small></a>`).join('')}</div>` : ''}
   ${secHead(`<span data-i18n="library.browseSubject">Browse by subject</span>`, `<span data-i18n="library.browseLead">Every manual, saved web page and video</span>`)}<div id="shelves"><p class="loading" data-i18n="common.loading">Loading…</p></div>
-  <p style="margin-top:20px"><a href="#/about" data-i18n="library.aboutLink">About this library and its sources</a>${IN_WINDOW ? ' · <a href="/ui/setup.html#manage">Library and local AI</a>' : ''}</p>`;
+  <p style="margin-top:20px"><a href="#/about" data-i18n="library.aboutLink">About this library and its sources</a>${IN_WINDOW ? ` · <a href="/ui/setup.html#manage">${tr('setup.settingsTitle', null, 'Library and local AI')}</a>` : ''}</p>`;
   if (await notesHere()) api('/api/not-found').then(d => {
     const c = $('#nfCard'); if (!c) return;
     c.hidden = false;
@@ -1554,7 +1554,7 @@ async function library() {
   try {
     const sh = await api('/api/shelves');
     if (stale(me)) return;
-    $('#shelves').innerHTML = sh.filter(s => s.read + s.video).map(s => `<a class="shelfrow" href="#/shelf/${s.id}"><span><b>${esc(s.title)}</b><small>${s.read ? s.read.toLocaleString() + ' to read' : ''}${s.read && s.video ? ' · ' : ''}${s.video ? s.video.toLocaleString() + ' videos' : ''}</small></span>${ico('right')}</a>`).join('');
+    $('#shelves').innerHTML = sh.filter(s => s.read + s.video).map(s => `<a class="shelfrow" href="#/shelf/${s.id}"><span><b>${esc(s.title)}</b><small>${s.read ? tr('library.toRead', { count: s.read }, '{count} to read') : ''}${s.read && s.video ? ' · ' : ''}${s.video ? tr('library.shelfVideos', { count: s.video }, '{count} videos') : ''}</small></span>${ico('right')}</a>`).join('');
   } catch (e) { if (!stale(me)) $('#shelves').innerHTML = errorBox(e) }
 }
 async function prepareHub() {

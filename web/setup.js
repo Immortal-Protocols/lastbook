@@ -206,7 +206,7 @@
       return tr('setup.packSummary.medium', { map: selectedMap }, text);
     }
     if (!maps().length) return text;
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + selectedMap);
+    return text.replace(/\ba detailed map of California\b/, () => tr('setup.detailedMapOf', { place: selectedMap }, 'a detailed map of {place}'));
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -654,7 +654,7 @@
     const copyParams = { library: p ? p.title : 'Lastbook', size: need ? ` (${size(need)})` : '', disk: r.disk || home(r.path || '') };
     main.innerHTML = `<h1 data-i18n="setup.copyTitle">Copy for someone else</h1>
       <p class="lead" data-i18n="setup.copyLead" data-i18n-params='${esc(JSON.stringify(copyParams))}'>Copy the {library} library{size} to {disk}, with a START-HERE.txt that says how to set it up on another computer.</p>
-      <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b>${esc(home(r.path || ''))}</b><small>${r.free_bytes != null ? size(r.free_bytes) + ' free there' : ''}</small></span></div></div>
+      <div class="s-have"><div class="s-row">${ico('folder', 's-ri')}<span><b>${esc(home(r.path || ''))}</b><small>${r.free_bytes != null ? size(r.free_bytes) + ' ' + tr('setup.freeOn', { disk: home(r.path || '') }, 'free on {disk}') : ''}</small></span></div></div>
       <p class="s-note" data-i18n="setup.copyNotCopied">Not copied: your settings, saved things, chats, notes, address search and the local AI. Only the library’s own files go onto the drive, and each is read back from the drive to make sure it arrived whole.</p>
       <p class="s-two"><button class="btn big" id="copyGo" data-i18n="common.copy">Copy</button> <button class="btn big plain" id="copyBack" data-i18n="nav.back">Back</button></p>
       <p class="s-note" id="haveNote"${note ? '' : ' hidden'}>${messageMarkup(note)}</p>`;
@@ -795,7 +795,7 @@
       <ol class="s-steps" aria-label="${tr('setup.steps', null, "Steps")}">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.title_key ? tr(it.title_key, it.title_params || null, it.title || '') : it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? tr('setup.mapItemName', { name: (mapById(it.id) || it).title || it.id }, '{name} map') : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' ' + tr('library.itemTypeLibrary', null, 'library');
+  const itemTitle = it => it.title_key ? tr(it.title_key, it.title_params || null, it.title || '') : it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? tr('setup.mapItemName', { name: (mapById(it.id) || it).title || it.id }, '{name} map') : it.kind === 'addresses' ? tr('setup.addressSearchFor', { name: it.title }, 'Address search for {name}') : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' ' + tr('library.itemTypeLibrary', null, 'library');
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);

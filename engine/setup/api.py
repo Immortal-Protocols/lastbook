@@ -767,7 +767,7 @@ class Setup:
                 items.append({'id': mp['id'], 'kind': 'map', 'title': mp['title'], 'state': 'waiting', 'bytes_done': 0,
                               'bytes_total': mp['download_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             if addresses:
-                items.append({'id': addresses['id'], 'kind': 'addresses', 'title': addresses['title'] + ' address search', 'state': 'waiting', 'bytes_done': 0,
+                items.append({'id': addresses['id'], 'kind': 'addresses', 'title': addresses['title'], 'state': 'waiting', 'bytes_done': 0,
                               'bytes_total': addresses['download_bytes'], 'rate_bps': 0, 'eta_s': None, 'error': None})
             if model:
                 items.append({'id': model['id'], 'kind': 'model', 'title': model['title'], 'state': 'waiting', 'bytes_done': 0,

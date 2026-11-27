@@ -515,7 +515,8 @@ DRANK_AND_VOMIT = {
     'drank antifreeze': ['hurt', 'poison'], 'drank detergent': ['hurt', 'poison'],
     'drank weed killer': ['hurt', 'poison'], 'induce vomiting': ['hurt', 'poison'],
     'should i make him vomit': ['hurt', 'poison'], 'make him throw up': ['hurt', 'poison'],
-    'activated charcoal': ['hurt', 'poison'],
+    'give activated charcoal': ['hurt', 'poison'],
+    'activated charcoal for poisoning': ['hurt', 'poison'],
 }
 # Searches those phrases must not disturb: bleach and charcoal are the water guide's when the search is about
 # treating water, and an ant bite is still a bite.
@@ -526,10 +527,15 @@ DRANK_UNDISTURBED = {
     'ant bites': ['health', 'medicine'], 'swallowed detergent': ['hurt', 'poison'],
 }
 # "weed killer" and "antifreeze" are phrases, never hint words: a hint word is matched by prefix, so "killer" in the
-# hint would send every "kill" search to the poison choice and "antifreeze" would catch "ant". These must never
-# reach it. They are not pinned to a result, because #328 gives the crisis searches one.
+# hint would send every "kill" search to the poison choice and "antifreeze" would catch "ant". An animal that drank
+# something is not this choice either -- the guide for a person who swallowed a poison is the wrong page for a dog --
+# so the pet words are in "unless", which switches the phrases off. And "activated charcoal" on its own is a water
+# filter as often as a poisoning, so only the phrases that name the poisoning reach the choice. None of these are
+# pinned to a result: #328 gives the crisis searches one, and where a pet search should land is its own question.
 DRANK_NOT_POISON = ['kill myself', 'i want to kill myself', 'she wants to kill herself',
-                    'kill weeds', 'kill bacteria', 'how to kill a chicken', 'ants in the kitchen']
+                    'kill weeds', 'kill bacteria', 'how to kill a chicken', 'ants in the kitchen',
+                    'my dog drank bleach', 'my cat drank antifreeze', 'the dog drank antifreeze',
+                    'activated charcoal', 'activated charcoal water filter']
 TOPS = sorted({*TOPS, *DRANK_AND_VOMIT, *DRANK_UNDISTURBED, *DRANK_NOT_POISON})
 
 CASES = {

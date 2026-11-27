@@ -1008,6 +1008,7 @@
   "setup.err.cannotPlaceLibraryNorRestoreFiles": "Lastbook could not put the new library in place ({error}), nor the old one back. The old library is in {old}. These files of yours are still in the new library: {files}",
   "setup.err.cannotPlaceLibraryStuck": "Lastbook could not put the new library in place ({error}). These files could not be moved back and are still here: {files}",
   "setup.err.cannotPlaceMap": "Lastbook could not put the new map in place ({error}).",
+  "setup.err.cannotSetAsidePrevious": "Lastbook could not set your files aside from the previous download. Close anything that may be using them, then try again.",
   "setup.err.cannotRemoveModel": "Lastbook could not remove the model file ({error}). Quit anything using it, then try again.",
   "setup.err.cannotSaveInFolder": "Lastbook cannot save in that folder. Choose another.",
   "setup.err.cannotSaveInNamed": "Lastbook cannot save in “{name}”. Move it somewhere you can save to, then choose it there.",

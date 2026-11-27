@@ -505,10 +505,13 @@ TOPS = sorted({*TOPS, *OUT_AND_RAT, *OUT_AND_RAT_UNDISTURBED})
 
 # #449: "bulging ground" is the right wording for a landslide, but a hint word counts on its own, so every search
 # holding "bulging" reached the landslide choice -- a swollen tin, which is the botulism warning, and "bulging disc",
-# which is a back injury. The warning sign is a phrase now and the hint reads "ground that bulges", which no everyday
-# search names. [guide, choice] that must come first.
+# which is a back injury. Every form of the warning sign is a phrase now, and no form of "bulge" is in the hint at
+# all: putting "bulges" there instead only moved the same bug onto "can bulges" and "disc bulges".
+# [guide, choice] that must come first.
 BULGING = {
     'bulging ground': ['disaster', 'landslide'], 'ground bulging': ['disaster', 'landslide'],
+    'ground bulges': ['disaster', 'landslide'], 'slope bulges': ['disaster', 'landslide'],
+    'ground cracking': ['disaster', 'landslide'], 'cracking ground': ['disaster', 'landslide'],
     'ground rumbling': ['disaster', 'landslide'], 'mudflow': ['disaster', 'landslide'],
     'mudslide injured': ['disaster', 'landslide'], 'rock slide': ['disaster', 'landslide'],
     'debris flow': ['disaster', 'landslide'], 'rockfall': ['disaster', 'landslide'],
@@ -518,6 +521,7 @@ BULGING = {
 # Searches that must not reach the landslide choice at all, anywhere in the three results. Where "bulging disc"
 # does rank is a separate question, so it is not pinned to a result; "cracks" guards the wording of the new hint.
 NOT_LANDSLIDE = ['bulging can', 'bulging cans', 'can is bulging', 'bulging disc', 'bulging',
+                 'can bulges', 'the can bulges', 'disc bulges', 'bulges',
                  'cracks in the wall', 'cracked wall', 'cracks', 'cracks in the foundation']
 TOPS = sorted({*TOPS, *BULGING, *NOT_LANDSLIDE})
 

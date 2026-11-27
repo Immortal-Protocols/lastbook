@@ -1562,6 +1562,7 @@
   "chat.exportNoAnswer": "(sin respuesta: {reason})",
   "chat.place.osmPublisher": "OpenStreetMap (datos al 25 oct 2026)",
   "chat.place.straightLine": "{km} km al {dir} de {place} (en línea recta)",
+  "installer.damaged": "Este instalador está dañado. Descárgalo de nuevo.",
   "kind.html": "Página web guardada",
   "kind.metadata": "Detalles del video",
   "kind.pdf": "PDF",

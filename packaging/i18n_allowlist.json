@@ -53,12 +53,6 @@
   },
   {
    "file": "app/main.py",
-   "string": "Saves to {short} because your user folder’s path is too long for the library’s longest file names.",
-   "pending": "#389",
-   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "app/main.py",
    "string": "ask for the library folder in a dialog instead of opening setup",
    "why": "Command-line --help text printed to a terminal for developers; not part of the app interface."
   },
@@ -816,12 +810,6 @@
    "file": "packaging/lastbook_setup.py",
    "string": "Start Menu",
    "why": "File or folder name on disk (LastbookData, Application Support, Start Menu, Uninstall Lastbook.exe); must stay identical in every language."
-  },
-  {
-   "file": "packaging/lastbook_setup.py",
-   "string": "This installer is damaged. Download it again.",
-   "pending": "#389",
-   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",

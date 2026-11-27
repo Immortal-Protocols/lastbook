@@ -163,6 +163,11 @@ def default_parent():
     return default_choice()[0]
 
 
+def keyed_english(key, text, **params):
+    """English text of a catalogue message whose key travels with it (setup_options sends `key` to Setup, which translates it)."""
+    return text.format(**params)
+
+
 def default_choice():
     """(folder, why or None). The app's own data folder until the person chooses another. On Windows the library's longest file
     must fit in an ordinary path (engine/setup/api.py path_too_deep): when a long user name makes the per-user folder too deep,
@@ -174,7 +179,7 @@ def default_choice():
         if setup_api.path_too_deep(parent / DATA_NAME):
             short = Path((os.environ.get('SystemDrive') or 'C:') + '\\') / 'Lastbook'
             if install.private_folder(short):
-                return short, f'Saves to {short} because your user folder’s path is too long for the library’s longest file names.'
+                return short, keyed_english('setup.why.savesToShortPath', 'Saves to {short} because your user folder’s path is too long for the library’s longest file names.', short=short)
     return parent, None
 
 

@@ -197,6 +197,8 @@ class Coverage(unittest.TestCase):
             ),
         )
         self.assertEqual(scan.stale_allowlist(self.hits), [])
+        # The top of the stack wires everything: no row may still wait for a later PR.
+        self.assertEqual([e for e in scan.load_allowlist() if e.get('pending')], [])
 
     def test_dynamic_chat_action_selector_is_technical(self):
         selector = '#{…} [data-act="{…}"]'

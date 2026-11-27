@@ -124,6 +124,7 @@
   "installer.installed": "Lastbook ist installiert",
   "installer.openLastbook": "Lastbook öffnen",
   "installer.productName": "Lastbook",
+  "installer.damaged": "Dieses Installationsprogramm ist beschädigt. Laden Sie es erneut herunter.",
   "installer.removeConfirm": "Möchten Sie Lastbook von diesem Computer entfernen?\n\nIhre Bibliothek (LastbookData) und Ihre Einstellungen bleiben erhalten.",
   "installer.removed": "Lastbook wurde entfernt.",
   "installer.setupCouldNotStart": "Lastbook-Installation konnte nicht gestartet werden.\n\n{detail}",

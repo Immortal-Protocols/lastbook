@@ -124,6 +124,7 @@
   "installer.installed": "Lastbook 已安装",
   "installer.openLastbook": "打开 Lastbook",
   "installer.productName": "Lastbook",
+  "installer.damaged": "此安装程序已损坏。请重新下载。",
   "installer.removeConfirm": "确定要从此电脑中移除 Lastbook 吗？\n\n您的资料库（LastbookData）和设置将保留。",
   "installer.removed": "Lastbook 已移除。",
   "installer.setupCouldNotStart": "无法启动 Lastbook 安装程序。\n\n{detail}",

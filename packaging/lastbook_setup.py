@@ -240,7 +240,7 @@ def install(desktop, progress=lambda f: None):
     with zipfile.ZipFile(payload()) as z:
         items = [i for i in z.infolist() if not i.is_dir()]
         if not all(safe_name(i.filename) for i in items) or APP_EXE not in {i.filename for i in items}:
-            raise RuntimeError('This installer is damaged. Download it again.')
+            raise RuntimeError(installer_t('installer.damaged', 'This installer is damaged. Download it again.'))
         remove_installed(d)
         unregister()
         try:

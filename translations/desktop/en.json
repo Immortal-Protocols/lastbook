@@ -1562,6 +1562,7 @@
   "chat.exportNoAnswer": "(no answer: {reason})",
   "chat.place.osmPublisher": "OpenStreetMap (data as of 25 Oct 2026)",
   "chat.place.straightLine": "{km} km {dir} of {place} (straight line)",
+  "installer.damaged": "This installer is damaged. Download it again.",
   "kind.html": "Saved web page",
   "kind.metadata": "Video details",
   "kind.pdf": "PDF",

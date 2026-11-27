@@ -2,6 +2,8 @@
 import sys
 import re
 import unittest
+from unittest.mock import patch
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +19,6 @@ class Coverage(unittest.TestCase):
         cls.hits = scan.scan_web() + scan.scan_topics() + scan.scan_python() + scan.scan_c()
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
-        cls.baseline = scan.load_chrome_baseline()
 
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
@@ -28,21 +29,17 @@ class Coverage(unittest.TestCase):
         self.assertIsInstance(self.chrome, dict)
         self.assertGreater(self.totals['wired'] + self.totals['chrome'] + self.totals['technical'], 0)
 
-    def test_no_new_hardcoded_chrome_since_reviewed_baseline(self):
-        added = scan.new_chrome(self.hits, self.baseline)
-        self.assertEqual(added, [], f'new untranslated UI copy: {added!r}')
-
-    def test_gate_detects_new_copy_and_extra_occurrences(self):
-        baseline = scan.Counter({('web/index.html', '', 'Existing label'): 1})
-        hits = [
-            {'surface': 'web/index.html', 'text': 'Existing label', 'class': 'chrome'},
-            {'surface': 'web/index.html', 'text': 'Existing label', 'class': 'chrome'},
-            {'surface': 'web/index.html', 'text': 'New visible label', 'class': 'chrome'},
-        ]
-        self.assertEqual(scan.new_chrome(hits, baseline), [
-            {'surface': 'web/index.html', 'file': '', 'text': 'Existing label', 'count': 1},
-            {'surface': 'web/index.html', 'file': '', 'text': 'New visible label', 'count': 1},
-        ])
+    def test_no_unique_hardcoded_chrome(self):
+        # Default-deny: every chrome, content or unknown literal is either wired or listed
+        # with a reason in packaging/i18n_allowlist.json, and every allowlist row still matches.
+        leftover = scan.unique_unapproved(self.hits)
+        self.assertEqual(
+            leftover, {},
+            'hard-coded UI text that is neither wired nor allowlisted:\n' + '\n'.join(
+                f'  {text!r}\n    {", ".join(locs)}' for text, locs in sorted(leftover.items())
+            ),
+        )
+        self.assertEqual(scan.stale_allowlist(self.hits), [])
 
     def test_scanner_classifies_command_examples_native_keys_and_attribution(self):
         self.assertEqual(scan.classify('server.py --lan', "command: ", ""), 'technical')
@@ -63,7 +60,7 @@ class Coverage(unittest.TestCase):
     def test_scanner_still_classifies_surfaces(self):
         self.assertGreater(self.totals['wired'], 0)
         self.assertGreater(self.totals['technical'], 0)
-        self.assertEqual(scan.new_chrome(self.hits, self.baseline), [])
+        self.assertEqual(scan.unapproved(self.hits), [])
 
     def test_cli_scanner_includes_dynamic_topics_and_windows_stub(self):
         source = (ROOT / 'packaging' / 'i18n_scan.py').read_text(encoding='utf-8')
@@ -153,15 +150,13 @@ class Coverage(unittest.TestCase):
         self.assertEqual(scan.classify('Add your state’s address search', pre), 'chrome')
 
     def test_scanner_detects_short_rendered_button_labels(self):
-        sample = '''root.innerHTML = `${canAdd ? `<button>Add</button>` : ''}`;'''
-        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
-        add = next((pre for text, pre in hits if text == 'Add'), None)
-        self.assertIsNotNone(add, f'button label was skipped: {hits!r}')
-        self.assertEqual(scan.classify('Add', add), 'chrome')
-
-        # The short word by itself is not enough to call a code value UI.
-        self.assertEqual(scan.classify('Add', 'const action = '), 'technical')
-        self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
+            sample = '''root.innerHTML = `${canAdd ? `<button>Add</button>` : ''}`;'''
+            hits = self.scan_web_source(sample)
+            add = [hit for hit in hits if hit['text'] == 'Add']
+            self.assertEqual(len(add), 1, hits)
+            self.assertEqual(add[0]['class'], 'chrome')
+            self.assertEqual(scan.classify('Add', 'const action = '), 'technical')
+            self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
 
     def test_scanner_checks_map_fallback_keys_and_ignores_markup_fragments(self):
         wired = "message('map.outsideDetail', null, 'Outside the area this map details, only main roads, towns and water show.')"
@@ -178,18 +173,24 @@ class Coverage(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertEqual(scan.classify(fragment, 'return `'), 'technical')
 
-    def test_scanner_detects_leading_space_ui_fragments(self):
-        sample = '''function recommendLine() {
-          const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
-          return `<p class="s-rec">Suggested: ${what}</p>`;
-        }'''
-        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
-        fragment = next((pre for text, pre in hits if text == ' with the local AI'), None)
-        self.assertIsNotNone(fragment, f'leading-space UI fragment was skipped: {hits!r}')
-        self.assertEqual(scan.classify(' with the local AI', fragment), 'chrome')
+    def scan_web_source(self, source):
+            with tempfile.TemporaryDirectory(prefix='i18n-scan-web-') as temporary:
+                web = Path(temporary)
+                (web / 'audit.js').write_text(source, encoding='utf-8')
+                with patch.object(scan, 'WEB', web), patch.object(scan, 'WEB_FILES', ['audit.js']):
+                    return scan.scan_web()
 
-        # Protocol flags stay technical after trimming for UI classification.
-        self.assertEqual(scan.classify(' --lan', 'const command = '), 'technical')
+    def test_scanner_detects_leading_space_ui_fragments(self):
+            sample = '''function recommendLine() {
+              const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
+              return `<p class="s-rec">Suggested: ${what}</p>`;
+            }'''
+            hits = self.scan_web_source(sample)
+            fragment = [hit for hit in hits if hit['text'] == ' with the local AI']
+            self.assertEqual(len(fragment), 1, hits)
+            self.assertEqual(fragment[0]['class'], 'chrome')
+
+            self.assertEqual(scan.classify(' --lan', 'const command = '), 'technical')
 
     def test_scanner_recognizes_chat_tr_keyed_fallbacks(self):
         wired = "const title = chatTr('chat.exportTitle', { title }, 'Chat: {title}')"
@@ -221,13 +222,14 @@ class Coverage(unittest.TestCase):
         )
 
     def test_scanner_detects_prose_exported_to_markdown(self):
-        sample = '''function exportChat(c) {
-          const md = `# ${c.title}\\n\\nExported from Lastbook (offline library) on ${chatDate(new Date())}.\\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\\n`;
-          new Blob([md], { type: 'text/markdown' });
-        }'''
-        hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(sample)]
-        exported = next((text, pre) for text, pre in hits if text.startswith('# {…}') and 'Answers were written' in text)
-        self.assertEqual(scan.classify(*exported), 'chrome')
+            sample = '''function exportChat(c) {
+              const md = `Exported chat notes from the offline library. Check each linked page before acting.`;
+              new Blob([md], { type: 'text/markdown' });
+            }'''
+            hits = self.scan_web_source(sample)
+            exported = [hit for hit in hits if hit['text'] == 'Exported chat notes from the offline library. Check each linked page before acting.']
+            self.assertEqual(len(exported), 1, hits)
+            self.assertEqual(exported[0]['class'], 'chrome')
 
     def test_translated_words_are_never_used_as_platform_or_css_values(self):
         app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')

@@ -170,6 +170,10 @@
   const model = () => ((S.manifest && S.manifest.models) || [])[0] || null;
   const cur = () => S.current || null;
   const packById = id => packs().find(p => p.id === id);
+  // A pack's library name as one catalogue phrase ('{title} library', 'Biblioteca {title}'), never a title glued to a
+  // translated word. A title that already says library is shown as it is.
+  const libraryName = title => !title ? tr('nav.library', null, 'Library')
+    : /\b(?:librar(?:y|ies)|bibliotecas?)\b/i.test(title) ? title : tr('setup.pack.libraryName', { title }, '{title} library');
   function packNeedsInstall(pack) {
     if (!pack) return false;
     const current = cur();
@@ -361,7 +365,7 @@
             <small>${esc(aiWhy())}</small></span></div>`;
     }
     const found = (S.found || []).map((f, i) => f.rejected ? `<div class="s-found off">${ico('file')}<span><b>${esc(f.name || f.path.split(/[\\/]/).pop())}</b><small>${esc(home(f.path))} · ${tr('setup.doesntMatch', null, 'doesn’t match the published file, so it is not used')}</small></span></div>`
-      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? packById(f.id).title + ' ' + tr('library.itemTypeLibrary', null, 'library') : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
+      : f.size_ok === false ? '' : `<div class="s-found">${ico(f.kind === 'library' ? 'folder' : 'file')}<span><b>${esc(f.kind === 'library' ? tr('setup.aLibrary', null, 'A Lastbook library') : f.kind === 'model' ? tr('setup.aiFile', null, 'The local AI file') : (packById(f.id) ? libraryName(packById(f.id).title) : f.title || f.name))}</b><small>${esc(home(f.path))}${f.size ? ' · ' + size(f.size) : ''}</small></span>
         <button class="btn plain" data-use="${i}">${tr('setup.useFileYouHave', null, 'Use the file you already have')}</button></div>`).join('');
 
     main.innerHTML = `${c ? `<button class="s-link" id="toManage">${ico('back')}<span data-i18n="setup.settingsTitle">Library and local AI</span></button>` : ''}
@@ -600,7 +604,7 @@
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       <div class="s-have">
-        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || tr('nav.library', null, 'Library'))} ${tr('library.itemTypeLibrary', null, 'library')}</b><small>${libraryUpdate ? tr('setup.updatedEdition', { detail: '' }, 'Updated edition available · {detail}') : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
+        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(libraryName(p ? p.title : c.pack))}</b><small>${libraryUpdate ? tr('setup.updatedEdition', { detail: '' }, 'Updated edition available · {detail}') : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">${tr('setup.updatePack', { name: esc(p.title) }, 'Update {name}')}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}${tr('setup.getPack', { name: esc(bigger[0].title) }, 'Get {name}')}</button>` : later ? `<span class="s-badge later">${tr('setup.packComingLater', { name: esc(later.title) }, '{name} comes later')}</span>` : `<span class="s-badge here">${tr('library.largest', null, 'The largest')}</span>`}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>${tr('setup.localAi', null, 'Local AI')}</b><small>${c.model ? tr('setup.onThisComputerSize', { detail: size(m.size) }, 'On this computer · {detail}') : aiFits() ? tr('setup.notInstalledAbout', { size: size(m.size) }, 'Not installed · about {size}') : esc(aiWhy())}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">${tr('common.remove', null, 'Remove')}</button><button class="btn plain" id="rmNo">${tr('common.keep', null, 'Keep')}</button></span>` : `<button class="btn plain" id="rmAi">${tr('common.remove', null, 'Remove')}</button>`) : aiFits() ? `<button class="btn" id="addAi">${tr('setup.addLocalAi', null, 'Add')}</button>` : ''}</div>` : ''}
@@ -798,7 +802,7 @@
       <ol class="s-steps" aria-label="${tr('setup.steps', null, "Steps")}">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.title_key ? tr(it.title_key, it.title_params || null, it.title || '') : it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? tr('setup.mapItemName', { name: (mapById(it.id) || it).title || it.id }, '{name} map') : it.kind === 'addresses' ? tr('setup.addressSearchFor', { name: it.title }, 'Address search for {name}') : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' ' + tr('library.itemTypeLibrary', null, 'library');
+  const itemTitle = it => it.title_key ? tr(it.title_key, it.title_params || null, it.title || '') : it.kind === 'model' ? tr('setup.localAi', null, 'Local AI') : it.kind === 'map' ? tr('setup.mapItemName', { name: (mapById(it.id) || it).title || it.id }, '{name} map') : it.kind === 'addresses' ? tr('setup.addressSearchFor', { name: it.title }, 'Address search for {name}') : it.id === 'library' || it.id === 'repair' ? it.title : libraryName(it.title);
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);

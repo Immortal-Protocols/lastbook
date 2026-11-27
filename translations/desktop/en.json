@@ -1177,6 +1177,7 @@
   "setup.mapIncludedAddressOnly": "Your map is already included; only the address index downloads.",
   "setup.mapIntro": "Local streets, buildings, water and places to get help. Available offline.",
   "setup.mapItemName": "{name} map",
+  "setup.pack.libraryName": "{title} library",
   "setup.memory": "memory",
   "setup.memoryShared": "memory, shared with graphics",
   "setup.noAddressSearch": "Street-address search is not available for this state yet.",

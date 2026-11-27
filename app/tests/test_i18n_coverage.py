@@ -31,6 +31,39 @@ def duplicate_test_methods(source, relative_path):
     return duplicates
 
 
+class GluedFragments(unittest.TestCase):
+    """A one-word catalogue message (like 'library') glued to other text with a space fixes the English
+    word order and number in every language ('Biblioteca biblioteca'). Use one key with a placeholder."""
+
+    # Joining list items with 'and' is the one accepted use; the translation is the whole conjunction.
+    ALLOWED = {'common.and'}
+
+    def test_one_word_messages_are_not_glued_to_other_text(self):
+        import json
+        import re
+        en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        words = {k for k, v in en.items() if isinstance(v, str) and re.fullmatch(r'[a-z]+', v)} - self.ALLOWED
+        glued = []
+        for path in sorted((ROOT / 'web').glob('*.js')):
+            if path.name.startswith('i18n-'):
+                continue
+            source = path.read_text(encoding='utf-8')
+            for m in re.finditer(r"\btr\(\s*'([\w.]+)'[^)]*\)", source):
+                if m.group(1) not in words:
+                    continue
+                before, after = source[max(0, m.start() - 12):m.start()], source[m.end():m.end() + 12]
+                if (re.search(r"(?:\}\s+\$\{|\+\s*' '\s*\+\s*)$", before)
+                        or re.match(r"(?:\}?\s+\$\{|\s*\+\s*' '\s*\+)", after)):
+                    glued.append(f'{path.name}:{source.count(chr(10), 0, m.start()) + 1} {m.group(1)}')
+        self.assertEqual(glued, [])
+
+    def test_the_guard_sees_a_glued_word(self):
+        import re
+        sample = "x = p.title + ' ' + tr('library.itemTypeLibrary', null, 'library');"
+        m = re.search(r"\btr\(\s*'([\w.]+)'[^)]*\)", sample)
+        self.assertRegex(sample[max(0, m.start() - 12):m.start()], r"\+\s*' '\s*\+\s*$")
+
+
 class Coverage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -627,6 +627,42 @@ class Browser(unittest.TestCase):
             page.evaluate("location.hash = '#/wiki/mdwiki_fixture/Some_Article'")
             expect(page.locator('.zn')).to_have_text('Enciclopedia médica (MDWiki) ·')
 
+    def test_settings_library_name_is_one_phrase_in_each_language(self):
+        """The library card names the pack with one catalogue phrase, never 'Biblioteca biblioteca' or 'Library library'."""
+        from engine.setup import manifest as setup_manifest
+
+        cases = [
+            ('es-419', 'Small', 'Biblioteca Small'),
+            ('en', 'Small', 'Small library'),
+            ('es-419', 'Library', 'Library'),
+            ('en', 'Medical library', 'Medical library'),
+            ('es-419', None, 'Biblioteca'),
+            ('en', None, 'Library'),
+        ]
+        for locale, title, expected in cases:
+            with self.subTest(locale=locale, title=title):
+                bundled = setup_manifest.validate({'version': 1, 'packs': [{
+                    'id': 'small', 'title': title or 'Small', 'summary': 'The essentials.', 'available': True,
+                    'installed_bytes': 100, 'files': [{'name': 'small.zip', 'size': 1, 'sha256': '0' * 64,
+                                                       'url': 'https://downloads.lastbook.org/small.zip'}]}], 'models': []})
+                self.assertIsNotNone(bundled)
+                setup = self.configure_setup(current=DATA, setup_manifest=Manifest(bundled=bundled, remote=None))
+                info = setup.current_info
+
+                def current_info(info=info, title=title):
+                    current = dict(info() or {})
+                    current.pop('pack', None)
+                    if title:
+                        current['pack'] = 'small'
+                    return current
+                setup.current_info = current_info
+                self.language_file.write_text(json.dumps({'language': locale}), encoding='utf-8')
+                with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+                    page.goto(origin + '/ui/setup.html#manage')
+                    name = page.locator('.s-have .s-row b').first
+                    expect(name).to_have_text(expected)
+                    self.assertNotRegex(name.inner_text().lower(), r'(library|biblioteca)\W+(library|biblioteca)')
+
     def test_bfcache_restore_retranslates_cached_guide_descriptions(self):
         self.configure_setup(current=DATA)
         self.language_file.write_text(json.dumps({'language': 'es-419'}), encoding='utf-8')

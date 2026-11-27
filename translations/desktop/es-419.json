@@ -1177,6 +1177,7 @@
   "setup.mapIncludedAddressOnly": "Tu mapa ya está incluido; solo se descarga el índice de direcciones.",
   "setup.mapIntro": "Calles, edificios, agua y lugares para pedir ayuda, en tu zona. Disponible sin conexión.",
   "setup.mapItemName": "Mapa de {name}",
+  "setup.pack.libraryName": "Biblioteca {title}",
   "setup.memory": "memoria",
   "setup.memoryShared": "memoria, compartida con los gráficos",
   "setup.noAddressSearch": "La búsqueda por dirección todavía no está disponible para este estado o región.",

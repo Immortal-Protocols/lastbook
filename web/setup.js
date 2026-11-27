@@ -103,7 +103,8 @@
   const errText = e => {
     if (!e) return '';
     if (typeof e !== 'object') return e;
-    if (e.key || e.error_key) return tr(e.key || e.error_key, e.params || e.error_params || null, e.message || e.error || '');
+    const details = Array.isArray(e.details) ? e.details.map(d => d && d.key ? tr(d.key, d.params || null, d.text || '') : (d && d.text) || '') : [];
+    if (e.key || e.error_key) return [tr(e.key || e.error_key, e.params || e.error_params || null, e.message || e.error || ''), ...details].filter(Boolean).join(' ');
     return e.message || e.error || '';
   };
   const apiErrorText = r => r && r.key ? tr(r.key, r.params || null, r.error || '') : (r && r.error) || '';
@@ -568,7 +569,7 @@
     const k = c.cloud_only;
     if (!k || !(k.files || k.folders)) return '';
     const n = (count, key, fallback) => tr(key, { count }, fallback);
-    const items = [k.files ? n(k.files, 'setup.icloud.files', '{count} file(s)') : '', k.folders ? n(k.folders, 'setup.icloud.folders', '{count} folder(s)') : ''].filter(Boolean).join(', ');
+    const items = [k.files ? n(k.files, 'setup.icloud.files', '{count} files') : '', k.folders ? n(k.folders, 'setup.icloud.folders', '{count} folders') : ''].filter(Boolean).join(', ');
     const count = k.files + k.folders, sizeText = k.bytes ? ` (${size(k.bytes)})` : '';
     return `<p class="s-note" role="status"><b>${tr('setup.icloud.summary', { count, items: esc(items), size: esc(sizeText) }, '{items} of this library are only in iCloud{size}.')}</b>
       ${tr('setup.icloud.action', null, 'These items will not open without internet. Move the LastbookData folder out of iCloud Drive, or in Finder choose the option to keep the files downloaded (macOS 15 or later).')}

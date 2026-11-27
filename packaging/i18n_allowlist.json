@@ -44,26 +44,26 @@
   {
    "file": "app/main.py",
    "string": "Choose",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "Choose a folder",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "Choose a library zip or model file",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "Find your Lastbook library",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
@@ -73,26 +73,26 @@
   {
    "file": "app/main.py",
    "string": "Lastbook cannot save in “{shown(f)}”. Move the LastbookData folder somewhere you can save to, then choose it there.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "Lastbook could not find its library.\n\nIt looked in:\n{data}\n\nThat folder must hold {CATALOG}.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "Lastbook could not start: {type(e).__name__}: {e}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "Lastbook needs its library folder, called LastbookData. Unzip the library you downloaded, then choose that folder.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
@@ -102,14 +102,14 @@
   {
    "file": "app/main.py",
    "string": "Saves to {short} because your user folder’s path is too long for the library’s longest file names.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
    "string": "The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/main.py",
@@ -124,92 +124,92 @@
   {
    "file": "app/main.py",
    "string": "“{shown(folder)}” is not a Lastbook library. Choose the folder called LastbookData, inside the library you unzipped.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "A page stopped working, so it was closed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "A page was using too much memory, so it was closed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Back",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Cancel",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Chat",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Check for Updates…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Choose",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Choose Folder…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Choose a folder",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Choose a library zip or model file",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Choose the folder called LastbookData",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Find…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Forward",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Full Screen",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
@@ -219,20 +219,20 @@
   {
    "file": "app/shell_linux.py",
    "string": "Lastbook Help",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Lastbook could not switch off its network access, so it will not open anything.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Lastbook is already open.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
@@ -247,32 +247,32 @@
   {
    "file": "app/shell_linux.py",
    "string": "Menu",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Quit",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Quit Lastbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Save",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
    "string": "Show or Hide Sidebar",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_linux.py",
@@ -282,86 +282,86 @@
   {
    "file": "app/shell_linux.py",
    "string": "Videos",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "A page stopped responding, so it was closed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "A page stopped working, so it was closed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "A page was using too much memory, so it was closed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "About Lastbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Back",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Bring All to Front",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Cancel",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Chat",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Check for Updates…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Choose",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Choose Folder…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Choose the folder called LastbookData.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Close",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
@@ -371,62 +371,62 @@
   {
    "file": "app/shell_macos.py",
    "string": "Edit",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Emoji & Symbols",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Enter Full Screen",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Find…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Forward",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Go",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Help",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Hide Lastbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Hide Others",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Hide Sidebar",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
@@ -436,14 +436,14 @@
   {
    "file": "app/shell_macos.py",
    "string": "Lastbook Help",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Lastbook could not switch off its network access, so it will not open anything.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
@@ -458,8 +458,8 @@
   {
    "file": "app/shell_macos.py",
    "string": "OK",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
@@ -469,62 +469,62 @@
   {
    "file": "app/shell_macos.py",
    "string": "Quit",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Quit Lastbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Redo",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Select All",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Show All",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Show Sidebar",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Start Dictation…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Undo",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Videos",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "View",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
@@ -539,14 +539,14 @@
   {
    "file": "app/shell_macos.py",
    "string": "Window",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_macos.py",
    "string": "Zoom",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
@@ -556,8 +556,8 @@
   {
    "file": "app/shell_windows.py",
    "string": "A page was using too much memory, so it was closed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
@@ -567,20 +567,20 @@
   {
    "file": "app/shell_windows.py",
    "string": "Choose",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
    "string": "Choose Folder…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
    "string": "Choose the folder called LastbookData",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
@@ -595,20 +595,20 @@
   {
    "file": "app/shell_windows.py",
    "string": "Lastbook could not load the files it needs to show its window.\n\nThey should be in {_lib_dir()}.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
    "string": "Lastbook could not open its window.\n\n{args.InitializationException.Message}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
    "string": "Lastbook needs the Microsoft Edge WebView2 Runtime, and it was not found on this computer.\n\nWindows 11 normally includes it. Install \"WebView2 Runtime\" from Microsoft, then start Lastbook again.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
@@ -618,8 +618,8 @@
   {
    "file": "app/shell_windows.py",
    "string": "Quit",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
@@ -629,8 +629,8 @@
   {
    "file": "app/shell_windows.py",
    "string": "The window part of Lastbook stopped working, so Lastbook will close. Your library is not affected.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/shell_windows.py",
@@ -665,8 +665,8 @@
   {
    "file": "app/update_macos.py",
    "string": "Lastbook checks for updates only when you ask.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/update_macos.py",
@@ -686,20 +686,20 @@
   {
    "file": "app/update_macos.py",
    "string": "The updater could not start ({type(e).__name__}). Use the download page instead.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/update_macos.py",
    "string": "This copy of Lastbook cannot update itself. Use the download page instead.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/update_macos.py",
    "string": "This update is not a signed Lastbook app. Use the download page instead.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "app/update_macos.py",
@@ -843,12 +843,6 @@
   },
   {
    "file": "assistant.py",
-   "string": "OpenStreetMap (data as of 25 Oct 2026)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "assistant.py",
    "string": "Optional words to pick the most relevant section",
    "why": "Sent to the local AI model only (system prompt, tool description or tool result); never rendered in the interface. The model answers in the person's language."
   },
@@ -915,14 +909,14 @@
   {
    "file": "assistant.py",
    "string": "The local model stopped responding.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "assistant.py",
    "string": "The model did not produce an answer. The passages it found are listed below.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "assistant.py",
@@ -1035,12 +1029,6 @@
    "why": "Internal status / tool-summary code; the chat page shows its own catalogue text for these states (chat.js chatSteps)."
   },
   {
-   "file": "assistant.py",
-   "string": "{h['label']} · {h['km']} km {h['dir']} of {pl[0]['name']} (straight line)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
    "file": "engine/model_server.py",
    "string": "no such port",
    "why": "ValueError for a developer-supplied model server address (SURVIVAL_MODEL_BASE / Setup advanced field); Setup validates the field first and shows its own catalogue message."
@@ -1057,38 +1045,8 @@
   },
   {
    "file": "engine/setup/api.py",
-   "string": " These files are still open and were left in place: ",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/api.py",
-   "string": " What was unpacked is kept in {kept}.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/api.py",
-   "string": " Your files could not be moved and are still in ",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/api.py",
    "string": "Application Support",
    "why": "File or folder name on disk (LastbookData, Application Support, Start Menu, Uninstall Lastbook.exe); must stay identical in every language."
-  },
-  {
-   "file": "engine/setup/api.py",
-   "string": "Cancelled. Nothing was changed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/api.py",
-   "string": "Cancelled. This library was not changed; copy again to the same place to carry on.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "engine/setup/api.py",
@@ -1099,12 +1057,6 @@
    "file": "engine/setup/api.py",
    "string": "Lastbook: an offline survival library\n\nThis drive holds a copy of a Lastbook library: the {title} library, {size} in {files} files, copied {date}.\nIt works with no internet: manuals, videos, encyclopedias and maps.\n\nTo use it on another computer:\n1. Install the Lastbook app on that computer. This drive does not hold the app: get it from\n   lastbook.org, or from someone who has the installer.\n2. Open Lastbook. In setup, choose to use a library that is already on this computer,\n   and choose the folder called {data} on this drive. You can copy that folder onto the\n   computer first, or use it from the drive.\n3. To make sure every file arrived whole, use Library and local AI, then Check and repair.\n   It reads every file, and downloads something only if a file is damaged.\n\nThis drive holds only the library's own files, as they were published. Nothing personal\nfrom the computer it was copied from is on it: no settings, saved pages, chats, notes,\naddress search or local AI.\n",
    "why": "START-HERE.txt written onto a copied drive for any reader who opens it without the app; a document file, not interface text."
-  },
-  {
-   "file": "engine/setup/api.py",
-   "string": "No local AI is offered for this version.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "engine/setup/api.py",
@@ -1233,12 +1185,6 @@
   },
   {
    "file": "engine/setup/hardware.py",
-   "string": "Lastbook could not tell how much memory this computer has.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/hardware.py",
    "string": "Mains",
    "why": "Name the operating system reports (WMI / IOKit / upower field or value) and the code compares; never displayed."
   },
@@ -1249,12 +1195,6 @@
   },
   {
    "file": "engine/setup/hardware.py",
-   "string": "Measured on this computer: the local AI needs about {_gb(j['needs'])} of memory, and it fits.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/hardware.py",
    "string": "Power Source State",
    "why": "Name the operating system reports (WMI / IOKit / upower field or value) and the code compares; never displayed."
   },
@@ -1262,24 +1202,6 @@
    "file": "engine/setup/hardware.py",
    "string": "Revision",
    "why": "Name the operating system reports (WMI / IOKit / upower field or value) and the code compares; never displayed."
-  },
-  {
-   "file": "engine/setup/hardware.py",
-   "string": "The local AI needs about {_gb(in_ram)} of this computer’s memory, and it has {_gb(ram)}. Lastbook works without it: search and reading are the same.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/hardware.py",
-   "string": "The local AI needs about {_gb(needs)} of memory, and this computer has {_gb(ram)} plus its graphics memory.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/hardware.py",
-   "string": "The local AI needs about {_gb(needs)} of memory, and this computer has {_gb(ram)}.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "engine/setup/hardware.py",
@@ -1313,12 +1235,6 @@
   },
   {
    "file": "engine/setup/install.py",
-   "string": "Lastbook could not put the old library back ({type(e).__name__}). It is at {old}; rename it to {target.name} to use it again.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "engine/setup/install.py",
    "string": "LastbookData",
    "why": "File or folder name on disk (LastbookData, Application Support, Start Menu, Uninstall Lastbook.exe); must stay identical in every language."
   },
@@ -1326,12 +1242,6 @@
    "file": "engine/setup/install.py",
    "string": "Negative ZIP offset",
    "why": "Developer diagnostic: written to the log or raised internally and caught; never shown in a window or page."
-  },
-  {
-   "file": "engine/setup/install.py",
-   "string": "The new map did not open, so Lastbook put the old one back.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "engine/setup/install.py",
@@ -1357,12 +1267,6 @@
    "file": "engine/setup/install.py",
    "string": "{path} lists no files",
    "why": "Developer diagnostic: written to the log or raised internally and caught; never shown in a window or page."
-  },
-  {
-   "file": "engine/update.py",
-   "string": "Lastbook could not reach the internet. Everything else in Lastbook still works without it; try again when you are online.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "engine/update.py",
@@ -1392,8 +1296,8 @@
   {
    "file": "packaging/lastbook_macos.spec",
    "string": "Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_macos.spec",
@@ -1408,44 +1312,44 @@
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Add a desktop shortcut",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Cancel",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Close",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Find it in the Start menu.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Install",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Install Lastbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Install folder",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
@@ -1455,56 +1359,56 @@
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook Setup",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook Setup could not start.\n\n{failure[0]}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook could not be installed.\n\n{outcome[1]}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook could not be opened.\n\n{e}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook could not be removed.\n\n{e}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook is installed",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook is open. Close it, then try again.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Lastbook is removed.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Open Lastbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
@@ -1514,8 +1418,8 @@
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Remove Lastbook from this computer?\n\nYour library (LastbookData) and settings stay.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
@@ -1535,8 +1439,8 @@
   {
    "file": "packaging/lastbook_setup.py",
    "string": "This installer is damaged. Download it again.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/lastbook_setup.py",
@@ -1546,8 +1450,8 @@
   {
    "file": "packaging/lastbook_setup.py",
    "string": "Version {VERSION}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/linux/lastbook.desktop",
@@ -1562,56 +1466,56 @@
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Lastbook Setup",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not find itself.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not find the temporary folder.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not make a temporary folder.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not read itself.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not start. Windows may have blocked it.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not unpack itself. Check there is room on the disk.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "Setup could not write to the temporary folder.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
    "string": "This copy of Setup is damaged. Download it again.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "packaging/setup_stub/lastbook_setup_stub.c",
@@ -1620,213 +1524,9 @@
   },
   {
    "file": "server.py",
-   "string": " features (buildings come from Microsoft, below)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · also called {d['other_names']}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · building",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · downloading",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · historical stocking record",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · nearby",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · {int(h):,} OpenStreetMap buildings with measured heights in 3D",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": " · {km / 1.609:,.0f} mi away",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "All of California raw OpenStreetMap data",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "All videos",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Asparagus field",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Beach",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Berry field",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Bicycle shop",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Boating facility",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Building & infrastructure",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Building outlines for the whole US, plus heights for 3D (Microsoft Global ML Building Footprints, 2026 release, ODbL; OpenStreetMap is used where its outlines are complete)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Bushcraft & primitive-skills videos",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Campsite",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Car repair",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Care home",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Chosen to go with the survival guides",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Clinic",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "Coalcracker Bushcraft",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Coastline taken from it for the map; the rest needs conversion",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "College",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Communications tower",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Community centre",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Community, teaching & recovery",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Community-written encyclopedia",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Convenience store",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Converting",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Converting — ",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -1836,8 +1536,8 @@
   {
    "file": "server.py",
    "string": "Corporals Corner",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -1846,225 +1546,39 @@
   },
   {
    "file": "server.py",
-   "string": "Course or textbook",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "Courses, lectures & more",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Courthouse",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Covered by the national map",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Dam (National Inventory of Dams)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Dams (US Army Corps of Engineers National Inventory of Dams)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Dave Canterbury",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Dentist",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Detailed elevation from 1 m lidar: relief, 5 ft contours, exact heights (USGS 3DEP)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Disasters, safety & outdoors",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Doctor",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Downloading / importing",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Drinking water tap",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Elevation (USGS 3DEP)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Elevation: shaded relief, contour lines, spot heights and 3D (USGS 3DEP, 30 m)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Embassy",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Encyclopedia",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Fire station",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "First aid & health",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Fish-stocking record",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Food: growing, keeping & cooking",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "For {area}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "For {area}, shown from street level zoom",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Fountain (not necessarily drinkable)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Fuel station",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Full-detail aerial photos, 30-60 cm (USGS NAIP Plus: USDA NAIP and high-resolution orthoimagery)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Garden centre",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Government guidance",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Growing & preserving food",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Hardware / DIY store",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Hardware store",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Health & first aid",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Hesperian community health guide",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Hobbyist channel",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Hobbyist channel — no narration",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Hobbyist demonstration video",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Hospital",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -2073,93 +1587,9 @@
   },
   {
    "file": "server.py",
-   "string": "International health & humanitarian guidance",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Kindergarten",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Lake",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Lake or pond",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Lakes, reservoirs and ponds (USGS National Hydrography Dataset, final 2023 edition)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Library",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Main roads, towns and water for the whole US (OpenStreetMap, USGS)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Making things & materials",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "Making things by hand",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Manufacturer manual (model-specific)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "NOT drinking water",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "No street detail or help points",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Orchard",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Orchards, vineyards and berry fields (USDA Cropland Data Layer)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -2168,104 +1598,20 @@
   },
   {
    "file": "server.py",
-   "string": "Other",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Other references",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "PDF",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "POST /api/tool/<name> with the JSON arguments",
    "why": "Self-description of the developer tool API (/api/tool), read by programs and models, not by the app pages."
   },
   {
    "file": "server.py",
-   "string": "Park",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Pharmacy",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Picked for the guides",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Place names (USGS GNIS, Census 2025 ZIP codes and counties)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Police",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Pond",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Post office",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Power & energy",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "Power, generators & solar",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Primitive Technology",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Public toilet",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Radio, communication & navigation",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Raw data — needs conversion before it can be viewed",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -2274,320 +1620,56 @@
   },
   {
    "file": "server.py",
-   "string": "Recorded mineral / mine",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Recorded oil / gas well",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Reference",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Reservoir",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Saved web page",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "School",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Science, maths & engineering courses",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "Server error ({sys.exc_info()[0].__name__}).",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shaded relief at broad zoom levels",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shaded relief. Contour lines only where this map has fine detail.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Sharpest aerial photos, 25 cm, 2024-25 (NOAA coastal mapping, public domain)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shelter (structure)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Shelter, fire & outdoor skills",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shown at every zoom level",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shown on this map",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shown on this map — ",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Shown when you zoom in",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Slides",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Southern California raw OpenStreetMap data",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Southern California streets, buildings, water and places (OpenStreetMap)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Spring (untested)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Street detail stops at the edge of this area.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Streets, places and help points (OpenStreetMap) for {area}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Supermarket",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "The assistant stopped on an internal error ({type(e).__name__}).",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "The local assistant model is not running right now.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "This download has only the base map. Hospitals, water taps and side streets are not in it.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "This item is not in the library catalog.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Tools, engines & repair",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Tools, repair & equipment",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Town hall",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Transcript",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "US Virgin Islands raw OpenStreetMap data",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "US place names (USGS GNIS) and Census 2025 ZIP-code and county centres",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "United States",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "United States roads, waterways and places (OpenStreetMap)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "University",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "University / extension service",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "University lectures (MIT and others)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Used by \"Find a place\", together with named lakes, reservoirs and dams",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Used by \"Find a town, ZIP or place\"",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Video",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Video details",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Vineyard",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Wastewater plant",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "Water & sanitation",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Water tower",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Water well / hand pump (untested)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Water works",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Whole US and territories",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "Zoom 0-15 nationwide, 16 in California and towns · downloading",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
    "string": "a an and are as at be but by can do does for from get got have help how i if in into is it its me my need no not of on or our please should so some that the their them then there these they this to up us was we what when where which who why will with without you your",
    "why": "Search-mode token or stop-word list compared in code; the page shows search.someWords / search.allWords instead."
-  },
-  {
-   "file": "server.py",
-   "string": "about {round(detail['crop_acres']):,} acres in this block",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -2722,8 +1804,8 @@
   {
    "file": "server.py",
    "string": "not a PDF",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -2767,21 +1849,9 @@
   },
   {
    "file": "server.py",
-   "string": "the area this map details",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "the whole US",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
    "string": "unknown document",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "server.py",
@@ -2802,48 +1872,6 @@
    "file": "server.py",
    "string": "wildfire smoke",
    "why": "Search vocabulary: English words the engine looks for in the English library. Shown verbatim under \"Also looked for\" because those exact words were searched; translating them would misreport the search."
-  },
-  {
-   "file": "server.py",
-   "string": "{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "{detail['area_acres']:,} acres",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "{int(float(detail['normal_storage_af'])):,} acre-ft stored",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "{int(n):,} buildings, shown from street level zoom",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "{len(states)} of 56 states and territories imported",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "{nid['records']:,} dams · data updated {nid['data_last_updated']}",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "server.py",
-   "string": "{sites:,} locations",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/app.js",
@@ -2867,12 +1895,6 @@
   },
   {
    "file": "web/app.js",
-   "string": "e.g. tetanus, solar panel, sourdough",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/app.js",
    "string": "some words",
    "why": "Search-mode token or stop-word list compared in code; the page shows search.someWords / search.allWords instead."
   },
@@ -2889,68 +1911,62 @@
   {
    "file": "web/chat.js",
    "string": "Read",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Reading the pages it found…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Search",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Searching the library…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Sources disagree",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Starting the local AI…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Thinking…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Working…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Write",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/chat.js",
    "string": "Writing the answer…",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/chat.js",
-   "string": "diagram viewed",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/index.html",
@@ -2960,8 +1976,8 @@
   {
    "file": "web/index.html",
    "string": "Offline survival and rebuilding guide: first aid, water, food, power, shelter, videos, maps and skills — works without internet.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/map.js",
@@ -2970,32 +1986,8 @@
   },
   {
    "file": "web/map.js",
-   "string": "Built",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/map.js",
-   "string": "Mapped well or street hand pump. The water is not tested: boil or disinfect it before drinking. A pump may be broken or locked.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/map.js",
    "string": "US",
    "why": "Short button face of the map controls (region shortcut / 3D); the button's accessible name and tooltip are translated (map.terrain3d, map.view3d, map.wholeUs)."
-  },
-  {
-   "file": "web/map.js",
-   "string": "{count} places here",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/map.js",
-   "string": "{count} records at one spot",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/map.js",
@@ -3053,34 +2045,16 @@
    "why": "File or folder name on disk (LastbookData, Application Support, Start Menu, Uninstall Lastbook.exe); must stay identical in every language."
   },
   {
-   "file": "web/setup.js",
-   "string": "The local AI file was damaged, so it was downloaded again and put in its place.",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/setup.js",
-   "string": "{count} file(s)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
-   "file": "web/setup.js",
-   "string": "{count} folder(s)",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
-  },
-  {
    "file": "web/speak.js",
    "string": "Read aloud",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   },
   {
    "file": "web/speak.js",
    "string": "Stop reading",
-   "pending": "#388 or #389",
-   "why": "Visible text this PR does not wire yet; #388 or #389 of this stack wires it, and --check fails on this row once the literal is gone."
+   "pending": "#389",
+   "why": "Visible text this PR does not wire yet; #389 of this stack wires it, and --check fails on this row once the literal is gone."
   }
  ]
 }

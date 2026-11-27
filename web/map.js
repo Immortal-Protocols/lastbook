@@ -66,7 +66,7 @@ const MapView = (() => {
     other_names: 'Also called', purpose: 'Main purpose', purposes: 'All purposes', river: 'River / stream', city: 'Nearest town', owner: 'Owner',
     normal_storage_af: 'Normal storage (acre-ft)', max_storage_af: 'Max storage (acre-ft)', surface_acres: 'Surface (acres)', height_ft: 'Height (ft)', year: 'Built',
     dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', water_type: 'Water present',
-    reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block', year: 'Satellite crop map year',
+    reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block',
     FUEL_SALES: 'Fuel sales', NO_OF_RAMP_LANE_USE_ONE_TIME: 'Ramp lanes', FISH_CLEANING: 'Fish cleaning', Comments: 'Notes', Website: 'Website' };
   const CAVEAT = { mineral: 'USGS mineral record: an occurrence or past mine, not proof of recoverable ore, access or safety. Old workings can be deadly.',
     oil_gas_well: 'State well record. Most are plugged or idle; never approach an unsealed well head.', fish_stocking: 'A past stocking record — it does not confirm fish are present now.',
@@ -128,7 +128,7 @@ const MapView = (() => {
     other_names: 'map.field.alsoCalled', purpose: 'map.field.mainPurpose', purposes: 'map.field.allPurposes',
     river: 'map.field.river', city: 'map.field.nearestTown', owner: 'map.field.owner',
     normal_storage_af: 'map.field.normalStorage', max_storage_af: 'map.field.maxStorage',
-    surface_acres: 'map.field.surfaceAcres', height_ft: 'map.field.heightFt', year: 'map.field.cropMapYear',
+    surface_acres: 'map.field.surfaceAcres', height_ft: 'map.field.heightFt', year: 'map.field.built',
     dam_type: 'map.field.damType', hazard: 'map.field.downstreamHazard', condition: 'map.field.condition',
     status: 'map.field.status', area_acres: 'map.field.areaAcres', water_type: 'map.field.waterPresent',
     reservoir_type: 'map.field.reservoirType', crop: 'map.field.crop', crop_acres: 'map.field.cropAcresBlock',
@@ -136,12 +136,13 @@ const MapView = (() => {
     NO_OF_RAMP_LANE_USE_ONE_TIME: 'map.field.rampLanes', FISH_CLEANING: 'map.field.fishCleaning',
     Comments: 'map.field.notes', Website: 'map.field.website'
   };
+  const CROP_CLASSES = new Set(['orchard', 'vineyard', 'berries', 'perennial_veg']);
   const CAVEAT_KEY = {
     mineral: 'map.caveat.mineral', oil_gas_well: 'map.caveat.well', fish_stocking: 'map.caveat.fish',
     boat_launch: 'map.caveat.boat', dam: 'map.caveat.dam', reservoir: 'map.caveat.surfaceWater',
     lake: 'map.caveat.surfaceWater', orchard: 'map.caveat.crops', vineyard: 'map.caveat.crops',
     berries: 'map.caveat.crops', perennial_veg: 'map.caveat.crops', pond: 'map.caveat.pond',
-    spring: 'map.caveat.spring', drinking_water: 'map.caveat.tap'
+    spring: 'map.caveat.spring', water_well: 'map.caveat.waterWell', drinking_water: 'map.caveat.tap'
   };
   const PRESET_KEY = { Emergency: 'map.preset.emergency', Water: 'map.preset.water', Supplies: 'map.preset.supplies', 'Food trees': 'map.preset.foodTrees', Resources: 'map.preset.resources', All: 'map.preset.all' };
   const tLayer = l => l && l.id ? tr('map.layer.' + l.id, null, l.label) : (l && l.label) || '';
@@ -149,7 +150,11 @@ const MapView = (() => {
   const tField = k => tr(FIELD_KEY[k] || ('map.field.' + k), null, FIELD[k]);
   const tCaveat = k => CAVEAT[k] ? tr(CAVEAT_KEY[k] || ('map.caveat.' + k), null, CAVEAT[k]) : '';
   const tPreset = n => n ? tr(PRESET_KEY[n] || n, null, n) : tr('map.preset.none', null, 'None');
-  const unnamed = p => p.name || (p.detail?.reservoir_type ? p.detail.reservoir_type : tr('map.unnamed', { label: (p.label || tLayer(layerOf(p.cls)) || '').replace(/ \(.*\)/, '').replace(/^Recorded /, '') }, 'Unnamed {label}'));
+  // Server messages: {key, params, text} (server.py msg()); data values arrive as plain strings.
+  const partHtml = x => x && typeof x === 'object' ? (x.key ? tHtml(x.key, x.params, x.text) : escH(x.text ?? '')) : escH(x ?? '');
+  const partsHtml = (parts, fallback) => Array.isArray(parts) ? parts.map(partHtml).join(' · ') : escH(fallback ?? '');
+  const partText = x => x && typeof x === 'object' ? (x.key ? tr(x.key, x.params, x.text) : (x.text ?? '')) : (x ?? '');
+  const unnamed = p => (p.nameMessage ? partText(p.nameMessage) : p.name) || (p.detail?.reservoir_type ? p.detail.reservoir_type : tr('map.unnamed', { label: ((p.labelKey ? tr(p.labelKey, null, p.label) : p.label) || tLayer(layerOf(p.cls)) || '').replace(/ \(.*\)/, '').replace(/^Recorded /, '') }, 'Unnamed {label}'));
 
   let askedHome = false;
   async function localHome() {
@@ -244,7 +249,7 @@ const MapView = (() => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
       describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
-      $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
+      $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${partHtml({ key: d.labelKey, params: d.labelParams, text: d.label })}</b><span class="muted">${partHtml({ key: d.statusKey, params: d.statusParams, text: d.status })}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : tr('map.forestTypesPending', { rest: '' }, 'Not drawn yet: forest types. {rest}')}${escH(tr('map.resourceLayersNote', null, 'Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.'))}</li>`);
     }).catch(() => { $('mdata').innerHTML = `<li class="muted">${escH(tr('map.detailsUnavailable', null, 'Map details unavailable.'))}</li>`; if (openWhole && st) fit(US, 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
@@ -841,7 +846,7 @@ const MapView = (() => {
   function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; st.cardState = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
   function showPlace(p) {
     st.cardState = { type: 'place', p };
-    openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${markKindHtml(p)}</div><h3>${markNameHtml(p)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">${escH(tr('map.removeMarker', null, 'Remove marker'))}</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p)
+    openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${markKindHtml(p)}</div><h3>${markNameHtml(p)}</h3>${p.detail ? `<p>${partsHtml(p.detailParts, p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">${escH(tr('map.removeMarker', null, 'Remove marker'))}</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p)
   }
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
@@ -859,10 +864,10 @@ const MapView = (() => {
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
     const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
-      .map(([k, v]) => `<tr><th>${escH(tField(k))}</th><td>${escH(v)}</td></tr>`).join('');
+      .map(([k, v]) => `<tr><th>${escH(k === 'year' && CROP_CLASSES.has(p.cls) ? tr('map.field.cropMapYear', null, 'Satellite crop map year') : tField(k))}</th><td>${escH(v)}</td></tr>`).join('');
     const el = openCard(`${back ? `<button class="back">← ${escH(back.title)}</button>` : ''}<div class="kind">${sym(l, 20)}${escH(tLayer(l))}</div><h3>${escH(unnamed(p))}</h3>
       ${p.records > 1 ? `<p class="muted small">${escH(tr('map.sourceRecordsAtSpot', { count: p.records }, '{count} source records at this spot'))}</p>` : ''}
-      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>${escH(tr('map.notWaterSource', null, 'Not a water source:'))}</b> ${escH(tr('map.notWaterSourceDetail', { type: (detail.reservoir_type || tr('map.wastePond', null, 'waste pond')).toLowerCase() }, 'this is a {type}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.'))}</p>` : ''}${/tailings/i.test(detail.purposes || '') ? `<p class="caveat"><b>${escH(tr('map.mineTailingsDam', null, 'Mine-tailings dam:'))}</b> ${escH(tr('map.mineTailingsDetail', null, 'it holds mine waste, not usable water. Do not drink, swim or fish here.'))}</p>` : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(tCaveat(p.cls))}</p>` : ''}${coordsBlock(p)}
+      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${partsHtml(p.summaryParts, p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>${escH(tr('map.notWaterSource', null, 'Not a water source:'))}</b> ${escH(tr('map.notWaterSourceDetail', { type: (detail.reservoir_type || tr('map.wastePond', null, 'waste pond')).toLowerCase() }, 'this is a {type}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.'))}</p>` : ''}${/tailings/i.test(detail.purposes || '') ? `<p class="caveat"><b>${escH(tr('map.mineTailingsDam', null, 'Mine-tailings dam:'))}</b> ${escH(tr('map.mineTailingsDetail', null, 'it holds mine waste, not usable water. Do not drink, swim or fish here.'))}</p>` : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(tCaveat(p.cls))}</p>` : ''}${coordsBlock(p)}
       <div class="acts"><button data-a="zoom">${escH(tr('map.zoomHere', null, 'Zoom here'))}</button><button data-a="copy">${escH(tr('map.copyCoordinates', null, 'Copy coordinates'))}</button></div>`);   // no web links: the words stay, the addresses go
     if (back) el.querySelector('.back').onclick = () => showMembers(back.p);
     wireCoords(p); reveal(p.lat, p.lon);
@@ -871,9 +876,8 @@ const MapView = (() => {
     st.cardState = { type: 'members', p };
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
     st.sel = { lat: p.lat, lon: p.lon }; draw();
-    const titleKey = p.spot ? 'map.recordsAtOneSpot' : 'map.placesHere';
+    const [titleKey, titleFallback] = p.spot ? ['map.recordsAtOneSpot', '{count} records at one spot'] : ['map.placesHere', '{count} places here'];
     const titleParams = { count: p.spot ? Math.max(p.count, p.records || 0) : p.count };
-    const titleFallback = p.spot ? '{count} records at one spot' : '{count} places here';
     const title = tr(titleKey, titleParams, titleFallback), titleHtml = tHtml(titleKey, titleParams, titleFallback);
     openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : tHtml('map.groupLabel', null, 'Group')}</div><h3>${titleHtml}</h3><p class="muted">${tHtml('map.loading', null, 'Loading…')}</p>`);
     reveal(p.lat, p.lon);
@@ -944,7 +948,7 @@ const MapView = (() => {
       }).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
         const p = list[+b.dataset.i]; box.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
-        st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }); settle(true); b.classList.add('on');
+        st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, summaryParts: p.detailParts, detail: {} }); settle(true); b.classList.add('on');
         if (innerWidth < 1000) $('mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     } catch { if (st === state) box.innerHTML = `<p class="muted small">${messageHtml(message('map.nearbyUnavailable', null, 'Nearby search is unavailable.'))}</p>` }
@@ -967,8 +971,8 @@ const MapView = (() => {
         box.innerHTML = `<p class="muted small" style="padding:8px">${text}${extra}</p>`;
         return;
       }
-      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
-      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${escH(tr('map.searchMatches', { count: r.length }, '{count} matches'))}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
+      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, kindKey: p.kindKey, kindFallback: p.kind, detail: p.detail, detailParts: p.detailParts }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
+      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${escH(tr('map.searchMatches', { count: r.length }, '{count} matches'))}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${p.kindKey ? tHtml(p.kindKey, null, p.kind) : escH(p.kind)} · ${partsHtml(p.detailParts, p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);
     } catch { if (st === state) box.innerHTML = `<p class="muted small">${escH(tr('map.finderUnavailable', null, 'Place finder unavailable.'))}</p>` }

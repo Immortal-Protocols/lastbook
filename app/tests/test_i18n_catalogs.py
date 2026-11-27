@@ -247,6 +247,8 @@ class SpanishWording(unittest.TestCase):
             'native.menu.zoom', 'common.video', 'chat.sourceType.videos',
             'native.appFileDescription', 'installer.productName', 'installer.companyName', 'videos.videoCount',
             'setup.facts.sha256', 'setup.facts.bytes',
+            # Server-sent labels whose Spanish is the same word.
+            'kind.pdf', 'kind.video', 'poi.hospital', 'map.summary.acres',
         })
 
     def test_everyday_words_cover_the_full_catalogue(self):

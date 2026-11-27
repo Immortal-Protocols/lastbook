@@ -698,7 +698,7 @@ def _apply_map(work, pend, d, target, note):
                 rel = Path(root, f).relative_to(old_dir)
                 (target / rel).parent.mkdir(parents=True, exist_ok=True)
                 os.replace(Path(root, f), target / rel)
-        note['error'] = 'The new map did not open, so Lastbook put the old one back.'
+        note.update(key='setup.err.putOldMapBack', error='The new map did not open, so Lastbook put the old one back.')
     return target if is_library(target) else None, note
 
 
@@ -763,7 +763,9 @@ def apply_pending(pend, work):
                     carry_over(d['new'], old)
                 os.replace(old, target)
             except OSError as e:     # left for the next start to try again
-                note['error'] = f'Lastbook could not put the old library back ({type(e).__name__}). It is at {old}; rename it to {target.name} to use it again.'
+                where = {'type': type(e).__name__, 'old': str(old), 'name': target.name}
+                note.update(key='setup.err.couldNotPutOldBack', params=where,
+                            error='Lastbook could not put the old library back ({type}). It is at {old}; rename it to {name} to use it again.'.format(**where))
                 return None, note
         old = old_name(target) if target.exists() else None
         if old:

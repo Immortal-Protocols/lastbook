@@ -513,7 +513,7 @@ class Setup:
     def ai_fit(self, hw):
         m = self.manifest.model()
         if not m:
-            return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why': 'No local AI is offered for this version.'}
+            return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why_key': 'setup.why.noLocalAi', 'why': 'No local AI is offered for this version.'}
         if self.ai_measure:
             return self.ai_measure
         path = self._model_path_here()
@@ -1097,7 +1097,7 @@ class Setup:
             if job['plan'].get('check_only'):     # a check made nothing: no work folder, download or staged update is its to clear
                 if job['state'] != 'done':
                     job['state'] = 'failed'
-                    job['error'] = {'code': 'cancelled', 'message': 'Cancelled. Nothing was changed.'}
+                    job['error'] = {'code': 'cancelled', 'key': 'setup.cancelled.nothingChanged', 'message': 'Cancelled. Nothing was changed.'}
                     for it in job['items']:
                         if it['state'] != 'done':
                             it['state'] = 'failed'
@@ -1110,7 +1110,7 @@ class Setup:
                     except OSError:
                         pass
                 job['state'] = 'failed'
-                job['error'] = {'code': 'cancelled', 'message': 'Cancelled. This library was not changed; copy again to the same place to carry on.'}
+                job['error'] = {'code': 'cancelled', 'key': 'setup.cancelled.copyCarryOn', 'message': 'Cancelled. This library was not changed; copy again to the same place to carry on.'}
                 for it in job['items']:
                     if it['state'] != 'done':
                         it['state'] = 'failed'
@@ -1123,7 +1123,7 @@ class Setup:
                     except OSError:
                         pass
                 job['state'] = 'failed'
-                job['error'] = {'code': 'cancelled', 'message': 'Cancelled. Nothing was changed.'}
+                job['error'] = {'code': 'cancelled', 'key': 'setup.cancelled.nothingChanged', 'message': 'Cancelled. Nothing was changed.'}
                 for it in job['items']:
                     if it['state'] != 'done':
                         it['state'] = 'failed'
@@ -1823,6 +1823,13 @@ def startup(settings_dir, only=None):
         return None, None
 
 
+def _note_detail(note, key, english, **params):
+    """Add a sentence to a switch note: in English to `error` (the log), and keyed in `details` for any page that shows it."""
+    text = english.format(**params)
+    note['error'] = str(note['error']) + ' ' + text
+    note.setdefault('details', []).append({'key': key, 'params': params or None, 'text': text})
+
+
 def _keep_unpacked(work, note):
     """A failed switch leaves the staged library, which may hold the person's model. Set it aside as kept-<time>, so the next
     job unpacks fresh and _fresh_unpack never empties a folder with the model in it."""
@@ -1836,15 +1843,17 @@ def _keep_unpacked(work, note):
         stuck = _set_aside(staged, kept)     # what could not move is the last copy: it stays where it is, and the message says so
         blocked = _drop_except(staged, stuck)       # #86's note goes too: a file still open stops the next job instead of being reused
         if stuck:
-            note['error'] = str(note['error']) + ' Your files could not be moved and are still in ' + ', '.join(map(str, stuck)) + '.'
+            _note_detail(note, 'setup.kept.stuck', 'Your files could not be moved and are still in {paths}.', paths=', '.join(map(str, stuck)))
         if blocked:
-            note['error'] = str(note['error']) + ' These files are still open and were left in place: ' + ', '.join(map(str, blocked)) + '.'
+            _note_detail(note, 'setup.kept.stillOpen', 'These files are still open and were left in place: {paths}.', paths=', '.join(map(str, blocked)))
         if not any(p.exists() for p in (kept / DATA_NAME / part for part in _PERSONS_FILES)):
             shutil.rmtree(kept, ignore_errors=True)
             return
     else:
         note['error'] = str(note['error']).replace(str(staged), str(kept))
-    note['error'] = str(note['error']) + f' What was unpacked is kept in {kept}.'
+        if isinstance(note.get('params'), dict):
+            note['params'] = {k: str(v).replace(str(staged), str(kept)) if isinstance(v, (str, Path)) else v for k, v in note['params'].items()}
+    _note_detail(note, 'setup.kept.where', 'What was unpacked is kept in {path}.', path=str(kept))
 
 
 _PERSONS_FILES = (Path('models'), Path('derived', 'geo', 'addresses'))     # what install.carry_over moves into a new library
@@ -1930,6 +1939,7 @@ def opened(settings_dir, data, note):
         if note or (isinstance(job, dict) and job.get('state') == 'done' and not job.get('check')):   # a check installed nothing
             if note and note.get('error'):
                 _keep_unpacked(work, note)
+                print('setup: the staged switch, after setting its unpack aside:', note['error'], flush=True)
             else:
                 _clear_work(work, s)
             try:

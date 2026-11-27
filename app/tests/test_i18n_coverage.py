@@ -1,14 +1,34 @@
 """Hard-coded UI chrome should not regress: every user-visible string is catalogued."""
+import ast
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'packaging'))
 import i18n_scan as scan  # noqa: E402
+
+
+def duplicate_test_methods(source, relative_path):
+    tree = ast.parse(source, filename=relative_path)
+    duplicates = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        methods = {}
+        for child in node.body:
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith('test_'):
+                methods.setdefault(child.name, []).append(child.lineno)
+        duplicates.extend(
+            f'{relative_path}:{node.name}.{name} ({len(lines)} definitions at lines {", ".join(map(str, lines))})'
+            for name, lines in methods.items() if len(lines) > 1
+        )
+    return duplicates
 
 
 class Coverage(unittest.TestCase):
@@ -20,15 +40,102 @@ class Coverage(unittest.TestCase):
         cls.chrome = scan.unique_chrome(cls.hits)
         cls.totals = scan.summarize(cls.hits)[1]
 
-    def test_bundled_manifest_summary_has_catalogue_key(self):
-        source = (ROOT / 'packaging' / 'release_manifest.py').read_text(encoding='utf-8')
-        self.assertIn("SMALL_SUMMARY_KEY = 'setup.packSummary.small'", source)
-        self.assertIn("'summary_key': SMALL_SUMMARY_KEY", source)
-        self.assertIn("MEDIUM_SUMMARY_KEY = 'setup.packSummary.medium'", source)
-        self.assertIn('SUMMARY_KEYS = {', source)
-        self.assertIn("pack.setdefault('summary_key', key)", source)
-        self.assertIn('setup.packSummary.small', self.english)
-        self.assertIn('setup.packSummary.medium', self.english)
+
+    def scan_web_source(self, source):
+            with tempfile.TemporaryDirectory(prefix='i18n-scan-web-') as temporary:
+                web = Path(temporary)
+                (web / 'audit.js').write_text(source, encoding='utf-8')
+                with patch.object(scan, 'WEB', web), patch.object(scan, 'WEB_FILES', ['audit.js']):
+                    return scan.scan_web()
+
+    def test_scanner_detects_leading_space_ui_fragments(self):
+            sample = '''function recommendLine() {
+              const what = `${esc(p.title)}${r.ai && aiFits() ? ' with the local AI' : ''}`;
+              return `<p class="s-rec">Suggested: ${what}</p>`;
+            }'''
+            hits = self.scan_web_source(sample)
+            fragment = [hit for hit in hits if hit['text'] == ' with the local AI']
+            self.assertEqual(len(fragment), 1, hits)
+            self.assertEqual(fragment[0]['class'], 'chrome')
+
+            self.assertEqual(scan.classify(' --lan', 'const command = '), 'technical')
+
+    def test_scanner_detects_prose_exported_to_markdown(self):
+            sample = '''function exportChat(c) {
+              const md = `Exported chat notes from the offline library. Check each linked page before acting.`;
+              new Blob([md], { type: 'text/markdown' });
+            }'''
+            hits = self.scan_web_source(sample)
+            exported = [hit for hit in hits if hit['text'] == 'Exported chat notes from the offline library. Check each linked page before acting.']
+            self.assertEqual(len(exported), 1, hits)
+            self.assertEqual(exported[0]['class'], 'chrome')
+
+    def test_scanner_detects_short_rendered_button_labels(self):
+            sample = '''root.innerHTML = `${canAdd ? `<button>Add</button>` : ''}`;'''
+            hits = self.scan_web_source(sample)
+            add = [hit for hit in hits if hit['text'] == 'Add']
+            self.assertEqual(len(add), 1, hits)
+            self.assertEqual(add[0]['class'], 'chrome')
+            self.assertEqual(scan.classify('Add', 'const action = '), 'technical')
+            self.assertEqual(scan.classify('OK', "statusLine('"), 'chrome')
+
+    def test_scanner_recognizes_chat_tr_keyed_fallbacks(self):
+            sample = '''
+              const known = chatTr('chat.exportTitle', { title }, 'Chat: {title}');
+              const missing = chatTr('audit.missingKey', null, 'A new visible label');
+            '''
+            hits = self.scan_web_source(sample)
+            known = [hit for hit in hits if hit['text'] == 'Chat: {title}']
+            missing = [hit for hit in hits if hit['text'] == 'A new visible label']
+            self.assertEqual(len(known), 1, hits)
+            self.assertEqual(known[0]['class'], 'wired')
+            self.assertEqual(len(missing), 1, hits)
+            self.assertEqual(missing[0]['class'], 'chrome')
+
+    def test_scanner_recognizes_other_keyed_message_helpers(self):
+            sample = '''
+              setError(message, 'chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.');
+              trMarkup('setup.error', null, 'Setup could not start.');
+            '''
+            hits = self.scan_web_source(sample)
+            by_text = {hit['text']: hit['class'] for hit in hits}
+            self.assertEqual(by_text['The answer stopped unexpectedly.'], 'wired')
+            self.assertEqual(by_text['Setup could not start.'], 'wired')
+
+    def test_scanner_preserves_urls_regex_templates_attributes_and_python_concatenation(self):
+            js = "statusLine('Open https://example.org/help now');"
+            url = next((text, pre) for _pos, text, pre in scan.iter_js_strings(js) if 'https://' in text)
+            self.assertEqual(scan.classify(*url), 'chrome')
+
+            nested = 'const x = "}"; root.innerHTML = `${/}/.test(x) ? `<button>Keep going</button>` : ""}`;'
+            hits = [(text, pre) for _pos, text, pre in scan.iter_js_strings(nested)]
+            pre = next((pre for text, pre in hits if text == 'Keep going'), None)
+            self.assertIsNotNone(pre, hits)
+            self.assertEqual(scan.classify('Keep going', pre), 'chrome')
+
+            parser = scan._MarkupStrings('web/chat.js')
+            parser.feed('<a title="Source {…}">{…}</a>')
+            parser.close()
+            source = next(((text, pre) for text, pre in parser.strings if text.startswith('Source ')), None)
+            self.assertIsNotNone(source, parser.strings)
+            self.assertEqual(scan.classify(*source), 'chrome')
+
+            joined = next((text, pre, body) for _pos, text, pre, body in scan.iter_py_strings('label("Open " "folder")')
+                          if text == 'Open folder')
+            self.assertEqual(scan.classify(joined[0], joined[1], joined[2]), 'chrome')
+
+    def test_python_test_method_names_are_unique_and_duplicate_fixtures_are_detected(self):
+            fixture = '''class Duplicate(unittest.TestCase):
+        def test_same(self): pass
+        def test_same(self): pass
+    '''
+            self.assertEqual(duplicate_test_methods(fixture, 'fixture.py'), [
+                'fixture.py:Duplicate.test_same (2 definitions at lines 2, 3)'])
+            duplicates = []
+            for path in sorted((ROOT / 'app' / 'tests').rglob('*.py')):
+                duplicates.extend(duplicate_test_methods(
+                    path.read_text(encoding='utf-8'), str(path.relative_to(ROOT))))
+            self.assertEqual(duplicates, [], 'duplicate unittest methods: ' + '; '.join(duplicates))
 
     def test_bundled_manifest_summary_has_catalogue_key(self):
         source = (ROOT / 'packaging' / 'release_manifest.py').read_text(encoding='utf-8')
@@ -39,6 +146,7 @@ class Coverage(unittest.TestCase):
         self.assertIn("pack.setdefault('summary_key', key)", source)
         self.assertIn('setup.packSummary.small', self.english)
         self.assertIn('setup.packSummary.medium', self.english)
+
 
     def test_catalogues_are_paired(self):
         self.assertGreaterEqual(len(self.english), 1000)
@@ -155,40 +263,8 @@ class Coverage(unittest.TestCase):
                 post = sample[pos:min(len(sample), end + 600)]
                 self.assertEqual(scan.classify(found, pre, post), 'chrome')
 
-    def test_catalogued_helper_fallbacks_are_wired_but_missing_keys_are_not(self):
-        for source, literal, expected in [
-            ("el.innerHTML = `${tHtml('map.clickToList', null, 'Click to list them')}`;",
-             'Click to list them', 'wired'),
-            ("el.innerHTML = `${keyedMessage('setup.noAnswer', null, 'Lastbook did not answer.')}`;",
-             'Lastbook did not answer.', 'wired'),
-            ("el.innerHTML = `${tHtml('missing.newKey', null, 'Brand new visible string')}`;",
-             'Brand new visible string', 'chrome'),
-        ]:
-            with self.subTest(literal=literal):
-                _pos, text, pre = next(item for item in scan.iter_js_strings(source) if item[1] == literal)
-                self.assertEqual(scan.classify(text, pre), expected)
-        self.assertEqual(scan.classify('{…} ({…})', "return `<dt>${size(value)} (${trMarkup("), 'technical')
-        self.assertEqual(scan.classify('Amount {…} ({…})', 'el.innerHTML = `'), 'chrome')
 
-    def test_scanner_does_not_hide_visible_markup_after_a_translated_expression(self):
-        sample = "main.innerHTML = `<div><h1>Map</h1>${tr('map.heading', null, 'Map')}<section><h2>Nearest to the map center</h2>" + (
-            '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</section>`;'
-        hits = list(scan.iter_js_strings(sample))
-        pos, text, pre = next(item for item in hits if 'Nearest to the map center' in item[1])
-        end = scan._skip_template(sample, pos) if sample[pos] == '`' else scan._skip_string(sample, pos)
-        post = sample[pos:min(len(sample), end + 600)]
-        self.assertEqual(scan.classify(text, pre, post), 'chrome')
 
-    def test_scanner_finds_ask_offer_text_inside_a_long_dynamic_template(self):
-        sample = "el.innerHTML = `<a><b>Ask the library: “${esc(q)}”</b><small>Get a written answer with the exact pages it came from</small>" + (
-            '<p>Additional visible copy long enough to move the sink outside the scanner lookahead.</p>' * 18) + '</a>`;'
-        hits = list(scan.iter_js_strings(sample))
-        for text in ('Ask the library: “{…}”', 'Get a written answer with the exact pages it came from'):
-            with self.subTest(text=text):
-                pos, found, pre = next(item for item in hits if item[1] == text)
-                end = scan._skip_template(sample, pos) if sample[pos] == '`' else scan._skip_string(sample, pos)
-                post = sample[pos:min(len(sample), end + 600)]
-                self.assertEqual(scan.classify(found, pre, post), 'chrome')
 
     def test_scanner_flattens_interpolated_templates(self):
         sample = 'live.textContent = `Hello, ${name}, welcome.`;'

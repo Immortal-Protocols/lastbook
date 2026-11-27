@@ -333,9 +333,10 @@ class SpanishWording(unittest.TestCase):
 
     def test_language_preview_describes_complete_interface(self):
         preview = self.es['language.preview']
-        self.assertNotIn('parcial', preview.casefold())
-        self.assertIn('menús de Lastbook', preview)
-        self.assertIn('su idioma original', preview)
+        self.assertIn('parcial', preview.casefold())
+        self.assertIn('algunos textos de la interfaz', preview.casefold())
+        self.assertIn('menús nativos', preview.casefold())
+        self.assertIn('inglés', preview.casefold())
 
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.es['nav.settings'], 'Ajustes')

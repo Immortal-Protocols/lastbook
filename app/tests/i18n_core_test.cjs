@@ -93,7 +93,7 @@ test("visible Setup diagnostics and Chat export labels have translations in each
     }
   }
   const es = createI18n({ catalogs, locale: "es-419" });
-  assert.equal(es.t("search.results"), "Resultados de búsqueda");
+  assert.equal(es.t("search.results"), "Resultados de la búsqueda");
 });
 
 test("plural selection uses exact counts and the grammar of the matched catalog", () => {

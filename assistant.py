@@ -374,7 +374,12 @@ def run_tool(name, args, sess, extra_msgs, root=None):
         r = cat.get(d)
         if not r or r['kind'] != 'pdf' or not 1 <= p <= (r.get('pages') or 1):
             return 'That page is not available as an image (only PDF pages within the document can be viewed).', {'doc_id': d, 'page': p, 'error': 'unavailable'}
-        png = S.render_page(r, p, 900)
+        try:
+            png = S.render_page(r, p, 900)
+        except Exception:
+            # A damaged, encrypted or unsupported PDF: tell the model, so it can say the page cannot be shown.
+            return ('That page could not be shown. The file may be damaged or need a password.',
+                    {'doc_id': d, 'page': p, 'error': 'unreadable'})
         pub = S.public(r)
         src = {'doc_id': d, 'title': pub['title'], 'publisher': pub['publisher'], 'year': pub['year'], 'kind': 'pdf', 'trust': pub['trust'],
                'pages': pub['pages'], 'page': p, 't': None, 'excerpt': '', 'image': True, 'notes': (r.get('notes') or '')[:300]}

@@ -885,6 +885,7 @@
   "setup.repaired": "Reparada",
   "setup.ready": "Listo",
   "setup.theLocalAi": "la IA local",
+  "setup.addressSearchFor": "Búsqueda de direcciones en {name}",
   "setup.offlineAddressSearch": "búsqueda de direcciones sin conexión",
   "setup.copyTo": "Lastbook a {disk}",
   "about.lead": "Manuales públicos, guías de salud, cursos, videos y enciclopedias guardados en esta computadora, para que funcione cuando no hay internet ni teléfonos.",

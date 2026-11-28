@@ -80,7 +80,7 @@ def validate(m, allowed=None, *, bundled=False):
                       'records': p.get('records') if _int(p.get('records')) else None, 'revision': revision,
                       'installed_bytes': p.get('installed_bytes') if _int(p.get('installed_bytes')) else None,
                       'download_bytes': sum(f['size'] for f in files), 'available': available, 'files': files,
-                 'map': p['map'] if isinstance(p.get('map'), str) and NAME.match(p['map']) and p['map'] != 'base' else None}
+                      'map': p['map'] if isinstance(p.get('map'), str) and NAME.match(p['map']) else None}
         if bundled and 'parts' in p:
             entry['parts'] = _pack_parts(p['parts'], files, allowed)
             if entry['parts'] is None:

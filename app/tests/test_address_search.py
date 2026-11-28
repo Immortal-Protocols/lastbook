@@ -211,7 +211,7 @@ class AddressSearchTests(unittest.TestCase):
 
     def test_app_route_preserves_address_number(self):
         import server
-        with patch.object(server, 'HERE', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
+        with patch.object(server.lastbook_paths, 'DATA', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
             self.assertEqual(server.places('18003 nine mile'), [])
             lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None)
 

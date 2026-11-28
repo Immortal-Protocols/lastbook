@@ -4,6 +4,7 @@
    side-off: the sidebar was hidden. compact: Windows' folded pane of icons. inactive: the window is not in front. scrolled: the page is not at its top. */
 (() => {
   const c = document.documentElement.classList;
+  if (location.pathname.endsWith('/setup.html') && location.hash === '#manage') c.add('manage-entry');
   const inApp = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';
   const win = location.hostname === 'lastbook.invalid' || (!inApp && /^Win/.test(navigator.platform || ''));
   // The Linux app: a GTK window with its own title bar, so the page takes the browser's look (no traffic lights, no window material).

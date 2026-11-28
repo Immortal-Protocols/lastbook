@@ -141,8 +141,11 @@ def main():
                 problems.append(f'path of a person\'s folder {u} in {where[:3]}')
         if 'opt/lastbook/engine/setup/roots.pem' not in packaged:
             problems.append('missing from the package: opt/lastbook/engine/setup/roots.pem')
+        comparisons = Path(__file__).resolve().parents[2] / 'content' / 'source-disagreements.json'
+        if comparisons.is_file() and 'opt/lastbook/content/source-disagreements.json' not in packaged:
+            problems.append('missing from the package: opt/lastbook/content/source-disagreements.json')
         for need in ('opt/lastbook/gst/libgstlastbooksrc.so', 'opt/lastbook/lastbook.py', 'opt/lastbook/app/main.py', 'opt/lastbook/app/shell_linux.py', 'opt/lastbook/app/ui_language.py', 'opt/lastbook/app/contribute.py',
-                     'opt/lastbook/setup/manifest-v1.json', 'opt/lastbook/VERSION', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop'):
+                     'opt/lastbook/engine/source_text.py', 'opt/lastbook/setup/manifest-v1.json', 'opt/lastbook/VERSION', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop'):
             if need not in packaged:
                 problems.append(f'missing from the package: {need}')
         llm = 'opt/lastbook/llm/lastbook-llm' in packaged

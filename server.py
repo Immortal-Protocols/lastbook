@@ -35,7 +35,7 @@ if __name__ == '__main__':  # --data must be known before the paths below are wo
 
 import engine.paths as lastbook_paths  # noqa: E402  (data folder and program folder can differ in the packaged app)
 from engine.paths import ro_uri  # noqa: E402
-from engine import saved_pages, address_search, encyclopedias  # noqa: E402
+from engine import saved_pages, address_search, encyclopedias, safe_paths  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
@@ -49,6 +49,77 @@ import engine.library as library  # noqa: E402  (provides Handler, search DB pat
 import retrieval, assistant  # noqa: E402
 import secrets  # noqa: E402
 remote_records = library.remote_records  # videos moved to remote drives by the library's workers; none in the packaged app
+
+# H.264 copies of AV1 and VP9 videos, for computers that can't decode those (Macs before the M3, for AV1). The same sidecar the
+# iPad app reads, built by mobile/ipad/tools/videocompat: derived/video-compat/h264-v1/manifest.json maps each original's
+# library path to its copy. The player asks for the original's own address with ?copy=h264, so the video keeps its id,
+# transcript and progress. Only a plain file name, really inside that folder, which itself really is where it says inside the
+# data folder, not a link or a hard link, at the size the manifest gives, is ever served (engine/safe_paths.py's rules, and
+# library.file_ok's refusal of hard links).
+VIDEO_COPIES = HERE / 'derived' / 'video-compat' / 'h264-v1'
+VIDEO_COPY_CODECS = ('av01', 'vp09')
+_copies = {'mtime': None, 'items': {}}
+
+
+def _copies_folder():
+    """The copies folder's real path, or None unless it is a folder really where its path says, inside the data folder:
+    a link anywhere along the way to it, from the data folder down, could make it lead somewhere else."""
+    try:
+        here = safe_paths.real_path(HERE)
+        below = safe_paths.parts_below(os.path.abspath(VIDEO_COPIES), os.path.abspath(HERE))
+        real = safe_paths.real_path(VIDEO_COPIES)
+        if not below or safe_paths.parts_below(real, here) != below or not os.path.isdir(real):
+            return None
+        return real
+    except (OSError, ValueError):
+        return None
+
+
+def video_copy_ok(f, size=None, folder=None):
+    """May this copy file be read: a plain .mp4 name, really in the copies folder, not a link or a hard link, at size."""
+    try:
+        name = f.name
+        folder = folder or _copies_folder()
+        if folder is None or not name.lower().endswith('.mp4') or safe_paths.name_refused((name,)) or not safe_paths.segments_ok(name):
+            return False
+        if f.is_symlink() or not f.is_file() or safe_paths.parts_below(safe_paths.real_path(f), folder) != (name,):
+            return False
+        st = os.stat(f)
+        return st.st_nlink == 1 and (size is None or st.st_size == size)   # a hard link may also be a file outside the library
+    except (OSError, ValueError):
+        return False
+
+
+def video_copies():
+    """{library path of an original: (copy file, its size, the original's codec)}, for copies that are really there."""
+    folder = _copies_folder()
+    p = VIDEO_COPIES / 'manifest.json'
+    if folder is None:
+        _copies.update(mtime=None, items={})
+        return _copies['items']
+    try:
+        m = p.stat().st_mtime
+    except OSError:
+        _copies.update(mtime=None, items={})
+        return _copies['items']
+    if m == _copies['mtime']:
+        return _copies['items']
+    items = {}
+    try:
+        man = json.loads(p.read_text(encoding='utf-8'))
+        entries = man.get('items') if isinstance(man, dict) and man.get('version') == 'h264-v1' else None
+        for src, it in (entries.items() if isinstance(entries, dict) else ()):
+            if not isinstance(it, dict) or not isinstance(src, str):
+                continue                      # one bad entry is skipped, as tools/check_video_formats.py skips it
+            name, codec, size = str(it.get('file') or ''), it.get('source_video'), it.get('bytes')
+            if not name or '/' in name or '\\' in name or it.get('video') != 'avc1' or codec not in VIDEO_COPY_CODECS:
+                continue
+            if isinstance(size, int) and video_copy_ok(VIDEO_COPIES / name, size, folder):   # never a missing or partial copy
+                items[src] = (VIDEO_COPIES / name, size, codec)
+    except (ValueError, OSError):
+        items = {}
+    _copies.update(mtime=m, items=items)
+    return items
 INDEX = None  # retrieval.Index, created in main()
 LAN_KEY = None
 SERVER = None  # the running HTTP server, so the packaged app's launcher can stop it
@@ -162,6 +233,9 @@ def public(r, full=False):
     rem = remote_records().get(r['path']) if r['kind'] == 'video' else None
     if rem:
         out['remote'] = rem.get('host')
+    cp = video_copies().get(r['path']) if r['kind'] == 'video' and not rem else None
+    if cp:
+        out['copy'] = {'codec': cp[2], 'bytes': cp[1]}   # the original's codec: the player decides whether it needs the copy
     if full:
         for k in ('notes', 'edition', 'retrieved_at', 'source_url', 'license', 'license_url', 'searchability',
                   'upload_date', 'publication_date', 'model', 'course', 'level', 'caption_type'):
@@ -1766,6 +1840,44 @@ class Handler(library.Handler):
     def list_directory(self, path):
         self.send_error(404)
 
+    def send_video_copy(self, rel):
+        """The H.264 copy of the original at library path rel (already checked by path_ok), as the original is sent: one
+        Range at a time, or the whole file when no Range is asked. 404 when this original has no copy."""
+        cp = video_copies().get(rel)
+        if not cp or not video_copy_ok(cp[0], cp[1]):      # checked again here: the file may have changed since the manifest was read
+            return self.send_error(404)
+        f, size = cp[0], cp[1]
+        rng = self.headers.get('Range')
+        start, end = 0, size - 1
+        if rng:
+            m = re.match(r'bytes=(\d+)-(\d*)', rng.strip())   # as for the original: a list of ranges reads as its first
+            if not m or int(m.group(1)) >= size or (m.group(2) and int(m.group(2)) < int(m.group(1))):
+                self.send_response(416)
+                self.send_header('Content-Range', f'bytes */{size}')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            start, end = int(m.group(1)), min(int(m.group(2)) if m.group(2) else size - 1, size - 1)
+        self.send_response(206 if rng else 200)
+        self.send_header('Content-Type', 'video/mp4')
+        self.send_header('Accept-Ranges', 'bytes')
+        if rng:
+            self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+        self.send_header('Content-Length', str(end - start + 1))
+        self.end_headers()
+        try:
+            with f.open('rb') as fh:
+                fh.seek(start)
+                left = end - start + 1
+                while left:
+                    b = fh.read(min(left, 1024 ** 2))
+                    if not b:
+                        break
+                    self.wfile.write(b)
+                    left -= len(b)
+        except library.CLIENT_GONE:
+            pass
+
     def send_header(self, keyword, value):
         if keyword.lower() == 'content-type':
             self.sent_type = value
@@ -2136,6 +2248,8 @@ class Handler(library.Handler):
                                        'pins': bool(map_contents()['layers']) if pack_info() else True})
             if path.startswith('/api/') and path not in self.LIBRARY_ROUTES:
                 return self.send_json({'error': 'not found'}, 404)
+            if qs.get('copy') == 'h264' and path.startswith(('/videos/', '/videos-external/')):
+                return self.send_video_copy(path[1:])
             return super().do_GET()
         except library.CLIENT_GONE:
             return

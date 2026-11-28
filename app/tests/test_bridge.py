@@ -517,6 +517,51 @@ class Both:
         self.assertEqual(self.get('/videos/huge.mkv').status, 206)
         self.assertEqual(len(self.get('/videos/huge.mkv').body), self.piece)
 
+    # ---- H.264 copies of videos this computer can't decode (#49): the original's address with ?copy=h264
+    def check_copy(self, r, start, end):
+        self.assertEqual(r.status, 206)
+        self.assertEqual(r.hs['content-range'], f'bytes {start}-{end}/{fixture.COPY_SIZE}')
+        self.assertTrue(r.hs['content-type'].startswith('video/mp4'))
+        self.assertEqual(hashlib.sha256(r.body).digest(), hashlib.sha256(pat(fixture.COPY_AT + start, end - start + 1)).digest())
+
+    def test_video_copy_is_served_at_the_original_address(self):
+        self.check_copy(self.get(A + '?copy=h264', 'bytes=0-99'), 0, 99)
+        self.check_copy(self.get(A + '?copy=h264', f'bytes={fixture.COPY_SIZE - 10}-{fixture.COPY_SIZE + 99}'), fixture.COPY_SIZE - 10, fixture.COPY_SIZE - 1)
+        self.check_copy(self.get(A + '?copy=h264', 'bytes=0-9,20-29'), 0, 9)
+        self.check_slice(self.get(A, 'bytes=0-99'), 0, 99)               # without ?copy, the original as before
+
+    def test_video_copy_comes_in_pieces_like_the_original(self):
+        self.check_copy(self.get(A + '?copy=h264', 'bytes=0-'), 0, self.piece - 1)
+        self.check_copy(self.get(A + '?copy=h264'), 0, self.piece - 1)
+
+    def test_video_copy_walk_whole_file(self):
+        got, off = [], 0
+        while off < fixture.COPY_SIZE:
+            r = self.get(A + '?copy=h264', f'bytes={off}-')
+            self.assertEqual(r.status, 206)
+            got.append(r.body)
+            off += len(r.body)
+        self.assertEqual(hashlib.sha256(b''.join(got)).digest(), hashlib.sha256(pat(fixture.COPY_AT, fixture.COPY_SIZE)).digest())
+
+    def test_video_copy_refused(self):
+        for rng in (f'bytes={fixture.COPY_SIZE}-', 'bytes=5-3', 'bytes=-500', 'bytes=abc', 'bytes=99999999999999999999-'):
+            self.assertEqual(self.get(A + '?copy=h264', rng).status, 416, rng)
+        self.assertEqual(self.get('/videos/b.webm?copy=h264', 'bytes=0-9').status, 404)      # its copy is the wrong size
+        self.assertEqual(self.get('/videos/huge.mkv?copy=h264', 'bytes=0-9').status, 404)     # its copy is not a plain file name
+        r = self.get('/videos/huge.mkv?copy=h264', 'bytes=0-99')
+        self.assertNotIn(fixture.CANARY, r.body)
+        self.assertNotEqual(self.get('/documents/s.pdf?copy=h264', 'bytes=0-9').status, 206)  # not a video address
+        self.assertEqual(self.get('/videos/none.mp4?copy=h264', 'bytes=0-9').status, 404)
+
+    def test_video_copy_with_a_second_name_is_not_served(self):
+        second = TMP / 'vida-second-name.mp4'
+        os.link(server.VIDEO_COPIES / 'vida.mp4', second)                         # a hard link: the copy also lives elsewhere
+        try:
+            self.assertEqual(self.get(A + '?copy=h264', 'bytes=0-99').status, 404)
+        finally:
+            second.unlink()
+        self.check_copy(self.get(A + '?copy=h264', 'bytes=0-99'), 0, 99)
+
     def test_video_head_is_not_capped(self):
         r = call(self.b, 'HEAD', A)
         self.assertEqual(r.status, 200)
@@ -1224,6 +1269,107 @@ class NothingGoesOut(unittest.TestCase):
         with mock.patch('contribute.webbrowser.open') as launch:
             launch_project_repository()
         launch.assert_called_once_with('https://github.com/Immortal-Protocols/lastbook')
+
+
+class VideoCopyTests(unittest.TestCase):
+    """Which H.264 copies the server offers (#49): only plain files in the sidecar folder, at their recorded size, for AV1 or VP9."""
+    def test_doc_names_the_copy_and_the_original_codec(self):
+        d = server.public(server.catalog()['by_id']['vida'], full=True)
+        self.assertEqual(d['copy'], {'codec': 'av01', 'bytes': fixture.COPY_SIZE})
+        self.assertNotIn('copy', server.public(server.catalog()['by_id']['pdfsmall'], full=True))
+
+    def test_only_usable_copies_are_offered(self):
+        self.assertEqual(sorted(server.video_copies()), ['videos/a.mp4'])
+
+    def test_no_sidecar_or_a_broken_manifest_offers_none(self):
+        real = server.VIDEO_COPIES
+        try:
+            for text in (None, '{', '[]', '{"version": "h264-v2", "items": {"videos/a.mp4": {}}}', '{"version": "h264-v1", "items": 5}'):
+                d = TMP / 'copies-check'
+                shutil.rmtree(d, ignore_errors=True)
+                d.mkdir()
+                if text is not None:
+                    (d / 'manifest.json').write_text(text)
+                server.VIDEO_COPIES = d
+                server._copies.update(mtime=None, items={})
+                self.assertEqual(server.video_copies(), {}, text)
+        finally:
+            shutil.rmtree(TMP / 'copies-check', ignore_errors=True)
+            server.VIDEO_COPIES = real
+            server._copies.update(mtime=None, items={})
+
+
+class VideoCopyFiles(unittest.TestCase):
+    """Which copy files may be read at all (review of #123): as library.file_ok judges files, no link, no hard link, and a
+    copies folder that really is where its path says. Each case is checked with a folder of its own, then put back."""
+    def setUp(self):
+        self.real = server.VIDEO_COPIES
+        self.dirs = []
+        self.addCleanup(self.restore)
+
+    def restore(self):
+        server.VIDEO_COPIES = self.real
+        server._copies.update(mtime=None, items={})
+        for d in self.dirs:
+            if d.is_symlink():
+                d.unlink()                        # rmtree refuses a link to a folder
+            else:
+                shutil.rmtree(d, ignore_errors=True)
+
+    def folder(self, name, items):
+        d = TMP / name
+        shutil.rmtree(d, ignore_errors=True)
+        d.mkdir()
+        self.dirs.append(d)
+        (d / 'good.mp4').write_bytes(b'g' * 64)
+        (d / 'manifest.json').write_text(json.dumps({'version': 'h264-v1', 'items': items}))
+        return d
+
+    def use(self, d):
+        server.VIDEO_COPIES = d
+        server._copies.update(mtime=None, items={})
+        return server.video_copies()
+
+    def item(self, file, n=64):
+        return {'file': file, 'bytes': n, 'source_video': 'av01', 'video': 'avc1'}
+
+    def test_hard_links_and_links_out_are_refused(self):
+        d = self.folder('copies-links', {'videos/good.mp4': self.item('good.mp4'), 'videos/hard.mp4': self.item('hard.mp4', len(fixture.CANARY)),
+                                         'videos/soft.mp4': self.item('soft.mp4', len(fixture.CANARY)), 'videos/bad.mp4': 'not an item',
+                                         'videos/odd.mp4': ['also', 'not'], 'videos/size.mp4': self.item('good.mp4', '64')})
+        os.link(DATA / 'outside-canary.txt', d / 'hard.mp4')                       # a hard link to a file outside the library
+        try:
+            os.symlink(DATA / 'outside-canary.txt', d / 'soft.mp4')
+        except OSError:
+            pass                                                                  # Windows without the right to make links
+        self.assertEqual(sorted(self.use(d)), ['videos/good.mp4'])             # bad entries are skipped, not fatal to the rest
+        self.assertFalse(server.video_copy_ok(d / 'hard.mp4'))
+
+    def test_a_copies_folder_that_leads_elsewhere_offers_nothing(self):
+        out = self.folder('copies-elsewhere', {'videos/good.mp4': self.item('good.mp4')})
+        link = TMP / 'copies-link'
+        if link.is_symlink():
+            link.unlink()
+        self.dirs.append(link)
+        try:
+            os.symlink(out, link, target_is_directory=True)
+        except OSError:
+            self.skipTest('no right to make links here')
+        self.assertEqual(sorted(self.use(out)), ['videos/good.mp4'])           # the same folder, used where it really is
+        self.assertEqual(self.use(link), {})
+        self.assertFalse(server.video_copy_ok(link / 'good.mp4'))
+
+    def test_checked_again_before_serving(self):
+        d = self.folder('copies-later', {'videos/good.mp4': self.item('good.mp4')})
+        self.assertEqual(sorted(self.use(d)), ['videos/good.mp4'])
+        self.assertTrue(server.video_copy_ok(d / 'good.mp4', 64))
+        os.link(d / 'good.mp4', TMP / 'second-name.mp4')                           # after the manifest was read
+        self.dirs.append(TMP / 'second-name.mp4')
+        try:
+            self.assertIn('videos/good.mp4', server.video_copies())               # the manifest has not changed, so it is still listed
+            self.assertFalse(server.video_copy_ok(d / 'good.mp4', 64))            # but send_video_copy refuses it now
+        finally:
+            (TMP / 'second-name.mp4').unlink()
 
 
 class StreamTests(Both, unittest.TestCase):

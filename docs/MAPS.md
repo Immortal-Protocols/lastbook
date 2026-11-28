@@ -144,6 +144,7 @@ issue before any code.
 [REGIONS-PK.md](REGIONS-PK.md) does the same for Pakistan's provinces and territories, with Islamabad and Rawalpindi
 as one map.
 [REGIONS-MB.md](REGIONS-MB.md) does the same for the Canadian province of Manitoba.
+[REGIONS-AB.md](REGIONS-AB.md) does the same for the Canadian province of Alberta.
 [REGIONS-DK.md](REGIONS-DK.md) does the same for Denmark's 5 regions.
 [REGIONS-AT.md](REGIONS-AT.md) does the same for Austria's nine states.
 

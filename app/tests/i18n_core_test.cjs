@@ -21,11 +21,13 @@ const catalogs = {
     files: { "=0": "No files", one: "{count} file", other: "{count} files" },
     fallback: "English only",
     caption: "Picture {position}",
+    description: "Offline library",
   },
   "es-419": {
     greeting: "Hola, {name}",
     files: { "=0": "No hay archivos", one: "{count} archivo", other: "{count} archivos" },
     caption: "Imagen {position}",
+    description: "Biblioteca sin conexión",
   },
   "es-AR": { greeting: "Buenas, {name}" },
 };
@@ -54,6 +56,46 @@ test("regional Spanish routes to es-419, with exact catalogs and English fallbac
   assert.equal(i18n.catalogLocale, "es-419");
   assert.equal(i18n.locale, "es-UY-u-nu-arab");
   assert.equal(i18n.t("constructor"), undefined);
+});
+
+test("3D building height summaries are complete and use singular/plural grammar", () => {
+  const root = resolve(__dirname, "../../translations/desktop");
+  const realCatalogs = {
+    en: JSON.parse(readFileSync(resolve(root, "en.json"), "utf8")),
+    "es-419": JSON.parse(readFileSync(resolve(root, "es-419.json"), "utf8")),
+  };
+  const values = { count: 1, mapped: 1, satellite: 0, guessed: 0, nearest: "" };
+  const en = createI18n({ catalogs: realCatalogs, locale: "en" });
+  const es = createI18n({ catalogs: realCatalogs, locale: "es-419" });
+  assert.match(en.t("map3d.buildingHeightSummary", values), /^1 building:/);
+  assert.match(es.t("map3d.buildingHeightSummary", values), /^1 edificio:/);
+  values.count = 2;
+  assert.match(en.t("map3d.buildingHeightSummary", values), /^2 buildings:/);
+  assert.match(es.t("map3d.buildingHeightSummary", values), /^2 edificios:/);
+});
+
+test("visible Setup diagnostics and Chat export labels have translations in each shipped catalog", () => {
+  const root = resolve(__dirname, "../../translations/desktop");
+  const catalogs = Object.fromEntries(["en", "es-419", "de", "zh-Hans"].map(locale =>
+    [locale, JSON.parse(readFileSync(resolve(root, locale + ".json"), "utf8"))]));
+  const required = [
+    "setup.addLocalAi", "setup.thisComputerDisk", "setup.withLocalAi", "setup.notEnoughMemory", "setup.packSummary.small",
+    "setup.addressSearchFor", "setup.why.aiFitsMemoryNotDisk", "setup.why.aiMeasuredFits", "setup.why.aiMeasuredShort",
+    "setup.why.aiNeedsMemoryFits", "setup.why.aiNeedsMemoryFitsGraphics", "setup.why.aiNeedsMemoryShort",
+    "setup.why.goesOnOtherDisk", "setup.why.modelNoFitGraphics", "setup.why.noLibraryReady",
+    "setup.why.savesToShortPath", "setup.why.smallToStart", "setup.why.smallestNeeds", "setup.why.unknownMemory",
+    "chat.answerPrefix", "chat.exportTitle", "chat.exportedFrom", "chat.exportNotice",
+    "chat.exportQuestion", "chat.exportAnswer", "chat.exportNoAnswer",
+  ];
+  for (const locale of ["de", "zh-Hans"]) {
+    const i18n = createI18n({ catalogs, locale });
+    for (const key of required) {
+      assert.ok(Object.hasOwn(catalogs[locale], key), `${locale} needs a translation for ${key}`);
+      assert.equal(i18n.resolve(key)?.locale, locale, `${locale} should not fall back for ${key}`);
+    }
+  }
+  const es = createI18n({ catalogs, locale: "es-419" });
+  assert.equal(es.t("search.results"), "Resultados de búsqueda");
 });
 
 test("plural selection uses exact counts and the grammar of the matched catalog", () => {
@@ -250,6 +292,7 @@ class FakeElement {
 test("DOM adapter updates only opted-in leaf text and safe attributes", () => {
   const leaf = new FakeElement({ "data-i18n": "greeting" }, "Hello, Ana");
   const image = new FakeElement({ "data-i18n-alt": "caption" });
+  const meta = new FakeElement({ "data-i18n-content": "description" });
   const search = new FakeElement({
     "data-i18n-placeholder": "greeting", "data-i18n-title": "fallback",
   });
@@ -258,13 +301,15 @@ test("DOM adapter updates only opted-in leaf text and safe attributes", () => {
     "data-i18n": "greeting", "data-i18n-aria-label": "greeting",
   }, "Untouched", [icon]);
   const untouched = new FakeElement({}, "Library content");
-  const root = new FakeElement({}, "", [leaf, image, search, parent, untouched]);
+  const root = new FakeElement({}, "", [leaf, image, meta, search, parent, untouched]);
   const paramsFor = (element, key) => key === "greeting" ? { name: "Ana" } : { position: 4 };
   const i18n = translator("es-UY");
   applyI18n(root, i18n, paramsFor);
   assert.equal(leaf.textContent, "Hola, Ana");
   assert.equal(leaf.getAttribute("lang"), "es-419");
   assert.equal(image.getAttribute("alt"), "Imagen 4");
+  assert.equal(meta.getAttribute("content"), "Biblioteca sin conexión");
+  assert.equal(meta.getAttribute("lang"), "es-419");
   assert.equal(search.getAttribute("placeholder"), "Hola, Ana");
   assert.equal(search.getAttribute("title"), "English only");
   assert.equal(parent.textContent, "Untouched");

@@ -58,6 +58,7 @@ function setupEnvironment() {
       elements.set(id, {
         id,
         attributes: new Map(),
+        dataset: {},
         hidden: false,
         currentTime: 0,
         played: false,
@@ -113,9 +114,20 @@ function setupEnvironment() {
     HELD: {},
     held: async ids => ids,
     ico: n => '<svg>' + n + '</svg>',
+    tr: (_key, _params, fallback) => fallback,
+    trLang: (_key, _params, fallback) => fallback,
+    trLocale: () => 'en',
     clock: s => String(s),
     fmtDur: s => String(s) + 's',
     esc: s => String(s ?? ''),
+    tr: (key, params, fallback) => typeof fallback === 'string'
+      ? fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? String(params[name]) : '{' + name + '}')
+      : fallback,
+    trLang: (_key, _params, fallback) => fallback,
+    trLocale: () => 'en',
+    lastbookTr: (key, params, fallback) => typeof fallback === 'string'
+      ? fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? String(params[name]) : '{' + name + '}')
+      : fallback,
     fromQ: () => '',
     fileUrl: p => '/' + p,
     backButton: () => '',

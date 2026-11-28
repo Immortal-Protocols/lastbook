@@ -98,7 +98,7 @@ def run(tmp):
         wait_text(proc, 'Set up Lastbook')
         select(proc, 'Interface language', True)
         press(proc, 'Save language')
-        wait_text(proc, 'Idioma guardado.')
+        wait_text(proc, 'Idioma guardado. Reinicia Lastbook para actualizar los menús.')
         wait_text(proc, 'Configuración inicial de Lastbook')
         assert json.loads(path.read_text(encoding='utf-8')) == {'language': 'es-419'}
         print('PASS: first-run Spanish save in the installed WebView', flush=True)

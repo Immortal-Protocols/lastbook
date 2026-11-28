@@ -1,5 +1,13 @@
 'use strict';
 // Named positions in videos use the existing Saved list. Nothing leaves this device.
+function tr(key, params, fallback) {
+  const text = globalThis.LastbookI18n?.t?.(key, params);
+  if (text != null) return text;
+  if (params && typeof fallback === 'string') {
+    return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => (params[n] != null ? String(params[n]) : '{' + n + '}'));
+  }
+  return fallback;
+}
 globalThis.VideoMoments = (() => {
   const storageKey = 'sg.saved';
   const keyFor = (id, time) => 'm:' + encodeURIComponent(id) + ':' + time;
@@ -21,29 +29,29 @@ globalThis.VideoMoments = (() => {
       if (!Array.isArray(items)) throw new Error();
       return items;
     } catch {
-      throw new Error('Saved items could not be read. Nothing was changed.');
+      throw new Error(tr('moment.readFailed', null, 'Saved items could not be read. Nothing was changed.'));
     }
   }
 
   function writeSaved(items) {
     try { localStorage.setItem(storageKey, JSON.stringify(items)) }
-    catch { throw new Error('Could not update Saved. Your saved items were left unchanged.') }
+    catch { throw new Error(tr('moment.updateFailed', null, 'Could not update Saved. Your saved items were left unchanged.')) }
   }
 
   function label(text) {
     if (typeof text !== 'string' || !text.trim() || text.trim().length > 120)
-      throw new Error('Use a name between 1 and 120 characters.');
+      throw new Error(tr('moment.badName', null, 'Use a name between 1 and 120 characters.'));
     return text.trim();
   }
 
   function save(video, seconds, title) {
     if (!video || typeof video.id !== 'string' || !video.id || typeof video.title !== 'string'
       || !Number.isFinite(seconds) || seconds < 0 || !Number.isSafeInteger(Math.floor(seconds)))
-      throw new Error('This video position could not be saved.');
+      throw new Error(tr('moment.saveFailed', null, 'This video position could not be saved.'));
     // Keep the start of this second, so opening a moment does not skip past it.
     const time = Math.floor(seconds), key = keyFor(video.id, time), items = readSaved();
     const old = items.find(x => x && x.key === key);
-    if (old && !isMoment(old)) throw new Error('This saved item could not be changed.');
+    if (old && !isMoment(old)) throw new Error(tr('moment.changeFailed', null, 'This saved item could not be changed.'));
     const item = { key, kind: 'video-moment', videoId: video.id, videoTitle: video.title, time,
       title: label(title), sub: video.title, at: old ? old.at : Date.now() };
     item.href = href(item);
@@ -55,7 +63,7 @@ globalThis.VideoMoments = (() => {
 
   function rename(key, title) {
     const items = readSaved(), index = items.findIndex(x => isMoment(x) && x.key === key);
-    if (index < 0) throw new Error('This moment is no longer saved.');
+    if (index < 0) throw new Error(tr('moment.gone', null, 'This moment is no longer saved.'));
     items[index] = { ...items[index], title: label(title) };
     writeSaved(items);
     return items[index];
@@ -63,7 +71,7 @@ globalThis.VideoMoments = (() => {
 
   function remove(key) {
     const items = readSaved(), index = items.findIndex(x => isMoment(x) && x.key === key);
-    if (index < 0) throw new Error('This moment is no longer saved.');
+    if (index < 0) throw new Error(tr('moment.gone', null, 'This moment is no longer saved.'));
     items.splice(index, 1);
     writeSaved(items);
   }

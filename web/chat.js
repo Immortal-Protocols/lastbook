@@ -1,6 +1,107 @@
 'use strict';
+function tr(key, params, fallback) {
+  const text = globalThis.LastbookI18n?.t?.(key, params);
+  if (text != null) return text;
+  if (params && typeof fallback === 'string') {
+    return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => (params[n] != null ? String(params[n]) : '{' + n + '}'));
+  }
+  return fallback;
+}
+globalThis.lastbookTr = tr;
+function trResult(key, params, fallback) {
+  const result = globalThis.LastbookI18n?.resolve?.(key, params);
+  return result || { text: tr(key, params, fallback), locale: 'en' };
+}
+function localizedHtml(result) {
+  const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+  return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+}
+function trHtml(key, params, fallback) { return localizedHtml(trResult(key, params, fallback)); }
+function chatDate(value, options) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  try {
+    const formatted = globalThis.LastbookI18n?.date?.(date, options);
+    if (formatted != null) return formatted;
+    return options && ('dateStyle' in options || 'timeStyle' in options)
+      ? date.toLocaleString(undefined, options)
+      : date.toLocaleDateString(undefined, options);
+  } catch { return '' }
+}
+const CHAT_ERROR_KEYS = ['chat.stoppedUnexpectedly', 'chat.stopped', 'chat.modelNotRunning', 'chat.internalError',
+  'chat.emptyResponse', 'chat.serverRefused', 'chat.modelServerNotAnswering', 'chat.wrongFile', 'chat.memoryEstimate',
+  'chat.startFailed', 'app.errorGeneric'];
+function matchLegacyError(text) {
+  const catalogs = [['en', globalThis.lastbookI18nEnglish || {}], ...Object.entries(globalThis.lastbookI18nLocales || {})];
+  const match = source => {
+    if (typeof source !== 'string') return null;
+    for (const [, catalog] of catalogs) for (const key of CHAT_ERROR_KEYS) {
+      const template = catalog[key];
+      if (typeof template !== 'string') continue;
+      const names = [...template.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map(m => m[1]);
+      const parts = template.split(/\{[A-Za-z_][A-Za-z0-9_]*\}/g);
+      const escaped = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp('^' + parts.map((part, i) => escaped(part) + (i < names.length ? '([\\s\\S]*?)' : '')).join('') + '$');
+      const found = source.match(pattern);
+      if (found) return { key, params: Object.fromEntries(names.map((name, i) => [name, found[i + 1]])) };
+    }
+    return null;
+  };
+  if (text === 'stopped') return { parts: [{ key: 'chat.stopped', params: null }] };
+  const direct = match(text);
+  if (direct) return { parts: [{ key: direct.key, params: direct.params }] };
+  for (const [, catalog] of catalogs) {
+    const suffix = catalog['chat.fallbackNothing'];
+    if (typeof suffix !== 'string' || !text.endsWith(suffix)) continue;
+    const first = match(text.slice(0, -suffix.length).trimEnd());
+    if (first) return { parts: [{ key: first.key, params: first.params }, { key: 'chat.fallbackNothing', params: null }] };
+  }
+  return null;
+}
+function errorParts(m) {
+  if (Array.isArray(m?.errorInfo?.parts)) return m.errorInfo.parts;
+  if (m?.errorInfo?.key) return [{ key: m.errorInfo.key, params: m.errorInfo.params || null, fallback: m.errorInfo.fallback }];
+  if (m?.errorInfo?.text != null) return [{ text: m.errorInfo.text, locale: m.errorInfo.locale || 'en' }];
+  if (m?.errorKey || m?.error_key) return [{ key: m.errorKey || m.error_key, params: m.errorParams || m.error_params || null, fallback: m.errorFallback }];
+  if (!m?.error) return [];
+  const legacy = matchLegacyError(String(m.error));
+  return legacy ? legacy.parts : [{ text: String(m.error), locale: 'en' }];
+}
+function errorResult(part) { return part.key ? trResult(part.key, part.params || null, part.fallback) : { text: part.text || '', locale: part.locale || 'en' } }
+function chatErrorResult(m) { return errorParts(m).map(errorResult) }
+function chatErrorHtml(m) { return chatErrorResult(m).map(localizedHtml).join('') }
+function chatErrorText(m) { return chatErrorResult(m).map(result => result.text).join('') }
+function contentText(m) {
+  const text = String(m?.content || '');
+  if (!m?.stopped) return text;
+  const catalogs = [globalThis.lastbookI18nEnglish || {}, ...Object.values(globalThis.lastbookI18nLocales || {})];
+  for (const catalog of catalogs) {
+    const stopped = catalog['chat.stopped'];
+    if (typeof stopped !== 'string') continue;
+    const suffix = '\n\n(' + stopped + ')';
+    if (text.endsWith(suffix)) return text.slice(0, -suffix.length);
+  }
+  return text;
+}
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
+  const chatResult = (key, params, fallback) => globalThis.LastbookI18n?.resolve?.(key, params)
+    || { text: tr(key, params, fallback), locale: 'en' };
+  const chatHtml = result => {
+    const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+    return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+  };
+  const chatDate = (value, options) => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    try {
+      const formatted = globalThis.LastbookI18n?.date?.(date, options);
+      if (formatted != null) return formatted;
+      return options && ('dateStyle' in options || 'timeStyle' in options)
+        ? date.toLocaleString(undefined, options)
+        : date.toLocaleDateString(undefined, options);
+    } catch { return '' }
+  };
   const STARTERS = [
     ['water', 'The tap water is off. How do I make water safe to drink?'],
     ['hurt', 'Someone has a deep cut that won’t stop bleeding. What do I do?'],
@@ -15,18 +116,34 @@ const Chat = (() => {
   // The ink drawings are the website's own (website-next/img/ink/), copied flat into web/ because builds ship web/ without folders.
   const HOME = [['water', 'water'], ['hurt', 'aid'], ['food', 'food'], ['power', 'power'], ['comms', 'radio'], ['grow', 'garden']];
   const LEARN = [['grow', 'garden'], ['health', 'carer'], ['energy', 'lantern']];
-  const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
-    video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
-    topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
-  const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
+  const ABOUT_STARTERS = { doc: ['chat.explainPage', 'chat.pageWarnings', 'chat.videoForThis'],
+    video: ['chat.summariseVideo', 'chat.videoSafety', 'chat.findManual'],
+    topic: ['chat.doFirst', 'chat.importantWarnings', 'chat.whichVideo'] };
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
-  const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
+  const STAGES = ['search', 'read', 'write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
+  function stateHtml(state) {
+    switch (state) {
+      case 'starting': return trHtml('chat.state.starting', null, 'Starting the local AI…');
+      case 'thinking': return trHtml('chat.state.thinking', null, 'Thinking…');
+      case 'searching': return trHtml('chat.state.searching', null, 'Searching the library…');
+      case 'reading': return trHtml('chat.state.reading', null, 'Reading the pages it found…');
+      case 'writing': return trHtml('chat.state.writing', null, 'Writing the answer…');
+      default: return trHtml('chat.working', null, 'Working…');
+    }
+  }
+  function stageHtml(key) {
+    switch (key) {
+      case 'search': return trHtml('chat.stage.search', null, 'Search');
+      case 'read': return trHtml('chat.stage.read', null, 'Read');
+      default: return trHtml('chat.stage.write', null, 'Write');
+    }
+  }
   // The stage the answer is at, and how far the local AI has loaded (null: no figure, so the bar sweeps).
   const stage = m => ({ at: STAGE_AT[m.state] ?? 0, pct: m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null });
   const stageClass = (i, at) => i < at ? 'done' : i === at ? 'now' : '';
   function progress(m) {
-    const { at, pct } = stage(m);
-    const stages = STAGES.map((t, i) => `<li class="${stageClass(i, at)}">${t}</li>`).join('');
+    const at = STAGE_AT[m.state] ?? 0, pct = m.state === 'starting' && m.pct != null ? Math.max(0, Math.min(100, +m.pct || 0)) : null;
+    const stages = STAGES.map((key, i) => `<li class="${i < at ? 'done' : i === at ? 'now' : ''}">${stageHtml(key)}</li>`).join('');
     return `<ol class="wk-stages" aria-hidden="true">${stages}</ol><span class="wk-bar${pct === null ? ' run' : ''}" aria-hidden="true"><span${pct === null ? '' : ` style="width:${pct}%"`}></span></span>`;
   }
   let chats = load(), live = {};   // live[chatId] = {abort, state, steps}
@@ -46,7 +163,7 @@ const Chat = (() => {
 
   /* ---------------------------------------------------------------- page -- */
   let root = null, cur = null, aboutCtx = null;
-  async function page(main, parts, q) {
+  async function page(main, parts, q, options = {}) {
     root = main;
     const id = parts[0];
     cur = id ? byId(id) : null;
@@ -55,36 +172,37 @@ const Chat = (() => {
     const ctx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
     if (stale(me)) return;   // the person has gone to another page: the chat now open keeps its own context
     aboutCtx = ctx;
-    document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
-    $('#tbTitle').textContent = cur ? cur.title : 'Chat';
+    document.title = (cur ? cur.title : tr('nav.chat', null, 'Chat')) + ' · Lastbook';
+    $('#tbTitle').textContent = cur ? cur.title : tr('nav.chat', null, 'Chat');
+    const conversations = trResult('chat.conversations', null, 'Conversations');
     main.innerHTML = `<div class="chat">
-      <aside class="chat-side" id="chatSide" aria-label="Conversations">
-        <div class="cs-head"><b>Chats</b><button class="iconbtn" id="closeSide" aria-label="Close chat list">${ico('back')}</button></div>
-        <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}New chat</a>
+      <aside class="chat-side" id="chatSide" aria-label="${esc(conversations.text)}" lang="${esc(conversations.locale)}">
+        <div class="cs-head"><b data-i18n="library.chats">${tr('library.chats', null, 'Chats')}</b><button class="iconbtn" id="closeSide" aria-label="${tr('chat.closeList', null, "Close chat list")}">${ico('back')}</button></div>
+        <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}<span data-i18n="chat.new">New chat</span></a>
         <ul class="cs-list" id="csList"></ul>
         <div class="cs-privacy">
-          <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
-          <p class="small muted">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
-          <button class="btn plain" id="clearChats">Delete all chats</button>
+          <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> ${tr('chat.keepHistory', null, 'Keep chat history on this device')}</label>
+          <p class="small muted" data-i18n="chat.stayOnDevice">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
+          <button class="btn plain" id="clearChats" data-i18n="chat.deleteAll">Delete all chats</button>
         </div>
       </aside>
       <section class="chat-main">
         <div class="chat-top">
-          <button class="btn plain chat-histbtn" id="openSide" aria-label="Show chats">${ico("clock")}<span>Chats</span></button>
+          <button class="btn plain chat-histbtn" id="openSide" aria-label="${esc(tr('chat.showList', null, 'Show chats'))}" data-i18n-aria-label="chat.showList">${ico("clock")}<span data-i18n="library.chats">Chats</span></button>
           <div class="chat-status" id="chatStatus" aria-live="polite"></div>
-          <a class="btn plain" href="#/ask" id="newChat" aria-label="New chat">${ico('ask')}<span>New</span></a>
+          <a class="btn plain" href="#/ask" id="newChat" aria-label="${esc(tr('chat.new', null, 'New chat'))}" data-i18n-aria-label="chat.new">${ico('ask')}<span data-i18n="chat.newShort">New</span></a>
         </div>
         ${q.get('from') && !cur ? `<div style="margin:2px 0 8px">${backButton(q.get('from'))}</div>` : ''}
         <div class="ai-setup" id="aiSetup" hidden></div>
-        <div class="chat-log" id="chatLog" role="log" aria-live="polite" aria-label="Conversation"></div>
+        <div class="chat-log" id="chatLog" role="log" aria-live="polite" aria-label="${esc(tr('chat.conversation', null, 'Conversation'))}" data-i18n-aria-label="chat.conversation"></div>
         <form class="composer" id="composer">
           <div class="ctxchip" id="ctxChip" hidden></div>
           <div class="comp-row">
-            <label class="sr" for="chatIn">Your question</label>
-            <textarea id="chatIn" rows="1" placeholder="Ask a question…" enterkeyhint="send"></textarea>
-            <button class="sendbtn" id="sendBtn" aria-label="Send">${ico("up")}</button>
+            <label class="sr" for="chatIn" data-i18n="chat.yourQuestion">Your question</label>
+            <textarea id="chatIn" rows="1" placeholder="${esc(tr('chat.placeholder', null, 'Ask a question…'))}" data-i18n-placeholder="chat.placeholder" enterkeyhint="send"></textarea>
+            <button class="sendbtn" id="sendBtn" aria-label="${esc(tr('chat.send', null, 'Send'))}" data-i18n-aria-label="chat.send">${ico("up")}</button>
           </div>
-          <p class="comp-note">Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.</p>
+          <p class="comp-note" data-i18n="chat.disclaimer">Answers come from the library on this computer and can be wrong. Check the linked pages; get trained help for anything serious.</p>
         </form>
         <div class="ask-more" id="askMore" hidden></div>
       </section></div>`;
@@ -100,15 +218,16 @@ const Chat = (() => {
     $('#closeSide').onclick = () => $('#chatSide').classList.remove('open');
     $('#keepChats').onchange = e => {
       try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { }
-      if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast('Chats will be forgotten when you close this page') } else { persist(); toast('Chats will be kept on this device') }
+      if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast(tr('chat.forgotten', null, 'Chats will be forgotten when you close this page')) } else { persist(); toast(tr('chat.kept', null, 'Chats will be kept on this device')) }
     };
-    $('#clearChats').onclick = () => { if (!confirm('Delete all chats on this device?')) return; Object.values(live).forEach(l => l.abort && l.abort()); chats = []; try { localStorage.removeItem('sg.chats') } catch { } location.hash = '#/ask' };
+    $('#clearChats').onclick = () => { if (!confirm(tr('chat.deleteAllConfirm', null, 'Delete all chats on this device?'))) return; Object.values(live).forEach(l => l.abort && l.abort()); chats = []; try { localStorage.removeItem('sg.chats') } catch { } location.hash = '#/ask' };
     leaving = () => { document.removeEventListener('keydown', escStop) };
     document.addEventListener('keydown', escStop);
     statusLine();
+    setBusy(!!busy());
     const initial = q.get('q');
     if (initial && !cur) { history.replaceState(null, '', '#/ask'); send(initial) }
-    else if (matchMedia('(hover:hover)').matches) setTimeout(() => ta.focus({ preventScroll: true }), 60);
+    else if (!options.preserveFocus && matchMedia('(hover:hover)').matches) setTimeout(() => ta.focus({ preventScroll: true }), 60);
     const y = scrolls[here()];
     if (y != null) requestAnimationFrame(() => scrollTo(0, y)); else if (cur && cur.messages.length) scrollEnd(true); else scrollTo(0, 0);   // a new chat opens at its top
   }
@@ -118,33 +237,42 @@ const Chat = (() => {
   // The optional local AI (desktop app): [ready?, the line to show]. The server version has no s.local.
   function localLine(l) {
     const gb = n => (n / 1e9).toFixed(0) + ' GB';
+    const translated = (key, params, fallback) => trResult(key, params, fallback);
+    const english = text => ({ text, locale: 'en' });
+    const diagnostic = (key, params, fallback) => {
+      const messageKey = l.message_key || l.why_key;
+      if (messageKey) return translated(messageKey, l.message_params || l.why_params || params, l.message || fallback);
+      return l.message ? english(l.message) : translated(key, params, fallback);
+    };
     return ({
-      ready: [true, 'Local AI ready'],
-      stopped: [true, 'Local AI available · your first question loads it and may take a while'],
-      loading: [true, `Starting the local AI${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
-      checking: [false, `Checking the local AI file${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
-      measuring: [false, 'Checking this computer’s memory…'],
-      absent: [false, 'No local AI added'],
-      wrong: [false, l.message || 'The local AI file is not the right one.'],
-      too_big: [false, l.message || `The local AI needs about ${gb(l.needs_bytes || 0)} of memory.`],
-      off: [false, 'Local AI is off'],
-      error: [false, l.message || 'The local AI could not start.'],
-    })[l.state] || [false, l.message || 'Local AI unavailable'];
+      ready: [true, translated('chat.ready', null, 'Local AI ready')],
+      stopped: [true, translated('chat.available', null, 'Local AI available · your first question loads it and may take a while')],
+      loading: [true, translated('chat.state.startingPct', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Starting the local AI{pct}')],
+      checking: [false, translated('chat.checkingLocalAiFile', { pct: l.pct != null ? ' ' + l.pct + '%' : '…' }, 'Checking the local AI file{pct}')],
+      measuring: [false, translated('chat.checkingMemory', null, 'Checking this computer’s memory…')],
+      absent: [false, translated('chat.notAdded', null, 'No local AI added')],
+      wrong: [false, diagnostic('chat.wrongFile', null, 'The local AI file is not the right one.')],
+      too_big: [false, diagnostic('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
+      off: [false, translated('chat.isOff', null, 'Local AI is off')],
+      error: [false, diagnostic('chat.startFailed', null, 'The local AI could not start.')],
+    })[l.state] || [false, l.message ? english(l.message) : translated('chat.unavailable', null, 'Local AI unavailable')];
   }
   let polling = null;
   async function statusLine() {
     const s = await getStatus(), el = $('#chatStatus'); if (!el) return;
     const ix = s.index || {}, l = s.local;
-    const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">still indexing (${(ix.chunks || 0).toLocaleString()} passages so far)</span>` : '';
+    const still = ix.state === 'indexing' || ix.state === 'indexing (other process)' ? ` · <span class="muted">${trHtml('chat.stillIndexing', { count: (ix.chunks || 0).toLocaleString() }, 'still indexing ({count} passages so far)')}</span>` : '';
     if (l && (/ready|stopped|loading/.test(l.state) || !s.online)) {
       const [ok, line] = localLine(l);
-      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span><span>${esc(line)}${ok ? still : '<span class="long"> — search and reading still work</span>'}</span>`;
+      el.innerHTML = `<span class="${ok ? 'dotok' : 'dotoff'}"></span>${localizedHtml(line)}${ok ? still : trHtml('chat.searchReadingStill', null, ' — search and reading still work')}`;
     } else {
-      const srv = s.server;   // a model server the person chose in Settings (#78)
-      el.innerHTML = s.online ? `<span class="dotok"></span>${srv ? esc(srv.model) + ' ready' : 'Local assistant ready'}${still}`
-        : `<span class="dotoff"></span><span>${srv ? `The model server at ${esc(srv.address)} is not answering` : 'Assistant offline'}<span class="long"> — search and browsing still work</span></span>`;
+      el.innerHTML = s.online ? `<span class="dotok"></span>${trHtml('chat.ready', null, 'Local AI ready')}${still}`
+        : `<span class="dotoff"></span><span>${trHtml('chat.assistantOffline', null, 'Assistant offline')}<span class="long">${trHtml('chat.searchBrowsingStill', null, ' — search and browsing still work')}</span></span>`;
     }
-    const sb = $('#sendBtn'); if (sb) sb.title = s.online ? 'Send' : 'The assistant is offline; you will get matching pages instead';
+    const sb = $('#sendBtn'); if (sb) {
+      const label = s.online ? trResult('chat.send', null, 'Send') : trResult('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead');
+      sb.title = label.text; sb.lang = label.locale;
+    }
     setupCard(s);
     clearTimeout(polling);
     if (l && /checking|measuring|loading/.test(l.state) && $('#chatStatus')) polling = setTimeout(statusLine, 1000);
@@ -156,11 +284,11 @@ const Chat = (() => {
     box.hidden = !show;
     if (!show) return;
     box.innerHTML = l.state === 'off'
-      ? `<p>The local AI is turned off.</p><div class="row"><button class="btn" data-ai="on">Turn on</button></div>`
-      : l.state === 'error' ? `<p>${esc(l.message || 'The local AI could not start.')}</p><div class="row"><button class="btn" data-ai="rescan">Look again</button></div>`
-      : `<p><b>Add the local AI to get written answers.</b> It is about 17 GB, and runs on this computer only.</p>
-         <div class="row"><a class="btn" href="/ui/setup.html#manage">Add the local AI</a><button class="btn plain" data-ai="rescan">Look again</button></div>
-         <p class="small">Already downloaded <code>${esc(l.file)}</code>? Move it into the <b>models</b> folder inside your <b>LastbookData</b> folder, then Look again. Or open <b>Add the local AI</b> and pick the file you already have.</p>`;
+      ? `<p>${esc(tr('chat.aiTurnedOff', null, 'The local AI is turned off.'))}</p><div class="row"><button class="btn" data-ai="on">${esc(tr('about.turnOn', null, 'Turn on'))}</button></div>`
+      : l.state === 'error' ? `<p>${esc(localLine(l)[1])}</p><div class="row"><button class="btn" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>`
+      : `<p><b>${esc(tr('chat.addAiToGetAnswers', null, 'Add the local AI to get written answers.'))}</b> ${esc(tr('chat.addAiRunsOnThisComputer', null, 'It is about 17 GB, and runs on this computer only.'))}</p>
+         <div class="row"><a class="btn" href="/ui/setup.html#manage">${esc(tr('about.addTheLocalAi', null, 'Add the local AI'))}</a><button class="btn plain" data-ai="rescan">${esc(tr('about.lookAgain', null, 'Look again'))}</button></div>
+         <p class="small">${esc(tr('chat.alreadyHaveModelLead', null, 'Already downloaded'))} <code>${esc(l.file)}</code>? ${esc(tr('chat.alreadyHaveModelHint', null, 'Move it into the models folder inside your LastbookData folder, then Look again. Or open Add the local AI and pick the file you already have.'))}</p>`;
     $$('[data-ai]', box).forEach(b => b.onclick = async () => {
       b.disabled = true;
       try { await fetch('/api/assistant/local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: b.dataset.ai }) }) } catch { }
@@ -170,9 +298,12 @@ const Chat = (() => {
   async function describe(about) {
     const [kind, id, n] = about.split(':');
     try {
-      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: 'Guide', kind } }
+      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, subResult: trResult('guide.topicKind', null, 'Guide'), kind } }
       const d = await api('/api/doc/' + encodeURIComponent(id));
-      return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : 'Video') : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
+      const subResult = kind === 'video'
+        ? (n ? trResult('chat.videoAt', { time: clock(+n) }, 'Video at {time}') : trResult('nav.video', null, 'Video'))
+        : trResult('reader.pagePrefix', { page: n || 1 }, 'Page {page}');
+      return { about, kind, label: d.title, subResult, href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
     } catch { return null }
   }
   function renderCtx() {
@@ -180,13 +311,18 @@ const Chat = (() => {
     const a = aboutCtx;
     if (!a) { el.hidden = true; return }
     el.hidden = false;
-    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>Asking about: <b>${esc(a.label)}</b> <span class="muted">${esc(a.sub || '')}</span></span>${cur && cur.messages.length ? '' : '<button type="button" aria-label="Don’t use this as context" id="ctxX">×</button>'}`;
+    const sub = a.subResult ? localizedHtml(a.subResult) : a.sub ? `<span lang="en">${esc(a.sub)}</span>` : '';
+    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>${esc(tr('chat.askingAbout', null, 'Asking about:'))} <b>${esc(a.label)}</b> <span class="muted">${sub}</span></span>${cur && cur.messages.length ? '' : `<button type="button" aria-label="${esc(tr('chat.dontUseContext', null, "Don’t use this as context"))}" id="ctxX">×</button>`}`;
     const x = $('#ctxX'); if (x) x.onclick = () => { aboutCtx = null; renderCtx(); renderLog() };
   }
   function renderSide() {
     const el = $('#csList'); if (!el) return;
-    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${c.messages.filter(m => m.role === 'user').length} question${c.messages.filter(m => m.role === 'user').length > 1 ? 's' : ''}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="Delete this chat">×</button></li>`).join('')
-      : '<li class="muted small" style="padding:8px 4px">No chats yet.</li>';
+    el.innerHTML = chats.length ? chats.map(c => {
+      const date = chatDate(c.updated, { month: 'short', day: 'numeric' });
+      const datePrefix = date ? `${esc(date)} · ` : '';
+      return `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${datePrefix}${tr('chat.questions', { count: c.messages.filter(m => m.role === 'user').length })}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="${esc(tr('chat.deleteThis', null, 'Delete this chat'))}">×</button></li>`;
+    }).join('')
+      : `<li class="muted small" style="padding:8px 4px">${trHtml('chat.noneYet', null, 'No chats yet.')}</li>`;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
     // the list fades at an edge with more chats past it, so a row cut off there reads as more to scroll to
@@ -203,8 +339,8 @@ const Chat = (() => {
     if (more) { more.hidden = !home; more.innerHTML = home ? homeMore() : '' }
     if (home) {
       log.innerHTML = `<div class="ask-hero">
-        <div><h1>What do you need to know?</h1>
-        <p class="lead">Answers from the guides, manuals and videos on this computer, with the page or video moment for each point.</p></div>
+        <div><h1 data-i18n="chat.heroTitle">${tr('chat.heroTitle', null, 'What do you need to know?')}</h1>
+        <p class="lead" data-i18n="chat.heroLead">${tr('chat.heroLead', null, 'Answers from the guides, manuals and videos on this computer, with the page or video moment for each point.')}</p></div>
         <img class="ink-art" src="/ui/ink-pair.svg" alt="" width="240" height="120"></div>`;
       $$('[data-start]', more).forEach(b => b.onclick = () => send(b.dataset.start));
       return;
@@ -213,10 +349,11 @@ const Chat = (() => {
       const st = ABOUT_STARTERS[aboutCtx.kind] || [];
       log.innerHTML = `<div class="chat-empty">
         <div class="ce-mark">${ico('ask')}</div>
-        <h1>Chat</h1>
-        <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
-        <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
-        <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+        <h1 data-i18n="nav.chat">Chat</h1>
+        <p class="lead" data-i18n="chat.emptyLead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
+        <div class="starters">${st.map(key => { const item = trResult(key, null, key); return `<button class="starter" ${tcStyle('ask')} data-start="${esc(item.text)}"><span class="ico">${ico('ask')}</span>${localizedHtml(item)}</button>`; }).join('')}</div>
+        <p class="small muted" style="margin-top:18px" data-i18n="chat.emptyNote">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
+      globalThis.LastbookI18n?.apply(log);
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
       return;
@@ -225,13 +362,14 @@ const Chat = (() => {
     wire(log);
   }
   function homeMore() {
-    const q = Object.fromEntries(STARTERS), title = id => esc(SHORT[id] || id);
-    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>Runs on this computer. Nothing you ask leaves it.</p>
-      <h2 class="ask-h">Start with what matters</h2>
-      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
-        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
-      <div class="ask-learn-head"><h2 class="ask-h">Keep learning</h2><a href="#/library">All skills</a></div>
-      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small>Step-by-step guide</small></span></a>`).join('')}</div>`;
+    const q = Object.fromEntries(STARTERS.map(([id, en]) => [id, trResult('chat.starter.' + id, null, en)]));
+    const title = id => localizedHtml(trResult('topic.' + id, null, (typeof shortName === 'function' ? shortName(id) : SHORT[id]) || id));
+    return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>${trHtml('chat.runsLocal', null, 'Runs on this computer. Nothing you ask leaves it.')}</p>
+      <h2 class="ask-h" data-i18n="chat.startWithWhatMatters">${tr('chat.startWithWhatMatters', null, 'Start with what matters')}</h2>
+      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id].text)}">
+        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b>${localizedHtml(q[id])}</span>${ico('right', 'ac-go')}</button>`).join('')}</div>
+      <div class="ask-learn-head"><h2 class="ask-h" data-i18n="chat.keepLearning">${tr('chat.keepLearning', null, 'Keep learning')}</h2><a href="#/library" data-i18n="chat.allSkills">${tr('chat.allSkills', null, 'All skills')}</a></div>
+      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small data-i18n="guide.stepByStep">${tr('guide.stepByStep', null, 'Step-by-step guide')}</small></span></a>`).join('')}</div>`;
   }
   // The page itself never scrolls while a chat is empty: in a window too short for every suggestion (or with lines wrapped narrow beside
   // the chats column), the last ones go, a row at a time down to one row, then the note under them, the introduction and the mark.
@@ -312,12 +450,12 @@ const Chat = (() => {
     if (!work) {   // the same parts progress() writes, made here when the message has none yet
       work = doc.createElement('div'); work.className = 'working';
       const ol = doc.createElement('ol'); ol.className = 'wk-stages'; ol.setAttribute('aria-hidden', 'true');
-      for (const t of STAGES) { const li = doc.createElement('li'); li.textContent = t; ol.append(li) }
+      for (const key of STAGES) { const li = doc.createElement('li'); li.innerHTML = stageHtml(key); ol.append(li) }
       const bar = doc.createElement('span'); bar.className = 'wk-bar'; bar.setAttribute('aria-hidden', 'true'); bar.append(doc.createElement('span'));
       work.append(doc.createElement('b'), ol, bar);
       el.prepend(work);
     }
-    const label = esc(STATES[m.state] || 'Working…') + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
+    const label = stateHtml(m.state) + (m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''), b = work.children[0];
     if (b.lbHtml !== label) { b.innerHTML = label; b.lbHtml = label }
     // The stage list and the bar keep their elements, so the spinner and the bar's sweep carry on.
     [...kid(work, 'wk-stages').children].forEach((li, k) => { const c = stageClass(k, at); if (li.className !== c) li.className = c });
@@ -334,7 +472,7 @@ const Chat = (() => {
     }
 
     const found = m.sources || [];
-    region(el, 'div', 'prefound', found.length ? `<p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}` : '', n => el.append(n));
+    region(el, 'div', 'prefound', found.length ? `<p class="small muted">${tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:')}</p>${srcCards(found.slice(0, 6), true)}` : '', n => el.append(n));
   }
   // sources-finish:start (app/tests/test_chat_steps.py)
   // After a normal `done` event, `cited` is the final list. If the user stops mid-stream,
@@ -346,44 +484,47 @@ const Chat = (() => {
     const steps = (m.steps || []).map(s => `<li>${stepText(s)}</li>`).join('');
     const found = m.sources || [];
     let h = '';
-    if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
-    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
-    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
+    if (running) h += `<div class="working"><b>${stateHtml(m.state)}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
+    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${chatErrorHtml(m)}</b>${m.offline ? `<p>${esc(tr('chat.offlineSearchPages', null, 'You can keep browsing and searching. Here are the pages that best match your question:'))}</p>` : ''}</div></div>`;
+    if (contentText(m)) h += `<div class="answer">${md(contentText(m), m)}</div>`;
+    if (m.stopped && contentText(m)) h += `<p class="small ans-stopped">${trHtml('chat.stopped', null, 'Stopped.')}</p>`;
+    if (running && found.length) h += `<div class="prefound"><p class="small muted">${esc(tr('chat.pagesFoundSoFar', null, 'Pages found so far — you can open them while the answer is written:'))}</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
       const cited = sourcesForFinish(m);
-      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
-      h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
-      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
-      else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
+      if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">${esc(tr('chat.invalidSources', { list: m.invalid.join(', ') }, 'The model referred to sources that don’t exist ({list}); those markers were removed.'))}</p>`;
+      h += `<div class="legend small"><span><span class="lg-c">1</span> ${esc(tr('chat.linkedToPageOrVideo', null, 'linked to a page or video'))}</span><span><span class="lg-u">${esc(tr('chat.dottedLine', null, 'dotted'))}</span> ${esc(tr('chat.modelsOwnWording', null, 'the model’s own wording, not linked to a source'))}</span></div>`;
+      if (cited.length) h += `<h3 class="srch">${esc(tr('chat.sourcesCount', { count: cited.length }, 'Sources ({count})'))}</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
+      else h += `<p class="notice small">${esc(tr('chat.noLinkedSources', null, 'This answer has no linked sources. Treat it as unverified.'))}</p>`;
       const other = (m.consulted || []).filter(s => s.kind !== 'place');
-      if (other.length) h += `<details class="also"><summary>Also looked at (${other.length}, not used)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
-      if ((m.steps || []).length) h += `<details class="also"><summary>How it searched (${m.steps.length} ${m.steps.length === 1 ? 'step' : 'steps'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
-      h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">Copy</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Save answer</button><button class="btn plain" data-act="export">Export chat</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Ask again</button>` : ''}</div>`;
+      if (other.length) h += `<details class="also"><summary>${esc(tr('chat.alsoLookedAt', { count: other.length }, 'Also looked at ({count}, not used)'))}</summary>${srcCards(other.slice(0, 10), true)}</details>`;
+      if ((m.steps || []).length) h += `<details class="also"><summary>${esc(tr(m.steps.length === 1 ? 'chat.howSearchedOne' : 'chat.howSearched', { count: m.steps.length, latency: m.latency ? `, ${m.latency.total_s}s` : '' }, m.steps.length === 1 ? 'How it searched ({count} step{latency})' : 'How it searched ({count} steps{latency})'))}</summary><ul class="steps">${steps}</ul></details>`;
+      h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">${esc(tr('common.copy', null, 'Copy'))}</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}${esc(tr('chat.saveAnswer', null, 'Save answer'))}</button><button class="btn plain" data-act="export">${esc(tr('chat.exportChat', null, 'Export chat'))}</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">${esc(tr('chat.askAgain', null, 'Ask again'))}</button>` : ''}</div>`;
     }
     return h;
   }
   function stepText(s) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     // s.args is the model's own tool call, as it sent it: use only plain text and numbers from it, never convert anything else.
     const plain = v => typeof v === 'string' || typeof v === 'number' ? v : '';
     const raw = s.args && typeof s.args === 'object' ? s.args : {}, r = s.summary || {};
     const a = { query: plain(raw.query), kind: plain(raw.kind), doc_id: plain(raw.doc_id), page: plain(raw.page), pages: raw.pages, article: plain(raw.article) };
-    if (s.name === 'search_library') return `Searched “${esc(a.query || '')}”${a.kind && a.kind !== 'any' ? ' (' + esc(a.kind) + 's)' : ''} — ${r.count ?? '…'} passage${r.count === 1 ? '' : 's'}`;
+    if (s.name === 'search_library') return tr(r.count === 1 ? 'chat.step.searchedOne' : 'chat.step.searched', { query: esc(a.query || ''), kind: a.kind && a.kind !== 'any' ? ' (' + esc(a.kind) + 's)' : '', count: r.count ?? '…' }, r.count === 1 ? 'Searched “{query}”{kind} — {count} passage' : 'Searched “{query}”{kind} — {count} passages');
     if (s.name === 'read_pages') {
       const pages = (Array.isArray(a.pages) ? a.pages : [a.pages]).filter(p => typeof p === 'number' || typeof p === 'string');
-      return r.error ? 'Tried to read an unknown document' : `Read ${esc(r.title || a.doc_id)}, page${pages.length > 1 ? 's' : ''} ${esc(pages.join(', '))}`;
+      return r.error ? tr('chat.unknownDocument', null, 'Tried to read an unknown document') : tr(pages.length > 1 ? 'chat.step.readPages' : 'chat.step.readPage', { title: esc(r.title || a.doc_id), pages: esc(pages.join(', ')) }, pages.length > 1 ? 'Read {title}, pages {pages}' : 'Read {title}, page {pages}');
     }
-    if (s.name === 'view_page') return r.error ? 'Couldn’t view that page' : `Looked at the picture of ${esc(r.title || '')}, page ${esc(a.page)}`;
-    if (s.name === 'get_timed_transcript') return r.error ? `No transcript for ${esc(r.title || 'that video')}` : `Read the transcript of ${esc(r.title || '')}`;
-    if (s.name === 'lookup_place') return `Looked up “${esc(a.query || '')}” on the offline map`;
-    if (s.name === 'search_encyclopedia') return `Searched the encyclopedias for “${esc(a.query || '')}” — ${r.count ?? '…'} article${r.count === 1 ? '' : 's'}`;
-    if (s.name === 'read_encyclopedia') return r.error ? 'Tried to read an unknown encyclopedia article' : `Read the encyclopedia article “${esc(r.title || a.article)}”`;
-    if (s.name === 'found') return `Matched ${s.count} passage${s.count === 1 ? '' : 's'} for your question`;
+    if (s.name === 'view_page') return r.error ? tr('chat.couldntView', null, 'Couldn’t view that page') : tr('chat.step.viewedPage', { title: esc(r.title || ''), page: esc(a.page) }, 'Looked at the picture of {title}, page {page}');
+    if (s.name === 'get_timed_transcript') return r.error ? tr('chat.step.noTranscript', { title: esc(r.title || tr('chat.thatVideo', null, 'that video')) }, 'No transcript for {title}') : tr('chat.step.readTranscript', { title: esc(r.title || '') }, 'Read the transcript of {title}');
+    if (s.name === 'lookup_place') return tr('chat.step.lookupPlace', { query: esc(a.query || '') }, 'Looked up “{query}” on the offline map');
+    if (s.name === 'search_encyclopedia') return tr(r.count === 1 ? 'chat.step.searchedWikiOne' : 'chat.step.searchedWiki', { query: esc(a.query || ''), count: r.count ?? '…' }, r.count === 1 ? 'Searched the encyclopedias for “{query}” — {count} article' : 'Searched the encyclopedias for “{query}” — {count} articles');
+    if (s.name === 'read_encyclopedia') return r.error ? tr('chat.unknownArticle', null, 'Tried to read an unknown encyclopedia article') : tr('chat.step.readArticle', { title: esc(r.title || a.article) }, 'Read the encyclopedia article “{title}”');
+    if (s.name === 'found') return tr(s.count === 1 ? 'chat.step.matchedOne' : 'chat.step.matched', { count: s.count }, s.count === 1 ? 'Matched {count} passage for your question' : 'Matched {count} passages for your question');
     return esc(s.name);
   }
   function srcHref(s) {
-    if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || 'Place from the answer')}`;
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
+    if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || tr('chat.placeFromAnswer', null, 'Place from the answer'))}`;
     if (s.kind === 'video') return `#/watch/${encodeURIComponent(s.doc_id)}?${s.t != null ? 't=' + Math.floor(s.t) + '&' : ''}from=${encodeURIComponent(here())}`;
     if (s.kind === 'zim' || s.zim) {
       // s.path is already percent-encoded (encyclopedias.ui_path), as on the Encyclopedias page. A row without one
@@ -395,29 +536,34 @@ const Chat = (() => {
     return `#/read/${encodeURIComponent(s.doc_id)}?${s.page ? 'p=' + s.page + '&' : ''}from=${encodeURIComponent(here())}`;
   }
   // What a source is, for the filter above an answer's sources: a page (manuals, PDFs, saved pages), a video, an encyclopedia article or a place on the map.
-  const SRC_TYPES = [['page', 'Pages'], ['video', 'Videos'], ['wiki', 'Encyclopedias'], ['place', 'Places']];
+  const SRC_TYPE_KEYS = { page: 'pages', video: 'videos', wiki: 'encyclopedias', place: 'places' };
   const srcType = s => s.kind === 'video' ? 'video' : s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'place' : 'page';
+  // Server messages carry their catalogue key next to the English text (server.py msg(), trustKey).
+  const keyedText = (key, params, text) => key ? tr(key, params, text || '') : (text || '');
+  const excerptText = s => Array.isArray(s.excerptParts)
+    ? s.excerptParts.map(x => x && typeof x === 'object' ? keyedText(x.key, x.params, x.text) : String(x ?? '')).join(' · ')
+    : (s.excerpt || '');
   function srcCards(list, compact, type) {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
       let pv;
-      if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
-      else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
+      if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : esc(tr('common.video', null, 'Video'))}</span></span>`;
+      else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">${esc(tr('reader.pagePrefix', { page: s.page }, 'Page {page}'))}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
-      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
+      const where = s.kind === 'video' ? (s.t != null ? tr('chat.atTime', { time: clock(s.t) }, 'at {time}') : '') : s.page ? (s.pages ? tr('reader.pageOfTotal', { page: s.page, total: s.pages }, 'Page {page} of {total}') : tr('reader.pagePrefix', { page: s.page }, 'Page {page}')) : '';
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
-        <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
-        ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}
-        ${s.image ? '<span class="sc-tag">diagram viewed</span>' : ''}</span></a>`;
+        <small>${esc(keyedText(s.publisherKey, null, s.publisher))}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(keyedText(s.trustKey, null, s.trust)) : ''}</small>
+         ${!compact && s.excerpt ? (ex => `<span class="sc-ex">${tr('chat.sourceExcerpt', { excerpt: esc(ex.slice(0, 220)) + (ex.length > 220 ? '…' : '') }, '“{excerpt}”')}</span>`)(excerptText(s)) : ''}
+        ${s.image ? `<span class="sc-tag">${esc(tr('chat.diagramViewed', null, 'diagram viewed'))}</span>` : ''}</span></a>`;
     }).join('')}</div>`;
   }
   // Buttons that show one type of source at a time, with how many of each. Only when the sources are of two types or more.
   function srcFilter(list, type, i) {
     const n = {}; for (const s of list) n[srcType(s)] = (n[srcType(s)] || 0) + 1;
-    const types = SRC_TYPES.filter(([t]) => n[t]);
+    const types = Object.keys(SRC_TYPE_KEYS).filter(t => n[t]);
     if (types.length < 2) return '';
     const on = type || '';
-    const btn = (t, label, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${label} <small>${count}</small></button>`;
-    return `<div class="srcfilter" role="group" aria-label="Show sources by type"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'All', list.length)}${types.map(([t, label]) => btn(t, label, n[t])).join('')}</div>`;
+    const btn = (t, key, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${trHtml('chat.sourceType.' + key, null, key)} <small>${count}</small></button>`;
+    return `<div class="srcfilter" role="group" aria-label="${tr('chat.sourcesByType', null, 'Show sources by type')}"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'all', list.length)}${types.map(t => btn(t, SRC_TYPE_KEYS[t], n[t])).join('')}</div>`;
   }
   // Show only the cards of one type (or all of them, for ''), in the cards that follow this filter.
   function showType(filter, type) {
@@ -430,8 +576,13 @@ const Chat = (() => {
 
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
   function md(text, m) {
+    const tr = (k, p, f) => { const fill = (s) => (!p || s == null) ? s : String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => (p[n] != null ? p[n] : m)); return fill(typeof globalThis.lastbookTr === 'function' ? globalThis.lastbookTr(k, p, f) : f); };
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
-    const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : '';
+    const cite = k => {
+      if (!keys.has(k) && m.cited) return '';
+      const title = trResult('chat.sourceKey', { key: k }, 'Source {key}');
+      return `<a class="cite" href="#src-${k}" data-key="${k}" lang="${esc(title.locale)}" title="${esc(title.text)}">${k.replace(/^S/, '')}</a>`;
+    };
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
@@ -453,7 +604,7 @@ const Chat = (() => {
       if (!table) return;
       const head = table.length > 1 && SEP.test(table[1]) ? cells(table[0]) : null, rows = table.slice(head ? 2 : 0).filter(r => !SEP.test(r)).map(cells);
       const cited = section !== 'main' || m.running || /\[[SM]\d+\]/.test(table.join(' ') + ' ' + before);
-      const no = cited ? '' : ' title="Not linked to a source"', width = head ? head.length : (rows[0] || []).length;
+      const no = cited ? '' : ` title="${esc(tr('chat.notLinked', null, 'Not linked to a source'))}"`, width = head ? head.length : (rows[0] || []).length;
       // A row with more or fewer cells than the header would put numbers under the wrong heading, so show the lines as written.
       if (rows.some(r => r.length !== width)) out += `<p class="ans-raw${cited ? '' : ' uncited'}"${no}>${table.map(inline).join('<br>')}</p>`;
       else out += `<div class="ans-table${cited ? '' : ' uncited'}"${no}><table>${head ? `<thead><tr>${head.map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead>` : ''}<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -461,7 +612,7 @@ const Chat = (() => {
     };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
       if (section !== 'main' || m.running) return inline(raw);
-      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
+      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="${esc(tr('chat.notLinked', null, 'Not linked to a source'))}">${inline(sn)}</span>`).join(' ');
     };
     for (let ln of lines) {
       const t = ln.trim();
@@ -476,7 +627,7 @@ const Chat = (() => {
         close();
         if (out.includes('<div class="sec-')) out += '</div>';
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? trHtml('chat.notInLibrary', null, 'Not found in the library') : sec === 'disagree' ? trHtml('chat.sourcesDisagree', null, 'Sources disagree') : trHtml('chat.modelReasoning', null, 'The model’s own reasoning — not from the library')}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
@@ -495,10 +646,11 @@ const Chat = (() => {
   function wire(el) {
     $$('[data-act]', el).forEach(b => b.onclick = () => {
       const i = +b.dataset.i, m = cur.messages[i];
-      if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast('Copied'), () => toast('Couldn’t copy')) }
+      if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast(tr('chat.copied', null, 'Copied')), () => toast(tr('chat.couldntCopy', null, 'Couldn’t copy'))) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
-        toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${new Date().toLocaleDateString()}` }, null);
+        const text = q.slice(0, 80);
+        toggleSave({ key: `a:${cur.id}:${i}`, title: tr('chat.answerPrefix', { text }, 'Answer: {text}'), title_params: { text }, href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${chatDate(new Date())}` }, null);
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
@@ -510,25 +662,35 @@ const Chat = (() => {
   }
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-    let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
-    if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
+    let t = contentText(m).replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    if (m.stopped && contentText(m)) t += '\n\n(' + tr('chat.stopped', null, 'Stopped.') + ')';
+    if ((m.cited || []).length) t += '\n\n' + tr('chat.sourcesHeading', null, 'Sources:') + '\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? tr('chat.citePage', { page: s.page }, ', page {page}') : ''}${s.t != null ? tr('chat.citeAt', { time: clock(s.t) }, ', at {time}') : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${new Date().toLocaleString()}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
-    for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
+    const date = chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' });
+    let md = `# ${tr('chat.exportTitle', { title: c.title }, 'Chat: {title}')}\n\n`;
+    md += tr('chat.exportedFrom', { date }, 'Exported from Lastbook (offline library) on {date}.') + '\n';
+    md += tr('chat.exportNotice', null, 'Answers were written by a local AI model from the library’s documents. Check the linked pages; get trained help for anything serious.') + '\n';
+    for (const m of c.messages) {
+      const heading = m.role === 'user' ? tr('chat.exportQuestion', null, 'Question') : tr('chat.exportAnswer', null, 'Answer');
+      const reason = chatErrorText(m) || tr('chat.stopped', null, 'Stopped.');
+      md += m.role === 'user' ? `\n## ${heading}\n\n${m.content}\n`
+        : `\n## ${heading}\n\n${m.content ? plain(m) : tr('chat.exportNoAnswer', { reason }, '(no answer: {reason})')}\n`;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
     a.download = `survival-chat-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
-    toast('Saved as a file on this device');
+    toast(tr('chat.savedAsFile', null, 'Saved as a file on this device'));
   }
+
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
-    return c.messages.filter(m => m.content).map(m => {
+    return c.messages.filter(m => contentText(m)).map(m => {
       if (m.role !== 'assistant') return { role: m.role, content: m.content };
       const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-      return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? ', p. ' + map[k].page : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
+      return { role: 'assistant', content: contentText(m).replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? tr('chat.citePageShort', { page: map[k].page }, ', p. {page}') : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
     });
   }
 
@@ -553,9 +715,9 @@ const Chat = (() => {
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
     try {
       const st = await getStatus();
-      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
+      if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1]?.text : st.server && tr('chat.modelServerNotAnswering', { address: esc(st.server.address) }, 'The model server at {address} is not answering. Check that it is running.') });
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
-      if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
+      if (!r.ok || !r.body) throw new Error(tr('chat.serverRefused', { detail: r.status }, 'The server refused the question ({detail})'));
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = '';
       for (;;) {
@@ -571,15 +733,15 @@ const Chat = (() => {
           redraw();
         }
       }
-      if (m.running && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
+      if (m.running && !m.content && !m.error) m.error = tr('chat.stoppedUnexpectedly', null, 'The answer stopped unexpectedly.');
     } catch (e) {
-      if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
-      else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text) }
-      else m.error = e.message || 'Something went wrong.';
+      if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = tr('chat.stopped', null, 'Stopped.') }
+      else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || tr('chat.modelNotRunning', null, 'The local assistant model isn’t running right now.'); await fallback(m, text) }
+      else m.error = e.message || tr('app.errorGeneric', null, 'Something went wrong.');
     }
     m.running = false; delete m.state;
     if (m.stopped && m.content) {
-      m.content += '\n\n(Stopped.)';
+
       // The `done` event never arrives, so `cited` would be empty and the finished view
       // would say the answer is unverified. Keep the sources already received.
       if (m.cited == null && (m.sources || []).length) m.cited = m.sources;
@@ -597,20 +759,43 @@ const Chat = (() => {
     else if (ev.type === 'reset') m.content = '';
     else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
-      if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
-      else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
+      if (ev.error === 'model_unavailable') { m.offline = true; m.error = tr('chat.modelNotRunning', null, 'The local assistant model isn’t running right now.'); fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
+      else if (ev.error === 'internal') m.error = tr('chat.internalError', { reason: ev.reason || 'unknown' }, 'The assistant stopped on an internal error ({reason}).');
+      else { m.error = ev.error === 'empty' ? tr('chat.emptyResponse', null, 'The model did not produce an answer. The passages it found are listed below.') : ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }
     }
     else if (ev.type === 'stopped') m.stopped = true;
   }
   async function fallback(m, q) {
-    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += ' The library search also found nothing for this question.' }
+    try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += tr('chat.fallbackNothing', null, ' The library search also found nothing for this question.') }
     catch { m.fallback = [] }
   }
+  function refreshLanguage() {
+    if (!document.getElementById('chatLog')) return;
+    const y = scrollY, active = document.activeElement, message = active?.closest?.('.msg'), action = active?.dataset?.act;
+    const messageId = message?.id || '', id = active?.id || '';
+    const list = $('#csList'), listTop = list?.scrollTop || 0;
+    const disclosures = new Map([...document.querySelectorAll('#chatLog .msg[id]')].map(el => [
+      el.id, [...el.querySelectorAll('details.also')].map(item => item.open),
+    ]));
+    renderSide(); renderCtx(); renderLog(); setBusy(!!busy());
+    for (const [messageId, openStates] of disclosures) {
+      const fresh = document.getElementById(messageId);
+      fresh?.querySelectorAll('details.also').forEach((item, index) => { item.open = !!openStates[index]; });
+    }
+    if (list) list.scrollTop = listTop;
+    const focus = id ? document.getElementById(id) : (messageId && action ? document.querySelector(`#${CSS.escape(messageId)} [data-act=\"${CSS.escape(action)}\"]`) : null);
+    if (focus?.isConnected) focus.focus({ preventScroll: true });
+    scrollTo(0, y);
+  }
+  document.addEventListener('lastbook:languagechange', refreshLanguage);
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }
   function setBusy(on) {
     const b = $('#sendBtn'); if (!b) return;
     b.innerHTML = on ? '<span class="stopsq"></span>' : ico('up');
-    b.setAttribute('aria-label', on ? 'Stop the answer' : 'Send');
+    b.dataset.i18nAriaLabel = on ? 'chat.stopAnswer' : 'chat.send';
+    b.setAttribute('aria-label', on ? tr('chat.stopAnswer', null, 'Stop the answer') : tr('chat.send', null, 'Send'));
+    b.title = on ? tr('chat.stopAnswer', null, 'Stop the answer') : status && !status.online
+      ? tr('chat.offlinePages', null, 'The assistant is offline; you will get matching pages instead') : tr('chat.send', null, 'Send');
     b.classList.toggle('stop', on);
   }
   function scrollEnd(force) {
@@ -619,5 +804,5 @@ const Chat = (() => {
   }
   function throttle(f, ms) { let t = 0, p = null; return () => { const n = Date.now(); if (n - t > ms) { t = n; f() } else { clearTimeout(p); p = setTimeout(() => { t = Date.now(); f() }, ms) } } }
 
-  return { page, count };
+  return { page, count, refreshLanguage };
 })();

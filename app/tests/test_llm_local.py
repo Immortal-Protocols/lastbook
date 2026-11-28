@@ -44,6 +44,19 @@ class Base(unittest.TestCase):
         return mock.patch.object(llm_local.subprocess, 'run', run)
 
 
+class LocalStatus(Base):
+    def test_status_exposes_the_fit_diagnostic_key_for_chat(self):
+        self.local.state = 'too_big'
+        self.local.message = 'The local AI needs 20 GB of memory.'
+        self.local.fit = {'needs': 20_000_000_000, 'why_key': 'setup.why.aiNeedsMemoryShort',
+                          'why_params': {'needs': '20 GB', 'ram': '8 GB'}}
+
+        status = self.local.status()
+
+        self.assertEqual(status['why_key'], 'setup.why.aiNeedsMemoryShort')
+        self.assertEqual(status['why_params'], {'needs': '20 GB', 'ram': '8 GB'})
+
+
 class TurnedOff(Base):
     def test_off_during_measuring_stays_off(self):
         with self.fake_run(during=lambda: self.local.set_enabled(False)):
@@ -84,6 +97,19 @@ class Clock:
     def sleep(self, s):
         self.now += s
         self.tick()
+
+
+class LocalStatus(Base):
+    def test_status_exposes_the_fit_diagnostic_key_for_chat(self):
+        self.local.state = 'too_big'
+        self.local.message = 'The local AI needs 20 GB of memory.'
+        self.local.fit = {'needs': 20_000_000_000, 'why_key': 'setup.why.aiNeedsMemoryShort',
+                          'why_params': {'needs': '20 GB', 'ram': '8 GB'}}
+
+        status = self.local.status()
+
+        self.assertEqual(status['why_key'], 'setup.why.aiNeedsMemoryShort')
+        self.assertEqual(status['why_params'], {'needs': '20 GB', 'ram': '8 GB'})
 
 
 class SlowLoad(Base):

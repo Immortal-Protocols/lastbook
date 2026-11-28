@@ -82,15 +82,18 @@ const Speak = (() => {
   function attach(btn, getText, then) {
     let on = false;
     const label = $('span', btn);
+    const tr = (key, fallback) => globalThis.LastbookI18n?.t?.(key) ?? fallback;
     // The name says what pressing it does, so it changes (Read aloud / Stop reading) and carries no aria-pressed: "Stop reading,
     // pressed" would say stopping is on. The look changes by shape, not colour alone: .reading swaps the speaker for a stop square,
     // which also shows in the Mac toolbar, where the button is an icon only.
     const show = v => {
-      const say = v ? 'Stop reading' : 'Read aloud';
+      const say = tr(v ? 'reader.stopReading' : 'reader.readAloud', v ? 'Stop reading' : 'Read aloud');
       on = v; btn.classList.toggle('reading', v); btn.title = say; btn.setAttribute('aria-label', say); if (label) label.textContent = say;
     };
     const onKey = e => { if (on && e.key === 'Escape') { stop(); show(false) } };   // Escape stops reading, as it stops an answer in Chat
+    const onLanguage = () => show(on);
     document.addEventListener('keydown', onKey);
+    document.addEventListener('lastbook:languagechange', onLanguage);
     btn.addEventListener('click', async () => {
       if (on) { stop(); show(false); return }
       show(true);
@@ -100,7 +103,7 @@ const Speak = (() => {
       if (!say(text, () => { show(false); if (then) then() })) show(false);
     });
     ready().then(ok => { btn.hidden = !ok });
-    return () => { stop(); show(false); document.removeEventListener('keydown', onKey) };
+    return () => { stop(); show(false); document.removeEventListener('keydown', onKey); document.removeEventListener('lastbook:languagechange', onLanguage) };
   }
 
   return { attach, stop, ready, _pieces: pieces, _speakable: speakable };   // _pieces, _speakable: for app/tests/test_speak.py

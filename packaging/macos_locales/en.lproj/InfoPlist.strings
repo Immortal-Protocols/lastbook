@@ -1,0 +1,3 @@
+"NSDesktopFolderUsageDescription" = "Lastbook looks in Desktop for the LastbookData folder that contains your library. It only reads and saves files in that folder.";
+"NSDocumentsFolderUsageDescription" = "Lastbook looks in Documents for the LastbookData folder that contains your library. It only reads and saves files in that folder.";
+"NSDownloadsFolderUsageDescription" = "Lastbook looks in Downloads for the LastbookData folder that contains your library. It only reads and saves files in that folder.";

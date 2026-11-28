@@ -58,6 +58,8 @@ MEMORY_EVERY = 0.1
 MEMORY_QUIET = 10   # seconds after ending a renderer before ending another: the system needs a moment to give the memory back
 WHOLE_COPIES = 11   # measured: while the runtime takes one whole answer of 476 MB, this process holds about ten times that for 2 to 3 seconds, wherever the bytes come from.
                     # Only the app's own navigation can get such an answer, and none is larger than bridge.WHOLE_MAX, or too large for half this computer's memory at that rate.
+from i18n_native import native_t
+
 TOO_BIG = 'A page was using too much memory, so it was closed.'
 
 # msOneAuthWAM: without it the runtime makes outbound connections for account sign-in even with everything else here off.
@@ -73,6 +75,18 @@ NO_RUNTIME = ('Lastbook needs the Microsoft Edge WebView2 Runtime, and it was no
 BLOCKED_SCHEMES = ('http', 'https', 'ws', 'wss', 'ftp')
 # All a right-click offers. Anything else in the runtime's menu, now or after an update, goes: its Share panel posts to other programs and makes the runtime write a crash report.
 MENU_KEEP = {'cut', 'copy', 'paste', 'pasteAndMatchStyle', 'selectAll', 'undo', 'redo', 'copyImage'}
+
+
+def runtime_error_message(exception):
+    """Use the install hint only for a missing WebView2 runtime; explain other failures."""
+    try:
+        exception = exception.GetBaseException()
+    except Exception:
+        pass
+    if 'NotFound' in str(type(exception)):
+        return native_t('native.needWebView2', NO_RUNTIME)
+    detail = getattr(exception, 'Message', None) or str(exception)
+    return native_t('native.windowCouldNotOpen', 'Lastbook could not open its window.\n\n{detail}', detail=detail)
 
 
 def light_theme():
@@ -427,7 +441,7 @@ def pick_folder(prompt, start, *, files=False):
         pick_kind = 0x1000 if files else 0x20   # FILEMUSTEXIST or PICKFOLDERS
         _com(dialog, 9, ctypes.c_uint32)(options.value | pick_kind | 0x40 | 0x800 | 0x8)  # FORCEFILESYSTEM, PATHMUSTEXIST, NOCHANGEDIR
         _com(dialog, 17, wstr)(prompt)                                                                 # SetTitle
-        _com(dialog, 18, wstr)('Choose')                                                               # SetOkButtonLabel
+        _com(dialog, 18, wstr)(native_t('native.choose', 'Choose'))                                    # SetOkButtonLabel
         folder = vp()
         if ctypes.windll.shell32.SHCreateItemFromParsingName(wstr(str(start)), None, ctypes.byref(_guid('{43826D1E-E718-42EE-BC55-A1E261C37BFE}')),
                                                              ctypes.byref(folder)) == 0:
@@ -492,7 +506,7 @@ def choose_folder(title, text):
         buttons = F.FlowLayoutPanel()
         buttons.FlowDirection, buttons.AutoSize, buttons.Dock = F.FlowDirection.RightToLeft, True, F.DockStyle.Fill
         buttons.Margin = F.Padding(0)
-        for name, result in (('Quit', F.DialogResult.Cancel), ('Choose Folder…', F.DialogResult.OK)):
+        for name, result in ((native_t('native.quit', 'Quit'), F.DialogResult.Cancel), (native_t('native.chooseFolder', 'Choose Folder…'), F.DialogResult.OK)):
             b = F.Button()
             b.Text, b.AutoSize, b.DialogResult = name, True, result
             b.MinimumSize, b.Padding, b.Margin = D.Size(S(96), S(30)), F.Padding(S(10), 0, S(10), 0), F.Padding(S(8), 0, 0, 0)
@@ -513,7 +527,7 @@ def choose_folder(title, text):
         form.HandleCreated += lambda s, a: caption(form.Handle.ToInt64(), light)
         if form.ShowDialog() != F.DialogResult.OK:
             return
-        chosen.append(pick_folder('Choose the folder called LastbookData', downloads()) or '')
+        chosen.append(pick_folder(native_t('native.chooseLastbookData', 'Choose the folder called LastbookData'), downloads()) or '')
 
     thread = n.Threading.Thread(n.Threading.ThreadStart(body))   # WinForms and the picker need a single-threaded apartment
     thread.SetApartmentState(n.Threading.ApartmentState.STA)
@@ -563,16 +577,16 @@ def preflight():
         n = net()
     except Exception:
         traceback.print_exc()
-        return f'Lastbook could not load the files it needs to show its window.\n\nThey should be in {_lib_dir()}.'
+        return native_t('native.couldNotLoadWindowFiles', 'Lastbook could not load the files it needs to show its window.\n\nThey should be in {path}.', path=_lib_dir())
     try:
         version = n.Core.CoreWebView2Environment.GetAvailableBrowserVersionString()
     except Exception as e:
         print('WebView2 runtime check:', type(e).__name__, e, flush=True)
-        return NO_RUNTIME
+        return native_t('native.needWebView2', NO_RUNTIME)
     print('WebView2 runtime', version, flush=True)
     global RUNTIME
     RUNTIME = str(version or '')
-    return None if version else NO_RUNTIME
+    return None if version else native_t('native.needWebView2', NO_RUNTIME)
 
 
 RUNTIME = ''
@@ -816,7 +830,7 @@ class Shell:
             timer.Stop()
             if task.IsFaulted:
                 print('WebView2 environment:', task.Exception, flush=True)
-                message(NO_RUNTIME)
+                message(runtime_error_message(task.Exception))
                 self.form.Close()
                 return
             self.view.EnsureCoreWebView2Async(task.Result)
@@ -827,7 +841,7 @@ class Shell:
     def on_ready(self, sender, args):
         if not args.IsSuccess:
             print('WebView2 did not start:', args.InitializationException, flush=True)
-            message(NO_RUNTIME if 'NotFound' in str(type(args.InitializationException)) else f'Lastbook could not open its window.\n\n{args.InitializationException.Message}')
+            message(runtime_error_message(args.InitializationException))
             self.form.Close()
             return
         Core = self.n.Core
@@ -1117,7 +1131,7 @@ class Shell:
         print('web view process failed:', kind, args.Reason, flush=True)
         note(kind='process-failed', what=str(kind), reason=str(args.Reason))
         if kind == Kind.BrowserProcessExited:
-            message('The window part of Lastbook stopped working, so Lastbook will close. Your library is not affected.')
+            message(native_t('native.windowProcessFailed', 'The window part of Lastbook stopped working, so Lastbook will close. Your library is not affected.'))
             self.ui(self.form.Close)
         elif self.ended_why and kind in (Kind.RenderProcessExited, Kind.FrameRenderProcessExited):
             why, self.ended_why = self.ended_why, None
@@ -1170,7 +1184,7 @@ class Shell:
                 ended_at = now
                 print(f'ending renderer {pid}: the web view holds {total} bytes, {sizes[pid]} of it there', flush=True)
                 note(kind='memory-limit', total=total, pid=pid, size=sizes[pid])
-                self.ended_why = TOO_BIG
+                self.ended_why = native_t('native.pageTooBig', TOO_BIG)
                 if not procs.end(pid):
                     self.ended_why = None
                     print('could not end it', ctypes.get_last_error(), flush=True)

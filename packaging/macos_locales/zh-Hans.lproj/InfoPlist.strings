@@ -1,0 +1,3 @@
+"NSDesktopFolderUsageDescription" = "Lastbook 会在“桌面”文件夹中查找包含资料库的 LastbookData 文件夹。它只会读取和保存该文件夹中的文件。";
+"NSDocumentsFolderUsageDescription" = "Lastbook 会在“文稿”文件夹中查找包含资料库的 LastbookData 文件夹。它只会读取和保存该文件夹中的文件。";
+"NSDownloadsFolderUsageDescription" = "Lastbook 会在“下载”文件夹中查找包含资料库的 LastbookData 文件夹。它只会读取和保存该文件夹中的文件。";

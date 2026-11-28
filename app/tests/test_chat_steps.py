@@ -22,7 +22,8 @@ const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
-  'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
+  'const clock = t => String(t);', "const here = () => '#/ask';",
+  "const tr = (_key, params, fallback) => typeof fallback === 'string' ? fallback.replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}') : fallback;"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcCards = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcCards;')();
 process.stdout.write(JSON.stringify(JSON.parse(process.argv[3]).map(s => srcCards([s], false))));
@@ -33,6 +34,8 @@ const fs = require('fs');
 const chat = fs.readFileSync(process.argv[1], 'utf8'), app = fs.readFileSync(process.argv[2], 'utf8');
 const line = re => app.split('\n').find(l => re.test(l));
 const helpers = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';",
+  'const tr = (_key, _params, fallback) => fallback;',
+  "const trHtml = (_key, _params, fallback) => ({all:'All',pages:'Pages',videos:'Videos',encyclopedias:'Encyclopedias',places:'Places'})[fallback] || fallback;",
   'const clock = t => String(t);', "const here = () => '#/ask';"].join('\n');
 const i = chat.indexOf('function srcHref('), j = chat.indexOf('\n  /* markdown-lite');
 const srcFilter = new Function(helpers + '\n' + chat.slice(i, j) + '\nreturn srcFilter;')();
@@ -219,11 +222,11 @@ class El {
   after(n) { if (n.parent) n.parent.removeChild(n); const s = this.parent.childNodes; n.parent = this.parent; s.splice(s.indexOf(this) + 1, 0, n) }
   remove() { this.parent.removeChild(this) }
 }
-const doc = { createElement: t => new El(t) };
+const doc = { createElement: t => new El(t), addEventListener() {} };
 const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const clock = t => String(t);',
-  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};'].join('\n');
-const src = chat.replace('return { page, count };', 'return { page, count, patchStream };');
-if (src === chat) throw new Error('chat.js no longer ends with return { page, count }');
+  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};', 'globalThis.document = { addEventListener() {} };'].join('\n');
+const src = chat.replace(/return \{ page, count(?:, refreshLanguage)? \};/, 'return { page, count, patchStream };');
+if (src === chat) throw new Error('chat.js no longer returns its chat API');
 const { patchStream } = new Function(stubs + '\n' + src + '\nreturn Chat;')();
 // Each step: a change to the message, then one patch, then what the message holds.
 const el = new El('div'), m = { role: 'assistant', content: '', state: 'thinking', steps: [], sources: [], running: true };
@@ -276,14 +279,17 @@ class Streaming(unittest.TestCase):
         self.assertEqual(len({json.dumps(s['stageIds']) for s in seen}), 1)   # the list and its three steps are never replaced
         self.assertEqual(len({s['bar'][0] for s in seen}), 1)
         self.assertEqual([s['stages'] for s in seen[:4]], [['now', '', ''], ['now', '', ''], ['done', 'now', ''], ['done', 'done', 'now']])
-        self.assertEqual([s['label'] for s in seen[:4]], ['Thinking…', 'Searching the library…', 'Reading the pages it found…', 'Writing the answer…'])
+        self.assertEqual([s['label'] for s in seen[:4]], [
+            '<span lang="en">Thinking…</span>', '<span lang="en">Searching the library…</span>',
+            '<span lang="en">Reading the pages it found…</span>', '<span lang="en">Writing the answer…</span>',
+        ])
         for s in seen:
             self.assertEqual(s['bar'][1:], ['wk-bar run', ''])   # no figure: the bar keeps sweeping
 
     def test_loading_the_local_ai_shows_how_far(self):
         seen = self.run_steps([{'state': 'starting', 'pct': 40}, {'pct': 75}, {'state': 'thinking', 'pct': None}])
         self.assertEqual([s['bar'][1:] for s in seen], [['wk-bar', '40%'], ['wk-bar', '75%'], ['wk-bar run', '']])
-        self.assertEqual(seen[0]['label'], 'Starting the local AI… 40%')
+        self.assertEqual(seen[0]['label'], '<span lang="en">Starting the local AI…</span> 40%')
         self.assertEqual(seen[0]['stages'], ['', '', ''])
 
     def test_a_reset_clears_the_draft_and_keeps_the_sources(self):
@@ -321,8 +327,8 @@ class Streaming(unittest.TestCase):
         # Same rule as #381: a runner-reported 0 is a real figure, not "unknown progress".
         seen = self.run_steps([{'state': 'starting', 'pct': 0}, {'pct': 5}])
         self.assertEqual([s['bar'][1:] for s in seen], [['wk-bar', '0%'], ['wk-bar', '5%']])
-        self.assertEqual(seen[0]['label'], 'Starting the local AI… 0%')
-        self.assertEqual(seen[1]['label'], 'Starting the local AI… 5%')
+        self.assertEqual(seen[0]['label'], '<span lang="en">Starting the local AI…</span> 0%')
+        self.assertEqual(seen[1]['label'], '<span lang="en">Starting the local AI…</span> 5%')
 
     def test_finished_paragraphs_keep_their_nodes_while_more_text_streams(self):
         # A finished paragraph must keep the same DOM node while a later paragraph is written, so a selection in
@@ -549,16 +555,16 @@ class El {
   closest(sel) { for (let n = this; n && n.nodeType === 1; n = n.parent) if (n.matches(sel)) return n; return null }
   scrollIntoView() {}
 }
-const doc = { createElement: t => new El(t) };
+const doc = { createElement: t => new El(t), addEventListener() {} };
 const host = new El('div');
 host.innerHTML = '<div class="chat-main"><div class="chat-log" id="chatLog"></div></div>';
 const $ = (s, r) => (r || host).querySelector(s);
 const $$ = (s, r) => [...(r || host).querySelectorAll(s)];
 const stubs = [line(/^const esc\s*=/), line(/^const fileUrl\s*=/), "const ico = n => '<svg>' + n + '</svg>';", 'const clock = t => String(t);',
-  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};'].join('\n');
-const src = chat.replace('return { page, count };',
+  "const here = () => '#/ask';", 'const localStorage = { getItem: () => null, setItem() {} };', 'const addEventListener = () => {};', 'globalThis.document = { addEventListener() {} };'].join('\n');
+const src = chat.replace(/return \{ page, count(?:, refreshLanguage)? \};/,
   'return { page, count, renderLog, setChat(c) { cur = c }, typeOf(i) { return (cur.messages[i] && cur.messages[i].srcType) || ""; } };');
-if (src === chat) throw new Error('chat.js no longer ends with return { page, count }');
+if (src === chat) throw new Error('chat.js no longer returns its chat API');
 globalThis.__lbDoc = doc; globalThis.__lbQ = $; globalThis.__lbQQ = $$;
 const api = new Function(stubs + '\nconst document = globalThis.__lbDoc, $ = globalThis.__lbQ, $$ = globalThis.__lbQQ;\n' + src + '\nreturn Chat;')();
 

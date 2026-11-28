@@ -12,6 +12,7 @@ was installed, as listed in installed-files.txt, and never LastbookData or Lastb
 
 """
 import ctypes
+import json
 import os
 import subprocess
 import sys
@@ -29,6 +30,67 @@ ICON = 'Lastbook.ico'
 MANIFEST = 'installed-files.txt'
 KEY = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\Lastbook'
 OK, FAILED, APP_OPEN, CANCELLED = 0, 1, 2, 3
+SUPPORTED_INSTALLER_LOCALES = frozenset(('en', 'es-419', 'de', 'zh-Hans'))
+
+def installer_locale():
+    """Saved Lastbook language if this user already ran the app, otherwise the Windows UI language."""
+    # APPDATA\Lastbook\ui-language.json is written after the person chooses a language in the app.
+    for base in (os.environ.get('APPDATA'), str(Path.home() / 'AppData' / 'Roaming')):
+        if not base:
+            continue
+        path = Path(base) / 'Lastbook' / 'ui-language.json'
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+            lang = data.get('language') if isinstance(data, dict) else None
+            if isinstance(lang, str) and lang in SUPPORTED_INSTALLER_LOCALES:
+                return lang
+        except (OSError, ValueError):
+            continue
+    try:
+        langid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        primary = langid & 0x3FF
+        if primary == 0x0A:  # LANG_SPANISH
+            return 'es-419'
+        if primary == 0x07:  # LANG_GERMAN
+            return 'de'
+        if langid in (0x0804, 0x1004):  # Simplified Chinese (China or Singapore)
+            return 'zh-Hans'
+    except Exception:
+        pass
+    return 'en'
+
+
+def _installer_catalogs():
+    names = ('i18n_installer.json',)
+    roots = [Path(__file__).resolve().parent]
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        roots.append(Path(meipass))
+    for root in roots:
+        for name in names:
+            path = root / name
+            try:
+                return json.loads(path.read_text(encoding='utf-8'))
+            except FileNotFoundError:
+                continue
+            except (OSError, ValueError):
+                continue
+    return {'en': {}, 'locales': {}}
+
+
+def installer_t(key, fallback, **params):
+    catalogs = _installer_catalogs()
+    loc = installer_locale()
+    value = None
+    if loc != 'en':
+        value = (catalogs.get('locales') or {}).get(loc, {}).get(key)
+    if not value:
+        value = (catalogs.get('en') or {}).get(key) or fallback
+    for name, val in params.items():
+        value = value.replace('{' + name + '}', str(val))
+    return value
+
+
 APP_OPEN_TEXT = 'Lastbook is open. Close it, then try again.'
 NO_WINDOW, DETACHED, NEW_GROUP, BREAKAWAY = 0x08000000, 0x00000008, 0x00000200, 0x01000000
 POWERSHELL = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32' / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
@@ -178,7 +240,7 @@ def install(desktop, progress=lambda f: None):
     with zipfile.ZipFile(payload()) as z:
         items = [i for i in z.infolist() if not i.is_dir()]
         if not all(safe_name(i.filename) for i in items) or APP_EXE not in {i.filename for i in items}:
-            raise RuntimeError('This installer is damaged. Download it again.')
+            raise RuntimeError(installer_t('installer.damaged', 'This installer is damaged. Download it again.'))
         remove_installed(d)
         unregister()
         try:
@@ -307,7 +369,7 @@ def run_window():
         F.Application.SetCompatibleTextRenderingDefault(False)
         font = D.Font('Segoe UI', 9.0)
         form = F.Form()
-        form.Text, form.Font, form.BackColor, form.ForeColor = 'Lastbook Setup', font, body, ink
+        form.Text, form.Font, form.BackColor, form.ForeColor = installer_t('installer.setupTitle', installer_t('installer.setupTitle', 'Lastbook Setup')), font, body, ink
         form.FormBorderStyle, form.MaximizeBox, form.MinimizeBox = F.FormBorderStyle.FixedSingle, False, True
         form.StartPosition, form.ClientSize = F.FormStartPosition.CenterScreen, D.Size(S(500), S(300))
         form.Icon = D.Icon.ExtractAssociatedIcon(sys.executable)
@@ -326,12 +388,12 @@ def run_window():
         mark = F.PictureBox()
         mark.Image, mark.SizeMode = form.Icon.ToBitmap(), F.PictureBoxSizeMode.Zoom
         add(mark, 28, 28, 48, 48)
-        title = label('Install Lastbook', 92, 26, 380, 32, 15.0, True)
-        sub = label(f'Version {VERSION}', 94, 58, 380, 20, colour=quiet)
-        where_head = label('Install folder', 28, 100, 444, 18, colour=quiet)
+        title = label(installer_t('installer.installLastbook', 'Install Lastbook'), 92, 26, 380, 32, 15.0, True)
+        sub = label(installer_t('installer.version', 'Version {version}', version=VERSION), 94, 58, 380, 20, colour=quiet)
+        where_head = label(installer_t('installer.installFolder', 'Install folder'), 28, 100, 444, 18, colour=quiet)
         where = label(str(install_dir()), 28, 120, 444, 20)
         desk = F.CheckBox()
-        desk.Text, desk.Checked, desk.ForeColor = 'Add a desktop shortcut', desktop_link().exists(), ink    # an update keeps the shortcut the person has
+        desk.Text, desk.Checked, desk.ForeColor = installer_t('installer.addDesktopShortcut', 'Add a desktop shortcut'), desktop_link().exists(), ink    # an update keeps the shortcut the person has
         add(desk, 28, 152, 300, 24)
         bar = F.Panel()     # drawn in the window's own colours: the system progress bar stays light on a dark window
         bar.BackColor, bar.Visible = track, False
@@ -353,8 +415,8 @@ def run_window():
             b.UseVisualStyleBackColor = False
             return add(b, x, 20, 140, 32, footer)
 
-        go = button('Install', 184, True)
-        stop = button('Cancel', 332, False)
+        go = button(installer_t('installer.install', 'Install'), 184, True)
+        stop = button(installer_t('installer.cancel', 'Cancel'), 332, False)
         form.AcceptButton, form.CancelButton = go, stop
         state = {'busy': False, 'done': False, 'progress': 0.0, 'outcome': None}
 
@@ -380,16 +442,16 @@ def run_window():
             go.Enabled = stop.Enabled = desk.AutoCheck = True
             if outcome[0] == 'ok':
                 state['done'], result[0] = True, OK
-                title.Text, sub.Text = 'Lastbook is installed', 'Find it in the Start menu.'
+                title.Text, sub.Text = installer_t('installer.installed', 'Lastbook is installed'), installer_t('installer.findInStart', 'Find it in the Start menu.')
                 for c in (where_head, where, desk, bar):
                     c.Visible = False
-                go.Text, stop.Text = 'Open Lastbook', 'Close'
+                go.Text, stop.Text = installer_t('installer.openLastbook', 'Open Lastbook'), installer_t('installer.close', 'Close')
                 go.Focus()
                 return
             bar.Visible = False
-            text = APP_OPEN_TEXT if outcome[0] == 'open' else f'Lastbook could not be installed.\n\n{outcome[1]}'
+            text = installer_t('installer.appOpen', APP_OPEN_TEXT) if outcome[0] == 'open' else installer_t('installer.couldNotInstall', 'Lastbook could not be installed.\n\n{detail}', detail=outcome[1])
             result[0] = APP_OPEN if outcome[0] == 'open' else FAILED
-            F.MessageBox.Show(form, text, 'Lastbook Setup', F.MessageBoxButtons.OK,
+            F.MessageBox.Show(form, text, installer_t('installer.setupTitle', 'Lastbook Setup'), F.MessageBoxButtons.OK,
                               F.MessageBoxIcon.Information if outcome[0] == 'open' else F.MessageBoxIcon.Error)
 
         timer.Tick += tick
@@ -401,7 +463,7 @@ def run_window():
                 try:
                     open_lastbook(install_dir())
                 except Exception as e:
-                    F.MessageBox.Show(form, f'Lastbook could not be opened.\n\n{e}', 'Lastbook Setup')
+                    F.MessageBox.Show(form, installer_t('installer.couldNotOpen', 'Lastbook could not be opened.\n\n{detail}', detail=e), installer_t('installer.setupTitle', 'Lastbook Setup'))
                 form.Close()
                 return
             desk_checked = bool(desk.Checked)
@@ -439,7 +501,7 @@ def run_window():
     thread.Start()
     thread.Join()
     if failure:
-        message(f'Lastbook Setup could not start.\n\n{failure[0]}', 0x10)
+        message(installer_t('installer.setupCouldNotStart', 'Lastbook Setup could not start.\n\n{detail}', detail=failure[0]), 0x10)
         return FAILED
     return result[0]
 
@@ -453,18 +515,18 @@ def main(argv):
     args = {a.lower() for a in argv}
     quiet = '/s' in args
     if '/uninstall' in args or payload() is None:
-        if not quiet and message('Remove Lastbook from this computer?\n\nYour library (LastbookData) and settings stay.', 0x24) != 6:   # MB_YESNO | MB_ICONQUESTION, IDYES
+        if not quiet and message(installer_t('installer.removeConfirm', 'Remove Lastbook from this computer?\n\nYour library (LastbookData) and settings stay.'), 0x24) != 6:   # MB_YESNO | MB_ICONQUESTION, IDYES
             return CANCELLED
         try:
             uninstall()
         except AppOpen:
-            quiet or message(APP_OPEN_TEXT, 0x40)
+            quiet or message(installer_t('installer.appOpen', APP_OPEN_TEXT), 0x40)
             return APP_OPEN
         except Exception as e:
             traceback.print_exc()
-            quiet or message(f'Lastbook could not be removed.\n\n{e}', 0x10)
+            quiet or message(installer_t('installer.couldNotRemove', 'Lastbook could not be removed.\n\n{detail}', detail=e), 0x10)
             return FAILED
-        quiet or message('Lastbook is removed.', 0x40)
+        quiet or message(installer_t('installer.removed', 'Lastbook is removed.'), 0x40)
         return OK
     if quiet:
         try:

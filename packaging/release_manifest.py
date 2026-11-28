@@ -30,6 +30,17 @@ from engine.setup import download, manifest        # noqa: E402
 MEASURED_MEMORY = 18_160_150_464 + 867_233_792     # Mac Studio M3 Ultra, 12 Nov 2026, --ctx 16384: device_bytes + host_bytes
 BASE = 'https://downloads.lastbook.org'     # live since 12 Nov 2026; packs and maps are accepted from this host only
 SMALL_SUMMARY = 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'
+SMALL_SUMMARY_KEY = 'setup.packSummary.small'
+MEDIUM_SUMMARY = 'Small, plus the core how-to videos, all documents, Wikibooks and a detailed map of California.'
+MEDIUM_SUMMARY_KEY = 'setup.packSummary.medium'
+SUMMARY_KEYS = {SMALL_SUMMARY: SMALL_SUMMARY_KEY, MEDIUM_SUMMARY: MEDIUM_SUMMARY_KEY}
+
+def attach_summary_keys(packs):
+    for pack in packs:
+        key = SUMMARY_KEYS.get(pack.get('summary'))
+        if key:
+            pack.setdefault('summary_key', key)
+    return packs
 
 
 def model_entry(memory_bytes):
@@ -60,7 +71,8 @@ def small_from(folder):
             records = sum(json.loads(zf.read('LastbookData/pack.json')).get('counts', {}).values())
         except (KeyError, ValueError):
             records = None
-    return {'id': 'small', 'title': 'Small', 'summary': SMALL_SUMMARY, 'records': records, 'installed_bytes': installed, 'available': True,
+    return {'id': 'small', 'title': 'Small', 'summary': SMALL_SUMMARY, 'summary_key': SMALL_SUMMARY_KEY,
+            'records': records, 'installed_bytes': installed, 'available': True,
             'files': [{'name': z.name, 'url': f'{BASE}/{z.name}', 'size': z.stat().st_size, 'sha256': sums[z.name], 'kind': 'zip'}]}
 
 
@@ -125,6 +137,7 @@ def main():
     packs = list(src.get('packs') or [])
     if a.small_from and not any(p.get('id') == 'small' for p in packs):
         packs.insert(0, small_from(a.small_from))
+    attach_summary_keys(packs)
     for p in packs:      # the detailed map a pack already holds ("CA", "us"), from the pack as built, when its entry does not say
         if 'map' not in p:
             try:

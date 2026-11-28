@@ -106,31 +106,57 @@ def catalog():
     return _cat
 
 
-TRUST = [  # (pattern on publisher+collection, label shown to people, ranking weight)
-    (r'World Health|WHO\b|ICRC|IFRC|Red Cross|Médecins|MSF|UNICEF|Sphere|St John Ambulance|CAWST', 'International health & humanitarian guidance', 1.5),
-    (r'Hesperian|Where There Is No|Where Women|Book for Midwives|Community Guide to Environmental|Health Actions|Workers\' Guide', 'Hesperian community health guide', 1.45),
-    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of', 'Government guidance', 1.4),
-    (r'National Center for Home Food Preservation|Extension|University|UC |College|Agricultural|Food Hero|UWyo', 'University / extension service', 1.35),
-    (r'MIT|OpenStax|OpenCourseWare|NIST', 'Course or textbook', 1.1),
-    (r'Kiwix|Wikipedia|Wikibooks|Appropedia|MDWiki', 'Community-written encyclopedia', 1.0),
-    (r'Coalcracker|Corporals Corner|Canterbury|Primitive Technology|creator-', 'Hobbyist demonstration video', 0.8),
+def msg(key, params, english):
+    """A message for the browser: its catalogue key, parameters and the English text.
+
+    The server stays English (the assistant and older pages read `text`); pages
+    show `tr(key, params, text)` so the words follow the chosen language."""
+    return {'key': key, 'params': params or None, 'text': english.format(**params) if params else english}
+
+
+def joined(parts):
+    """English text of message parts joined with a middle dot (data values stay as they are)."""
+    return ' · '.join(x['text'] if isinstance(x, dict) else str(x) for x in parts)
+
+
+TRUST = [  # (pattern on publisher+collection, catalogue key, English label shown to people, ranking weight)
+    (r'World Health|WHO\b|ICRC|IFRC|Red Cross|Médecins|MSF|UNICEF|Sphere|St John Ambulance|CAWST', 'trust.health', 'International health & humanitarian guidance', 1.5),
+    (r'Hesperian|Where There Is No|Where Women|Book for Midwives|Community Guide to Environmental|Health Actions|Workers\' Guide', 'trust.hesperian', 'Hesperian community health guide', 1.45),
+    (r'FEMA|Ready\.gov|CDC|Centers for Disease|EPA|Environmental Protection|NOAA|National Weather|USDA|Food Safety|National Park|USGS|Department|Agency|U\.S\.|US Army|Army|Navy|Census|NIOSH|OSHA|NASA|FAA|Cal OES|California|County of|City of', 'trust.government', 'Government guidance', 1.4),
+    (r'National Center for Home Food Preservation|Extension|University|UC |College|Agricultural|Food Hero|UWyo', 'trust.university', 'University / extension service', 1.35),
+    (r'MIT|OpenStax|OpenCourseWare|NIST', 'trust.course', 'Course or textbook', 1.1),
+    (r'Kiwix|Wikipedia|Wikibooks|Appropedia|MDWiki', 'trust.encyclopedia', 'Community-written encyclopedia', 1.0),
+    (r'Coalcracker|Corporals Corner|Canterbury|Primitive Technology|creator-', 'trust.hobbyist', 'Hobbyist demonstration video', 0.8),
 ]
 
 
 def trust(r):
     s = f"{r.get('publisher', '')} {r.get('collection', '')} {r.get('category', '')}"
-    for rx, label, w in TRUST:
+    for rx, _key, label, w in TRUST:
         if re.search(rx, s):
             return label, w
     if r.get('equipment_class') or r.get('model'):
-        return 'Manufacturer manual (model-specific)', 1.05
-    return 'Reference', 1.0
+        return TRUST_MANUAL[1], 1.05
+    return TRUST_REFERENCE[1], 1.0
+
+
+TRUST_MANUAL = ('trust.manual', 'Manufacturer manual (model-specific)')
+TRUST_REFERENCE = ('trust.reference', 'Reference')
+
+
+def trust_key(label):
+    """The catalogue key the browser translates a trust label with."""
+    return {row[2]: row[1] for row in TRUST}.get(label) or {TRUST_MANUAL[1]: TRUST_MANUAL[0], TRUST_REFERENCE[1]: TRUST_REFERENCE[0]}.get(label)
 
 
 def kind_label(r):
     k = r['kind']
-    return {'pdf': 'PDF', 'html': 'Saved web page', 'video': 'Video', 'transcript': 'Transcript', 'pptx': 'Slides',
-            'zim': 'Encyclopedia', 'metadata': 'Video details'}.get(k, k)
+    return KIND_LABEL.get(k, (None, k))[1]
+
+
+KIND_LABEL = {'pdf': ('kind.pdf', 'PDF'), 'html': ('kind.html', 'Saved web page'), 'video': ('kind.video', 'Video'),
+              'transcript': ('kind.transcript', 'Transcript'), 'pptx': ('kind.pptx', 'Slides'),
+              'zim': ('kind.zim', 'Encyclopedia'), 'metadata': ('kind.metadata', 'Video details')}
 
 
 def year_of(r):
@@ -148,10 +174,10 @@ def public(r, full=False):
     if not r:
         return None
     t, _ = trust(r)
-    out = {'id': r['id'], 'title': clean_title(r), 'kind': r['kind'], 'kindLabel': kind_label(r),
+    out = {'id': r['id'], 'title': clean_title(r), 'kind': r['kind'], 'kindLabel': kind_label(r), 'kindKey': KIND_LABEL.get(r['kind'], (None,))[0],
            'publisher': r.get('publisher'), 'collection': r.get('collection'), 'path': r['path'],
            'pages': r.get('pages') or r.get('slides'), 'duration': r.get('duration'), 'year': year_of(r),
-           'trust': t, 'bytes': r.get('bytes')}
+           'trust': t, 'trustKey': trust_key(t), 'bytes': r.get('bytes')}
     if r['kind'] == 'video':
         tx = catalog()['video_tx'].get(r['path'])
         out['transcript'] = bool(tx or r.get('captions'))
@@ -434,18 +460,18 @@ def clean_snip(s):
 
 # ------------------------------------------------------------------ shelves ----
 SHELVES = [
-    ('health', 'Health & first aid', r'medic|first-aid|care|health|dent|mental|obstet|midwi|clinic|surg'),
-    ('water', 'Water & sanitation', r'water|rain|sanit|wash|hygien'),
-    ('food', 'Food: growing, keeping & cooking', r'agri|food|seed|crop|garden(?!-power)|livestock|dairy|ferment|bee|farm|soil|grow|irrigat|oil-crop|grain'),
-    ('safety', 'Disasters, safety & outdoors', r'survival|shelter|disaster|prepar|safety|hazard|wildfire|knot|weather|polar|defen|radiolog|rescue|fire'),
-    ('power', 'Power & energy', r'energy|power|solar|generator|offgrid|battery|inverter|charge-controller'),
-    ('comms', 'Radio, communication & navigation', r'communic|radio|navigation'),
-    ('repair', 'Tools, repair & equipment', r'engine|mower|tractor|vehicle|hvac|compressor|bicycle|aerial|backhoe|bearing|sharpen|weld|repair|equipment|seal|pump|snow|motorcycle|truck|car|marine|forklift|workshop|hand-tool'),
-    ('making', 'Making things & materials', r'manufact|craft|glass|ceram|textil|wood|paper|metal|materials|machin|leather|amate|lime|refractor|typeset|mill|mineral|production|raw-material'),
-    ('build', 'Building & infrastructure', r'civil|infrastructure|building'),
-    ('community', 'Community, teaching & recovery', r'communit|educat|teach|accessib|recover|accountab|organiz|continuity|inventory'),
-    ('science', 'Science, maths & engineering courses', r'math|physic|chemistr|biolog|astronom|earth|ecolog|science|engineer|control|metrolog|quality|thermo|electromag|circuit|microelec|comput|digital|space|aviation|aircraft|laborator|measurement'),
-    ('creators', 'Bushcraft & primitive-skills videos', r'^creator-'),
+    ('health', 'library.shelf.health', 'Health & first aid', r'medic|first-aid|care|health|dent|mental|obstet|midwi|clinic|surg'),
+    ('water', 'library.shelf.water', 'Water & sanitation', r'water|rain|sanit|wash|hygien'),
+    ('food', 'library.shelf.food', 'Food: growing, keeping & cooking', r'agri|food|seed|crop|garden(?!-power)|livestock|dairy|ferment|bee|farm|soil|grow|irrigat|oil-crop|grain'),
+    ('safety', 'library.shelf.safety', 'Disasters, safety & outdoors', r'survival|shelter|disaster|prepar|safety|hazard|wildfire|knot|weather|polar|defen|radiolog|rescue|fire'),
+    ('power', 'library.shelf.power', 'Power & energy', r'energy|power|solar|generator|offgrid|battery|inverter|charge-controller'),
+    ('comms', 'library.shelf.comms', 'Radio, communication & navigation', r'communic|radio|navigation'),
+    ('repair', 'library.shelf.repair', 'Tools, repair & equipment', r'engine|mower|tractor|vehicle|hvac|compressor|bicycle|aerial|backhoe|bearing|sharpen|weld|repair|equipment|seal|pump|snow|motorcycle|truck|car|marine|forklift|workshop|hand-tool'),
+    ('making', 'library.shelf.making', 'Making things & materials', r'manufact|craft|glass|ceram|textil|wood|paper|metal|materials|machin|leather|amate|lime|refractor|typeset|mill|mineral|production|raw-material'),
+    ('build', 'library.shelf.build', 'Building & infrastructure', r'civil|infrastructure|building'),
+    ('community', 'library.shelf.community', 'Community, teaching & recovery', r'communit|educat|teach|accessib|recover|accountab|organiz|continuity|inventory'),
+    ('science', 'library.shelf.science', 'Science, maths & engineering courses', r'math|physic|chemistr|biolog|astronom|earth|ecolog|science|engineer|control|metrolog|quality|thermo|electromag|circuit|microelec|comput|digital|space|aviation|aircraft|laborator|measurement'),
+    ('creators', 'library.shelf.creators', 'Bushcraft & primitive-skills videos', r'^creator-'),
 ]
 
 
@@ -453,7 +479,7 @@ def shelf_of(r):
     c = r.get('category', '').lower()
     if c.startswith('creator-'):
         return 'creators'
-    for sid, _, rx in SHELVES:
+    for sid, _key, _title, rx in SHELVES:
         if sid != 'creators' and re.search(rx, c):
             return sid
     return 'other'
@@ -466,8 +492,11 @@ def shelves():
             continue
         counts.setdefault(shelf_of(r), {'read': 0, 'video': 0})
         counts[shelf_of(r)]['video' if r['kind'] == 'video' else 'read'] += 1
-    return [{'id': s, 'title': t, **counts.get(s, {'read': 0, 'video': 0})} for s, t, _ in SHELVES] + \
-        [{'id': 'other', 'title': 'Other references', **counts.get('other', {'read': 0, 'video': 0})}]
+    return [{'id': s, 'title': t, 'titleKey': k, **counts.get(s, {'read': 0, 'video': 0})} for s, k, t, _ in SHELVES + [SHELF_OTHER]]
+
+
+SHELF_OTHER = ('other', 'library.shelf.other', 'Other references', '')
+COLLECTION_OTHER = ('library.collectionOther', 'Other')   # records with no collection, grouped under one heading
 
 
 def shelf(sid, kind='all', q='', offset=0, limit=40):
@@ -480,8 +509,9 @@ def shelf(sid, kind='all', q='', offset=0, limit=40):
     # group by collection so a 300-chapter manual shows as one entry
     groups = {}
     for r in rs:
-        groups.setdefault(r.get('collection') or 'Other', []).append(r)
-    items = [{'collection': c, 'count': len(v), 'trust': trust(v[0])[0], 'items': [public(x) for x in v[:6]]}
+        groups.setdefault(r.get('collection') or COLLECTION_OTHER[1], []).append(r)
+    items = [{'collection': c, 'collectionKey': COLLECTION_OTHER[0] if c == COLLECTION_OTHER[1] and not v[0].get('collection') else None,
+              'count': len(v), 'trust': trust(v[0])[0], 'trustKey': trust_key(trust(v[0])[0]), 'items': [public(x) for x in v[:6]]}
              for c, v in groups.items()]
     return {'total': len(rs), 'collections': items[offset:offset + limit], 'more': len(items) > offset + limit}
 
@@ -493,27 +523,31 @@ def collection_items(name, offset=0, limit=60):
 
 
 # ------------------------------------------------------------------ videos ----
-VROWS = [  # (id, title, exact catalog categories) — practical first, hobby channels and courses after
-    ('health', 'First aid & health', 'first-aid medical care-continuity'),
-    ('water', 'Water & sanitation', 'water-safety-planning water-treatment rainwater water-sanitation water-sampling sanitary-inspection pumps'),
-    ('food', 'Growing & preserving food', 'food-preservation agriculture food-growing seed-saving grain-mill-assembly grain-mill-maintenance grain-mill-operation'),
-    ('power', 'Power, generators & solar', 'generator generators offgrid-power'),
-    ('outdoors', 'Shelter, fire & outdoor skills', 'field-survival fire-and-shelter knots weather communications-navigation'),
-    ('repair', 'Tools, engines & repair', 'small-engine-repair lawn-mower garden-power-equipment snow-blower woodworking welding welding-equipment sharpening workshop milling-layout-and-fit bearing-maintenance seals-installation road-vehicles marine heavy-ag-machinery machining-tool-geometry measurement'),
-    ('making', 'Making things by hand', 'craft-manufacturing-including-ceramics-and-textiles glass-manufacturing-processes refractory-installation refractory-process-control typesetting-printing-binding bark-to-amate-paper'),
-    ('coalcracker', 'Coalcracker Bushcraft', 'creator-coalcracker-bushcraft'),
-    ('corporals', 'Corporals Corner', 'creator-corporals-corner'),
-    ('canterbury', 'Dave Canterbury', 'creator-david-canterbury'),
-    ('primitive', 'Primitive Technology', 'creator-primitive-technology'),
-    ('courses', 'Courses, lectures & more', ''),
+VROWS = [  # (id, catalogue key, English title, exact catalog categories) — practical first, hobby channels and courses after
+    ('health', 'videos.row.health', 'First aid & health', 'first-aid medical care-continuity'),
+    ('water', 'videos.row.water', 'Water & sanitation', 'water-safety-planning water-treatment rainwater water-sanitation water-sampling sanitary-inspection pumps'),
+    ('food', 'videos.row.food', 'Growing & preserving food', 'food-preservation agriculture food-growing seed-saving grain-mill-assembly grain-mill-maintenance grain-mill-operation'),
+    ('power', 'videos.row.power', 'Power, generators & solar', 'generator generators offgrid-power'),
+    ('outdoors', 'videos.row.outdoors', 'Shelter, fire & outdoor skills', 'field-survival fire-and-shelter knots weather communications-navigation'),
+    ('repair', 'videos.row.repair', 'Tools, engines & repair', 'small-engine-repair lawn-mower garden-power-equipment snow-blower woodworking welding welding-equipment sharpening workshop milling-layout-and-fit bearing-maintenance seals-installation road-vehicles marine heavy-ag-machinery machining-tool-geometry measurement'),
+    ('making', 'videos.row.making', 'Making things by hand', 'craft-manufacturing-including-ceramics-and-textiles glass-manufacturing-processes refractory-installation refractory-process-control typesetting-printing-binding bark-to-amate-paper'),
+    ('coalcracker', 'videos.row.coalcracker', 'Coalcracker Bushcraft', 'creator-coalcracker-bushcraft'),
+    ('corporals', 'videos.row.corporals', 'Corporals Corner', 'creator-corporals-corner'),
+    ('canterbury', 'videos.row.canterbury', 'Dave Canterbury', 'creator-david-canterbury'),
+    ('primitive', 'videos.row.primitive', 'Primitive Technology', 'creator-primitive-technology'),
+    ('courses', 'videos.row.courses', 'Courses, lectures & more', ''),
 ]
-VROW_NOTE = {'coalcracker': 'Hobbyist channel', 'corporals': 'Hobbyist channel', 'canterbury': 'Hobbyist channel',
-             'primitive': 'Hobbyist channel — no narration', 'courses': 'University lectures (MIT and others)'}
+VROW_SPECIAL = {'guides': ('home.videosPicked', 'Videos picked for the guides'), 'all': ('home.allVideos', 'All videos')}
+VROW_NOTES = {'coalcracker': ('videos.rowNote.hobbyist', 'Hobbyist channel'), 'corporals': ('videos.rowNote.hobbyist', 'Hobbyist channel'),
+              'canterbury': ('videos.rowNote.hobbyist', 'Hobbyist channel'), 'primitive': ('videos.rowNote.primitive', 'Hobbyist channel — no narration'),
+              'courses': ('videos.rowNote.courses', 'University lectures (MIT and others)'),
+              'guides': ('videos.rowNote.guides', 'Chosen to go with the survival guides')}
+VROW_NOTE = {k: v[1] for k, v in VROW_NOTES.items()}  # English notes; the browser translates them by row id
 
 
 def vrow_of(r):
     c = r.get('category', '')
-    for vid, _, cats in VROWS:
+    for vid, _key, _title, cats in VROWS:
         if c in cats.split():
             return vid
     return 'courses'
@@ -547,10 +581,10 @@ def videos_home():
     for r in catalog()['by_id'].values():
         if r['kind'] == 'video':
             rows.setdefault(vrow_of(r), []).append(r)
-    res = [{'id': 'guides', 'title': 'Picked for the guides', 'note': 'Chosen to go with the survival guides', 'count': len(guide_videos()), 'items': guide_videos()[:16]}]
-    for vid, title, _ in VROWS:
+    res = [{'id': 'guides', 'title': VROW_SPECIAL['guides'][1], 'note': VROW_NOTE['guides'], 'count': len(guide_videos()), 'items': guide_videos()[:16]}]
+    for vid, _key, title, _ in VROWS:
         rs = sorted(rows.get(vid, []), key=vsort)
-        if VROW_NOTE.get(vid, '').startswith('Hobbyist'):
+        if VROW_NOTES.get(vid, ('',))[0] in ('videos.rowNote.hobbyist', 'videos.rowNote.primitive'):
             rs.sort(key=lambda r: r.get('upload_date') or '', reverse=True)  # channels: newest first, not A–Z
         if rs:
             res.append({'id': vid, 'title': title, 'note': VROW_NOTE.get(vid), 'count': len(rs), 'items': [vcard(r) for r in rs[:16]]})
@@ -580,7 +614,7 @@ def videos_list(row, q='', length='', sort='', offset=0, limit=48):
         rs.sort(key=lambda r: r['title'].lower())
     elif row != 'guides':
         rs.sort(key=vsort)
-    title = dict((v[0], v[1]) for v in VROWS).get(row, 'Picked for the guides' if row == 'guides' else 'All videos')
+    title = {v[0]: v[2] for v in VROWS}.get(row) or VROW_SPECIAL['guides' if row == 'guides' else 'all'][1]
     return {'title': title, 'note': VROW_NOTE.get(row), 'total': len(rs), 'items': [vcard(r) for r in rs[offset:offset + limit]],
             'more': len(rs) > offset + limit}
 
@@ -1055,21 +1089,39 @@ TILE_POI = {'hospital', 'clinic', 'doctors', 'pharmacy', 'chemist', 'fire_statio
             'shelter', 'community_centre', 'supermarket', 'doityourself', 'hardware', 'spring'}
 
 
-HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharmacy': 'Pharmacy', 'chemist': 'Pharmacy',
-        'dentist': 'Dentist', 'fire_station': 'Fire station', 'police': 'Police', 'drinking_water': 'Drinking water tap',
-        'fountain': 'Fountain (not necessarily drinkable)', 'water_tower': 'Water tower', 'water_works': 'Water works',
-        'spring': 'Spring (untested)', 'water_well': 'Water well / hand pump (untested)', 'toilet': 'Public toilet', 'shelter': 'Shelter (structure)',
-        'community_centre': 'Community centre', 'town_hall': 'Town hall', 'school': 'School', 'library': 'Library',
-        'supermarket': 'Supermarket', 'convenience': 'Convenience store', 'doityourself': 'Hardware / DIY store',
-        'hardware': 'Hardware store', 'garden_centre': 'Garden centre', 'post_office': 'Post office',
-        'camp_site': 'Campsite', 'veterinary': 'Vet', 'nursing_home': 'Care home', 'fuel': 'Fuel station',
-        'car_repair': 'Car repair', 'bicycle_shop': 'Bicycle shop', 'wastewater_plant': 'Wastewater plant',
-        'comms_tower': 'Communications tower', 'park': 'Park', 'courthouse': 'Courthouse',
-        'college': 'College', 'university': 'University', 'kindergarten': 'Kindergarten', 'beach': 'Beach',
-        'embassy': 'Embassy', 'mineral': 'Recorded mineral / mine', 'oil_gas_well': 'Recorded oil / gas well',
-        'boat_launch': 'Boating facility', 'fish_stocking': 'Fish-stocking record',
-        'dam': 'Dam (National Inventory of Dams)', 'reservoir': 'Reservoir', 'lake': 'Lake or pond', 'pond': 'Pond',
-        'orchard': 'Orchard', 'vineyard': 'Vineyard', 'berries': 'Berry field', 'perennial_veg': 'Asparagus field'}
+HELP_TEXT = {  # OpenStreetMap kind -> (catalogue key, English label); the browser shows the translation
+    'hospital': ('poi.hospital', 'Hospital'), 'clinic': ('poi.clinic', 'Clinic'), 'doctors': ('poi.doctors', 'Doctor'),
+    'pharmacy': ('poi.pharmacy', 'Pharmacy'), 'chemist': ('poi.chemist', 'Pharmacy'),
+    'dentist': ('poi.dentist', 'Dentist'), 'fire_station': ('poi.fire_station', 'Fire station'),
+    'police': ('poi.police', 'Police'), 'drinking_water': ('poi.drinking_water', 'Drinking water tap'),
+    'fountain': ('poi.fountain', 'Fountain (not necessarily drinkable)'),
+    'water_tower': ('poi.water_tower', 'Water tower'), 'water_works': ('poi.water_works', 'Water works'),
+    'spring': ('poi.spring', 'Spring (untested)'),
+    'water_well': ('poi.water_well', 'Water well / hand pump (untested)'), 'toilet': ('poi.toilet', 'Public toilet'),
+    'shelter': ('poi.shelter', 'Shelter (structure)'),
+    'community_centre': ('poi.community_centre', 'Community centre'), 'town_hall': ('poi.town_hall', 'Town hall'),
+    'school': ('poi.school', 'School'), 'library': ('poi.library', 'Library'),
+    'supermarket': ('poi.supermarket', 'Supermarket'), 'convenience': ('poi.convenience', 'Convenience store'),
+    'doityourself': ('poi.doityourself', 'Hardware / DIY store'), 'hardware': ('poi.hardware', 'Hardware store'),
+    'garden_centre': ('poi.garden_centre', 'Garden centre'), 'post_office': ('poi.post_office', 'Post office'),
+    'camp_site': ('poi.camp_site', 'Campsite'), 'veterinary': ('poi.veterinary', 'Vet'),
+    'nursing_home': ('poi.nursing_home', 'Care home'), 'fuel': ('poi.fuel', 'Fuel station'),
+    'car_repair': ('poi.car_repair', 'Car repair'), 'bicycle_shop': ('poi.bicycle_shop', 'Bicycle shop'),
+    'wastewater_plant': ('poi.wastewater_plant', 'Wastewater plant'),
+    'comms_tower': ('poi.comms_tower', 'Communications tower'), 'park': ('poi.park', 'Park'),
+    'courthouse': ('poi.courthouse', 'Courthouse'), 'college': ('poi.college', 'College'),
+    'university': ('poi.university', 'University'), 'kindergarten': ('poi.kindergarten', 'Kindergarten'),
+    'beach': ('poi.beach', 'Beach'), 'embassy': ('poi.embassy', 'Embassy'),
+    'mineral': ('poi.mineral', 'Recorded mineral / mine'),
+    'oil_gas_well': ('poi.oil_gas_well', 'Recorded oil / gas well'),
+    'boat_launch': ('poi.boat_launch', 'Boating facility'),
+    'fish_stocking': ('poi.fish_stocking', 'Fish-stocking record'),
+    'dam': ('poi.dam', 'Dam (National Inventory of Dams)'), 'reservoir': ('poi.reservoir', 'Reservoir'),
+    'lake': ('poi.lake', 'Lake or pond'), 'pond': ('poi.pond', 'Pond'), 'orchard': ('poi.orchard', 'Orchard'),
+    'vineyard': ('poi.vineyard', 'Vineyard'), 'berries': ('poi.berries', 'Berry field'),
+    'perennial_veg': ('poi.perennial_veg', 'Asparagus field')}
+HELP = {k: v[1] for k, v in HELP_TEXT.items()}
+HELP_KEY = {k: v[0] for k, v in HELP_TEXT.items()}
 
 
 CROP_KINDS = {'orchard', 'vineyard', 'berries', 'perennial_veg'}
@@ -1106,9 +1158,12 @@ def resource_near(lat, lon, cls, limit):
                 radius *= 2
             for name, y, x, raw, source in rows:
                 detail = json.loads(raw)
-                summary = _resource_summary(cls, detail) + (' · historical stocking record' if cls == 'fish_stocking' else '')
+                parts = _resource_summary_parts(cls, detail)
+                if cls == 'fish_stocking':
+                    parts.append(msg('map.summary.historicalStocking', None, 'historical stocking record'))
                 dist, brg = haversine(lat, lon, y, x)
-                out.append({'cls':cls,'label':HELP[cls],'name':name,'lat':y,'lon':x,'km':round(dist,2),'dir':brg,'detail':summary,'source':source})
+                out.append({'cls':cls,'label':HELP[cls],'labelKey':HELP_KEY[cls],'name':name,'lat':y,'lon':x,'km':round(dist,2),'dir':brg,
+                            'detail':joined(parts),'detailParts':parts,'source':source})
     return sorted(out, key=lambda p:p['km'])[:limit]
 
 
@@ -1133,30 +1188,43 @@ def resource_view(west, south, east, north, zoom, kinds):
         rows = db.execute(query, (west,east,south,north,*kinds,cell,cell)).fetchall()
     finally:
         db.close()
-    points = [{'cls':k,'lat':lat,'lon':lon,'count':sites,'record_count':n,'name':name if sites==1 else f'{sites:,} locations',
-               'label':HELP[k],'detail':json.loads(detail) if sites==1 else {},'source':source}
+    points = [{'cls':k,'lat':lat,'lon':lon,'count':sites,'record_count':n,'name':name if sites==1 else _locations(sites)['text'],
+               'nameMessage':None if sites==1 else _locations(sites),
+               'label':HELP[k],'labelKey':HELP_KEY[k],'detail':json.loads(detail) if sites==1 else {},'source':source}
               for k,lat,lon,n,name,detail,source,sites in rows[:2000]]
     return {'points':points, 'records':sum(p['record_count'] for p in points), 'truncated':len(rows)>2000}
+
+
+def _locations(sites):
+    count = {'count': f'{sites:,}'}
+    return msg('map.summary.locations', count, '{count} locations')
 
 
 CLUSTER_PX = 46
 
 
 def _resource_summary(cls, detail):
+    return joined(_resource_summary_parts(cls, detail))
+
+
+def _resource_summary_parts(cls, detail):
     keys = {'mineral': ('commod1', 'commod2', 'dev_stat'), 'oil_gas_well': ('WellTypeLabel', 'FieldName', 'API'),
             'fish_stocking': ('FishType', 'Counties'), 'boat_launch': ('Water_Body', 'Facility_Type'),
             'dam': ('purpose', 'river', 'county'), 'reservoir': ('reservoir_type', 'water_type', 'state'),
             'orchard': ('crop',), 'vineyard': ('crop',), 'berries': ('crop',), 'perennial_veg': ('crop',), 'lake': ('water_type', 'state'), 'pond': ('water_type', 'state')}.get(cls, ())
     out = [str(detail.get(k)) for k in keys if detail.get(k)]
     if detail.get('not_drinking_water'):
-        out.insert(0, 'NOT drinking water')
+        out.insert(0, msg('map.summary.notDrinkingWater', None, 'NOT drinking water'))
     if detail.get('area_acres'):
-        out.insert(0, f"{detail['area_acres']:,} acres")
+        acres = {'acres': f"{detail['area_acres']:,}"}
+        out.insert(0, msg('map.summary.acres', acres, '{acres} acres'))
     if detail.get('crop_acres'):
-        out.append(f"about {round(detail['crop_acres']):,} acres in this block")
+        acres = {'acres': f"{round(detail['crop_acres']):,}"}
+        out.append(msg('map.summary.cropAcres', acres, 'about {acres} acres in this block'))
     if detail.get('normal_storage_af'):
-        out.append(f"{int(float(detail['normal_storage_af'])):,} acre-ft stored")
-    return ' · '.join(out)
+        stored = {'acreFeet': f"{int(float(detail['normal_storage_af'])):,}"}
+        out.append(msg('map.summary.storedAcreFeet', stored, '{acreFeet} acre-ft stored'))
+    return out
 
 
 @functools.lru_cache(maxsize=1)
@@ -1239,7 +1307,9 @@ def _pins(west, south, east, north, cx, cy, kinds, version):
         single = c['count'] == 1
         if single:
             c['label'] = HELP.get(c['cls'], c['cls'])
-            c['summary'] = _resource_summary(c['cls'], c['detail'])
+            c['labelKey'] = HELP_KEY.get(c['cls'])
+            c['summaryParts'] = _resource_summary_parts(c['cls'], c['detail'])
+            c['summary'] = joined(c['summaryParts'])
         else:
             c['cls'] = max(c['kinds'], key=c['kinds'].get)
             c['name'] = c['detail'] = c['source'] = None
@@ -1274,7 +1344,7 @@ def members(west, south, east, north, kinds, lat, lon, limit=60):
     if services:
         q = ','.join('?' * len(services))
         for db, dedupe in _poi_sources(west, south, east, north):
-            rows += [{'cls': c, 'label': HELP.get(c, c), 'name': n or '', 'lon': x, 'lat': y, 'summary': '', 'detail': {}, 'source': ''}
+            rows += [{'cls': c, 'label': HELP.get(c, c), 'labelKey': HELP_KEY.get(c), 'name': n or '', 'lon': x, 'lat': y, 'summary': '', 'detail': {}, 'source': ''}
                      for c, n, x, y in db.execute(f'SELECT cls,name,lon,lat FROM poi WHERE cls IN ({q}) AND lon BETWEEN ? AND ? AND lat BETWEEN ? AND ?'
                                                   f'{" AND socal(cls,lon,lat)=0" if dedupe else ""} LIMIT 2000',
                                                   (*services, west - eps, east + eps, south - eps, north + eps))]
@@ -1285,7 +1355,7 @@ def members(west, south, east, north, kinds, lat, lon, limit=60):
                     "WHERE s.minx>=? AND s.maxx<=? AND s.miny>=? AND s.maxy<=? AND r.kind IN (%s) LIMIT 2000" % ','.join('?' * len(resources)),
                     (west - eps, east + eps, south - eps, north + eps, *resources)):
                 detail = json.loads(d or '{}')
-                rows.append({'cls': k, 'label': HELP[k], 'name': n or '', 'lat': y, 'lon': x, 'detail': detail,
+                rows.append({'cls': k, 'label': HELP[k], 'labelKey': HELP_KEY[k], 'name': n or '', 'lat': y, 'lon': x, 'detail': detail,
                              'summary': _resource_summary(k, detail), 'source': src or ''})
     rows = [r for r in rows if r['cls'] in RESOURCE_KINDS] + dedupe_named([r for r in rows if r['cls'] not in RESOURCE_KINDS])
     for r in rows:
@@ -1318,7 +1388,7 @@ def near(lat, lon, classes, limit=8):
             d *= 2
         for c, name, x, y in rows:
             dist, brg = haversine(lat, lon, y, x)
-            out.append({'cls': c, 'label': HELP.get(c, c), 'name': name, 'lat': y, 'lon': x, 'km': round(dist, 2), 'dir': brg})
+            out.append({'cls': c, 'label': HELP.get(c, c), 'labelKey': HELP_KEY.get(c), 'name': name, 'lat': y, 'lon': x, 'km': round(dist, 2), 'dir': brg})
     out.sort(key=lambda p: p['km'])
     out = [p for p in out if p['cls'] in RESOURCE_KINDS] + dedupe_named([p for p in out if p['cls'] not in RESOURCE_KINDS])
     out.sort(key=lambda p: p['km'])
@@ -1393,14 +1463,24 @@ def water_places(q, limit=10, near=None):
         text = (name + ' ' + (d.get('other_names') or '')).lower()
         score = (sum(w in text for w in words) * 2 + (core[0] in text) + (kind != 'dam') + (name.lower() == q.lower().strip()) * 3
                  + math.log10(float(d.get('area_acres') or d.get('surface_acres') or 1) + 1) / 3 + near_bonus(near, lat, lon))
-        where = ', '.join(x for x in (d.get('county') and d['county'] + ' County', d.get('state')) if x)
-        extra = f" · also called {d['other_names']}" if d.get('other_names') else ''
-        away = ''
+        if d.get('county') and d.get('state'):
+            both = {'county': d['county'], 'state': d['state']}
+            parts = [msg('map.place.countyState', both, '{county} County, {state}')]
+        elif d.get('county'):
+            county = {'county': d['county']}
+            parts = [msg('map.place.county', county, '{county} County')]
+        else:
+            parts = [d['state'] if d.get('state') else msg('map.place.unitedStates', None, 'United States')]
+        if d.get('other_names'):
+            names = {'names': d['other_names']}
+            parts.append(msg('map.place.alsoCalled', names, 'also called {names}'))
         if near:
             km = haversine(near[0], near[1], lat, lon)[0]
-            away = f" · {km / 1.609:,.0f} mi away" if km >= 1.6 else ' · nearby'
-        out.append((score, {'name': name, 'kind': {'dam': 'Dam', 'reservoir': 'Reservoir', 'lake': 'Lake'}[kind],
-                            'detail': (where or 'United States') + extra + away, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
+            miles = {'miles': f'{km / 1.609:,.0f}'}
+            parts.append(msg('map.place.milesAway', miles, '{miles} mi away') if km >= 1.6 else msg('map.place.nearby', None, 'nearby'))
+        kind_text = WATER_KIND[kind]
+        out.append((score, {'name': name, 'kind': kind_text[1], 'kindKey': kind_text[0],
+                            'detail': joined(parts), 'detailParts': parts, 'lat': lat, 'lon': lon, 'source': 'water', 'onMap': True}))
     out.sort(key=lambda t: -t[0])
     return [o for _, o in out[:limit]]
 
@@ -1563,48 +1643,83 @@ def map_contents():
     return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
 
 
+WATER_KIND = {'dam': ('map.place.dam', 'Dam'), 'reservoir': ('map.place.reservoir', 'Reservoir'), 'lake': ('map.place.lake', 'Lake')}
+
+
+def dataset(label, status, **extra):
+    """One row of the map's "What this map covers" panel: English text plus keys for the page."""
+    return {'label': label['text'], 'labelKey': label['key'], 'labelParams': label['params'],
+            'status': status['text'], 'statusKey': status['key'], 'statusParams': status['params'], **extra}
+
+
+def _area_status(area, done, key, english):
+    """`{area}` (a place name from the data) with ` · downloading` or ` · building` while it is not finished."""
+    place = {'area': area}
+    return {'key': None, 'params': None, 'text': area} if done else msg(key, place, english)
+
+
 def map_info():
     db = mapdb()
     meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db else {}
     geo = []
+    features = {'count': format(national_status().get('features', 0), ',')}
+    national = (msg('map.data.nationalShown', features, 'Shown on this map — {count} features (buildings come from Microsoft, below)')
+                if national_status().get('state') == 'complete' else
+                msg('map.data.nationalConverting', features, 'Converting — {count} features (buildings come from Microsoft, below)'))
     for rel, label, status in [
-        ('geography/openstreetmap/socal-latest-free.gpkg.zip', 'Southern California streets, buildings, water and places (OpenStreetMap)', 'Shown on this map'),
-        ('geography/openstreetmap/socal-latest.osm.pbf', 'Southern California raw OpenStreetMap data', 'Coastline taken from it for the map; the rest needs conversion'),
-        ('geography/openstreetmap/california-latest.osm.pbf', 'All of California raw OpenStreetMap data', 'Covered by the national map'),
-        ('geography/openstreetmap/us-latest.osm.pbf', 'United States roads, waterways and places (OpenStreetMap)', ('Shown on this map — ' if national_status().get('state') == 'complete' else 'Converting — ') + format(national_status().get('features',0), ',') + ' features (buildings come from Microsoft, below)'),
-        ('geography/openstreetmap/us-virgin-islands-latest.osm.pbf', 'US Virgin Islands raw OpenStreetMap data', 'Raw data — needs conversion before it can be viewed'),
-        ('geography/census-gazetteers/2025_Gaz_zcta_national_.zip', '', ''),
+        ('geography/openstreetmap/socal-latest-free.gpkg.zip', msg('map.data.socalStreets', None, 'Southern California streets, buildings, water and places (OpenStreetMap)'),
+         msg('map.data.shownOnMap', None, 'Shown on this map')),
+        ('geography/openstreetmap/socal-latest.osm.pbf', msg('map.data.socalRaw', None, 'Southern California raw OpenStreetMap data'),
+         msg('map.data.coastlineTaken', None, 'Coastline taken from it for the map; the rest needs conversion')),
+        ('geography/openstreetmap/california-latest.osm.pbf', msg('map.data.californiaRaw', None, 'All of California raw OpenStreetMap data'),
+         msg('map.data.coveredByNational', None, 'Covered by the national map')),
+        ('geography/openstreetmap/us-latest.osm.pbf', msg('map.data.usOsm', None, 'United States roads, waterways and places (OpenStreetMap)'), national),
+        ('geography/openstreetmap/us-virgin-islands-latest.osm.pbf', msg('map.data.virginIslandsRaw', None, 'US Virgin Islands raw OpenStreetMap data'),
+         msg('map.data.rawNeedsConversion', None, 'Raw data — needs conversion before it can be viewed')),
     ]:
         p = LIB / rel
-        if p.exists() and label:
-            geo.append({'label': label, 'status': status, 'path': rel, 'bytes': p.stat().st_size})
-    geo.append({'label': 'US place names (USGS GNIS) and Census 2025 ZIP-code and county centres', 'status': 'Used by "Find a place", together with named lakes, reservoirs and dams', 'path': 'geography/geographic-names/'})
+        if p.exists():
+            geo.append(dataset(label, status, path=rel, bytes=p.stat().st_size))
+    geo.append(dataset(msg('map.data.placeNamesFull', None, 'US place names (USGS GNIS) and Census 2025 ZIP-code and county centres'),
+                       msg('map.data.usedByFindPlaceWater', None, 'Used by "Find a place", together with named lakes, reservoirs and dams'),
+                       path='geography/geographic-names/'))
     if WATERDB.exists():
         try:
             w = dict(sqlite3.connect(ro_uri(WATERDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
             nid = json.loads(w.get('nid', '{}'))
             states = [k[4:] for k in w if k.startswith('nhd:')]
             if nid:
-                geo.append({'label': 'Dams (US Army Corps of Engineers National Inventory of Dams)', 'status': f"{nid['records']:,} dams · data updated {nid['data_last_updated']}"})
-            geo.append({'label': 'Lakes, reservoirs and ponds (USGS National Hydrography Dataset, final 2023 edition)',
-                        'status': f'{len(states)} of 56 states and territories imported' if states else 'Downloading / importing'})
+                dams = {'count': f"{nid['records']:,}", 'date': nid['data_last_updated']}
+                geo.append(dataset(msg('map.data.dams', None, 'Dams (US Army Corps of Engineers National Inventory of Dams)'),
+                                   msg('map.data.damsStatus', dams, '{count} dams · data updated {date}')))
+            imported = {'count': len(states)}
+            geo.append(dataset(msg('map.data.lakes', None, 'Lakes, reservoirs and ponds (USGS National Hydrography Dataset, final 2023 edition)'),
+                               msg('map.data.statesImported', imported, '{count} of 56 states and territories imported') if states
+                               else msg('map.data.downloadingImporting', None, 'Downloading / importing')))
         except (sqlite3.Error, ValueError):
             pass
     if TERRAINDB.exists():
-        geo.append({'label': 'Elevation: shaded relief, contour lines, spot heights and 3D (USGS 3DEP, 30 m)', 'status': 'Whole US and territories'})
+        geo.append(dataset(msg('map.data.elevationFull', None, 'Elevation: shaded relief, contour lines, spot heights and 3D (USGS 3DEP, 30 m)'),
+                           msg('map.data.wholeUs', None, 'Whole US and territories')))
     if CROPDB.exists():
         try:
             c = json.loads(dict(sqlite3.connect(ro_uri(CROPDB), uri=True).execute('SELECT key,value FROM meta').fetchall()).get('built', '{}'))
-            geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
-                        'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
+            year = {'year': c.get('year', '')}
+            blocks = {'count': f"{c.get('cells', 0):,}", 'states': c.get('states', 0)}
+            geo.append(dataset(msg('map.data.cropsYear', year, 'Orchards, vineyards & berry fields (USDA Cropland Data Layer {year})'),
+                               msg('map.data.cropBlocks', blocks, '{count} mapped blocks in {states} states (lower 48)')))
         except (sqlite3.Error, ValueError):
             pass
     if BLDGDB.exists():
         try:
             m = dict(sqlite3.connect(ro_uri(BLDGDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
             n, h = m.get('buildings'), m.get('osm_heights')
-            geo.append({'label': 'Building outlines for the whole US, plus heights for 3D (Microsoft Global ML Building Footprints, 2026 release, ODbL; OpenStreetMap is used where its outlines are complete)',
-                        'status': (f"{int(n):,} buildings, shown from street level zoom" + (f" · {int(h):,} OpenStreetMap buildings with measured heights in 3D" if h else '')) if n else 'Converting'})
+            counts = {'count': f"{int(n):,}" if n else '0', 'heights': f"{int(h):,}" if h else '0'}
+            status = (msg('map.data.buildingsWithHeights', counts, '{count} buildings, shown from street level zoom · {heights} OpenStreetMap buildings with measured heights in 3D') if n and h
+                      else msg('map.data.buildingsCount', counts, '{count} buildings, shown from street level zoom') if n
+                      else msg('map.data.converting', None, 'Converting'))
+            geo.append(dataset(msg('map.data.buildingsFull', None, 'Building outlines for the whole US, plus heights for 3D (Microsoft Global ML Building Footprints, 2026 release, ODbL; OpenStreetMap is used where its outlines are complete)'),
+                               status))
         except (sqlite3.Error, ValueError):
             pass
     detail = None
@@ -1612,8 +1727,8 @@ def map_info():
         try:
             m = dict(sqlite3.connect(ro_uri(AERIAL_DETAIL), uri=True).execute('SELECT key,value FROM meta').fetchall())
             detail = [float(v) for v in m['bbox'].split(',')] if m.get('bbox') else None
-            geo.append({'label': 'Full-detail aerial photos, 30-60 cm (USGS NAIP Plus: USDA NAIP and high-resolution orthoimagery)',
-                        'status': m.get('area', '') + ('' if m.get('built') else ' · downloading')})
+            geo.append(dataset(msg('map.data.aerialDetail', None, 'Full-detail aerial photos, 30-60 cm (USGS NAIP Plus: USDA NAIP and high-resolution orthoimagery)'),
+                               _area_status(m.get('area', ''), m.get('built'), 'map.data.areaDownloading', '{area} · downloading')))
         except (sqlite3.Error, ValueError, KeyError):
             pass
     rev = None
@@ -1622,8 +1737,8 @@ def map_info():
             m = dict(sqlite3.connect(ro_uri(AERIAL_COAST), uri=True).execute('SELECT key,value FROM meta').fetchall())
             # zoom 17+ photo URLs carry this, so browsers (which keep photo tiles a week) fetch a rebuilt layer afresh
             rev = (m.get('rev') or '') + ('' if m.get('built') else '.building')
-            geo.append({'label': 'Sharpest aerial photos, 25 cm, 2024-25 (NOAA coastal mapping, public domain)',
-                        'status': m.get('area', '') + ('' if m.get('built') else ' · building')})
+            geo.append(dataset(msg('map.data.aerialCoast', None, 'Sharpest aerial photos, 25 cm, 2024-25 (NOAA coastal mapping, public domain)'),
+                               _area_status(m.get('area', ''), m.get('built'), 'map.data.areaBuilding', '{area} · building')))
         except (sqlite3.Error, ValueError):
             pass
     tdetail = None
@@ -1631,12 +1746,13 @@ def map_info():
         try:
             m = dict(sqlite3.connect(ro_uri(TERRAIN_DETAIL), uri=True).execute('SELECT key,value FROM meta').fetchall())
             tdetail = [float(v) for v in m['circle'].split(',')] if m.get('circle') else None
-            geo.append({'label': 'Detailed elevation from 1 m lidar: relief, 5 ft contours, exact heights (USGS 3DEP)',
-                        'status': m.get('area', '') + ('' if m.get('built') else ' · building')})
+            geo.append(dataset(msg('map.data.lidar', None, 'Detailed elevation from 1 m lidar: relief, 5 ft contours, exact heights (USGS 3DEP)'),
+                               _area_status(m.get('area', ''), m.get('built'), 'map.data.areaBuilding', '{area} · building')))
         except (sqlite3.Error, ValueError, KeyError):
             pass
     if AERIALDB.exists():
-        geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
+        geo.append(dataset(msg('map.data.aerialNational', None, 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)'),
+                           msg('map.data.aerialNationalStatus', None, 'Zoom 0-15 nationwide, 16 in California and towns · downloading')))
     pack = pack_info()
     extra = {'aerial': has_aerial()}
     if pack:
@@ -1647,20 +1763,32 @@ def map_info():
 
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
-    area = 'the area this map details' if have['bounds'] else 'the whole US'
-    out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
+    part = bool(have['bounds'])
+    out = [dataset(msg('map.data.baseMap', None, 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)'),
+                   msg('map.data.everyZoom', None, 'Shown at every zoom level'))]
     if have['detail']:
-        out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
+        out.append(dataset(msg('map.data.streetsArea', None, 'Streets, places and help points (OpenStreetMap) for the area this map details') if part
+                           else msg('map.data.streetsUs', None, 'Streets, places and help points (OpenStreetMap) for the whole US'),
+                           msg('map.data.streetEdge', None, 'Street detail stops at the edge of this area.') if part
+                           else msg('map.data.zoomIn', None, 'Shown when you zoom in')))
     else:
-        out.append({'label': 'No street detail or help points', 'status': 'This download has only the base map. Hospitals, water taps and side streets are not in it.'})
+        out.append(dataset(msg('map.data.noStreets', None, 'No street detail or help points'),
+                           msg('map.data.baseOnly', None, 'This download has only the base map. Hospitals, water taps and side streets are not in it.')))
     if PLACEDB.exists():
-        out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
+        out.append(dataset(msg('map.data.placeNames', None, 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)'),
+                           msg('map.data.usedByFindPlace', None, 'Used by "Find a town, ZIP or place"')))
     if TERRAINDB.exists():
-        out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
+        out.append(dataset(msg('map.data.elevation', None, 'Elevation (USGS 3DEP)'),
+                           msg('map.data.reliefFine', None, 'Shaded relief. Contour lines only where this map has fine detail.') if have['detail']
+                           else msg('map.data.reliefBroad', None, 'Shaded relief at broad zoom levels')))
     if BLDGDB.exists():
-        out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
+        out.append(dataset(msg('map.data.buildings', None, 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)'),
+                           msg('map.data.buildingsArea', None, 'For the area this map details, shown from street level zoom') if part
+                           else msg('map.data.buildingsUs', None, 'For the whole US, shown from street level zoom')))
     if CROPDB.exists():
-        out.append({'label': 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
+        out.append(dataset(msg('map.data.crops', None, 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)'),
+                           msg('map.data.forArea', None, 'For the area this map details') if part
+                           else msg('map.data.forUs', None, 'For the whole US')))
     return out
 
 
@@ -1842,7 +1970,7 @@ class Handler(library.Handler):
     def internal_error(self):
         """The details go to the log. What reaches the client names no file path or user."""
         traceback.print_exc()
-        return self.send_json({'error': f'Server error ({sys.exc_info()[0].__name__}).'}, 500)
+        return self.send_json({'error_key': 'app.serverError', 'error_params': {'status': 500}}, 500)
 
     def lan_ok(self):
         """Loopback is always allowed. Other devices need the LAN access key once (then a cookie)."""
@@ -1980,13 +2108,13 @@ class Handler(library.Handler):
                 gone[0] = True  # the person pressed Stop or left; stop calling the model
         st = assistant.model_status()
         if not st['online']:
-            emit({'type': 'error', 'error': 'model_unavailable', 'text': 'The local assistant model is not running right now.'})
+            emit({'type': 'error', 'error': 'model_unavailable'})
             return
         try:
             assistant.chat(msgs, about, emit, lambda: gone[0])
         except Exception as e:
             traceback.print_exc()
-            emit({'type': 'error', 'error': 'internal', 'text': f'The assistant stopped on an internal error ({type(e).__name__}).'})
+            emit({'type': 'error', 'error': 'internal', 'reason': type(e).__name__})
 
     def do_GET(self):
         try:
@@ -2028,16 +2156,16 @@ class Handler(library.Handler):
                 return self.send_json(find(qs.get('q', '')[:200], qs.get('kind', 'all')))
             if path.startswith('/api/doc/'):
                 r = catalog()['by_id'].get(path[9:])
-                return self.send_json(public(r, full=True) if r else {'error': 'This item is not in the library catalog.'}, 200 if r else 404)
+                return self.send_json(public(r, full=True) if r else {'error_key': 'app.libraryItemMissing'}, 200 if r else 404)
             m = re.fullmatch(r'/api/page/([^/]+)/(\d+)(\.png)?', path)
             if m:
                 r = catalog()['by_id'].get(m.group(1))
                 n = int(m.group(2))
                 if not r:
-                    return self.send_json({'error': 'unknown document'}, 404)
+                    return self.send_json({'error_key': 'app.libraryItemMissing'}, 404)
                 if m.group(3):
                     if r['kind'] != 'pdf':
-                        return self.send_json({'error': 'not a PDF'}, 400)
+                        return self.send_json({'error_key': 'app.notAPdf'}, 400)
                     data = render_page(r, n, int(qs.get('w', 1000)))
                     self.send_response(200)
                     self.send_header('Content-Type', 'image/png')

@@ -1,6 +1,7 @@
 # PyInstaller spec for Lastbook.app (arm64). Run through packaging/build_app_macos.sh.
 # The product is app/main.py plus what it imports. app/tests is never on the search path.
 import importlib
+import json
 import os
 import re
 import sysconfig
@@ -41,6 +42,13 @@ datas += [(str(LLM / 'LICENSE-llama.cpp.txt'), 'llm')]
 datas += [(str(SHIP / 'setup' / 'manifest-v1.json'), 'setup')]   # what first-run setup can install
 hidden += collect_submodules('engine.setup')
 datas += [(str(ROOT / 'engine' / 'setup' / 'roots.pem'), 'engine/setup')]   # the only roots setup's downloader trusts
+datas += [(str(APP / 'i18n_native.json'), '.')]  # native menus and dialogs
+NATIVE_ENGLISH = json.loads((APP / 'i18n_native.json').read_text(encoding='utf-8'))['en']
+MACOS_LOCALIZATIONS = ('en', 'es-419', 'de', 'zh-Hans')
+for locale in MACOS_LOCALIZATIONS:
+    strings = ROOT / 'packaging' / 'macos_locales' / f'{locale}.lproj' / 'InfoPlist.strings'
+    datas += [(str(strings), f'{locale}.lproj')]
+hidden += ['i18n_native']
 for package in ('libzim', 'pypdfium2', 'pypdfium2_raw'):   # loaded only when a ZIM or PDF is first opened, and they carry native libraries
     d, b, h = collect_all(package)
     datas += d
@@ -78,12 +86,13 @@ ICON = Path(SPECPATH) / 'Lastbook.icns'
 app = BUNDLE(coll, name='Lastbook.app', icon=str(ICON) if ICON.exists() else None, bundle_identifier='local.lastbook.desktop', version='1.1.19', info_plist={
     'CFBundleDisplayName': 'Lastbook',
     'CFBundleName': 'Lastbook',
+    'CFBundleLocalizations': list(MACOS_LOCALIZATIONS),
     'LSApplicationCategoryType': 'public.app-category.reference',
     'LSMinimumSystemVersion': '14.0',   # what numpy's binaries ask for
     'LSRequiresNativeExecution': True,
     'NSHighResolutionCapable': True,
     # Lastbook looks for its library (LastbookData) in these folders; macOS shows these words when it asks to let it look.
-    'NSDocumentsFolderUsageDescription': 'Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.',
-    'NSDownloadsFolderUsageDescription': 'Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.',
-    'NSDesktopFolderUsageDescription': 'Lastbook looks here for its library, the LastbookData folder. It reads and saves only inside that folder.',
+    'NSDocumentsFolderUsageDescription': NATIVE_ENGLISH['native.macosPermission.documents'],
+    'NSDownloadsFolderUsageDescription': NATIVE_ENGLISH['native.macosPermission.downloads'],
+    'NSDesktopFolderUsageDescription': NATIVE_ENGLISH['native.macosPermission.desktop'],
 } | SPARKLE)

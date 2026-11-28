@@ -306,6 +306,31 @@ class fast_backoff:
 
 # ----------------------------------------------------------------------------------------------------------- tests --
 class ReleaseManifest(unittest.TestCase):
+    def test_release_builder_assigns_known_small_and_medium_summary_keys(self):
+        spec = importlib.util.spec_from_file_location('release_manifest', ROOT / 'packaging/release_manifest.py')
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        packs = [{'id': 'small', 'summary': builder.SMALL_SUMMARY},
+                 {'id': 'medium', 'summary': builder.MEDIUM_SUMMARY},
+                 {'id': 'custom', 'summary': 'Custom summary'}]
+        self.assertIs(builder.attach_summary_keys(packs), packs)
+        self.assertEqual([p.get('summary_key') for p in packs],
+                         ['setup.packSummary.small', 'setup.packSummary.medium', None])
+
+    def test_optional_summary_translation_key_survives_validation(self):
+        source = {'version': 1, 'packs': [
+                  {'id': 'small', 'summary': 'English summary', 'summary_key': 'setup.packSummary.small', 'available': False, 'files': []},
+                  {'id': 'medium', 'summary': 'English medium summary', 'summary_key': 'setup.packSummary.medium', 'available': False, 'files': []}], 'models': []}
+        checked = manifest.validate(source, ALLOWED)
+        self.assertIsNotNone(checked)
+        self.assertEqual([p.get('summary_key') for p in checked['packs']], ['setup.packSummary.small', 'setup.packSummary.medium'])
+        legacy = manifest.validate({'version': 1, 'packs': [{'id': 'small', 'summary': 'Old summary',
+                                  'available': False, 'files': []}], 'models': []}, ALLOWED)
+        self.assertNotIn('summary_key', legacy['packs'][0])
+        invalid = manifest.validate({'version': 1, 'packs': [{'id': 'small', 'summary_key': '<bad>',
+                                     'available': False, 'files': []}], 'models': []}, ALLOWED)
+        self.assertIsNone(invalid)
+
     def test_rejects_invalid_generated_part_before_replacing_manifest(self):
         from app.tests.multipart_fixture import write_fixture
         from tempfile import TemporaryDirectory
@@ -1453,7 +1478,8 @@ class Jobs(Base):
         s, j, blocked = self.unreachable_model()
         self.assertEqual((j['state'], [i['state'] for i in j['items']]), ('failed', ['done', 'failed']))
         self.assertEqual(j['error'], {'code': 'unreachable', 'message': 'Lastbook could not reach 127.0.0.1 from this network.',
-                                      'host': '127.0.0.1', 'name': 'model.gguf', 'size': len(self.model),
+                                      'host': '127.0.0.1', 'key': 'setup.unreachable.heading', 'params': {'host': '127.0.0.1'},
+                                      'name': 'model.gguf', 'size': len(self.model),
                                       'url': blocked.url('model.gguf'), 'sha256': sha(self.model)})
         self.assertEqual(j['items'][1]['error'], j['error'])
         self.assertTrue((self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData' / 'library-data' / 'catalog.json').exists())   # unpacked, kept
@@ -1523,7 +1549,7 @@ class Jobs(Base):
         short.write_bytes(self.model[:-1])
         r = s.use(str(short))
         self.assertEqual(r['code'], 'size')
-        self.assertIn(f'{len(self.model) - 1:,} bytes, not the {len(self.model):,}', r['error'])
+        self.assertIn(f'{len(self.model) - 1} bytes, not the {len(self.model)} bytes', r['error'])
         self.assertEqual(s.public_job()['error']['code'], 'unreachable')      # the stop is unchanged
         short.write_bytes(b'x' * len(self.model))
         s.use(str(short))
@@ -3150,6 +3176,14 @@ class Manage(Base):
         self.assertEqual(self.setup().start(check=True)['code'], 'nothing')
         self.assertIn('check', self.setup().start(check=True)['error'])
 
+    def test_check_of_an_unrecognized_library_has_check_specific_error(self):
+        s = self.setup('manage', current=self.tmp)
+        with mock.patch.object(s, 'current_info', return_value={'pack': 'missing'}):
+            result = s.start(check=True)
+        self.assertEqual(result['code'], 'unavailable')
+        self.assertEqual(result['key'], 'setup.err.cannotTellLibraryCheck')
+        self.assertIn('cannot check it', result['error'])
+
     def drive(self):
         d = self.tmp / 'drive'
         d.mkdir()
@@ -3600,7 +3634,7 @@ console.log(JSON.stringify(jobs.map(jobControls)));
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8'), j = JSON.parse(process.argv[2]);
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-eval(section('  const noDownload = ', '  const STOPPED = ') + section('  function jobLead(', '  /* Resume when paused'));   // one eval: noDownload in jobLead's scope
+eval(section('  const noDownload = ', '  const stoppedWord = ') + section('  function jobLead(', '  /* Resume when paused'));   // one eval: noDownload in jobLead's scope
 console.log(JSON.stringify({copy: jobLead(j), download: jobLead(Object.assign({}, j, {copy: false}))}));
 """
         r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js'), json.dumps(paused)],
@@ -3618,6 +3652,7 @@ console.log(JSON.stringify({copy: jobLead(j), download: jobLead(Object.assign({}
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const size = b => b + ' B', rate = () => '', eta = () => '', retryIn = () => '', line = {};
+const tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 const bar = {classList: {contains: () => false}, firstChild: {style: {}}, setAttribute() {}, removeAttribute() {}};
 const el = {querySelector: s => s.includes('bar') ? bar : line};
 let repair = null, S = {job: {copy: true}};
@@ -3639,11 +3674,13 @@ const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'the drive', diskFor = () => null;
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => ({});
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const job = code => ({copy: true, folder: '/srv/x/LastbookData', error: {code, message: 'Lastbook could not read or write a file for the copy. Check the drive is still connected, then copy again to the same place to carry on.'}, items: []});
 console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_space')), cancelled: errorBox(job('cancelled')),
-                            confirm: src.includes("j.copy ? 'Stop copying? What is copied stays on the drive.'"),
+                            confirm: src.includes("'Stop copying? What is copied stays on the drive.'"),
                             live: src.includes("'The copy was stopped. What was copied is on the drive.'")}));
 """
         r = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web' / 'setup.js')],
@@ -3836,6 +3873,8 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
             j = self.wait(s)
         self.assertEqual((j['state'], j['error']['code']), ('failed', 'check'))
         self.assertNotIn('internet', j['error']['message'])
+        self.assertEqual(j['error']['key'], 'setup.err.checkCouldNotReadFile')
+        self.assertEqual(j['error']['params']['error'], 'OSError')
 
     @unittest.skipUnless(shutil.which('node'), 'needs Node')
     def test_check_and_repair_words(self):
@@ -3844,25 +3883,30 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const errCode = e => e && e.code, noDownload = () => false;
+const errCode = e => e && e.code, noDownload = () => false, tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let repair = null;
 const jobWords = j => { repair = j.repair && !j.check ? {fixed: false} : null; return {head: jobHead(j), lead: jobLead(j)} };
 eval(section('  function jobHead(', '  function jobView('));
+eval(section('  function cancelWords(', '  function jobView('));
 eval(section('  function jobLead(', '  /* Resume when paused'));
-eval(section('  function repairedWords(', '  /* ---- Check now'));
+eval(section('  function repairParts(', '  /* ---- Check now'));
 eval(section('  function repairOffer(', '  function checkedView('));
 const esc = String, ico = () => '', itemTitle = it => it.title, WORD = {paused: 'Paused'};
-eval(section('  const STEPS = ', '  const WORD = ') + section('  function itemHTML(', '  const itemTitle = '));   // one eval: STEPS in itemHTML's scope
+const joinList = parts => parts.length < 2 ? parts[0] : parts.slice(0, -1).join(', ') + (parts.length > 2 ? ',' : '') + ' and ' + parts[parts.length - 1];
+eval(section('  function stepsFor(', '  const ACTIVE = ') + section('  function itemHTML(', '  const itemTitle = '));   // one eval: translated stage/state helpers in itemHTML's scope
 const steps = (j, it) => [...itemHTML(it, j).matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map(m => m[1]);
 const job = (state, extra) => Object.assign({state, items: [{state: state === 'paused' ? 'paused' : 'verifying'}], error: null}, extra);
 console.log(JSON.stringify({
   checking: jobWords(job('verifying', {check: true, repair: true})),
   paused: jobWords(job('paused', {check: true, repair: true})),
+  check_cancel: cancelWords(job('verifying', {check: true})),
+  download_cancel: cancelWords(job('downloading', {})),
   repairing: jobWords(job('verifying', {repair: true})),
   install: jobWords(job('downloading', {})),
   offer_ai: repairOffer(0, true, false), offer_lib: repairOffer(2, false, false), offer_all: repairOffer(1, true, true),
   did_ai: repairedWords({repaired: true, model_ok: false, damaged: 1, pack_replaced: false}),
   did_lib: repairedWords({repaired: true, model_ok: true, damaged: 1, pack_replaced: true}),
+  did_map: repairedWords({repaired: true, model_ok: true, map_ok: false, damaged: 1, pack_replaced: false}),
   check_steps: steps({check: true, state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
   install_steps: steps({state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
 }));
@@ -3874,6 +3918,11 @@ console.log(JSON.stringify({
         self.assertIn('downloads nothing', w['checking']['lead'])
         self.assertEqual(w['paused']['head'], 'Paused')
         self.assertIn('Nothing was downloaded or changed', w['paused']['lead'])
+        self.assertIn('Stop checking?', w['check_cancel']['prompt'])
+        self.assertIn('Nothing has been downloaded or changed', w['check_cancel']['prompt'])
+        self.assertIn('check was stopped', w['check_cancel']['stopped'])
+        self.assertNotIn('throw away the download', w['check_cancel']['prompt'].lower())
+        self.assertIn('throw away the download', w['download_cancel']['prompt'])
         self.assertNotIn('What is downloaded is kept', w['paused']['lead'])
         self.assertEqual(w['repairing']['head'], 'Checking the library')
         self.assertEqual(w['install']['head'], 'Installing')
@@ -3886,6 +3935,7 @@ console.log(JSON.stringify({
         self.assertNotIn('kept aside', w['did_ai'])
         self.assertIn('downloaded again', w['did_lib'])
         self.assertIn('kept aside', w['did_lib'])
+        self.assertEqual(w['did_map'], 'The detailed map was downloaded again.')
         self.assertEqual(w['check_steps'], ['Check'])                    # a check's items are only read: no Download or Unpack
         self.assertEqual(w['install_steps'], ['Download', 'Check', 'Unpack', 'Finish'])
 
@@ -4778,7 +4828,131 @@ class Through(Base):
 
 
 @unittest.skipUnless(shutil.which('node'), 'needs Node')
-class ModelRecoveryScreen(unittest.TestCase):  # upstream, kept through rebase
+class SetupDynamicTextSafety(unittest.TestCase):
+    """HTML interpolations from paths and device names must be escaped before entering Setup's DOM."""
+    def render(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const attack = '<img src=x onerror=alert(1)>';
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+const interpolate = (fallback, params) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, n) => params && params[n] != null ? params[n] : m);
+const tr = (_key, params, fallback) => interpolate(fallback, params);
+const ico = () => '', size = String, ram = String, diskName = () => attack, diskFor = () => ({free_bytes: 1024});
+const S = {hardware: {ram_bytes: 1024, gpus: [{name: attack, vram_bytes: 1024}]}}, folder = '/tmp/' + attack;
+const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null;
+globalThis.lastbookTr = (key, params, fallback) => interpolate(fallback, params);
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => `<span lang="en">${esc(interpolate(fallback, params))}</span>`;
+eval(section('  function computer()', '  function recommendLine()'));
+eval(section('  function errorBox(', '  function itemHTML('));
+const computerHTML = computer();
+const mismatchHTML = errorBox({error: {code: 'found_mismatch', file: '/tmp/' + attack + '/' + attack + '.zip'}, items: []});
+const spaceHTML = errorBox({error: {code: 'no_space', need_bytes: 10, free_bytes: 1}, items: []});
+console.log(JSON.stringify({computerHTML, mismatchHTML, spaceHTML, attack, escaped: esc(attack)}));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        return json.loads(run.stdout)
+
+    def test_setup_dynamic_values_are_html_escaped(self):
+        rendered = self.render()
+        for sink in ('computerHTML', 'mismatchHTML', 'spaceHTML'):
+            with self.subTest(sink=sink):
+                self.assertNotIn(rendered['attack'], rendered[sink])
+                self.assertIn(rendered['escaped'], rendered[sink])
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class PackSummaryTranslation(unittest.TestCase):
+    def test_small_pack_summary_uses_catalogue_translation_and_keeps_legacy_fallback(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const maps = () => [], selectedState = () => null;
+const SMALL_PACK_ENGLISH_SUMMARY = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))['setup.packSummary.small'];
+const tr = (key, _params, fallback) => key === 'setup.packSummary.small' ? 'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.' : fallback;
+eval(section('  function packSummary(', '  const packDl ='));
+console.log(JSON.stringify({translated: packSummary({id: 'small', summary_key: 'setup.packSummary.small', summary: 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.'}), legacy: packSummary({id: 'small', summary: 'Legacy summary'})}));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js'), str(ROOT / 'translations/desktop/en.json')], check=True, capture_output=True, text=True, encoding='utf-8')
+        got = json.loads(run.stdout)
+        self.assertEqual(got['translated'], 'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+        self.assertEqual(got['legacy'], 'Legacy summary')
+
+
+    def test_medium_pack_summary_uses_translation_and_selected_map(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const maps = () => [{id: 'CA', title: 'California'}], selectedState = () => 'CA', mapName = () => 'California';
+const tr = (key, params, fallback) => key === 'setup.packSummary.medium'
+  ? `El paquete Small, más los videos básicos de instrucciones, todos los documentos, Wikibooks y un mapa detallado de ${(params && params.map) || 'un estado'}.` : fallback;
+eval(section('  function packSummary(', '  const packDl ='));
+console.log(packSummary({id: 'medium', summary_key: 'setup.packSummary.medium', summary: 'Small, plus the core how-to videos, all documents, Wikibooks and a detailed map of California.'}));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(run.stdout.strip(), 'El paquete Small, más los videos básicos de instrucciones, todos los documentos, Wikibooks y un mapa detallado de California.')
+
+    def test_legacy_medium_pack_summary_uses_neutral_spanish_translation(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const maps = () => [{id: 'CA', title: 'California'}], selectedState = () => 'CA', mapName = () => 'California';
+globalThis.LastbookI18n = {locale: 'es-419'};
+const tr = (key, params, fallback) => key === 'setup.packSummary.medium'
+  ? `El paquete Small, más los videos básicos de instrucciones, todos los documentos, Wikibooks y un mapa detallado de ${params.map}.` : fallback;
+eval(section('  function packSummary(', '  const packDl ='));
+console.log(packSummary({id: 'medium', summary: 'Small, plus the core how-to videos, all documents, Wikibooks and a detailed map of California.'}));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(run.stdout.strip(), 'El paquete Small, más los videos básicos de instrucciones, todos los documentos, Wikibooks y un mapa detallado de California.')
+
+
+    def test_legacy_medium_summary_uses_each_selected_locale(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const maps = () => [{id: 'CA', title: 'California'}], selectedState = () => 'CA', mapName = () => 'California';
+const translations = {
+  'es-419': 'El paquete Small, más los videos principales con instrucciones prácticas, todos los documentos, Wikibooks y un mapa detallado de {map}.',
+  de: 'Small sowie die wichtigsten Anleitungsvideos, alle Dokumente, Wikibooks und eine detaillierte Karte von {map}.',
+  'zh-Hans': 'Small 套件，以及核心操作指南视频、所有文档、Wikibooks 和 {map} 的详细地图。'
+};
+const tr = (key, params, fallback) => key === 'setup.packSummary.medium'
+  ? translations[globalThis.LastbookI18n.locale].replace('{map}', params.map) : fallback;
+eval(section('  function packSummary(', '  const packDl ='));
+const results = {};
+for (const locale of Object.keys(translations)) {
+  globalThis.LastbookI18n = {locale};
+  results[locale] = packSummary({id: 'medium', summary: 'Small, plus the core how-to videos, all documents, Wikibooks and a detailed map of California.'});
+}
+console.log(JSON.stringify(results));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(json.loads(run.stdout), {
+            'es-419': 'El paquete Small, más los videos principales con instrucciones prácticas, todos los documentos, Wikibooks y un mapa detallado de California.',
+            'de': 'Small sowie die wichtigsten Anleitungsvideos, alle Dokumente, Wikibooks und eine detaillierte Karte von California.',
+            'zh-Hans': 'Small 套件，以及核心操作指南视频、所有文档、Wikibooks 和 California 的详细地图。',
+        })
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class SetupDateFormatting(unittest.TestCase):
+    def test_setup_check_date_uses_the_selected_interface_language(self):
+        script = r"""
+const fs = require('fs'), src = fs.readFileSync(process.argv[1], 'utf8');
+const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+const esc = s => String(s), tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m,n) => params && params[n] != null ? params[n] : m);
+globalThis.LastbookI18n = {date: (value, options) => new Intl.DateTimeFormat('es-419', options).format(value)};
+eval(section('  function checkLine(', '  async function act('));
+console.log(checkLine({at: '2026-11-17T12:00:00Z', damaged: 0}));
+"""
+        run = subprocess.run([shutil.which('node'), '-e', script, str(ROOT / 'web/setup.js')], check=True, capture_output=True, text=True, encoding='utf-8')
+        self.assertIn('17 de noviembre de 2026', run.stdout)
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs Node')
+class ModelRecoveryScreen(unittest.TestCase):
     """The real setup error renderer and picker dispatch, without a server or browser dependency."""
     def screen(self, kind='model', done=0, code='network', action=False, cancel=False):
         script = r"""
@@ -4788,6 +4962,8 @@ const calls = [], note = {hidden: true}, button = {}, UNIT = 1000;
 const $ = s => s === '#haveNote' ? note : button;
 const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk';
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '', S = {}, shortfall = null, confirmCancel = false, lastAct = null;
 const call = async (path, body) => { calls.push([path, body]); return cfg.cancel ? {cancelled: true} : {path: '/path/to/model.gguf'} };
 const useFile = async (path, btn) => { calls.push(['useFile', path, btn === button]) };
@@ -4834,8 +5010,12 @@ class UnreachableScreen(unittest.TestCase):
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8'), kind = process.argv[2];
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
 const diskName = () => 'this disk', errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+const tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
+const tHtml = (_key, _params, fallback) => fallback;
+const interpolate = (fallback, params) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
+const trMarkup = (_key, params, fallback) => `<span lang="en">${esc(interpolate(fallback, params))}</span>`;
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const error = {code: 'unreachable', message: 'Lastbook could not reach huggingface.co from this network.', host: 'huggingface.co',
@@ -4852,16 +5032,16 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
         self.assertIn('Retry later', html)
         self.assertNotIn('internet connection dropped', html)
         for k in ('File', 'Size', 'Address', 'SHA-256'):
-            self.assertIn(f'<dt>{k}</dt>', html)
+            self.assertIn(f'<dt><span lang="en">{k}</span></dt>', html)
         self.assertIn('16,947,541,728 bytes', html)                       # exact, to check a copy fetched elsewhere
         self.assertIn('ab' * 32, html)
-        self.assertIn('&amp;a=&lt;b>', html)                              # the address is escaped
+        self.assertIn('&amp;a=&lt;b&gt;', html)                         # every HTML metacharacter in the address is escaped
         self.assertIn('data-act="model-file"', html)
         self.assertIn('data-act="retry"', html)
 
     def test_a_library_file_points_to_choose_again(self):
         html = self.box('pack')
-        self.assertIn('<dt>SHA-256</dt>', html)
+        self.assertIn('<dt><span lang="en">SHA-256</span></dt>', html)
         self.assertNotIn('data-act="model-file"', html)
         self.assertIn('Choose a library zip or AI model file', html)
 
@@ -5052,6 +5232,7 @@ class ModelServer(Base):
             for typed in ('10.0.0.5:8080', 'example.org:80', 'https://127.0.0.1:1', '0.0.0.0:8080', '127.0.0.1:1@example.org:1', '', None, '127.0.0.1', '127.0.0.1:0', '127.0.0.1:70000'):
                 got = s.server_models(typed)
                 self.assertEqual(got['code'], 'not_here', typed)
+                self.assertEqual(got['key'], 'setup.err.modelServerLoopbackOnly')
                 self.assertIn('on this computer', got['error'])
                 self.assertEqual(s.use_server(typed, 'small-9b')['code'], 'not_here')
         self.assertEqual(self.switched, [])
@@ -5062,6 +5243,8 @@ class ModelServer(Base):
             port = k.getsockname()[1]
         got = self.chooser().server_models(f'127.0.0.1:{port}')
         self.assertEqual(got['code'], 'no_answer')
+        self.assertEqual(got['key'], 'setup.err.modelServerNoAnswer')
+        self.assertEqual(got['params'], {'where': f'127.0.0.1:{port}'})
         self.assertIn(f'127.0.0.1:{port}', got['error'])
         self.assertNotIn('http', got['error'])
 
@@ -5073,6 +5256,13 @@ class ModelServer(Base):
             got = self.chooser().server_models(self.where)
             self.assertEqual(got['code'], code, answer)
             self.assertIn(self.where, got['error'])
+            expected_key = {
+                'needs_key': 'setup.err.modelServerNeedsKey',
+                'no_list': 'setup.err.modelServerNoListStatus' if answer[0] == 500 else 'setup.err.modelServerNoList',
+                'no_models': 'setup.err.modelServerNoModels',
+            }[code]
+            self.assertEqual(got['key'], expected_key, answer)
+            self.assertEqual(got['params']['where'], self.where)
 
     def test_choosing_saves_and_switches(self):
         self.settings.mkdir(parents=True, exist_ok=True)
@@ -5095,6 +5285,8 @@ class ModelServer(Base):
         for model in ('gone', '', None, ['small-9b']):
             got = s.use_server(self.where, model)
             self.assertEqual(got['code'], 'not_listed', model)
+            self.assertEqual(got['key'], 'setup.err.modelServerNoLongerLists')
+            self.assertEqual(got['params']['where'], self.where)
         self.assertIsNone(api.saved_model_server(self.settings))
         self.assertEqual(self.switched, [])
 

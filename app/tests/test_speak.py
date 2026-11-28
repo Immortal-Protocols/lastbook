@@ -95,9 +95,17 @@ BUTTON = r"""
 // Speak.attach on a stand-in button, with one local voice: click, what the button says and shows, then Escape.
 const fs = require('fs');
 const src = fs.readFileSync(process.argv[1], 'utf8');
-const keys = [], spoken = [];
+const keys = [], languageListeners = [], spoken = [];
 let cancels = 0;
-const document = { addEventListener: (t, f) => t === 'keydown' && keys.push(f), removeEventListener: (t, f) => { const i = keys.indexOf(f); if (i >= 0) keys.splice(i, 1) } };
+const document = {
+  addEventListener: (t, f) => (t === 'keydown' ? keys : t === 'lastbook:languagechange' ? languageListeners : []).push(f),
+  removeEventListener: (t, f) => { const list = t === 'keydown' ? keys : t === 'lastbook:languagechange' ? languageListeners : []; const i = list.indexOf(f); if (i >= 0) list.splice(i, 1) }
+};
+let locale = 'en';
+globalThis.LastbookI18n = { t: key => ({
+  'reader.readAloud': locale === 'en' ? 'Read aloud' : 'Leer en voz alta',
+  'reader.stopReading': locale === 'en' ? 'Stop reading' : 'Detener la lectura',
+})[key] };
 const voice = { localService: true, default: true, lang: 'en-US' };
 const speechSynthesis = { getVoices: () => [voice], speak: u => spoken.push(u.text), cancel: () => cancels++, addEventListener() {} };
 class SpeechSynthesisUtterance { constructor(t) { this.text = t } }
@@ -113,9 +121,10 @@ const look = () => ({ name: attrs['aria-label'], title: btn.title, label: label.
   await new Promise(r => setTimeout(r, 10));
   const out = { shown: !btn.hidden };
   await onclick(); out.on = look(); out.spoken = spoken.slice();
+  locale = 'es-419'; languageListeners.forEach(f => f()); out.after_language = look();
   keys.forEach(f => f({ key: 'Enter' })); out.after_enter = look();
   keys.forEach(f => f({ key: 'Escape' })); out.after_escape = look(); out.cancels = cancels;
-  leave(); out.listeners_left = keys.length;
+  leave(); out.listeners_left = keys.length + languageListeners.length;
   process.stdout.write(JSON.stringify(out));
 })();
 """
@@ -131,9 +140,10 @@ class Button(unittest.TestCase):
         out = json.loads(r.stdout)
         self.assertTrue(out['shown'])
         self.assertEqual(out['on'], {'name': 'Stop reading', 'title': 'Stop reading', 'label': 'Stop reading', 'pressed': False, 'reading': True})
+        self.assertEqual(out['after_language'], {'name': 'Detener la lectura', 'title': 'Detener la lectura', 'label': 'Detener la lectura', 'pressed': False, 'reading': True})
         self.assertEqual(out['spoken'], ['Boil water for one minute.'])
         self.assertTrue(out['after_enter']['reading'])                  # other keys leave it reading
-        self.assertEqual(out['after_escape'], {'name': 'Read aloud', 'title': 'Read aloud', 'label': 'Read aloud', 'pressed': False, 'reading': False})
+        self.assertEqual(out['after_escape'], {'name': 'Leer en voz alta', 'title': 'Leer en voz alta', 'label': 'Leer en voz alta', 'pressed': False, 'reading': False})
         self.assertGreaterEqual(out['cancels'], 2)                      # once before speaking, once on Escape
         self.assertEqual(out['listeners_left'], 0)
 
@@ -141,8 +151,8 @@ class Button(unittest.TestCase):
         """A page with no text, or one that could not be fetched, is shown in a toast (role=status), not only spoken; and after
         reading goes on to the next page by itself, focus returns to the button."""
         app = (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')
-        self.assertIn("toast('This page has no text that can be read aloud.')", app)
-        self.assertIn("toast('This page could not be read aloud. Try again.')", app)
+        self.assertIn("tr('reader.speakNoText', null, 'This page has no text that can be read aloud.')", app)
+        self.assertIn("tr('reader.speakFailed', null, 'This page could not be read aloud. Try again.')", app)
         self.assertIn('focusAfterRoute = sb;', app)
         self.assertNotIn('data-speak hidden aria-pressed', app)
         css = (ROOT / 'web' / 'app.css').read_text(encoding='utf-8')

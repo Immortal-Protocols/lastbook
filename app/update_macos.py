@@ -17,6 +17,7 @@ import base64
 import traceback
 from pathlib import Path
 from urllib.parse import urlsplit
+from i18n_native import native_t
 
 FEED = 'https://downloads.lastbook.org/mac/appcast.xml'
 HOST = 'downloads.lastbook.org'   # the only host an update archive may come from (HTTPS, default port)
@@ -36,7 +37,7 @@ REQUIRED = {
 }
 NEVER = ('SUEnableInstallerLauncherService', 'SUEnableDownloaderService')   # sandbox XPC services: Lastbook is not sandboxed
 USER_INITIATED = 0          # SPUUpdateCheckUpdates; 1 is background checks, 2 update information only
-NOT_READY = 'This copy of Lastbook cannot update itself. Use the download page instead.'
+NOT_READY = native_t('native.update.notReady', 'This copy of Lastbook cannot update itself. Use the download page instead.')
 
 
 def public_key_ok(value):
@@ -115,7 +116,7 @@ class Native:
             self.controller.checkForUpdates_(None)    # user-initiated: Sparkle shows its window and asks before installing
         except Exception as e:
             traceback.print_exc()
-            self.error = f'The updater could not start ({type(e).__name__}). Use the download page instead.'
+            self.error = native_t('native.update.startFailed', 'The updater could not start ({error}). Use the download page instead.', error=type(e).__name__)
 
 
 def _start(bundle):
@@ -162,13 +163,13 @@ def _delegate_class(objc, Foundation):
         def updater_mayPerformUpdateCheck_error_(self, updater, check, error):
             if check == USER_INITIATED:
                 return True, None
-            return False, refused('Lastbook checks for updates only when you ask.')
+            return False, refused(native_t('native.update.onlyWhenAsked', 'Lastbook checks for updates only when you ask.'))
 
         @objc.typedSelector(b'Z@:@@qo^@')
         def updater_shouldProceedWithUpdate_updateCheck_error_(self, updater, item, check, error):
             if check == USER_INITIATED and item_ok(item):
                 return True, None
-            return False, refused('This update is not a signed Lastbook app. Use the download page instead.')
+            return False, refused(native_t('native.update.notSigned', 'This update is not a signed Lastbook app. Use the download page instead.'))
 
         @objc.typedSelector(b'Z@:@@')
         def updater_shouldDownloadReleaseNotesForUpdate_(self, updater, item):

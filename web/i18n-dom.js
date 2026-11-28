@@ -12,6 +12,7 @@
     ["data-i18n-placeholder", "placeholder"],
     ["data-i18n-title", "title"],
     ["data-i18n-alt", "alt"],
+    ["data-i18n-content", "content"],
   ];
   const selector = bindings.map(([marker]) => "[" + marker + "]").join(",");
   // No strong registry of documents, detached subtrees, or old screens. The

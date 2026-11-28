@@ -20,7 +20,7 @@ function page(answers) {
       return [...this.innerHTML.matchAll(/data-act="([^"]+)"/g)].map(m => (acts[m[1]] = { dataset: { act: m[1] }, disabled: false }));
     }, get offsetWidth() { return 0 } });
   const ctx = vm.createContext({
-    document: { querySelector: el, documentElement: { classList: { contains: () => false } } },
+    document: { querySelector: el, documentElement: { classList: { contains: () => false } }, addEventListener() { } },
     location: { hash: '' }, navigator: { platform: 'MacIntel' }, CSS: { escape: s => s }, Object, JSON, Promise, Set, Math, Number, String, Array, Error, Boolean, RegExp, isFinite,
     scrollTo() { }, addEventListener() { }, clearTimeout() { },
     setTimeout: (f, ms) => { timers.push(f); return timers.length },

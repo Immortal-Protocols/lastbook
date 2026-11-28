@@ -85,13 +85,8 @@ PYCHECK
 # Task Manager. The stamp also makes each build a file of its own, which Smart App Control judges afresh (see WINDOWS-SETUP-TESTS.md).
 VERSION="$("$PY" -I -B -c "import ast,sys;t=open(sys.argv[1],encoding='utf-8').read();print([n.value.value for n in ast.parse(t).body if isinstance(n,ast.Assign) and getattr(n.targets[0],'id','')=='VERSION'][0])" "$ROOTW\\packaging\\lastbook_setup.py")"
 STAMP="${STAMP:-$(date -u +%Y%m%d-%H%M%S)}"
-cat > "$OUTU/version.txt" <<VERSIONINFO
-VSVersionInfo(ffi=FixedFileInfo(filevers=(${VERSION//./, }, 0), prodvers=(${VERSION//./, }, 0)),
-  kids=[StringFileInfo([StringTable('040904B0', [StringStruct('CompanyName', 'Lastbook'), StringStruct('FileDescription', 'Lastbook'),
-    StringStruct('FileVersion', '$VERSION'), StringStruct('ProductName', 'Lastbook'), StringStruct('ProductVersion', '$VERSION'),
-    StringStruct('Comments', 'build $STAMP')])]),
-    VarFileInfo([VarStruct('Translation', [1033, 1200])])])
-VERSIONINFO
+# en-US, es-MX/es-ES (stand-ins for es-419), German and Simplified Chinese string tables. See packaging/windows_versioninfo.py.
+"$PY" -I -B "$ROOTW\\packaging\\windows_versioninfo.py" --format pyinstaller --kind app --version "$VERSION" --stamp "$STAMP" --out "$OUT\\version.txt"
 
 "$PY" -I -B -m PyInstaller --noconfirm --clean --onedir --windowed --noupx --name Lastbook --icon "$ROOTW\\packaging\\icon\\Lastbook.ico" --add-data "$ROOTW\\packaging\\icon\\Lastbook.ico;." --version-file "$OUT\\version.txt" \
   --distpath "$OUT\\dist" --workpath "$OUT\\work" --specpath "$OUT" \
@@ -100,10 +95,10 @@ VERSIONINFO
   --add-data "$WEBVIEW2\\Microsoft.Web.WebView2.Core.dll;webview2" \
   --add-data "$WEBVIEW2\\Microsoft.Web.WebView2.WinForms.dll;webview2" \
   --add-data "$WEBVIEW2\\WebView2Loader.dll;webview2" \
-  --add-data "$LLM;llm" --add-data "$OUT\\ship\\setup\\manifest-v1.json;setup" --add-data "$ROOTW\\engine\\setup\\roots.pem;engine\\setup" --collect-submodules engine.setup \
-  --hidden-import server --hidden-import retrieval --hidden-import assistant --hidden-import llm_local --hidden-import engine.update --hidden-import engine.notes --hidden-import engine.model_server \
+  --add-data "$LLM;llm" --add-data "$OUT\\ship\\setup\\manifest-v1.json;setup" --add-data "$ROOTW\\engine\\setup\\roots.pem;engine\\setup" --add-data "$ROOTW\\app\\i18n_native.json;."  --collect-submodules engine.setup \
+  --hidden-import server --hidden-import retrieval --hidden-import assistant --hidden-import llm_local --hidden-import engine.update --hidden-import engine.notes \
   --hidden-import engine.paths --hidden-import engine.library --hidden-import engine.saved_pages --hidden-import engine.quiet_onnx \
-  --hidden-import bridge --hidden-import shell_windows --hidden-import clr --hidden-import _cffi_backend \
+  --hidden-import bridge --hidden-import shell_windows --hidden-import i18n_native --hidden-import clr --hidden-import _cffi_backend \
   --exclude-module shell_macos --exclude-module update_macos --exclude-module remote_storage --exclude-module tests \
   --exclude-module webview --exclude-module bottle --exclude-module proxy_tools --exclude-module lastbook_launcher \
   --exclude-module tkinter --exclude-module pytest --exclude-module unittest --exclude-module doctest --exclude-module pdb \

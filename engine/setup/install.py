@@ -17,6 +17,7 @@ import shutil
 import stat
 import sys
 import time
+import uuid
 import zipfile
 from bisect import bisect_right
 from itertools import accumulate
@@ -109,6 +110,7 @@ def _member_parts(info, top_optional=False):
 MAP_FIXED = {'map-set.json', 'derived/geo/national-status.json', 'derived/geo/socal-cells.json', 'library-data/geography/resources/atlas.sqlite'}
 MAP_DIRS = {'', 'derived', 'derived/geo', 'library-data', 'library-data/geography', 'library-data/geography/resources'}
 MAP_SQLITE = re.compile(r'derived/geo/[A-Za-z0-9._-]+\.sqlite')
+REGISTRY = Path('derived') / 'geo' / 'maps.json'     # the library's map registry: {active, maps: {name: {label}}}
 SQLITE_SIDES = ('-wal', '-shm', '-journal')     # SQLite's own files beside a database: they move with it, or the new one could be damaged
 
 
@@ -427,7 +429,7 @@ def say(*parts):
         print(line.encode(enc, 'replace').decode(enc, 'replace'), flush=True)
 
 
-def stage_switch(pend, new_lib, target, model_file=None, kind=None, model_sha256=None):
+def stage_switch(pend, new_lib, target, model_file=None, kind=None, model_sha256=None, map_source_files=None):
     """Writes what the switch will do to `pend`, a file in the app's own settings folder (never the work folder), for
     apply_pending. Nothing is renamed yet."""
     d = {'new': str(new_lib), 'target': str(target), 'model_file': model_file, 'written': time.time()}
@@ -435,6 +437,8 @@ def stage_switch(pend, new_lib, target, model_file=None, kind=None, model_sha256
         d['kind'] = kind
     if model_sha256:
         d['model_sha256'] = model_sha256     # the digest setup matched, for llm_local.mark_checked after the switch
+    if map_source_files:
+        d['map_source_files'] = map_source_files
     Path(pend).parent.mkdir(parents=True, exist_ok=True)
     _write_json(pend, d)
     return d
@@ -541,8 +545,8 @@ def map_set(lib):
         return None
 
 
-def map_name(lib):
-    """'base', 'us' or a state code: from map-set.json, else the pack's own pack.json, else 'base'."""
+def _legacy_map_name(lib):
+    """'base', 'us' or a state code: from the root map-set.json, else the pack's own pack.json, else 'base'."""
     d = map_set(lib)
     if d and d.get('name'):
         return str(d['name'])
@@ -550,6 +554,225 @@ def map_name(lib):
         return str(json.loads((Path(lib) / 'pack.json').read_text(encoding='utf-8')).get('map') or 'base')
     except (OSError, ValueError, AttributeError):
         return 'base'
+
+
+def _registry(lib):
+    """The map registry (derived/geo/maps.json): {active, maps: {name: {label}}}, or None for a library that predates it."""
+    try:
+        d = json.loads((Path(lib) / REGISTRY).read_text(encoding='utf-8'))
+        if not isinstance(d, dict) or not isinstance(d.get('maps'), dict):
+            return None
+        if any(not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}', name) or not isinstance(entry, dict)
+               for name, entry in d['maps'].items()):
+            return None
+        if any('source_files' in entry and (not isinstance(entry['source_files'], dict)
+               or any(not isinstance(file, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}', file)
+                      or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
+                      for file, digest in entry['source_files'].items())) for entry in d['maps'].values()):
+            return None
+        if d.get('active') not in (None, 'base') and d.get('active') not in d['maps']:
+            return None
+        return d
+    except (OSError, ValueError):
+        return None
+
+
+def _save_registry(lib, reg):
+    p = Path(lib) / REGISTRY
+    p.parent.mkdir(parents=True, exist_ok=True)
+    _write_json(p, reg)
+
+
+def _registry_for_write(lib):
+    """A missing registry is legacy; an unreadable one must not be replaced with a partial list."""
+    reg = _registry(lib)
+    if reg is None and (Path(lib) / REGISTRY).exists():
+        raise Refused('map', 'The installed-map list is damaged. Restore derived/geo/maps.json before changing maps.')
+    return reg
+
+
+def active_map(lib):
+    """The map the library shows: the registry's active map, else the legacy flat map's name."""
+    reg = _registry(lib)
+    if reg and reg.get('active'):
+        return str(reg['active'])
+    return _legacy_map_name(lib)
+
+
+def map_name(lib):
+    """The active map's name, registry-aware. Kept as the old name for callers that already use it."""
+    return active_map(lib)
+
+
+def map_unit(lib, name=None):
+    """A map's folder: the library root for a legacy flat library, or derived/geo/maps/<name> once namespaced."""
+    lib = Path(lib)
+    reg = _registry(lib)
+    if reg is None:
+        return lib
+    selected = name or active_map(lib)
+    if selected == 'base':
+        return lib
+    if reg['maps'].get(selected, {}).get('flat'):
+        return lib
+    return lib / 'derived' / 'geo' / 'maps' / selected
+
+
+def map_dirs(lib):
+    """The names of the maps in the library."""
+    reg = _registry(lib)
+    if reg:
+        return set(reg['maps'])
+    n = _legacy_map_name(lib)
+    return {n} if n != 'base' else set()
+
+
+def map_set_for(lib, name):
+    """A specific map's map-set.json, read from its own folder."""
+    return map_set(map_unit(lib, name))
+
+
+def set_active(lib, name):
+    """Make `name` the map the library shows. Refused if it is not installed."""
+    lib = Path(lib)
+    name = str(name)
+    reg = _registry_for_write(lib)
+    if name not in map_dirs(lib):
+        raise Refused('map', f'The map {name!r} is not in this library.')
+    if reg is None:
+        return  # the legacy flat map is already active; do not point it at an empty namespaced folder
+    if reg['active'] == name:
+        return
+    if not reg['maps'][name].get('flat'):
+        check_map(map_unit(lib, name))
+    reg['active'] = name
+    _save_registry(lib, reg)
+
+
+def _move_map_files(src, dest, skip_atlas=True):
+    """Move a map unit's files from one map-unit root to another. The shared atlas stays where it is."""
+    for rel in map_files(src):
+        if skip_atlas and rel.startswith('library-data/'):
+            continue
+        s = Path(src) / rel
+        if not s.is_file():
+            continue
+        d = Path(dest) / rel
+        d.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(s, d)
+
+
+def _restore_map_files(source, target, files):
+    stuck = []
+    for rel in files:
+        src, dest = Path(source) / rel, Path(target) / rel
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(src, dest)
+        except OSError:
+            stuck.append(str(src))
+    return stuck
+
+
+def add_map(lib, name, src, label=None, source_files=None):
+    """Install one map's files (from an unpacked map unit `src`) into the library. It adds; it never removes a different map.
+    A new map becomes the active one; re-adding the same name upgrades it in place."""
+    lib = Path(lib)
+    name = str(name)
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}', name):
+        raise Refused('unpack', f'The map name {name!r} is not a safe folder name.')
+    if source_files is not None and (not isinstance(source_files, dict)
+            or any(not isinstance(file, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}', file)
+                   or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
+                   for file, digest in source_files.items())):
+        raise Refused('unpack', 'The map download record is invalid.')
+    src = Path(src)
+    check_map(src)
+    s = map_set(src)
+    if s and s.get('name') and s['name'] != name:
+        raise Refused('unpack', f'The map says it is {s["name"]!r}, not {name!r}.')
+    reg = _registry_for_write(lib)
+    if reg is None:
+        old = _legacy_map_name(lib)
+        reg = {'active': old if old != 'base' else 'base',
+               'maps': {old: {'label': old, 'flat': True}} if old != 'base' else {}}
+    if reg['maps'].get(name, {}).get('flat'):
+        if not has_separate_map(lib):
+            set_active(lib, name)
+            return name  # the current pack already includes it
+        backup = lib / 'derived' / 'geo' / 'maps' / ('.backup-' + uuid.uuid4().hex)
+        swap_map(lib, src, backup)
+        shutil.rmtree(backup, ignore_errors=True)
+        return name  # repair of a legacy map installed separately
+    dest = lib / 'derived' / 'geo' / 'maps' / name
+    backup = lib / 'derived' / 'geo' / 'maps' / ('.backup-' + uuid.uuid4().hex)
+    is_new = name not in reg['maps']
+    swap_map(dest, src, backup)
+    try:
+        reg['maps'][name] = {'label': label or name, **({'source_files': source_files} if source_files else {})}
+        if is_new:
+            reg['active'] = name
+        _save_registry(lib, reg)
+    except OSError as e:
+        stuck = _restore_map_files(dest, src, map_files(dest))
+        stuck += _restore_map_files(backup, dest, map_files(backup))
+        raise Refused('activate', f'Lastbook could not save the map list ({type(e).__name__}).'
+                      + (f' Some map files remain here: {", ".join(stuck)}' if stuck else ''))
+    shutil.rmtree(backup, ignore_errors=True)
+    return name
+
+
+def migrate_flat(lib):
+    """Register a legacy flat map in place, preserving pack-manifest.tsv's paths."""
+    lib = Path(lib)
+    if _registry_for_write(lib) is not None:
+        return
+    name = _legacy_map_name(lib)
+    if name == 'base':
+        return
+    _save_registry(lib, {'active': name, 'maps': {name: {'label': name, 'flat': True}}})
+
+
+def remove_map(lib, name):
+    """Remove a separately installed map, retaining every other map and choosing one of them when needed."""
+    lib = Path(lib)
+    reg = _registry_for_write(lib)
+    if not isinstance(name, str) or name not in map_dirs(lib):
+        raise Refused('map', 'That map is not installed in this library.')
+    flat = reg is None or reg['maps'][name].get('flat')
+    if flat and not has_separate_map(lib):
+        raise Refused('map', 'This map is included with the library. It cannot be removed separately.')
+    old = reg or {'active': name, 'maps': {name: {'label': name, 'flat': True}}}
+    new = {'active': old['active'], 'maps': {key: value for key, value in old['maps'].items() if key != name}}
+    if new['active'] == name:
+        new['active'] = next((key for key, value in new['maps'].items() if value.get('flat')), None) or next(iter(new['maps']), 'base')
+    unit = map_unit(lib, name)
+    removed = lib / 'derived' / 'geo' / 'maps' / ('.removed-' + uuid.uuid4().hex)
+    try:
+        pack_files = {rel for rel, _, _ in read_pack_manifest(lib / 'pack-manifest.tsv')}
+    except (OSError, ValueError):
+        pack_files = None
+    moved = []
+    try:
+        for rel in map_files(unit):
+            if flat and rel.startswith('library-data/') and (pack_files is None or rel in pack_files):
+                continue
+            destination = removed / rel
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(unit / rel, destination)
+            moved.append(rel)
+        _save_registry(lib, new)
+    except OSError as e:
+        stuck = _restore_map_files(removed, unit, reversed(moved))
+        raise Refused('map', f'Lastbook could not remove the map ({type(e).__name__}). Close anything using it, then try again.'
+                      + (f' Some map files remain here: {", ".join(stuck)}' if stuck else ''))
+    try:
+        if removed.exists():
+            shutil.rmtree(removed)
+    except OSError as e:
+        raise Refused('map', f'The map was removed from Lastbook, but its files could not be deleted from {removed} '
+                      f'({type(e).__name__}). Close anything using them, then delete that folder to free the space.')
+    return new['active']
 
 
 def has_separate_map(lib, *, pack_lists_map=None):
@@ -605,25 +828,41 @@ def map_files(lib):
 
 
 def map_bytes(lib):
-    """Space needed to keep the current detailed map during a content refresh."""
+    """Space needed to keep installed detailed maps during a content refresh."""
     total = 0
-    for rel in map_files(lib):
-        try:
-            total += (Path(lib) / rel).stat().st_size
-        except OSError:
-            continue
+    for name in map_dirs(lib):
+        unit = map_unit(lib, name)
+        for rel in map_files(unit):
+            try:
+                total += (unit / rel).stat().st_size
+            except OSError:
+                continue
     return total
 
 
 def copy_map(old, new):
-    """Keep an installed map while refreshing the same library's content."""
+    """Keep separately installed maps while refreshing library content; the new pack retains its own flat map."""
     old, new = Path(old), Path(new)
-    for rel in map_files(new):
-        os.unlink(new / rel)
-    for rel in map_files(old):
-        destination = new / rel
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(old / rel, destination)
+    own = _legacy_map_name(new)
+    reg = {'active': own, 'maps': {own: {'label': own, 'flat': True}} if own != 'base' else {}}
+    previous = _registry_for_write(old) or {}
+    for name in sorted(map_dirs(old)):
+        if name in reg['maps']:
+            continue  # the refreshed pack supplies this map
+        source = map_unit(old, name)
+        destination = new / 'derived' / 'geo' / 'maps' / name
+        for rel in map_files(source):
+            target = destination / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source / rel, target)
+        old_entry = previous.get('maps', {}).get(name, {})
+        reg['maps'][name] = {'label': old_entry.get('label') or name,
+                             **({'source_files': old_entry['source_files']} if old_entry.get('source_files') else {})}
+    active = active_map(old)
+    if active in reg['maps']:
+        reg['active'] = active
+    if reg['maps']:
+        _save_registry(new, reg)
 
 
 def swap_map(lib, new, old_dir):
@@ -644,31 +883,30 @@ def swap_map(lib, new, old_dir):
             os.replace(new / rel, dest)
             moved_in.append(rel)
     except OSError as e:
-        for rel in moved_in:
-            os.replace(lib / rel, new / rel)
-        for rel in moved_out:
-            os.replace(old_dir / rel, lib / rel)
-        raise Refused('activate', f'Lastbook could not put the new map in place ({type(e).__name__}).')
+        stuck = _restore_map_files(lib, new, moved_in)
+        stuck += _restore_map_files(old_dir, lib, moved_out)
+        raise Refused('activate', f'Lastbook could not put the new map in place ({type(e).__name__}).'
+                      + (f' Some map files remain here: {", ".join(stuck)}' if stuck else ''))
 
 
-def replace_map_in(staged, new):
-    """A pack being installed with a state map: the map's files replace the pack's own map set inside the staged library."""
+def replace_map_in(staged, new, source_files=None):
+    """A pack being installed with another map: keep the pack's map and add the requested one."""
     staged, new = Path(staged), Path(new)
     check_map(new)
-    for rel in map_files(staged):
-        os.unlink(staged / rel)
-    for rel in map_files(new):
-        (staged / rel).parent.mkdir(parents=True, exist_ok=True)
-        os.replace(new / rel, staged / rel)
+    add_map(staged, map_set(new)['name'], new, source_files=source_files)
 
 
 def _apply_map(work, pend, d, target, note):
-    """A state map staged for the open library: swap its files in; if the library then does not check out, swap the old ones back."""
-    old_dir = Path(work) / 'map-old'
-    note['map_old'] = str(old_dir)
+    """Add a staged map to the open library; existing maps remain available."""
     if not d.get('switched'):
         try:
-            swap_map(target, d['new'], old_dir)
+            new = Path(d['new'])
+            name = map_set(new)
+            if name:
+                name = name.get('name')
+            if not name:
+                raise Refused('activate', 'The downloaded map has no name. Try downloading it again.')
+            add_map(target, name, new, source_files=d.get('map_source_files'))
         except Refused as e:
             say('setup: map switch failed:', e.message)
             pend.unlink()
@@ -676,23 +914,6 @@ def _apply_map(work, pend, d, target, note):
             return (target if is_library(target) else None), note
         d['switched'] = True
         _write_json(pend, d)
-    try:
-        check_map(target)
-        ok = is_library(target)
-    except Refused:
-        ok = False
-    if not ok and old_dir.is_dir():
-        broken = Path(work) / 'map-failed'
-        shutil.rmtree(broken, ignore_errors=True)
-        for rel in map_files(target):
-            (broken / rel).parent.mkdir(parents=True, exist_ok=True)
-            os.replace(target / rel, broken / rel)
-        for root, _, files in os.walk(old_dir):
-            for f in files:
-                rel = Path(root, f).relative_to(old_dir)
-                (target / rel).parent.mkdir(parents=True, exist_ok=True)
-                os.replace(Path(root, f), target / rel)
-        note['error'] = 'The new map did not open, so Lastbook put the old one back.'
     return target if is_library(target) else None, note
 
 
@@ -717,6 +938,12 @@ def _pending_ok(d, work):
         return False
     sha = d.get('model_sha256')
     if sha is not None and not (isinstance(sha, str) and re.fullmatch(r'[0-9a-f]{64}', sha)):
+        return False
+    source_files = d.get('map_source_files')
+    if source_files is not None and (d.get('kind') != 'map' or not isinstance(source_files, dict)
+            or any(not isinstance(file, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}', file)
+                   or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
+                   for file, digest in source_files.items())):
         return False
     mf = d.get('model_file')
     if mf is not None and not (isinstance(mf, str) and _real(Path(mf).parent) == _real(target / 'models')):

@@ -242,7 +242,7 @@ class AddressSearchTests(unittest.TestCase):
 
     def test_app_route_preserves_address_number(self):
         import server
-        with patch.object(server, 'HERE', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
+        with patch.object(server.lastbook_paths, 'DATA', self.geo.parent), patch.object(server.address_search, 'find_addresses', return_value=[]) as lookup:
             self.assertEqual(server.places('18003 nine mile'), [])
             lookup.assert_called_once_with('18003 nine mile', self.geo.parent / 'derived' / 'geo', limit=8, near=None)
 
@@ -647,8 +647,7 @@ class GermanAddressSearchTests(unittest.TestCase):
             places.commit()
         finally:
             places.close()
-        with patch.object(server, 'HERE', root), patch.object(server, 'PLACEDB', geo / 'places.sqlite'), \
-                patch.object(server, 'WATERDB', root / 'no-water.sqlite'), patch.object(server, 'home_area', return_value=None):
+        with patch.object(server.lastbook_paths, 'DATA', root), patch.object(server, 'home_area', return_value=None):
             self.assertEqual([hit['name'] for hit in server.places('Route 66')], ['Route 66'])
             self.assertEqual([hit['name'] for hit in server.places('10117 Berlin')], ['Berlin'])
             self.assertEqual([hit['name'] for hit in server.places('Kreuzberg')], [])

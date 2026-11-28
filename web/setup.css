@@ -1,8 +1,8 @@
-/* Lastbook setup. Takes its colours, fonts and controls from app.css; here only the setup window's own layout.
-   The setup page has no sidebar and no tab bar, so the app's room for them is taken back. */
+/* Lastbook setup. Takes its colours, fonts and controls from app.css; here only the setup window's own layout. */
 html.setup-page,html.setup-page body{background:var(--bg)!important}
 html.setup-page body{padding:0!important}
 html.setup-page body::before,html.setup-page body::after{display:none!important}
+html.setup-page:has(.s-map-dialog[open],.s-map-delete-dialog[open]),html.setup-page:has(.s-map-dialog[open],.s-map-delete-dialog[open]) body{overflow:hidden}
 
 .s-top{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 16px 0;max-width:760px;margin:0 auto;-webkit-user-select:none;user-select:none}
 html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a window whose content fills it */
@@ -13,6 +13,76 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-back svg{width:20px;height:20px}
 
 .s-main{max-width:760px;padding:8px 16px 56px;min-height:0}
+.s-main:has(.s-map-layout),html.setup-page.manage-entry .s-main:has(>.loading){max-width:1120px}
+html.setup-page:has(.s-map-layout) .s-top,html.setup-page.manage-entry:has(.s-main>.loading) .s-top{max-width:1120px}
+.s-map-layout{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:22px;align-items:start}
+.s-map-content{min-width:0}
+.s-map-sidebar{position:sticky;top:16px;display:flex;flex-direction:column;box-sizing:border-box;max-height:min(var(--map-sidebar-content-height,100dvh),calc(100dvh - 32px));margin-top:70px;padding:16px;border:1px solid var(--line2);border-radius:var(--r);background:var(--paper);box-shadow:var(--shadow)}
+.s-map-sidebar-head{display:flex;align-items:center;gap:8px;flex:none;padding-bottom:8px;border-bottom:1px solid var(--line2)}
+.s-main .s-map-sidebar-head h2{margin:0;font-size:19px}
+.s-map-add{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:auto;padding:3px;border:0;border-radius:var(--r-ctl);background:transparent;color:var(--accent);cursor:pointer;flex:none}
+.s-map-add:hover{opacity:.7}
+.s-map-add:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.s-map-add svg{width:18px;height:18px}
+.s-map-installed{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.s-map-country-head{display:flex;align-items:center;gap:5px;min-height:36px}
+.s-map-country-toggle,.s-map-country-name{display:flex;align-items:baseline;gap:6px;min-width:0;flex:1;padding:6px 0;color:var(--ink);font:650 16px/1.25 var(--font);text-align:left}
+.s-map-country-toggle>span,.s-map-country-name>span{min-width:0;overflow-wrap:anywhere}
+.s-map-country-toggle{border:0;background:none;cursor:pointer}
+.s-map-country-toggle:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.s-map-country-size{color:var(--ink2);font-size:12px;white-space:nowrap}
+.s-map-country-chevron{width:7px;height:7px;margin:0 3px 0 2px;flex:none;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+.s-map-country-toggle .s-map-country-chevron{margin-left:auto;align-self:center}
+.s-map-country-chevron.expanded{transform:translateY(2px) rotate(225deg)}
+.s-map-country-areas{padding-left:13px}
+.s-map-installed-item{padding:2px 0 7px}
+.s-map-item-title{display:flex;align-items:center;gap:6px}
+.s-map-item-meta{display:flex;align-items:baseline;gap:6px;min-width:0}
+.s-map-item-meta small{color:var(--ink2);font-size:12px;line-height:1.25;white-space:nowrap}
+.s-map-item-name{font-size:13px;font-weight:400;line-height:1.25;overflow-wrap:anywhere}
+.s-icon-danger{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:auto;padding:4px;border:0;border-radius:6px;background:transparent;color:var(--stop);cursor:pointer}
+.s-map-country-head .s-icon-danger{margin-left:0}
+.s-icon-danger:hover{color:color-mix(in srgb,var(--stop) 75%,var(--ink))}
+.s-icon-danger:focus-visible{outline:3px solid var(--focus)}
+.s-icon-danger svg{width:19px;height:19px}
+.s-map-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 32px));height:min(730px,calc(100dvh - 32px));overflow:auto;overscroll-behavior:contain;padding:24px;border:1px solid var(--line2);border-radius:16px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px #0004}
+.s-map-dialog::backdrop,.s-map-delete-dialog::backdrop{background:#0008;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.s-map-delete-dialog{box-sizing:border-box;width:min(430px,calc(100vw - 32px));padding:24px;border:1px solid var(--line2);border-radius:16px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px #0004}
+.s-main .s-map-delete-dialog h2{margin:0;font-size:21px}
+.s-map-delete-dialog p{margin:12px 0 0;font-size:15px;color:var(--ink2)}
+.s-map-delete-dialog .s-map-delete-error{color:var(--stop)}
+.s-map-delete-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
+.s-map-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.s-main .s-map-dialog-head h2{margin:0;font-size:26px}
+.s-icon-close{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:8px;background:var(--paper);color:var(--ink);cursor:pointer}
+.s-icon-close svg{width:20px;height:20px}
+.s-icon-close:focus-visible{outline:3px solid var(--focus)}
+.s-map-dialog .s-map-panel{margin-top:18px}
+.s-map-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.s-map-fields-stacked{display:block}
+.s-map-field{min-width:0}
+.s-map-dialog .s-maplabel{margin-top:14px;font-size:15px}
+.s-map-detail{min-height:96px;margin-top:16px;padding:12px;border:1px solid var(--line2);border-radius:var(--r2);background:var(--paper)}
+.s-map-detail .s-hint{margin:0}
+.s-map-detail .s-map-download{margin-top:12px}
+.s-map-cart{margin-top:16px}
+.s-map-cart:empty{display:none}
+.s-map-cart-head,.s-map-cart-item-head{display:flex;align-items:center;gap:8px}
+.s-map-cart-head{justify-content:space-between;margin-bottom:8px}
+.s-map-cart-head h3{margin:0;font-size:18px}
+.s-map-cart-head span,.s-map-cart-item-head small,.s-map-cart-item-head>span{color:var(--ink2);font-size:13px}
+.s-map-cart-item{padding:9px 0;border-top:1px solid var(--line2)}
+.s-map-cart-item-head b{font-size:15px;font-weight:550}
+.s-map-cart-item-head>span,.s-map-cart-item-head .s-icon-close{margin-left:auto}
+.s-map-cart-item-head .s-icon-close{width:26px;height:26px}
+.s-map-cart-bar{height:7px;margin-top:8px;overflow:hidden;border-radius:var(--r-ctl);background:var(--sunk)}
+.s-map-cart-bar i{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+.s-map-cart-action{min-height:56px}
+.s-map-cart-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
+.s-map-cart #mapDownloadAll,.s-map-cart #mapRetry{margin-top:12px}
+.s-map-success{margin:12px 0 0;color:var(--accent);font-weight:600}
+@media (max-width:640px){.s-map-fields{grid-template-columns:1fr}.s-map-dialog{padding:18px}.s-map-dialog .s-picker-list{max-height:190px}}
+@media (max-width:800px){.s-map-layout{grid-template-columns:minmax(0,1fr)}.s-map-sidebar{position:static;max-height:calc(100dvh - 32px);margin-top:0}}
 .s-language{max-width:760px;margin:12px auto 0;padding:0 16px;color:var(--ink2);font-size:14px}
 .s-language-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 .s-language select{max-width:100%;font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:var(--r-ctl);padding:7px}
@@ -158,7 +228,7 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-note.ok{background:var(--accent-soft);border-color:transparent}
 .s-found.off{opacity:.65;background:var(--sunk)}
 
-/* state map: one native list, big enough to read and to hit */
+/* Regional map choices: the summary toggles closed when clicked again. */
 .s-opt-note{font-weight:500;color:var(--ink2);font-size:16px}
 .s-select{display:block;width:100%;max-width:520px;min-height:50px;padding:10px 14px;font:500 17px/1.3 var(--font);color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r-ctl);box-shadow:var(--shadow)}
 .s-select:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
@@ -168,10 +238,25 @@ html.plat-mac.in-app .s-top{padding-top:30px}   /* below the traffic lights of a
 .s-srv-in{padding:0 16px 16px}
 .s-srv-in .s-maplabel:first-child{margin-top:0}
 
-/* The state map is a required setup choice, ahead of library size. */
+/* The regional map is a required setup choice, ahead of library size. */
 .s-map-panel{margin-top:22px;padding:20px;border:2px solid var(--accent);border-radius:var(--r);background:var(--accent-soft)}
 .s-main .s-map-panel h2{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:24px}
 .s-map-panel h2 svg{width:28px;height:28px;color:var(--accent)}
 .s-maplabel{display:block;margin:16px 0 8px;font-size:17px;font-weight:650}
-.s-map-panel .s-select{max-width:none;min-height:56px;font-size:18px}
+.s-picker{position:relative;width:100%;color:var(--ink);font:500 17px/1.3 var(--font)}
+.s-picker>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:8px 20px 8px 14px;list-style:none;cursor:pointer;background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r-ctl);box-shadow:var(--shadow)}
+.s-picker-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s-picker>summary::-webkit-details-marker{display:none}
+.s-picker>summary::after{content:"";width:8px;height:8px;flex:none;margin-right:4px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.s-picker[open]>summary::after{transform:translateY(2px) rotate(225deg)}
+.s-picker>summary:focus-visible,.s-picker-list button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.s-picker.disabled{opacity:.55}
+.s-picker-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:5;max-height:260px;overflow:auto;padding:5px;background:var(--paper);border:1.5px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.s-map-dialog .s-picker-list[popover]{position:fixed;inset:auto;margin:0;box-sizing:border-box}
+.s-picker-list button{display:block;width:100%;padding:9px 10px;text-align:left;color:var(--ink);font:inherit;background:transparent;border:0;border-radius:8px;cursor:pointer}
+.s-picker-list button:hover,.s-picker-list button[aria-current="true"]{background:var(--accent-soft)}
+.s-picker-list button:disabled{opacity:.5;cursor:not-allowed}
+.s-picker-list small{color:var(--ink2)}
 .s-map-panel .s-hint{margin-top:10px}
+.s-map-download{width:100%;margin-top:18px}
+.s-map-download:disabled{opacity:1;background:var(--sunk);border-color:var(--line2);color:var(--ink2);box-shadow:none}

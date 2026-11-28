@@ -4,7 +4,7 @@ Run:  python3 app/tests/setup_stub.py [port]      (default 8925)
 Then open http://127.0.0.1:8925/__stub/<scenario> to reset to a scenario, which redirects to the setup page.
 Scenarios (see SCENARIOS): mac, mac-small (AI does not fit), win, found, low-disk, paused (a restart picked up a job),
 network, server, checksum, unpack, activate (each fails once at that step; Retry then goes through), busy (the server
-answers 503 for 2 minutes, then the download goes on), manage, manage-ai, upgraded,
+answers 503 for 2 minutes, then the download goes on), manage, manage-all, manage-ai, upgraded,
 manage-notify (app update notices already on), updates-fail (saving the preference fails).
 The page itself never knows it talks to a stub.
 """
@@ -40,13 +40,22 @@ MANIFEST = {
          'size': 16947541728, 'memory_bytes': 19027384256, 'available': True},
     ],
     'maps': [   # as docs/SETUP-API.md "State maps"; sizes are made up until map-packages lists the real ones
-        {'id': st, 'title': t, 'kind': 'state', 'installed_bytes': inst, 'available': ok,
+        {'id': region, 'title': title, 'kind': kind, 'installed_bytes': inst, 'available': ok,
          'includes': 'Local streets, buildings, terrain and crops, plus water, help and resource points',
-         'files': [{'name': f'Lastbook-Map-{st}.zip', 'size': dl, 'kind': 'zip'}]}
-        for st, t, dl, inst, ok in [('AZ', 'Arizona', 1600000000, 3900000000, True), ('CA', 'California', 2100000000, 5000000000, True),
-                                    ('NV', 'Nevada', 900000000, 2200000000, True), ('OR', 'Oregon', 1100000000, 2700000000, True),
-                                    ('RI', 'Rhode Island', 120000000, 300000000, True), ('TX', 'Texas', 0, 0, False)]
+         'files': [{'name': f'Lastbook-Map-{region}.zip', 'size': dl, 'kind': 'zip'}]}
+        for region, title, dl, inst, ok, kind in
+        [('AL', 'Alabama', 150000000, 400000000, True, 'state'), ('FL', 'Florida', 600000000, 1600000000, True, 'state'),
+         ('AZ', 'Arizona', 1600000000, 3900000000, True, 'state'), ('CA', 'California', 2100000000, 5000000000, True, 'state'),
+         ('NV', 'Nevada', 900000000, 2200000000, True, 'state'), ('OR', 'Oregon', 1100000000, 2700000000, True, 'state'),
+         ('RI', 'Rhode Island', 120000000, 300000000, True, 'state'), ('TX', 'Texas', 0, 0, False, 'state'),
+         ('eu-de', 'Germany', 1900000000, 4600000000, True, 'country'), ('eu-pl', 'Poland', 1700000000, 4100000000, True, 'country'),
+         ('DE-BE', 'Berlin', 220000000, 550000000, True, 'state'), ('ES-GA', 'Galicia', 310000000, 720000000, True, 'region')]
     ],
+    'address_indexes': [{'id': region, 'title': title, 'available': True, 'installed_bytes': installed,
+                         'files': [{'name': f'Lastbook-Addresses-{region}.zip', 'size': download, 'kind': 'zip'}]}
+                        for region, title, download, installed in [('AL', 'Alabama', 120000000, 380000000),
+                                                                   ('CA', 'California', 526000000, 880000000),
+                                                                   ('FL', 'Florida', 480000000, 1580000000)]],
 }
 
 def _hostile():
@@ -99,8 +108,20 @@ SCENARIOS = {
     'activate': dict(hardware=hw(), recommend={'pack': 'small', 'ai': False, 'why': 'Small fits.'}, fault=('activating', 'activate')),
     'manage': dict(mode='manage', hardware=hw(), current={'folder': MAC, 'pack': 'small', 'model': None, 'map': 'base'},
                    recommend={'pack': 'medium', 'ai': True, 'why': 'There is room for Medium and memory for the local AI.'}),
+    'manage-all': dict(mode='manage', hardware=hw(), current={'folder': MAC, 'pack': 'all', 'model': None, 'map': 'us',
+                       'installed_maps': [{'id': 'us', 'title': 'United States', 'bytes': 80500000000, 'included': True}],
+                       'address_indexes': []},
+                       recommend={'pack': 'all', 'ai': False, 'why': 'All is installed.'}),
+    'manage-all-addresses': dict(mode='manage', hardware=hw(), current={'folder': MAC, 'pack': 'all', 'model': None, 'map': 'us',
+                       'installed_maps': [{'id': 'us', 'title': 'United States', 'bytes': 80500000000, 'included': True}],
+                       'address_indexes': ['AL', 'FL'],
+                       'installed_address_indexes': [{'id': 'AL', 'title': 'Alabama', 'bytes': 379985920},
+                                                     {'id': 'FL', 'title': 'Florida', 'bytes': 1579556864}]},
+                       recommend={'pack': 'all', 'ai': False, 'why': 'All is installed.'}),
     'manage-ai': dict(mode='manage', hardware=hw('windows', ram=32, free=300, gpus=[{'name': 'NVIDIA GeForce RTX 4070', 'vram_bytes': 12 * GiB}]),
-                      current={'folder': WIN, 'pack': 'medium', 'model': 'gemma-4-26b-a4b', 'map': 'CA'},
+                      current={'folder': WIN, 'pack': 'medium', 'model': 'gemma-4-26b-a4b', 'map': 'CA',
+                               'installed_maps': [{'id': 'CA', 'title': 'California', 'bytes': 5000000000, 'included': True},
+                                                  {'id': 'eu-de', 'title': 'Germany', 'bytes': 4600000000, 'included': False, 'update_available': True}]},
                       recommend={'pack': 'medium', 'ai': True, 'why': 'You have Medium and the local AI.'}),
     # every string the engine or a fetched manifest hands the page carries markup; nothing may come out live (security audit C)
     'hostile': dict(hardware={**hw(gpus=[{'name': X, 'vram_bytes': 8 * GiB}], why=X), 'unified_memory': False},
@@ -152,7 +173,7 @@ class Stub:
                 'current': self.current, 'found': self.found, 'recommend': {**self.s['recommend'], 'folder': self.folder.rsplit('\\' if '\\' in self.folder else '/', 1)[0]},
                 'job': self.public()}
 
-    def _make(self, pack, ai, use=None, map_=None):
+    def _make(self, pack, ai, use=None, map_=None, address_id=None):
         items = []
         cur = self.current or {}
         if pack and pack != cur.get('pack'):
@@ -163,6 +184,10 @@ class Stub:
             m = next(m for m in self.M['maps'] if m['id'] == map_)
             items.append({'id': map_, 'kind': 'map', 'title': m['title'], 'state': 'waiting', 'bytes_done': 0,
                           'bytes_total': sum(f['size'] for f in m['files']), 'rate_bps': 0, 'eta_s': None, 'error': None})
+        if address_id and address_id not in cur.get('address_indexes', []):
+            a = next(a for a in self.M['address_indexes'] if a['id'] == address_id)
+            items.append({'id': address_id, 'kind': 'addresses', 'title': a['title'] + ' address search', 'state': 'waiting',
+                          'bytes_done': 0, 'bytes_total': sum(f['size'] for f in a['files']), 'rate_bps': 0, 'eta_s': None, 'error': None})
         if ai and not cur.get('model'):
             m = self.M['models'][0]
             items.append({'id': m['id'], 'kind': 'model', 'title': m['title'], 'state': 'waiting', 'bytes_done': 0,
@@ -217,7 +242,7 @@ class Stub:
             return self.public()
         if need > self.free():
             return {'error': 'There is not enough room on this disk.', 'code': 'no_space', 'need_bytes': need, 'free_bytes': self.free()}
-        self._make(pack, ai, map_=body.get('map'))
+        self._make(pack, ai, map_=body.get('map'), address_id=body.get('address_id'))
         if not self.job['items']:
             return {'error': 'Nothing to add: this is what you have.', 'code': 'nothing'}
         return self.public()
@@ -303,14 +328,17 @@ class Stub:
         if not j:
             return {'error': 'No download is running.'}
         self.tick()
-        if a == 'pause' and j['state'] == 'downloading':
+        if a == 'pause' and j['state'] in ('waiting', 'downloading', 'verifying', 'unpacking', 'activating'):
+            for it in j['items']:
+                if it['state'] not in ('waiting', 'done'):
+                    it['paused_from'] = it['state']
             self._set_all('paused')
             for it in j['items']:
                 it['rate_bps'], it['eta_s'] = 0, None
         elif a == 'resume' and j['state'] == 'paused':
             for it in j['items']:
                 if it['state'] == 'paused':
-                    it['state'] = 'waiting'
+                    it['state'] = it.get('paused_from') if it.get('paused_from') in ('unpacking', 'activating') else 'waiting'
                     if it.get('source') == 'found':
                         it['bytes_done'] = it['bytes_total']
                     it.pop('paused_from', None)
@@ -426,11 +454,37 @@ class H(BaseHTTPRequestHandler):
             if STUB.current:
                 STUB.current['model'] = None
             return self.send(200, {'ok': True, 'freed_bytes': STUB.M['models'][0]['size']})
+        if a == 'activate-map':
+            chosen = next((m for m in (STUB.current or {}).get('installed_maps', []) if m['id'] == body.get('map')), None)
+            if not chosen:
+                return self.send(400, {'error': 'That map is not installed.'})
+            STUB.current['map'] = chosen['id']
+            return self.send(200, {'ok': True, 'map': chosen['id']})
+        if a == 'remove-map':
+            maps = (STUB.current or {}).get('installed_maps', [])
+            chosen = next((m for m in maps if m['id'] == body.get('map') and not m['included']), None)
+            if not chosen:
+                return self.send(400, {'error': 'That map cannot be removed.'})
+            maps.remove(chosen)
+            if STUB.current['map'] == chosen['id']:
+                STUB.current['map'] = maps[0]['id'] if maps else 'base'
+            return self.send(200, {'ok': True, 'map': STUB.current['map']})
+        if a == 'remove-address-index':
+            ids = (STUB.current or {}).get('address_indexes', [])
+            name = body.get('address_id')
+            if name not in ids:
+                return self.send(400, {'error': 'That address search is not installed.'})
+            ids.remove(name)
+            STUB.current['installed_address_indexes'] = [x for x in STUB.current.get('installed_address_indexes', []) if x['id'] != name]
+            return self.send(200, {'ok': True})
         if a == 'delete-old':
             if STUB.current:
                 STUB.current['old'] = [o for o in STUB.current.get('old', []) if o != body.get('path')]
             return self.send(200, {'ok': True})
-        if a == 'finish':
+        if a in ('finish', 'finish-map'):
+            if a == 'finish-map' and (not STUB.job or STUB.job['state'] != 'done' or
+                                      not any(it['kind'] in ('map', 'addresses') for it in STUB.job['items'])):
+                return self.send(400, {'error': 'There is no completed map download to install.'})
             if STUB.job and STUB.job['state'] == 'done' and STUB.job.get('repair'):
                 STUB.job = None              # a repair leaves the library what it was
             elif STUB.job and STUB.job['state'] == 'done':
@@ -444,6 +498,15 @@ class H(BaseHTTPRequestHandler):
                         cur['model'] = it['id']
                     if it['kind'] == 'map':
                         cur['map'] = it['id']
+                        installed = cur.setdefault('installed_maps', [])
+                        installed[:] = [m for m in installed if m['id'] != it['id']]
+                        detail = next(m for m in STUB.M['maps'] if m['id'] == it['id'])
+                        installed.append({'id': it['id'], 'title': it['title'], 'bytes': detail['installed_bytes'], 'included': False})
+                    if it['kind'] == 'addresses':
+                        address = next(a for a in STUB.M['address_indexes'] if a['id'] == it['id'])
+                        if it['id'] not in cur.setdefault('address_indexes', []):
+                            cur['address_indexes'].append(it['id'])
+                        cur.setdefault('installed_address_indexes', []).append({'id': it['id'], 'title': address['title'], 'bytes': address['installed_bytes']})
                 STUB.current, STUB.job = cur, None
             return self.send(200, {'ok': True})
         return self.send(404, {'error': 'Not here.'})

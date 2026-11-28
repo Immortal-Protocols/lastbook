@@ -37,13 +37,12 @@ import engine.paths as lastbook_paths  # noqa: E402  (data folder and program fo
 from engine.paths import ro_uri  # noqa: E402
 from engine import saved_pages, address_search, encyclopedias  # noqa: E402
 from engine.setup import api as setup_api  # noqa: E402  (the one module that may download: only when the person asks)
+from engine.setup import install as setup_install  # noqa: E402  (map units: namespaced multi-map storage)
 HERE = lastbook_paths.DATA  # holds derived/
 APP = lastbook_paths.APP  # holds web/ and content/
 LIB = lastbook_paths.LIB
 WEB = APP / 'web'
 CACHE = HERE / 'derived' / 'cache'
-MAPDB = HERE / 'derived' / 'geo' / 'map.sqlite'
-PLACEDB = HERE / 'derived' / 'geo' / 'places.sqlite'
 os.environ.setdefault('SURVIVAL_DISABLE_INDEX_WATCH', '1')
 import engine.library as library  # noqa: E402  (provides Handler, search DB path, ZIM reader)
 import retrieval, assistant  # noqa: E402
@@ -705,26 +704,81 @@ def transcript(video_id):
 _tls = threading.local()
 
 
-def mapdb():
-    if not MAPDB.exists():
+def geo_dir():
+    """The active map's derived/geo folder (the library's own for a legacy flat library)."""
+    return setup_install.map_unit(lastbook_paths.DATA, None) / 'derived' / 'geo'
+
+
+def geo_dir_for(name):
+    """A specific map's derived/geo folder (the active map's when name is None)."""
+    return setup_install.map_unit(lastbook_paths.DATA, name) / 'derived' / 'geo'
+
+
+def atlas_path():
+    return setup_install.map_unit(lastbook_paths.DATA) / 'library-data' / 'geography' / 'resources' / 'atlas.sqlite'
+
+
+def maps_public():
+    """The installed maps for the picker: each one's name, label and what it holds."""
+    reg = setup_install._registry(lastbook_paths.DATA)
+    if reg is None:
+        name = setup_install.active_map(lastbook_paths.DATA)
+        names = [] if name == 'base' else [name]
+    else:
+        names = list(reg['maps'])
+    out = []
+    for name in names:
+        g = geo_dir_for(name)
+        label = (reg or {}).get('maps', {}).get(name, {}).get('label') if reg else None
+        out.append({'name': name, 'label': label or name,
+                    'has_detail': (g / 'national.sqlite').exists(),
+                    'has_aerial': any((g / n).exists() for n in ('aerial.sqlite', 'aerial-detail.sqlite', 'aerial-coast.sqlite'))})
+    return out
+
+
+def _map_token():
+    """Changes when the active map or the registry changes, so the map's open database handles can be re-opened."""
+    try:
+        m = (lastbook_paths.DATA / setup_install.REGISTRY).stat().st_mtime
+    except OSError:
+        m = 0.0
+    return (setup_install.active_map(lastbook_paths.DATA), m)
+
+
+def _map_db(attr, filename, query_only=False):
+    """A read-only handle to the active map's `filename` (None if it is absent), cached per thread and
+    re-opened when the active map changes."""
+    path = geo_dir() / filename
+    if not path.exists():
+        if hasattr(_tls, attr):
+            delattr(_tls, attr)
         return None
-    if not hasattr(_tls, 'map'):
-        _tls.map = sqlite3.connect(ro_uri(MAPDB), uri=True, check_same_thread=False)
-    return _tls.map
+    tok = _map_token()
+    if getattr(_tls, attr, None) is None or getattr(_tls, attr + '_tok', None) != tok:
+        old = getattr(_tls, attr, None)
+        if old is not None:
+            try:
+                old.close()
+            except sqlite3.Error:
+                pass
+        db = sqlite3.connect(ro_uri(path), uri=True, check_same_thread=False)
+        if query_only:
+            db.execute('PRAGMA query_only=ON')
+        setattr(_tls, attr, db)
+        setattr(_tls, attr + '_tok', tok)
+    return getattr(_tls, attr)
+
+
+def mapdb():
+    return _map_db('map', 'map.sqlite')
 
 
 def national_mapdb():
-    path = HERE / 'derived/geo/national.sqlite'
-    if not path.exists():
-        return None
-    if not hasattr(_tls, 'national_map'):
-        _tls.national_map = sqlite3.connect(ro_uri(path), uri=True, check_same_thread=False)
-        _tls.national_map.execute('PRAGMA query_only=ON')
-    return _tls.national_map
+    return _map_db('national_map', 'national.sqlite', query_only=True)
 
 
 def national_status():
-    path = HERE / 'derived/geo/national-status.json'
+    path = geo_dir() / 'national-status.json'
     try:
         return json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -732,13 +786,14 @@ def national_status():
 
 
 SOCAL_CELL = 0.05
-_socal = {'cells': None}
+_socal = {'cells': None, 'tok': None}
 
 
 def socal_cells():
     """0.05° cells holding detailed SoCal features; national rows inside them are duplicates and are skipped."""
-    if _socal['cells'] is None:
-        cache = HERE / 'derived/geo/socal-cells.json'
+    tok = _map_token()
+    if _socal['cells'] is None or _socal['tok'] != tok:
+        cache = geo_dir() / 'socal-cells.json'
         try:
             _socal['cells'] = set(json.loads(cache.read_text(encoding='utf-8')))
         except (OSError, ValueError):
@@ -746,8 +801,12 @@ def socal_cells():
             cells = set() if db is None else {r[0] for r in db.execute(
                 'SELECT DISTINCT CAST((minx+180)/? AS INT)*100000+CAST((miny+90)/? AS INT) FROM feat_idx WHERE maxx-minx<?',
                 (SOCAL_CELL, SOCAL_CELL, SOCAL_CELL))}
-            cache.write_text(json.dumps(sorted(cells)))
+            try:
+                cache.write_text(json.dumps(sorted(cells)))
+            except OSError:
+                pass
             _socal['cells'] = cells
+        _socal['tok'] = tok
     return _socal['cells']
 
 
@@ -808,22 +867,13 @@ def clip_ring(pts, x0, y0, x1, y1):
 EXT = 512
 
 
-TERRAINDB = HERE / 'derived/geo/terrain.sqlite'
-
-
-TERRAIN_DETAIL = HERE / 'derived/geo/terrain-detail.sqlite'
-
-
 def terrain_tile(z, x, y):
     """Elevation tile (terrain-RGB PNG) or None for open ocean / outside the data: zoom 4-12 nationwide (30 m),
     zoom 13-17 from 1 m lidar around chosen places (tools/build_terrain_detail.py)."""
-    path, attr = (TERRAIN_DETAIL, 'terrain_detail') if z >= 13 else (TERRAINDB, 'terrain')
-    if not path.exists():
-        return None
-    db = getattr(_tls, attr, None)
+    detail = z >= 13
+    db = _map_db('terrain_detail' if detail else 'terrain', 'terrain-detail.sqlite' if detail else 'terrain.sqlite')
     if db is None:
-        db = sqlite3.connect(ro_uri(path), uri=True, check_same_thread=False)
-        setattr(_tls, attr, db)
+        return None
     try:
         row = db.execute('SELECT png FROM tile WHERE z=? AND x=? AND y=?', (z, x, y)).fetchone()
     except sqlite3.OperationalError:  # still being created
@@ -833,11 +883,9 @@ def terrain_tile(z, x, y):
 
 def crop_tile(z, x, y):
     """Orchard / vineyard colour overlay (RGBA PNG) or None."""
-    if not CROPDB.exists():
-        return None
-    db = getattr(_tls, 'crops', None)
+    db = _map_db('crops', 'crops.sqlite')
     if db is None:
-        db = _tls.crops = sqlite3.connect(ro_uri(CROPDB), uri=True, check_same_thread=False)
+        return None
     try:
         row = db.execute('SELECT png FROM tile WHERE z=? AND x=? AND y=?', (z, x, y)).fetchone()
     except sqlite3.OperationalError:  # rebuilding
@@ -846,10 +894,13 @@ def crop_tile(z, x, y):
 
 
 def data_version():
-    """Changes whenever map data changes: every 20 s while the national map builds, and when the water inventory is written."""
+    """Changes whenever map data changes: the active map's identity (so switching maps busts the tile and
+    bucket caches), every 20 s while the national map builds, and when the map's databases are rewritten."""
     status = national_status()
-    v = f"n{int(time.time() // 20)}" if status.get('state') == 'building' else f"n{status.get('features', 0)}"
-    for f in (WATERDB, WATERDB.with_name(WATERDB.name + '-wal'), CROPDB, TERRAINDB, BLDGDB, BLDGDB.with_name(BLDGDB.name + '-wal')):
+    v = f"m{setup_install.active_map(lastbook_paths.DATA)}"
+    v += f"n{int(time.time() // 20)}" if status.get('state') == 'building' else f"n{status.get('features', 0)}"
+    g = geo_dir()
+    for f in (g / 'water.sqlite', g / 'water.sqlite-wal', g / 'crops.sqlite', g / 'terrain.sqlite', g / 'buildings.sqlite', g / 'buildings.sqlite-wal'):
         try:
             v += f".{int(f.stat().st_mtime) // 60}"
         except OSError:
@@ -862,7 +913,7 @@ def map_tile(z, x, y):
     if z > 9 or national_status().get('state') != 'complete':
         return _map_tile(z, x, y, version)
     # zoomed-out tiles cover huge areas and are slow to assemble: keep them on disk once the data has settled
-    path = HERE / f'derived/geo/tilecache/{version}/{z}/{x}/{y}.json'
+    path = geo_dir() / f'tilecache/{version}/{z}/{x}/{y}.json'
     try:
         return path.read_bytes()
     except OSError:
@@ -905,9 +956,8 @@ def _map_tile(z, x, y, version):
         rows += national.execute('SELECT f.layer,f.cls,f.name,f.geom FROM feat_idx i JOIN feat f ON f.id=i.id '
                       'WHERE i.maxx>=? AND i.minx<=? AND i.maxy>=? AND i.miny<=? AND i.minz<=? ORDER BY f.id',
                       (lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad, z)).fetchall()
-    if WATERDB.exists():  # NHD lakes, reservoirs, ponds and marsh outlines
-        wdb = getattr(_tls, 'water', None) or sqlite3.connect(ro_uri(WATERDB), uri=True, check_same_thread=False)
-        _tls.water = wdb
+    wdb = _map_db('water', 'water.sqlite')
+    if wdb is not None:  # NHD lakes, reservoirs, ponds and marsh outlines
         rows += wdb.execute('SELECT f.layer,f.cls,f.name,f.geom FROM feat_idx i JOIN feat f ON f.id=i.id '
                             'WHERE i.maxx>=? AND i.minx<=? AND i.maxy>=? AND i.miny<=? AND i.minz<=?',
                             (lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad, z)).fetchall()
@@ -944,16 +994,13 @@ def _map_tile(z, x, y, version):
     return json.dumps({'z': z, 'layers': layers}, separators=(',', ':')).encode()
 
 
-BLDGDB = HERE / 'derived/geo/buildings.sqlite'
-
-
 @functools.lru_cache(maxsize=192)
 def ms_bucket(x14, y14, version):
     """Microsoft footprints filed under zoom-14 tile x14/y14: [(minX, maxX, minY, maxY, height_dm, pts)].
     version (data_version()) is only part of the cache key, so a rebuilt database is never served stale."""
-    db = getattr(_tls, 'bldg', None)
+    db = _map_db('bldg', 'buildings.sqlite')
     if db is None:
-        db = _tls.bldg = sqlite3.connect(ro_uri(BLDGDB), uri=True, check_same_thread=False)
+        return []
     out = []
     for (data,) in db.execute('SELECT data FROM bldg WHERE x=? AND y=?', (x14, y14)):
         a = array('i'); a.frombytes(zlib.decompress(data)); i = 0
@@ -967,24 +1014,14 @@ def ms_bucket(x14, y14, version):
     return out
 
 
-AERIALDB = HERE / 'derived/geo/aerial.sqlite'
-
-
-AERIAL_DETAIL = HERE / 'derived/geo/aerial-detail.sqlite'
-AERIAL_COAST = HERE / 'derived/geo/aerial-coast.sqlite'
-
-
 def aerial_tile(z, x, y):
     """JPEG/PNG bytes of the aerial photo tile, or None: zoom 0-16 from tools/fetch_aerial.py (national),
     zoom 17-19 from tools/build_aerial_coast.py (25 cm NOAA coastal photos) where it has them, otherwise
     tools/fetch_aerial_detail.py (full detail around chosen places)."""
-    for path, attr in ((AERIAL_COAST, 'aerial_coast'), (AERIAL_DETAIL, 'aerial_detail')) if z >= 17 else ((AERIALDB, 'aerial'),):
-        if not path.exists():
-            continue
-        db = getattr(_tls, attr, None)
+    for filename, attr in (('aerial-coast.sqlite', 'aerial_coast'), ('aerial-detail.sqlite', 'aerial_detail')) if z >= 17 else (('aerial.sqlite', 'aerial'),):
+        db = _map_db(attr, filename)
         if db is None:
-            db = sqlite3.connect(ro_uri(path), uri=True, check_same_thread=False)
-            setattr(_tls, attr, db)
+            continue
         try:
             r = db.execute('SELECT jpg FROM tile WHERE z=? AND x=? AND y=?', (z, x, y)).fetchone()
         except sqlite3.Error:
@@ -996,7 +1033,7 @@ def aerial_tile(z, x, y):
 
 def aerial_coast_building():
     """Is tools/build_aerial_coast.py writing aerial-coast.sqlite right now (no 'built' stamp yet)?"""
-    db = getattr(_tls, 'aerial_coast', None) if AERIAL_COAST.exists() else None
+    db = _map_db('aerial_coast', 'aerial-coast.sqlite')
     try:
         return db is not None and db.execute("SELECT 1 FROM meta WHERE key='built'").fetchone() is None
     except sqlite3.Error:
@@ -1007,11 +1044,9 @@ def bldg3d(x14, y14):
     """Every footprint (with height) centred in zoom-14 tile x14/y14, for the 3D view, as little-endian int32:
     [number of Microsoft ints] + Microsoft records [npts, height_dm, X0, Y0, dX1, dY1, ...] (SoCal included)
     + OpenStreetMap records [npts, height_dm, min_height_dm, is_part, X0, Y0, ...] (tools/build_osm_heights.py)."""
-    if not BLDGDB.exists():
-        return b''
-    db = getattr(_tls, 'bldg', None)
+    db = _map_db('bldg', 'buildings.sqlite')
     if db is None:
-        db = _tls.bldg = sqlite3.connect(ro_uri(BLDGDB), uri=True, check_same_thread=False)
+        return b''
     def rows(table):
         try:
             return [zlib.decompress(d) for (d,) in db.execute(f'SELECT data FROM {table} WHERE x=? AND y=?', (x14, y14))]
@@ -1023,7 +1058,7 @@ def bldg3d(x14, y14):
 
 def ms_buildings(layers, z, x, y, tol, version):
     """Add national building footprints (outside the detailed SoCal map) to a z>=15 tile."""
-    if not BLDGDB.exists():
+    if not (geo_dir() / 'buildings.sqlite').exists():
         return
     span = 1 << (30 - z); pad = span // 25
     X0, Y0 = x * span - pad, y * span - pad
@@ -1074,20 +1109,19 @@ HELP = {'hospital': 'Hospital', 'clinic': 'Clinic', 'doctors': 'Doctor', 'pharma
 
 CROP_KINDS = {'orchard', 'vineyard', 'berries', 'perennial_veg'}
 RESOURCE_KINDS = {'mineral', 'oil_gas_well', 'boat_launch', 'fish_stocking', 'dam', 'reservoir', 'lake', 'pond'} | CROP_KINDS
-WATERDB = HERE / 'derived/geo/water.sqlite'
-CROPDB = HERE / 'derived/geo/crops.sqlite'
 
 
 def resource_dbs(kinds):
     """Point databases holding these resource kinds: the library's resource atlas and the derived water inventory."""
     water = {'dam', 'reservoir', 'lake', 'pond'}
+    g = geo_dir()
     out = []
-    if set(kinds) - water - CROP_KINDS and (LIB / 'geography/resources/atlas.sqlite').exists():
-        out.append(LIB / 'geography/resources/atlas.sqlite')
-    if set(kinds) & water and WATERDB.exists():
-        out.append(WATERDB)
-    if set(kinds) & CROP_KINDS and CROPDB.exists():
-        out.append(CROPDB)
+    if set(kinds) - water - CROP_KINDS and atlas_path().exists():
+        out.append(atlas_path())
+    if set(kinds) & water and (g / 'water.sqlite').exists():
+        out.append(g / 'water.sqlite')
+    if set(kinds) & CROP_KINDS and (g / 'crops.sqlite').exists():
+        out.append(g / 'crops.sqlite')
     return out
 
 
@@ -1113,7 +1147,7 @@ def resource_near(lat, lon, cls, limit):
 
 
 def resource_view(west, south, east, north, zoom, kinds):
-    path = LIB / 'geography/resources/atlas.sqlite'
+    path = atlas_path()
     if not path.exists():
         return {'points': [], 'records': 0}
     kinds = [k for k in kinds if k in RESOURCE_KINDS]
@@ -1159,11 +1193,14 @@ def _resource_summary(cls, detail):
     return ' · '.join(out)
 
 
-@functools.lru_cache(maxsize=1)
 def socal_classes():
     """Service classes the detailed SoCal map has; for anything else (e.g. fuel) the national points are the only ones."""
-    db = mapdb()
-    return frozenset(r[0] for r in db.execute('SELECT DISTINCT cls FROM poi')) if db else frozenset()
+    tok = _map_token()
+    if getattr(_tls, 'socal_classes_tok', None) != tok:
+        db = mapdb()
+        _tls.socal_classes = frozenset(r[0] for r in db.execute('SELECT DISTINCT cls FROM poi')) if db else frozenset()
+        _tls.socal_classes_tok = tok
+    return _tls.socal_classes
 
 
 def _poi_sources(west, south, east, north):
@@ -1174,9 +1211,17 @@ def _poi_sources(west, south, east, north):
     nat = national_mapdb()
     if nat is not None:
         dedupe = east >= -121.4 and west <= -114.1 and north >= 32.5 and south <= 35.9 and mapdb() is not None
-        if dedupe and not getattr(_tls, 'socal_fn', False):
-            nat.create_function('socal', 3, lambda cls, lo, la: 1 if cls in socal_classes() and in_socal(lo, la) else 0, deterministic=True)
-            _tls.socal_fn = True
+        if dedupe:
+            classes, cells = socal_classes(), socal_cells()
+            cell_size = SOCAL_CELL
+
+            def is_duplicate(cls, lon, lat):
+                cell = int((lon + 180) / cell_size) * 100000 + int((lat + 90) / cell_size)
+                return int(cls in classes and cell in cells)
+
+            # Capture the active map once; SQLite calls this for every national point in view.
+            # Re-registering also covers a connection reopened after switching maps.
+            nat.create_function('socal', 3, is_duplicate, deterministic=True)
         out.append((nat, dedupe))
     return out
 
@@ -1228,7 +1273,7 @@ def _pins(west, south, east, north, cx, cy, kinds, version):
                    "COUNT(DISTINCT CASE WHEN r.kind='fish_stocking' THEN r.name ELSE r.source_id END) "
                    "FROM spatial s CROSS JOIN resource r ON r.id=s.id WHERE s.minx>=? AND s.maxx<=? AND s.miny>=? AND s.maxy<=? "
                    "AND r.kind IN (%s) GROUP BY r.kind, CAST((r.lon+180)/? AS INT), CAST((r.lat+90)/? AS INT)" % ','.join('?' * len(resources)))
-            g = 3 if path == CROPDB and cx > 1e-5 else 1  # farm blocks are dense: group them more coarsely (the colour overlay shows the detail)
+            g = 3 if path.name == 'crops.sqlite' and cx > 1e-5 else 1  # farm blocks are dense: group them more coarsely (the colour overlay shows the detail)
             for k, n, la, lo, x0, x1, y0, y1, name, detail, source, sites in rdb.execute(sql, (west, east, south, north, *resources, cx * g, cy * g)):
                 add(k, n, sites, la, lo, x0, x1, y0, y1, name or '', json.loads(detail or '{}') if sites == 1 else {}, source or '')
         finally:
@@ -1362,13 +1407,14 @@ def word_sets(words):
 
 def water_places(q, limit=10, near=None):
     """Named lakes, reservoirs and dams matching the query (generic words like 'lake' only help ranking)."""
-    if not WATERDB.exists():
+    path = geo_dir() / 'water.sqlite'
+    if not path.exists():
         return []
     words = [w.lower() for w in re.findall(r'\w+', q)]
     core = [w for w in words if w not in WATER_WORDS]
     if not core:
         return []
-    db = sqlite3.connect(ro_uri(WATERDB), uri=True)
+    db = sqlite3.connect(ro_uri(path), uri=True)
     try:
         try:
             rows, full = [], False
@@ -1406,23 +1452,25 @@ def water_places(q, limit=10, near=None):
 
 
 def places(q, limit=20, near=None):
+    address_geo = lastbook_paths.DATA / 'derived' / 'geo'
     if address_search.is_address_query(q):
-        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
-        if found or not address_search.is_german_postcode_query(q, HERE / 'derived' / 'geo'):
+        found = address_search.find_addresses(q, address_geo, limit=min(limit, 8), near=near)
+        if found or not address_search.is_german_postcode_query(q, address_geo):
             return found    # '10117 Berlin' is number-first too, but a place where a German index knows it
     elif address_search.is_german_address_query(q):
         # 'Unter den Linden 77' and 'Route 66' look alike: an address only when an installed index has that house
-        found = address_search.find_addresses(q, HERE / 'derived' / 'geo', limit=min(limit, 8), near=near)
+        found = address_search.find_addresses(q, address_geo, limit=min(limit, 8), near=near)
         if found:
             return found
-    if not PLACEDB.exists():
+    path = geo_dir() / 'places.sqlite'
+    if not path.exists():
         return []
     words = re.findall(r'\w+', q)
     if not words:
         return []
     rows = []
     full = False
-    db = sqlite3.connect(ro_uri(PLACEDB), uri=True)
+    db = sqlite3.connect(ro_uri(path), uri=True)
     try:  # closed here, so the file can be removed or replaced afterwards (Windows refuses while it is open)
         for ws in word_sets(words):
             if full and len(ws) < len(words):
@@ -1521,7 +1569,8 @@ SOURCES_PAGE = 'documents/lastbook/sources-and-permissions.html'   # every pack'
 
 
 def has_aerial():
-    return any(p.exists() for p in (AERIALDB, AERIAL_DETAIL, AERIAL_COAST))
+    g = geo_dir()
+    return any((g / n).exists() for n in ('aerial.sqlite', 'aerial-detail.sqlite', 'aerial-coast.sqlite'))
 
 
 def _distinct(path, sql):
@@ -1536,13 +1585,19 @@ def _distinct(path, sql):
         db.close()
 
 
-@functools.lru_cache(maxsize=1)
+_map_contents_cache = {'tok': None, 'value': None}
+
+
 def map_contents():
     """What a pack's map really holds, decided from its own files: which pin kinds, and the box they fall in. The rest of the map is the plain base."""
+    tok = _map_token()
+    if _map_contents_cache['tok'] == tok and _map_contents_cache['value'] is not None:
+        return _map_contents_cache['value']
     kinds, boxes = set(), []
-    for path in (MAPDB, HERE / 'derived/geo/national.sqlite'):
+    g = geo_dir()
+    for path in (g / 'map.sqlite', g / 'national.sqlite'):
         kinds |= set(_distinct(path, 'SELECT DISTINCT cls FROM poi'))
-        if Path(path).exists():
+        if path.exists():
             db = sqlite3.connect(ro_uri(path), uri=True)
             try:
                 box = db.execute('SELECT MIN(lon),MIN(lat),MAX(lon),MAX(lat) FROM poi').fetchone()
@@ -1552,18 +1607,22 @@ def map_contents():
                 pass
             finally:
                 db.close()
-    for path in (LIB / 'geography/resources/atlas.sqlite', WATERDB, CROPDB):
+    for path in (atlas_path(), g / 'water.sqlite', g / 'crops.sqlite'):
         kinds |= set(_distinct(path, 'SELECT DISTINCT kind FROM resource'))
-    contours = any(r for r in _distinct(TERRAINDB, 'SELECT 1 FROM tile WHERE z>=11 LIMIT 1'))
+    contours = any(r for r in _distinct(g / 'terrain.sqlite', 'SELECT 1 FROM tile WHERE z>=11 LIMIT 1'))
     bounds = None
     if boxes:
         bounds = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
         if bounds[2] - bounds[0] > 90:  # a map of everything: crossing the date line would show the whole world
             bounds = None
-    return {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    value = {'layers': sorted(kinds), 'bounds': bounds, 'detail': bool(boxes), 'contours': contours}
+    _map_contents_cache['tok'] = tok
+    _map_contents_cache['value'] = value
+    return value
 
 
 def map_info():
+    g = geo_dir()
     db = mapdb()
     meta = dict(db.execute('SELECT key,value FROM meta').fetchall()) if db else {}
     geo = []
@@ -1579,9 +1638,9 @@ def map_info():
         if p.exists() and label:
             geo.append({'label': label, 'status': status, 'path': rel, 'bytes': p.stat().st_size})
     geo.append({'label': 'US place names (USGS GNIS) and Census 2025 ZIP-code and county centres', 'status': 'Used by "Find a place", together with named lakes, reservoirs and dams', 'path': 'geography/geographic-names/'})
-    if WATERDB.exists():
+    if (g / 'water.sqlite').exists():
         try:
-            w = dict(sqlite3.connect(ro_uri(WATERDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
+            w = dict(sqlite3.connect(ro_uri(g / 'water.sqlite'), uri=True).execute('SELECT key,value FROM meta').fetchall())
             nid = json.loads(w.get('nid', '{}'))
             states = [k[4:] for k in w if k.startswith('nhd:')]
             if nid:
@@ -1590,36 +1649,36 @@ def map_info():
                         'status': f'{len(states)} of 56 states and territories imported' if states else 'Downloading / importing'})
         except (sqlite3.Error, ValueError):
             pass
-    if TERRAINDB.exists():
+    if (g / 'terrain.sqlite').exists():
         geo.append({'label': 'Elevation: shaded relief, contour lines, spot heights and 3D (USGS 3DEP, 30 m)', 'status': 'Whole US and territories'})
-    if CROPDB.exists():
+    if (g / 'crops.sqlite').exists():
         try:
-            c = json.loads(dict(sqlite3.connect(ro_uri(CROPDB), uri=True).execute('SELECT key,value FROM meta').fetchall()).get('built', '{}'))
+            c = json.loads(dict(sqlite3.connect(ro_uri(g / 'crops.sqlite'), uri=True).execute('SELECT key,value FROM meta').fetchall()).get('built', '{}'))
             geo.append({'label': f"Orchards, vineyards & berry fields (USDA Cropland Data Layer {c.get('year', '')})",
                         'status': f"{c.get('cells', 0):,} mapped blocks in {c.get('states', 0)} states (lower 48)"})
         except (sqlite3.Error, ValueError):
             pass
-    if BLDGDB.exists():
+    if (g / 'buildings.sqlite').exists():
         try:
-            m = dict(sqlite3.connect(ro_uri(BLDGDB), uri=True).execute('SELECT key,value FROM meta').fetchall())
+            m = dict(sqlite3.connect(ro_uri(g / 'buildings.sqlite'), uri=True).execute('SELECT key,value FROM meta').fetchall())
             n, h = m.get('buildings'), m.get('osm_heights')
             geo.append({'label': 'Building outlines for the whole US, plus heights for 3D (Microsoft Global ML Building Footprints, 2026 release, ODbL; OpenStreetMap is used where its outlines are complete)',
                         'status': (f"{int(n):,} buildings, shown from street level zoom" + (f" · {int(h):,} OpenStreetMap buildings with measured heights in 3D" if h else '')) if n else 'Converting'})
         except (sqlite3.Error, ValueError):
             pass
     detail = None
-    if AERIAL_DETAIL.exists():
+    if (g / 'aerial-detail.sqlite').exists():
         try:
-            m = dict(sqlite3.connect(ro_uri(AERIAL_DETAIL), uri=True).execute('SELECT key,value FROM meta').fetchall())
+            m = dict(sqlite3.connect(ro_uri(g / 'aerial-detail.sqlite'), uri=True).execute('SELECT key,value FROM meta').fetchall())
             detail = [float(v) for v in m['bbox'].split(',')] if m.get('bbox') else None
             geo.append({'label': 'Full-detail aerial photos, 30-60 cm (USGS NAIP Plus: USDA NAIP and high-resolution orthoimagery)',
                         'status': m.get('area', '') + ('' if m.get('built') else ' · downloading')})
         except (sqlite3.Error, ValueError, KeyError):
             pass
     rev = None
-    if AERIAL_COAST.exists():
+    if (g / 'aerial-coast.sqlite').exists():
         try:
-            m = dict(sqlite3.connect(ro_uri(AERIAL_COAST), uri=True).execute('SELECT key,value FROM meta').fetchall())
+            m = dict(sqlite3.connect(ro_uri(g / 'aerial-coast.sqlite'), uri=True).execute('SELECT key,value FROM meta').fetchall())
             # zoom 17+ photo URLs carry this, so browsers (which keep photo tiles a week) fetch a rebuilt layer afresh
             rev = (m.get('rev') or '') + ('' if m.get('built') else '.building')
             geo.append({'label': 'Sharpest aerial photos, 25 cm, 2024-25 (NOAA coastal mapping, public domain)',
@@ -1627,15 +1686,15 @@ def map_info():
         except (sqlite3.Error, ValueError):
             pass
     tdetail = None
-    if TERRAIN_DETAIL.exists():
+    if (g / 'terrain-detail.sqlite').exists():
         try:
-            m = dict(sqlite3.connect(ro_uri(TERRAIN_DETAIL), uri=True).execute('SELECT key,value FROM meta').fetchall())
+            m = dict(sqlite3.connect(ro_uri(g / 'terrain-detail.sqlite'), uri=True).execute('SELECT key,value FROM meta').fetchall())
             tdetail = [float(v) for v in m['circle'].split(',')] if m.get('circle') else None
             geo.append({'label': 'Detailed elevation from 1 m lidar: relief, 5 ft contours, exact heights (USGS 3DEP)',
                         'status': m.get('area', '') + ('' if m.get('built') else ' · building')})
         except (sqlite3.Error, ValueError, KeyError):
             pass
-    if AERIALDB.exists():
+    if (g / 'aerial.sqlite').exists():
         geo.append({'label': 'Aerial photos, whole US (USGS The National Map: USDA NAIP and other orthoimagery)', 'status': 'Zoom 0-15 nationwide, 16 in California and towns · downloading'})
     pack = pack_info()
     extra = {'aerial': has_aerial()}
@@ -1647,19 +1706,20 @@ def map_info():
 
 def pack_datasets(have):
     """The panel beside a pack's map says only what this pack's map files hold."""
+    g = geo_dir()
     area = 'the area this map details' if have['bounds'] else 'the whole US'
     out = [{'label': 'Main roads, towns and water for the whole US (OpenStreetMap, USGS)', 'status': 'Shown at every zoom level'}]
     if have['detail']:
         out.append({'label': f'Streets, places and help points (OpenStreetMap) for {area}', 'status': 'Street detail stops at the edge of this area.' if have['bounds'] else 'Shown when you zoom in'})
     else:
         out.append({'label': 'No street detail or help points', 'status': 'This download has only the base map. Hospitals, water taps and side streets are not in it.'})
-    if PLACEDB.exists():
+    if (g / 'places.sqlite').exists():
         out.append({'label': 'Place names (USGS GNIS, Census 2025 ZIP codes and counties)', 'status': 'Used by "Find a town, ZIP or place"'})
-    if TERRAINDB.exists():
+    if (g / 'terrain.sqlite').exists():
         out.append({'label': 'Elevation (USGS 3DEP)', 'status': 'Shaded relief. Contour lines only where this map has fine detail.' if have['detail'] else 'Shaded relief at broad zoom levels'})
-    if BLDGDB.exists():
+    if (g / 'buildings.sqlite').exists():
         out.append({'label': 'Building outlines (Microsoft Global ML Building Footprints, ODbL; OpenStreetMap)', 'status': f'For {area}, shown from street level zoom'})
-    if CROPDB.exists():
+    if (g / 'crops.sqlite').exists():
         out.append({'label': 'Orchards, vineyards and berry fields (USDA Cropland Data Layer)', 'status': f'For {area}'})
     return out
 
@@ -1899,6 +1959,46 @@ class Handler(library.Handler):
         except Exception:
             return self.internal_error()
 
+    def add_map_file(self, req):
+        """Add a map from a .zip the person built (docs/MAPS.md): unpack it with the map guards, then add it."""
+        import shutil, tempfile, zipfile
+        path = str(req.get('file') or '').strip()
+        if not path:
+            return self.send_json({'error': 'missing file'}, 400)
+        src = Path(path).expanduser()
+        if not src.is_file():
+            return self.send_json({'error': 'no such file'}, 400)
+        name = str(req.get('name') or '').strip()
+        label = str(req.get('label') or '').strip()
+        if not name:   # the map's own name, from its map-set.json
+            try:
+                with zipfile.ZipFile(src) as z:
+                    for cand in ('LastbookData/map-set.json', 'map-set.json'):
+                        if cand in z.namelist():
+                            name = str(json.loads(z.read(cand)).get('name') or '')
+                            break
+            except (OSError, ValueError):
+                pass
+        if not name:
+            return self.send_json({'error': 'the map has no name in its map-set.json'}, 400)
+        work = Path(tempfile.mkdtemp(prefix='lastbook-map-'))
+
+        class _Control:
+            def check(self):
+                pass
+        try:
+            unit = setup_install.unpack(src, work, None, _Control(), lambda done, total: None, allowed=setup_install.map_member)
+            outcome = (setup_api.SETUP or setup_api._default()).import_map(name, unit, label or None)
+            if outcome.get('error'):
+                return self.send_json({'error': outcome['error']}, 400)
+        except setup_install.Refused as e:
+            return self.send_json({'error': e.message}, 400)
+        except Exception as e:
+            return self.send_json({'error': f'could not add the map ({type(e).__name__})'}, 400)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+        return self.send_json({'active': setup_install.active_map(lastbook_paths.DATA), 'maps': maps_public()})
+
     def handle_post(self):
         if not self.host_ok() or not self.origin_ok():
             return self.send_json({'error': 'not allowed from this page'}, 403)
@@ -1950,6 +2050,25 @@ class Handler(library.Handler):
             else:
                 return self.send_json({'error': 'action is rescan, on, off or stop'}, 400)
             return self.send_json(assistant.LOCAL.status())
+        if rpath == '/api/maps':
+            if self.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+                return self.send_json({'error': 'Map changes are only available on this computer.'}, 403)
+            try:
+                n = int(self.headers.get('Content-Length') or 0)
+                req = json.loads(self.rfile.read(min(max(n, 0), 8000)) or b'{}')
+            except ValueError:
+                return self.send_json({'error': 'bad request'}, 400)
+            if not isinstance(req, dict):
+                return self.send_json({'error': 'bad request'}, 400)
+            if req.get('file'):
+                return self.add_map_file(req)
+            name = req.get('active')
+            if not name:
+                return self.send_json({'error': 'missing active'}, 400)
+            outcome = (setup_api.SETUP or setup_api._default()).activate_map(str(name))
+            if outcome.get('error'):
+                return self.send_json({'error': outcome['error']}, 400)
+            return self.send_json({'active': setup_install.active_map(lastbook_paths.DATA), 'maps': maps_public()})
         if rpath != '/api/chat':
             return self.send_json({'error': 'not found'}, 404)
         try:
@@ -2054,6 +2173,8 @@ class Handler(library.Handler):
             if path == '/api/retrieve':
                 return self.send_json({'q': qs.get('q', ''), 'results': assistant.hybrid(qs.get('q', '')[:200], min(20, int(qs.get('k', 8))), qs.get('kind', 'any')),
                                        'semantic': INDEX.status if INDEX else None})
+            if path == '/api/maps':
+                return self.send_json({'active': setup_install.active_map(lastbook_paths.DATA), 'maps': maps_public()})
             if path == '/api/assistant/status':
                 return self.send_json(dict(assistant.model_status(), coverage=coverage()))
             if path == '/api/tools':

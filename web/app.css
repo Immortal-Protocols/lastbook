@@ -890,9 +890,11 @@ details.also summary{cursor:pointer;color:var(--ink2);font-weight:650;min-height
 /* Map page: the map takes the viewport; search, layers and details float on it so they also work in full screen. */
 main.map-page{max-width:none;padding-bottom:24px}   /* the same side and top inset as every page */
 .maphead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 8px}.maphead h1{font-size:24px;margin:0}.maphead p{margin:0}
-.map-page .mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+.map-page .mapgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,330px);gap:16px;min-width:0}
 .map-page .mapwrap{height:calc(100vh - var(--map-top,170px) - var(--map-bottom,24px));min-height:220px;user-select:none;-webkit-user-select:none}
-.map-page .maptools{max-height:calc(100vh - var(--map-top,170px) - var(--map-bottom,24px));overflow:auto;margin:0;align-content:start}.map-page .maptools .panel{padding:14px 16px}
+.map-page .maptools{min-width:0;max-width:100%;max-height:calc(100vh - var(--map-top,170px) - var(--map-bottom,24px));overflow:auto;margin:0;align-content:start}.map-page .maptools .panel{min-width:0;padding:14px 16px;overflow-wrap:anywhere}
+.map-page #mapfile{appearance:none;border:2px solid var(--line);border-radius:32px;padding-inline:18px;background:var(--bg);box-shadow:none}
+.map-page #mapfile:focus{border-color:var(--focus);outline:none}
 .mapwrap canvas{cursor:grab}.mapwrap canvas.dragging{cursor:grabbing}
 .mapwrap.max{position:fixed;inset:0;z-index:60;height:auto!important;min-height:0;border-radius:0;border:0}
 html.plat-mac.in-app .mapwrap.max,html.plat-mac.in-app .chat-side.open{top:var(--top-h)}
@@ -951,7 +953,7 @@ body.map-maxed{overflow:hidden}
 .nearres button{border-top:0;font-size:15px}.nearres button .msym{margin-top:2px}
 .nearres.busy{opacity:.55;transition:opacity .2s}
 .mapattr{font-size:11px;bottom:6px}.mapscale{bottom:6px}
-@media(max-width:1000px){main.map-page{padding-bottom:90px}.map-page .mapgrid{grid-template-columns:1fr}
+@media(max-width:1000px){main.map-page{padding-bottom:90px}.map-page .mapgrid{grid-template-columns:minmax(0,1fr)}
   .map-page .maptools{max-height:none;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:12px}}
 @media(max-width:600px){.maphead p{display:none}.maphead h1{font-size:20px}
   .map-page .mapwrap{border-radius:12px}

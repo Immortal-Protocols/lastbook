@@ -52,29 +52,42 @@ except Exception as e:  # semantic search is optional; keyword search keeps work
     IMPORT_ERROR = str(e)
 
 
-def embed_providers(offered, want_gpu=False):
-    """Which onnxruntime providers to ask for. CPU unless the index build asks for the GPU, the installed onnxruntime
-    offers CUDA, and LASTBOOK_EMBED_DEVICE is not 'cpu'. The CUDA provider falls back to CPU for anything it cannot run."""
-    if want_gpu and os.environ.get('LASTBOOK_EMBED_DEVICE', '').strip().lower() != 'cpu' and 'CUDAExecutionProvider' in offered:
-        return ['CUDAExecutionProvider', 'CPUExecutionProvider']
-    return ['CPUExecutionProvider']
+GPU_LAYERS = (('cuda', 'CUDAExecutionProvider'),  # onnxruntime-gpu: NVIDIA
+              ('directml', 'DmlExecutionProvider'))  # onnxruntime-directml: any DirectX 12 GPU on Windows
+
+
+def embed_layers(offered, want_gpu=False):
+    """Provider lists to try in turn: CUDA, then DirectML, then the CPU, keeping those the installed onnxruntime offers.
+    Only the index build asks for a GPU. LASTBOOK_EMBED_DEVICE=cpu, cuda or directml keeps the CPU or that one GPU layer
+    (any other value: the CPU). Each GPU layer keeps the CPU provider behind it for anything it cannot run."""
+    want = os.environ.get('LASTBOOK_EMBED_DEVICE', '').strip().lower()
+    layers = []
+    if want_gpu:
+        layers = [[p, 'CPUExecutionProvider'] for name, p in GPU_LAYERS if p in offered and want in ('', 'auto', name)]
+    return layers + [['CPUExecutionProvider']]
+
+
+def session_options(provider):
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
+    if provider == 'DmlExecutionProvider':  # the DirectML provider does not support memory patterns or parallel execution
+        so.enable_mem_pattern = False
+        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+    return so
 
 
 class Embedder:
     def __init__(self, gpu=False):
-        so = ort.SessionOptions()
-        so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
-        providers = embed_providers(ort.get_available_providers(), gpu)
-        self.sess = None
-        if providers[0] == 'CUDAExecutionProvider':
+        for providers in embed_layers(ort.get_available_providers(), gpu):
             try:
-                if hasattr(ort, 'preload_dlls'):  # onnxruntime-gpu >= 1.21: finds the CUDA and cuDNN libraries of the pip nvidia-* wheels (needed on Windows)
-                    ort.preload_dlls()
-                self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=providers)
+                if providers[0] == 'CUDAExecutionProvider' and hasattr(ort, 'preload_dlls'):
+                    ort.preload_dlls()  # onnxruntime-gpu >= 1.21: finds the CUDA and cuDNN libraries of the pip nvidia-* wheels (needed on Windows)
+                self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), session_options(providers[0]), providers=providers)
+                break
             except Exception as e:
-                print(f'GPU session could not start ({type(e).__name__}: {e}); building on the CPU', flush=True)
-        if self.sess is None:
-            self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=['CPUExecutionProvider'])
+                if providers[0] == 'CPUExecutionProvider':
+                    raise
+                print(f'{providers[0]} could not start ({type(e).__name__}: {e}); trying the next', flush=True)
         self.provider = self.sess.get_providers()[0]
         if gpu:
             print(f'embedding with {self.provider}', flush=True)

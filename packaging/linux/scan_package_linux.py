@@ -1,6 +1,6 @@
-"""Looks inside a built Lastbook .deb and exits 1 if it holds what must not ship (the Linux counterpart of scan_package_macos.py).
+"""Looks inside a built Lastbook .deb or staged package directory and exits 1 if it holds what must not ship (the Linux counterpart of scan_package_macos.py).
 
-  python3 scan_package_linux.py Lastbook_<version>_amd64.deb [--terms-file FILE]
+  python3 scan_package_linux.py DEB_OR_STAGE [--terms-file FILE]
 
 Refused: test code, the old window, model libraries, the Mac and Windows shells, the remote_storage module, machine names (FILE: private
 words, one per line, kept out of this public script), /Users/... and /home/<name> paths, the household's area and working names in our
@@ -9,6 +9,7 @@ the local AI's runner, and in our own Python any network module outside the two 
 the engine's request handler, which the app runs with no port. roots.pem must be there: without it setup downloads nothing.
 """
 import argparse
+from contextlib import contextmanager
 import ast
 import json
 import re
@@ -57,9 +58,25 @@ def net_imports(source):
     return sorted(m for m in out if m in NET_MODULES or m.split('.')[0] in {'requests', 'urllib3', 'xmlrpc'})
 
 
+@contextmanager
+def package_tree(path):
+    """Both formats pass through exactly the same payload checks."""
+    if path.is_symlink():
+        raise ValueError('package input must not be a symlink')
+    if path.is_dir():
+        yield path.resolve()
+    else:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['dpkg-deb', '-x', str(path), str(root)], check=True)
+            control = subprocess.run(['dpkg-deb', '-f', str(path)], capture_output=True, text=True, check=True).stdout
+            print(control.split('\nDescription')[0])
+            yield root
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('deb', type=Path)
+    ap.add_argument('package', type=Path, help='.deb file or staged filesystem root')
     ap.add_argument('--terms-file', type=Path)
     a = ap.parse_args()
     terms = []
@@ -71,28 +88,24 @@ def main():
     household = re.compile('|'.join(ship['forbidden']).encode(), re.I)
     problems, remote_hits, user_paths, net_report = [], {}, {}, {}
     n_files = n_elf = 0
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        subprocess.run(['dpkg-deb', '-x', str(a.deb), str(root)], check=True)
+    with package_tree(a.package) as root:
         try:
             i18n_catalogs.check_assets(root / 'opt' / 'lastbook' / 'web', i18n_catalogs.generate())
         except (OSError, ValueError) as error:
             problems.append(f'localization: {error}')
-        control = subprocess.run(['dpkg-deb', '-f', str(a.deb)], capture_output=True, text=True, check=True).stdout
-        print(control.split('\nDescription')[0])
         packaged = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() or p.is_symlink()}
         for rel in sorted(packaged):
             p = root / rel
-            if p.is_symlink():
-                target = p.readlink().as_posix()
-                if target.startswith('/') or '..' in target:
-                    problems.append(f'symlink out of the package: {rel} -> {target}')
-                continue
-            n_files += 1
-            if not rel.startswith(('opt/lastbook/', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop', 'usr/share/icons/hicolor/', 'usr/share/doc/lastbook/')):
+            if rel not in {'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop', 'usr/share/licenses/lastbook/LICENSE'} and not rel.startswith(('opt/lastbook/', 'usr/share/icons/hicolor/', 'usr/share/doc/lastbook/')):
                 problems.append(f'file outside the places the package owns: {rel}')
             if bad_name(rel.removeprefix('opt/lastbook/')) or BAD_FILE.search(rel) or p.name in ship['never_ship']:
                 problems.append(f'file not allowed: {rel}')
+            if p.is_symlink():
+                target = p.readlink().as_posix()
+                if target.startswith('/') or '..' in target or not p.exists() or not p.resolve().is_relative_to(root):
+                    problems.append(f'symlink out of the package or dangling: {rel} -> {target}')
+                continue
+            n_files += 1
             data = p.read_bytes()
             low = data.lower()
             for t in terms:
@@ -139,11 +152,9 @@ def main():
         for u, where in user_paths.items():
             if u.startswith('/Users/') or any(FIRST_PARTY.search(w) for w in where):
                 problems.append(f'path of a person\'s folder {u} in {where[:3]}')
-        if 'opt/lastbook/engine/setup/roots.pem' not in packaged:
-            problems.append('missing from the package: opt/lastbook/engine/setup/roots.pem')
-        for need in ('opt/lastbook/gst/libgstlastbooksrc.so', 'opt/lastbook/lastbook.py', 'opt/lastbook/app/main.py', 'opt/lastbook/app/shell_linux.py', 'opt/lastbook/app/ui_language.py', 'opt/lastbook/app/contribute.py',
+        for need in ('opt/lastbook/engine/setup/roots.pem', 'opt/lastbook/gst/libgstlastbooksrc.so', 'opt/lastbook/lastbook.py', 'opt/lastbook/app/main.py', 'opt/lastbook/app/shell_linux.py', 'opt/lastbook/app/ui_language.py', 'opt/lastbook/app/contribute.py',
                      'opt/lastbook/setup/manifest-v1.json', 'opt/lastbook/VERSION', 'usr/bin/lastbook', 'usr/share/applications/lastbook.desktop'):
-            if need not in packaged:
+            if need not in packaged or not (root / need).is_file() or (root / need).is_symlink():
                 problems.append(f'missing from the package: {need}')
         llm = 'opt/lastbook/llm/lastbook-llm' in packaged
     print(f'files {n_files}, native binaries {n_elf}, local AI runner: {"included" if llm else "not included"}')
@@ -157,4 +168,8 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as e:
+        print(f'SCAN FAILED: {e}', file=sys.stderr)
+        sys.exit(1)

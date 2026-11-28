@@ -291,6 +291,9 @@ class Setup:
             return None
         if (plan.get('pack') and not pack) or (plan.get('map') and not mp) or (plan.get('model') and not model):
             return None
+        if model and not self._has_runner():     # saved by a build that had the runner: carry on without the model it cannot use
+            model = None
+            items = job['items'] = [i for i in items if i.get('kind') != 'model']
         wanted = {('pack', pack['id']) if pack else None, ('map', mp['id']) if mp else None, ('model', model['id']) if model else None, ('addresses', addresses['id']) if addresses else None} - {None}
         if {(i.get('kind'), i.get('id')) for i in items} != wanted:
             return None
@@ -398,6 +401,11 @@ class Setup:
                 print('setup: no llm_local:', type(e).__name__, e, flush=True)
                 self._llm = False
         return self._llm or None
+
+    def _has_runner(self):
+        """True when this build carries the local AI's runner. Without it the model is never offered or fetched: it could not be used."""
+        llm = self.llm()
+        return bool(llm and llm.runner_path())
 
     def current_info(self):
         if not self.current:
@@ -513,6 +521,9 @@ class Setup:
         m = self.manifest.model()
         if not m:
             return {'fits': False, 'needs_bytes': None, 'estimate': True, 'why': 'No local AI is offered for this version.'}
+        if not self._has_runner():     # a build without the runner cannot use the model, so it is not offered
+            return {'fits': False, 'needs_bytes': None, 'estimate': True, 'runtime': False,
+                    'why': 'This version of Lastbook does not include the local AI.'}
         if self.ai_measure:
             return self.ai_measure
         path = self._model_path_here()
@@ -668,6 +679,8 @@ class Setup:
             model = self.manifest.model() if ai else None
             if ai and not model:
                 return {'error': 'No local AI is offered for this version.', 'code': 'unavailable'}
+            if model and not self._has_runner():
+                return {'error': 'This version of Lastbook does not include the local AI.', 'code': 'unavailable'}
             mp = self.manifest.map(map_id) if map_id else None
             if map_id and (not mp or not mp['available']):
                 return {'error': 'That state’s map is not available yet.', 'code': 'unavailable'}
@@ -787,7 +800,7 @@ class Setup:
             # A model file in models/ is checked (and repaired) whatever its size: current_info() names a model only when its size
             # already matches, so a model one byte short would otherwise be skipped and the library called clean. A check looks only
             # at what is installed; a truly absent model stays "not installed".
-            m = self.manifest.model()
+            m = self.manifest.model() if self._has_runner() else None   # a build without the runner neither checks nor fetches the model
             present = bool(m) and (self.current / 'models' / m['file']).is_file()
             model = m if (present if check_only else (ai or present)) else None
             parent, target = self.current.parent, self.current

@@ -1,0 +1,151 @@
+name: Native Arch package
+
+on:
+  pull_request:
+    paths: ['app/**', 'engine/**', 'packaging/**', 'web/**', '.github/workflows/arch.yml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version (empty uses the release in build_app_linux.sh)
+        required: false
+        default: ''
+      draft_release:
+        description: Sign and create a draft prerelease (requires arch-release secrets)
+        type: boolean
+        default: false
+  schedule:
+    - cron: '27 9 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    timeout-minutes: 45
+    env:
+      PACKAGE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Install clean Arch build dependencies
+        run: >-
+          pacman -Syu --noconfirm --needed git python python-pip python-pillow pkgconf
+          python-gobject gtk3 webkit2gtk-4.1 libsoup3 gstreamer gst-plugins-base
+          gst-plugins-good gst-libav gst-plugins-bad-libs gst-plugin-dav1d gcc-libs zstd curl
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare unprivileged builder
+        run: |
+          useradd --create-home --home-dir /build-user builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+      - name: Test setup and Linux packaging
+        run: |
+          # Bridge/content integration tests require a separately downloaded library.
+          runuser -u builder -- /usr/bin/python3 -B -m unittest \
+            app.tests.test_arch_install app.tests.test_arch_llm app.tests.test_linux_packaging \
+            app.tests.test_setup app.tests.test_data_folder app.tests.test_update \
+            app.tests.test_address_search app.tests.test_topic_search \
+            app.tests.test_validate_topics app.tests.test_libq
+      - name: Fetch and retain publisher manifest
+        run: |
+          mkdir -p release-assets
+          curl --fail --show-error --silent --proto '=https' --tlsv1.2 \
+            --cacert engine/setup/roots.pem \
+            https://downloads.lastbook.org/manifest-v1.json \
+            --output release-assets/manifest-v1.json
+          (
+            cd release-assets
+            sha256sum manifest-v1.json > manifest-v1.json.sha256
+          )
+          chown -R builder:builder release-assets
+      - name: Build with mandatory TLS and payload gates
+        run: |
+          runuser -u builder -- env TMPDIR=/tmp /usr/bin/python3 -I -B \
+            packaging/linux/arch/build_arch.py \
+            --manifest release-assets/manifest-v1.json ${PACKAGE_VERSION:+--version "$PACKAGE_VERSION"}
+          find /tmp -path '/tmp/lastbook-arch-*/packages/lastbook-*.pkg.tar.zst*' \
+            -type f -exec cp -- {} release-assets/ \;
+          find /tmp -path '/tmp/lastbook-arch-*/prepared/wheels.lock' \
+            -type f -exec cp -- {} release-assets/ \;
+          test "$(find release-assets -name '*.pkg.tar.zst' | wc -l)" -eq 1
+          runuser -u builder -- git rev-parse HEAD > release-assets/source-commit.txt
+          /usr/bin/python3 --version > release-assets/python-version.txt
+      - name: Smoke-test installation and removal in the disposable container
+        run: |
+          pacman -U --noconfirm release-assets/*.pkg.tar.zst
+          lastbook --help
+          /usr/bin/python3 -I -B - <<'PY'
+          import sys
+          sys.frozen = True
+          sys._MEIPASS = '/opt/lastbook'
+          sys.path[:0] = ['/opt/lastbook/app', '/opt/lastbook', '/opt/lastbook/lib']   # as packaging/linux/lastbook.py sets it
+          import libzim, numpy, pypdfium2
+          import main, bridge, shell_linux, server, retrieval, assistant, llm_local   # the app's own modules load from the package alone
+          from engine import update
+          assert update.platform_key() == 'arch'
+          u = update.Updater(version=open('/opt/lastbook/VERSION').read().strip())
+          assert u.check()['state'] == 'package_manager'
+          assert u.thread is None
+          PY
+          pacman -R --noconfirm lastbook
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lastbook-arch-${{ github.run_id }}
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+
+  draft:
+    if: github.event_name == 'workflow_dispatch' && inputs.draft_release
+    needs: build
+    runs-on: ubuntu-latest
+    environment: arch-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: lastbook-arch-${{ github.run_id }}
+          path: release-assets
+      - name: Import release signing key
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.ARCH_SIGNING_KEY_BASE64 }}
+          GNUPGHOME: ${{ runner.temp }}/lastbook-gnupg
+        run: |
+          install -d -m 700 "$GNUPGHOME"
+          python3 - <<'PY'
+          import base64, os, subprocess
+          key = base64.b64decode(os.environ['SIGNING_KEY_BASE64'], validate=True)
+          if not key:
+              raise SystemExit('Configure ARCH_SIGNING_KEY_BASE64 in arch-release')
+          subprocess.run(['gpg', '--batch', '--import'], input=key, check=True)
+          PY
+      - name: Sign package and create draft prerelease
+        env:
+          GNUPGHOME: ${{ runner.temp }}/lastbook-gnupg
+          SIGNING_FINGERPRINT: ${{ vars.ARCH_SIGNING_FINGERPRINT }}
+          SIGNING_PASSPHRASE: ${{ secrets.ARCH_SIGNING_PASSPHRASE }}
+          GH_TOKEN: ${{ github.token }}
+          # The installer reads this same repository by default (packaging/linux/arch/install.py UPSTREAM).
+          RELEASE_REPO: ${{ github.repository }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          [[ "$SIGNING_FINGERPRINT" =~ ^[A-Fa-f0-9]{40}$ ]] || exit 1
+          # The version the build actually used, from lastbook-<version>-<rel>-x86_64.pkg.tar.zst.
+          PACKAGE_VERSION="$(basename release-assets/lastbook-*.pkg.tar.zst | sed -E 's/^lastbook-(.+)-[0-9]+-x86_64\.pkg\.tar\.zst$/\1/')"
+          [[ "$PACKAGE_VERSION" =~ ^[0-9][0-9A-Za-z.]*$ ]] || exit 1
+          for package in release-assets/*.pkg.tar.zst; do
+            printf '%s' "$SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+              --passphrase-fd 0 --local-user "$SIGNING_FINGERPRINT" --detach-sign "$package"
+          done
+          gh release create "arch-${PACKAGE_VERSION}-${GITHUB_RUN_NUMBER}" \
+            --repo "$RELEASE_REPO" --target "$SOURCE_COMMIT" --draft --prerelease \
+            --title "Arch native ${PACKAGE_VERSION} test build ${GITHUB_RUN_NUMBER}" \
+            --notes 'Experimental native Arch package. Local AI is not included. Review the manifest, Python ABI, package signature and desktop tests before publishing.' \
+            release-assets/*
+      - name: Remove temporary signing keyring
+        if: always()
+        env:
+          GNUPGHOME: ${{ runner.temp }}/lastbook-gnupg
+        run: rm -rf -- "$GNUPGHOME"

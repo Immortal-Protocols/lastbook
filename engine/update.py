@@ -38,6 +38,7 @@ WEBSITE = 'lastbook.org'
 DOWNLOAD_URL = f'https://{WEBSITE}/download/'
 
 OFFLINE = 'Lastbook could not reach the internet. Everything else in Lastbook still works without it; try again when you are online.'
+PACKAGE_MANAGER = {'arch': 'This copy was installed as an Arch Linux package. Update it the same way you installed it.'}
 
 
 def _ver(s):
@@ -45,7 +46,21 @@ def _ver(s):
 
 
 def platform_key():
-    return 'mac' if sys.platform == 'darwin' else 'windows' if sys.platform == 'win32' else 'linux' if sys.platform.startswith('linux') else None
+    """'mac', 'windows', 'linux' (the site's .deb entry), 'arch' (a pacman package, updated by its package manager) or None.
+    A packaged Linux build says how it was installed in CHANNEL beside VERSION; a build without it is a .deb."""
+    if sys.platform == 'darwin':
+        return 'mac'
+    if sys.platform == 'win32':
+        return 'windows'
+    if not sys.platform.startswith('linux'):
+        return None
+    if getattr(sys, 'frozen', False):
+        try:
+            if (Path(sys._MEIPASS) / 'CHANNEL').read_text(encoding='utf-8').strip() == 'arch':
+                return 'arch'
+        except OSError:
+            pass
+    return 'linux'
 
 
 def _mac_bundle():
@@ -170,6 +185,9 @@ class Updater:
         """token: handed back to on_done with the result (Notices drops a result whose token is from before an opt-out)."""
         if not self.key:
             return {'error': 'Updates are for the Mac, Windows and Linux app.', 'code': 'unsupported'}
+        if self.key in PACKAGE_MANAGER:      # the site has nothing for this package: say how it is updated, and go nowhere
+            self._set(state='package_manager', message=PACKAGE_MANAGER[self.key])
+            return self.state()
         with self.lock:
             if self.thread is None or not self.thread.is_alive():
                 self.s = {'state': 'checking'}
@@ -423,7 +441,9 @@ def updater():
 def configure(settings_dir):
     """app/main.py, the desktop app only: notices, with their setting in the app's own settings folder. Reaches no network."""
     global NOTICES
-    NOTICES = Notices(settings_dir, updater())
+    u = updater()
+    # A package-manager install has no download to offer, so no notice could ever appear: no checkbox, no daily check.
+    NOTICES = None if u.key in PACKAGE_MANAGER else Notices(settings_dir, u)
     return NOTICES
 
 

@@ -46,6 +46,7 @@
       case 'checking': return `${ver} Checking for updates…`;
       case 'up_to_date': return `${ver} Lastbook is up to date. ${btn('Check again')}`;
       case 'not_published': return `${ver} No update information yet. ${btn('Try again')}`;
+      case 'package_manager': return `${ver} ${E(s.message)}`;
       case 'too_old_os': case 'error': return `${ver} ${E(s.message)} ${btn('Try again')}`;
       default: return `${ver} ${btn('Check for updates')}`;
     }

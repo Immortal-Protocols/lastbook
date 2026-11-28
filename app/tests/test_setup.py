@@ -8,7 +8,7 @@ The test server lives only in this file: it serves a small fake pack and model o
 for the run, and can cut the connection mid-file, send wrong bytes, change the file's ETag, ignore Range, or redirect anywhere.
 The product's allowlist is not touched: tests pass their own `allowed` and TLS context to the downloader. Never packaged.
 """
-import errno, hashlib, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, threading, time, unittest, zipfile
+import errno, hashlib, http.server, importlib.util, io, json, os, re, shutil, signal, socket, socketserver, ssl, struct, subprocess, sys, tempfile, threading, time, types, unittest, zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -1297,9 +1297,28 @@ class SplitPacks(Base):
 
 
 class Jobs(Base):
+    def test_no_model_start_without_runner(self):
+        """Without the runner, a direct start with the AI is refused, and a saved job from a build that had it resumes without the model."""
+        with mock.patch.object(self.llm, 'runner_path', return_value=None):
+            r = self.setup().start('small', True)
+        self.assertEqual(r.get('code'), 'unavailable', r)
+        s = self.setup()
+        s.start('small', True)
+        with s.lock:
+            saved = json.loads(json.dumps(s.job))
+        self.wait(s)
+        self.assertIn('model', [i['kind'] for i in saved['items']])
+        with mock.patch.object(self.llm, 'runner_path', return_value=None):
+            job = self.setup()._checked_job(saved)
+        self.assertIsNotNone(job)
+        self.assertEqual([i['kind'] for i in job['items']], ['pack'])
+        self.assertIsNone(job['plan']['model'])
+
     def test_first_run_end_to_end(self):
         s = self.setup()
-        st = s.state()
+        # Recommendations should not depend on free space in the host's /tmp.
+        with mock.patch.object(hardware, 'disk_of', return_value=(100 * 10 ** 9, 10 ** 12)):
+            st = s.state()
         self.assertEqual(st['mode'], 'first-run')
         self.assertEqual(st['recommend']['pack'], 'small')
         self.assertNotIn('url', json.dumps(st['manifest']))
@@ -3664,6 +3683,14 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
         self.assertEqual(self.setup('manage', current=lib).start(repair=True)['code'], 'unavailable')
         self.assertEqual(self.setup().start(repair=True)['code'], 'nothing')
 
+    def test_repair_skips_model_without_runner(self):
+        """A repair from a build without the runner checks the library only; it never fetches the model again."""
+        lib = self.installed_library()
+        with mock.patch.object(self.llm, 'runner_path', return_value=None):
+            s = self.setup('manage', current=lib)
+            self.assertEqual([i['kind'] for i in s.start(repair=True)['items']], ['pack'])
+            self.assertEqual(self.wait(s)['state'], 'done')
+
     def test_remove_ai(self):
         lib = self.installed_library()
         s = self.setup('manage', current=lib)
@@ -4300,7 +4327,8 @@ class Maps(Base):
             a = s.start('small', False)['need_bytes']
             b = s.start('small', False, map_id='CA')['need_bytes']
         self.assertEqual(b - a, mf.map('CA')['download_bytes'] + mf.map('CA')['installed_bytes'])
-        self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
+        with mock.patch.object(hardware, 'disk_of', return_value=(100 * 10 ** 9, 10 ** 12)):
+            self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
         self.assertIn('maps', s.state()['manifest'])
         self.assertEqual(s.start(None, False, map_id='CA')['code'], 'nothing')    # first run: a library first
 
@@ -4609,6 +4637,16 @@ class Recommend(Base):
         (tree / 'compatible').write_bytes(b'raspberrypi,5-model-b\0brcm,bcm2712\0')
         self.assertIsNone(hardware._apple_silicon_linux(tree))
 
+    def test_no_ai_offer_without_runner(self):
+        """A build without the local AI runner must not offer the model download, however much memory there is."""
+        s = self.setup()
+        s._llm = types.SimpleNamespace(runner_path=lambda: None)
+        fit = s.ai_fit(self.hw(64 * 2 ** 30, 10 ** 12))
+        self.assertFalse(fit['fits'])
+        self.assertIn('local AI', fit['why'])
+        s._llm = types.SimpleNamespace(runner_path=lambda: Path('/opt/lastbook/llm/lastbook-llm'))
+        self.assertTrue(s.ai_fit(self.hw(64 * 2 ** 30, 10 ** 12))['fits'])
+
     def test_judge_counts_apple_silicon_linux_as_unified(self):
         """On Apple silicon running Linux the graphics share the one memory, as on a Mac: judge() must count the model part
         llama.cpp places on the device against the computer's memory, not only the host part plus the mapped file."""
@@ -4708,11 +4746,34 @@ class Recommend(Base):
                 self.assertGreater(disks[0]['free_bytes'], 0)
                 self.assertEqual(hardware.candidate_disks(), [])
 
+
+class Hardware(unittest.TestCase):
+    """Real host detection needs no setup download server or test pack."""
+
+    def setUp(self):
+        # main's #112 tests here read self.parent and self.tmp, which their class used to provide.
+        self.tmp = shorttemp.mkdtemp('lastbook-hardware-')
+        self.parent = self.tmp / 'place'
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
     def test_hardware_here(self):
-        hw = hardware.detect([self.parent])
-        self.assertIn(hw['os'], ('macos', 'windows', 'linux'))
-        self.assertGreater(hw['ram_bytes'], 2 ** 30)
-        self.assertTrue(hw['disks'] and hw['disks'][0]['free_bytes'] > 0)
+        scratch = ROOT / 'derived/app-build'
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as parent:
+            hw = hardware.detect([parent])
+            self.assertIn(hw['os'], ('macos', 'windows', 'linux'))
+            self.assertGreater(hw['ram_bytes'], 2 ** 30)
+            self.assertTrue(hw['disks'] and hw['disks'][0]['free_bytes'] > 0)
+            if sys.platform.startswith('linux'):
+                self.assertEqual(hw['os'], 'linux')
+                mem = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
+                self.assertEqual(hw['ram_bytes'], int(mem['MemTotal'].split()[0]) * 1024)
+                self.assertEqual(hw['disks'][0]['path'], parent)
+                fs = os.statvfs(parent)
+                self.assertEqual(hw['disks'][0]['total_bytes'], fs.f_blocks * fs.f_frsize)
+                self.assertIn(hw['ai_runtime'], ('cpu', 'cuda', 'vulkan'))
 
     def test_mac_free_is_what_finder_calls_available(self):
         """#112: the plain free count leaves out the room macOS makes on its own (purgeable caches, local snapshots)."""

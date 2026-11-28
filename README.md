@@ -249,6 +249,14 @@ the package in a fresh container of the same release.
 Linux integration-test helpers live under `app/tests/linux_*`; set `LASTBOOK_TEST_HOST` to a Windows SSH host with WSL2
 before running them. Their disposable test distro is named `LastbookTest`, with files under `C:\LastbookTest`.
 
+**Arch / Omarchy (native local-checkout build)**
+
+See [the Arch build workflow](packaging/linux/arch/README.md) for prerequisites,
+an explicit public manifest input, and the native `makepkg` build. It shares
+Linux staging and package scans with Debian, uses the existing GTK3/WebKitGTK
+shell, and bundles the local AI runner only when built with `--llm`. It is
+experimental and not an AUR package; test results are in that README.
+
 ## Packs, state maps and the local AI
 
 - **Packs** are data folders: a library plus its catalog, search index and map. `packaging/build_packs.py` builds them

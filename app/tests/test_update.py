@@ -33,6 +33,12 @@ def wait(u, t=20):
 
 
 class UpdateTest(unittest.TestCase):
+    def setUp(self):
+        # These cases exercise a macOS offer, independent of the test host OS.
+        patcher = mock.patch.object(update, 'os_version', return_value='14.0')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @classmethod
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())
@@ -108,6 +114,36 @@ class UpdateTest(unittest.TestCase):
     def test_windows_build_numbers(self):
         self.assertEqual(update._ver('10.0.26200'), (10, 0, 26200))     # five-digit Windows builds must compare
         self.assertGreater(update._ver('10.0.26200'), update._ver('10.0'))
+
+    def test_arch_package_is_updated_by_its_package_manager(self):
+        """The site's Linux entry is the Ubuntu .deb. An Arch package must not be offered it, or judged by Ubuntu's version, and asks nothing online."""
+        u = update.Updater('https://127.0.0.1:1/app-v1.json', allowed=ALLOWED, context=self.ctx, key='arch', version='1.1.9')
+        s = u.check()
+        self.assertEqual(s['state'], 'package_manager')
+        self.assertIn('Arch', s['message'])
+        self.assertIsNone(u.thread)      # no check was started, so nothing reached the network
+
+    def test_arch_package_offers_no_update_notices(self):
+        """Notices could never find a version for a package-manager install, so Setup and Settings must not offer them."""
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(update, 'UPDATER', update.Updater(key='arch', version='1.1.9')), \
+                mock.patch.object(update, 'NOTICES', None):
+            self.assertIsNone(update.configure(d))
+            self.assertIsNone(update.NOTICES)
+            self.assertFalse(update._with_notice(update.UPDATER.state())['can_open_download'])
+            self.assertEqual(list(Path(d).iterdir()), [])     # nothing saved
+
+    def test_linux_key_follows_the_package_channel(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(update.sys, 'platform', 'linux'), \
+                mock.patch.object(update.sys, 'frozen', True, create=True), mock.patch.object(update.sys, '_MEIPASS', d, create=True):
+            self.assertEqual(update.platform_key(), 'linux')               # a .deb built before CHANNEL existed
+            (Path(d) / 'CHANNEL').write_text('deb\n')
+            self.assertEqual(update.platform_key(), 'linux')
+            (Path(d) / 'CHANNEL').write_text('arch\n')
+            self.assertEqual(update.platform_key(), 'arch')
+            (Path(d) / 'CHANNEL').write_text('something else\n')
+            self.assertEqual(update.platform_key(), 'linux')
 
     def test_product_reaches_only_downloads_lastbook_org(self):
         u = update.Updater(key='mac', version='1.0.0')

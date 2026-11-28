@@ -1015,3 +1015,8 @@ body.map-maxed{overflow:hidden}
 .contribute-note{margin:2px 0 0}
 #contrib-status{margin:0}
 #contrib-status:empty{display:none}
+
+/* Sharing indicator: visible in the desktop app whenever the library is on the local network. */
+.share-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;background:var(--accent-soft);color:var(--ink);border-bottom:1px solid var(--line);font-size:15px}
+.share-bar[hidden]{display:none}
+.share-bar .btn{min-height:32px;padding:4px 12px;font-size:14px}

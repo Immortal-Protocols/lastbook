@@ -243,7 +243,12 @@ def watch_for_stop(data, port, server):
     f.unlink(missing_ok=True)  # left over from an earlier run
 
     def stop(*_):
-        threading.Thread(target=lambda: server.SERVER and server.SERVER.shutdown(), daemon=True).start()
+        def shut():
+            if getattr(server, 'SHARE_SERVER', None):
+                server.stop_lan(wait=True)
+            if server.SERVER:
+                server.SERVER.shutdown()
+        threading.Thread(target=shut, daemon=True).start()
 
     for name in ('SIGINT', 'SIGTERM', 'SIGBREAK'):
         if hasattr(signal, name):
@@ -288,7 +293,10 @@ def main():
     if a.headless:
         watch_for_stop(data, a.port, server)
         server.main()
-        server.SERVER.server_close()
+        if getattr(server, 'SHARE_SERVER', None):
+            server.stop_lan(wait=True)
+        if server.SERVER:
+            server.SERVER.server_close()
         print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} stopped', flush=True)
         return 0
     import webview

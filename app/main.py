@@ -438,20 +438,27 @@ def main():
     setup_api.follow_model_server(assistant.use_server)   # a model server chosen in Setup (#78)
     from engine import update
     update.configure(app_folders()[0])    # opt-in update notices (off unless turned on); the window asks for the daily check
+    from engine import share
+    share.configure(app_folders()[0])
+    share.install_shutdown_hooks()
+    share.restore()   # only if the person left sharing on; a failure is shown in Library and local AI, and in the sharing bar
     import bridge as B
-    if sys.platform == 'darwin':
-        import shell_macos
-        shell_macos.run(B.Bridge(server, 'stream', B.ORIGIN_MAC, language_file=language_file()))
-    elif sys.platform == 'win32':
-        import shell_windows
-        return shell_windows.run(server, data, language_file=language_file())
-    elif sys.platform.startswith('linux'):
-        import shell_linux
-        shell_linux.run(B.Bridge(server, 'stream', B.ORIGIN_MAC, language_file=language_file()), linux_dirs())
-    else:
-        show_error('The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py')
-        return 2
-    return 0
+    try:
+        if sys.platform == 'darwin':
+            import shell_macos
+            shell_macos.run(B.Bridge(server, 'stream', B.ORIGIN_MAC, language_file=language_file()))
+        elif sys.platform == 'win32':
+            import shell_windows
+            return shell_windows.run(server, data, language_file=language_file())
+        elif sys.platform.startswith('linux'):
+            import shell_linux
+            shell_linux.run(B.Bridge(server, 'stream', B.ORIGIN_MAC, language_file=language_file()), linux_dirs())
+        else:
+            show_error('The Lastbook desktop app runs on Windows and macOS. Everywhere else, use the server version: python server.py')
+            return 2
+        return 0
+    finally:
+        share.stop(forget=False)
 
 
 if __name__ == '__main__':

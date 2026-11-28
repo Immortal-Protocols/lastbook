@@ -18,7 +18,7 @@ The README explains the layout and how to build the apps.
 ## Test
 
 ```bash
-python3 -B -m unittest app.tests.test_readable app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts app.tests.test_video_moments app.tests.test_video_watched app.tests.test_library_extract app.tests.test_shell_macos app.tests.test_run_source_linux app.tests.test_i18n_catalogs app.tests.test_page_tables
+python3 -B -m unittest app.tests.test_readable app.tests.test_bridge app.tests.test_setup app.tests.test_data_folder app.tests.test_what_ships app.tests.test_update app.tests.test_address_search app.tests.test_topic_search app.tests.test_chat_steps app.tests.test_validate_topics app.tests.test_libq app.tests.test_video_transcripts app.tests.test_video_moments app.tests.test_video_watched app.tests.test_library_extract app.tests.test_shell_macos app.tests.test_run_source_linux app.tests.test_i18n_catalogs app.tests.test_page_tables app.tests.test_share app.tests.test_share_lan
 ```
 
 Run these before you open a pull request (`test_topic_search`, `test_video_moments` and `test_video_watched` need Node and are skipped without it; `test_shell_macos` needs a Mac with PyObjC and is skipped elsewhere; `test_run_source_linux` needs bash and is skipped on Windows). If you change the packaging, also run the build for your platform: it ends
@@ -43,8 +43,12 @@ not installed by the requirements files, are never packaged, and are listed with
 
 ## Rules that keep Lastbook what it is
 
-**No network.** The app opens no port. Setup downloads and app update checks use
-`engine/setup/download.py` and reach only the hosts in `ALLOWED_HOSTS`.
+**No network.** The app opens no port, unless the person turns on **Share this library with my devices**. Setup
+downloads and app update checks use `engine/setup/download.py` and reach only the hosts in `ALLOWED_HOSTS`. That share
+uses a dedicated listener (the same one as `server.py --lan`) on the local network only while it is on. Every socket
+request needs the access key. Other devices get only the read-only allowlist (library browsing). Settings and private
+state stay on the in-memory bridge. Chat with the host's local AI is a separate option, off unless turned on. Off means
+no listening port. Stop closes the port and any in-progress stream, and every quit path does the same.
 
 - No telemetry, analytics, crash reporting, fonts or scripts from the web. App update checks
   (`engine/update.py`) use only `downloads.lastbook.org`. The person can check manually or opt into daily notices.

@@ -22,7 +22,7 @@ requests, and adds a few read-only endpoints:
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
-import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, threading, time, traceback, urllib.parse, zlib
+import argparse, contextlib, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, tempfile, threading, time, traceback, urllib.parse, zlib
 from array import array
 from pathlib import Path
 
@@ -51,7 +51,15 @@ import secrets  # noqa: E402
 remote_records = library.remote_records  # videos moved to remote drives by the library's workers; none in the packaged app
 INDEX = None  # retrieval.Index, created in main()
 LAN_KEY = None
-SERVER = None  # the running HTTP server, so the packaged app's launcher can stop it
+SERVER = None  # the ordinary local reader (loopback), so the packaged app's launcher can stop it
+SHARE_SERVER = None  # the share listener only; the share switch reports and controls this, never SERVER
+SHARE_PORTS = range(8890, 8900)  # first free port in this range, when sharing from the app
+_SHARE_THREAD = None
+_SHARE_LOCK = threading.Lock()
+
+def is_loopback(ip):
+    """True for IPv4 and IPv6 loopback, including IPv4-mapped IPv6."""
+    return ip in ('127.0.0.1', '::1') or str(ip).startswith('::ffff:127.')
 
 _pdf_lock = threading.Lock()  # PDFium is not thread-safe
 
@@ -1844,23 +1852,18 @@ class Handler(library.Handler):
         traceback.print_exc()
         return self.send_json({'error': f'Server error ({sys.exc_info()[0].__name__}).'}, 500)
 
-    def lan_ok(self):
-        """Loopback is always allowed. Other devices need the LAN access key once (then a cookie)."""
-        ip = self.client_address[0]
-        if ip in ('127.0.0.1', '::1') or ip.startswith('::ffff:127.'):
-            return True
-        if not LAN_KEY:
-            return False
-        qs = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
-        cookie = self.headers.get('Cookie') or ''
-        if secrets.compare_digest(qs.get('key', [''])[0], LAN_KEY):
-            self.send_response(302)
-            self.send_header('Set-Cookie', f'sg_key={LAN_KEY}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000')
-            self.send_header('Location', '/')
-            self.end_headers()
-            return None
-        m = re.search(r'(?:^|;\s*)sg_key=([^;]+)', cookie)
-        return bool(m and secrets.compare_digest(m.group(1), LAN_KEY))
+    def _share_forbidden(self, path):
+        """Desktop-only routes that the share listener must never dispatch, even if asked."""
+        return (
+            path == '/api/share' or path.startswith('/api/share/')
+            or path.startswith('/api/setup/') or path == '/api/setup'
+            or path.startswith('/api/update/') or path == '/api/update'
+            or path == '/api/battery'
+            or path == '/api/not-found' or path.startswith('/api/not-found/')
+            or path == '/api/assistant/local' or path.startswith('/api/assistant/local/')
+            or path.startswith('/api/tool/') or path == '/api/tools'
+            or path.startswith('/ui/setup') or path.startswith('/ui/update')
+        )
 
     def deny(self):
         body = b'<!doctype html><meta name=viewport content="width=device-width"><title>Lastbook</title><p style="font:18px system-ui;padding:24px">This guide is shared on this network only with an access link. Ask the person running it for the link shown when it started.</p>'
@@ -1874,11 +1877,6 @@ class Handler(library.Handler):
         try:
             if not self.host_ok():
                 return self.send_error(403)
-            ok = self.lan_ok()
-            if ok is None:
-                return
-            if not ok:
-                return self.deny()
             path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
             if not self.path_ok(path):
                 return self.send_error(404)
@@ -1902,12 +1900,14 @@ class Handler(library.Handler):
     def handle_post(self):
         if not self.host_ok() or not self.origin_ok():
             return self.send_json({'error': 'not allowed from this page'}, 403)
-        ok = self.lan_ok()
-        if ok is None:
-            return
-        if not ok:
-            return self.deny()
         rpath = urllib.parse.urlsplit(self.path).path
+        if getattr(self, 'SHARE_LISTENER', False):
+            # The share listener never answers desktop-only POST routes; /api/chat is opted in earlier.
+            if rpath != '/api/chat':
+                return self.send_json({'error': 'This is not part of what is shared from this library.'}, 403)
+        if rpath == '/api/share' or rpath.startswith('/api/share/'):
+            from engine import share
+            return share.handle(self, 'POST')
         if rpath.startswith('/api/setup/'):  # first-run setup and Library and local AI: engine/setup/api.py, this computer only
             return setup_api.handle(self, 'POST', rpath)
         if rpath.startswith('/api/update/'):  # Check for updates, when the person asks: engine/update.py, this computer only
@@ -1992,16 +1992,16 @@ class Handler(library.Handler):
         try:
             if not self.host_ok():
                 return self.send_json({'error': 'not allowed from this page'}, 403)
-            ok = self.lan_ok()
-            if ok is None:
-                return
-            if not ok:
-                return self.deny()
             url = urllib.parse.urlsplit(self.path)
             path = urllib.parse.unquote(url.path)
             if not self.path_ok(path):
                 return self.send_json({'error': 'not found'}, 404)
             qs = {k: v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
+            if getattr(self, 'SHARE_LISTENER', False) and self._share_forbidden(path):
+                return self.send_json({'error': 'This is not part of what is shared from this library.'}, 403)
+            if path == '/api/share' or path.startswith('/api/share/'):
+                from engine import share
+                return share.handle(self, 'GET')
             if path.startswith('/api/setup/'):
                 return setup_api.handle(self, 'GET', path)
             if path.startswith('/api/update/'):
@@ -2155,36 +2155,406 @@ def init(no_index=False):
     threading.Thread(target=prewarm_previews, daemon=True).start()
 
 
+KEY_LOCK_WAIT_S = 10   # a start holds the lock only while it writes about 24 bytes
+
+
+@contextlib.contextmanager
+def lan_key_lock(kf):
+    """Holds the lock file next to kf, so only one start at a time makes the key. The system lets go of it
+    when the process ends, so a start that crashed leaves nothing to clear. A dot file: packs never ship those."""
+    with open(kf.parent / ('.' + kf.name + '.lock'), 'a+b') as f:
+        deadline = time.monotonic() + KEY_LOCK_WAIT_S
+        while True:
+            try:
+                lastbook_paths.try_lock(f)
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            lastbook_paths.unlock(f)
+
+
+def _saved_key(kf):
+    try:
+        return kf.read_text(encoding='utf-8').strip()
+    except FileNotFoundError:
+        return ''
+
+
+def lan_key(kf):
+    """The key phones need, kept in kf. A missing or empty file gets a new key, written whole and readable by this user only:
+    an empty key refuses every phone, and a key written first and locked down after is readable by others in between.
+    The app's Share switch and server.py --lan can start at once: the second waits and uses the key the first saved."""
+    key = _saved_key(kf)
+    if not key:
+        with lan_key_lock(kf):
+            key = _saved_key(kf)   # another start may have saved one while this one waited
+            if not key:
+                key = secrets.token_urlsafe(18)
+                # Each write gets its own new file, readable by this user only (mkstemp: 0600), so a write never
+                # shares or removes another's temporary file. A failed write removes its own.
+                fd, tmp = tempfile.mkstemp(prefix='.' + kf.name + '.', suffix='.tmp', dir=kf.parent)
+                try:
+                    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                        f.write(key)
+                    os.replace(tmp, kf)
+                except BaseException:
+                    Path(tmp).unlink(missing_ok=True)
+                    raise
+    # A reused key may come from an older version that wrote it readable by everyone on this computer.
+    # Windows has no such mode bits: there the file has the permissions of the folder it is in.
+    if os.name != 'nt' and kf.stat().st_mode & 0o077:
+        os.chmod(kf, 0o600)
+    return key
+
+
 class HTTPServer(library.HTTPServer):   # queues 128 connections: opening the map asks for 20 or more tiles at once
     if os.name == 'nt':  # SO_REUSEADDR on Windows lets a second copy silently share the port
         allow_reuse_address = False
 
 
-def serve(port, lan=False):
-    """The HTTP server version: binds the port and answers until stopped."""
-    global LAN_KEY, SERVER
-    if lan:
-        kf = HERE / 'derived' / 'lan-key'
-        if not kf.exists():
-            kf.write_text(secrets.token_urlsafe(18))
-            os.chmod(kf, 0o600)
-        LAN_KEY = kf.read_text(encoding='utf-8').strip()
-    srv = SERVER = HTTPServer(('0.0.0.0' if lan else '127.0.0.1', port), Handler)
-    print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
-    if lan:
-        import socket
+class ShareHandler(Handler):
+    """The dedicated share listener. Every socket request needs the access key (query, cookie, or header).
+    Only routes on the read-only allowlist are served. Settings and private state stay on the bridge."""
+    SHARE_LISTENER = True
+
+    def end_headers(self):
+        if getattr(self, '_set_share_cookie', False):
+            self.send_header('Set-Cookie', f'sg_key={LAN_KEY}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000')
+            self._set_share_cookie = False
+        super().end_headers()
+
+    def deny_not_shared(self):
+        return self.send_json({'error': 'This is not part of what is shared from this library.'}, 403)
+
+    def share_admit(self):
+        """Credential, then allowlist, on the same normalized route later used for dispatch."""
+        if getattr(self, 'share_route', None):
+            return True
+        from engine.share_http import normalize_route, allowed, presented_key, key_matches
+        from engine import share as share_mod
+        route = normalize_route(self.path)
+        if route is None:
+            self.send_error(400)
+            return False
+        given, where = presented_key(self.path, self.headers)
+        if not LAN_KEY or not key_matches(given, LAN_KEY):
+            self.deny()
+            return False
+        ai = share_mod.wanted_ai()
+        if not allowed(route, self.command, ai=ai):
+            self.deny_not_shared()
+            return False
+        from engine.share_http import should_redirect_key
+        parts = urllib.parse.urlsplit(self.path)
+        qs = urllib.parse.parse_qs(parts.query, keep_blank_values=True)
+        if where == 'query':
+            self._set_share_cookie = True
+            qs.pop('key', None)
+        query = urllib.parse.urlencode({k: v[0] for k, v in qs.items()}) if qs else ''
+        clean = route + (('?' + query) if query else '')
+        self.share_route = route
+        self.path = clean
+        # Browser page navigations: set the cookie and redirect to a clean URL, so the key
+        # does not stay in the address bar or a bookmark. API, video and Range requests
+        # with ?key= are served in place (AVPlayer and AirPlay cannot rely on the cookie).
+        if where == 'query' and should_redirect_key(route, self.command, self.headers):
+            self.send_response(302)
+            self.send_header('Location', clean or '/')
+            self.end_headers()
+            return False
+        return True
+
+    def do_HEAD(self):
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('10.255.255.255', 1)); ip = s.getsockname()[0]; s.close()
-        except OSError:
-            ip = '<this-computer-ip>'
-        print(f'Phones on this network: http://{ip}:{port}/?key={LAN_KEY}  (keep this link private; delete derived/lan-key to change it)', flush=True)
-    srv.serve_forever()
+            if not self.host_ok():
+                return self.send_error(403)
+            if not self.share_admit():
+                return
+            return super().do_HEAD()
+        except library.CLIENT_GONE:
+            return
+        except Exception:
+            traceback.print_exc()
+            return self.send_error(500)
+
+    def do_GET(self):
+        try:
+            if not self.host_ok():
+                return self.send_json({'error': 'not allowed from this page'}, 403)
+            if not self.share_admit():
+                return
+            if self.share_route == '/api/assistant/status':
+                from engine import share as share_mod
+                if not share_mod.wanted_ai():
+                    return self.send_json({
+                        'online': False,
+                        'available': False,
+                        'shared': False,
+                        'coverage': {},
+                    })
+            return super().do_GET()
+        except library.CLIENT_GONE:
+            return
+        except Exception:
+            return self.internal_error()
+
+    def do_POST(self):
+        try:
+            if not self.host_ok() or not self.origin_ok():
+                return self.send_json({'error': 'not allowed from this page'}, 403)
+            if not self.share_admit():
+                return
+            return super().handle_post()
+        except library.CLIENT_GONE:
+            return
+        except Exception:
+            return self.internal_error()
+
+
+KEY_NOT_PRIVATE = ("Sharing is off. This library's folder can't keep the access key private, so other devices are not let in. "
+                   "Move the library to a private folder on this computer's own drive (not a shared folder or a USB drive), then turn sharing on again.")
+
+
+class KeyNotPrivate(Exception):
+    """The access key file cannot be kept readable by this user only (and the system's own accounts). The message is for the person."""
+
+
+# The only accounts allowed to read the key file on Windows, besides the person running Lastbook:
+# the system itself and the Administrators group. SDDL spells them as short names or as SIDs.
+_SDDL_SIDS = {'SY': 'S-1-5-18', 'BA': 'S-1-5-32-544'}
+
+
+def sddl_is_private(sddl, user_sid):
+    """True if the file's access list (SDDL text) lets in only user_sid, SYSTEM and Administrators.
+    No access list at all means everyone; anything this cannot read counts as not private. Takes no key, only permissions."""
+    try:
+        if not sddl or not user_sid or 'D:' not in sddl:
+            return False
+        dacl = sddl.split('D:', 1)[1].split('S:', 1)[0]
+        body = dacl[dacl.find('('):] if '(' in dacl else ''
+        if not body.startswith('(') or not body.endswith(')'):
+            return False   # a NULL or empty list: no ACEs to show who is allowed (an empty list shuts everyone out, but cannot be told from a damaged one)
+        allowed = {user_sid.upper(), *_SDDL_SIDS.values()}
+        for ace in body[1:-1].split(')('):
+            f = ace.split(';')
+            if len(f) < 6:
+                return False
+            kind, who = f[0], f[5].strip().upper()
+            if kind in ('D', 'OD', 'XD'):
+                continue   # a refusal only narrows who gets in
+            if kind not in ('A', 'OA', 'XA'):
+                return False
+            if _SDDL_SIDS.get(who, who) not in allowed:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def _windows_key_private(kf):
+    """Ask Windows who may open kf (GetNamedSecurityInfo through ctypes, no other dependency) and judge it with sddl_is_private.
+    Any failure to find out, including a drive with no access lists such as exFAT or FAT, is not private."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        adv = ctypes.WinDLL('advapi32', use_last_error=True)
+        krn = ctypes.WinDLL('kernel32', use_last_error=True)
+        krn.LocalFree.argtypes = [ctypes.c_void_p]
+        krn.GetCurrentProcess.restype = wintypes.HANDLE
+        adv.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+        adv.GetTokenInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+        adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        adv.GetNamedSecurityInfoW.argtypes = [wintypes.LPCWSTR, ctypes.c_int, wintypes.DWORD, ctypes.c_void_p, ctypes.c_void_p,
+                                              ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        adv.ConvertSecurityDescriptorToStringSecurityDescriptorW.argtypes = [ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                                                                             ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+        token = wintypes.HANDLE()
+        if not adv.OpenProcessToken(krn.GetCurrentProcess(), 0x0008, ctypes.byref(token)):   # TOKEN_QUERY
+            return False
+        try:
+            n = wintypes.DWORD()
+            adv.GetTokenInformation(token, 1, None, 0, ctypes.byref(n))   # TokenUser: how big
+            buf = ctypes.create_string_buffer(n.value)
+            if not adv.GetTokenInformation(token, 1, buf, n, ctypes.byref(n)):
+                return False
+            sid_ptr = ctypes.c_void_p.from_buffer(buf).value   # TOKEN_USER begins with a pointer to the SID
+            s = ctypes.c_void_p()
+            if not adv.ConvertSidToStringSidW(sid_ptr, ctypes.byref(s)):
+                return False
+            user_sid = ctypes.wstring_at(s.value)
+            krn.LocalFree(s)
+        finally:
+            krn.CloseHandle(token)
+        sd = ctypes.c_void_p()
+        # SE_FILE_OBJECT = 1, DACL_SECURITY_INFORMATION = 4
+        if adv.GetNamedSecurityInfoW(str(kf), 1, 4, None, None, None, None, ctypes.byref(sd)) != 0:
+            return False
+        try:
+            out = ctypes.c_void_p()
+            if not adv.ConvertSecurityDescriptorToStringSecurityDescriptorW(sd, 1, 4, ctypes.byref(out), None):
+                return False
+            sddl = ctypes.wstring_at(out.value)
+            krn.LocalFree(out)
+        finally:
+            krn.LocalFree(sd)
+        return sddl_is_private(sddl, user_sid)
+    except Exception:
+        return False
+
+
+def key_file_private(kf):
+    """True only if this is known to be readable by this user alone: no group or other mode bits on macOS and Linux
+    (a drive that cannot hold modes, such as exFAT or FAT, shows them stuck on), or the access list checked on Windows."""
+    if os.name == 'nt':
+        return _windows_key_private(kf)
+    try:
+        return kf.stat().st_mode & 0o077 == 0
+    except OSError:
+        return False
+
+
+def load_lan_key():
+    """Create or read derived/lan-key through lan_key(), the shared helper used by server.py --lan and the share switch,
+    and set LAN_KEY. Raises KeyNotPrivate (and sets no key) if the file cannot be kept private; a key file this call
+    created is then removed. Never prints the key."""
+    global LAN_KEY
+    kf = HERE / 'derived' / 'lan-key'
+    kf.parent.mkdir(parents=True, exist_ok=True)
+    existed = kf.exists()
+    try:
+        key = lan_key(kf)
+        private = key_file_private(kf)
+    except OSError:
+        # lan_key could not tighten the file (chmod refused). A file there that is not private is the refusal; anything else is a real error.
+        if not kf.exists() or key_file_private(kf):
+            raise
+        key, private = None, False
+    if not private:
+        LAN_KEY = None
+        if not existed:
+            kf.unlink(missing_ok=True)
+        raise KeyNotPrivate(KEY_NOT_PRIVATE)
+    LAN_KEY = key
+    return key
+
+
+def lan_address():
+    """This computer's likely IPv4 address on the local network, or None if it cannot be found."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return None
+
+
+def bind_http(port, lan=False, handler=None):
+    """Listen on this port using library.HTTPServer (128 queued connections). lan=True listens on every interface and uses the share handler."""
+    cls = handler if handler is not None else (ShareHandler if lan else Handler)
+    return HTTPServer(('0.0.0.0' if lan else '127.0.0.1', port), cls)
+
+
+def start_lan(port=None):
+    """Start the dedicated share listener in a background thread (ShareHandler, allowlist, key required).
+    Opens a port only while this returns a server. Does not touch the ordinary local reader (SERVER).
+    Raises OSError if no port in SHARE_PORTS can be bound."""
+    global SHARE_SERVER, _SHARE_THREAD
+    from engine.share_http import ShareServer
+    with _SHARE_LOCK:
+        if SHARE_SERVER is not None:
+            return SHARE_SERVER
+        load_lan_key()
+        ports = [port] if port is not None else list(SHARE_PORTS)
+        last = None
+        for p in ports:
+            try:
+                raw = bind_http(p, lan=True, handler=ShareHandler)
+                last = None
+                SHARE_SERVER = raw
+                ShareServer(raw)
+                break
+            except OSError as e:
+                last = e
+                SHARE_SERVER = None
+        if SHARE_SERVER is None:
+            raise last if last is not None else OSError('could not listen')
+        _SHARE_THREAD = threading.Thread(target=SHARE_SERVER.serve_forever, daemon=True, name='lastbook-share')
+        _SHARE_THREAD.start()
+        print(f'Lastbook is sharing on this network: port {SHARE_SERVER.server_address[1]}', flush=True)
+        return SHARE_SERVER
+
+
+def stop_lan(wait=True):
+    """Close the share listener, including every in-progress stream, and release the port.
+    Safe when it is not running. Does not stop the ordinary local reader (SERVER).
+    wait=True blocks until the port is free."""
+    global SHARE_SERVER, _SHARE_THREAD
+    with _SHARE_LOCK:
+        srv, th, SHARE_SERVER, _SHARE_THREAD = SHARE_SERVER, _SHARE_THREAD, None, None
+    if not srv:
+        return
+    wrapper = getattr(srv, 'share', None)
+    if wrapper is not None:
+        wrapper.stop(wait=wait)
+    else:
+        try:
+            srv.shutdown()
+        except Exception:
+            pass
+        try:
+            srv.server_close()
+        except Exception:
+            pass
+    if wait and th is not None:
+        th.join(timeout=5)
+    print('Lastbook stopped sharing on this network.', flush=True)
+
+
+def serve(port, lan=False):
+    """The HTTP server version: binds the port and answers until stopped.
+    --lan starts the same share listener the desktop app uses (allowlist, key required on every request),
+    tracked as SHARE_SERVER. Without --lan, the full Handler listens on loopback only (SERVER)."""
+    global LAN_KEY, SERVER, SHARE_SERVER
+    from engine.share_http import ShareServer
+    if lan:
+        try:
+            load_lan_key()
+        except KeyNotPrivate as e:
+            raise SystemExit(str(e))   # no port is opened; the same words as the Share switch
+        SHARE_SERVER = bind_http(port, lan=True, handler=ShareHandler)
+        ShareServer(SHARE_SERVER)
+        ip = lan_address() or '<this-computer-ip>'
+        print(f'Lastbook is sharing on this network: http://{ip}:{port}/?key={LAN_KEY}', flush=True)
+        print(f'On this computer (same key): http://127.0.0.1:{port}/?key={LAN_KEY}', flush=True)
+        print('Keep this link private; delete derived/lan-key to change it. Settings stay on this computer.', flush=True)
+        try:
+            SHARE_SERVER.serve_forever()
+        finally:
+            stop_lan(wait=True)
+        return
+    SERVER = bind_http(port, lan=False, handler=Handler)
+    print(f'Lastbook: http://127.0.0.1:{port}/', flush=True)
+    try:
+        SERVER.serve_forever()
+    finally:
+        try:
+            SERVER.server_close()
+        except Exception:
+            pass
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--port', type=int, default=8890)
-    ap.add_argument('--lan', action='store_true', help='also serve phones on the same network; they need the printed access link')
+    ap.add_argument('--lan', action='store_true', help='share the library on this network (read-only allowlist; every request needs the printed access key)')
     ap.add_argument('--no-index', action='store_true', help='do not update the semantic index in the background')
     ap.add_argument('--data', help='data folder holding library-data/ and derived/ (or set LASTBOOK_DATA); default: beside this program')
     a = ap.parse_args()

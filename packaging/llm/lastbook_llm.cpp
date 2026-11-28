@@ -32,6 +32,7 @@
 #include <deque>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -121,7 +122,23 @@ struct Inbox {
     std::deque<json> q;
     std::atomic<bool> cancel{false};
     std::atomic<bool> quit{false};
+    std::optional<json> active;    // protected by m; an active request may have no id
 };
+
+static void cancel_request(Inbox & in, const json & id) {
+    std::lock_guard<std::mutex> lk(in.m);
+    if (in.active && (id.is_null() || id == *in.active)) {
+        in.cancel = true;
+    }
+    if (id.is_null()) {
+        return;  // unkeyed cancel is the legacy command for the current answer
+    }
+    for (auto & pending : in.q) {
+        if (pending.value("id", json()) == id) {
+            pending["_cancelled"] = true;
+        }
+    }
+}
 
 static void read_requests(Inbox * in) {
     std::string line;
@@ -136,7 +153,7 @@ static void read_requests(Inbox * in) {
         }
         const std::string op = j.value("op", "");
         if (op == "cancel") {
-            in->cancel = true;
+            cancel_request(*in, j.value("id", json()));
             continue;
         }
         if (op == "quit") {
@@ -209,6 +226,8 @@ static bool decode_all(Engine & e, const std::vector<llama_token> & toks, size_t
             return false;
         }
         e.cached.insert(e.cached.end(), toks.begin() + i, toks.begin() + i + n);
+        // Batch boundaries are real work progress, never synthetic timer heartbeats.
+        send({{"ev", "phase"}, {"id", *e.in->active}, {"phase", "prompt"}, {"n_processed", i + n}, {"n_prompt", toks.size()}});
     }
     return true;
 }
@@ -217,6 +236,8 @@ static void generate(Engine & e, const json & req) {
     using clock = std::chrono::steady_clock;
     const auto t0 = clock::now();
     const json id = req.value("id", json());
+    auto ms = [](auto a, auto b) { return (long long) std::chrono::duration_cast<std::chrono::milliseconds>(b - a).count(); };
+    send({{"ev", "phase"}, {"id", id}, {"phase", "prompt"}});
     auto fail = [&](const char * code, const std::string & msg) {
         send({{"ev", "error"}, {"id", id}, {"code", code}, {"msg", msg}});
     };
@@ -256,18 +277,19 @@ static void generate(Engine & e, const json & req) {
     }
     const size_t reused = keep;
 
-    e.in->cancel = false;
+    send({{"ev", "phase"}, {"id", id}, {"phase", "prompt"}, {"n_prompt", toks.size()}, {"n_reused", reused}});
     int err = 0;
     if (!decode_all(e, toks, keep, err)) {
         llama_memory_clear(mem, true);
         e.cached.clear();
         if (err == 2) {
-            send({{"ev", "done"}, {"id", id}, {"reason", "cancel"}, {"n_prompt", toks.size()}, {"n_reused", reused}, {"n_gen", 0}});
+            send({{"ev", "done"}, {"id", id}, {"reason", "cancel"}, {"n_prompt", toks.size()}, {"n_reused", reused}, {"n_gen", 0}, {"prompt_ms", ms(t0, clock::now())}, {"gen_ms", 0}});
             return;
         }
         return fail("decode", "the model could not read the question (llama_decode failed)");
     }
     const auto t1 = clock::now();
+    send({{"ev", "phase"}, {"id", id}, {"phase", "generation"}, {"n_prompt", toks.size()}, {"n_reused", reused}, {"prompt_ms", ms(t0, t1)}});
 
     llama_sampler * smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
     llama_sampler_chain_add(smpl, llama_sampler_init_top_k(req.value("top_k", 64)));
@@ -284,6 +306,7 @@ static void generate(Engine & e, const json & req) {
     }
     std::string pending, why = "length", stopped_by;
     int n_gen = 0;
+    long long first_token_ms = -1;
     for (; n_gen < max_tokens; n_gen++) {
         if (e.in->cancel) {
             why = "cancel";
@@ -309,6 +332,7 @@ static void generate(Engine & e, const json & req) {
         pending += p;
         size_t ok = complete_utf8(pending);
         if (ok) {
+            if (first_token_ms < 0) { first_token_ms = ms(t0, clock::now()); }
             send({{"ev", "tok"}, {"id", id}, {"t", pending.substr(0, ok)}});
             pending.erase(0, ok);
         }
@@ -323,15 +347,17 @@ static void generate(Engine & e, const json & req) {
     if (!pending.empty()) {
         send({{"ev", "tok"}, {"id", id}, {"t", pending}});
     }
-    if (why == "decode") {
+    if (why == "decode" || why == "cancel") {
+        // An aborted decode can have changed native memory without appending to cached.
         llama_memory_clear(mem, true);
         e.cached.clear();
-        return fail("decode", "the model stopped while writing (llama_decode failed)");
+        if (why == "decode") {
+            return fail("decode", "the model stopped while writing (llama_decode failed)");
+        }
     }
     const auto t2 = clock::now();
-    auto ms = [](auto a, auto b) { return (long long) std::chrono::duration_cast<std::chrono::milliseconds>(b - a).count(); };
     json done = {{"ev", "done"}, {"id", id}, {"reason", why}, {"n_prompt", toks.size()}, {"n_reused", reused}, {"n_gen", n_gen},
-                 {"prompt_ms", ms(t0, t1)}, {"gen_ms", ms(t1, t2)}};
+                 {"prompt_ms", ms(t0, t1)}, {"gen_ms", ms(t1, t2)}, {"first_token_ms", first_token_ms}};
     if (!stopped_by.empty()) {
         done["stop"] = stopped_by;
     }
@@ -511,6 +537,8 @@ int main(int argc, char ** argv) {
             }
             req = std::move(in.q.front());
             in.q.pop_front();
+            in.active = req.value("id", json());
+            in.cancel = in.quit.load() || req.value("_cancelled", false);
         }
         if (req.value("op", "") == "gen") {
             try {
@@ -520,6 +548,10 @@ int main(int argc, char ** argv) {
             }
         } else {
             send({{"ev", "error"}, {"code", "bad_request"}, {"msg", "unknown op"}});
+        }
+        {
+            std::lock_guard<std::mutex> lk(in.m);
+            in.active.reset();
         }
     }
     llama_free(e.ctx);

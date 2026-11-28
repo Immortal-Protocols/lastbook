@@ -39,36 +39,11 @@ private val destinations = listOf(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainShell(onManage: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val nav: NavHostController = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route ?: "videos"
     val top = destinations.any { it.route == route }
     val imeVisible = WindowInsets.isImeVisible
-
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        val act = context as? android.app.Activity ?: return@LaunchedEffect
-        val tab = act.intent?.getStringExtra("lb_tab")
-        val ask = act.intent?.getStringExtra("lb_ask")
-        val openRoute = act.intent?.getStringExtra("lb_route")
-        if (!tab.isNullOrEmpty() && destinations.any { it.route == tab }) {
-            nav.navigate(tab) {
-                popUpTo("videos") { saveState = true }
-                launchSingleTop = true
-            }
-        }
-        if (!openRoute.isNullOrEmpty()) {
-            nav.navigate(openRoute)
-        }
-        if (!ask.isNullOrEmpty()) {
-            nav.navigate("chat") {
-                popUpTo("videos") { saveState = true }
-                launchSingleTop = true
-            }
-            kotlinx.coroutines.delay(500)
-            Services.chat.send(ask)
-        }
-    }
 
     Scaffold(bottomBar = {
         if (top && !imeVisible) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {

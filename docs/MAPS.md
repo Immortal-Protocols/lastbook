@@ -15,8 +15,8 @@ A map set lives in the data folder. `map-set.json` at its top lists the files an
 
 | File | Tables | What it holds | Read by |
 |---|---|---|---|
-| `derived/geo/national.sqlite` | `feat`, `feat_idx`, `poi`, `meta` | Roads, water and land shapes, and the place pins | `server.py` (`national_mapdb`) |
-| `derived/geo/map.sqlite` | the same four | The original detailed street map of Southern California; it had no rows in the state map checked | `server.py` (`mapdb`) |
+| `derived/geo/national.sqlite` | `feat`, `feat_idx`, `poi`, `meta` | Roads, water and land shapes, and the place pins; for maps built with `tools/build_region.py` this is the region itself | `server.py` (`national_mapdb`) |
+| `derived/geo/map.sqlite` | the same four | The original detailed street map of Southern California; it had no rows in the state map checked, nor in maps built with `tools/build_region.py` | `server.py` (`mapdb`) |
 | `derived/geo/water.sqlite` | `resource`, `spatial`, `feat`, `feat_idx` | Dams, reservoirs, lakes and ponds | `server.py` |
 | `derived/geo/crops.sqlite` | `resource`, `spatial`, `tile` | Orchards, vineyards and berries | `server.py` |
 | `derived/geo/terrain.sqlite` | `tile` | Elevation tiles for relief, contours and the 3D view | `server.py` |
@@ -92,6 +92,7 @@ so ask before adding many.
 | File | Built by | From |
 |---|---|---|
 | `map.sqlite` | `tools/build_map.py`, then `tools/build_coast.py` for the ocean | An OpenStreetMap regional extract (ODbL) |
+| `national.sqlite` | `tools/build_map.py`, run by `tools/build_region.py` for a complete set | An OpenStreetMap regional extract (ODbL) |
 | `water.sqlite` | `tools/build_water.py` (`nid`, then `nhd`) | USACE National Inventory of Dams, USGS National Hydrography Dataset |
 | `crops.sqlite` | `tools/build_crops.py` | USDA Cropland Data Layer |
 | `terrain.sqlite` | `tools/build_terrain.py` | USGS 3DEP elevation |
@@ -105,8 +106,10 @@ expect source files that are hundreds of gigabytes.
 
 ### Not in this repository
 
-- **The builder for `national.sqlite`.** The pack tools copy from an existing `national.sqlite` and `server.py` reads it,
-  but no tool here makes it from OpenStreetMap data.
+- **The builder for the US national map.** The pack tools copy from an existing `national.sqlite` and `server.py` reads it, but the
+  whole-country map is built by a separate pipeline. `tools/build_map.py` does make a regional one from an OpenStreetMap extract,
+  and `tools/build_region.py` uses it to build a complete map set for a place without one (below) — which is all a non-US
+  region needs, because its map has no detailed `map.sqlite` and falls back to `national.sqlite`.
 - **The builder for `atlas.sqlite`.**
 - **A reader for seven place files.** `tools/build_places_civic.py`, `_usgs.py`, `_overture.py`, `_atp.py`, `_fsq.py`,
   `_fuel.py` and `_snap.py` each write a `derived/geo/places-*.sqlite` and say it is merged by `game/serve.py`. That file
@@ -117,6 +120,9 @@ expect source files that are hundreds of gigabytes.
 
 ## What is tied to the United States
 
+- The map itself is not: `tools/build_region.py` builds a regional `national.sqlite`, `places.sqlite` and map set from any
+  Geofabrik free extract (below). The remaining files — water, crops, terrain, buildings, the place sources, addresses —
+  still are.
 - Every detailed source above is a US dataset, or a worldwide one filtered to the US.
 - `server.py` treats a box around Southern California as the area `map.sqlite` covers (`_poi_sources`, `socal_classes`).
 - Detailed maps are cut and installed one US state at a time (`docs/SETUP-API.md`, "State maps").
@@ -239,6 +245,42 @@ of shared or other-region databases on normal/fresh builds and rejected input. I
 only pyosmium (already a build-time dependency in `tools/build_coast.py`) and no data folder.
 
 The data is OpenStreetMap, ODbL: a pack built from it must carry the attribution the other OSM layers already do.
+
+## Building a map for a place without one
+
+For a place Lastbook has no map of — a Brazilian state, a European country — `tools/build_region.py` builds the same set of
+files from the free OpenStreetMap extract Geofabrik publishes for the region. It is stdlib-only and offline: the extract is
+a local file, and the only step that needs more is the optional coastline (pyosmium).
+
+    curl -L -o sudeste.zip https://download.geofabrik.de/south-america/brazil/sudeste-free-gpkg-latest.zip
+    python3 tools/build_region.py sudeste.zip --name BR-RJ --label "Rio de Janeiro" \
+        --box -46.7,-24.9,-40.1,-19.9 --data /path/to/LastbookData
+    python3 server.py --data /path/to/LastbookData
+
+- `--box west,south,east,north` clips the extract to the place: a Brazilian state extract also holds its neighbouring
+  states, so without a box the map covers the whole extract.
+- The data folder must also hold `library-data/` (the base world map and the search library): clone it from an installed
+  LastbookData.
+- What it writes: `derived/geo/national.sqlite` (the detailed map), `derived/geo/places.sqlite`, an empty
+  `derived/geo/map.sqlite` placeholder, `national-status.json`, `socal-cells.json` (`[]`) and `map-set.json`.
+  Re-running rebuilds the set in place.
+
+### The coastline gotcha
+
+The free GeoPackage has no `natural=coastline` ways — only the full `.osm.pbf` has them — so a map built from it has no
+real sea edge: the ragged low-resolution base world map shows through along the coast. `tools/build_coast.py` fixes that by
+reading the coastline ways from a `.osm.pbf` (it needs pyosmium; `derived/buildenv/bin/python` has it):
+
+    python3 tools/build_region.py sudeste.zip --name BR-RJ --label "Rio de Janeiro" \
+        --box -46.7,-24.9,-40.1,-19.9 --coast /path/to/coastline.osm.pbf --coast-close 10 --data /path/to/LastbookData
+
+`--coast-close` is a longitude well out to sea from the open ends of the mainland coast: `-125` (the Pacific) for a
+west-facing coast like SoCal's, `10` (mid-Atlantic) for Brazil's east-facing one. The full regional pbf is large — Brazil's
+is about 2 GB, and the coast tool's `flex_mem` index scales with the file — so a coastline-only extract of the same area
+keeps the step small.
+
+The other files — water, crops, terrain, buildings, the place sources, addresses — are still US datasets; the `REGIONS-*.md`
+proposals above cover those.
 
 ## Checking a map change
 

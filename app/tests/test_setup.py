@@ -306,6 +306,17 @@ class fast_backoff:
 
 # ----------------------------------------------------------------------------------------------------------- tests --
 class ReleaseManifest(unittest.TestCase):
+    def test_release_builder_assigns_known_small_and_medium_summary_keys(self):
+        spec = importlib.util.spec_from_file_location('release_manifest', ROOT / 'packaging/release_manifest.py')
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        packs = [{'id': 'small', 'summary': builder.SMALL_SUMMARY},
+                 {'id': 'medium', 'summary': builder.MEDIUM_SUMMARY},
+                 {'id': 'custom', 'summary': 'Custom summary'}]
+        self.assertIs(builder.attach_summary_keys(packs), packs)
+        self.assertEqual([p.get('summary_key') for p in packs],
+                         ['setup.packSummary.small', 'setup.packSummary.medium', None])
+
     def test_rejects_invalid_generated_part_before_replacing_manifest(self):
         from app.tests.multipart_fixture import write_fixture
         from tempfile import TemporaryDirectory
@@ -3639,6 +3650,8 @@ const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'the drive', diskFor = () => null;
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => ({});
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const job = code => ({copy: true, folder: '/srv/x/LastbookData', error: {code, message: 'Lastbook could not read or write a file for the copy. Check the drive is still connected, then copy again to the same place to carry on.'}, items: []});
@@ -3844,12 +3857,12 @@ console.log(JSON.stringify({copy: errorBox(job('copy')), full: errorBox(job('no_
         script = r"""
 const src = require('fs').readFileSync(process.argv[1], 'utf8');
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
-const errCode = e => e && e.code, noDownload = () => false;
+const errCode = e => e && e.code, noDownload = () => false, tr = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let repair = null;
 const jobWords = j => { repair = j.repair && !j.check ? {fixed: false} : null; return {head: jobHead(j), lead: jobLead(j)} };
 eval(section('  function jobHead(', '  function jobView('));
 eval(section('  function jobLead(', '  /* Resume when paused'));
-eval(section('  function repairedWords(', '  /* ---- Check now'));
+eval(section('  function repairParts(', '  /* ---- Check now'));
 eval(section('  function repairOffer(', '  function checkedView('));
 const esc = String, ico = () => '', itemTitle = it => it.title, WORD = {paused: 'Paused'};
 eval(section('  const STEPS = ', '  const WORD = ') + section('  function itemHTML(', '  const itemTitle = '));   // one eval: STEPS in itemHTML's scope
@@ -3863,6 +3876,7 @@ console.log(JSON.stringify({
   offer_ai: repairOffer(0, true, false), offer_lib: repairOffer(2, false, false), offer_all: repairOffer(1, true, true),
   did_ai: repairedWords({repaired: true, model_ok: false, damaged: 1, pack_replaced: false}),
   did_lib: repairedWords({repaired: true, model_ok: true, damaged: 1, pack_replaced: true}),
+  did_map: repairedWords({repaired: true, model_ok: true, map_ok: false, damaged: 1, pack_replaced: false}),
   check_steps: steps({check: true, state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
   install_steps: steps({state: 'paused'}, {kind: 'pack', state: 'paused', bytes_done: 0, bytes_total: 10, title: 'Small'}),
 }));
@@ -3886,6 +3900,8 @@ console.log(JSON.stringify({
         self.assertNotIn('kept aside', w['did_ai'])
         self.assertIn('downloaded again', w['did_lib'])
         self.assertIn('kept aside', w['did_lib'])
+        self.assertEqual(w['did_map'], 'The detailed map was downloaded again.')
+        self.assertEqual(w['did_map'], 'The detailed map was downloaded again.')
         self.assertEqual(w['check_steps'], ['Check'])                    # a check's items are only read: no Download or Unpack
         self.assertEqual(w['install_steps'], ['Download', 'Check', 'Unpack', 'Finish'])
 
@@ -4788,6 +4804,8 @@ const calls = [], note = {hidden: true}, button = {}, UNIT = 1000;
 const $ = s => s === '#haveNote' ? note : button;
 const esc = s => String(s == null ? '' : s), ico = () => '', size = String, diskName = () => 'this disk';
 const errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '', S = {}, shortfall = null, confirmCancel = false, lastAct = null;
 const call = async (path, body) => { calls.push([path, body]); return cfg.cancel ? {cancelled: true} : {path: '/path/to/model.gguf'} };
 const useFile = async (path, btn) => { calls.push(['useFile', path, btn === button]) };
@@ -4836,6 +4854,8 @@ const src = require('fs').readFileSync(process.argv[1], 'utf8'), kind = process.
 const section = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), ico = () => '', size = n => (n / 1e9).toFixed(1) + ' GB';
 const diskName = () => 'this disk', errCode = e => e && e.code, errText = e => e && e.message, cur = () => null, diskFor = () => null;
+const tHtml = (_key, _params, fallback) => fallback;
+const trMarkup = (_key, params, fallback) => String(fallback || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => params && params[name] != null ? params[name] : '{' + name + '}');
 let folder = '';
 eval(section('  function errorBox(', '  function itemHTML('));
 const error = {code: 'unreachable', message: 'Lastbook could not reach huggingface.co from this network.', host: 'huggingface.co',
@@ -4852,7 +4872,7 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
         self.assertIn('Retry later', html)
         self.assertNotIn('internet connection dropped', html)
         for k in ('File', 'Size', 'Address', 'SHA-256'):
-            self.assertIn(f'<dt>{k}</dt>', html)
+            self.assertIn(f'<dt><span lang="en">{k}</span></dt>', html)
         self.assertIn('16,947,541,728 bytes', html)                       # exact, to check a copy fetched elsewhere
         self.assertIn('ab' * 32, html)
         self.assertIn('&amp;a=&lt;b>', html)                              # the address is escaped
@@ -4861,7 +4881,7 @@ console.log(errorBox({error, items: [{kind, state: 'failed', bytes_done: 0, erro
 
     def test_a_library_file_points_to_choose_again(self):
         html = self.box('pack')
-        self.assertIn('<dt>SHA-256</dt>', html)
+        self.assertIn('<dt><span lang="en">SHA-256</span></dt>', html)
         self.assertNotIn('data-act="model-file"', html)
         self.assertIn('Choose a library zip or AI model file', html)
 

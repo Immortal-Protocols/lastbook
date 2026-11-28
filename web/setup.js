@@ -7,6 +7,24 @@
   const main = $('#main'), live = $('#live');
   const languageHasFocus = () => $('#languageSettings')?.contains(document.activeElement);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const tr = (key, params, fallback) => {
+    const text = globalThis.LastbookI18n?.t?.(key, params);
+    if (text != null) return text;
+    if (params && typeof fallback === 'string') return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => params[n] != null ? String(params[n]) : '{' + n + '}');
+    return fallback;
+  };
+  globalThis.lastbookTr = tr;
+  function tHtml(key, params, fallback) {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    const text = result?.text ?? tr(key, params, fallback);
+    return `<span lang="${esc(result?.locale || 'en')}">${esc(text ?? '')}</span>`;
+  }
+  function trMarkup(key, params, fallback) {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    const text = result?.text ?? tr(key, params, fallback), locale = result?.locale || 'en';
+    const direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${esc(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(text ?? '')}</span>`;
+  }
   const WIN = document.documentElement.classList.contains('plat-win');
   const UNIT = WIN ? 1024 : 1000;   // each system's own way of counting a gigabyte, so the numbers match Finder or Explorer
   const CAN = { removeAi: true, repair: true };   // one switch each, should a build of the engine be without remove-ai or repair
@@ -135,11 +153,14 @@
   const mapMissing = () => !selectedState() && !skippedMap();
   const mapAdds = () => choice.map && choice.map !== 'none' && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
   function packSummary(p) {
-    const text = p.summary || '';
-    if (p.id !== 'medium' || !maps().length || skippedMap()) return text;
-    // The manifest describes the archive's bundled map. Setup replaces it with the chosen state map.
-    const state = selectedState();
-    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : 'your state'));
+    const state = p.id === 'medium' ? selectedState() : '';
+    const map = maps().length && state ? mapName(state) : 'California';
+    const text = p.summary_key
+      ? tr(p.summary_key, p.id === 'medium' ? { map } : null, p.summary || '')
+      : (p.summary || '');
+    if (p.id !== 'medium' || p.summary_key || !maps().length || skippedMap()) return text;
+    // Older manifests have no catalogue key; preserve their summary while replacing the bundled map name.
+    return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (state ? mapName(state) : tr('setup.yourState', null, 'your state')));
   }
   const packDl = p => p.download_bytes || (p.files || []).reduce((n, f) => n + (f.size || 0), 0);
   const SEP = WIN ? '\\' : '/', DATA = 'LastbookData';
@@ -298,7 +319,7 @@
       <section id="mapBox" class="s-map-panel" aria-label="Your local map"></section>
       <h2 id="packH" data-i18n="nav.library">Library</h2>
       <div class="s-opts" role="radiogroup" aria-labelledby="packH">${packCards}</div>
-      ${ai ? `<h2>Local AI</h2>${ai}` : ''}
+      ${ai ? `<h2>${tr('setup.localAi', null, 'Local AI')}</h2>${ai}` : ''}
       ${c ? '' : '<div id="srvSlot"></div>'}
       <section class="s-sum" id="sum" aria-live="polite"></section>
       ${c ? '' : updatesBox()}
@@ -342,13 +363,13 @@
     const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
     const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = skippedMap() ? (now === 'us' ? 'No street-address search. You can add it later from Settings.' : 'No local map. You can add one later from Settings.') : !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
+    let hint = skippedMap() ? (now === 'us' ? tr('setup.skipMapNoAddress', null, 'No street-address search. You can add it later from Settings.') : tr('setup.skipMapNoLocal', null, 'No local map. You can add one later from Settings.')) : !sel ? tr('setup.selectState', null, 'Select your state to continue.') : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : tr('setup.mapAndIndexIncluded', null, 'Your state map and available address index are already included.');
     if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your state map is already included.') + ' Street-address search is not available for this state yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
       ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your state for offline street-address search.</p>' : ''}
       <label class="s-maplabel" for="mapSel">Choose your state</label>
-      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected || skippedMap() ? '' : ' selected'}>Select a state</option>${canSkipMap() ? `<option value="none"${skippedMap() ? ' selected' : ''}>${now === 'us' ? 'No street-address search' : 'No local map'} — skip for now</option>` : ''}${opts}</select>
+      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected || skippedMap() ? '' : ' selected'}>${tr('setup.selectAState', null, 'Select a state')}</option>${canSkipMap() ? `<option value="none"${skippedMap() ? ' selected' : ''}>${now === 'us' ? tr('setup.skipMapNoAddressLabel', null, 'No street-address search') : tr('setup.skipMapNoLocalLabel', null, 'No local map')} ${tr('setup.skipMapForNow', null, '— skip for now')}</option>` : ''}${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;
     $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
   }
@@ -527,10 +548,10 @@
     const bigger = larger.filter(x => x.available !== false), later = larger.find(x => x.available === false);
     main.innerHTML = `<h1 data-i18n="setup.settingsTitle">Library and local AI</h1>
       <div class="s-have">
-        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || 'Library')} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
+        <div class="s-row">${ico('book', 's-ri')}<span><b>${esc(p ? p.title : c.pack || tr('nav.library', null, 'Library'))} library</b><small>${libraryUpdate ? 'Updated edition available · ' : p ? size(p.installed_bytes) + ' · ' : ''}${esc(home(c.folder))}</small></span>
           ${libraryUpdate ? `<button class="btn" id="libraryUpdate">Update ${esc(p.title)}</button>` : bigger.length ? `<button class="btn" id="upgrade">${ico('up')}Get ${esc(bigger[0].title)}</button>` : later ? `<span class="s-badge later">${esc(later.title)} comes later</span>` : '<span class="s-badge here">The largest</span>'}</div>
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
-          ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
+          ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">${tr('common.remove', null, 'Remove')}</button><button class="btn plain" id="rmNo">${tr('common.keep', null, 'Keep')}</button></span>` : `<button class="btn plain" id="rmAi">${tr('common.remove', null, 'Remove')}</button>`) : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
           return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
           <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
@@ -609,7 +630,7 @@
   // "Last checked 17 November 2026 · every file as published", from current.checked (Check now, or Repair's own check)
   function checkLine(ck) {
     if (!ck || !ck.at) return 'Not checked on this computer yet. Checking reads every file and downloads nothing.';
-    const when = new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    const when = globalThis.LastbookI18n?.date?.(new Date(ck.at), { day: 'numeric', month: 'long', year: 'numeric' }) ?? new Date(ck.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
     const ai = ck.model_ok === false, map = ck.map_ok === false, files = (ck.damaged || 0) - (ai ? 1 : 0) - (map ? 1 : 0);   // 'damaged' counts the AI file and the map too
     const what = ck.repaired ? `${ck.damaged} damaged or missing, repaired`
       : [files ? `${files} damaged or missing` : '', ai ? 'the local AI file did not match' : '', map ? 'the detailed map is damaged' : ''].filter(Boolean).join(' · ') || 'every file as published';
@@ -662,13 +683,13 @@
       copy: ['The copy stopped.', esc(errText(e) || 'Copy again to the same place to carry on.'), 'retry'],
       cancelled: j.check ? ['The check was cancelled.', 'Nothing was changed or downloaded.', 'back'] : j.copy ? ['The copy was cancelled.', 'What was copied is still on the drive: copy again to the same place to carry on.', 'back'] : ['The download was cancelled.', 'Start again when you are ready.', 'back'],
     }[code] || [esc(errText(e) || 'Something went wrong.'), 'Retry, or go back and choose again.', 'retry'];
-    return `<div class="s-err" role="alert">${ico('warn')}<div><b>${T[0]}</b><p>${T[1]}${code === 'found_mismatch' && !c ? '' : ' ' + safe}</p>
+    return `<div class="s-err" role="alert">${ico('warn')}<div><b><span lang="en">${T[0]}</span></b><p><span lang="en">${T[1]}</span>${code === 'found_mismatch' && !c ? '' : ' <span lang="en">' + safe + '</span>'}</p>
       ${code === 'unreachable' && e && e.name ? facts(e) : ''}
-      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}Retry</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}Download it</button>` : ''}${blockedModel ? '<button class="btn plain" data-act="model-file">Choose AI model file</button>' : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">Choose again</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
+      <p class="s-acts">${T[2] === 'retry' ? `<button class="btn" data-act="retry">${ico('retry')}${tHtml('setup.retry', null, 'Retry')}</button>` : T[2] === 'download' ? `<button class="btn" data-act="retry">${ico('down')}${tHtml('setup.downloadIt', null, 'Download it instead?')}</button>` : ''}${blockedModel ? `<button class="btn plain" data-act="model-file">${tHtml('setup.chooseAiModelFile', null, 'Choose an AI model file')}</button>` : ''}<button class="btn ${T[2] === 'back' ? '' : 'plain'}" data-act="back">${tHtml('setup.chooseAgain', null, 'Choose again')}</button></p>${blockedModel ? '<p class="s-note" id="haveNote" role="status" hidden></p>' : ''}</div></div>`;
   }
   /* the published file a download could not reach, to fetch elsewhere and check by hand: name, exact size, address, SHA-256 */
   function facts(e) {
-    const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+    const row = (k, v) => `<dt><span lang="en">${k}</span></dt><dd>${v}</dd>`;
     return `<dl class="s-facts">${row('File', `<code>${esc(e.name)}</code>`)}${e.size ? row('Size', `${size(e.size)} (${esc(Number(e.size).toLocaleString('en-US'))} bytes)`) : ''}${e.url ? row('Address', `<code>${esc(e.url)}</code>`) : ''}${e.sha256 ? row('SHA-256', `<code>${esc(e.sha256)}</code>`) : ''}</dl>`;
   }
   function itemHTML(it, j) {
@@ -685,7 +706,7 @@
       <ol class="s-steps" aria-label="Steps">${steps.map((s, i) => `<li class="${i < at ? 'done' : i === at && it.state !== 'failed' ? 'now' : i === at ? 'stop' : ''}">${s[1]}</li>`).join('')}</ol>
     </div>`;
   }
-  const itemTitle = it => it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
+  const itemTitle = it => it.title_key ? tr(it.title_key, it.title_params || null, it.title || '') : it.kind === 'model' ? 'Local AI' : it.kind === 'map' ? `${(mapById(it.id) || it).title || it.id} map` : it.kind === 'addresses' ? it.title : it.id === 'library' || it.id === 'repair' || /library/i.test(it.title) ? it.title : it.title + ' library';
   /* an item that needs nothing from the internet: the person's own file, or one stopped after its download was complete.
      source and paused_from come from the engine (docs/SETUP-API.md); without them, a complete download still counts */
   const noDownload = it => it.source === 'found' || (!!it.paused_from && it.paused_from !== 'downloading') || (it.bytes_total > 0 && it.bytes_done >= it.bytes_total);
@@ -842,7 +863,7 @@
     const fixed = repair && (r ? !!r.repaired : repair.fixed), checked = repair && !fixed, unsure = checked && !r && !repair.sure;   // unsure: opened again late in a repair
     const got = j.items.filter(i => i.id !== 'repair' && i.id !== 'library').map(i => esc(itemTitle(i))).join(', ').replace(/, ([^,]*)$/, ' and $1');
     main.innerHTML = `<div class="s-done">${ico('ok', 's-big')}<h1>${unsure ? 'Checked' : checked ? 'All good' : fixed ? 'Repaired' : 'Ready'}</h1>
-      <p class="lead">${unsure ? 'The library was checked and is complete. Anything that was damaged was downloaded again.' : checked ? 'The library was checked and is complete.' : fixed ? repairedWords(r || {}) : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? 'The library you chose is ready to open.' : 'The library is installed.'}</p>
+      <p class="lead">${unsure ? 'The library was checked and is complete. Anything that was damaged was downloaded again.' : checked ? 'The library was checked and is complete.' : fixed ? repairedMarkup(r || {}) : got ? `Installed: ${got}.` : j.items.some(i => i.id === 'library') ? 'The library you chose is ready to open.' : 'The library is installed.'}</p>
       <button class="btn big" id="open">Open the library</button><p class="s-note" id="openNote" hidden></p></div>`;
     live.textContent = checked ? 'The library was checked.' : fixed ? 'Repaired. Ready to open.' : 'Installed. Ready to open.';
     $('#open').onclick = async () => {
@@ -854,12 +875,21 @@
   }
 
   /* what Repair did: the whole library downloaded again (the damaged copy kept aside), the AI file replaced, the map fetched again */
-  function repairedWords(r) {
+  function repairParts(r) {
     const ai = r.model_ok === false, map = r.map_ok === false, lib = r.pack_replaced != null ? !!r.pack_replaced : (r.damaged || 0) - ai - map > 0;
-    const said = [lib ? 'The library was downloaded again, because some of its files were damaged. The damaged copy is kept aside; you can delete it in Library and local AI.' : '',
-                  ai ? (lib ? 'The local AI file was downloaded again too.' : 'The local AI file was damaged, so it was downloaded again and put in its place.') : '',
-                  map ? 'The detailed map was downloaded again.' : ''].filter(Boolean).join(' ');
-    return said || 'A damaged part was downloaded again.';
+    return [
+      lib ? ['setup.repairSummaryLibrary', null, 'The library was downloaded again because some of its files were damaged. The damaged copy was kept aside; you can delete it in Library and local AI.'] : null,
+      ai ? (lib ? ['setup.repairSummaryAiWithLibrary', null, 'The local AI file was downloaded again too.'] : ['setup.repairSummaryAiOnly', null, 'The local AI file was damaged, so it was downloaded again and put in its place.']) : null,
+      map ? ['setup.repairSummaryMap', null, 'The detailed map was downloaded again.'] : null,
+    ].filter(Boolean);
+  }
+  function repairedWords(r) {
+    const parts = repairParts(r);
+    return parts.length ? parts.map(([key, params, fallback]) => tr(key, params, fallback)).join(' ') : tr('setup.repairSummaryOther', null, 'A damaged part was downloaded again.');
+  }
+  function repairedMarkup(r) {
+    const parts = repairParts(r);
+    return parts.length ? parts.map(([key, params, fallback]) => trMarkup(key, params, fallback)).join(' ') : trMarkup('setup.repairSummaryOther', null, 'A damaged part was downloaded again.');
   }
   /* ---- Check now: what the check found. Nothing was downloaded or changed; Repair is the person's choice */
   /* what Repair would do for what the check found: a damaged library file means the whole library again; the AI file is replaced in place */

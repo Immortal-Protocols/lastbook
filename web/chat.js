@@ -1,6 +1,78 @@
 'use strict';
 /* "Ask the library" — chat with the local model, grounded in the library. Conversations stay on this device only. */
 const Chat = (() => {
+  const chatTr = (key, params, fallback) => globalThis.lastbookTr?.(key, params, fallback) ?? fallback;
+  const chatResult = (key, params, fallback) => globalThis.LastbookI18n?.resolve?.(key, params)
+    || { text: chatTr(key, params, fallback), locale: 'en' };
+  const chatHtml = result => {
+    const direction = globalThis.LastbookI18n?.direction?.(result.locale);
+    return `<span lang="${esc(result.locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${esc(result.text ?? '')}</span>`;
+  };
+  const chatDate = (value, options) => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    try {
+      const formatted = globalThis.LastbookI18n?.date?.(date, options);
+      if (formatted != null) return formatted;
+      return options && ('dateStyle' in options || 'timeStyle' in options)
+        ? date.toLocaleString(undefined, options)
+        : date.toLocaleDateString(undefined, options);
+    } catch { return '' }
+  };
+  const CHAT_ERROR_KEYS = ['chat.stoppedUnexpectedly', 'chat.stopped', 'chat.modelNotRunning', 'chat.internalError',
+    'chat.emptyResponse', 'chat.serverRefused', 'chat.modelServerNotAnswering', 'chat.wrongFile', 'chat.memoryEstimate',
+    'chat.startFailed', 'app.errorGeneric'];
+  function matchLegacyError(text) {
+    const catalogs = [['en', globalThis.lastbookI18nEnglish || {}], ...Object.entries(globalThis.lastbookI18nLocales || {})];
+    const match = source => {
+      if (typeof source !== 'string') return null;
+      for (const [, catalog] of catalogs) for (const key of CHAT_ERROR_KEYS) {
+        const template = catalog[key];
+        if (typeof template !== 'string') continue;
+        const names = [...template.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map(m => m[1]);
+        const parts = template.split(/\{[A-Za-z_][A-Za-z0-9_]*\}/g);
+        const escaped = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp('^' + parts.map((part, i) => escaped(part) + (i < names.length ? '([\\s\\S]*?)' : '')).join('') + '$');
+        const found = source.match(pattern);
+        if (found) return { key, params: Object.fromEntries(names.map((name, i) => [name, found[i + 1]])) };
+      }
+      return null;
+    };
+    if (text === 'stopped') return { parts: [{ key: 'chat.stopped', params: null }] };
+    const direct = match(text);
+    if (direct) return { parts: [{ key: direct.key, params: direct.params }] };
+    for (const [, catalog] of catalogs) {
+      const suffix = catalog['chat.fallbackNothing'];
+      if (typeof suffix !== 'string' || !text.endsWith(suffix)) continue;
+      const base = text.slice(0, -suffix.length).trimEnd(), first = match(base);
+      if (first) return { parts: [{ key: first.key, params: first.params }, { key: 'chat.fallbackNothing', params: null }] };
+    }
+    return null;
+  }
+  function errorParts(m) {
+    if (Array.isArray(m?.errorInfo?.parts)) return m.errorInfo.parts;
+    if (m?.errorInfo?.key) return [{ key: m.errorInfo.key, params: m.errorInfo.params || null, fallback: m.errorInfo.fallback }];
+    if (m?.errorInfo?.text != null) return [{ text: m.errorInfo.text, locale: m.errorInfo.locale || 'en' }];
+    if (m?.errorKey || m?.error_key) return [{ key: m.errorKey || m.error_key, params: m.errorParams || m.error_params || null, fallback: m.errorFallback }];
+    if (!m?.error) return [];
+    const legacy = matchLegacyError(String(m.error));
+    if (legacy) return legacy.parts;
+    return [{ text: String(m.error), locale: 'en' }];
+  }
+  const resultForPart = part => part.key ? chatResult(part.key, part.params || null, part.fallback) : { text: part.text || '', locale: part.locale || 'en' };
+  const chatErrorHtml = m => errorParts(m).map(part => chatHtml(resultForPart(part))).join('');
+  const chatErrorText = m => errorParts(m).map(part => resultForPart(part).text).join('');
+  function contentText(m) {
+    const text = String(m?.content || '');
+    if (!m?.stopped) return text;
+    for (const catalog of [globalThis.lastbookI18nEnglish || {}, ...Object.values(globalThis.lastbookI18nLocales || {})]) {
+      const stopped = catalog['chat.stopped'];
+      if (typeof stopped !== 'string') continue;
+      const suffix = '\n\n(' + stopped + ')';
+      if (text.endsWith(suffix)) return text.slice(0, -suffix.length);
+    }
+    return text;
+  }
   const STARTERS = [
     ['water', 'The tap water is off. How do I make water safe to drink?'],
     ['hurt', 'Someone has a deep cut that won’t stop bleeding. What do I do?'],
@@ -15,9 +87,9 @@ const Chat = (() => {
   // The ink drawings are the website's own (website-next/img/ink/), copied flat into web/ because builds ship web/ without folders.
   const HOME = [['water', 'water'], ['hurt', 'aid'], ['food', 'food'], ['power', 'power'], ['comms', 'radio'], ['grow', 'garden']];
   const LEARN = [['grow', 'garden'], ['health', 'carer'], ['energy', 'lantern']];
-  const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
-    video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
-    topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
+  const ABOUT_STARTERS = { doc: ['chat.explainPage', 'chat.pageWarnings', 'chat.videoForThis'],
+    video: ['chat.summariseVideo', 'chat.videoSafety', 'chat.findManual'],
+    topic: ['chat.doFirst', 'chat.importantWarnings', 'chat.whichVideo'] };
   const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
   const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
@@ -57,13 +129,14 @@ const Chat = (() => {
     aboutCtx = ctx;
     document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
     $('#tbTitle').textContent = cur ? cur.title : 'Chat';
+    const conversations = chatResult('chat.conversations', null, 'Conversations');
     main.innerHTML = `<div class="chat">
-      <aside class="chat-side" id="chatSide" aria-label="Conversations">
+      <aside class="chat-side" id="chatSide" aria-label="${esc(conversations.text)}" lang="${esc(conversations.locale)}">
         <div class="cs-head"><b>Chats</b><button class="iconbtn" id="closeSide" aria-label="Close chat list">${ico('back')}</button></div>
         <a class="btn plain" href="#/ask" id="newChat2">${ico('ask')}New chat</a>
         <ul class="cs-list" id="csList"></ul>
         <div class="cs-privacy">
-          <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
+          <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> ${tr('chat.keepHistory', null, 'Keep chat history on this device')}</label>
           <p class="small muted">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
           <button class="btn plain" id="clearChats">Delete all chats</button>
         </div>
@@ -125,10 +198,10 @@ const Chat = (() => {
       checking: [false, `Checking the local AI file${l.pct != null ? ' ' + l.pct + '%' : '…'}`],
       measuring: [false, 'Checking this computer’s memory…'],
       absent: [false, 'No local AI added'],
-      wrong: [false, l.message || 'The local AI file is not the right one.'],
-      too_big: [false, l.message || `The local AI needs about ${gb(l.needs_bytes || 0)} of memory.`],
+      wrong: [false, l.message || chatTr('chat.wrongFile', null, 'The local AI file is not the right one.')],
+      too_big: [false, l.message || chatTr('chat.memoryEstimate', { size: gb(l.needs_bytes || 0) }, 'The local AI needs about {size} of memory.')],
       off: [false, 'Local AI is off'],
-      error: [false, l.message || 'The local AI could not start.'],
+      error: [false, l.message || chatTr('chat.startFailed', null, 'The local AI could not start.')],
     })[l.state] || [false, l.message || 'Local AI unavailable'];
   }
   let polling = null;
@@ -170,9 +243,11 @@ const Chat = (() => {
   async function describe(about) {
     const [kind, id, n] = about.split(':');
     try {
-      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: 'Guide', kind } }
+      if (kind === 'topic') { const t = (await topics()).find(x => x.id === id); return { about, label: t ? (SHORT[id] || t.title) : id, sub: chatResult('guide.topicKind', null, 'Guide'), kind } }
       const d = await api('/api/doc/' + encodeURIComponent(id));
-      return { about, kind, label: d.title, sub: kind === 'video' ? (n ? 'Video at ' + clock(+n) : 'Video') : 'Page ' + (n || 1), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
+      return { about, kind, label: d.title, sub: kind === 'video'
+        ? (n ? chatResult('chat.videoAt', { time: clock(+n) }, 'Video at {time}') : chatResult('nav.video', null, 'Video'))
+        : chatResult('reader.pagePrefix', { page: n || 1 }, 'Page {page}'), href: kind === 'video' ? `#/watch/${encodeURIComponent(id)}${n ? '?t=' + n : ''}` : `#/read/${encodeURIComponent(id)}?p=${n || 1}` };
     } catch { return null }
   }
   function renderCtx() {
@@ -180,13 +255,14 @@ const Chat = (() => {
     const a = aboutCtx;
     if (!a) { el.hidden = true; return }
     el.hidden = false;
-    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>Asking about: <b>${esc(a.label)}</b> <span class="muted">${esc(a.sub || '')}</span></span>${cur && cur.messages.length ? '' : '<button type="button" aria-label="Don’t use this as context" id="ctxX">×</button>'}`;
+    const sub = typeof a.sub === 'string' ? { text: a.sub, locale: 'en' } : a.sub;
+    el.innerHTML = `${ico(a.kind === 'video' ? 'video' : a.kind === 'topic' ? 'book' : 'page')}<span>${chatHtml(chatResult('chat.askingAbout', null, 'Asking about:'))} <b>${esc(a.label)}</b> <span class="muted">${sub ? chatHtml(sub) : ''}</span></span>${cur && cur.messages.length ? '' : `<button type="button" aria-label="${esc(chatTr('chat.dontUseContext', null, "Don’t use this as context"))}" id="ctxX">×</button>`}`;
     const x = $('#ctxX'); if (x) x.onclick = () => { aboutCtx = null; renderCtx(); renderLog() };
   }
   function renderSide() {
     const el = $('#csList'); if (!el) return;
-    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${new Date(c.updated).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${c.messages.filter(m => m.role === 'user').length} question${c.messages.filter(m => m.role === 'user').length > 1 ? 's' : ''}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="Delete this chat">×</button></li>`).join('')
-      : '<li class="muted small" style="padding:8px 4px">No chats yet.</li>';
+    el.innerHTML = chats.length ? chats.map(c => `<li><a href="#/ask/${c.id}" ${cur && cur.id === c.id ? 'aria-current="page"' : ''}><b>${esc(c.title)}</b><small>${chatDate(c.updated, { month: 'short', day: 'numeric' })} · ${c.messages.filter(m => m.role === 'user').length} question${c.messages.filter(m => m.role === 'user').length > 1 ? 's' : ''}</small></a><button class="iconbtn" data-del="${c.id}" aria-label="Delete this chat">×</button></li>`).join('')
+      : `<li class="muted small" style="padding:8px 4px">${chatHtml(chatResult('chat.noneYet', null, 'No chats yet.'))}</li>`;
     const clr = $('#clearChats'); if (clr) clr.hidden = !chats.length;   // nothing to delete
     $$('[data-del]', el).forEach(b => b.onclick = () => { const id = b.dataset.del; live[id]?.abort?.(); chats = chats.filter(c => c.id !== id); persist(); if (cur && cur.id === id) location.hash = '#/ask'; else renderSide() });
     // the list fades at an edge with more chats past it, so a row cut off there reads as more to scroll to
@@ -215,7 +291,7 @@ const Chat = (() => {
         <div class="ce-mark">${ico('ask')}</div>
         <h1>Chat</h1>
         <p class="lead">Answers are built only from the manuals, guides and video transcripts on this computer — with the exact page or video moment for each point.</p>
-        <div class="starters">${st.map(t => ['ask', t]).map(([i, t]) => `<button class="starter" ${tcStyle(i)} data-start="${esc(t)}"><span class="ico">${ico(i)}</span><span>${esc(t)}</span></button>`).join('')}</div>
+        <div class="starters">${st.map(key => { const text = chatTr(key); return `<button class="starter" ${tcStyle('ask')} data-start="${esc(text)}"><span class="ico">${ico('ask')}</span><span>${esc(text)}</span></button>`; }).join('')}</div>
         <p class="small muted" style="margin-top:18px">It reads text only: it can’t see inside videos without captions, scanned pages without text, or raw map files. It tells you when the library has nothing on a question.</p></div>`;
       $$('[data-start]', log).forEach(b => b.onclick = () => send(b.dataset.start));
       fitEmpty();
@@ -225,13 +301,14 @@ const Chat = (() => {
     wire(log);
   }
   function homeMore() {
-    const q = Object.fromEntries(STARTERS), title = id => esc(SHORT[id] || id);
+    const q = Object.fromEntries(STARTERS.map(([id, en]) => [id, chatResult('chat.starter.' + id, null, en)]));
+    const title = id => chatHtml(chatResult('topic.' + id, null, SHORT[id] || id));
     return `<p class="ask-safe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5.1 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.6"/></svg>Runs on this computer. Nothing you ask leaves it.</p>
       <h2 class="ask-h">Start with what matters</h2>
-      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id])}">
-        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b><span>${esc(q[id])}</span></span>${ico('right', 'ac-go')}</button>`).join('')}</div>
+      <div class="ask-cards">${HOME.map(([id, art]) => `<button class="ask-card" ${tcStyle(id)} data-start="${esc(q[id].text)}">
+        <span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span class="ac-t"><b>${title(id)}</b>${chatHtml(q[id])}</span>${ico('right', 'ac-go')}</button>`).join('')}</div>
       <div class="ask-learn-head"><h2 class="ask-h">Keep learning</h2><a href="#/library">All skills</a></div>
-      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small>Step-by-step guide</small></span></a>`).join('')}</div>`;
+      <div class="ask-learn">${LEARN.map(([id, art]) => `<a href="#/t/${id}" ${tcStyle(id)}><span class="ink-tile"><img src="/ui/ink-${art}.svg" alt="" width="44" height="44"></span><span><b>${title(id)}</b><small data-i18n="guide.stepByStep">${chatTr('guide.stepByStep', null, 'Step-by-step guide')}</small></span></a>`).join('')}</div>`;
   }
   // The page itself never scrolls while a chat is empty: in a window too short for every suggestion (or with lines wrapped narrow beside
   // the chats column), the last ones go, a row at a time down to one row, then the note under them, the introduction and the mark.
@@ -347,8 +424,9 @@ const Chat = (() => {
     const found = m.sources || [];
     let h = '';
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
-    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
-    if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
+    if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${chatErrorHtml(m)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
+    if (contentText(m)) h += `<div class="answer">${md(contentText(m), m)}</div>`;
+    if (m.stopped && contentText(m)) h += `<p class="small ans-stopped">${chatHtml(chatResult('chat.stopped', null, 'Stopped.'))}</p>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
@@ -395,7 +473,7 @@ const Chat = (() => {
     return `#/read/${encodeURIComponent(s.doc_id)}?${s.page ? 'p=' + s.page + '&' : ''}from=${encodeURIComponent(here())}`;
   }
   // What a source is, for the filter above an answer's sources: a page (manuals, PDFs, saved pages), a video, an encyclopedia article or a place on the map.
-  const SRC_TYPES = [['page', 'Pages'], ['video', 'Videos'], ['wiki', 'Encyclopedias'], ['place', 'Places']];
+  const SRC_TYPES = [['page', 'pages'], ['video', 'videos'], ['wiki', 'encyclopedias'], ['place', 'places']];
   const srcType = s => s.kind === 'video' ? 'video' : s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'place' : 'page';
   function srcCards(list, compact, type) {
     return `<div class="srccards ${compact ? 'compact' : ''}">${list.map(s => {
@@ -416,8 +494,8 @@ const Chat = (() => {
     const types = SRC_TYPES.filter(([t]) => n[t]);
     if (types.length < 2) return '';
     const on = type || '';
-    const btn = (t, label, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${label} <small>${count}</small></button>`;
-    return `<div class="srcfilter" role="group" aria-label="Show sources by type"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'All', list.length)}${types.map(([t, label]) => btn(t, label, n[t])).join('')}</div>`;
+    const btn = (t, key, count) => `<button type="button" class="chip" data-type="${t}" aria-pressed="${t === on ? 'true' : 'false'}">${chatHtml(chatResult('chat.sourceType.' + key, null, key))} <small>${count}</small></button>`;
+    return `<div class="srcfilter" role="group" aria-label="${tr('chat.sourcesByType', null, 'Show sources by type')}"${i != null ? ` data-i="${i}"` : ''}>${btn('', 'all', list.length)}${types.map(([t, key]) => btn(t, key, n[t])).join('')}</div>`;
   }
   // Show only the cards of one type (or all of them, for ''), in the cards that follow this filter.
   function showType(filter, type) {
@@ -431,7 +509,11 @@ const Chat = (() => {
   /* markdown-lite with citation chips; sentences without a citation are marked as the model's own wording */
   function md(text, m) {
     const keys = new Set((m.cited || m.sources || []).map(s => s.key));
-    const cite = k => keys.has(k) || !m.cited ? `<a class="cite" href="#src-${k}" data-key="${k}" title="Source ${k}">${k.replace(/^S/, '')}</a>` : '';
+    const cite = k => {
+      if (!keys.has(k) && m.cited) return '';
+      const title = chatResult('chat.sourceKey', { key: k }, 'Source {key}');
+      return `<a class="cite" href="#src-${k}" data-key="${k}" lang="${esc(title.locale)}" title="${esc(title.text)}">${k.replace(/^S/, '')}</a>`;
+    };
     const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|\W)\*(?!\s)(.+?)\*(?=\W|$)/g, '$1<em>$2</em>')
       .replace(/\[([SM]\d+)\]/g, (_, k) => cite(k));
     const lines = text.replace(/\r/g, '').split('\n');
@@ -498,7 +580,8 @@ const Chat = (() => {
       if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(plain(m)).then(() => toast('Copied'), () => toast('Couldn’t copy')) }
       if (b.dataset.act === 'save') {
         const q = cur.messages[i - 1]?.content || cur.title;
-        toggleSave({ key: `a:${cur.id}:${i}`, title: 'Answer: ' + q.slice(0, 80), href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${new Date().toLocaleDateString()}` }, null);
+        const text = q.slice(0, 80);
+        toggleSave({ key: `a:${cur.id}:${i}`, title: tr('chat.answerPrefix', { text }, 'Answer: {text}'), title_params: { text }, href: '#/ask/' + cur.id, sub: `${(m.cited || []).length} sources · ${chatDate(new Date())}` }, null);
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
@@ -510,22 +593,33 @@ const Chat = (() => {
   }
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-    let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
-    if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
+    let t = contentText(m).replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    if (m.stopped && contentText(m)) t += '\n\n(' + chatTr('chat.stopped', null, 'Stopped.') + ')';
+    if ((m.cited || []).length) t += '\n\n' + chatTr('chat.sourcesHeading', null, 'Sources:') + '\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
   function exportChat(c) {
-    let md = `# ${c.title}\n\nExported from Lastbook (offline library) on ${new Date().toLocaleString()}.\nAnswers were written by a local AI model from the library's documents. Check the linked pages; get trained help for anything serious.\n`;
-    for (const m of c.messages) md += m.role === 'user' ? `\n## Question\n\n${m.content}\n` : `\n## Answer\n\n${m.content ? plain(m) : '(no answer: ' + (m.error || 'stopped') + ')'}\n`;
+    const date = chatDate(new Date(), { dateStyle: 'medium', timeStyle: 'short' });
+    let md = '# ' + chatTr('chat.exportTitle', { title: c.title }, 'Chat: {title}') + '\n\n';
+    md += chatTr('chat.exportedFrom', { date }, 'Exported from Lastbook (offline library) on {date}.') + '\n';
+    md += chatTr('chat.exportNotice', null, 'Answers were written by a local AI model from the library’s documents. Check the linked pages; get trained help for anything serious.') + '\n';
+    for (const m of c.messages) {
+      const heading = m.role === 'user' ? chatTr('chat.exportQuestion', null, 'Question') : chatTr('chat.exportAnswer', null, 'Answer');
+      const reason = chatErrorText(m) || chatTr('chat.stopped', null, 'Stopped.');
+      md += '\n## ' + heading + '\n\n';
+      md += m.role === 'user' ? m.content + '\n'
+        : m.content ? plain(m) + '\n' : chatTr('chat.exportNoAnswer', { reason }, '(no answer: {reason})') + '\n';
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
     a.download = `survival-chat-${new Date().toISOString().slice(0, 10)}.md`;
     document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 500);
-    toast('Saved as a file on this device');
+    toast(chatTr('chat.savedAsFile', null, 'Saved as a file on this device'));
   }
+
   // Earlier answers' [S#] keys only mean something inside their own turn; give the model readable references instead.
   function history_(c) {
-    return c.messages.filter(m => m.content).map(m => {
+    return c.messages.filter(m => contentText(m)).map(m => {
       if (m.role !== 'assistant') return { role: m.role, content: m.content };
       const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
       return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? ', p. ' + map[k].page : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
@@ -579,7 +673,7 @@ const Chat = (() => {
     }
     m.running = false; delete m.state;
     if (m.stopped && m.content) {
-      m.content += '\n\n(Stopped.)';
+
       // The `done` event never arrives, so `cited` would be empty and the finished view
       // would say the answer is unverified. Keep the sources already received.
       if (m.cited == null && (m.sources || []).length) m.cited = m.sources;
@@ -606,6 +700,18 @@ const Chat = (() => {
     try { const d = await api('/api/retrieve?q=' + encodeURIComponent(q) + '&k=8'); m.fallback = d.results.map((r, i) => ({ ...r, key: '' })); if (!m.fallback.length) m.error += ' The library search also found nothing for this question.' }
     catch { m.fallback = [] }
   }
+  function refreshLanguage() {
+    if (!document.getElementById('chatLog')) return;
+    const y = scrollY, active = document.activeElement, message = active?.closest?.('.msg'), action = active?.dataset?.act;
+    const messageId = message?.id || '', id = active?.id || '';
+    const list = $('#csList'), listTop = list?.scrollTop || 0;
+    renderSide(); renderCtx(); renderLog(); setBusy(!!busy());
+    if (list) list.scrollTop = listTop;
+    const focus = id ? document.getElementById(id) : (messageId && action ? document.querySelector(`#${CSS.escape(messageId)} [data-act=\"${CSS.escape(action)}\"]`) : null);
+    if (focus?.isConnected) focus.focus({ preventScroll: true });
+    scrollTo(0, y);
+  }
+  document.addEventListener('lastbook:languagechange', refreshLanguage);
   function stop() { if (cur && live[cur.id]) live[cur.id].abort() }
   function setBusy(on) {
     const b = $('#sendBtn'); if (!b) return;
@@ -619,5 +725,5 @@ const Chat = (() => {
   }
   function throttle(f, ms) { let t = 0, p = null; return () => { const n = Date.now(); if (n - t > ms) { t = n; f() } else { clearTimeout(p); p = setTimeout(() => { t = Date.now(); f() }, ms) } } }
 
-  return { page, count };
+  return { page, count, refreshLanguage };
 })();

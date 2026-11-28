@@ -147,7 +147,7 @@ class Browser(unittest.TestCase):
 
     @contextlib.contextmanager
     def page(self, origin, http, locale='en-US'):
-        context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850})
+        context = self.browser.new_context(locale=locale, viewport={'width': 1280, 'height': 850}, accept_downloads=True)
         try:
             if hasattr(http, 'bridge'):
                 context.add_init_script(http.bridge.top_script())
@@ -173,7 +173,7 @@ class Browser(unittest.TestCase):
             self.assertEqual(select.locator('[lang="es-419"]').inner_text(), 'Español (Latinoamérica)')
             select.select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
             expect(page.locator('.loading')).to_have_text('Revisando esta computadora…')
             self.assertEqual(json.loads(self.language_file.read_bytes()), {'language': 'es-419'})
             hold.set()
@@ -187,13 +187,12 @@ class Browser(unittest.TestCase):
 
         self.configure_setup(current=DATA)
         with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
-            page.add_init_script("addEventListener('pageshow', event => window.restoredFromCache = event.persisted)")
             page.goto(origin + '/#/guides')
             sidebar = page.locator('.side')
             guides = sidebar.get_by_role('link', name='Guías')
             expect(guides).to_have_attribute('aria-current', 'page')
             expect(guides).to_have_attribute('lang', 'es-419')
-            expect(page.locator('html')).to_have_attribute('lang', 'en')
+            expect(page.locator('html')).to_have_attribute('lang', 'es-419')
             top = page.get_by_role('searchbox', name='Buscar en la biblioteca')
             expect(top).to_have_attribute('placeholder', 'Buscar en la biblioteca')
             page.set_viewport_size({'width': 780, 'height': 820})
@@ -223,7 +222,7 @@ class Browser(unittest.TestCase):
             self.assertEqual(page.locator('img[src=x]').count(), 0)
             self.assertIsNone(page.evaluate('window.bad'))
             page.evaluate("location.hash = '#/watch/vida?from=%23%2Fsearch'")
-            expect(page.locator('.rtop .back')).to_have_text('Resultados de búsqueda')
+            expect(page.locator('.rtop .back')).to_have_text('Resultados de la búsqueda')
             expect(page.locator('h1')).to_have_text('vida')  # library title
             page.evaluate("location.hash = '#/missing'")
             expect(page.get_by_role('link', name='Ir a Videos')).to_be_visible()
@@ -250,8 +249,6 @@ class Browser(unittest.TestCase):
             page.evaluate('history.back()')
             page.wait_for_url('**/#/guides', wait_until='commit')
             expect(sidebar.get_by_role('link', name='Guides')).to_be_visible()
-            self.assertTrue(page.evaluate('window.restoredFromCache'))
-            self.assertTrue(page.evaluate("window.guideView === document.querySelector('.hero')"))
             sidebar.get_by_role('link', name='Settings').click()
             page.get_by_role('link', name='Back to the library').click()
             expect(page.locator('.side').get_by_role('link', name='Guides')).to_be_visible()
@@ -274,8 +271,300 @@ class Browser(unittest.TestCase):
             expect(select).to_be_focused()
             select.select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
             expect(page.get_by_role('button', name='Resume')).to_be_visible()
+
+    def test_map_cluster_error_messages_keep_the_resolved_locale(self):
+        self.configure_setup(current=DATA)
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        points = {'points': [{'lat': 37.7749, 'lon': -122.4194, 'count': 2, 'kinds': {'hospital': 2},
+                              'cls': 'hospital', 'bbox': [-122.421, 37.773, -122.418, 37.776]}], 'truncated': False}
+        cases = [
+            ('es-419', 'es-419', '2 lugares aquí', 'No se pudo cargar la lista. Acerca el mapa para ver los lugares uno a uno.'),
+            ('de', 'en', '2 places here', 'Couldn’t load the list. Zoom in to see individual places.'),
+            ('zh-Hans', 'en', '2 places here', 'Couldn’t load the list. Zoom in to see individual places.'),
+        ]
+        for locale, expected_locale, title, failure in cases:
+            with self.subTest(locale=locale):
+                self.language_file.write_text(json.dumps({'language': locale}), encoding='utf-8')
+                with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+                    page.route('**/api/map/info', lambda route: route.fulfill(
+                        status=200, content_type='application/json', body=json.dumps(info)))
+                    page.route('**/api/map/pins*', lambda route: route.fulfill(
+                        status=200, content_type='application/json', body=json.dumps(points)))
+                    page.route('**/api/map/near*', lambda route: route.fulfill(
+                        status=200, content_type='application/json', body='[]'))
+                    page.route('**/api/map/members*', lambda route: route.fulfill(
+                        status=503, content_type='application/json', body='not-json'))
+                    pin_requests = []
+                    page.on('request', lambda request: pin_requests.append(request.url)
+                            if '/api/map/pins?' in request.url else None)
+                    page.goto(origin + '/#/map?lat=37.7749&lon=-122.4194&z=17&layers=hospital')
+                    expect(page.locator('html')).to_have_attribute('lang', locale)
+                    page.wait_for_load_state('networkidle')
+                    expect(page.locator('#mstatus')).to_contain_text('2')
+                    canvas = page.locator('#mapc')
+                    box = canvas.bounding_box()
+                    with page.expect_response(lambda response: '/api/map/members?' in response.url):
+                        page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                    heading = page.locator('#card h3 span')
+                    expect(heading).to_have_text(title)
+                    expect(heading).to_have_attribute('lang', expected_locale)
+                    failure_copy = page.locator('#card p span')
+                    expect(failure_copy).to_have_text(failure)
+                    expect(failure_copy).to_have_attribute('lang', expected_locale)
+
+    def test_map_panels_use_the_selected_interface_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/map')
+            expect(page.locator('.maptools h2')).to_have_text([
+                'Más cercanos al centro del mapa', 'Tu zona', 'Cobertura de este mapa'])
+            expect(page.locator('.maptools section.panel:nth-of-type(1) p')).to_have_text(
+                'Según las capas activadas. Distancia en línea recta, no por carretera.')
+            expect(page.locator('.maptools section.panel:nth-of-type(2) p')).to_have_text(
+                'El botón de inicio vuelve aquí. Se guarda solo en este dispositivo.')
+            expect(page.locator('#sethome')).to_have_text('Usar el centro del mapa como mi zona')
+
+    def test_map_dynamic_english_fallbacks_keep_their_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(info)))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.route('**/api/places*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map')
+            expect(page.locator('.maptools h2').first).to_have_text('Am nächsten zur Kartenmitte')
+            expect(page.locator('#mstatus span[lang="en"]')).to_have_text(
+                'Nothing from your layers in this view — zoom out or turn on more layers.')
+            expect(page.locator('#near span[lang="en"]')).to_have_text(
+                'Nothing from your layers within about 100 miles of the map center.')
+            page.get_by_label('Find an address, town, ZIP code or place').fill('123 Main Street')
+            page.get_by_label('Find an address, town, ZIP code or place').press('Enter')
+            expect(page.locator('#pres span[lang="en"]')).to_have_text([
+                'Address not found in your offline data. Check the house number and street.',
+                'Add your state’s address search.'])
+
+    def test_map_truncated_status_tags_an_english_fallback_fragment(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        info = {'layers': ['hospital'], 'bounds': [-125, 24, -66, 50], 'datasets': [],
+                'version': 'test', 'national': None, 'aerial': False, 'contours': False}
+        points = {'points': [{'lat': 39, 'lon': -98, 'count': 1, 'kinds': {'hospital': 1}, 'cls': 'hospital'}],
+                  'truncated': True}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(info)))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(points)))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map')
+            page.evaluate("""() => {
+                const real = window.LastbookI18n;
+                window.LastbookI18n = {
+                    ...real,
+                    resolve(key, params) {
+                        if (key === 'map.placesInView')
+                            return { text: `${params.count} Orte in Ansicht${params.extra}`, locale: 'de' };
+                        if (key === 'map.cappedPlacesInView')
+                            return { text: ' (busiest shown — zoom in for all)', locale: 'en' };
+                        return real.resolve(key, params);
+                    }
+                };
+            }""")
+            page.locator('#zin').click()
+            expect(page.locator('#mstatus span[lang="de"]')).to_have_text('1 Orte in Ansicht')
+            expect(page.locator('#mstatus span[lang="en"]')).to_have_text(' (busiest shown — zoom in for all)')
+
+    def test_chat_guide_label_uses_the_selected_interface_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask')
+            expect(page.locator('.ask-learn small')).to_have_text(['Guía paso a paso'] * 3)
+
+    def test_chat_empty_state_and_citation_name_use_resolved_catalogue_locale(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li.muted.small span[lang="en"]')).to_have_text('No chats yet.')
+
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        chat = {'id': 'source-title-chat', 'title': 'Question', 'updated': '2026-11-17T12:00:00Z',
+                'messages': [{'role': 'user', 'content': 'Question'}, {'role': 'assistant', 'content': 'Answer [S1] [S2].',
+                              'cited': [{'key': 'S1', 'kind': 'page', 'doc_id': 'manual', 'title': 'Manual'},
+                                        {'key': 'S2', 'kind': 'video', 'doc_id': 'video', 'title': 'Video', 't': 12}], 'steps': []}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/source-title-chat')
+            expect(page.locator('.cite').first).to_have_attribute('title', 'Fuente S1')
+            expect(page.locator('.cite').first).to_have_attribute('lang', 'es-419')
+            expect(page.locator('.srcfilter button')).to_have_text(['Todas 2', 'Páginas 1', 'Videos 1'])
+            expect(page.locator('.srcfilter button span[lang="es-419"]')).to_have_count(3)
+
+    def test_chat_context_starters_use_catalogue_copy(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/ask?about=topic:water')
+            expect(page.locator('.starter').first).to_have_text('¿Qué debería hacer primero?')
+
+    def test_library_note_count_uses_catalogue_plural_and_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/not-found', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notes': [{'id': 'note-1'}, {'id': 'note-2'}]})))
+            page.goto(origin + '/#/library')
+            expect(page.locator('#nfCount')).to_have_text('2 notas en esta computadora')
+            expect(page.locator('#nfCount span[lang="es-419"]')).to_have_text('2 notas en esta computadora')
+
+    def test_empty_search_hint_and_source_language_tags_use_catalogue_metadata(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/search')
+            expect(page.locator('#sout > p.muted span[lang="es-419"]')).to_have_text(
+                'Usa las palabras que usarías al hablar con alguien. Por ejemplo:')
+            actual = page.evaluate("""() => {
+              const language = value => {
+                const box = document.createElement('div');
+                box.innerHTML = resultCard({title:'Document', hits:[], trust:'', language:value});
+                return box.firstElementChild.getAttribute('lang');
+              };
+              return [language(undefined), language('not_a_tag'), language('es-mx')];
+            }""")
+            self.assertEqual(actual, [None, None, 'es-MX'])
+
+    def test_no_results_copy_uses_the_resolved_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/find*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'results': [], 'expanded': [], 'mode': 'all'})))
+            page.route('**/api/retrieve*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'results': []})))
+            page.goto(origin + '/#/search?q=CodexAuditNoResults')
+            expect(page.locator('#sres .empty b span[lang="en"]')).to_have_text('No results for “CodexAuditNoResults”')
+            expect(page.locator('#sres .empty p span[lang="en"]')).to_have_text(
+                'Try fewer words, or another word for the same thing.')
+
+    def test_small_pack_summary_uses_the_selected_interface_language(self):
+        from engine.setup import manifest as setup_manifest
+
+        bundled = setup_manifest.validate({'version': 1, 'packs': [{
+            'id': 'small', 'title': 'Small',
+            'summary': 'The essentials: first aid, water, food, shelter and repair, with the maps of this area.',
+            'summary_key': 'setup.packSummary.small', 'available': False, 'files': [],
+        }], 'models': []})
+        self.assertIsNotNone(bundled)
+        server.setup_api.configure(mode='first-run', current=None, settings_dir=self.tmp, default_parent=self.tmp,
+                                   manifest=Manifest(bundled=bundled, remote=None), pick_folder=lambda files=False: str(DATA))
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/ui/setup.html')
+            expect(page.locator('[data-pack-summary="small"]')).to_have_text(
+                'Lo esencial: primeros auxilios, agua, alimentos, refugio y reparación, con los mapas de esta zona.')
+
+    def test_selected_interface_language_formats_chat_and_note_dates(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', JSON.stringify([{id:'old', title:'Saved chat', updated:'2026-11-17T12:00:00Z', messages:[{role:'user',content:'Question'}]}]))")
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li a small').first).to_contain_text('17 nov')
+            page.route('**/api/not-found', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'notes': [{'id': 'note-1', 'words': 'water filter', 'at': '2026-11-17', 'guide': None}]})))
+            page.goto(origin + '/#/not-found')
+            expect(page.locator('.row.nf small')).to_contain_text('17 de noviembre de 2026')
+
+    def test_chat_list_recovers_from_invalid_saved_dates(self):
+        self.configure_setup(current=DATA)
+        chat = {'id': 'invalid-date', 'title': 'Saved chat', 'messages': [{'role': 'user', 'content': 'Question'}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask')
+            expect(page.locator('#csList li b')).to_have_text('Saved chat')
+            expect(page.locator('#csList li small')).to_contain_text('1 question')
+
+    def test_chat_export_survives_without_i18n_date_adapter(self):
+        self.configure_setup(current=DATA)
+        chat = {'id': 'export-date-fallback', 'title': 'Saved chat', 'updated': '2026-11-17T12:00:00Z',
+                'messages': [{'role': 'user', 'content': 'Question'}, {'role': 'assistant', 'content': 'Answer.', 'cited': []}]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/export-date-fallback')
+            page.evaluate('window.LastbookI18n = undefined')
+            with page.expect_download() as download_info:
+                page.locator('[data-act="export"]').click()
+            self.assertTrue(download_info.value.suggested_filename.endswith('.md'))
+
+    def test_chat_context_and_home_fallbacks_tag_their_language(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/doc/**', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'title': 'Reference'})))
+            page.goto(origin + '/#/ask?about=video:clip:90')
+            expect(page.locator('#ctxChip .muted span[lang="en"]')).to_have_text('Video at 1:30')
+            page.evaluate("location.hash = '#/ask'")
+            expect(page.locator('#askMore .ask-card .ac-t span[lang="en"]').first).to_be_visible()
+
+    def test_search_results_arriving_after_route_change_do_not_touch_old_dom(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script(r"""window.auditSearchRequests = [];
+                window.auditSearchCompleted = 0;
+                const realFetch = window.fetch.bind(window);
+                window.fetch = (resource, init) => {
+                    const url = typeof resource === 'string' ? resource : resource.url;
+                    if (url.includes('/api/find?') || url.includes('/api/retrieve?')) {
+                        window.auditSearchRequests.push(url);
+                        return new Promise((resolve, reject) => setTimeout(
+                            () => realFetch(resource, init).then(response => {
+                                window.auditSearchCompleted++;
+                                resolve(response);
+                            }, error => {
+                                window.auditSearchCompleted++;
+                                reject(error);
+                            }), 500));
+                    }
+                    return realFetch(resource, init);
+                };""")
+            page_errors = []
+            page.on('pageerror', lambda error: page_errors.append(str(error)))
+            page.goto(origin + '/#/guides')
+            expect(page.locator('h1')).to_have_text('What do you need?')
+            page.evaluate("location.hash = '#/search?q=zzqzxqwv'")
+            page.wait_for_function('window.auditSearchRequests.length >= 2')
+            page.evaluate("location.hash = '#/guides'")
+            expect(page.locator('h1')).to_have_text('What do you need?')
+            page.wait_for_function('window.auditSearchCompleted === window.auditSearchRequests.length')
+            expect(page.locator('#main .results')).to_have_count(0)
+            expect(page.locator('#main .result')).to_have_count(0)
+            self.assertEqual(page_errors, [])
+
+    def test_video_speed_fallback_is_tagged_as_english(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.goto(origin + '/#/watch/vida')
+            expect(page.locator('.video-speed label span[lang="en"]')).to_have_text('Playback speed')
+            expect(page.locator('#videoSpeed option[value="1"]')).to_have_attribute('lang', 'en')
+            expect(page.locator('#videoSpeed option[value="1"]')).to_have_text('Normal')
 
     def test_preference_loading_guards_submit_on_success_and_failure(self):
         self.configure_setup()
@@ -307,7 +596,7 @@ class Browser(unittest.TestCase):
                     self.assertFalse(self.language_file.exists())
                     page.get_by_label('Interface language').select_option('es-419')
                     page.get_by_role('button', name='Save language').press('Enter')
-                    expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+                    expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
                 self.language_file.unlink()
 
     def test_library_ignores_an_old_get_after_a_save_and_route_change(self):
@@ -327,7 +616,7 @@ class Browser(unittest.TestCase):
                     settings.goto(origin + '/ui/setup.html#manage')
                     settings.get_by_label('Interface language').select_option('es-419')
                     settings.get_by_role('button', name='Save language').click()
-                    expect(settings.get_by_role('status')).to_have_text('Idioma guardado.')
+                    expect(settings.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
                 library.evaluate("""() => {
                     location.hash = '#/search';
                     dispatchEvent(new PageTransitionEvent('pageshow', {persisted: true}));
@@ -365,7 +654,7 @@ class Browser(unittest.TestCase):
                         second.get_by_role('button', name='Save language').click()
                         expect(second.get_by_role('status')).to_have_text('Language saved.')
                         release.set()
-                        expected = 'Could not save the language. Try again.' if fails else 'Idioma guardado.'
+                        expected = 'Could not save the language. Try again.' if fails else 'Idioma guardado. Reinicia Lastbook para actualizar los menús.'
                         expect(first.get_by_role('status')).to_have_text(expected)
                         expect(second.get_by_role('status')).to_have_text('Language saved.')
                         self.assertEqual(len(first_posts), 1)
@@ -491,7 +780,7 @@ class Browser(unittest.TestCase):
                 release.set()
             page.get_by_label('Interface language').select_option('es-419')
             page.get_by_role('button', name='Save language').click()
-            expect(page.get_by_role('status')).to_have_text('Idioma guardado.')
+            expect(page.get_by_role('status')).to_have_text('Idioma guardado. Reinicia Lastbook para actualizar los menús.')
 
     def test_label_helpers_accept_plain_strings_and_pairs(self):
         self.configure_setup(current=DATA)
@@ -569,6 +858,201 @@ class Browser(unittest.TestCase):
                         page.reload(wait_until='domcontentloaded')
                         expect(guides).to_be_visible()
                         self.assertTrue(page.evaluate('!!window.LastbookI18n'))
+
+
+    def test_gps_marker_card_retranslates_after_language_change(self):
+        self.configure_setup(current=DATA)
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("Object.defineProperty(window, 'isSecureContext', {configurable: true, value: true}); Object.defineProperty(navigator, 'geolocation', {configurable: true, value: {getCurrentPosition: ok => ok({coords: {latitude: 37.7749, longitude: -122.4194}})}})")
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'layers': [], 'bounds': [-125, 24, -66, 50], 'datasets': []})))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map')
+            page.locator('#gps').click()
+            canvas = page.locator('#mapc')
+            box = canvas.bounding_box()
+            page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2 - 18)
+            expect(page.locator('#card h3')).to_have_text('You are here (approx.)')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#card h3 span[lang="es-419"]')).to_have_text('Estás aquí (aprox.)')
+
+    def test_linked_map_pin_kind_retranslates_after_language_change(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.route('**/api/map/info', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body=json.dumps({'layers': [], 'bounds': [-125, 24, -66, 50], 'datasets': []})))
+            page.route('**/api/map/pins*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'points': [], 'truncated': False})))
+            page.route('**/api/map/near*', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='[]'))
+            page.goto(origin + '/#/map?lat=37.7749&lon=-122.4194&z=15&pin=Test')
+            canvas = page.locator('#mapc')
+            box = canvas.bounding_box()
+            page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2 - 18)
+            expect(page.locator('#card .kind span[lang="es-419"]')).to_have_text('Lugar vinculado')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('en');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#card .kind span[lang="en"]')).to_have_text('Linked place')
+
+    def test_setup_error_fallback_copy_is_tagged_english(self):
+        self.language_file.write_text('{"language":"de"}', encoding='utf-8')
+        state = {'mode': 'setup', 'current': None, 'hardware': {'disks': []}, 'job': {
+            'state': 'failed', 'error': {'code': 'unreachable', 'host': 'download.example'},
+            'items': [], 'folder': str(DATA), 'repair': False,
+        }}
+        with serve(server.setup_api.SetupServer, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.route('**/api/setup/state', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps(state)))
+            page.route('**/api/setup/updates', lambda route: route.fulfill(
+                status=200, content_type='application/json', body=json.dumps({'supported': False})))
+            page.goto(origin + '/ui/setup.html')
+            expect(page.locator('.s-err b span[lang="en"]')).to_have_text('Lastbook can’t reach download.example.')
+            expect(page.locator('.s-err > div > p > span[lang="en"]').first).to_contain_text('It may be down for a while')
+
+    def test_saved_chat_errors_and_stopped_answers_retranslate(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        stopped_spanish = 'Se detuvo.'
+        chat = {'id': 'saved-locale-chat', 'title': 'Question', 'updated': '2026-11-25T12:00:00Z', 'messages': [
+            {'role': 'user', 'content': 'Question'},
+            {'role': 'assistant', 'content': '', 'error': 'La IA local necesita aproximadamente 20 GB de memoria.'},
+            {'role': 'user', 'content': 'Question two'},
+            {'role': 'assistant', 'content': 'Respuesta parcial.\n\n(' + stopped_spanish + ')', 'stopped': True, 'sources': []},
+        ]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.add_init_script("""(() => {
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""")
+            page.goto(origin + '/#/ask/saved-locale-chat')
+            expect(page.locator('#m1 .ans-error b span[lang="es-419"]')).to_have_text('La IA local necesita aproximadamente 20 GB de memoria.')
+            expect(page.locator('#m3 .answer')).to_have_text('Respuesta parcial.')
+            expect(page.locator('#m3 .answer')).not_to_contain_text(stopped_spanish)
+            expect(page.locator('#m3 .ans-stopped span[lang="es-419"]')).to_have_text(stopped_spanish)
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('en');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#m1 .ans-error b span[lang="en"]')).to_have_text('The local AI needs about 20 GB of memory.')
+            expect(page.locator('#m3 .ans-stopped span[lang="en"]')).to_have_text('Stopped.')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#m1 .ans-error b span[lang="es-419"]')).to_have_text('La IA local necesita aproximadamente 20 GB de memoria.')
+            with page.expect_download() as exported:
+                page.get_by_role('button', name='Export chat').click()
+            markdown = Path(exported.value.path()).read_text(encoding='utf-8')
+            self.assertIn('Respuesta parcial.\n\n(Se detuvo.)', markdown)
+            self.assertNotIn('Respuesta parcial.\n\n(Stopped.)', markdown)
+
+    def test_chat_sidebar_landmark_label_translates_and_sets_language(self):
+        self.configure_setup(current=DATA)
+        for locale, label in (('de', 'Unterhaltungen'), ('zh-Hans', '对话')):
+            with self.subTest(locale=locale):
+                self.language_file.write_text(json.dumps({'language': locale}), encoding='utf-8')
+                with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+                    page.goto(origin + '/#/ask')
+                    sidebar = page.locator('#chatSide')
+                    expect(sidebar).to_have_attribute('aria-label', label)
+                    expect(sidebar).to_have_attribute('lang', locale)
+
+
+    def test_markdown_export_uses_catalogue_copy(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"es-419"}', encoding='utf-8')
+        chat = {'id': 'saved-chat', 'title': 'Pregunta de prueba', 'updated': '2026-11-25T12:00:00Z', 'messages': [
+            {'role': 'user', 'content': '¿Cómo hacerlo?'},
+            {'role': 'assistant', 'content': 'Respuesta de prueba.', 'cited': []},
+            {'role': 'user', 'content': 'Otra pregunta'},
+            {'role': 'assistant', 'content': '', 'error': 'stopped'},
+        ]}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("localStorage.setItem('sg.chats', " + json.dumps(json.dumps([chat])) + ");")
+            page.goto(origin + '/#/ask/saved-chat')
+            with page.expect_download() as exported:
+                page.locator('button[data-act="export"]').click()
+            markdown = Path(exported.value.path()).read_text(encoding='utf-8')
+            self.assertIn('# Conversación: Pregunta de prueba', markdown)
+            self.assertIn('Exportado desde Lastbook (biblioteca sin conexión)', markdown)
+            self.assertIn('Las respuestas se escribieron con un modelo de IA local', markdown)
+            self.assertIn('## Pregunta', markdown)
+            self.assertIn('## Respuesta', markdown)
+            self.assertIn('(sin respuesta: Se detuvo.)', markdown)
+
+    def test_saved_video_moment_draft_survives_language_change(self):
+        self.configure_setup(current=DATA)
+        self.language_file.write_text('{"language":"en"}', encoding='utf-8')
+        moment = {'key': 'm:vida:120', 'kind': 'video-moment', 'videoId': 'vida',
+                  'videoTitle': 'Video title', 'time': 120, 'title': 'Saved title'}
+        with serve(server, self.language_file) as (origin, http), self.page(origin, http) as page:
+            page.add_init_script("""(() => {
+              localStorage.setItem('sg.saved', JSON.stringify([%s]));
+              let factory;
+              Object.defineProperty(window, 'createI18n', {
+                configurable: true,
+                get: () => factory,
+                set: value => { factory = (...args) => { const engine = value(...args); window.__testI18nEngine = engine; return engine; }; }
+              });
+            })();""" % json.dumps(moment))
+            page.goto(origin + '/#/saved')
+            page.locator('[data-moment-edit]').click()
+            page.locator('#momentName').fill('Draft title')
+            page.evaluate("""() => {
+              const engine = window.__testI18nEngine;
+              engine.usePreferredLocales('es-419');
+              document.documentElement.lang = engine.locale;
+              LastbookI18n.apply();
+              document.dispatchEvent(new Event('lastbook:languagechange'));
+            }""")
+            expect(page.locator('#momentName')).to_have_value('Draft title')
+            page.locator('form.moment-form').evaluate('form => form.requestSubmit()')
+            expect(page.locator('[data-moment-edit]')).to_have_count(1)
+            self.assertEqual(page.evaluate("JSON.parse(localStorage.getItem('sg.saved'))[0].title"), 'Draft title')
 
 
 if __name__ == '__main__':

@@ -257,6 +257,17 @@ class VideoSearch(unittest.TestCase):
                 with self.subTest(hybrid=kind):
                     self.assertTrue(assistant.hybrid('water', 6, kind))
 
+    def test_a_lone_dash_or_underscore_is_not_a_word(self):
+        # "_" or "-" alone became an empty all-words term, so the search fell back to any word.
+        self.assertEqual(server.query_groups('fever - child _ cough')[0], ['fever', 'child', 'cough'])
+        self.assertEqual(server.query_groups('first-aid kit')[0], ['first-aid', 'kit'])
+        plain = server.find('water storage', 'read')
+        for q in ('water _ storage', 'water - storage'):
+            with self.subTest(q=q):
+                r = server.find(q, 'read')
+                self.assertEqual(r['mode'], 'all words')          # was 'some words': no page has the empty term
+                self.assertEqual(r['results'], plain['results'])
+
     def test_transcript_without_a_video(self):
         # Today Videos lists a transcript that has no video of its own, and the AI's search leaves it out.
         self.assertIn('tx-alone', [r['id'] for r in server.find('rain barrel', 'video')['results']])

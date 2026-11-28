@@ -164,6 +164,8 @@ still-open pull request #80, at commit `a453274`; that builder is not in the mai
 [MAP-PT-30.md](MAP-PT-30.md) builds the first one: Madeira (PT-30), from the official CAOP box, INE addresses and
 OpenStreetMap.
 
+[REGIONS-CR.md](REGIONS-CR.md) does the same for Costa Rica as one country-wide region, with Isla del Coco and the Gran Área Metropolitana noted.
+
 ### To do: maps for every place on Earth
 
 The goal is a detailed map for any place a person lives.

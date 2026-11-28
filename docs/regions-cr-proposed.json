@@ -1,0 +1,528 @@
+{
+  "about": "Proposed region definition for a detailed map of Costa Rica, as one region for the whole country (mainland box), with the 7 provinces listed as an alternative and the Gran Area Metropolitana as a possible separate grouping. A proposal for discussion (docs/REGIONS-CR.md); no code reads this file, and it does not ship.",
+  "status": "proposal",
+  "checked": "2026-11-18",
+  "codes": {
+    "proposal": "CR for the whole country.",
+    "why": "A bare CR collides with no US code in STATE_CODES (engine/address_search.py line 26).",
+    "alternative": "ISO 3166-2:CR: CR-SJ San Jose, CR-A Alajuela, CR-C Cartago, CR-H Heredia, CR-G Guanacaste, CR-P Puntarenas, CR-L Limon.",
+    "warning": "OCHA COD-AB p-codes CR1 to CR7 run San Jose, Alajuela, Cartago, Heredia, Guanacaste, Puntarenas, Limon, which is not the ISO letter order. Join by name.",
+    "verified": "The ISO 3166-2 codes were not checked against the ISO site (general knowledge)."
+  },
+  "regions": [
+    {
+      "code": "CR",
+      "name": "Costa Rica",
+      "country": "Costa Rica",
+      "level": "country",
+      "area_km2": 51168,
+      "box": {
+        "west": -85.9503,
+        "south": 8.0402,
+        "east": -82.5528,
+        "north": 11.2196
+      },
+      "box_with_margin_0_15": {
+        "west": -86.11,
+        "south": 7.89,
+        "east": -82.4,
+        "north": 11.37
+      },
+      "box_source": {
+        "dataset": "OCHA COD-AB Costa Rica (cri_admin0.geojson / cri_admin1.geojson), source INEC (National Statistics Office), valid_on 2024-12-03, HDX record last modified 2026-08-14",
+        "url": "https://data.humdata.org/dataset/cod-ab-cri",
+        "licence": "CC-BY-IGO",
+        "computed": "2026-11-18",
+        "rule": "Extent of every vertex, minus/plus 0.15 degrees (the margin of map_sets.state in derived/packs/pack-spec.json), rounded outward to 0.01 degrees."
+      },
+      "box_with_isla_del_coco": {
+        "west": -87.1019,
+        "south": 5.4991,
+        "east": -82.5528,
+        "north": 11.2196
+      },
+      "box_with_isla_del_coco_margin_0_15": {
+        "west": -87.26,
+        "south": 5.34,
+        "east": -82.4,
+        "north": 11.37
+      },
+      "isla_del_coco": {
+        "polygons": 24,
+        "box": {
+          "west": -87.1019,
+          "south": 5.4991,
+          "east": -87.0278,
+          "north": 5.5635
+        },
+        "box_with_margin_0_15": {
+          "west": -87.26,
+          "south": 5.34,
+          "east": -86.87,
+          "north": 5.72
+        },
+        "rule_for_split": "Polygons of COD-AB level 0 whose easternmost vertex is west of 86 degrees W (computed).",
+        "recommendation": "Mainland box for CR; Isla del Coco noted as left out, or a separate tiny box. Undecided."
+      },
+      "geofabrik_poly_box": {
+        "west": -87.82473,
+        "south": 4.937746,
+        "east": -82.34952,
+        "north": 11.2237
+      },
+      "area_source": "area_sqkm attribute of COD-AB level 0 (includes Isla del Coco)",
+      "area_note": "The official figure is about 51,100 km2 (general knowledge).",
+      "clip": "Geofabrik's extract is cut outside the border and includes Isla del Coco, so a first build holds some neighbouring land; how much was not measured. Suggested: the border as the edge of a first build, a band later. Undecided.",
+      "neighbours_in_box": "General knowledge, not measured. Nicaragua: Rivas department, south shore of Lake Nicaragua, south of Rio San Juan department. Panama: a strip along the border (Chiriqui, west tip of Bocas del Toro). The rest is sea."
+    }
+  ],
+  "disputed_boundary": {
+    "place": "Northern part of Isla Portillos (about 3 km2), at the Caribbean mouth of the San Juan River",
+    "icj_2015": "Judgment of 2015-12-16, 14 votes to 2: Costa Rica has sovereignty over the disputed territory; Nicaragua's dredging of canos and military presence violated it. Harbor Head Lagoon is agreed to be Nicaraguan. (opened: ICJ summary)",
+    "icj_2018": "Judgment of 2018-02-02: Costa Rica has sovereignty over the whole northern part of Isla Portillos including its coast, except Harbor Head Lagoon and the sandbar separating it from the sea. (search only)",
+    "cod_ab": "District Colorado (Pococi, Limon) has vertices up to 10.9424 N (computed); whether its edge follows the 2018 line was not checked.",
+    "verified": "2015 summary opened 2026-11-18; 2018 judgment search only"
+  },
+  "alternative_regions": {
+    "about": "If finer regions are wanted. The Central Valley sits where the San Jose, Alajuela, Heredia and Cartago boxes meet, so one province's box holds much of the others' land.",
+    "box_source": {
+      "dataset": "OCHA COD-AB Costa Rica (cri_admin0.geojson / cri_admin1.geojson), source INEC (National Statistics Office), valid_on 2024-12-03, HDX record last modified 2026-08-14",
+      "url": "https://data.humdata.org/dataset/cod-ab-cri",
+      "licence": "CC-BY-IGO",
+      "computed": "2026-11-18",
+      "rule": "Extent of every vertex, minus/plus 0.15 degrees (the margin of map_sets.state in derived/packs/pack-spec.json), rounded outward to 0.01 degrees."
+    },
+    "regions": [
+      {
+        "code": "CR-SJ",
+        "cod_ab_pcode": "CR1",
+        "name": "San José",
+        "level": "province",
+        "area_km2": 4971,
+        "box": {
+          "west": -84.5927,
+          "south": 9.0751,
+          "east": -83.4294,
+          "north": 10.191
+        },
+        "box_with_margin_0_15": {
+          "west": -84.75,
+          "south": 8.92,
+          "east": -83.27,
+          "north": 10.35
+        }
+      },
+      {
+        "code": "CR-A",
+        "cod_ab_pcode": "CR2",
+        "name": "Alajuela",
+        "level": "province",
+        "area_km2": 9773,
+        "box": {
+          "west": -85.4493,
+          "south": 9.8401,
+          "east": -84.1612,
+          "north": 11.0843
+        },
+        "box_with_margin_0_15": {
+          "west": -85.6,
+          "south": 9.69,
+          "east": -84.01,
+          "north": 11.24
+        }
+      },
+      {
+        "code": "CR-C",
+        "cod_ab_pcode": "CR3",
+        "name": "Cartago",
+        "level": "province",
+        "area_km2": 3094,
+        "box": {
+          "west": -84.0882,
+          "south": 9.4841,
+          "east": -83.3119,
+          "north": 10.1475
+        },
+        "box_with_margin_0_15": {
+          "west": -84.24,
+          "south": 9.33,
+          "east": -83.16,
+          "north": 10.3
+        }
+      },
+      {
+        "code": "CR-H",
+        "cod_ab_pcode": "CR4",
+        "name": "Heredia",
+        "level": "province",
+        "area_km2": 2664,
+        "box": {
+          "west": -84.2002,
+          "south": 9.9594,
+          "east": -83.71,
+          "north": 10.7925
+        },
+        "box_with_margin_0_15": {
+          "west": -84.36,
+          "south": 9.8,
+          "east": -83.55,
+          "north": 10.95
+        }
+      },
+      {
+        "code": "CR-G",
+        "cod_ab_pcode": "CR5",
+        "name": "Guanacaste",
+        "level": "province",
+        "area_km2": 10192,
+        "box": {
+          "west": -85.9503,
+          "south": 9.7269,
+          "east": -84.7661,
+          "north": 11.2196
+        },
+        "box_with_margin_0_15": {
+          "west": -86.11,
+          "south": 9.57,
+          "east": -84.61,
+          "north": 11.37
+        }
+      },
+      {
+        "code": "CR-P",
+        "cod_ab_pcode": "CR6",
+        "name": "Puntarenas (mainland)",
+        "level": "province",
+        "area_km2": 11298,
+        "box": {
+          "west": -85.2798,
+          "south": 8.0402,
+          "east": -82.712,
+          "north": 10.3375
+        },
+        "box_with_margin_0_15": {
+          "west": -85.43,
+          "south": 7.89,
+          "east": -82.56,
+          "north": 10.49
+        },
+        "note": "area_km2 includes Isla del Coco; the with-Coco box is box_with_coco.",
+        "box_with_coco": {
+          "west": -87.1019,
+          "south": 5.4991,
+          "east": -82.712,
+          "north": 10.3375
+        },
+        "box_with_coco_margin_0_15": {
+          "west": -87.26,
+          "south": 5.34,
+          "east": -82.56,
+          "north": 10.49
+        }
+      },
+      {
+        "code": "CR-L",
+        "cod_ab_pcode": "CR7",
+        "name": "Limón",
+        "level": "province",
+        "area_km2": 9177,
+        "box": {
+          "west": -83.9474,
+          "south": 9.0748,
+          "east": -82.5528,
+          "north": 10.9424
+        },
+        "box_with_margin_0_15": {
+          "west": -84.1,
+          "south": 8.92,
+          "east": -82.4,
+          "north": 11.1
+        }
+      }
+    ],
+    "area_source": "area_sqkm attribute of COD-AB level 1; the seven add up to the level 0 total"
+  },
+  "gam": {
+    "about": "Gran Area Metropolitana as a possible separate grouping with its own id (for example CR-GAM; the id is the maintainers' choice), not a province code that means more than the province.",
+    "plan": "Plan Regional de Ordenamiento Territorial de la GAM, Plan GAM 2013-2030, approved by the Consejo Nacional de Planificacion Urbana on 2014-01-20; Decreto 38145 (a regulation 38334-H/2014 also appears) (search only, CEPAL Plataforma Urbana).",
+    "publisher": "INVU, Direccion de Urbanismo, and the Council's secretariat follow its execution (search only).",
+    "size": "31 cantons and 165 districts (search only).",
+    "cantons_known": [
+      "San Jose",
+      "Escazu",
+      "Desamparados",
+      "Mora",
+      "Goicoechea",
+      "Santa Ana",
+      "Asserri",
+      "Alajuelita",
+      "Vazquez de Coronado",
+      "Tibas",
+      "Moravia",
+      "Montes de Oca"
+    ],
+    "cantons_note": "Partial, from a truncated search excerpt; the full list was not read.",
+    "download": "None found. The Atlas Digital del Plan GAM 2013 (83 maps, 172 layers) is listed in the TEC repository (search only). INVU page tried: 404; CEPAL page: 403.",
+    "licence": "Not found; none assumed.",
+    "box": null,
+    "box_note": "Not computed: the canton list is not confirmed. Option 1: union of the plan's cantons from COD-AB level 2 (CC BY-IGO). Option 2: the plan's own polygon, which needs INVU permission."
+  },
+  "layers": {
+    "base_map_and_poi": {
+      "dataset": "OSM extract costa-rica-latest.osm.pbf (37.4 MB); free shp.zip 79 MB, gpkg.zip 81 MB",
+      "publisher": "OpenStreetMap contributors via Geofabrik",
+      "url": "https://download.geofabrik.de/central-america/costa-rica.html",
+      "licence": "ODbL-1.0",
+      "verified": "2026-11-18",
+      "data_up_to": "2026-11-17T21:24:30Z"
+    },
+    "places": {
+      "dataset": "OCHA COD-AB levels 1 to 3 (7 provinces, 84 cantons, 492 districts) plus adminpoints; OSM named places",
+      "url": "https://data.humdata.org/dataset/cod-ab-cri",
+      "licence": [
+        "CC-BY-IGO",
+        "ODbL-1.0"
+      ],
+      "verified": "HDX record opened and GeoJSON downloaded 2026-11-18",
+      "caveat": "Two topological overlap errors and five gap errors; no canton Caldera (HDX record)."
+    },
+    "terrain": {
+      "dataset": "Copernicus DEM GLO-30",
+      "licence": "Copernicus-WorldDEM-30",
+      "url": "https://registry.opendata.aws/copernicus-dem/",
+      "verified": "AWS registry page opened 2026-11-18; notices as in docs/regions-proposed.json",
+      "note": "Surface model: follows the canopy under forest."
+    },
+    "terrain_national": {
+      "dataset": "SNIT / IGN contour lines and elevation models",
+      "publisher": "IGN, Registro Nacional",
+      "licence": null,
+      "gap": "No open licence found. SNIT home page shows 'Todos los derechos reservados'.",
+      "verified": "SNIT home page opened 2026-11-18; layers search only"
+    },
+    "water": {
+      "dataset": "OSM waterways and water areas; IGN 1:5000 hydrography only if its terms allow",
+      "licence": [
+        "ODbL-1.0",
+        "unclear"
+      ],
+      "gap": "No open dam inventory found."
+    },
+    "crops": {
+      "dataset": "ESA WorldCover 2021 v200, 10 m",
+      "url": "https://registry.opendata.aws/esa-worldcover-vito/",
+      "licence": "CC-BY-4.0",
+      "verified": "AWS registry page opened 2026-11-18",
+      "note": "Land cover classes, not crop types; no national crop map found."
+    },
+    "buildings": {
+      "dataset": "Microsoft Global ML Building Footprints (21 tiles); Overture buildings as an alternative",
+      "tiles": 21,
+      "rows": 1460785,
+      "largest_tile": {
+        "quadkey": "032221002",
+        "rows": 693762
+      },
+      "licence": [
+        "CDLA-Permissive-2.0",
+        "ODbL-1.0"
+      ],
+      "verified": "dataset-links.csv and tiles downloaded 2026-11-18; rows are lines of each decompressed tile",
+      "osm_building_ways": 201480
+    },
+    "addresses": {
+      "dataset": null,
+      "gap": "Overture's address theme lists 41 countries and Costa Rica is not among them.",
+      "url": "https://docs.overturemaps.org/guides/addresses/",
+      "verified": "2026-11-18"
+    },
+    "places_overture": {
+      "note": "Overture places page gives counts by source, none by country; Costa Rica's share unknown.",
+      "licence": [
+        "CDLA-Permissive-2.0",
+        "Apache-2.0",
+        "CC0-1.0"
+      ],
+      "url": "https://docs.overturemaps.org/guides/places/",
+      "verified": "2026-11-18"
+    }
+  },
+  "hazards_optional": {
+    "cne_hazard_maps": {
+      "publisher": "CNE",
+      "note": "Geoportal geoportal-saracc.cne.go.cr listed with WMS/WFS/WCS/WMTS and CSW (search only); host did not resolve; www.cne.go.cr answered 403.",
+      "licence": null,
+      "mark": "search only"
+    },
+    "ovsicori": {
+      "publisher": "OVSICORI-UNA",
+      "note": "Menu shows seismic catalogue, historical seismicity, bulletins and a Descargas section; contents not read. Site footer: Todos los derechos reservados. 2025 annual seismic report is CC BY 4.0, other reports CC BY-NC-SA 4.0 (search only).",
+      "licence": null,
+      "mark": "home page opened; rest search only"
+    },
+    "rsn": {
+      "publisher": "RSN (UCR-ICE)",
+      "note": "Nothing found.",
+      "licence": null,
+      "mark": "not checked"
+    },
+    "sinac": {
+      "publisher": "SINAC",
+      "note": "No downloadable boundary file found; www.sinac.go.cr failed its certificate check. OSM has 111 boundary=protected_area objects.",
+      "licence": null,
+      "mark": "search only"
+    }
+  },
+  "osm_counts": {
+    "about": "Counted with pyosmium over costa-rica-latest.osm.pbf (data up to 2026-11-17T21:24:30Z); nodes, ways and relations.",
+    "counts": {
+      "amenity=hospital": 119,
+      "amenity=clinic": 1152,
+      "amenity=doctors": 424,
+      "amenity=pharmacy": 714,
+      "amenity=fire_station": 80,
+      "amenity=police": 690,
+      "amenity=drinking_water": 54,
+      "man_made=water_tap": 28,
+      "amenity=water_point": 9,
+      "man_made=water_well": 16,
+      "man_made=water_tower": 120,
+      "man_made=storage_tank": 355,
+      "water=reservoir": 134,
+      "waterway=dam": 25,
+      "amenity=fuel": 441,
+      "amenity=shelter": 379,
+      "social_facility=shelter": 14,
+      "emergency=assembly_point": 1,
+      "emergency=ambulance_station": 127,
+      "amenity=school": 4442,
+      "amenity=ranger_station": 52,
+      "natural=volcano": 35,
+      "natural=hot_spring": 22,
+      "boundary=protected_area": 111,
+      "addr:housenumber": 11803,
+      "addr:street": 33402,
+      "addr:postcode": 8560,
+      "building (ways only)": 201480,
+      "name:gn": 4
+    },
+    "shelter_type_of_amenity_shelter": {
+      "public_transport": 138,
+      "lean_to": 115,
+      "(none)": 69,
+      "picnic_shelter": 26,
+      "gazebo": 20,
+      "pavilion": 5,
+      "eruption_shelter": 3,
+      "basic_hut": 2,
+      "weather_shelter": 1
+    },
+    "caveat": "amenity=shelter marks small roofs, not emergency shelters. natural=volcano includes extinct cones."
+  },
+  "licences": {
+    "CC-BY-IGO": {
+      "name": "Creative Commons Attribution for Intergovernmental Organisations",
+      "url": "https://creativecommons.org/licenses/by/3.0/igo/",
+      "attribution": "Credit OCHA and its source (INEC).",
+      "share_alike": false,
+      "verified": "licence name read through HDX API 2026-11-18; licence text not reopened"
+    },
+    "CC-BY-4.0": {
+      "name": "Creative Commons Attribution 4.0 International",
+      "url": "https://creativecommons.org/licenses/by/4.0/",
+      "share_alike": false,
+      "verified": "WorldCover licence read on the AWS registry page; licence text not reopened"
+    },
+    "CDLA-Permissive-2.0": {
+      "name": "Community Data License Agreement Permissive 2.0",
+      "url": "https://cdla.dev/permissive-2-0/",
+      "share_alike": false,
+      "verified": "named in Microsoft's README (opened, summarised); text not reopened"
+    },
+    "ODbL-1.0": {
+      "name": "Open Database License 1.0",
+      "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "attribution": "(c) OpenStreetMap contributors; a database built from it is offered under the ODbL.",
+      "share_alike": true,
+      "verified": "licence text not reopened"
+    },
+    "Copernicus-WorldDEM-30": {
+      "name": "Copernicus WorldDEM-30 licence",
+      "url": "see docs/regions-proposed.json",
+      "attribution": "see docs/regions-proposed.json",
+      "share_alike": false,
+      "verified": "AWS registry page says free for the general public under the Copernicus licence"
+    }
+  },
+  "addressing": {
+    "style": "Directions from a landmark, in metres or blocks: 'De la pulperia La Chanchita, 400 al este, 200 al sur y 25 al norte' (opened, 1997 La Nacion column); 'De la Iglesia de Zapote 200 mts al Sur' (search only). Most addresses have no street name or number.",
+    "postcode": "Five digits: province (1), canton (2), district (2); 30502 = La Suiza, Turrialba, Cartago (opened, La Nacion 2009 and Wikipedia). 492 districts in COD-AB vs 492 codes in one search result (another database: 487). Dates conflict: La Nacion page dated 2009-04-28, Wikipedia says introduced March 2013. How widely used: not found.",
+    "engine": "\\d{5} (engine/address_search.py line 65) accepts the five digits but they mean a district, not a US ZIP. _parts() expects a house number as the first word. normalize() keeps only a-z, 0-9 and spaces: 'Perez Zeledon' with accents becomes 'p rez zeled n' (regex run 2026-11-18). Folding is needed; see related.pr_79.",
+    "verified": "Correos de Costa Rica pages not opened; needs a native reader."
+  },
+  "undecided": [
+    "Codes in setup",
+    "The box rule, and Isla del Coco",
+    "One region, seven provinces, or one plus a GAM grouping",
+    "Crop classes for WorldCover",
+    "Address search",
+    "Help points with no open source",
+    "Official layers with no licence (IGN, CNE, OVSICORI, SINAC)",
+    "The GAM polygon",
+    "The California-only layers (REGIONS.md item 7)"
+  ],
+  "marks": {
+    "opened": "the page, file or API response was opened and read",
+    "computed": "computed here from a downloaded file",
+    "search only": "seen in a search result; page not opened",
+    "general knowledge": "stated from memory; needs a local reader's check",
+    "not checked": "could not be reached or read"
+  },
+  "related": {
+    "pr_79": "Proposes that each address index declares its own spelling rule (meta.norm).",
+    "pr_80": "tools/build_region_map.py; trial build figures to be added to docs/REGIONS-CR.md."
+  },
+  "trial_build": {
+    "doc": "docs/MAP-CR.md",
+    "tool": "tools/build_region_map.py from PR #80, commit a453274, unchanged",
+    "built": "2026-11-18",
+    "source": {
+      "file": "costa-rica-latest.osm.pbf",
+      "bytes": 39192879,
+      "md5": "f046e22921a2e1837a3bde4e8c00e3a0",
+      "data_as_of": "2026-11-17T21:24:30Z"
+    },
+    "bbox": [
+      -86.11,
+      7.89,
+      -82.4,
+      11.37
+    ],
+    "seconds": 25,
+    "peak_rss_gb": 0.78,
+    "map_set_bytes": 99123261,
+    "features": {
+      "road": 163431,
+      "bldg": 202360,
+      "waterway": 15221,
+      "land": 28892,
+      "water": 1541,
+      "wet": 516,
+      "beach": 356,
+      "rail": 275,
+      "place": 8847,
+      "island": 398
+    },
+    "help_points": 22246,
+    "help_point_classes": 40,
+    "place_finder_rows": 27435,
+    "engine_extent": [
+      -85.91,
+      8.09,
+      -82.54,
+      11.22
+    ],
+    "checks": "tools/check_region_map.py: all file checks and all engine checks passed (connections blocked)",
+    "reproducible": "two builds gave identical SHA-256 for all five files"
+  }
+}

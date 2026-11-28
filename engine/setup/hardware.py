@@ -376,12 +376,18 @@ def _gb(n):
     return f'{n / 1e9:.0f} GB' if n >= 10e9 else f'{n / 1e9:.1f} GB'
 
 
+def _why(key, english, **params):
+    """`why` in English plus the catalogue key and parameters Setup shows it with."""
+    return {'why': english.format(**params), 'why_key': key, 'why_params': params or None}
+
+
 def estimate_ai(ram, gpus, unified, memory_bytes):
     """Before the model file is here to measure: the model and its context need memory_bytes, plus RESERVE for everything else.
     On a Mac that is all one memory. On Windows the part that fits on the graphics card does not count against the computer's own."""
     needs = int(memory_bytes + RESERVE)
     if not ram:
-        return {'fits': False, 'needs_bytes': needs, 'estimate': True, 'why': 'Lastbook could not tell how much memory this computer has.'}
+        return {'fits': False, 'needs_bytes': needs, 'estimate': True,
+                **_why('setup.why.unknownMemory', 'Lastbook could not tell how much memory this computer has.')}
     if unified or not gpus:
         in_ram = needs
     else:
@@ -390,11 +396,15 @@ def estimate_ai(ram, gpus, unified, memory_bytes):
     fits = ram >= in_ram
     out = {'fits': fits, 'needs_bytes': needs, 'estimate': True}
     if fits:
-        out['why'] = f'The local AI needs about {_gb(needs)} of memory, and this computer has {_gb(ram)}' + (
-            '.' if unified or not gpus else ' plus its graphics memory.')
+        if unified or not gpus:
+            out.update(_why('setup.why.aiNeedsMemoryFits', 'The local AI needs about {needs} of memory, and this computer has {ram}.',
+                            needs=_gb(needs), ram=_gb(ram)))
+        else:
+            out.update(_why('setup.why.aiNeedsMemoryFitsGraphics', 'The local AI needs about {needs} of memory, and this computer has {ram} plus its graphics memory.',
+                            needs=_gb(needs), ram=_gb(ram)))
     else:
-        out['why'] = (f'The local AI needs about {_gb(in_ram)} of this computer’s memory, and it has {_gb(ram)}. '
-                      'Lastbook works without it: search and reading are the same.')
+        out.update(_why('setup.why.aiNeedsMemoryShort', 'The local AI needs about {needs} of this computer’s memory, and it has {ram}. Lastbook works without it: search and reading are the same.',
+                        needs=_gb(in_ram), ram=_gb(ram)))
     return out
 
 
@@ -415,7 +425,8 @@ def measure_ai(llm_local, model_path, timeout=180):
         return None
     j = llm_local.judge(fit)
     return {'fits': bool(j['fits']), 'needs_bytes': int(j['needs']), 'estimate': False,
-            'why': j.get('why') or f'Measured on this computer: the local AI needs about {_gb(j["needs"])} of memory, and it fits.'}
+            **({'why': j['why'], 'why_key': j.get('why_key'), 'why_params': j.get('why_params')} if j.get('why') else
+               _why('setup.why.aiMeasuredFits', 'Measured on this computer: the local AI needs about {needs} of memory, and it fits.', needs=_gb(j['needs'])))}
 
 
 # ----------------------------------------------------------------------------------------------------------- battery --
@@ -570,7 +581,7 @@ def handle_battery(h):
     gets 403, because a laptop's battery is nobody else's business."""
     from engine.setup.api import _send_json
     if h.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
-        return _send_json(h, {'error': 'The battery is only shown on this computer.'}, 403)
+        return _send_json(h, {'error': 'The battery is only shown on this computer.', 'error_key': 'hardware.batteryLocalOnly'}, 403)
     return _send_json(h, battery())
 
 

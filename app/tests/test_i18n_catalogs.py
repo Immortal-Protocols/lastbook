@@ -78,6 +78,10 @@ class Catalogues(unittest.TestCase):
     def test_source_staging_and_missing_or_stale_assets(self):
         generated = catalogues.generate()
         catalogues.check_assets(ROOT / 'web', generated)
+        desktop = generated['desktop'].decode('utf-8')
+        self.assertIn('GenericName[es_419]=Biblioteca de supervivencia sin conexión', desktop)
+        self.assertIn('Comment[de]=Die Survival-Bibliothek auf diesem Computer ohne Internet durchsuchen und lesen', desktop)
+        self.assertIn('Keywords[zh_Hans]=生存;资料库;离线;急救;', desktop)
         stage = self.work / 'stage'
         subprocess.run([sys.executable, '-I', '-B', str(ROOT / 'packaging' / 'ship_app_files.py'), str(stage)],
                        check=True, capture_output=True)
@@ -111,8 +115,7 @@ class Catalogues(unittest.TestCase):
 
 
 class FallbackWording(unittest.TestCase):
-    """language.unavailable is shown in English when the saved language's catalogue cannot load (web/i18n-app.js), whichever
-    language that is. The selector offers more than one translated language, so the message must not name one."""
+    """Unavailable-language copy stays neutral across all offered locales."""
 
     def test_english_fallback_names_no_language(self):
         en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
@@ -122,47 +125,8 @@ class FallbackWording(unittest.TestCase):
             self.assertNotIn(name, text)
 
 
-class SimplifiedChineseWording(unittest.TestCase):
-    """The zh-Hans catalogue keeps the conventions in docs/i18n.md#simplified-chinese-zh-hans."""
-
-    @classmethod
-    def setUpClass(cls):
-        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
-        cls.en, cls.zh = load('en.json'), load('zh-Hans.json')
-
-    def test_setup_and_settings_are_different_words(self):
-        self.assertEqual(self.zh['nav.settings'], '设置')
-        self.assertIn('初始设置', self.zh['setup.title'])
-        # "初始设置" contains "设置"; the rest of the heading must not say it again.
-        self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
-        # Where a sentence names both screens, it names both.
-        self.assertIn('初始设置', self.zh['language.preview'])
-        self.assertIn('设置', self.zh['language.preview'])
-
-    def test_simplified_characters_only(self):
-        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網路線說檔電腦檢區換'
-        everything = ' '.join(self.zh.values())
-        self.assertEqual([character for character in traditional if character in everything], [])
-
-    def test_everyday_words_and_formatting(self):
-        self.assertIn('这台电脑', self.zh['setup.loading'])
-        self.assertIn('州或地区', self.zh['setup.chooseIntro'])
-        # A space separates Chinese from Latin words, and names stay as they are.
-        self.assertIn('Lastbook 会', self.zh['setup.chooseIntro'])
-        self.assertEqual(self.zh['setup.settingsTitle'], '资料库与本地 AI')
-        # Full-width punctuation, no space before it, no ideographic space.
-        everything = ' '.join(self.zh.values())
-        for bad in (' ,', ' 。', ' ，', ' ；', ' …', '\u3000', '..'):
-            self.assertNotIn(bad, everything)
-        self.assertTrue(self.zh['language.saving'].endswith('…'))
-
-    def test_no_message_is_left_in_english(self):
-        same = {key for key in self.zh if self.zh[key] == self.en[key]}
-        self.assertEqual(same, set())
-
-
 class GermanWording(unittest.TestCase):
-    """The de catalogue keeps the conventions in docs/i18n.md#german-de: formal "Sie" throughout, and fixed words for the screens."""
+    """The de catalogue keeps the conventions in docs/i18n.md#german-de."""
 
     @classmethod
     def setUpClass(cls):
@@ -176,15 +140,60 @@ class GermanWording(unittest.TestCase):
         self.assertEqual(informal, [])
         self.assertIn('Wählen Sie', self.de['setup.chooseIntro'])
 
+    def test_informal_imperatives_are_not_used(self):
+        import re
+        informal = re.findall(r'\b(?:Erhalte|Versuche|Wähle|Klicke|Öffne|Lade|Verwende|Prüfe|Gib|Nimm|Trage|Gehe|Tippe|Schließe|Bestätige|Füge|Warte|Fahre|Stelle|Setze|Mach|Tue|Sieh|Lies|Rufe|Halte)\b',
+                              ' '.join(self.de.values()), flags=re.IGNORECASE)
+        self.assertEqual(informal, [])
+        self.assertEqual(self.de['search.label'], 'Suche')  # noun, not the informal imperative
+
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.de['setup.title'], 'Lastbook einrichten')
         self.assertEqual(self.de['nav.settings'], 'Einstellungen')
-        self.assertIn('Einrichtung und Einstellungen', self.de['language.preview'])
-        self.assertIn('Region', self.de['setup.chooseIntro'])        # not "Bundesstaat": the prompt is for any region
+        # The sample's own preview and saved notes described an older scope; they fall back to English (docs/i18n.md).
+        self.assertNotIn('language.preview', self.de)
+        self.assertNotIn('language.saved', self.de)
+        self.assertIn('Region', self.de['setup.chooseIntro'])
 
     def test_no_message_is_left_in_english(self):
         same = {key for key in self.de if self.de[key] == self.en[key]}
         self.assertLessEqual(same, {'nav.chat', 'nav.videos', 'nav.video', 'search.filter'})
+
+
+class SimplifiedChineseWording(unittest.TestCase):
+    """The zh-Hans catalogue keeps the conventions in docs/i18n.md#simplified-chinese-zh-hans."""
+
+    @classmethod
+    def setUpClass(cls):
+        load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
+        cls.en, cls.zh = load('en.json'), load('zh-Hans.json')
+
+    def test_setup_and_settings_are_different_words(self):
+        self.assertEqual(self.zh['nav.settings'], '设置')
+        self.assertIn('初始设置', self.zh['setup.title'])
+        self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
+        # The sample's own preview and saved notes described an older scope; they fall back to English (docs/i18n.md).
+        self.assertNotIn('language.preview', self.zh)
+        self.assertNotIn('language.saved', self.zh)
+
+    def test_simplified_characters_only(self):
+        traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網線說檔電腦檢區換'
+        everything = ' '.join(self.zh.values())
+        self.assertEqual([character for character in traditional if character in everything], [])
+
+    def test_everyday_words_and_formatting(self):
+        self.assertIn('这台电脑', self.zh['setup.loading'])
+        self.assertIn('州或地区', self.zh['setup.chooseIntro'])
+        self.assertIn('Lastbook 会', self.zh['setup.chooseIntro'])
+        self.assertEqual(self.zh['setup.settingsTitle'], '资料库与本地 AI')
+        everything = ' '.join(self.zh.values())
+        for bad in (' ,', ' 。', ' ，', ' ；', ' …', '\u3000', '..'):
+            self.assertNotIn(bad, everything)
+        self.assertTrue(self.zh['language.saving'].endswith('…'))
+
+    def test_no_message_is_left_in_english(self):
+        same = {key for key in self.zh if self.zh[key] == self.en[key]}
+        self.assertEqual(same, set())
 
 
 class SpanishWording(unittest.TestCase):
@@ -195,27 +204,118 @@ class SpanishWording(unittest.TestCase):
         load = lambda name: json.loads((ROOT / 'translations' / 'desktop' / name).read_text(encoding='utf-8'))
         cls.en, cls.es = load('en.json'), load('es-419.json')
 
+    def test_language_preview_warns_translation_is_partial(self):
+        self.assertIn('La traducción al español todavía es parcial.', self.es['language.preview'])
+        self.assertIn('menús nativos', self.es['language.preview'])
+
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.es['nav.settings'], 'Ajustes')
         self.assertIn('Configuración inicial', self.es['setup.title'])
         self.assertIn('configuración inicial', self.es['setup.error'])
         self.assertNotEqual(self.es['nav.settings'], self.es['setup.title'])
-        # Where a sentence names both screens, it names both.
-        preview = self.es['language.preview']
-        self.assertIn('configuración inicial', preview)
-        self.assertIn('ajustes', preview)
-        self.assertIn('Setup and Settings', self.en['language.preview'])
+        # Settings and first-run Setup stay distinct throughout the catalogue.
+        joined = ' '.join(self._texts(self.es))
+        self.assertIn('configuración inicial', joined)
+        self.assertIn('Ajustes', joined)
 
     def test_state_prompt_and_everyday_words(self):
         self.assertIn('estado o región', self.es['setup.chooseIntro'])
         self.assertIn('computadora', self.es['setup.loading'])
-        everything = ' '.join(self.es.values())
+        everything = ' '.join(self._texts(self.es))
         for avoid in (' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo'):
             self.assertNotIn(avoid, everything)
         self.assertEqual(self.es['language.unavailable'], 'El idioma guardado no está disponible. Lastbook usa inglés.')
         self.assertNotIn('está en inglés', self.es['language.unavailable'])
+        self.assertNotIn('Spanish', self.en['language.unavailable'])
+        self.assertEqual(self.en['language.unavailable'], 'The saved language is unavailable. Lastbook is using English.')
+
+    @staticmethod
+    def _texts(catalog):
+        out = []
+        for value in catalog.values():
+            if isinstance(value, str):
+                out.append(value)
+            else:
+                out.extend(value.values())
+        return out
 
     def test_no_message_is_left_in_english(self):
-        # Words that must differ from English (brand names and loan words such as "Chat" may match).
+        # Words that must differ from English (brand names, units and loan words such as "Chat" may match).
         same = {key for key in self.es if self.es[key] == self.en[key]}
-        self.assertLessEqual(same, {'nav.chat', 'nav.videos', 'nav.video'})
+        self.assertLessEqual(same, {
+            'nav.chat', 'nav.videos', 'nav.video', 'library.chats', 'videos.title',
+            'videos.headingQuoted', 'videos.kindPrefix', 'videos.speedNormal', 'videos.10to30',
+            'saved.pdf', 'app.titleSuffix', 'time.hoursMinutes', 'time.minutes', 'time.seconds',
+            'map.zoom', 'library.shelfVideos',
+            'native.menu.zoom', 'common.video', 'chat.sourceType.videos',
+            'native.appFileDescription', 'installer.productName', 'installer.companyName', 'videos.videoCount',
+            'setup.facts.sha256', 'setup.facts.bytes',
+            # Server-sent labels whose Spanish is the same word.
+            'kind.pdf', 'kind.video', 'poi.hospital', 'map.summary.acres',
+        })
+
+    def test_catalogue_covers_every_english_message(self):
+        self.assertEqual(set(self.es), set(self.en),
+                         f'missing: {sorted(set(self.en) - set(self.es))}; extra: {sorted(set(self.es) - set(self.en))}')
+
+    def test_everyday_words_cover_the_full_catalogue(self):
+        everything = ' '.join(self._texts(self.es))
+        for avoid in (
+            ' equipo', 'Equipo', 'ordenador', 'vídeo', 'Vídeo', 'relevamiento',
+            'gazetero', 'nata verde', 'en marcha', 'arrancando', 'municipalidades',
+        ):
+            self.assertNotIn(avoid, everything)
+
+    def test_reviewed_copy_uses_neutral_consistent_wording(self):
+        self.assertEqual(self.es['map.nothingNearby'], 'No hay elementos de tus capas a menos de 100 millas del centro del mapa.')
+        self.assertIn('como familia', self.es['chat.starter.comms'])
+        self.assertIn('mantén presionada la tecla Mayús', self.es['map3d.dragMouse'])
+        self.assertIn('mejor coinciden con tu pregunta', self.es['chat.offlinePages'])
+        self.assertIn('se conserva en la unidad', self.es['setup.stopCopyConfirm'])
+        self.assertIn('Instalaciones para embarcaciones', self.es['map.layer.boat'])
+        self.assertEqual(self.es['setup.tryAgain'], 'Reintentar')
+        self.assertIn('Vuelve a intentarlo', self.es['setup.connectionHint'])
+
+    def test_3d_building_height_summary_is_a_complete_plural_message(self):
+        key = 'map3d.buildingHeightSummary'
+        self.assertEqual(set(self.en[key]), {'one', 'other'})
+        self.assertEqual(set(self.es[key]), {'one', 'other'})
+        for catalog in (self.en, self.es):
+            for fragment in ('map3d.heightsAre', 'map3d.mappedHeights', 'map3d.oneStoreyShown'):
+                self.assertNotIn(fragment, catalog)
+            for selector in ('one', 'other'):
+                self.assertIn('{count}', catalog[key][selector])
+                for param in ('mapped', 'satellite', 'guessed', 'nearest'):
+                    self.assertIn('{' + param + '}', catalog[key][selector])
+
+    def test_topic_short_catalogue_entries_match_topic_data(self):
+        topics = [json.loads(path.read_text(encoding='utf-8'))
+                  for path in sorted((ROOT / 'content' / 'topics').glob('*.json'))]
+        self.assertEqual(len(topics), 14)
+        expected = {f"topic.short.{topic['id']}" for topic in topics}
+        self.assertTrue(expected <= set(self.en))
+        self.assertTrue(expected <= set(self.es))
+        for topic in topics:
+            key = f"topic.short.{topic['id']}"
+            with self.subTest(topic=topic['id']):
+                self.assertEqual(self.en[key], topic['short'])
+                self.assertNotEqual(self.es[key], self.en[key])
+                self.assertEqual(catalogues.placeholders(self.es[key]),
+                                 catalogues.placeholders(self.en[key]))
+
+class CatalogueCoverage(unittest.TestCase):
+    """Keys used in the desktop UI exist in the English catalogue."""
+
+    def test_marked_and_tr_keys_are_in_english(self):
+        import re
+        en = json.loads((ROOT / 'translations' / 'desktop' / 'en.json').read_text(encoding='utf-8'))
+        used = set()
+        for path in (ROOT / 'web').glob('*'):
+            if path.suffix not in {'.js', '.html'} or path.name in {'i18n-en.js', 'i18n-locales.js', 'i18n-core.js', 'i18n-dom.js'}:
+                continue
+            text = path.read_text(encoding='utf-8')
+            used.update(re.findall(r'''data-i18n(?:-aria-label|-placeholder|-title|-alt)?=["']([A-Za-z][A-Za-z0-9_.-]*)["']''', text))
+            used.update(k for k in re.findall(r'''\btr\(\s*['"]([A-Za-z][A-Za-z0-9_.-]*)['"]''', text) if not k.endswith('.'))
+        missing = sorted(used - set(en))
+        self.assertEqual(missing, [], f'missing from en.json: {missing}')
+        self.assertGreaterEqual(len(used), 200)

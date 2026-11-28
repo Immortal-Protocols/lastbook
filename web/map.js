@@ -1,10 +1,19 @@
 'use strict';
+function tr(key, params, fallback) {
+  const text = globalThis.LastbookI18n?.t?.(key, params);
+  if (text != null) return text;
+  if (params && typeof fallback === 'string') {
+    return fallback.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => (params[n] != null ? String(params[n]) : '{' + n + '}'));
+  }
+  return fallback;
+}
+globalThis.lastbookTr = tr;
 /* Offline map drawn from local vector tiles (/api/map/tile/z/x/y) with clustered help + resource pins (/api/map/pins).
    No external tiles or libraries. */
 const MapView = (() => {
   const EXT = 512;            // tile coordinate extent sent by the server
   const MINZ = 3, MAXZ = 19, DATAZ = 17;
-  let HOME = null;   // a household's own opening place, from web/home-area.json: a local file never packaged. "Set as my area" wins over it.
+  let HOME = null;   // a household's own opening place, from web/home-area.json: a local file never packaged. tr('map.setAsMyArea', null, "Set as my area") wins over it.
   const IN_WINDOW = location.protocol === 'lastbook:' || location.hostname === 'lastbook.invalid';
   const US = [-124.8, 24.4, -66.9, 49.4];  // lower 48
   const FULL = ['<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>'];   // full screen, and leave it
@@ -57,7 +66,7 @@ const MapView = (() => {
     other_names: 'Also called', purpose: 'Main purpose', purposes: 'All purposes', river: 'River / stream', city: 'Nearest town', owner: 'Owner',
     normal_storage_af: 'Normal storage (acre-ft)', max_storage_af: 'Max storage (acre-ft)', surface_acres: 'Surface (acres)', height_ft: 'Height (ft)', year: 'Built',
     dam_type: 'Dam type', hazard: 'Downstream hazard if it failed', condition: 'Condition', status: 'Status', area_acres: 'Area (acres)', water_type: 'Water present',
-    reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block', year: 'Satellite crop map year',
+    reservoir_type: 'Reservoir type', crop: 'Crop', crop_acres: 'Acres of it in this ~600 m block', perennial_acres: 'All tree, vine & berry acres in block',
     FUEL_SALES: 'Fuel sales', NO_OF_RAMP_LANE_USE_ONE_TIME: 'Ramp lanes', FISH_CLEANING: 'Fish cleaning', Comments: 'Notes', Website: 'Website' };
   const CAVEAT = { mineral: 'USGS mineral record: an occurrence or past mine, not proof of recoverable ore, access or safety. Old workings can be deadly.',
     oil_gas_well: 'State well record. Most are plugged or idle; never approach an unsealed well head.', fish_stocking: 'A past stocking record — it does not confirm fish are present now.',
@@ -79,12 +88,73 @@ const MapView = (() => {
   const x2lon = (x, z) => x / 2 ** z * 360 - 180;
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const tHtml = (key, params, fallback) => {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params), locale = result?.locale || 'en';
+    const direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result?.text ?? tr(key, params, fallback) ?? '')}</span>`;
+  };
   const $ = id => document.getElementById(id);
+  const message = (key, params, fallback) => {
+    const result = globalThis.LastbookI18n?.resolve?.(key, params);
+    if (result) return result;
+    return { text: globalThis.lastbookTr?.(key, params, fallback) ?? fallback ?? '', locale: 'en' };
+  };
+  const messageHtml = value => {
+    const result = typeof value === 'string' ? { text: value, locale: 'en' } : value || { text: '', locale: 'en' };
+    if (Array.isArray(result.segments)) return result.segments.filter(part => part.text).map(messageHtml).join('');
+    const locale = result.locale || 'en', direction = globalThis.LastbookI18n?.direction?.(locale);
+    return `<span lang="${escH(locale)}"${direction === 'rtl' ? ' dir="rtl"' : ''}>${escH(result.text ?? '')}</span>`;
+  };
+  const markName = mark => mark?.nameKey ? message(mark.nameKey, mark.nameParams || null, mark.nameFallback || '').text : (mark?.name || '');
+  const markNameHtml = mark => mark?.nameKey ? messageHtml(message(mark.nameKey, mark.nameParams || null, mark.nameFallback || '')) : escH(mark?.name || '');
+  const markKindHtml = mark => mark?.kindKey ? messageHtml(message(mark.kindKey, mark.kindParams || null, mark.kindFallback || '')) : mark?.kind ? escH(mark.kind) : messageHtml(message('map.place', null, 'Place'));
+  const layerMessage = layer => layer.id
+    ? message('map.layer.' + layer.id, null, layer.label)
+    : { text: layer.label || '', locale: 'en' };
+  const DIRECTION_KEY = { north: 'map.direction.north', 'north-east': 'map.direction.northeast', east: 'map.direction.east',
+    'south-east': 'map.direction.southeast', south: 'map.direction.south', 'south-west': 'map.direction.southwest',
+    west: 'map.direction.west', 'north-west': 'map.direction.northwest' };
   const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
   const layerOf = cls => BY_CLS[cls] || { sym: '•', col: '#555', label: cls };
-  const unnamed = p => p.name || (p.detail?.reservoir_type ? p.detail.reservoir_type : 'Unnamed ' + (p.label || layerOf(p.cls).label).replace(/ \(.*\)/, '').replace(/^Recorded /, '').toLowerCase());
+  const FIELD_KEY = {
+    commod1: 'map.field.commodity', commod2: 'map.field.also', commod3: 'map.field.also', ore: 'map.field.ore',
+    dev_stat: 'map.field.recordedStatus', oper_type: 'map.field.operation', yr_lst_prd: 'map.field.lastProduction',
+    county: 'map.field.county', state: 'map.field.state', WellTypeLabel: 'map.field.wellType', WellStatus: 'map.field.wellStatus',
+    FieldName: 'map.field.field', API: 'map.field.apiNumber', CountyName: 'map.field.county',
+    FishType: 'map.field.fish', Counties: 'map.field.county', WeekOfPlantStart: 'map.field.stockedWeek',
+    Water_Body: 'map.field.water', Facility_Type: 'map.field.facility', County: 'map.field.county', Owner: 'map.field.owner',
+    other_names: 'map.field.alsoCalled', purpose: 'map.field.mainPurpose', purposes: 'map.field.allPurposes',
+    river: 'map.field.river', city: 'map.field.nearestTown', owner: 'map.field.owner',
+    normal_storage_af: 'map.field.normalStorage', max_storage_af: 'map.field.maxStorage',
+    surface_acres: 'map.field.surfaceAcres', height_ft: 'map.field.heightFt', year: 'map.field.built',
+    dam_type: 'map.field.damType', hazard: 'map.field.downstreamHazard', condition: 'map.field.condition',
+    status: 'map.field.status', area_acres: 'map.field.areaAcres', water_type: 'map.field.waterPresent',
+    reservoir_type: 'map.field.reservoirType', crop: 'map.field.crop', crop_acres: 'map.field.cropAcresBlock',
+    perennial_acres: 'map.field.perennialAcres', FUEL_SALES: 'map.field.fuelSales',
+    NO_OF_RAMP_LANE_USE_ONE_TIME: 'map.field.rampLanes', FISH_CLEANING: 'map.field.fishCleaning',
+    Comments: 'map.field.notes', Website: 'map.field.website'
+  };
+  const CROP_CLASSES = new Set(['orchard', 'vineyard', 'berries', 'perennial_veg']);
+  const CAVEAT_KEY = {
+    mineral: 'map.caveat.mineral', oil_gas_well: 'map.caveat.well', fish_stocking: 'map.caveat.fish',
+    boat_launch: 'map.caveat.boat', dam: 'map.caveat.dam', reservoir: 'map.caveat.surfaceWater',
+    lake: 'map.caveat.surfaceWater', orchard: 'map.caveat.crops', vineyard: 'map.caveat.crops',
+    berries: 'map.caveat.crops', perennial_veg: 'map.caveat.crops', pond: 'map.caveat.pond',
+    spring: 'map.caveat.spring', water_well: 'map.caveat.waterWell', drinking_water: 'map.caveat.tap'
+  };
+  const PRESET_KEY = { Emergency: 'map.preset.emergency', Water: 'map.preset.water', Supplies: 'map.preset.supplies', 'Food trees': 'map.preset.foodTrees', Resources: 'map.preset.resources', All: 'map.preset.all' };
+  const tLayer = l => l && l.id ? tr('map.layer.' + l.id, null, l.label) : (l && l.label) || '';
+  const tGroup = (id, en) => tr('map.group.' + id, null, en);
+  const tField = k => tr(FIELD_KEY[k] || ('map.field.' + k), null, FIELD[k]);
+  const tCaveat = k => CAVEAT[k] ? tr(CAVEAT_KEY[k] || ('map.caveat.' + k), null, CAVEAT[k]) : '';
+  const tPreset = n => n ? tr(PRESET_KEY[n] || n, null, n) : tr('map.preset.none', null, 'None');
+  // Server messages: {key, params, text} (server.py msg()); data values arrive as plain strings.
+  const partHtml = x => x && typeof x === 'object' ? (x.key ? tHtml(x.key, x.params, x.text) : escH(x.text ?? '')) : escH(x ?? '');
+  const partsHtml = (parts, fallback) => Array.isArray(parts) ? parts.map(partHtml).join(' · ') : escH(fallback ?? '');
+  const partText = x => x && typeof x === 'object' ? (x.key ? tr(x.key, x.params, x.text) : (x.text ?? '')) : (x ?? '');
+  const unnamed = p => (p.nameMessage ? partText(p.nameMessage) : p.name) || (p.detail?.reservoir_type ? p.detail.reservoir_type : tr('map.unnamed', { label: ((p.labelKey ? tr(p.labelKey, null, p.label) : p.label) || tLayer(layerOf(p.cls)) || '').replace(/ \(.*\)/, '').replace(/^Recorded /, '') }, 'Unnamed {label}'));
 
   let askedHome = false;
   async function localHome() {
@@ -102,28 +172,28 @@ const MapView = (() => {
     if (!on.length) on = (load('mapLayers', DEFAULT_LAYERS) || []).filter(id => LAYERS.some(l => l.id === id));  // drop retired layers (e.g. toilets)
     if (!on.length) on = DEFAULT_LAYERS;
     main.classList.add('map-page');
-    document.title = 'Map · Lastbook';
-    main.innerHTML = `<div class="maphead"><h1>Map &amp; nearby help</h1><p class="small muted">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage">Map downloads</a>' : ''}</div>
+    document.title = tr('map.title', null, 'Map · Lastbook');
+    main.innerHTML = `<div class="maphead"><h1 data-i18n="map.heading">Map &amp; nearby help</h1><p class="small muted" data-i18n="map.offlineNote">Offline: works with no internet. Shows what was mapped by 25 Oct 2026 — not damage, closures or hazards.</p>${IN_WINDOW ? '<a class="btn plain" href="/ui/setup.html#manage" data-i18n="map.downloads">Map downloads</a>' : ''}</div>
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
-      <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
+      <canvas id="mapc" tabindex="0" role="application" aria-label="${escH(tr('map.canvasLabel', null, 'Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text.'))}"></canvas>
       <div class="map-top">
-        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
-        <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers <b id="layer-count"></b></button>
+        <form class="map-search" id="pf" role="search"><label class="sr" for="pq" data-i18n="map.findLabel">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="${escH(tr('map.findPlaceholder', null, 'Find an address, town or ZIP'))}" data-i18n-placeholder="map.findPlaceholder" autocomplete="off"><button aria-label="${escH(tr('map.search', null, 'Search'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
+        <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers"><span data-i18n="map.layers">Layers</span> <b id="layer-count"></b></button>
       </div>
       <div class="map-pop" id="pres" hidden></div>
       <div class="map-pop layers" id="layers" hidden></div>
-      <div class="mapctl"><span class="zgrp" role="group" aria-label="Zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">−</button></span>
-        <button id="zhome" aria-label="Go to my area" title="My area"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button><button id="map-us" aria-label="Whole United States" title="Whole US">US</button>
-        <button id="map-full" aria-label="Full screen" title="Full screen">${FULL[0]}</button><button id="map-3d" aria-label="3D terrain view" title="3D view">3D</button><button id="map-photo" aria-label="Aerial photos" aria-pressed="false" title="Aerial photos">🛰</button></div>
+      <div class="mapctl"><span class="zgrp" role="group" aria-label="${tr('map.zoom', null, "Zoom")}"><button id="zin" aria-label="${tr('map.zoomIn', null, "Zoom in")}" title="${tr('map.zoomIn', null, "Zoom in")}">+</button><button id="zout" aria-label="${tr('map.zoomOut', null, "Zoom out")}" title="${tr('map.zoomOut', null, "Zoom out")}">−</button></span>
+        <button id="zhome" aria-label="${tr('map.goMyArea', null, "Go to my area")}" title="${tr('map.myArea', null, "My area")}" data-i18n-title="map.myArea"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg></button><button id="map-us" aria-label="${tr('map.wholeUS', null, "Whole United States")}" title="${tr('map.wholeUSShort', null, "Whole US")}">US</button>
+        <button id="map-full" aria-label="${tr('map.fullScreen', null, "Full screen")}" title="${tr('map.fullScreen', null, "Full screen")}">${FULL[0]}</button><button id="map-3d" aria-label="${tr('map.terrain3d', null, "3D terrain view")}" title="${tr('map.view3d', null, "3D view")}">3D</button><button id="map-photo" aria-label="${tr('map.aerial', null, "Aerial photos")}" aria-pressed="false" title="${tr('map.aerial', null, "Aerial photos")}">🛰</button></div>
       <div class="map-card" id="card" hidden></div>
       <div class="map-tip" id="tip" hidden></div>
       <div class="map-status" id="mstatus" aria-live="polite"></div>
       <div class="mapelev" id="melev" hidden></div><div class="mapscale" id="mscale"></div><div class="mapattr">© OpenStreetMap contributors · Microsoft buildings · USGS · USDA · NOAA · USACE · CDFW · CalGEM · Natural Earth</div>
     </div>
     <div class="maptools">
-      <section class="panel"><h2>Nearest to the map center</h2><p class="small muted" style="margin:0 0 4px">For the layers you have on. Straight-line distance, not by road.</p><div class="nearres" id="near" aria-live="polite"></div></section>
-      <section class="panel"><h2>Your area</h2><p class="small muted" style="margin:0 0 8px">The home button returns here. Saved on this device only.</p><button class="btn plain" id="sethome">Make the map center my area</button>${navigator.geolocation && isSecureContext ? ' <button class="btn plain" id="gps">Use my location</button>' : ''}</section>
-      <section class="panel"><h2>What this map covers</h2><ul class="list small" id="mdata"><li class="muted">Loading…</li></ul></section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.nearestToCenter', null, 'Nearest to the map center') || 'Nearest to the map center')}</h2><p class="small muted" style="margin:0 0 4px">${escH(globalThis.lastbookTr?.('map.nearbyLayersNote', null, 'For the layers you have on. Straight-line distance, not by road.') || 'For the layers you have on. Straight-line distance, not by road.')}</p><div class="nearres" id="near" aria-live="polite"></div></section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.yourArea', null, 'Your area') || 'Your area')}</h2><p class="small muted" style="margin:0 0 8px">${escH(globalThis.lastbookTr?.('map.homeButtonNote', null, 'The home button returns here. Saved on this device only.') || 'The home button returns here. Saved on this device only.')}</p><button class="btn plain" id="sethome">${escH(globalThis.lastbookTr?.('map.makeCenterMyArea', null, 'Make the map center my area') || 'Make the map center my area')}</button>${navigator.geolocation && isSecureContext ? ` <button class="btn plain" id="gps">${escH(globalThis.lastbookTr?.('map.useMyLocation', null, 'Use my location') || 'Use my location')}</button>` : ''}</section>
+      <section class="panel"><h2>${escH(globalThis.lastbookTr?.('map.coverageHeading', null, 'What this map covers') || 'What this map covers')}</h2><ul class="list small" id="mdata"><li class="muted">${escH(globalThis.lastbookTr?.('map.loading', null, 'Loading…') || 'Loading…')}</li></ul></section>
     </div></div>`;
     // The map fills the window. With the tools beside it, the page ends where the window does, at the page's own bottom margin (so the
     // page itself never scrolls); with the tools below, the map leaves room for the tab bar and a margin.
@@ -144,7 +214,7 @@ const MapView = (() => {
     st = { lat: isFinite(lat) ? lat : place ? place.lat : 39, lon: isFinite(lon) ? lon : place ? place.lon : -98, z: isFinite(z) ? Math.max(MINZ, Math.min(MAXZ, z)) : place ? place.z : 4,
       on: new Set(on), tiles: new Map(), pending: new Set(), gen: 0, mark: null, sel: null, raf: 0, alive: true, pins: [], pinBox: null, hits: [], serial: { pins: 0, near: 0, members: 0, place: 0 }, hover: null,
       dem: new Map(), demPending: new Set(), demNone: new Map(), style: load('mapStyle', { relief: true, contours: true }) };
-    if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kind: 'Linked place' };
+    if (q.get('pin') && isFinite(lat) && isFinite(lon)) st.mark = { lat, lon, name: q.get('pin').slice(0, 80), kindKey: 'map.linkedPlace', kindFallback: 'Linked place' };
     const cv = $('mapc');
     st.cv = cv; st.ctx = cv.getContext('2d');
     fetch('/ui/geographic-context.json').then(r => r.json()).then(d => { geography = d; draw() }).catch(() => { });
@@ -159,16 +229,16 @@ const MapView = (() => {
     $('map-photo').onclick = () => setPhoto(!st.style.aerial);
     $('map-photo').classList.toggle('on', !!st.style.aerial); $('map-photo').setAttribute('aria-pressed', !!st.style.aerial);
     $('map-3d').onclick = () => {
-      if (typeof Terrain3D === 'undefined') return toastMap('3D view unavailable');
+      if (typeof Terrain3D === 'undefined') return toastMap(tr('map.view3dUnavailable', null, '3D view unavailable'));
       closeCard();
       const w = cv.clientWidth, h = cv.clientHeight;
       Terrain3D.open($('mapwrap'), { lat: st.lat, lon: st.lon, z: st.z, w, h, texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y), getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
         geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon) });
     };
     document.addEventListener('fullscreenchange', st.onFull = () => { const f = document.fullscreenElement === $('mapwrap'); if (!f) $('mapwrap')?.classList.remove('max'); syncFull() });
-    $('sethome').onclick = () => { save('mapHome', { lat: st.lat, lon: st.lon, z: Math.round(st.z) }); toastMap('Saved as your area on this device'); draw() };
+    $('sethome').onclick = () => { save('mapHome', { lat: st.lat, lon: st.lon, z: Math.round(st.z) }); toastMap(tr('map.savedAsArea', null, 'Saved as your area on this device')); draw() };
     const gps = $('gps');
-    if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, name: 'You are here (approx.)' }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap('Location unavailable: ' + e.message), { timeout: 15000 });
+    if (gps) gps.onclick = () => navigator.geolocation.getCurrentPosition(p => { st.mark = { lat: p.coords.latitude, lon: p.coords.longitude, nameKey: 'map.youAreHere', nameFallback: 'You are here (approx.)' }; go(p.coords.latitude, p.coords.longitude, 15) }, e => toastMap(tr('map.locationUnavailable', { reason: e.message })), { timeout: 15000 });
     $('pf').onsubmit = e => { e.preventDefault(); findPlace($('pq').value.trim()) };
     $('pq').addEventListener('input', () => { if (!$('pq').value) $('pres').hidden = true });
     $('layers-btn').onclick = () => { const p = $('layers'), open = p.hidden; p.hidden = !open; $('layers-btn').setAttribute('aria-expanded', open); $('pres').hidden = true; if (open) { $('card').hidden = true; renderLayers() } };
@@ -179,9 +249,9 @@ const MapView = (() => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
       describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
-      $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
-        (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
-    }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
+      $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${partHtml({ key: d.labelKey, params: d.labelParams, text: d.label })}</b><span class="muted">${partHtml({ key: d.statusKey, params: d.statusParams, text: d.status })}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
+        (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : tr('map.forestTypesPending', { rest: '' }, 'Not drawn yet: forest types. {rest}')}${escH(tr('map.resourceLayersNote', null, 'Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.'))}</li>`);
+    }).catch(() => { $('mdata').innerHTML = `<li class="muted">${escH(tr('map.detailsUnavailable', null, 'Map details unavailable.'))}</li>`; if (openWhole && st) fit(US, 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
@@ -200,7 +270,7 @@ const MapView = (() => {
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
     layerCount();
     if (!st.have.size) $('near').closest('section').hidden = true;
-    if (info.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
+    if (info.bounds) { const b = $('map-us'); b.textContent = tr('map.preset.all', null, 'All'); b.title = tr('map.wholeMap', null, 'Whole map'); b.setAttribute('aria-label', tr('map.wholeMap', null, 'Whole map')) }
   }
   const offered = l => !st.have || (l && l.cls.some(c => st.have.has(c)));
   function toastMap(m) { if (typeof toast === 'function') toast(m) }
@@ -216,28 +286,28 @@ const MapView = (() => {
     else { w.classList.add('max'); w.requestFullscreen?.().catch(() => { }) }  // CSS fallback keeps working where the Fullscreen API is missing (iPhone)
     syncFull();
   }
-  function syncFull() { const w = $('mapwrap'), b = $('map-full'); if (!w || !b) return; const on = w.classList.contains('max'); b.innerHTML = FULL[on ? 1 : 0]; b.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen'); b.title = on ? 'Exit full screen (Esc)' : 'Full screen'; document.body.classList.toggle('map-maxed', on); draw() }
+  function syncFull() { const w = $('mapwrap'), b = $('map-full'); if (!w || !b) return; const on = w.classList.contains('max'); b.innerHTML = FULL[on ? 1 : 0]; b.setAttribute('aria-label', on ? tr('map.exitFullScreen', null, 'Exit full screen') : tr('map.fullScreen', null, 'Full screen')); b.title = on ? tr('map.exitFullScreenEsc', null, 'Exit full screen (Esc)') : tr('map.fullScreen', null, 'Full screen'); document.body.classList.toggle('map-maxed', on); draw() }
 
   function coverage() {
     const n = st?.national, el = $('mstatus'); if (!el) return;
     const inSoCal = st.lat > 32.5 && st.lat < 35.9 && st.lon > -121.4 && st.lon < -114.1;
     const b = st.bounds, outside = b && (st.lon < b[0] || st.lon > b[2] || st.lat < b[1] || st.lat > b[3]);
     st.coverNote = n && n.state === 'building' && !inSoCal
-      ? `US streets still being converted (${((n.features || 0) / 1e6).toFixed(1)}M roads & features so far) — gaps fill in automatically.`
-      : outside ? 'Outside the area this map details, only main roads, towns and water show.'
-      : st.have && !st.have.size && st.z >= 9 ? 'This download has the base map only: main roads, towns and water.' : '';
+      ? message('map.streetsConverting', { count: ((n.features || 0) / 1e6).toFixed(1) }, 'US streets still being converted ({count}M roads & features so far) — gaps fill in automatically.')
+      : outside ? message('map.outsideDetail', null, 'Outside the area this map details, only main roads, towns and water show.')
+      : st.have && !st.have.size && st.z >= 9 ? message('map.baseOnly', null, 'This download has the base map only: main roads, towns and water.') : null;
     statusLine();
   }
   function statusLine(msg) {
     const el = $('mstatus'); if (!el || !st) return;
-    if (msg != null) st.pinMsg = msg;
-    const parts = [st.pinMsg, st.coverNote].filter(Boolean);
-    el.innerHTML = parts.map(escH).join('<br>'); el.hidden = !parts.length;
+    if (msg != null) st.pinMsg = typeof msg === 'string' ? { text: msg, locale: 'en' } : msg;
+    const parts = [st.pinMsg, st.coverNote].filter(part => part && (typeof part !== 'object' || part.text || (Array.isArray(part.segments) && part.segments.some(segment => segment?.text))));
+    el.innerHTML = parts.map(messageHtml).join('<br>'); el.hidden = !parts.length;
   }
 
   // ---------------------------------------------------------------- layers ----
   function kinds() { return LAYERS.filter(l => st.on.has(l.id)).flatMap(l => l.cls) }
-  function layerCount() { const n = st.on.size; $('layer-count').textContent = st.have && !st.have.size ? '' : n ? `· ${n}` : '· none' }
+  function layerCount() { const n = st.on.size; $('layer-count').textContent = st.have && !st.have.size ? '' : n ? `· ${n}` : '· ' + tr('map.noneOn', null, 'none') }
   function renderLayers() {
     const box = $('layers'); if (!box || box.hidden) return;
     const counts = {}; for (const p of st.pins) if (inView(p)) for (const [k, n] of Object.entries(p.kinds)) { const l = layerOf(k); counts[l.id] = (counts[l.id] || 0) + n }
@@ -245,15 +315,15 @@ const MapView = (() => {
       box.querySelectorAll('label.ly').forEach(lb => { const i = lb.querySelector('input'); i.checked = st.on.has(i.value); lb.querySelector('small').textContent = i.checked ? (counts[i.value] || 0).toLocaleString() : '' });
       return;
     }
-    box.innerHTML = `<div class="layers-head"><b>Show on map</b><button class="x" aria-label="Close layers">×</button></div>
-      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${n}</button>`).join('')}<button data-p="">None</button></div>`}
-      <fieldset class="style"><legend>Map style</legend>
-        ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>Aerial photos (USGS / USDA)</span></label>`}
-        <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>Shaded relief (hills &amp; valleys)</span></label>
-        ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>Contour lines (from zoom 11)</span></label>`}
-        ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>Orchard &amp; vineyard areas (coloured)</span></label>`}</fieldset>
-      ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${gl}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(l.label)}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
-      ${st.have && !st.have.size ? '' : '<p class="small muted" style="margin:6px 2px 0">Numbers are places in the current view.</p>'}`;
+    box.innerHTML = `<div class="layers-head"><b>${tr('map.showOnMap', null, 'Show on map')}</b><button class="x" aria-label="${escH(tr('map.closeLayers', null, 'Close layers'))}">×</button></div>
+      ${st.have && !st.have.size ? '' : `<div class="presets">${PRESETS.map(([n]) => `<button data-p="${n}">${escH(tPreset(n))}</button>`).join('')}<button data-p="">${escH(tr('map.preset.none', null, 'None'))}</button></div>`}
+      <fieldset class="style"><legend>${escH(tr('map.styleLegend', null, 'Map style'))}</legend>
+        ${st.noAerial ? '' : `<label><input type="checkbox" data-style="aerial"${st.style.aerial ? ' checked' : ''}><i class="msym style-ico">🛰</i><span>${escH(tr('map.style.aerialUsgs', null, 'Aerial photos (USGS / USDA)'))}</span></label>`}
+        <label><input type="checkbox" data-style="relief"${st.style.relief ? ' checked' : ''}><i class="msym style-ico">⛰</i><span>${escH(tr('map.style.relief', null, 'Shaded relief (hills & valleys)'))}</span></label>
+        ${st.noContours ? '' : `<label><input type="checkbox" data-style="contours"${st.style.contours ? ' checked' : ''}><i class="msym style-ico">〰</i><span>${escH(tr('map.style.contours', null, 'Contour lines (from zoom 11)'))}</span></label>`}
+        ${st.have && !st.have.has('orchard') ? '' : `<label><input type="checkbox" data-style="crops"${st.style.crops !== false ? ' checked' : ''}><i class="msym style-ico" style="background:#3f7a2a">♣</i><span>${escH(tr('map.style.crops', null, 'Orchard & vineyard areas (coloured)'))}</span></label>`}</fieldset>
+      ${GROUPS.filter(([g]) => LAYERS.some(l => l.group === g && offered(l))).map(([g, gl]) => `<fieldset><legend>${escH(tGroup(g, gl))}</legend>${LAYERS.filter(l => l.group === g && offered(l)).map(l => `<label class="ly"><input type="checkbox" value="${l.id}"${st.on.has(l.id) ? ' checked' : ''}>${sym(l, 20)}<span>${escH(tLayer(l))}</span><small>${st.on.has(l.id) ? (counts[l.id] || 0).toLocaleString() : ''}</small></label>`).join('')}</fieldset>`).join('')}
+      ${st.have && !st.have.size ? '' : `<p class="small muted" style="margin:6px 2px 0">${escH(tr('map.currentViewNumbers', null, 'Numbers are places in the current view.'))}</p>`}`;
     box.querySelector('.x').onclick = () => { box.hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false') };
     box.querySelectorAll('label.ly input').forEach(i => i.onchange = () => { i.checked ? st.on.add(i.value) : st.on.delete(i.value); layersChanged() });
     box.querySelectorAll('[data-style]').forEach(i => i.onchange = () => { if (i.dataset.style === 'aerial') return setPhoto(i.checked); st.style[i.dataset.style] = i.checked; save('mapStyle', st.style); draw() });
@@ -317,15 +387,15 @@ const MapView = (() => {
     if (hit === st.hover) { if (hit) placeTip(x, y); return }
     st.hover = hit; const tip = $('tip'); if (!tip) return;
     if (!hit) return hideTip();
-    tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${hit.count.toLocaleString()} places</b>${breakdown(hit)}<small>${st.z >= 16 ? 'Click to list them' : 'Click to zoom in'}</small>`
-      : hit.count > 1 ? `<b>${hit.count} records at one spot</b><small>${escH(layerOf(hit.cls).label)} · click to list them</small>`
-      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${escH(hit.place ? hit.kind || 'Place' : layerOf(hit.cls).label)}${hit.records > 1 ? ` · ${hit.records} records · click to list` : ''}</small>`;
+    tip.innerHTML = hit.count > 1 && !hit.spot ? `<b>${tHtml('map.placesHere', { count: hit.count })}</b>${breakdown(hit)}<small>${st.z >= 16 ? tHtml('map.clickToList', null, 'Click to list them') : tHtml('map.clickToZoom', null, 'Click to zoom in')}</small>`
+      : hit.count > 1 ? `<b>${tHtml('map.recordsAtSpot', { count: hit.count }, '{count} records at one spot')}</b><small>${tHtml('map.layer.' + (layerOf(hit.cls).id || hit.cls), null, tLayer(layerOf(hit.cls)))} · ${tHtml('map.clickToListLower', null, 'click to list them')}</small>`
+      : `<b>${escH(hit.place ? hit.name : unnamed(hit))}</b><small>${hit.place ? markKindHtml(hit) : escH(tLayer(layerOf(hit.cls)))}${hit.records > 1 ? ` · ${escH(tr('map.recordsClickToList', { count: hit.records }, '{count} records · click to list'))}` : ''}</small>`;
     tip.hidden = false; placeTip(x, y);
   }
   function breakdown(p) {
     const by = {}; for (const [k, n] of Object.entries(p.kinds || {})) { const l = layerOf(k); by[l.id || k] = by[l.id || k] || [l, 0]; by[l.id || k][1] += n }
     const e = Object.values(by).sort((a, b) => b[1] - a[1]);
-    return e.length > 1 ? `<span class="mix">${e.slice(0, 6).map(([l, n]) => `${sym(l, 14)}${n.toLocaleString()} ${escH(l.label.replace(/ \(.*\)/, '').toLowerCase())}`).join('<br>')}</span>` : '';
+    return e.length > 1 ? `<span class="mix">${e.slice(0, 6).map(([l, n]) => `${sym(l, 14)}${n.toLocaleString()} ${escH(tLayer(l).replace(/ \(.*\)/, ''))}`).join('<br>')}</span>` : '';
   }
   function placeTip(x, y) { const tip = $('tip'), w = st.cv.clientWidth; tip.style.left = Math.min(x + 14, w - tip.offsetWidth - 6) + 'px'; tip.style.top = Math.max(6, y - tip.offsetHeight - 10) + 'px' }
   function hideTip() { if (st) st.hover = null; const t = $('tip'); if (t) t.hidden = true }
@@ -515,8 +585,9 @@ const MapView = (() => {
       const [mx, my] = px(st.mark.lat, st.mark.lon, V);
       g.beginPath(); g.moveTo(mx, my); g.bezierCurveTo(mx - 3, my - 9, mx - 10, my - 13, mx - 10, my - 21); g.arc(mx, my - 21, 10, Math.PI, 0); g.bezierCurveTo(mx + 10, my - 13, mx + 3, my - 9, mx, my);
       g.fillStyle = '#1565c0'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke(); g.beginPath(); g.arc(mx, my - 21, 4, 0, 7); g.fillStyle = '#fff'; g.fill();
-      if (st.mark.name) { g.font = '700 13px -apple-system,Segoe UI,sans-serif'; g.textAlign = 'left'; g.lineWidth = 4; g.strokeStyle = C.halo; g.strokeText(st.mark.name, mx + 14, my - 20); g.fillStyle = '#0d3c78'; g.fillText(st.mark.name, mx + 14, my - 20); g.textAlign = 'center' }
-      st.hits.push({ ...st.mark, place: true, count: 1, sx: mx, sy: my - 18, r: 12, labelWidth: st.mark.name ? st.mark.name.length * 7.5 : 0 });
+      const name = markName(st.mark);
+      if (name) { g.font = '700 13px -apple-system,Segoe UI,sans-serif'; g.textAlign = 'left'; g.lineWidth = 4; g.strokeStyle = C.halo; g.strokeText(name, mx + 14, my - 20); g.fillStyle = '#0d3c78'; g.fillText(name, mx + 14, my - 20); g.textAlign = 'center' }
+      st.hits.push({ ...st.mark, name, place: true, count: 1, sx: mx, sy: my - 18, r: 12, labelWidth: name ? name.length * 7.5 : 0 });
     }
     // home marker
     const home = load('mapHome', HOME); if (home) { const [hx, hy] = px(home.lat, home.lon, V); if (hx > -10 && hx < w + 10 && hy > -10 && hy < h + 10) { g.beginPath(); g.arc(hx, hy, 6, 0, 7); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#1b5e20'; g.stroke() } }
@@ -557,6 +628,8 @@ const MapView = (() => {
     if (!st.demPending.has(k) && st.demPending.size < 6) {
       st.demPending.add(k); const state = st;
       fetch(`/api/map/terrain/${k}.png${st.ver ? '?v=' + st.ver : ''}`).then(r => r.status === 200 ? r.blob() : null)
+        // These are Web API enum values, not interface copy. Translating `none`
+        // makes createImageBitmap reject the options in every non-English locale.
         .then(b => b && createImageBitmap(b, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }))
         .then(img => {
           if (st !== state) return; st.demPending.delete(k);
@@ -665,7 +738,7 @@ const MapView = (() => {
     draw();
   }
   // Cache entries: ImageBitmap, LOADING, or {none, at} for "no photo here (yet)". The photo download is still filling in,
-  // so "none" is asked again after a minute at zoom 17+ (being downloaded now), 10 minutes below; a failed request after 10 s. Hits move to the end, so eviction is least-recent.
+  // so tr('map.noneOn', null, "none") is asked again after a minute at zoom 17+ (being downloaded now), 10 minutes below; a failed request after 10 s. Hits move to the end, so eviction is least-recent.
   const LOADING = 'loading';
   function aerialTile(z, x, y) {  // ImageBitmap, null (none there), or undefined (loading)
     const k = tileKey(z, x, y);
@@ -753,7 +826,7 @@ const MapView = (() => {
 
   // ------------------------------------------------------------------ card ----
   function openCard(html) {
-    const el = $('card'); el.innerHTML = `<button class="x" aria-label="Close details">×</button>` + html; el.hidden = false; el.scrollTop = 0;
+    const el = $('card'); el.innerHTML = `<button class="x" aria-label="${escH(tr('map.closeDetails', null, 'Close details'))}">×</button>` + html; el.hidden = false; el.scrollTop = 0;
     $('layers').hidden = true; $('layers-btn').setAttribute('aria-expanded', 'false'); $('pres').hidden = true;  // one floating panel at a time
     el.querySelector('.x').onclick = closeCard; return el;
   }
@@ -770,36 +843,43 @@ const MapView = (() => {
     const tx = sheet ? w / 2 : (cr + 24 + w - 60) / 2, ty = sheet ? Math.max(70, ct / 2 + 20) : h / 2;
     pan(tx - x, ty - y); st.listAt = 1; settle(true);  // the nearby list stays put while the map makes room
   }
-  function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
-  function showPlace(p) { openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${escH(p.kind || 'Place')}</div><h3>${escH(p.name)}</h3>${p.detail ? `<p>${escH(p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">Remove marker</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p) }
+  function closeCard() { const el = $('card'); if (el) el.hidden = true; if (st) { st.sel = null; st.cardState = null; draw() } document.querySelectorAll('#near button.on').forEach(b => b.classList.remove('on')) }
+  function showPlace(p) {
+    st.cardState = { type: 'place', p };
+    openCard(`<div class="kind"><i class="msym" style="background:#1565c0">◉</i>${markKindHtml(p)}</div><h3>${markNameHtml(p)}</h3>${p.detail ? `<p>${partsHtml(p.detailParts, p.detail)}</p>` : ''}${coordsBlock(p)}<div class="acts"><button data-a="clear">${escH(tr('map.removeMarker', null, 'Remove marker'))}</button></div>`).querySelector('[data-a=clear]').onclick = () => { st.mark = null; closeCard() }; wireCoords(p)
+  }
   function coordsBlock(p) {
     const home = load('mapHome', HOME), km = home && kmBetween(home.lat, home.lon, p.lat, p.lon);
     const id = 'el' + Math.random().toString(36).slice(2, 8);
-    elevation(p.lat, p.lon).then(m => { const el = document.getElementById(id); if (el) el.textContent = m == null ? '' : 'Elevation ' + fmtElev(m) });
-    return `<p class="coords">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}<br>${home ? `<span class="muted">${dist(km)} from your area</span><br>` : ''}<span class="muted" id="${id}">Elevation…</span></p>`;
+    elevation(p.lat, p.lon).then(m => { const el = document.getElementById(id); if (el) el.textContent = m == null ? '' : tr('map.elevationValue', { value: fmtElev(m) }, 'Elevation {value}') });
+    return `<p class="coords">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}<br>${home ? `<span class="muted">${tr('map.distFromArea', { distance: dist(km) }, '{distance} from your area')}</span><br>` : ''}<span class="muted" id="${id}">${tr('map.elevationLoading', null, 'Elevation…')}</span></p>`;
   }
   function wireCoords(p) {
     const el = $('card');
-    el.querySelector('[data-a=copy]')?.addEventListener('click', async e => { try { await navigator.clipboard.writeText(`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`); e.target.textContent = 'Copied ✓' } catch { e.target.textContent = 'Copy failed — select the numbers above' } });
+    el.querySelector('[data-a=copy]')?.addEventListener('click', async e => { try { await navigator.clipboard.writeText(`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`); e.target.textContent = tr('map.copied', null, 'Copied ✓') } catch { e.target.textContent = tr('map.copyFailed', null, 'Copy failed — select the numbers above') } });
     el.querySelector('[data-a=zoom]')?.addEventListener('click', () => { go(p.lat, p.lon, Math.max(st.z, 16)); reveal(p.lat, p.lon) });
   }
   function showDetail(p, back) {
+    st.cardState = { type: 'detail', p, back };
     const l = layerOf(p.cls), detail = p.detail || {};
     st.sel = { lat: p.lat, lon: p.lon, cls: p.cls }; draw();
     const rows = Object.entries(detail).filter(([k, v]) => FIELD[k] && v != null && String(v).trim() !== '' && !(k === 'commod2' && v === detail.commod1))
-      .map(([k, v]) => `<tr><th>${escH(FIELD[k])}</th><td>${escH(v)}</td></tr>`).join('');
-    const el = openCard(`${back ? `<button class="back">← ${escH(back.title)}</button>` : ''}<div class="kind">${sym(l, 20)}${escH(l.label)}</div><h3>${escH(unnamed(p))}</h3>
-      ${p.records > 1 ? `<p class="muted small">${p.records} source records at this spot</p>` : ''}
-      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${escH(p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>Not a water source:</b> this is a ${escH((detail.reservoir_type || 'waste pond').toLowerCase())}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.</p>` : ''}${/tailings/i.test(detail.purposes || '') ? '<p class="caveat"><b>Mine-tailings dam:</b> it holds mine waste, not usable water. Do not drink, swim or fish here.</p>' : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(CAVEAT[p.cls])}</p>` : ''}${coordsBlock(p)}
-      <div class="acts"><button data-a="zoom">Zoom here</button><button data-a="copy">Copy coordinates</button></div>`);   // no web links: the words stay, the addresses go
+      .map(([k, v]) => `<tr><th>${escH(k === 'year' && CROP_CLASSES.has(p.cls) ? tr('map.field.cropMapYear', null, 'Satellite crop map year') : tField(k))}</th><td>${escH(v)}</td></tr>`).join('');
+    const el = openCard(`${back ? `<button class="back">← ${escH(back.title)}</button>` : ''}<div class="kind">${sym(l, 20)}${escH(tLayer(l))}</div><h3>${escH(unnamed(p))}</h3>
+      ${p.records > 1 ? `<p class="muted small">${escH(tr('map.sourceRecordsAtSpot', { count: p.records }, '{count} source records at this spot'))}</p>` : ''}
+      ${rows ? `<table>${rows}</table>` : p.summary ? `<p>${partsHtml(p.summaryParts, p.summary)}</p>` : ''}${detail.not_drinking_water ? `<p class="caveat"><b>${escH(tr('map.notWaterSource', null, 'Not a water source:'))}</b> ${escH(tr('map.notWaterSourceDetail', { type: (detail.reservoir_type || tr('map.wastePond', null, 'waste pond')).toLowerCase() }, 'this is a {type}. It can hold sewage, mine waste or chemicals that treatment won’t make safe.'))}</p>` : ''}${/tailings/i.test(detail.purposes || '') ? `<p class="caveat"><b>${escH(tr('map.mineTailingsDam', null, 'Mine-tailings dam:'))}</b> ${escH(tr('map.mineTailingsDetail', null, 'it holds mine waste, not usable water. Do not drink, swim or fish here.'))}</p>` : ''}${CAVEAT[p.cls] && !detail.not_drinking_water ? `<p class="caveat">${escH(tCaveat(p.cls))}</p>` : ''}${coordsBlock(p)}
+      <div class="acts"><button data-a="zoom">${escH(tr('map.zoomHere', null, 'Zoom here'))}</button><button data-a="copy">${escH(tr('map.copyCoordinates', null, 'Copy coordinates'))}</button></div>`);   // no web links: the words stay, the addresses go
     if (back) el.querySelector('.back').onclick = () => showMembers(back.p);
     wireCoords(p); reveal(p.lat, p.lon);
   }
   async function showMembers(p) {
+    st.cardState = { type: 'members', p };
     const serial = ++st.serial.members, state = st, b = p.bbox || [p.lon, p.lat, p.lon, p.lat], pad = 1e-5;
     st.sel = { lat: p.lat, lon: p.lon }; draw();
-    const title = p.spot ? `${Math.max(p.count, p.records || 0)} records at one spot` : `${p.count.toLocaleString()} places here`;
-    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : 'Group'}</div><h3>${escH(title)}</h3><p class="muted">Loading…</p>`);
+    const [titleKey, titleFallback] = p.spot ? ['map.recordsAtOneSpot', '{count} records at one spot'] : ['map.placesHere', '{count} places here'];
+    const titleParams = { count: p.spot ? Math.max(p.count, p.records || 0) : p.count };
+    const title = tr(titleKey, titleParams, titleFallback), titleHtml = tHtml(titleKey, titleParams, titleFallback);
+    openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : tHtml('map.groupLabel', null, 'Group')}</div><h3>${titleHtml}</h3><p class="muted">${tHtml('map.loading', null, 'Loading…')}</p>`);
     reveal(p.lat, p.lon);
     try {
       const q = new URLSearchParams({ west: b[0] - pad, south: b[1] - pad, east: b[2] + pad, north: b[3] + pad, lat: p.lat, lon: p.lon, kinds: Object.keys(p.kinds || { [p.cls]: 1 }).join(',') });
@@ -807,28 +887,28 @@ const MapView = (() => {
       if (st !== state || serial !== st.serial.members) return;
       const items = r.items || [], names = new Set(items.map(m => m.name));
       if (items.length === 1) return showDetail(items[0]);
-      const head = p.spot && names.size === 1 && items[0]?.name ? items[0].name : title;
-      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : 'Group'}</div><h3>${escH(head)}</h3>${breakdown(p)}
-        <p class="muted small">${r.total > items.length ? `Showing the ${items.length} nearest of ${r.total.toLocaleString()}${r.capped ? '+' : ''}. Zoom in to see the rest.` : `${items.length} record${items.length === 1 ? '' : 's'}`}</p>
+      const head = p.spot && names.size === 1 && items[0]?.name ? escH(items[0].name) : titleHtml;
+      const el = openCard(`<div class="kind">${sym(layerOf(p.cls), 20)}${p.spot ? escH(layerOf(p.cls).label) : tHtml('map.groupLabel', null, 'Group')}</div><h3>${head}</h3>${breakdown(p)}
+        <p class="muted small">${r.total > items.length ? tr('map.recordsNearest', { shown: items.length, total: r.total.toLocaleString(), plus: r.capped ? '+' : '' }, 'Showing the {shown} nearest of {total}{plus}. Zoom in to see the rest.') : tr('map.recordsCount', { count: items.length }, '{count} records')}</p>
         <div class="members">${items.map((m, i) => `<button data-i="${i}">${sym(layerOf(m.cls), 20)}<span><b>${escH(unnamed(m))}</b><small>${escH([m.summary || layerOf(m.cls).label, m.detail?.WeekOfPlantStart ? 'stocked ' + m.detail.WeekOfPlantStart : ''].filter(Boolean).join(' · '))}</small></span></button>`).join('')}</div>
-        <div class="acts"><button data-a="zoom">Zoom here</button></div>`);
+        <div class="acts"><button data-a="zoom">${tr('map.zoomHere', null, 'Zoom here')}</button></div>`);
       el.querySelectorAll('.members button').forEach(bt => bt.onclick = () => showDetail(items[+bt.dataset.i], { title, p }));
       el.querySelector('[data-a=zoom]').onclick = () => fit(b);
-    } catch { if (st === state) openCard(`<h3>${escH(title)}</h3><p>Couldn’t load the list. Zoom in to see individual places.</p>`) }
+    } catch { if (st === state) openCard(`<h3>${titleHtml}</h3><p>${tHtml('map.listFailed', null, 'Couldn’t load the list. Zoom in to see individual places.')}</p>`) }
   }
 
   // ------------------------------------------------------------------ data ----
   async function loadPins() {
     if (!st) return;
     const state = st, cv = st.cv, ks = kinds(), z = Math.floor(st.z + 0.05);  // never a finer grid than the screen shows
-    if (!ks.length) { st.pins = []; st.pinBox = null; statusLine(st.have && !st.have.size ? '' : 'No layers on — open Layers to choose what to show.'); renderLayers(); draw(); return }
+    if (!ks.length) { st.pins = []; st.pinBox = null; statusLine(st.have && !st.have.size ? { text: '', locale: 'en' } : message('map.noLayersOn', null, 'No layers on — open Layers to choose what to show.')); renderLayers(); draw(); return }
     const cx = lon2x(st.lon, st.z), cy = lat2y(st.lat, st.z), dx = cv.clientWidth / 256 * 0.75, dy = cv.clientHeight / 256 * 0.75;  // view + 25% margin each side
     const box = [x2lon(cx - dx, st.z), y2lat(cy + dy, st.z), x2lon(cx + dx, st.z), y2lat(cy - dy, st.z)];
     const v = [x2lon(cx - dx / 1.5, st.z), y2lat(cy + dy / 1.5, st.z), x2lon(cx + dx / 1.5, st.z), y2lat(cy - dy / 1.5, st.z)];
     const key = ks.join(',') + '|' + z;
     if (st.pinBox && st.pinKey === key && v[0] >= st.pinBox[0] && v[1] >= st.pinBox[1] && v[2] <= st.pinBox[2] && v[3] <= st.pinBox[3]) return countLine();
     const serial = ++st.serial.pins;
-    statusLine('Loading places…');
+    statusLine(message('map.loadingPlaces', null, 'Loading places…'));
     try {
       const q = new URLSearchParams({ west: box[0], south: box[1], east: box[2], north: box[3], zoom: z, kinds: ks.join(',') });
       const data = await fetch('/api/map/pins?' + q).then(r => r.json());
@@ -836,7 +916,7 @@ const MapView = (() => {
       if (!data.points) throw Error(data.error || 'no points');
       st.pins = data.points; st.pinBox = box; st.pinKey = key; st.truncated = data.truncated;
       countLine(); renderLayers(); draw();
-    } catch (e) { if (st === state && serial === st.serial.pins) statusLine('Couldn’t load places for this view — move the map to retry.') }
+    } catch (e) { if (st === state && serial === st.serial.pins) statusLine(message('map.placesFailed', null, 'Couldn’t load places for this view — move the map to retry.')) }
   }
   function inView(p) {
     const w = st.cv.clientWidth, h = st.cv.clientHeight, x = w / 2 + (lon2x(p.lon, st.z) - lon2x(st.lon, st.z)) * 256, y = h / 2 + (lat2y(p.lat, st.z) - lat2y(st.lat, st.z)) * 256;
@@ -845,41 +925,95 @@ const MapView = (() => {
   function countLine() {
     let n = 0; for (const p of st.pins) if (inView(p)) n += p.count;
     renderLayers();
-    statusLine(n ? `${n.toLocaleString()} place${n === 1 ? '' : 's'} in view${st.truncated ? ' (busiest shown — zoom in for all)' : ''}` : 'Nothing from your layers in this view — zoom out or turn on more layers.');
+    if (!n) { statusLine(message('map.nothingInView', null, 'Nothing from your layers in this view — zoom out or turn on more layers.')); return }
+    const count = message('map.placesInView', { count: n, extra: '' }, '{count} places in view{extra}');
+    const extra = st.truncated ? message('map.cappedPlacesInView', null, ' (busiest shown — zoom in for all)') : null;
+    statusLine(extra ? { segments: [count, extra] } : count);
   }
   async function nearby() {
     if (!st) return;
     const box = $('near'), state = st, serial = ++st.serial.near, ks = kinds(); if (!box) return;
-    if (!ks.length) { box.innerHTML = '<p class="muted small">No layers are on.</p>'; return }
+    if (!ks.length) { box.innerHTML = `<p class="muted small">${messageHtml(message('map.noLayersList', null, 'No layers are on.'))}</p>`; return }
     box.classList.add('busy');
     try {
       const r = await fetch(`/api/map/near?lat=${st.lat}&lon=${st.lon}&cls=${ks.join(',')}&limit=${Math.max(3, Math.ceil(14 / ks.length))}`).then(r => r.json());
       if (st !== state || serial !== st.serial.near) return;
       box.classList.remove('busy');
-      if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">Nothing from your layers within about 100 miles of the map center.</p>'; return }
+      if (!Array.isArray(r) || !r.length) { box.innerHTML = `<p class="muted small">${messageHtml(message('map.nothingNearby', null, 'Nothing from your layers within about 100 miles of the map center.'))}</p>`; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
-      box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${escH(layerOf(p.cls).label)} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
+      box.innerHTML = list.map((p, i) => {
+        const directionKey = DIRECTION_KEY[p.dir], direction = directionKey ? message(directionKey, null, p.dir).text : p.dir;
+        const distance = message('map.nearbyDistance', { distance: dist(p.km), direction }, '{distance} {direction}');
+        return `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${messageHtml(layerMessage(layerOf(p.cls)))}<span class="near-distance">${messageHtml(distance)}</span></small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`;
+      }).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {
         const p = list[+b.dataset.i]; box.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
-        st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, detail: {} }); settle(true); b.classList.add('on');
+        st.z = Math.max(st.z, 16); st.lat = p.lat; st.lon = p.lon; st.listAt = 1; showDetail({ ...p, summary: p.detail, summaryParts: p.detailParts, detail: {} }); settle(true); b.classList.add('on');
         if (innerWidth < 1000) $('mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
-    } catch { if (st === state) box.innerHTML = '<p class="muted small">Nearby search is unavailable.</p>' }
+    } catch { if (st === state) box.innerHTML = `<p class="muted small">${messageHtml(message('map.nearbyUnavailable', null, 'Nearby search is unavailable.'))}</p>` }
   }
   async function findPlace(q) {
     const box = $('pres'); if (!q) { box.hidden = true; return }
     $('layers').hidden = true;
     const state = st, serial = ++st.serial.place;
-    box.hidden = false; $('card').hidden = true; box.innerHTML = '<p class="muted small">Searching…</p>';
+    box.hidden = false; $('card').hidden = true; box.innerHTML = `<p class="muted small">${escH(tr('search.searching', null, 'Searching…'))}</p>`;
     try {
       const r = await fetch('/api/places?q=' + encodeURIComponent(q) + `&near=${st.lat.toFixed(3)},${st.lon.toFixed(3)}`).then(r => r.json());
       if (st !== state || serial !== st.serial.place) return;
-      if (!r.length) { const address = /^\s*\d[\w-]*\s+\S/.test(q); box.innerHTML = '<p class="muted small" style="padding:8px">' + (address ? 'Address not found in your offline data. Check the house number and street.' + (IN_WINDOW ? ' <a href="/ui/setup.html#manage">Add your state’s address search</a>.' : '') : 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.') + '</p>'; return }
-      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, detail: p.detail }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
-      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${r.length} match${r.length === 1 ? '' : 'es'}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${escH(p.kind)} · ${escH(p.detail)}</small></button>`).join('');
+      if (!r.length) {
+        const address = /^\s*\d[\w-]*\s+\S/.test(q);
+        const text = address
+          ? messageHtml(message('map.addressNotFound', null, 'Address not found in your offline data. Check the house number and street.'))
+          : messageHtml(message('map.placeNotFound', null, 'No place by that name in the saved gazetteers. Try a town, county or 5-digit ZIP.'));
+        const addSearch = address && IN_WINDOW ? message('map.addAddressSearch', null, 'Add your state’s address search') : null;
+        const extra = addSearch ? ` <a href="/ui/setup.html#manage">${messageHtml({ ...addSearch, text: `${addSearch.text}.` })}</a>` : '';
+        box.innerHTML = `<p class="muted small" style="padding:8px">${text}${extra}</p>`;
+        return;
+      }
+      const pick = p => { box.hidden = true; st.mark = { lat: p.lat, lon: p.lon, name: p.name, kind: p.kind, kindKey: p.kindKey, kindFallback: p.kind, detail: p.detail, detailParts: p.detailParts }; closeCard(); go(p.lat, p.lon, /county/i.test(p.kind) ? 10 : /ZIP|city|town|populated|^(Lake|Reservoir)$/i.test(p.kind) ? 13 : 15); st.cv.focus() };
+      box.innerHTML = `<div class="small muted" style="padding:4px 8px">${escH(tr('map.searchMatches', { count: r.length }, '{count} matches'))}</div>` + r.map((p, i) => `<button data-i="${i}"><b>${escH(p.name)}</b><small>${p.kindKey ? tHtml(p.kindKey, null, p.kind) : escH(p.kind)} · ${partsHtml(p.detailParts, p.detail)}</small></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => pick(r[+b.dataset.i]));
       if (r.length === 1) pick(r[0]);
-    } catch { if (st === state) box.innerHTML = '<p class="muted small">Place finder unavailable.</p>' }
+    } catch { if (st === state) box.innerHTML = `<p class="muted small">${escH(tr('map.finderUnavailable', null, 'Place finder unavailable.'))}</p>` }
   }
-  return { page, stop };
+  async function refreshLanguage(main) {
+    if (!st) return;
+    const old = {
+      lat: st.lat, lon: st.lon, z: st.z, on: [...st.on], mark: st.mark, sel: st.sel,
+      card: st.cardState, layersOpen: !$('layers').hidden, search: $('pq').value,
+      searchOpen: !$('pres').hidden, max: $('mapwrap').classList.contains('max') || !!document.fullscreenElement,
+      terrain3d: typeof Terrain3D !== 'undefined' && Terrain3D.isOpen(), toolsTop: main.querySelector('.maptools').scrollTop,
+    };
+    const q = new URLSearchParams({ lat: old.lat, lon: old.lon, z: old.z, layers: old.on.join(',') });
+    // page() installs observers and event handlers, so tear the old map down
+    // before rebuilding it. The view itself (center, layers, marker and open
+    // details) is restored below.
+    stop();
+    await page(main, q);
+    if (!st) return;
+    st.mark = old.mark;
+    st.sel = old.sel;
+    draw();
+    if (old.max) { $('mapwrap').classList.add('max'); syncFull() }
+    if (old.layersOpen) { $('layers').hidden = false; $('layers-btn').setAttribute('aria-expanded', 'true'); renderLayers() }
+    main.querySelector('.maptools').scrollTop = old.toolsTop;
+    if (old.search) {
+      $('pq').value = old.search;
+      if (old.searchOpen) await findPlace(old.search);
+    }
+    if (old.card) {
+      if (old.card.type === 'place') showPlace(old.card.p);
+      else if (old.card.type === 'detail') showDetail(old.card.p, old.card.back);
+      else if (old.card.type === 'members') await showMembers(old.card.p);
+    }
+    if (old.terrain3d && typeof Terrain3D !== 'undefined') {
+      const cv = $('mapc');
+      Terrain3D.open($('mapwrap'), { lat: st.lat, lon: st.lon, z: st.z, w: cv.clientWidth, h: cv.clientHeight,
+        texture: cv, elev: elevation, demTile: (z, x, y) => demTile(z, x, y),
+        getDem: (z, x, y) => st && st.dem.get(tileKey(z, x, y)),
+        geo: { lon2x, lat2y, x2lon, y2lat }, ver: st.ver, maxTz: tzMax(st.lat, st.lon) });
+    }
+  }
+  return { page, stop, refreshLanguage };
 })();

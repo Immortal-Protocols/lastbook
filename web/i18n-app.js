@@ -8,7 +8,7 @@
 
   const english = window.lastbookI18nEnglish;
   // The languages a person can choose, besides English. Each needs its catalogue, an <option> in setup.html and app/ui_language.py.
-  const LOCALES = ['es-419', 'zh-Hans', 'de'];
+  const LOCALES = ['es-419', 'de', 'zh-Hans'];
   const LANGUAGES = ['en', ...LOCALES];
   const fallbacks = { 'es-AR': ['es-419'], 'es-CL': ['es-419'], 'es-UY': ['es-419'] };
   let engine;
@@ -28,8 +28,21 @@
   let phase = 'loading';
   let readGeneration = 0;
 
-  const apply = (scope = document, paramsFor) => applyI18n(scope, engine, paramsFor);
-  window.LastbookI18n = Object.freeze({ apply });
+  function paramsFrom(element) {
+    const raw = element.getAttribute('data-i18n-params');
+    if (!raw) return undefined;
+    try { return JSON.parse(raw); } catch { return undefined; }
+  }
+  const apply = (scope = document, paramsFor) => applyI18n(scope, engine, paramsFor === undefined ? paramsFrom : paramsFor);
+  window.LastbookI18n = Object.freeze({
+    apply,
+    resolve(key, params) { return engine.resolve(key, params); },
+    t(key, params) { return engine.t(key, params); },
+    direction(locale) { return engine.direction(locale); },
+    number(value, options) { return engine.number(value, options); },
+    date(value, options) { return engine.date(value, options); },
+    get locale() { return engine.locale; },
+  });
 
   // The file behind the bridge is the truth. Its last answer is also kept in this window's own storage, only so the
   // next page can start in the right language instead of flashing English until the bridge replies.
@@ -44,6 +57,9 @@
   function activate(saved) {
     selection = saved || 'en';
     engine.usePreferredLocales(selection);
+    // UI rendered through tr() inherits the document language, including
+    // unmarked dynamic text. Keep the document metadata in sync for assistive tech.
+    document.documentElement.lang = engine.locale || 'en';
     apply();
     document.dispatchEvent(new Event('lastbook:languagechange'));
   }

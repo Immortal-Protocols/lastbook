@@ -126,6 +126,7 @@ class Local:
             return {'name': NAME, 'file': FILE, 'size': SIZE, 'state': self.state, 'pct': self.pct, 'message': self.message,
                     'found_at': self.path and _folder_name(self.path), 'enabled': self.enabled(), 'runtime': bool(self.runner),
                     'needs_bytes': fit.get('needs'), 'ram_total': fit.get('ram_total'), 'placement': fit.get('placement'),
+                    'why_key': fit.get('why_key'), 'why_params': fit.get('why_params'),
                     'load_s': (self.ready_info or {}).get('load_s'), 'places': [_folder_name(p) for p in places()[:6]]}
 
     def enabled(self):
@@ -487,11 +488,14 @@ def judge(fit):
     if fit.get('status') != 'fits':
         out['fits'] = False
         out['why'] = 'The model does not fit this computer’s graphics memory together with its own memory.'
+        out['why_key'] = 'setup.why.modelNoFitGraphics'
     elif total and needs > total:
         out['fits'] = False
         # Say the whole need, so it can be held against what the computer has: "needs 14.9 GB ... has 17.2 GB" read as a fit (#112).
         out['why'] = (f'The local AI needs about {_gb(needs)} of memory: {_gb(in_ram)} for the model and {_gb(RESERVE)} for everything else. '
                       f'This computer has {_gb(total)}.')
+        out['why_key'] = 'setup.why.aiMeasuredShort'
+        out['why_params'] = {'needs': _gb(needs), 'model': _gb(in_ram), 'reserve': _gb(RESERVE), 'ram': _gb(total)}
     else:
         out['fits'] = True
     return out

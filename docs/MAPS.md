@@ -160,9 +160,10 @@ still-open pull request #80, at commit `a453274`; that builder is not in the mai
 [MAP-DE-BE.md](MAP-DE-BE.md) builds one of the German states, Berlin, as an offline map set with an address index
 (`tools/build_region_de_be.py`); searching that index the German way is runtime work in #79.
 
-[REGIONS-PT.md](REGIONS-PT.md) does the same for Portugal's ten regions, with the INE address data measured.
+[REGIONS-PT.md](REGIONS-PT.md) does the same for Portugal's nine regions, with the INE address data measured.
 [MAP-PT-30.md](MAP-PT-30.md) builds the first one: Madeira (PT-30), from the official CAOP box, INE addresses and
-OpenStreetMap.
+OpenStreetMap. [MAP-PT-20.md](MAP-PT-20.md) builds the second: the Azores (PT-20) as one install spanning both
+INE island groups, from the official CAOP RAA polygons and the same sources.
 
 ### To do: maps for every place on Earth
 

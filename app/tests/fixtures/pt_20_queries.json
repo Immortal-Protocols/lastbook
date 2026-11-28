@@ -1,0 +1,491 @@
+{
+  "schema_version": 1,
+  "norm": "pt-1",
+  "region": "PT-20",
+  "index_filename": "PT-20.sqlite",
+  "description": "Address and place-search expectations for the Azores (PT-20), for the shared runtime work (#31), grown from the Portugal proposal (#297), the Madeira pilot (#420) and its fixtures (#451). The twelve rows are verbatim rows of the live PT-20 index — the INE address register via the 2026-02-23 OpenAddresses upload — chosen to cover both INE island groups (AC25 Corvo and Flores, AC26 the rest, at least one eastern island) and the shapes an Azores query takes; tools/build_region_pt_20.py check covers the live index.",
+  "index_contract": {
+    "table": "addr(num TEXT, street TEXT, norm TEXT, city TEXT, state TEXT, zip TEXT, lat REAL, lon REAL, district TEXT)",
+    "indexes": [
+      "addr_norm ON addr(norm, num)",
+      "addr_zip ON addr(zip)"
+    ],
+    "meta": {
+      "region": "PT-20",
+      "norm": "pt-1",
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)"
+    },
+    "rules": [
+      "num is the register's house label with leading zeros stripped only when the rest is all digits ('007' becomes '7'; '0E', '2A' and '38 40' stay as written)",
+      "norm is normalize_pt(street), scheme pt-1",
+      "city is the INE locality as the register spells it, upper case, sometimes with a municipality suffix ('RIBEIRINHA AGH', 'LAGOA (SÃO MIGUEL)'), occasionally empty",
+      "state is PT-20 in every row; the district column is empty (the register has no district)",
+      "zip is the PT postcode NNNN-NNN stored without the hyphen",
+      "the index is a sidecar: map-set.json does not list it, as for the US state indexes"
+    ]
+  },
+  "address_rows": [
+    {
+      "id": "corvo-61",
+      "num": "61",
+      "street": "LG VIGIA",
+      "norm": "largo vigia",
+      "city": "CORVO",
+      "state": "PT-20",
+      "zip": "9980025",
+      "district": "",
+      "lat": 39.671655,
+      "lon": -31.111299,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC25: the only indexed door on the island of Corvo"
+    },
+    {
+      "id": "armassilveira-5",
+      "num": "5",
+      "street": "R DR ARMAS DA SILVEIRA",
+      "norm": "rua doutor armas de silveira",
+      "city": "SANTA CRUZ DAS FLORES",
+      "state": "PT-20",
+      "zip": "9970331",
+      "district": "",
+      "lat": 39.451908,
+      "lon": -31.127735,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC25: the abbreviations DR and DA expand in the norm key (doutor, de)"
+    },
+    {
+      "id": "padrefraga-1",
+      "num": "1",
+      "street": "R PADRE JOÃO FRAGA VIEIRA",
+      "norm": "rua padre joao fraga vieira",
+      "city": "LAJES DAS FLORES",
+      "state": "PT-20",
+      "zip": "9960441",
+      "district": "",
+      "lat": 39.381374,
+      "lon": -31.187694,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC25: the register's composed accents fold into the key"
+    },
+    {
+      "id": "infdhenrique-1",
+      "num": "1",
+      "street": "AV INF D HENRIQUE",
+      "norm": "avenida inf de henrique",
+      "city": "PONTA DELGADA",
+      "state": "PT-20",
+      "zip": "9500150",
+      "district": "",
+      "lat": 37.741178,
+      "lon": -25.66072,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26 (São Miguel): AV expands, INF stays as written, D expands to de"
+    },
+    {
+      "id": "infdhenrique-2-lagoa",
+      "num": "2",
+      "street": "AV INF D HENRIQUE",
+      "norm": "avenida inf de henrique",
+      "city": "LAGOA (SÃO MIGUEL)",
+      "state": "PT-20",
+      "zip": "9560022",
+      "district": "",
+      "lat": 37.745368,
+      "lon": -25.578324,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26: the same norm key as infdhenrique-1 in another island's city — the city suffix names the island"
+    },
+    {
+      "id": "calhau1-5",
+      "num": "5",
+      "street": "1 BECO DO CALHAU DA AREIA",
+      "norm": "1 beco de calhau de areia",
+      "city": "LAGOA (SÃO MIGUEL)",
+      "state": "PT-20",
+      "zip": "9560010",
+      "district": "",
+      "lat": 37.742078,
+      "lon": -25.579101,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26: the leading 1 belongs to the street name, and the particles DO and DA expand to de in the key"
+    },
+    {
+      "id": "calhau2-24",
+      "num": "24",
+      "street": "2 BECO DO CALHAU DA AREIA",
+      "norm": "2 beco de calhau de areia",
+      "city": "LAGOA (SÃO MIGUEL)",
+      "state": "PT-20",
+      "zip": "9560011",
+      "district": "",
+      "lat": 37.742109,
+      "lon": -25.578636,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26: the sister street — its own leading 2 keeps the two keys apart"
+    },
+    {
+      "id": "profmelo-1",
+      "num": "1",
+      "street": "R PROF ANTÓNIO JOSÉ DE MELO",
+      "norm": "rua prof antonio jose de melo",
+      "city": "RIBEIRINHA AGH",
+      "state": "PT-20",
+      "zip": "9700438",
+      "district": "",
+      "lat": 38.657448,
+      "lon": -27.18188,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26 (Terceira): the register writes this row with composed accents; the city carries the municipality suffix AGH"
+    },
+    {
+      "id": "profmelo-5",
+      "num": "5",
+      "street": "R PROF ANTONIO JOSE DE MELO",
+      "norm": "rua prof antonio jose de melo",
+      "city": "RIBEIRINHA AGH",
+      "state": "PT-20",
+      "zip": "9700438",
+      "district": "",
+      "lat": 38.657836,
+      "lon": -27.181743,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26: the same street as profmelo-1 spelled without accents — one norm key holds both spellings, and the plain numeral stays a plain numeral"
+    },
+    {
+      "id": "barcelos-2a",
+      "num": "2A",
+      "street": "R BARCELOS",
+      "norm": "rua barcelos",
+      "city": "ANGRA DO HEROÍSMO",
+      "state": "PT-20",
+      "zip": "9700026",
+      "district": "",
+      "lat": 38.655379,
+      "lon": -27.221491,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26: the register's composite label keeps its letter: exact match only — the house 2 beside it never answers for it"
+    },
+    {
+      "id": "barcelos-2",
+      "num": "2",
+      "street": "R BARCELOS",
+      "norm": "rua barcelos",
+      "city": "ANGRA DO HEROÍSMO",
+      "state": "PT-20",
+      "zip": "9700026",
+      "district": "",
+      "lat": 38.655379,
+      "lon": -27.221422,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26: the plain numeral beside the 2A"
+    },
+    {
+      "id": "joaofreitas-91",
+      "num": "91",
+      "street": "R JOÃO FREITAS PEREIRA",
+      "norm": "rua joao freitas pereira",
+      "city": "SANTO ESPÍRITO",
+      "state": "PT-20",
+      "zip": "9580238",
+      "district": "",
+      "lat": 36.956302,
+      "lon": -25.038207,
+      "source": "Instituto Nacional de Estatística, I.P., via OpenAddresses (CC BY 4.0)",
+      "note": "AC26 (Santa Maria, the eastern island of the Farol de Gonçalo Velho row the #297 checks located)"
+    }
+  ],
+  "normalization_examples": [
+    {
+      "input": "AV INF D HENRIQUE",
+      "expected": "avenida inf de henrique"
+    },
+    {
+      "input": "1 BECO DO CALHAU DA AREIA",
+      "expected": "1 beco de calhau de areia"
+    },
+    {
+      "input": "ESTR REGIONAL",
+      "expected": "estrada regional"
+    },
+    {
+      "input": "R PADRE JOÃO FRAGA VIEIRA",
+      "expected": "rua padre joao fraga vieira"
+    },
+    {
+      "input": "R PROF ANTÓNIO JOSÉ DE MELO",
+      "expected": "rua prof antonio jose de melo"
+    },
+    {
+      "input": "R PROF ANTO\u0301NIO JOSE\u0301 DE MELO",
+      "expected": "rua prof antonio jose de melo",
+      "note": "a decomposed ó and é, as a Mac or iOS paste can give them"
+    },
+    {
+      "input": "TV STO ANTONIO",
+      "expected": "travessa santo antonio"
+    },
+    {
+      "input": "R DR ARMAS DA SILVEIRA",
+      "expected": "rua doutor armas de silveira"
+    },
+    {
+      "input": "LG VIGIA",
+      "expected": "largo vigia"
+    }
+  ],
+  "address_queries": [
+    {
+      "query": "LG VIGIA 61",
+      "expected_fixture_ids": [
+        "corvo-61"
+      ],
+      "lookup": {
+        "norm": "largo vigia",
+        "num": "61"
+      },
+      "expected_name": "LG VIGIA 61",
+      "expected_detail": "CORVO, PT-20, 9980025"
+    },
+    {
+      "query": "Largo Vigia 61",
+      "expected_fixture_ids": [
+        "corvo-61"
+      ],
+      "lookup": {
+        "norm": "largo vigia",
+        "num": "61"
+      },
+      "note": "the LG abbreviation spelled out"
+    },
+    {
+      "query": "R DR ARMAS DA SILVEIRA 5",
+      "expected_fixture_ids": [
+        "armassilveira-5"
+      ],
+      "lookup": {
+        "norm": "rua doutor armas de silveira",
+        "num": "5"
+      },
+      "expected_name": "R DR ARMAS DA SILVEIRA 5",
+      "expected_detail": "SANTA CRUZ DAS FLORES, PT-20, 9970331"
+    },
+    {
+      "query": "Rua Doutor Armas da Silveira 5",
+      "expected_fixture_ids": [
+        "armassilveira-5"
+      ],
+      "lookup": {
+        "norm": "rua doutor armas de silveira",
+        "num": "5"
+      },
+      "note": "the abbreviations spelled out"
+    },
+    {
+      "query": "R PADRE JOÃO FRAGA VIEIRA 1",
+      "expected_fixture_ids": [
+        "padrefraga-1"
+      ],
+      "lookup": {
+        "norm": "rua padre joao fraga vieira",
+        "num": "1"
+      },
+      "expected_name": "R PADRE JOÃO FRAGA VIEIRA 1",
+      "expected_detail": "LAJES DAS FLORES, PT-20, 9960441"
+    },
+    {
+      "query": "AV INF D HENRIQUE 1",
+      "expected_fixture_ids": [
+        "infdhenrique-1"
+      ],
+      "lookup": {
+        "norm": "avenida inf de henrique",
+        "num": "1"
+      },
+      "expected_name": "AV INF D HENRIQUE 1",
+      "expected_detail": "PONTA DELGADA, PT-20, 9500150"
+    },
+    {
+      "query": "AV INF D HENRIQUE 2",
+      "expected_fixture_ids": [
+        "infdhenrique-2-lagoa"
+      ],
+      "lookup": {
+        "norm": "avenida inf de henrique",
+        "num": "2"
+      },
+      "expected_name": "AV INF D HENRIQUE 2",
+      "expected_detail": "LAGOA (SÃO MIGUEL), PT-20, 9560022",
+      "note": "the same street key, another island's city: the city suffix names the island"
+    },
+    {
+      "query": "Avenida Inf de Henrique 2, Lagoa",
+      "expected_fixture_ids": [
+        "infdhenrique-2-lagoa"
+      ],
+      "lookup": {
+        "norm": "avenida inf de henrique",
+        "num": "2"
+      },
+      "filter": {
+        "place_prefix": "lagoa"
+      }
+    },
+    {
+      "query": "1 BECO DO CALHAU DA AREIA 5",
+      "expected_fixture_ids": [
+        "calhau1-5"
+      ],
+      "lookup": {
+        "norm": "1 beco de calhau de areia",
+        "num": "5"
+      },
+      "expected_name": "1 BECO DO CALHAU DA AREIA 5",
+      "expected_detail": "LAGOA (SÃO MIGUEL), PT-20, 9560010",
+      "note": "the leading 1 belongs to the street name, not a house"
+    },
+    {
+      "query": "2 BECO DO CALHAU DA AREIA 24",
+      "expected_fixture_ids": [
+        "calhau2-24"
+      ],
+      "lookup": {
+        "norm": "2 beco de calhau de areia",
+        "num": "24"
+      },
+      "expected_name": "2 BECO DO CALHAU DA AREIA 24",
+      "expected_detail": "LAGOA (SÃO MIGUEL), PT-20, 9560011"
+    },
+    {
+      "query": "R PROF ANTÓNIO JOSÉ DE MELO 5",
+      "expected_fixture_ids": [
+        "profmelo-5"
+      ],
+      "lookup": {
+        "norm": "rua prof antonio jose de melo",
+        "num": "5"
+      },
+      "expected_name": "R PROF ANTONIO JOSE DE MELO 5",
+      "expected_detail": "RIBEIRINHA AGH, PT-20, 9700438",
+      "note": "the query carries the accented spelling; the row the register writes without accents answers, same norm key"
+    },
+    {
+      "query": "R Prof Antonio Jose de Melo 1",
+      "expected_fixture_ids": [
+        "profmelo-1"
+      ],
+      "lookup": {
+        "norm": "rua prof antonio jose de melo",
+        "num": "1"
+      },
+      "note": "and the other way: the unaccented query reaches the row the register writes with accents"
+    },
+    {
+      "query": "R BARCELOS 2A",
+      "expected_fixture_ids": [
+        "barcelos-2a"
+      ],
+      "lookup": {
+        "norm": "rua barcelos",
+        "num": "2A"
+      },
+      "expected_name": "R BARCELOS 2A",
+      "expected_detail": "ANGRA DO HEROÍSMO, PT-20, 9700026",
+      "note": "the register's composite label keeps its letter: exact match only — the house 2 beside it never answers for it"
+    },
+    {
+      "query": "R Barcelos 2",
+      "expected_fixture_ids": [
+        "barcelos-2"
+      ],
+      "lookup": {
+        "norm": "rua barcelos",
+        "num": "2"
+      },
+      "note": "and the plain numeral beside the 2A stays its own house"
+    }
+  ],
+  "no_house_queries": [
+    {
+      "query": "LG VIGIA 2",
+      "expected_fixture_ids": [],
+      "lookup": {
+        "norm": "largo vigia",
+        "num": "2"
+      },
+      "note": "the island of Corvo carries exactly one indexed door; no second one to fall back to"
+    },
+    {
+      "query": "2 BECO DO CALHAU DA AREIA 5",
+      "expected_fixture_ids": [],
+      "lookup": {
+        "norm": "2 beco de calhau de areia",
+        "num": "5"
+      },
+      "note": "the 5 is the sister street's house; street 2 has none"
+    },
+    {
+      "query": "AV INF D HENRIQUE 1, Lagoa",
+      "expected_fixture_ids": [],
+      "lookup": {
+        "norm": "avenida inf de henrique",
+        "num": "1"
+      },
+      "filter": {
+        "place_prefix": "lagoa"
+      },
+      "note": "a real Ponta Delgada house behind another island's city"
+    },
+    {
+      "query": "AV INF D HENRIQUE 5",
+      "expected_fixture_ids": [],
+      "lookup": {
+        "norm": "avenida inf de henrique",
+        "num": "5"
+      },
+      "note": "none of the three cities this avenue runs through carries a 5"
+    },
+    {
+      "query": "R BARCELOS 2B",
+      "expected_fixture_ids": [],
+      "lookup": {
+        "norm": "rua barcelos",
+        "num": "2B"
+      },
+      "note": "the street holds 2, 2A, 18 and 24 — never a 2B"
+    }
+  ],
+  "place_queries": [
+    {
+      "query": "Corvo",
+      "must_not_be_address": true
+    },
+    {
+      "query": "Ponta Delgada",
+      "must_not_be_address": true
+    },
+    {
+      "query": "9500",
+      "must_not_be_address": true,
+      "note": "the CP4 postcode area people search"
+    },
+    {
+      "query": "1 BECO DO CALHAU DA AREIA",
+      "must_not_be_address": true,
+      "note": "the leading 1 belongs to the street name, not a house"
+    },
+    {
+      "query": "R JOÃO FREITAS PEREIRA",
+      "must_not_be_address": true,
+      "note": "a street without a number: the street list, not a house"
+    }
+  ],
+  "runtime_requirements": [
+    "An index whose meta says norm = pt-1 is searched only with that rule, and US indexes (no norm key) only with the US rule.",
+    "With PT-20.sqlite installed, every answer from an existing US index stays identical, including its Overture Maps credit.",
+    "A PT address is written street first (LG VIGIA 61), so a result names the house street first, keeps the register's spelling, and credits the index meta source.",
+    "Only an exact house label matches: the house 2 never answers for the 2A beside it, 2A never answers for 2, and a 5 on street 1 never answers a query for street 2.",
+    "A label that is not a plain numeral ('2A') is kept and matched in either case, so '2a' finds '2A'.",
+    "The postcode is stored without the hyphen; a query types 9700-026, so the lookup strips the punctuation before comparing, as the US rule does.",
+    "The detail line is the US join over what the row holds (city, PT-20, zip) — the register's city in its own spelling, upper case, sometimes with a municipality suffix ('RIBEIRINHA AGH', 'LAGOA (SÃO MIGUEL)'), occasionally empty."
+  ]
+}

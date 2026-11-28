@@ -1,0 +1,149 @@
+{
+  "checked": "2026-11-26",
+  "scope": "Original factual directory expansion from 8 to 16 entries; 56 public records unchanged.",
+  "sources": [
+    {
+      "id": "norfolk-services",
+      "url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/norfolk-island/governance-administration/government-services",
+      "final_url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/norfolk-island/governance-administration/government-services",
+      "retrieved_at": "2026-11-26",
+      "bytes": 665706,
+      "sha256": "fb05053409f7590a48de20a29f09e4a9c3f571ef71ab53c6805a91c4c76c2c1f"
+    },
+    {
+      "id": "jervis-services",
+      "url": "https://www.infrastructure.gov.au/department/media/publications/202314-contacts-and-service-information-jervis-bay-territory-residents",
+      "final_url": "https://www.infrastructure.gov.au/department/media/publications/202314-contacts-and-service-information-jervis-bay-territory-residents",
+      "retrieved_at": "2026-11-26",
+      "bytes": 648714,
+      "sha256": "0ea4b5e70448461cae59f25f94590be361fd8cf2ddbad94cd03d34ffb1de865b"
+    },
+    {
+      "id": "iot-health",
+      "url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/indian-ocean-territories/health-service",
+      "final_url": "https://www.infrastructure.gov.au/territories-regions-cities/territories/indian-ocean-territories/health-service",
+      "retrieved_at": "2026-11-26",
+      "bytes": 655827,
+      "sha256": "460a889c2bacebf39951a3fef9e37f58ec095e452be90cb128961f66c46c31a5"
+    },
+    {
+      "id": "christmas-travel",
+      "url": "https://www.infrastructure.gov.au/territories-regions/territories/indian-ocean-territories-christmas-island-and-cocos-keeling-islands/christmas-island/christmas-island-travel-information",
+      "final_url": "https://www.infrastructure.gov.au/territories-regions/territories/indian-ocean-territories-christmas-island-and-cocos-keeling-islands/christmas-island/christmas-island-travel-information",
+      "retrieved_at": "2026-11-26",
+      "bytes": 667812,
+      "sha256": "5bb6813c3b14e51112a9a6912ca2ff4491dd032330fb3c054b6e3a3abab974c6"
+    },
+    {
+      "id": "iot-bulletins",
+      "url": "https://www.infrastructure.gov.au/territories-regions/territories/indian-ocean-territories-christmas-island-and-cocos-keeling-islands/community-bulletins-updates-and-media-releases/indian-ocean-territories-community-bulletins-2026",
+      "final_url": "https://www.infrastructure.gov.au/territories-regions/territories/indian-ocean-territories-christmas-island-and-cocos-keeling-islands/community-bulletins-updates-and-media-releases/indian-ocean-territories-community-bulletins-2026",
+      "retrieved_at": "2026-11-26",
+      "bytes": 670534,
+      "sha256": "646654fde98cd9c4aab216274e3d88726f9ddf4076299cafe5aa0dc4bef56743"
+    },
+    {
+      "id": "external-geography",
+      "url": "https://www.ga.gov.au/scientific-topics/national-location-information/geography/external-territories",
+      "final_url": "https://www.ga.gov.au/scientific-topics/national-location-information/geography/external-territories",
+      "retrieved_at": "2026-11-26",
+      "bytes": 48877,
+      "sha256": "a40511826448cb65e7fa4c11c471dabd29cf957a9e38ceee2b54ce9522b0eddd"
+    },
+    {
+      "id": "ashmore-cartier",
+      "url": "https://www.infrastructure.gov.au/territories-regions/territories/ashmore-and-cartier-islands",
+      "final_url": "https://www.infrastructure.gov.au/territories-regions/territories/ashmore-and-cartier-islands",
+      "retrieved_at": "2026-11-26",
+      "bytes": 655451,
+      "sha256": "e31a3d48f1322a863cc1deb7a742723c14e19596b5a39e0f1cd896fd0a63685c"
+    },
+    {
+      "id": "coral-sea",
+      "url": "https://www.infrastructure.gov.au/territories-regions/territories/coral-sea-islands",
+      "final_url": "https://www.infrastructure.gov.au/territories-regions/territories/coral-sea-islands",
+      "retrieved_at": "2026-11-26",
+      "bytes": 653602,
+      "sha256": "c237b96ef2ec81405944eddcaa2acfb9ba50fc7eeb03e58744c37b68f0233bdd"
+    },
+    {
+      "id": "heard-management",
+      "url": "https://www.antarctica.gov.au/antarctic-operations/stations-and-field-locations/heard-island/protection-and-management/",
+      "final_url": "https://www.antarctica.gov.au/antarctic-operations/stations-and-field-locations/heard-island/protection-and-management/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 58910,
+      "sha256": "2b11168774d50c674fafbb7a37a5cd8a03839650e31fff3bf90b0f327ad1746a"
+    },
+    {
+      "id": "australian-antarctic",
+      "url": "https://www.antarctica.gov.au/about-antarctica/australia-in-antarctica/australian-antarctic-territory/",
+      "final_url": "https://www.antarctica.gov.au/about-antarctica/australia-in-antarctica/australian-antarctic-territory/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 61384,
+      "sha256": "66dabefdc88a8dacbe85d2197e8b5a0f3b25bdb51567689179bf5ffc8be0afc7"
+    },
+    {
+      "id": "christmas-emergency-plan",
+      "url": "https://www.infrastructure.gov.au/sites/default/files/documents/christmas-island-emergency-management-plan-june-2024.pdf",
+      "final_url": "https://www.infrastructure.gov.au/sites/default/files/documents/christmas-island-emergency-management-plan-june-2024.pdf",
+      "retrieved_at": "2026-11-26",
+      "bytes": 2420927,
+      "sha256": "3230b413408926d48458d3edaa71c15aec7953d677e41a7ba83e61161270b68a"
+    },
+    {
+      "id": "cocos-boating-guide",
+      "url": "https://transport.wa.gov.au/getmedia/961739f3-aa4d-4d76-945f-f030422578fd/MAC_G_Boating_CocosIsland.pdf",
+      "final_url": "https://transport.wa.gov.au/getmedia/961739f3-aa4d-4d76-945f-f030422578fd/MAC_G_Boating_CocosIsland.pdf",
+      "retrieved_at": "2026-11-26",
+      "bytes": 7736383,
+      "sha256": "2e120478e27aa9b2bfa69aeb28287b851b594ab3fdb46ebff2d724cc6f6efb16"
+    }
+  ],
+  "retained_entry_check_date": "2026-11-17",
+  "new_entry_check_date": "2026-11-26",
+  "classification": {
+    "states": 6,
+    "internal_territories": 3,
+    "external_territories": 7,
+    "source": "https://www.ga.gov.au/scientific-topics/national-location-information/geography/external-territories",
+    "jervis_bay": "Internal territory, distinct from ACT."
+  },
+  "verified_facts": {
+    "AU-JBT": {
+      "source": "jervis-services",
+      "source_published": "2023-08-28",
+      "000": "Emergency calls",
+      "132 500": "NSW SES assistance"
+    },
+    "AU-CX": {
+      "source": "christmas-emergency-plan",
+      "source_date": "2024-06",
+      "000": "Plan refers to 000 emergency calls; physical31/printed30 communications-outage table visually inspected.",
+      "clinic": "Christmas Island Health Centre:08 9164 8333; health-service source lists 24/7 emergency service.",
+      "coverage": "Travel source says mobile reception does not cover every part of island; plan includes outages disabling 000."
+    },
+    "AU-CC": {
+      "source": "cocos-boating-guide",
+      "source_date": "2025-02",
+      "000": "Police Emergency in physicalpage1 contact block; visually inspected.",
+      "clinics": "West Island08 9162 6655; Home Island08 9162 7609. Health source lists after-hours nurse on call,limited inpatient capacity and evacuation."
+    },
+    "AU-NF": {
+      "source": "norfolk-services",
+      "000": "Fire and policing emergencies; Emergency Management Norfolk Island identified."
+    }
+  },
+  "ses_not_established": [
+    "AU-CX",
+    "AU-CC",
+    "AU-NF"
+  ],
+  "remote_management_only": [
+    "AU-HM",
+    "AU-AC",
+    "AU-CSI",
+    "AU-AAT"
+  ],
+  "rights": "Original factual directory/descriptions CC BY4.0. Facts and written source addresses only; no official article bodies,PDFs,images,maps,logos or extracted PDF text copied or relicensed.",
+  "limits": "No live warning/service test,guaranteed communications,rescue availability,permit advice,clinical assessment or expedition operating plan. Older publication dates remain; retrieval is not source update."
+}

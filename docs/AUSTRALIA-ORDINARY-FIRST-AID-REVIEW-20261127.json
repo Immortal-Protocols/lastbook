@@ -1,0 +1,56 @@
+{
+  "checked": "2026-11-27",
+  "scope": "21conditional personal-source links across10ordinary Injury and illness choices",
+  "audit": "AUSTRALIA-ORDINARY-FIRST-AID-ROUTING-20261127.json",
+  "tests": {
+    "content": 874,
+    "combined": 1022,
+    "skips_each": 5,
+    "upstream_expected_failures_each": 11,
+    "focused_each_python": 48,
+    "python_versions": [
+      "3.14",
+      "3.11.18"
+    ],
+    "hosted_CI_claim": false
+  },
+  "actual_library": {
+    "records": 475,
+    "public": 125,
+    "personal": 36,
+    "verified_Australian_reader_hashes": 161,
+    "personal_search_units": 264,
+    "unchanged_base_public_rows": 12875,
+    "unchanged_basic_PDF_rows": 41,
+    "unchanged_AU_guide_refs": 725,
+    "new_ordinary_refs": 21,
+    "socket_attempts": 0
+  },
+  "native": {
+    "choices": [
+      "bleeding",
+      "burn",
+      "breathing"
+    ],
+    "opened_originals_physical_page1": [
+      "9.1.1",
+      "9.1.3",
+      "4"
+    ],
+    "breathing": "CPR-first,sixnew sources,Airwaycountry-context note and Hesperianfallback retained",
+    "context": "Airwayphysical1 Ask/Back retains current original/page/guide context;no question/audio submitted"
+  },
+  "installed_update": {
+    "changed_ship_assets": [
+      "content/topics/hurt.json"
+    ],
+    "data_hashes": "All5recorded catalogue/index/marker/map manifest hashes identical before and after native checks",
+    "preserved": "Victoria3054names/per-file hashes,infantvideo,reader/map/runtime,allprior guide fields and references",
+    "package_i18n_privacy_signature_offline_selfcheck": "passed",
+    "rollback": "Complete previous app/data/profile receipts retained privately"
+  },
+  "public_assets": "125-record release tag and all3asset bytes unchanged;current PR source supplies guide update",
+  "validation_environment": "First full runs interrupted after low-space installer failures.37reproducible task PyInstaller caches removed;dist apps,source,logs,private data and rollback copies retained. Both complete reruns passed with adequate free space.",
+  "rights": "No originalPDFs,extracted bodies/index,privateapp/profile or research renders published. Whole mixed profile personal-use only.",
+  "not_claimed": "Clinicalapproval,all21links natively inspected,all263pages read,public redistribution permission,officialSetup availability or upstreamacceptance"
+}

@@ -1,0 +1,60 @@
+{
+  "checked": "2026-11-26",
+  "scope": "Source-status curation,not a clinical protocol,independent clinical review or rights grant.",
+  "source_comparisons": [
+    {
+      "id": "anzcor-guideline6",
+      "url": "https://www.anzcor.org/home/basic-life-support/guideline-6-compressions",
+      "final_url": "https://www.anzcor.org/home/basic-life-support/guideline-6-compressions",
+      "retrieved_at": "2026-11-26",
+      "bytes": 68689,
+      "sha256": "de6f77c1b962e8e4ad7a6f13501b573f5e5c488d29f55d10e16fb216c9fda00b"
+    },
+    {
+      "id": "schn-infant-factsheet",
+      "url": "https://www.schn.health.nsw.gov.au/factsheets/cpr-infants-under-12-months-old",
+      "final_url": "https://www.schn.health.nsw.gov.au/factsheets/cpr-infants-under-12-months-old",
+      "retrieved_at": "2026-11-26",
+      "bytes": 67222,
+      "sha256": "56c8a5bd750ade498e04094ca29628fd6965d08425c60c050a67ba2142e833a8"
+    }
+  ],
+  "video": {
+    "id": "video-bsP45AXQGC4",
+    "source_url": "https://www.youtube.com/watch?v=bsP45AXQGC4",
+    "publisher": "The Sydney Children's Hospitals Network",
+    "upload_date": "20251014",
+    "bytes": 24792490,
+    "sha256": "c74227027abe44e17bb07c4db8e3d9631809626b65f5e882b0abb9db79c079b5",
+    "verification": "Stored captions and actual decoded frame at100seconds show the infant compression demonstration. Source video unchanged;no frame/caption body distributed in this audit."
+  },
+  "finding": "Stored2025infant video and all-ages poster demonstrate a two-finger method;the checked current ANZCOR Guideline6 recommends two-thumb encircling,with a one-hand alternative when required. Guide/source hub flag this variation for qualified review;no newly merged or corrected treatment algorithm.",
+  "resolved_question": "Adult-depth wording is not classified as a discrepancy:ANZCOR Guideline6 itself relates approximate one-third depth to its centimetre guidance. Do not exclude a source solely for those two descriptions.",
+  "original_pdf_candidates": [
+    {
+      "url": "https://www.australiawidefirstaid.com.au/resources-pages/assets/anaphylaxis-howto-use-an-epipen.pdf",
+      "final_url": "https://www.australiawidefirstaid.com.au/resources-pages/assets/anaphylaxis-howto-use-an-epipen.pdf",
+      "bytes": 884572,
+      "sha256": "f92c33a01782586fa6626ede5798bc9c7b298b500c836c3e2a75c7934af7d1d9",
+      "retrieved_at": "2026-11-26"
+    },
+    {
+      "url": "https://www.australiawidefirstaid.com.au/resources-pages/assets/drsabcd-all-ages.pdf",
+      "final_url": "https://www.australiawidefirstaid.com.au/resources-pages/assets/drsabcd-all-ages.pdf",
+      "bytes": 589413,
+      "sha256": "62fdef95141de5a135b334e2a68a037180456f38f2c64f65ccbe86398ecdd65d",
+      "retrieved_at": "2026-11-26"
+    },
+    {
+      "url": "https://www.australiawidefirstaid.com.au/resources-pages/assets/cpr-adult.pdf",
+      "final_url": "https://www.australiawidefirstaid.com.au/resources-pages/assets/cpr-adult.pdf",
+      "bytes": 2514097,
+      "sha256": "df687ab9ee4328d98c053f65dd896beba5033ffccf82cceea3896f0fb9c5bc2c",
+      "retrieved_at": "2026-11-26"
+    }
+  ],
+  "pdf_review": "All three single-page originals rendered and inspected. AWFA site BY-ND4 route assessed;no candidate PDF is bundled or edited. AdultCPR chart age scope is over8;all-ages chart infant technique needs review;EpiPen usage chart is not a complete anaphylaxis plan. Provider/third-party/source-format conditions remain separate from clinical review.",
+  "source_policy_url": "https://www.australiawidefirstaid.com.au/resources/using-our-content",
+  "changes": "Original source-hub status note and AUhealth intro/choice/card note only. Official clinical sources,stored video and private ANZCOR files unchanged.",
+  "limits": "Dated primary-source comparison,not proof an older demonstration is universally unsafe or a new clinical approval. Current training/source review and ANZCOR public permission remain outstanding. ARC enquiry unsent."
+}

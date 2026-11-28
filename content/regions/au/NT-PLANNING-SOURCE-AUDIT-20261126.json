@@ -1,0 +1,418 @@
+{
+  "checked": "2026-11-26",
+  "reader_id": "au-nt-local-plan",
+  "reader_sha256": "279dd4a659f410472f5de20dfc022115194f4b9eb658f55aa66fce99bebba928",
+  "authorship": "Original contributor wording,questions and short factual references;not a government-authored manual or copied household/animal plan.",
+  "licence_scope": "CC BY4.0 applies only to original contributor worksheet. No reserved NT agency article,PDF,map,translation,media or branding bundled.",
+  "rights": {
+    "nt_policy": {
+      "id": "nt-rights",
+      "url": "https://nt.gov.au/page/copyright-and-disclaimer",
+      "final_url": "https://nt.gov.au/page/copyright-and-disclaimer",
+      "retrieved_at": "2026-11-26",
+      "bytes": 36007,
+      "sha256": "8af412ac32e309390e9f87b2cc83aeac96b8c3cbf65aac1fe343b137379fc3c6",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Copyright Act 1968",
+          "url": "https://www.legislation.gov.au/Details/C2019C00042"
+        },
+        {
+          "label": "Facebook",
+          "url": "https://facebook.com/sharer/sharer.php?u=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "Twitter",
+          "url": "https://twitter.com/intent/tweet/?url=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "LinkedIn",
+          "url": "https://www.linkedin.com/shareArticle?mini=true&url=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "Email",
+          "url": "mailto:?body=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-disclaimer-and-privacy"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Copyright and disclaimer\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government's copyright and disclaimer statement.\" name=\"dcterms.description\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2021-09-07 17:00:29\" name=\"dcterms.date\"/>",
+        "<meta content=\"2021-09-06 10:49:43\" name=\"dcterms.created\"/>",
+        "<meta content=\"2021-09-07 17:00:29\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2021-09-07 17:00:29\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://nt.gov.au/page/copyright-and-disclaimer\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"https://nt.gov.au\" name=\"dcterms.publisher\"/>",
+        "<meta content=\"NT.GOV.AU\" name=\"dcterms.subject\"/>",
+        "<meta content=\"Footer pages\" name=\"dcterms.topic\"/>"
+      ]
+    },
+    "pfes_policy": {
+      "id": "pfes-rights",
+      "url": "https://pfes.nt.gov.au/node/849",
+      "final_url": "https://pfes.nt.gov.au/node/849",
+      "retrieved_at": "2026-11-26",
+      "bytes": 41877,
+      "sha256": "21c8e09cd3f411e2c0a96d6cdc005df097167b6ee04284c516e77f1dc7dc7291",
+      "content_type": "text/html; charset=UTF-8",
+      "rights_links": [
+        {
+          "label": "Forms, licences and permits",
+          "url": "https://pfes.nt.gov.au/node/849#"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Forms, licences and permits",
+          "url": "https://pfes.nt.gov.au/node/849#"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Northern Territory Government Disclaimer, Privacy and Copyright.",
+          "url": "https://nt.gov.au/copyright-disclaimer-and-privacy"
+        },
+        {
+          "label": "© Copyright, disclaimer, web-accessibility and privacy",
+          "url": "https://pfes.nt.gov.au/node/849"
+        }
+      ],
+      "metadata": []
+    },
+    "decision": "NT general policy reserves reuse except statutory exceptions or specifically applied CC licences. PFES allows stated internal/noncommercial reproduction and otherwise requests written consent;not an unrestricted redistribution grant. No open licence inferred from public funding,another NT agency or a separately licensed dataset.",
+    "contact": "No permission enquiry sent."
+  },
+  "source_receipts": [
+    {
+      "id": "securent-home",
+      "url": "https://securent.nt.gov.au/",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "retrieved_at": "2026-11-26",
+      "scope": "Raw acquisition unavailable;no successful response claimed."
+    },
+    {
+      "id": "nt-home",
+      "url": "https://nt.gov.au/",
+      "final_url": "https://nt.gov.au/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 65389,
+      "sha256": "d8f78bcfab62a4953505468c29f28e7841be391d8febfcc671428f15bf687cca",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Business and industry Mining and energy, remote jobs, agriculture, start a business, business and professional licences, doing business with government, liquor licensing, gambling, investment in the Territory.",
+          "url": "https://nt.gov.au/industry"
+        },
+        {
+          "label": "Driving and transport Buses, driver licences, cycling, penalties, registration, heavy vehicles, road safety and conditions.",
+          "url": "https://nt.gov.au/driving"
+        },
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-disclaimer-and-privacy"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government information and services\" name=\"dcterms.description\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2026-08-25 14:33:53\" name=\"dcterms.date\"/>",
+        "<meta content=\"2015-03-04 22:58:53\" name=\"dcterms.created\"/>",
+        "<meta content=\"2026-08-25 14:33:53\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2026-08-25 14:33:53\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://nt.gov.au/homepage\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"https://nt.gov.au\" name=\"dcterms.publisher\"/>",
+        "<meta content=\"NT.GOV.AU\" name=\"dcterms.subject\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.topic\"/>"
+      ]
+    },
+    {
+      "id": "pfes-rights",
+      "url": "https://pfes.nt.gov.au/node/849",
+      "final_url": "https://pfes.nt.gov.au/node/849",
+      "retrieved_at": "2026-11-26",
+      "bytes": 41877,
+      "sha256": "21c8e09cd3f411e2c0a96d6cdc005df097167b6ee04284c516e77f1dc7dc7291",
+      "content_type": "text/html; charset=UTF-8",
+      "rights_links": [
+        {
+          "label": "Forms, licences and permits",
+          "url": "https://pfes.nt.gov.au/node/849#"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Forms, licences and permits",
+          "url": "https://pfes.nt.gov.au/node/849#"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Apply for a Firearms Licence or Permit",
+          "url": "https://pfes.nt.gov.au/online-services/apply-firearms-licence-or-permit"
+        },
+        {
+          "label": "Northern Territory Government Disclaimer, Privacy and Copyright.",
+          "url": "https://nt.gov.au/copyright-disclaimer-and-privacy"
+        },
+        {
+          "label": "© Copyright, disclaimer, web-accessibility and privacy",
+          "url": "https://pfes.nt.gov.au/node/849"
+        }
+      ],
+      "metadata": []
+    },
+    {
+      "id": "nt-plans-kits",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-plans-and-kits",
+      "final_url": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-plans-and-kits",
+      "retrieved_at": "2026-11-26",
+      "bytes": 45385,
+      "sha256": "3e538bb183dc40c1e34280bb2cae4e7091a7721b1d8a4837d6a7149b03ea600c",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-and-disclaimer"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Prepare your emergency plan and kit\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2026-11-10T09:46:52+09:30\" name=\"dcterms.created\"/>",
+        "<meta content=\"2026-11-16T10:07:23+09:30\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2026-11-17T14:30:11+09:30\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-plans-and-kits\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"SecureNT\" name=\"dcterms.subject\"/>",
+        "<meta content=\"2026-11-17T14:30:11+09:30\" property=\"article:modified_time\"/>"
+      ]
+    },
+    {
+      "id": "nt-cyclone",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "retrieved_at": "2026-11-26",
+      "scope": "Raw acquisition unavailable;no successful response claimed."
+    },
+    {
+      "id": "nt-animals",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/animals",
+      "final_url": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/animals",
+      "retrieved_at": "2026-11-26",
+      "bytes": 52070,
+      "sha256": "d0bf05d5e9624c11e3a4aff604fb6c16465e3ea512a6af97b31c0d6f2dc1e9e5",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-and-disclaimer"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Prepare your animals\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2026-11-10T10:06:53+09:30\" name=\"dcterms.created\"/>",
+        "<meta content=\"2026-11-16T10:07:25+09:30\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2026-11-16T10:07:27+09:30\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/animals\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"SecureNT\" name=\"dcterms.subject\"/>",
+        "<meta content=\"2026-11-16T10:07:27+09:30\" property=\"article:modified_time\"/>"
+      ]
+    },
+    {
+      "id": "nt-bushfires",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/bushfires",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "retrieved_at": "2026-11-26",
+      "scope": "Raw acquisition unavailable;no successful response claimed."
+    },
+    {
+      "id": "nt-rights",
+      "url": "https://nt.gov.au/page/copyright-and-disclaimer",
+      "final_url": "https://nt.gov.au/page/copyright-and-disclaimer",
+      "retrieved_at": "2026-11-26",
+      "bytes": 36007,
+      "sha256": "8af412ac32e309390e9f87b2cc83aeac96b8c3cbf65aac1fe343b137379fc3c6",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Copyright Act 1968",
+          "url": "https://www.legislation.gov.au/Details/C2019C00042"
+        },
+        {
+          "label": "Facebook",
+          "url": "https://facebook.com/sharer/sharer.php?u=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "Twitter",
+          "url": "https://twitter.com/intent/tweet/?url=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "LinkedIn",
+          "url": "https://www.linkedin.com/shareArticle?mini=true&url=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "Email",
+          "url": "mailto:?body=https://nt.gov.au/page/copyright-and-disclaimer"
+        },
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-disclaimer-and-privacy"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Copyright and disclaimer\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government's copyright and disclaimer statement.\" name=\"dcterms.description\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2021-09-07 17:00:29\" name=\"dcterms.date\"/>",
+        "<meta content=\"2021-09-06 10:49:43\" name=\"dcterms.created\"/>",
+        "<meta content=\"2021-09-07 17:00:29\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2021-09-07 17:00:29\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://nt.gov.au/page/copyright-and-disclaimer\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"https://nt.gov.au\" name=\"dcterms.publisher\"/>",
+        "<meta content=\"NT.GOV.AU\" name=\"dcterms.subject\"/>",
+        "<meta content=\"Footer pages\" name=\"dcterms.topic\"/>"
+      ]
+    },
+    {
+      "id": "nt-contacts",
+      "url": "https://securent.nt.gov.au/emergency-contacts",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "retrieved_at": "2026-11-26",
+      "scope": "Raw acquisition unavailable;no successful response claimed."
+    },
+    {
+      "id": "nt-shelters",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-shelters",
+      "final_url": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-shelters",
+      "retrieved_at": "2026-11-26",
+      "bytes": 45883,
+      "sha256": "868e723efd73360c50f65b4baad18fe81cec2e0d31cc0eb2bb6d7f3294b52bd0",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-and-disclaimer"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Find an emergency shelter\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2026-10-23T17:01:20+09:30\" name=\"dcterms.created\"/>",
+        "<meta content=\"2026-11-16T10:06:33+09:30\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2026-11-17T14:27:29+09:30\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-shelters\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"SecureNT\" name=\"dcterms.subject\"/>",
+        "<meta content=\"2026-11-17T14:27:29+09:30\" property=\"article:modified_time\"/>"
+      ]
+    },
+    {
+      "id": "nt-shelter-plan",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/evacuate-stay",
+      "final_url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/evacuate-stay",
+      "retrieved_at": "2026-11-26",
+      "bytes": 41566,
+      "sha256": "21edda03debfbbef6192ccd7e715a1c4fc5336b614df6d5c87b954e502034607",
+      "content_type": "text/html; charset=utf-8",
+      "rights_links": [
+        {
+          "label": "Copyright, disclaimer and privacy",
+          "url": "https://nt.gov.au/page/copyright-and-disclaimer"
+        }
+      ],
+      "metadata": [
+        "<meta content=\"Plan where you will shelter\" name=\"dcterms.title\"/>",
+        "<meta content=\"Northern Territory Government\" name=\"dcterms.creator\"/>",
+        "<meta content=\"2026-10-23T17:49:11+09:30\" name=\"dcterms.created\"/>",
+        "<meta content=\"2026-11-16T10:06:57+09:30\" name=\"dcterms.issued\"/>",
+        "<meta content=\"2026-11-16T13:18:02+09:30\" name=\"dcterms.modified\"/>",
+        "<meta content=\"https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/evacuate-stay\" name=\"dcterms.identifier\"/>",
+        "<meta content=\"SecureNT\" name=\"dcterms.subject\"/>",
+        "<meta content=\"2026-11-16T13:18:02+09:30\" property=\"article:modified_time\"/>"
+      ]
+    },
+    {
+      "id": "nt-home-cyclone",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/prepare-your-home",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "retrieved_at": "2026-11-26",
+      "scope": "Raw acquisition unavailable;no successful response claimed."
+    },
+    {
+      "id": "nt-storm-surge",
+      "url": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/storm-surge",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "retrieved_at": "2026-11-26",
+      "scope": "Raw acquisition unavailable;no successful response claimed."
+    }
+  ],
+  "factual_references": [
+    {
+      "topic": "NT contact associations",
+      "source": "https://securent.nt.gov.au/emergency-contacts",
+      "method": "Official page read through web tool;raw acquisition403. Displayed update29April2024.",
+      "facts": "000 emergency;131444 police assistance;1800245090 Power and Water;132500 storm assistance;1800246199 road report."
+    },
+    {
+      "topic": "Shelter opening and car-park distinction",
+      "source": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-shelters",
+      "supporting": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/animals",
+      "facts": "Public shelter opening must be announced. Designated Darwin car-park options allow remaining in vehicles with restrained pets,have limited services,and are not public emergency shelters. An ordinary car park is not established as suitable."
+    },
+    {
+      "topic": "Cyclone home/surge decisions",
+      "source": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/prepare-your-home",
+      "supporting": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/storm-surge",
+      "method": "Both official pages read through web tool;raw acquisition403.",
+      "facts": "Home suitability and condition require assessment;caravans unsuitable for cyclone shelter;surge can arrive before landfall;wind protection does not establish flood/surge safety."
+    },
+    {
+      "topic": "Cyclone eye and shelter timing",
+      "source": "https://securent.nt.gov.au/prepare-for-an-emergency/cyclone/evacuate-stay",
+      "facts": "Temporary calm is not an all-clear;remain sheltered until authorities advise safety;public shelter opening/current instructions govern departure."
+    },
+    {
+      "topic": "Household source supply list",
+      "source": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/emergency-plans-and-kits",
+      "facts": "At least72hours of supplies;at least10litres bottled water/person/3days;not assessed as sufficient for actual people,climate,animals or longer isolation."
+    },
+    {
+      "topic": "Animals",
+      "source": "https://securent.nt.gov.au/prepare-for-an-emergency/emergency-planning/animals",
+      "facts": "Separate pets,horses,livestock;early planning;identification and appropriate transport;reliable feed/water;no moving after unsafe travel or releasing onto public roads."
+    },
+    {
+      "topic": "Warning versus forecast",
+      "source": "https://securent.nt.gov.au/prepare-for-an-emergency/bushfires",
+      "method": "Official page read through web tool;raw acquisition403 on final fetch;not claimed as raw receipt.",
+      "facts": "Incident warnings concern action during an incident;fire danger forecasts concern potential fire danger. Current sources are online,not supplied by offline Lastbook."
+    }
+  ],
+  "limits": "Research references/metadata and original prompts only. Raw403reported honestly;successful raw receipts are separate from official-page web review. No current shelter/road/service access,personal-plan adequacy,independent clinical/fire/building/veterinary/accessibility/community review or complete NT coverage."
+}

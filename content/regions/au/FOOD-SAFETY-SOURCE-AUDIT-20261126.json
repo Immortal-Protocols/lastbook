@@ -1,0 +1,183 @@
+{
+  "checked": "2026-11-26",
+  "scope": "Three complete FSANZ consumer articles plus complete copyright/disclaimer texts. Not independent food-safety/clinical assessment.",
+  "selections": [
+    {
+      "id": "fsanz-copyright",
+      "raw_source": {
+        "id": "fsanz-copyright",
+        "url": "https://www.foodstandards.gov.au/legal-policies/copyright",
+        "final_url": "https://www.foodstandards.gov.au/legal-policies/copyright",
+        "retrieved_at": "2026-11-26",
+        "bytes": 145801,
+        "raw_sha256": "855fb4b22fefb10f3b3dd7235bc8c6a8ba303ff34399b8722a498246a488bc27",
+        "rights_links": [
+          {
+            "text": "Creative Commons website",
+            "href": "https://creativecommons.org/licenses/by/4.0/"
+          },
+          {
+            "text": "Copyright",
+            "href": "/legal-policies/copyright"
+          },
+          {
+            "text": "Disclaimer",
+            "href": "/legal-policies/disclaimer"
+          },
+          {
+            "text": "© Food Standards Australia New Zealand",
+            "href": "/legal-policies/copyright"
+          }
+        ]
+      },
+      "selector": ".field-body-",
+      "source_title": "Copyright",
+      "source_updated": "2026-10-29",
+      "normalized_source_text": "Food Standards Australia New Zealand (FSANZ) supports and encourages the dissemination and exchange of information. Unless expressly noted otherwise, material presented on this website is provided under a Creative Commons Attribution 4.0 Australia (CC BY 4.0) licence, except for: the Food Standards Australia New Zealand logo; and third party material. The details of the licence conditions and the full legal code for the CC BY 4.0 licence are available on the Creative Commons website (accessible using the link provided). Attribution You may copy, distribute, transmit and adapt the material covered by the CC BY 4.0 licence for commercial and non-commercial purposes; but you must attribute the work in the following manner: © Food Standards Australia New Zealand. The attribution must not, in any way, suggest that FSANZ endorses you or your use of the work. Third party material To the extent that information published on our website contains material in which copyright is owned by a third party, the CC BY 4.0 licence would not apply to such third-party material and, if you wish to re-use third party material, you may have to seek permission from the copyright owner. More information For more information please use our contact form to contact the Information Officer at FSANZ.",
+      "source_text_without_whitespace": "FoodStandardsAustraliaNewZealand(FSANZ)supportsandencouragesthedisseminationandexchangeofinformation.Unlessexpresslynotedotherwise,materialpresentedonthiswebsiteisprovidedunderaCreativeCommonsAttribution4.0Australia(CCBY4.0)licence,exceptfor:theFoodStandardsAustraliaNewZealandlogo;andthirdpartymaterial.ThedetailsofthelicenceconditionsandthefulllegalcodefortheCCBY4.0licenceareavailableontheCreativeCommonswebsite(accessibleusingthelinkprovided).AttributionYoumaycopy,distribute,transmitandadaptthematerialcoveredbytheCCBY4.0licenceforcommercialandnon-commercialpurposes;butyoumustattributetheworkinthefollowingmanner:©FoodStandardsAustraliaNewZealand.Theattributionmustnot,inanyway,suggestthatFSANZendorsesyouoryouruseofthework.ThirdpartymaterialTotheextentthatinformationpublishedonourwebsitecontainsmaterialinwhichcopyrightisownedbyathirdparty,theCCBY4.0licencewouldnotapplytosuchthird-partymaterialand,ifyouwishtore-usethirdpartymaterial,youmayhavetoseekpermissionfromthecopyrightowner.MoreinformationFormoreinformationpleaseuseourcontactformtocontacttheInformationOfficeratFSANZ.",
+      "source_text_sha256": "b88a2e52c1cdfa61fbe291c5a37c8585def9dbe9f09f3fbd03bb5a29c63220e4",
+      "body_html_sha256": "260516ff79b3b421e5a5938df0a81bde2381b40829125571a7b00cb20cf3a1f3",
+      "removed_media_elements": [],
+      "source_words_and_order_preserved": true,
+      "link_labels_retained_targets_and_media_not_bundled": true,
+      "reader_id": "fsanz-copyright"
+    },
+    {
+      "id": "fsanz-disclaimer",
+      "raw_source": {
+        "id": "fsanz-disclaimer",
+        "url": "https://www.foodstandards.gov.au/legal-policies/disclaimer",
+        "final_url": "https://www.foodstandards.gov.au/legal-policies/disclaimer",
+        "retrieved_at": "2026-11-26",
+        "bytes": 145235,
+        "raw_sha256": "f91a45d645045fac7751129bff0df38965318e3f2fbb7692e60b87377e371654"
+      },
+      "selector": ".field-body-",
+      "source_title": "Disclaimer",
+      "source_updated": "2025-02-25",
+      "normalized_source_text": "FSANZ makes the material on this site available on the understanding that users exercise their own skill, care and judgement with respect to its use. Before relying on the material in any important matter, users should carefully evaluate the accuracy, completeness and relevance of the information for their purposes, and should obtain appropriate expert advice relevant to their particular circumstances. The material on this site may include views or recommendations of third parties, which do not necessarily reflect the views of FSANZ, or indicate its commitment to a particular course of action. Links to external web sites are inserted for convenience only and do not constitute endorsement of any information, product or services at those sites. By accessing information at or through this site, users should be aware that in no event shall FSANZ be liable for any incidental or consequential damages resulting from use of the material.",
+      "source_text_without_whitespace": "FSANZmakesthematerialonthissiteavailableontheunderstandingthatusersexercisetheirownskill,careandjudgementwithrespecttoitsuse.Beforerelyingonthematerialinanyimportantmatter,usersshouldcarefullyevaluatetheaccuracy,completenessandrelevanceoftheinformationfortheirpurposes,andshouldobtainappropriateexpertadvicerelevanttotheirparticularcircumstances.Thematerialonthissitemayincludeviewsorrecommendationsofthirdparties,whichdonotnecessarilyreflecttheviewsofFSANZ,orindicateitscommitmenttoaparticularcourseofaction.Linkstoexternalwebsitesareinsertedforconvenienceonlyanddonotconstituteendorsementofanyinformation,productorservicesatthosesites.Byaccessinginformationatorthroughthissite,usersshouldbeawarethatinnoeventshallFSANZbeliableforanyincidentalorconsequentialdamagesresultingfromuseofthematerial.",
+      "source_text_sha256": "909bb21d0b4f554b70eec01bbc2fa335a1e826f27a3e691c5f040eee073377b8",
+      "body_html_sha256": "926ca0fab3da842245cba2bd9ecd17abb5223473e1edf692cfdccc58ab61a4b7",
+      "removed_media_elements": [],
+      "source_words_and_order_preserved": true,
+      "link_labels_retained_targets_and_media_not_bundled": true,
+      "reader_id": "fsanz-copyright"
+    },
+    {
+      "id": "fsanz-basics",
+      "raw_source": {
+        "id": "fsanz-basics",
+        "url": "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/food-safety-basics",
+        "final_url": "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/food-safety-basics",
+        "retrieved_at": "2026-11-26",
+        "bytes": 191055,
+        "raw_sha256": "e11b1a4404a6d2f61f914d84060686d13072532d9ef7af0d08838d51b1da1175",
+        "rights_links": [
+          {
+            "text": "Copyright",
+            "href": "/legal-policies/copyright"
+          },
+          {
+            "text": "Disclaimer",
+            "href": "/legal-policies/disclaimer"
+          },
+          {
+            "text": "© Food Standards Australia New Zealand",
+            "href": "/legal-policies/copyright"
+          }
+        ]
+      },
+      "selector": ".field-body-",
+      "source_title": "Food safety basics",
+      "source_updated": "2025-07-08",
+      "normalized_source_text": "Follow these key steps to reduce the risk of foodborne illness for yourself, your family and friends. Check your food is safe to use Before you prepare any food, make sure it is safe: For people vulnerable to illness, avoid higher risk foods - read Food safety for vulnerable people to find out more. For people with food allergies, check the ingredients and allergen statements on packaging. All food recalls consumers need to know about are listed on our Current recalls web page. You can also stay informed by subscribing to our food recall alert or liking us on Facebook or Instagram . Check that any storage instructions on the packaging have been followed, especially if foods need refrigeration. Check for a Use by date - do not eat food that has passed its Use by date. Check for any cooking instructions on the packaging - always follow all instructions, do not take short cuts. Know how to safely handle and prepare the food - for example: never wash raw chicken before cooking it - watch our video Food Safety at home - don't wash your chicken! Keep it clean While most microorganisms do not cause disease, harmful microorganisms are widely found in soil, water, animals and people. Wash your hands thoroughly with warm soapy water and dry them before handling food, as well as often during food preparation, especially after handling raw foods. Always wash and dry your hands after going to the toilet. Clean your bench surfaces, cutting boards, utensils, and dishes with hot, soapy water before, during, and after cooking. Watch our video Food safety at home - Keep Things CLEAN . Keep it separate Microorganisms from raw meat, poultry, seafood, and eggs can spread to fruits, vegetables, cooked foods and other ready-to-eat foods unless you keep them separate. Use one cutting board and knife to prepare raw meats and another set for foods that will not be cooked before being eaten (e.g. salad ingredients). Don't put cooked meat on a plate that had raw meat on it. Store food in containers to avoid contact between raw and ready-to-eat foods. Watch our video Food safety at home - Keep Things SEPARATE . Cook it thoroughly Proper cooking kills almost all harmful microorganisms. Use a clean food thermometer to check that foods are cooked to a safe internal temperature. In general, cooking food to 70°C in the centre will help ensure it is safe to eat. FSANZ recommends cooking the following foods to at least 75°C in the centre: all poultry (whole cuts, roast or mince) all meat that has been minced or rolled (beef, lamb, kangaroo or pork sausages, hamburgers, mince, or rolled roasts) liver and other offal. Keep it cold or keep it hot Microorganisms can multiply very quickly if food is kept in the 'temperature danger zone' of 5-60 ° C. Keep perishable food refrigerated at 5 °C or colder. If you're planning to cook and cool food for later use, cool it quickly (e.g. in shallow containers in the fridge). Do not leave cooked or other perishable food at room temperature for long: if less than 2 hours you can put it back in the fridge between 2 and 4 hours, eat it straight away after 4 hours, throw it away. Keep hot cooked food piping hot (more than 60°C) right up to serving. If reheating cold food, reheat it quickly to piping hot. Do not thaw frozen food at room temperature - thaw it in the fridge or use a microwave. Keep perishable leftovers in the fridge and use them up within a few days. Read guidance on Refrigerated storage of perishable foods from CSIRO. Watch our videos Food safety at home - Keep cold food COLD and Food safety at home - Leftovers . Washing fruit, vegetables and other food DO Wash fresh fruit and vegetables under running water before eating. Don't use soap, disinfectants or detergents to wash your food. These cleaning products aren't designed for human consumption. They may actually be unsafe to use with food. DO NOT wash raw chicken before you cook it - it could spread harmful microorganisms around your kitchen.  Watch our video Food Safety at home - don't wash your chicken! For food businesses All food businesses in Australia have to comply with requirements in the food safety standards .",
+      "source_text_without_whitespace": "Followthesekeystepstoreducetheriskoffoodborneillnessforyourself,yourfamilyandfriends.CheckyourfoodissafetouseBeforeyouprepareanyfood,makesureitissafe:Forpeoplevulnerabletoillness,avoidhigherriskfoods-readFoodsafetyforvulnerablepeopletofindoutmore.Forpeoplewithfoodallergies,checktheingredientsandallergenstatementsonpackaging.AllfoodrecallsconsumersneedtoknowaboutarelistedonourCurrentrecallswebpage.YoucanalsostayinformedbysubscribingtoourfoodrecallalertorlikingusonFacebookorInstagram.Checkthatanystorageinstructionsonthepackaginghavebeenfollowed,especiallyiffoodsneedrefrigeration.CheckforaUsebydate-donoteatfoodthathaspasseditsUsebydate.Checkforanycookinginstructionsonthepackaging-alwaysfollowallinstructions,donottakeshortcuts.Knowhowtosafelyhandleandpreparethefood-forexample:neverwashrawchickenbeforecookingit-watchourvideoFoodSafetyathome-don'twashyourchicken!KeepitcleanWhilemostmicroorganismsdonotcausedisease,harmfulmicroorganismsarewidelyfoundinsoil,water,animalsandpeople.Washyourhandsthoroughlywithwarmsoapywateranddrythembeforehandlingfood,aswellasoftenduringfoodpreparation,especiallyafterhandlingrawfoods.Alwayswashanddryyourhandsaftergoingtothetoilet.Cleanyourbenchsurfaces,cuttingboards,utensils,anddisheswithhot,soapywaterbefore,during,andaftercooking.WatchourvideoFoodsafetyathome-KeepThingsCLEAN.KeepitseparateMicroorganismsfromrawmeat,poultry,seafood,andeggscanspreadtofruits,vegetables,cookedfoodsandotherready-to-eatfoodsunlessyoukeepthemseparate.Useonecuttingboardandknifetopreparerawmeatsandanothersetforfoodsthatwillnotbecookedbeforebeingeaten(e.g.saladingredients).Don'tputcookedmeatonaplatethathadrawmeatonit.Storefoodincontainerstoavoidcontactbetweenrawandready-to-eatfoods.WatchourvideoFoodsafetyathome-KeepThingsSEPARATE.CookitthoroughlyPropercookingkillsalmostallharmfulmicroorganisms.Useacleanfoodthermometertocheckthatfoodsarecookedtoasafeinternaltemperature.Ingeneral,cookingfoodto70°Cinthecentrewillhelpensureitissafetoeat.FSANZrecommendscookingthefollowingfoodstoatleast75°Cinthecentre:allpoultry(wholecuts,roastormince)allmeatthathasbeenmincedorrolled(beef,lamb,kangarooorporksausages,hamburgers,mince,orrolledroasts)liverandotheroffal.KeepitcoldorkeepithotMicroorganismscanmultiplyveryquicklyiffoodiskeptinthe'temperaturedangerzone'of5-60°C.Keepperishablefoodrefrigeratedat5°Corcolder.Ifyou'replanningtocookandcoolfoodforlateruse,coolitquickly(e.g.inshallowcontainersinthefridge).Donotleavecookedorotherperishablefoodatroomtemperatureforlong:iflessthan2hoursyoucanputitbackinthefridgebetween2and4hours,eatitstraightawayafter4hours,throwitaway.Keephotcookedfoodpipinghot(morethan60°C)rightuptoserving.Ifreheatingcoldfood,reheatitquicklytopipinghot.Donotthawfrozenfoodatroomtemperature-thawitinthefridgeoruseamicrowave.Keepperishableleftoversinthefridgeandusethemupwithinafewdays.ReadguidanceonRefrigeratedstorageofperishablefoodsfromCSIRO.WatchourvideosFoodsafetyathome-KeepcoldfoodCOLDandFoodsafetyathome-Leftovers.Washingfruit,vegetablesandotherfoodDOWashfreshfruitandvegetablesunderrunningwaterbeforeeating.Don'tusesoap,disinfectantsordetergentstowashyourfood.Thesecleaningproductsaren'tdesignedforhumanconsumption.Theymayactuallybeunsafetousewithfood.DONOTwashrawchickenbeforeyoucookit-itcouldspreadharmfulmicroorganismsaroundyourkitchen.WatchourvideoFoodSafetyathome-don'twashyourchicken!ForfoodbusinessesAllfoodbusinessesinAustraliahavetocomplywithrequirementsinthefoodsafetystandards.",
+      "source_text_sha256": "390113d4e26f28c471ac74e4229d1e49426663579e0591832f0d45699050705f",
+      "body_html_sha256": "bd7c8ff9b65b73e5e691ed0b9d8d60a6b7b11212c83a197a8bf7773935e228e7",
+      "removed_media_elements": [],
+      "source_words_and_order_preserved": true,
+      "link_labels_retained_targets_and_media_not_bundled": true,
+      "reader_id": "fsanz-food-basics"
+    },
+    {
+      "id": "fsanz-emergency",
+      "raw_source": {
+        "id": "fsanz-emergency",
+        "url": "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/food-safety-in-an-emergency",
+        "final_url": "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/food-safety-in-an-emergency",
+        "retrieved_at": "2026-11-26",
+        "bytes": 188838,
+        "raw_sha256": "ca3c1cfcad9780e7c1f07b526a0d3ce926819a552db8a3da66fea7413aa3dc3a",
+        "rights_links": [
+          {
+            "text": "Copyright",
+            "href": "/legal-policies/copyright"
+          },
+          {
+            "text": "Disclaimer",
+            "href": "/legal-policies/disclaimer"
+          },
+          {
+            "text": "© Food Standards Australia New Zealand",
+            "href": "/legal-policies/copyright"
+          }
+        ]
+      },
+      "selector": ".field-body-",
+      "source_title": "Food safety in an emergency",
+      "source_updated": "2025-10-02",
+      "normalized_source_text": "There are a few things to remember before, during and after and emergency to keep your food safe Before Have a supply of long-life items including milk, bottled water and canned goods. Prepare eskies with ice bricks or gel packs to keep food cold if the power goes out. Keep a can opener handy. Don't forget about food for infants or pets. Store food somewhere above floodwater if there's a risk of flooding. Have a supply of drinking-quality water, detergent, bleach and alcohol-based hand sanitiser. During Keep food cold, clean and check the label. Keep the fridge door closed as much as possible. A fridge should keep food cold for around four hours - after that it can begin to spoil. Keep the freezer door closed as much as possible. A freezer shouldn't defrost for around 24 hours. If frozen foods have thawed don't refreeze! After Use alcohol-based hand sanitiser to wash hands if drinking water is limited. Throw out food that has touched flood water or has an unusual smell, colour or texture. Don't taste it to see if it's OK. Check canned foods and throw out any cans that are dented, swollen, damaged or leaking. Throw out food that has been near fire, including food in cans and jars even if they appear OK. If in doubt, throw it out! For more information on food safety during and emergency, please visit state and territory website below: Australia New South Wales Food Authority Queensland Health Victorian Department of Health and Human Services Australian Capital Territory Health South Australian Health Northern Territory Health Western Australian Health New Zealand New Zealand Health Ministry for Primary Industries There is general advice about food safety on the Food Safety Information Council 's website.",
+      "source_text_without_whitespace": "Thereareafewthingstorememberbefore,duringandafterandemergencytokeepyourfoodsafeBeforeHaveasupplyoflong-lifeitemsincludingmilk,bottledwaterandcannedgoods.Prepareeskieswithicebricksorgelpackstokeepfoodcoldifthepowergoesout.Keepacanopenerhandy.Don'tforgetaboutfoodforinfantsorpets.Storefoodsomewhereabovefloodwaterifthere'sariskofflooding.Haveasupplyofdrinking-qualitywater,detergent,bleachandalcohol-basedhandsanitiser.DuringKeepfoodcold,cleanandcheckthelabel.Keepthefridgedoorclosedasmuchaspossible.Afridgeshouldkeepfoodcoldforaroundfourhours-afterthatitcanbegintospoil.Keepthefreezerdoorclosedasmuchaspossible.Afreezershouldn'tdefrostforaround24hours.Iffrozenfoodshavethaweddon'trefreeze!AfterUsealcohol-basedhandsanitisertowashhandsifdrinkingwaterislimited.Throwoutfoodthathastouchedfloodwaterorhasanunusualsmell,colourortexture.Don'ttasteittoseeifit'sOK.Checkcannedfoodsandthrowoutanycansthataredented,swollen,damagedorleaking.Throwoutfoodthathasbeennearfire,includingfoodincansandjarseveniftheyappearOK.Ifindoubt,throwitout!Formoreinformationonfoodsafetyduringandemergency,pleasevisitstateandterritorywebsitebelow:AustraliaNewSouthWalesFoodAuthorityQueenslandHealthVictorianDepartmentofHealthandHumanServicesAustralianCapitalTerritoryHealthSouthAustralianHealthNorthernTerritoryHealthWesternAustralianHealthNewZealandNewZealandHealthMinistryforPrimaryIndustriesThereisgeneraladviceaboutfoodsafetyontheFoodSafetyInformationCouncil'swebsite.",
+      "source_text_sha256": "2c64ec3685539544df4063bbe1ce533a34130b3add4f6248f2725866d719db21",
+      "body_html_sha256": "13a7b389ca11bb8eec872aa2568dae1e83bb523b32e8e18edbf651da65d11c78",
+      "removed_media_elements": [],
+      "source_words_and_order_preserved": true,
+      "link_labels_retained_targets_and_media_not_bundled": true,
+      "reader_id": "fsanz-food-emergency"
+    },
+    {
+      "id": "fsanz-flood",
+      "raw_source": {
+        "id": "fsanz-flood",
+        "url": "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/floods-and-food-safety",
+        "final_url": "https://www.foodstandards.gov.au/consumer/prevention-of-foodborne-illness/floods-and-food-safety",
+        "retrieved_at": "2026-11-26",
+        "bytes": 191496,
+        "raw_sha256": "5116c6ff3edefeb786e1d2c3936bf589ed33d6c7dd65ceb84816326f8900bd55",
+        "rights_links": [
+          {
+            "text": "Copyright",
+            "href": "/legal-policies/copyright"
+          },
+          {
+            "text": "Disclaimer",
+            "href": "/legal-policies/disclaimer"
+          },
+          {
+            "text": "© Food Standards Australia New Zealand",
+            "href": "/legal-policies/copyright"
+          }
+        ]
+      },
+      "selector": ".field-body-",
+      "source_title": "Floods and food safety",
+      "source_updated": "2025-10-02",
+      "normalized_source_text": "Floodwater can be contaminated with harmful microorganisms and poisons from sewage, animals, agricultural and industrial waste, and other substances that can cause illness. Any food, packaging, surfaces and cooking utensils that have come into contact with floodwater might be contaminated and unsafe. Water supplies might also be unsafe. There could also be a power outage with a flood, which could affect food refrigeration and cooking. Here are some tips to help you make sure your food will be safe to eat if there is a flood. Preparing at home If you know a flood could be coming and you are in an area that could be affected: Move food supplies and equipment to another area, away from the predicted flooding. Store food on shelves and in containers that will be safely out of the way of flood water. Use ice bricks, ice, or insulated bags and containers to keep cold food cold if the power goes out. Have some essential supplies handy like bottled water, long-life foods, bleach and hand sanitiser - see food safety in an emergency . After a flood To be sure your food is safe to eat, you need to make sure it has not been contaminated (i.e. has not come in contact with flood water) and that it's been kept at a safe temperature, especially for foods that need to be kept cold. You also need to make sure all the things used for storing, cooking and eating food are safe before you use them again. Throw out any unsafe food You will need to throw out any food that could be unsafe (see below). Contaminated floodwater may have got into food, packaging and storage equipment. Do not taste or cook flood-affected food - even food that looks or smells safe could be dangerous. Throw out: any food, packaged or unpackaged, that has been in contact with flood water, including foods in refrigerators or freezers, because the seals are not water tight any cans that are dented, swollen or damaged any food that has an unusual smell, texture or colour any packaging that has contacted flood water or is punctured, torn, swollen, rusted or damaged if the power is out: any refrigerated food that has not been kept cold - it can be unsafe once it's been at room temperature for 4 hours any food that was being cooked and did not cook all the way through anything else you are not sure is safe - when in doubt, throw it out. Make sure affected food is separated from other food, and safely thrown away where consumers or passers-by can not collect it. Councils might organise special collections. Can any food be kept? If you have any doubts about the food, throw it out. Some cans and retort pouches might be able to be saved if they have not touched flood water and look undamaged. They will need to be cleaned and surface sanitised - for example by removing the label, washing the can thoroughly, immersing it in bleach for 1 minute, rinsing it in clean water and then relabelling with a marker. NOTE for food businesses: salvaging cans and pouches for sale is not recommended for food businesses. Food must not be relabelled unless the business has permission from the relevant food regulator. Clean and sanitise surfaces, equipment and utensils Check pots, pans, dishes, cutlery and kitchen equipment that might have been in contact with floodwater, and: Throw away the following items, as they cannot be properly sanitised: any damaged or cracked items items made from porous material (e.g. wood, plastic, rubber) including chopping boards Wash utensils and surfaces: use hot, soapy, drinking-quality water take apart and clean kitchen equipment designed to be taken apart rinse in clean, hot water Sanitise: most dishwashers can sanitise eating and cooking utensils (we recommend using the longest hottest cycle) for silverware, metal utensils, pots, pans and disassembled kitchen equipment - immerse items for 10 minutes in boiling water for glass, porcelain, china and enamel-ware dishes - immerse items for 10 minutes in a disinfecting solution of 1 tablespoon of chlorine bleach per 2 litres of hot water, then rinse Dry items by allowing them to air dry, rather than using towels that might be contaminated. Clean cupboards and counters with hot soapy water, then rinse with a chlorine bleach solution.  Look out for mould on timber and porous building materials and re-treat surfaces if necessary. Water safety In a flood, the tap water and private water supplies (e.g. tanks, wells and bores) might not be safe to drink or use for cooking and cleaning. Check for public announcements to know if tap water is safe to consume or use, such as for washing utensils or fresh produce. Private water supplies should be tested before using - contact your local council. If the water is unsafe: use bottled or boiled water for washing hands, utensils and surfaces; for cooking or preparing food; and for making ice if you need to boil water: bring it to a rolling boil with an automatic kettle or on the stove, allow it to cool and store it in the refrigerator in a clean, lidded container you may need to treat water with chlorine or iodine - follow the instructions on the bottle or packet use hand sanitiser for your hands if clean water and soap are not available. Food businesses Businesses must not sell any food that is unsafe or unsuitable. Use only drinking-quality (potable) water for activities on food premises. Contact your food regulatory agency for assistance before re-opening your business.",
+      "source_text_without_whitespace": "Floodwatercanbecontaminatedwithharmfulmicroorganismsandpoisonsfromsewage,animals,agriculturalandindustrialwaste,andothersubstancesthatcancauseillness.Anyfood,packaging,surfacesandcookingutensilsthathavecomeintocontactwithfloodwatermightbecontaminatedandunsafe.Watersuppliesmightalsobeunsafe.Therecouldalsobeapoweroutagewithaflood,whichcouldaffectfoodrefrigerationandcooking.Herearesometipstohelpyoumakesureyourfoodwillbesafetoeatifthereisaflood.PreparingathomeIfyouknowafloodcouldbecomingandyouareinanareathatcouldbeaffected:Movefoodsuppliesandequipmenttoanotherarea,awayfromthepredictedflooding.Storefoodonshelvesandincontainersthatwillbesafelyoutofthewayoffloodwater.Useicebricks,ice,orinsulatedbagsandcontainerstokeepcoldfoodcoldifthepowergoesout.Havesomeessentialsupplieshandylikebottledwater,long-lifefoods,bleachandhandsanitiser-seefoodsafetyinanemergency.AfterafloodTobesureyourfoodissafetoeat,youneedtomakesureithasnotbeencontaminated(i.e.hasnotcomeincontactwithfloodwater)andthatit'sbeenkeptatasafetemperature,especiallyforfoodsthatneedtobekeptcold.Youalsoneedtomakesureallthethingsusedforstoring,cookingandeatingfoodaresafebeforeyouusethemagain.ThrowoutanyunsafefoodYouwillneedtothrowoutanyfoodthatcouldbeunsafe(seebelow).Contaminatedfloodwatermayhavegotintofood,packagingandstorageequipment.Donottasteorcookflood-affectedfood-evenfoodthatlooksorsmellssafecouldbedangerous.Throwout:anyfood,packagedorunpackaged,thathasbeenincontactwithfloodwater,includingfoodsinrefrigeratorsorfreezers,becausethesealsarenotwatertightanycansthataredented,swollenordamagedanyfoodthathasanunusualsmell,textureorcolouranypackagingthathascontactedfloodwaterorispunctured,torn,swollen,rustedordamagedifthepowerisout:anyrefrigeratedfoodthathasnotbeenkeptcold-itcanbeunsafeonceit'sbeenatroomtemperaturefor4hoursanyfoodthatwasbeingcookedanddidnotcookallthewaythroughanythingelseyouarenotsureissafe-whenindoubt,throwitout.Makesureaffectedfoodisseparatedfromotherfood,andsafelythrownawaywhereconsumersorpassers-bycannotcollectit.Councilsmightorganisespecialcollections.Cananyfoodbekept?Ifyouhaveanydoubtsaboutthefood,throwitout.Somecansandretortpouchesmightbeabletobesavediftheyhavenottouchedfloodwaterandlookundamaged.Theywillneedtobecleanedandsurfacesanitised-forexamplebyremovingthelabel,washingthecanthoroughly,immersingitinbleachfor1minute,rinsingitincleanwaterandthenrelabellingwithamarker.NOTEforfoodbusinesses:salvagingcansandpouchesforsaleisnotrecommendedforfoodbusinesses.Foodmustnotberelabelledunlessthebusinesshaspermissionfromtherelevantfoodregulator.Cleanandsanitisesurfaces,equipmentandutensilsCheckpots,pans,dishes,cutleryandkitchenequipmentthatmighthavebeenincontactwithfloodwater,and:Throwawaythefollowingitems,astheycannotbeproperlysanitised:anydamagedorcrackeditemsitemsmadefromporousmaterial(e.g.wood,plastic,rubber)includingchoppingboardsWashutensilsandsurfaces:usehot,soapy,drinking-qualitywatertakeapartandcleankitchenequipmentdesignedtobetakenapartrinseinclean,hotwaterSanitise:mostdishwasherscansanitiseeatingandcookingutensils(werecommendusingthelongesthottestcycle)forsilverware,metalutensils,pots,pansanddisassembledkitchenequipment-immerseitemsfor10minutesinboilingwaterforglass,porcelain,chinaandenamel-waredishes-immerseitemsfor10minutesinadisinfectingsolutionof1tablespoonofchlorinebleachper2litresofhotwater,thenrinseDryitemsbyallowingthemtoairdry,ratherthanusingtowelsthatmightbecontaminated.Cleancupboardsandcounterswithhotsoapywater,thenrinsewithachlorinebleachsolution.Lookoutformouldontimberandporousbuildingmaterialsandre-treatsurfacesifnecessary.WatersafetyInaflood,thetapwaterandprivatewatersupplies(e.g.tanks,wellsandbores)mightnotbesafetodrinkoruseforcookingandcleaning.Checkforpublicannouncementstoknowiftapwaterissafetoconsumeoruse,suchasforwashingutensilsorfreshproduce.Privatewatersuppliesshouldbetestedbeforeusing-contactyourlocalcouncil.Ifthewaterisunsafe:usebottledorboiledwaterforwashinghands,utensilsandsurfaces;forcookingorpreparingfood;andformakingiceifyouneedtoboilwater:bringittoarollingboilwithanautomatickettleoronthestove,allowittocoolandstoreitintherefrigeratorinaclean,liddedcontaineryoumayneedtotreatwaterwithchlorineoriodine-followtheinstructionsonthebottleorpacketusehandsanitiserforyourhandsifcleanwaterandsoaparenotavailable.FoodbusinessesBusinessesmustnotsellanyfoodthatisunsafeorunsuitable.Useonlydrinking-quality(potable)waterforactivitiesonfoodpremises.Contactyourfoodregulatoryagencyforassistancebeforere-openingyourbusiness.",
+      "source_text_sha256": "9891b8123ba3315e8c853d34afaa707ddc3042cb1e9053d8c23c9b9de362a002",
+      "body_html_sha256": "c3a114d31fe55a6b323a77ecf08aed6e2926d3fd1f7336e4d5cabb96ac46ce71",
+      "removed_media_elements": [],
+      "source_words_and_order_preserved": true,
+      "link_labels_retained_targets_and_media_not_bundled": true,
+      "reader_id": "fsanz-food-flood"
+    }
+  ],
+  "rights_decision": "Each consumer page links exact-site copyright policy. General CC BY4 grant except logo/third-party material; no overriding article notice found. No images,logos,videos,external source bodies or linked PDFs included. Policy label retained; licence URL is CC BY4 International.",
+  "policy_raw_sha256": "855fb4b22fefb10f3b3dd7235bc8c6a8ba303ff34399b8722a498246a488bc27",
+  "excluded": [
+    "Business 2-hour/4-hour page and separate regulatory cooling rules are not substituted for the consumer article.",
+    "Linked vulnerable-person,CSIRO,video,recall and regional sources are not bundled.",
+    "No inferred current water declaration,recall status or device-specific refrigerator performance."
+  ]
+}

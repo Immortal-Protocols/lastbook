@@ -1,0 +1,63 @@
+{
+  "checked": "2026-11-27",
+  "public_records": 125,
+  "official_practical": 100,
+  "rights_readings": 16,
+  "original_records": 9,
+  "new_source": "nsw-aboriginal-planning",
+  "source_current_as_at": "2025-10-28",
+  "source_wording": "complete written overview unchanged;technical HTML simplification;one trailing layout space removed",
+  "guide_references_added": 8,
+  "household_rural_access": "identical choice/prepare/learn;health prepare/learn",
+  "full_checks": {
+    "content": 868,
+    "combined": 1016,
+    "skips_each": 5,
+    "upstream_expected_failures_each": 11
+  },
+  "full_scope": "Full suites passed before the final whitespace-only source HTML cleanup;runtime/guides/source wording unchanged by cleanup.",
+  "final_focused": {
+    "development_python": "3.14",
+    "app_python": "3.11.18",
+    "checks_each": 72
+  },
+  "engine": "All125reader hashes,search/snippets,scoped retrieval,libq and new8refs pass with sockets forbidden",
+  "native": {
+    "checked": "2026-11-27",
+    "status": "passed",
+    "new_readers_opened": 1,
+    "household_rural_choices": 2,
+    "source": "nsw-aboriginal-planning",
+    "source_date": "2025-10-28",
+    "page_rendered": true,
+    "text_only_opened": true,
+    "body": "Five considerations and four strategies visually inspected; full source/resource lists present in native AX tree",
+    "source_scope_and_linked_resource_exclusion_visible": true,
+    "source_details": "NSW Ministry of Health;2025edition;2026saved date",
+    "ask_context": "correct source and page1; no question submitted",
+    "local_rights_link": "outer title/source/Ask updated to nsw-health-copyright; Back returned to new reading",
+    "left_open": "New NSW planning reading from rural choice",
+    "audio_used": false,
+    "clinical_or_community_endorsement_claim": false
+  },
+  "not_claimed": "Community endorsement,local community plans,clinical review,linked manuals/toolkits,current service status,official Setup availability or complete Australian coverage",
+  "real_public_composition": {
+    "base_records": 314,
+    "added_records": 125,
+    "records": 439,
+    "original_search_units": 12750,
+    "search_units": 12875,
+    "base_inventory_and_all_file_hashes": "unchanged",
+    "base_preserved_files": 1256,
+    "base_preserved_file_bytes": 9287617106,
+    "original_catalog_records_and_fts_rowids_pages_bodies": "unchanged",
+    "existing_map_metadata_and_engine_check": "unchanged",
+    "public_source_hashes": 125,
+    "verified_files": 1514,
+    "network_socket_attempts": 0,
+    "verified_existing_snapshot": true,
+    "outer_preflight_note": "Initial outer metadata inventory assertion changed after successful composition; exact path delta was not captured. Composer own before/after guards passed. Read-only resumption verifies current base bytes, retained files, catalogue hash and every original search row; no rebuild.",
+    "limits": "Private local test copy only. No native-window, Windows/Linux-native, official Setup or redistribution claim."
+  },
+  "scope_after_public_split": "Historical public source/composition review; personal-original workflow review moved to a follow-up."
+}

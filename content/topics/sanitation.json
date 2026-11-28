@@ -38,6 +38,11 @@
    "hint": "No water, earthquake, broken sewer line, loo won't flush",
    "read": [
     {
+     "doc": "nsw-flooded-wastewater",
+     "label": "New South Wales: NSW: flooded septic and on-site wastewater systems",
+     "note": "NSW Health source 4 April 2023. Flood-affected septic/AWTS assessment, council approval and undamaged temporary-holding conditions; this does not provide a sewer-backup cleanup procedure or an emergency-toilet design."
+    },
+    {
      "doc": "5cd0b4e41cc479",
      "page": 74,
      "label": "After an earthquake: check sewer lines before using drains",
@@ -204,6 +209,11 @@
    "label": "Sewage or flood water got into the house",
    "hint": "Backed-up drains, flooded rooms, mud",
    "read": [
+    {
+     "doc": "nsw-flooded-wastewater",
+     "label": "New South Wales: NSW: flooded septic and on-site wastewater systems",
+     "note": "NSW Health source 4 April 2023. Flood-affected septic/AWTS assessment, council approval and undamaged temporary-holding conditions; this does not provide a sewer-backup cleanup procedure or an emergency-toilet design."
+    },
     {
      "doc": "1f738924576334",
      "page": 9,

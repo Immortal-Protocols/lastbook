@@ -63,6 +63,23 @@ def parts_refused(parts,folders=False):
  """Run on what a path really resolves to: a link can end at "x.info.json:s", which the name check alone would pass."""
  return name_refused(parts) or (folders and folder_refused(parts)) or not segments_ok('/'.join(parts))
 
+def library_file_ok(root,path,folders=False,served_only=False):
+ """The reader's local path policy, also used before offering guide readings."""
+ root=Path(root)
+ try:
+  if os.path.isfile(path) and os.stat(path).st_nlink>1:return False
+  asked=parts_below(os.path.abspath(path),root)
+  if asked is None or parts_refused(asked,folders):return False
+  real=real_path(path)
+  for folder in SERVED_FOLDERS:
+   parts=parts_below(real,real_path(root/folder))
+   if parts is not None:return not parts_refused((*folder.split('/'),*parts),folders)
+  parts=parts_below(real,real_path(root))
+  if parts is None or parts_refused(parts,folders):return False
+  return not served_only or parts in ((),('reader.css',))
+ except (OSError,ValueError):return False
+
+
 def zim_file(name):
  """The file behind a /zim/<name>/ address, after the same checks as any other file; ValueError if refused.
  engine/safe_paths.py holds the check, so Chat's encyclopedia search and citations refuse exactly what this does."""
@@ -302,19 +319,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
  def log_message(self,*args):pass
  SERVED_ONLY=False  # True: a file must really sit in a served folder, not just somewhere in the library
  def file_ok(self,path,folders=False):
-  """May this translated path be read, judged by where it really leads? Links and junctions leaving the allowed places are refused."""
-  try:
-   if os.path.isfile(path) and os.stat(path).st_nlink>1:return False  # a hard link looks like an ordinary file at an ordinary path, so the real-path checks below cannot see where else it lives
-   asked=parts_below(os.path.abspath(path),ROOT)
-   if asked is None or parts_refused(asked,folders):return False
-   real=real_path(path)
-   for folder in SERVED_FOLDERS:
-    parts=parts_below(real,real_path(ROOT/folder))
-    if parts is not None:return not parts_refused((*folder.split('/'),*parts),folders)
-   parts=parts_below(real,real_path(ROOT))
-   if parts is None or parts_refused(parts,folders):return False
-   return not self.SERVED_ONLY or parts in ((),('reader.css',))
-  except (OSError,ValueError):return False
+  return library_file_ok(ROOT,path,folders,self.SERVED_ONLY)
  def send_head(self):
   path=self.translate_path(self.path)
   if not self.file_ok(path,folders=True):

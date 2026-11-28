@@ -164,7 +164,7 @@ def public(r, full=False):
         out['remote'] = rem.get('host')
     if full:
         for k in ('notes', 'edition', 'retrieved_at', 'source_url', 'license', 'license_url', 'searchability',
-                  'upload_date', 'publication_date', 'model', 'course', 'level', 'caption_type'):
+                  'upload_date', 'publication_date', 'model', 'course', 'level', 'caption_type', 'language'):
             if r.get(k):
                 out[k] = r[k]
         if r['kind'] == 'transcript' and r.get('video_path'):

@@ -8,16 +8,17 @@ const Speak = (() => {
   let run = 0;       // the current reading; a newer one (or stop) makes an older one's callbacks do nothing
 
   const localVoices = () => (synth ? synth.getVoices() : []).filter(v => v.localService);
-  function voice() {
-    const all = localVoices(), want = (navigator.language || 'en').toLowerCase(), base = want.split('-')[0];
-    return all.find(v => v.default && v.lang.toLowerCase().startsWith(base)) || all.find(v => v.lang.toLowerCase() === want)
-      || all.find(v => v.lang.toLowerCase().startsWith(base)) || null;   // no voice in the reader's language: no reading
+  function voice(language) {
+    const all = localVoices(), want = (typeof language === 'string' && language.trim() ? language.trim() : navigator.language || 'en').toLowerCase(), base = want.split('-')[0];
+    const matches = v => v.lang.toLowerCase().split('-')[0] === base;
+    return all.find(v => v.lang.toLowerCase() === want) || all.find(v => v.default && matches(v))
+      || all.find(matches) || null;   // no local voice in the document's language: no reading
   }
   // Ready when the system has listed its voices (some list them a moment after the page loads).
-  const ready = () => new Promise(res => {
+  const ready = language => new Promise(res => {
     if (!synth) return res(false);
-    if (synth.getVoices().length) return res(!!voice());
-    const done = () => res(!!voice());
+    if (synth.getVoices().length) return res(!!voice(language));
+    const done = () => res(!!voice(language));
     synth.addEventListener('voiceschanged', done, { once: true });
     setTimeout(done, 1500);
   });
@@ -61,9 +62,9 @@ const Speak = (() => {
     if (synth) synth.cancel();
   }
   // Speak the pieces one after another; onend runs only when the last one finished (not when stopped).
-  function say(text, onend) {
+  function say(text, onend, language) {
     stop();
-    const me = run, v = voice(), list = v ? pieces(text) : [];
+    const me = run, v = voice(language), list = v ? pieces(text) : [];
     let i = 0;
     const next = () => {
       if (me !== run) return;
@@ -79,7 +80,7 @@ const Speak = (() => {
   }
 
   /* A Read aloud button: getText() gives what to read; then(), if given, runs when it has all been read (the next page). */
-  function attach(btn, getText, then) {
+  function attach(btn, getText, then, language) {
     let on = false;
     const label = $('span', btn);
     // The name says what pressing it does, so it changes (Read aloud / Stop reading) and carries no aria-pressed: "Stop reading,
@@ -97,9 +98,9 @@ const Speak = (() => {
       let text = '';
       try { text = await getText() } catch { }
       if (!on) return;   // stopped while the text was loading
-      if (!say(text, () => { show(false); if (then) then() })) show(false);
+      if (!say(text, () => { show(false); if (then) then() }, language)) show(false);
     });
-    ready().then(ok => { btn.hidden = !ok });
+    ready(language).then(ok => { btn.hidden = !ok });
     return () => { stop(); show(false); document.removeEventListener('keydown', onKey) };
   }
 

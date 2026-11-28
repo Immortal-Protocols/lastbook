@@ -915,6 +915,13 @@ function wireMoments({ video = null, player = null, available = null, start = nu
 }
 
 /* ------------------------------------------------------------- reader -- */
+function plainReadingText(text) {
+  // Isolate numeric runs: in RTL paragraphs even a phone number's space can
+  // reorder its groups. The indexed and spoken text, and every digit, stay as-is.
+  return String(text).split(/([+\-−]?(?:\p{Nd}|\.\p{Nd})(?:[\p{Nd} \t.,:/+\-−٫٬]*\p{Nd})?)/gu)
+    .map((part, i) => i % 2 ? `<bdi dir="ltr">${esc(part)}</bdi>` : esc(part)).join('');
+}
+
 async function reader(id, page, from, view) {
   const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
   if (stale(me)) return;   // the person has gone to another page
@@ -960,14 +967,14 @@ async function reader(id, page, from, view) {
       hadText = !!(t.text || '').trim();
       if (!hadText) toast('This page has no text that can be read aloud.');
       return hadText ? (isPdf ? `Page ${page}. ` : '') + t.text : 'This page has no text that can be read aloud.';
-    }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null);
+    }, isPdf && page < total ? () => { if (!hadText) return; try { sessionStorage.setItem('sg.speakOn', id) } catch { } location.hash = go(page + 1) } : null, d.language);
     let goingOn = null;
     try { goingOn = sessionStorage.getItem('sg.speakOn'); sessionStorage.removeItem('sg.speakOn') } catch { }
     // Reading went on to this page by itself: keyboard focus goes back to Stop when route() has finished and put it on the page's
     // start (startHere), so stopping is one key away, not a walk through the sidebar and toolbar while the voice goes on.
     if (goingOn === id) {
       focusAfterRoute = sb;
-      Speak.ready().then(ok => {
+      Speak.ready(d.language).then(ok => {
         if (!ok || !sb.isConnected) return;
         sb.click();
         if (document.activeElement === $('#pageTop')) sb.focus({ preventScroll: true });   // the voices were listed after the page settled
@@ -997,7 +1004,8 @@ async function reader(id, page, from, view) {
     try {
       const t = await api(`/api/page/${encodeURIComponent(id)}/${isPdf ? page : 1}`);
       const txt = (t.text || '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-      body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext">${esc(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
+      const language = typeof d.language === 'string' && d.language.trim() ? ` lang="${esc(d.language)}"` : '';
+      body.innerHTML = `${isPdf || isWeb ? '<div class="notice small">Text pulled out of the original automatically — tables, diagrams and warning boxes can be lost or out of order. Check the Page view for anything important.</div>' : ''}<div class="pagetext"${language} dir="auto">${plainReadingText(txt) || '<span class="muted">No text on this page (it may be a picture or blank).</span>'}</div>`;
     } catch (e) { body.innerHTML = errorBox(e, 'Couldn’t load the text.') }
   }
   if (!isPdf) return;

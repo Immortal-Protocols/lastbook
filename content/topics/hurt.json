@@ -120,6 +120,7 @@
    "id": "bleeding",
    "label": "Bleeding, a cut or a wound",
    "hint": "Heavy bleeding, deep cut, tourniquet, dirty wound, wound getting red or swollen",
+   "urgent": ["heavy bleeding", "bleeding heavily", "bleeding badly", "bleeding a lot", "bleeding won't stop", "bleeding wont stop", "won't stop bleeding", "wont stop bleeding", "bleeding out", "spurting blood", "blood everywhere", "lots of blood"],
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -175,6 +176,7 @@
    "id": "burn",
    "label": "Burn or scald",
    "hint": "Burnt or burned by fire, hot water, cooking oil, chemicals, electricity, electrocuted",
+   "urgent": ["clothes on fire", "clothing on fire", "his clothes are on fire", "her clothes are on fire", "clothes caught fire", "clothing caught fire"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -231,7 +233,7 @@
    "id": "breathing",
    "label": "Not breathing, unconscious or choking",
    "hint": "Collapsed or fainted, not responding, heart stopped (cardiac arrest), AED or defibrillator, can't breathe, gasping, food stuck in throat, drowning",
-   "urgent": ["not breathing", "stopped breathing", "isn't breathing", "isnt breathing", "unconscious", "cardiac arrest", "heart stopped", "heart has stopped"],
+   "urgent": ["not breathing", "stopped breathing", "isn't breathing", "isnt breathing", "unconscious", "cardiac arrest", "heart stopped", "heart has stopped", "no pulse", "passed out", "won't wake up", "wont wake up", "not waking up", "drowning", "drowned", "he is choking", "she is choking", "child is choking"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -312,7 +314,7 @@
    "id": "heatcold",
    "label": "Too hot or too cold (heat stroke, hypothermia, frostbite)",
    "hint": "Heatstroke or heat wave, no AC, confused and hot, shivering, frostnip, numb white fingers",
-   "urgent": ["heat stroke", "sun stroke", "stroke from the heat", "stroke in the heat"],
+   "urgent": ["heat stroke", "sun stroke", "stroke from the heat", "stroke in the heat", "heatstroke", "hypothermia"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -344,6 +346,7 @@
    "id": "allergy",
    "label": "Severe allergic reaction",
    "hint": "Swollen lips or throat, trouble breathing or can't breathe, hives after a sting, food or medicine",
+   "urgent": ["anaphylaxis", "anaphylactic", "throat swelling", "throat is swelling", "throat closing", "throat is closing", "swollen throat", "tongue swelling", "tongue is swelling"],
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",
@@ -363,6 +366,7 @@
    "id": "snakebite",
    "label": "Snakebite",
    "hint": "Bitten by a snake, rattlesnake, fang marks, venomous or harmless",
+   "urgent": ["snake bite", "snakebite", "bitten by a snake", "bit by a snake", "snake bit"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -427,6 +431,7 @@
    "id": "poison",
    "label": "Poisoning: swallowed a chemical, medicine or pesticide",
    "hint": "Poisoned by a cleaning product, rat poison, too many pills (overdose), fuel, button battery, a child got into something",
+   "urgent": ["overdose", "overdosed", "took too many pills", "swallowed bleach", "drank bleach", "swallowed poison", "swallowed pills", "has been poisoned", "was poisoned"],
    "read": [
     {
      "doc": "med-2e83e22162a9a006",
@@ -477,7 +482,7 @@
    "id": "sudden",
    "label": "Chest pain, stroke signs, seizure or diabetic emergency",
    "hint": "Crushing chest pain or heart attack, face drooping, fit or convulsion, diabetic acting confused",
-   "urgent": ["stroke"],
+   "urgent": ["stroke", "heart attack", "having a stroke", "had a stroke", "face drooping", "drooping face", "slurred speech", "seizure", "seizures", "having a seizure", "convulsions", "having a fit"],
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",

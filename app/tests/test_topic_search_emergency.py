@@ -84,12 +84,12 @@ COUNTER = [
 # command in this file's docstring. Where this differs from EMERGENCY, that difference is #154: the gap this
 # fixture exists to make visible.
 BASE_FIRST = {
-    'treat water in the lungs after drowning': ['water', 'keepclean'],
+    'treat water in the lungs after drowning': ['hurt', 'breathing'],        # ['water', 'keepclean'] before the `urgent` phrases "drowning" and "drowned"
     'someone fell in the rainwater pool and is not breathing': ['hurt', 'breathing'],
     'my son nearly drowned in the rainwater pool': ['water', 'outside'],
     'i burnt my fingers lighting the campfire': ['hurt', 'burn'],             # ['hurt', 'heatcold'] on 9542e80
     'burned my hand trying to light a fire': ['hurt', 'burn'],                # ['disaster', 'earthquake-after'] on 9542e80
-    'my clothes caught fire while starting the fire': ['disaster', 'earthquake-after'],
+    'my clothes caught fire while starting the fire': ['hurt', 'burn'],      # ['disaster', 'earthquake-after'] before the burn choice's "clothes caught fire"
     'i burned my hand on the camp stove': ['food', 'cook'],
     'my child swallowed lamp oil': ['hurt', 'poison'],
     'carbon monoxide from making a fire in the tent': ['shelter', 'co'],        # ['shelter', 'damaged'] on 1d847d0 + #44
@@ -111,9 +111,7 @@ BASE_FIRST = {
 # A fix for #154 should shrink this to nothing without touching BASE_FIRST for COUNTER. When this changes, the
 # PR changes this table on purpose, which is the point: the score is reviewed, not assumed.
 KNOWN_GAPS = {
-    'treat water in the lungs after drowning': 0.0,
     'my son nearly drowned in the rainwater pool': 0.0,
-    'my clothes caught fire while starting the fire': 0.0,
     'i burned my hand on the camp stove': 0.0,
 }
 
@@ -179,18 +177,18 @@ BASE_FIRST.update({   # measured on f41b6ce
     'unconscious after the house fire': ['hurt', 'breathing'],
     'not breathing after the earthquake': ['hurt', 'breathing'],
     'heart stopped while shoveling snow': ['hurt', 'breathing'],
-    'passed out from the generator fumes': ['shelter', 'co'],
-    'heavy bleeding after the earthquake': ['hurt', 'shock'],
+    'passed out from the generator fumes': ['hurt', 'breathing'],   # ['shelter', 'co'] before the `urgent` phrase "passed out"
+    'heavy bleeding after the earthquake': ['hurt', 'bleeding'],   # ['hurt', 'shock'] before the `urgent` phrase "heavy bleeding"
     'deep cut from broken glass in the flood water': ['water', 'unsafe'],
-    "bleeding won't stop after a chainsaw accident": ['disaster', 'earthquake-after'],
+    "bleeding won't stop after a chainsaw accident": ['hurt', 'bleeding'],   # ['disaster', 'earthquake-after'] before the `urgent` phrase "bleeding won't stop"
     'throat swelling after eating peanuts at dinner': ['hurt', 'allergy'],
     'swollen lips after a bee sting while camping': ['hurt', 'allergy'],
     'child swallowed bleach while cleaning after the flood': ['hurt', 'poison'],
     'drank gasoline from the generator can by mistake': ['repair', 'engine'],
     'toddler swallowed a button battery during the power outage': ['power', 'batteries-solar'],
-    'seizure during the power outage': ['shelter', 'co'],
+    'seizure during the power outage': ['hurt', 'sudden'],   # ['shelter', 'co'] before the `urgent` phrase "seizure"
     'chest pain while carrying sandbags': ['hurt', 'sudden'],
-    'face drooping during the heat wave': ['shelter', 'heat'],
+    'face drooping during the heat wave': ['hurt', 'sudden'],   # ['shelter', 'heat'] before the `urgent` phrase "face drooping"
     'diabetic acting confused during the blackout': ['hurt', 'sudden'],
     'confused and very hot during the heat wave': ['shelter', 'heat'],
     'shivering and confused after falling in the cold lake': ['hurt', 'heatcold'],

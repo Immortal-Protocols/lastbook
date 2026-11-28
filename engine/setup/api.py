@@ -1587,6 +1587,22 @@ class Setup:
             plan['model_ok'] = not ours              # Repair downloaded it only if the installed one was damaged or missing
         if not plan['switch'] and self.current:      # the library open now: the AI can use it at once
             self._mark_checked(dest, m['sha256'])
+        self._meaning_red(lib, control)
+
+    def _meaning_red(self, lib, control):
+        """With the local AI model, the meaning check's two files (a small GGUF and the centroids) (engine/meaning_red.py), from
+        Hugging Face through download.py with their SHA-256, unless the app has them. Only in the product, and only here, after
+        the person chose the model. A failure leaves the urgent words alone deciding; the model's install goes on."""
+        if self.allowed is not None:     # tests reach a local server only
+            return
+        try:
+            from engine import meaning_red
+            got = meaning_red.fetch(control, dest=Path(lib) / meaning_red.SUBDIR)
+            print(f'setup: meaning check files: {got}', flush=True)
+        except download.Stopped:
+            raise
+        except Exception as e:
+            print('setup: meaning check files not downloaded:', type(e).__name__, str(e)[:200], flush=True)
 
     def _mark_checked(self, path, sha256):
         llm = self.llm()

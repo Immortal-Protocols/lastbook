@@ -155,6 +155,7 @@
    "id": "co",
    "label": "Using a generator, heater, grill or stove for power or heat",
    "hint": "Power outage, space heater, kerosene or paraffin heater, camp stove, headache or dizziness indoors, carbon monoxide",
+   "urgent": ["carbon monoxide poisoning", "co poisoning"],
    "read": [
     {
      "doc": "18bf4604bf28c4",

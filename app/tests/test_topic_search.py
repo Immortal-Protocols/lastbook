@@ -152,7 +152,7 @@ URGENT_FIRST = {
     'bleeding through the bandage': ['hurt', 'bleeding'], 'bleeding wont stop bandage soaked': ['hurt', 'bleeding'],
     'unconscious bleeding bandage': ['hurt', 'breathing'], 'bandage a burn': ['hurt', 'burn'], 'duct tape wound': ['hurt', 'bleeding'],
     'bruise on head after fall': ['hurt', 'head'], 'head injury bruise': ['hurt', 'head'], 'bruised and bleeding': ['hurt', 'bleeding'],
-    'graze bleeding heavily': ['hurt', 'bleeding'], 'bleeding stinger': ['hurt', 'bleeding'], 'stinger throat swelling': ['hurt', 'breathing'],
+    'graze bleeding heavily': ['hurt', 'bleeding'], 'bleeding stinger': ['hurt', 'bleeding'], 'stinger throat swelling': ['hurt', 'allergy'],   # ['hurt', 'breathing'] before the allergy choice's `urgent` phrase "throat swelling"
     'stretcher neck injury': ['hurt', 'head'], 'carry on stretcher not breathing': ['hurt', 'breathing'],
     'pain in left arm and chest': ['hurt', 'sudden'],
 }

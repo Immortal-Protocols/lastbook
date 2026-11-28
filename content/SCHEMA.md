@@ -68,6 +68,9 @@ Rules
   words and even below the usual 60% cut; the other guides that pass the cut follow in their usual order, at most three
   rows in all. A search that names no `urgent` phrase is ranked exactly as without the field. Each phrase is matched as
   whole words in order, so "not breathing" does not catch "trouble breathing".
+  The chat's urgency check reads the same phrases (`engine/urgent_phrases.py`, `app/tests/test_urgent_phrases.py`), so write
+  one that names a person's state or the event ("heavy bleeding", "snake bit"), not a bare word that also has a harmless sense
+  ("choking", "unresponsive", "collapsed"), and do not add words that a `context` or `alongside` entry of another choice uses.
 - Favour fewer, better items: 1–4 readings per choice, 3–8 in prepare, 4–10 in learn.
 - `phrases` is for a wording whose single words point somewhere else ("my water broke" is labor, not tap water). A
   phrase counts only in context: the search names it as whole words in order, names no `unless` entry ("our water",

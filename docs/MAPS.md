@@ -17,6 +17,7 @@ A map set lives in the data folder. `map-set.json` at its top lists the files an
 |---|---|---|---|
 | `derived/geo/national.sqlite` | `feat`, `feat_idx`, `poi`, `meta` | Roads, water and land shapes, and the place pins | `server.py` (`national_mapdb`) |
 | `derived/geo/map.sqlite` | the same four | The original detailed street map of Southern California; it had no rows in the state map checked | `server.py` (`mapdb`) |
+| `derived/geo/canada.sqlite` | `feat`, `feat_idx`, `poi`, `meta`, OSM lineage tables | Optional Canadian roads, water, land, buildings and selected services; additive to the US files | `server.py` (`canada_mapdb`) |
 | `derived/geo/water.sqlite` | `resource`, `spatial`, `feat`, `feat_idx` | Dams, reservoirs, lakes and ponds | `server.py` |
 | `derived/geo/crops.sqlite` | `resource`, `spatial`, `tile` | Orchards, vineyards and berries | `server.py` |
 | `derived/geo/terrain.sqlite` | `tile` | Elevation tiles for relief, contours and the 3D view | `server.py` |
@@ -92,6 +93,7 @@ so ask before adding many.
 | File | Built by | From |
 |---|---|---|
 | `map.sqlite` | `tools/build_map.py`, then `tools/build_coast.py` for the ocean | An OpenStreetMap regional extract (ODbL) |
+| `canada.sqlite` and Canadian place search | `tools/build_canada_map.py`, `tools/validate_canada_map.py`, `tools/merge_canada_places.py` | An existing local Canada OpenStreetMap PBF extract (ODbL); see [Canada map workflow](canada-map.md) |
 | `water.sqlite` | `tools/build_water.py` (`nid`, then `nhd`) | USACE National Inventory of Dams, USGS National Hydrography Dataset |
 | `crops.sqlite` | `tools/build_crops.py` | USDA Cropland Data Layer |
 | `terrain.sqlite` | `tools/build_terrain.py` | USGS 3DEP elevation |
@@ -117,14 +119,17 @@ expect source files that are hundreds of gigabytes.
 
 ## What is tied to the United States
 
-- Every detailed source above is a US dataset, or a worldwide one filtered to the US.
+- The standard downloaded packs use US datasets or worldwide sources filtered to the US.
+  Optional developer-built Canada OSM coverage is additive; it does not extend US resource, imagery or terrain layers.
 - `server.py` treats a box around Southern California as the area `map.sqlite` covers (`_poi_sources`, `socal_classes`).
 - Detailed maps are cut and installed one US state at a time (`docs/SETUP-API.md`, "State maps").
 - Address search knows US state names and US street words (`engine/address_search.py`, `tools/build_addresses.py`).
 - The base map of the world is drawn from `web/world-context.json` and `web/geographic-context.json`.
 
-Coverage outside the US needs a decision on each of these first: which open source replaces each federal list, under
-what licence, what a "state" is elsewhere, and how addresses are written. That is a design discussion to have in an
+Further coverage outside the US needs a decision on each of these first: which open source replaces each federal list, under
+what licence, what a "state" is elsewhere, and how addresses are written. The
+[Canada OSM workflow](canada-map.md) is deliberately limited to existing map/place
+contracts and does not alter the setup/download/state-map contract. That is a design discussion to have in an
 issue before any code.
 
 [REGIONS.md](REGIONS.md) proposes answers for Ontario, British Columbia and Guyana, as a starting point for that issue.

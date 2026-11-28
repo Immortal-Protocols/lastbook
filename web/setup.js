@@ -117,8 +117,11 @@
     return Boolean(pack.revision && pack.revision !== current.content_revision);
   }
 
-  /* state maps (docs/SETUP-API.md, State maps). The person picks the state; Lastbook never looks for where it is */
-  const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));   // by name, as people look for theirs
+  /* state and region maps (docs/SETUP-API.md, State maps; docs/MAPS.md, Region maps). The person picks the area; Lastbook never looks for where it is */
+  const maps = () => ((S.manifest && S.manifest.maps) || []).slice().sort((a, b) => {   // by country, then name, as people look for theirs
+    const ca = a.country || 'United States', cb = b.country || 'United States';
+    return ca === cb ? String(a.title).localeCompare(String(b.title)) : String(ca).localeCompare(String(cb));
+  });
   const mapById = id => maps().find(m => m.id === id);
   const mapName = id => id === 'us' ? 'the whole US' : (mapById(id) || {}).title || id;
   /* the detailed map the library will have once the chosen pack is in: the person's state map, or the one the pack carries */
@@ -133,7 +136,8 @@
   const addressById = id => addresses().find(a => a.id === id);
   const addressAdds = () => { const a = addressById(selectedState()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
   const mapMissing = () => !selectedState() && !skippedMap();
-  const mapAdds = () => choice.map && choice.map !== 'none' && choice.map !== mapNow() && mapNow() !== 'us' ? mapById(choice.map) : null;
+  const mapIncluded = m => m && (m.id === mapNow() || (mapNow() === 'us' && (m.kind || 'state') === 'state' && (!m.country || m.country === 'United States')));
+  const mapAdds = () => { const m = mapById(choice.map); return m && !mapIncluded(m) ? m : null };
   function packSummary(p) {
     const text = p.summary || '';
     if (p.id !== 'medium' || !maps().length || skippedMap()) return text;
@@ -329,26 +333,29 @@
     if (!box) return;
     main.querySelectorAll('[data-pack-summary]').forEach(el => { el.textContent = packSummary(packById(el.dataset.packSummary)) });
     const selected = selectedState();
-    const opts = maps().map(m => {
-      const a = addressById(m.id), included = now === 'us' || m.id === now;
+    const option = m => {
+      const a = addressById(m.id), included = mapIncluded(m);
       const addressIncluded = ((cur() || {}).address_indexes || []).includes(m.id);
       const off = !included && m.available === false;
       const bytes = (included ? 0 : packDl(m)) + (a && a.available !== false && !addressIncluded ? packDl(a) : 0);
       const details = off ? 'coming later' : bytes ? size(bytes) + ' download' : 'included';
       return `<option value="${esc(m.id)}"${selected === m.id ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(m.title)} — ${details}</option>`;
-    }).join('');
+    };
+    const groups = {};
+    for (const m of maps()) { const c = m.country || 'United States'; (groups[c] = groups[c] || []).push(m) }
+    const opts = Object.entries(groups).map(([country, ms]) => country === 'United States' ? ms.map(option).join('') : `<optgroup label="${esc(country)}">${ms.map(option).join('')}</optgroup>`).join('');
     const sel = mapById(selected), a = addressAdds();
-    const mapIncluded = now === 'us' || selected === now;
-    const bytes = (sel && !mapIncluded ? packDl(sel) : 0) + (a ? packDl(a) : 0);
-    const disk = (sel && !mapIncluded ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
-    const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
-    let hint = skippedMap() ? (now === 'us' ? 'No street-address search. You can add it later from Settings.' : 'No local map. You can add one later from Settings.') : !sel ? 'Select your state to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your state map and available address index are already included.';
-    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your state map is already included.') + ' Street-address search is not available for this state yet.';
+    const included = mapIncluded(sel);
+    const bytes = (sel && !included ? packDl(sel) : 0) + (a ? packDl(a) : 0);
+    const disk = (sel && !included ? sel.installed_bytes || 0 : 0) + (a ? a.installed_bytes || 0 : 0);
+    const unavailable = selected && (addresses().length || sel?.kind === 'region') && (!addressById(selected) || addressById(selected).available === false);
+    let hint = skippedMap() ? (now === 'us' ? 'No street-address search. You can add it later from Settings.' : 'No local map. You can add one later from Settings.') : !sel ? 'Select your state or region to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${included && a ? '. Your map is already included; only the address index downloads.' : ''}` : 'Your area\'s map and available address index are already included.';
+    if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your area map is already included.') + ' Street-address search is not available for this area yet.';
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
-      ${now === 'us' ? '<p class="s-mapnote">All includes every state map. Choose your state for offline street-address search.</p>' : ''}
-      <label class="s-maplabel" for="mapSel">Choose your state</label>
-      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected || skippedMap() ? '' : ' selected'}>Select a state</option>${canSkipMap() ? `<option value="none"${skippedMap() ? ' selected' : ''}>${now === 'us' ? 'No street-address search' : 'No local map'} — skip for now</option>` : ''}${opts}</select>
+      ${now === 'us' ? '<p class="s-mapnote">All includes every US state map. Choosing a region outside the US replaces the installed map.</p>' : ''}
+      <label class="s-maplabel" for="mapSel">Choose your state or region</label>
+      <select id="mapSel" class="s-select" required aria-describedby="mapHint"><option value="" disabled${selected || skippedMap() ? '' : ' selected'}>Select an area</option>${canSkipMap() ? `<option value="none"${skippedMap() ? ' selected' : ''}>${now === 'us' ? 'No street-address search' : 'No local map'} — skip for now</option>` : ''}${opts}</select>
       <p class="s-hint" id="mapHint">${hint}</p>`;
     $('#mapSel').onchange = e => { choice.map = e.target.value; shortfall = null; mapSection(); summary(); $('#mapSel').focus() };
   }
@@ -367,7 +374,7 @@
     b.disabled = !need || !!short || mapMissing();
     const newPack = c && packNeedsInstall(packById(choice.pack)), newAi = c && choice.ai && !c.model, newMap = c && mapAdds(), newAddresses = c && addressAdds();
     const parts = [newPack && packById(choice.pack).title, newAi && 'the local AI', newMap && `the ${newMap.title} map`, newAddresses && !newMap && 'offline address search'].filter(Boolean);
-    b.textContent = mapMissing() ? 'Choose your state to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
+    b.textContent = mapMissing() ? 'Choose your state or region to continue' : !c ? 'Download and install' : parts.length ? 'Get ' + parts.join(parts.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add';
     if (newPack && choice.pack === c.pack && !mapMissing()) b.textContent = 'Download and install update';
     const ch = $('#chFolder'); if (ch) ch.onclick = pickFolder;
   }
@@ -532,8 +539,8 @@
         ${m && m.available !== false ? `<div class="s-row">${ico('ai', 's-ri')}<span><b>Local AI</b><small>${c.model ? 'On this computer · ' + size(m.size) : aiFits() ? 'Not installed · about ' + size(m.size) : esc((S.hardware.ai && S.hardware.ai.why) || 'Not for this computer.')}</small></span>
           ${c.model ? (!CAN.removeAi ? '' : confirmRemove ? `<span class="s-confirm"><button class="btn danger" id="rmYes">Remove</button><button class="btn plain" id="rmNo">Keep</button></span>` : '<button class="btn plain" id="rmAi">Remove</button>') : aiFits() ? `<button class="btn" id="addAi">Add</button>` : ''}</div>` : ''}
         ${maps().length ? (() => { const mNow = c.map && c.map !== 'base' ? c.map : packMap(c.pack);
-          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : 'Local streets, buildings and terrain') : 'None yet. Add one for your state.'}</small></span>
-          <button class="btn plain" id="mapCh">${(c.address_indexes || []).length ? 'Choose state' : 'Add address search'}</button></div>` })() : ''}
+          return `<div class="s-row">${ico('map', 's-ri')}<span><b>${mNow ? 'Detailed map: ' + esc(mapName(mNow)) : 'Detailed map'}</b><small>${mNow ? (mNow === 'us' ? 'Local streets and terrain everywhere' : (mapById(mNow) || {}).kind === 'region' ? 'Local streets, buildings and water' : 'Local streets, buildings and terrain') : 'None yet. Add one for your area.'}</small></span>
+          <button class="btn plain" id="mapCh">${mNow ? 'Choose area' : 'Add map'}</button></div>` })() : ''}
       </div>
       ${cloudNote(c)}
       <div id="srvSlot"></div>

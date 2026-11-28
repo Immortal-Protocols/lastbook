@@ -2,7 +2,7 @@
 """Convert the Geofabrik SoCal GeoPackage (OpenStreetMap, ODbL) into a compact, spatially indexed
 map database the app can draw offline.
 
-  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite
+  python3 tools/build_map.py derived/geo/socal.gpkg derived/geo/map.sqlite [west,south,east,north] [source] [data_as_of]
 
 Input is a copy extracted from library-data/geography/openstreetmap/socal-latest-free.gpkg.zip;
 the original archive is only read. Output tables:
@@ -109,6 +109,13 @@ def bbox(parts):
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def intersects(parts, box):
+    """Whether a feature's bounds touch [west, south, east, north]."""
+    minx, maxx, miny, maxy = bbox(parts)
+    w, s, e, n = box
+    return maxx >= w and minx <= e and maxy >= s and miny <= n
+
+
 def area_z(minx, maxx, miny, maxy, base):
     """Small polygons only appear when zoomed in."""
     size = max(maxx - minx, maxy - miny)
@@ -125,7 +132,7 @@ MAP_SCHEMA = '''DROP TABLE IF EXISTS feat; DROP TABLE IF EXISTS feat_idx; DROP T
       CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);'''
 
 
-def build(src, dst, metadata):
+def build(src, dst, metadata, clip=None):
     t0 = time.time()
     dst.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;')
     dst.executescript(MAP_SCHEMA)
@@ -144,9 +151,22 @@ def build(src, dst, metadata):
             if row[0] is None:
                 continue
             try:
-                yield gpkg_parts(row[0]), row[1:]
+                parts = gpkg_parts(row[0])
             except Exception:
                 continue
+            if clip and not intersects(parts, clip):
+                continue
+            yield parts, row[1:]
+
+    # A coarse world base can omit small islands. Keep actual island/islet
+    # polygons from the optional places-area layer as ground, using the
+    # renderer's existing island layer. Populated-place areas are not land
+    # boundaries; neither are marine administrative/protected-area envelopes.
+    if src.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='gis_osm_places_a_free'").fetchone():
+        for parts, (cls, name) in each('gis_osm_places_a_free'):
+            if cls in ('island', 'islet'):
+                add('island', cls, name, area_z(*bbox(parts), 0),
+                    [simplify(p, 0.00001) for p in parts])
 
     # Water bodies
     for parts, (cls, name) in each('gis_osm_water_a_free'):
@@ -162,7 +182,9 @@ def build(src, dst, metadata):
         if k:
             add('land', k, name, area_z(*bbox(parts), 9), [simplify(p, 0.00001) for p in parts])
     for parts, (cls,) in each('gis_osm_protected_areas_a_free', 'fclass'):
-        add('land', 'park', None, area_z(*bbox(parts), 8), [simplify(p, 0.00002) for p in parts])
+        # Protected areas can include sea. Keep their boundaries separate from
+        # ground/land-use fills so a marine reserve cannot turn ocean green.
+        add('protected', cls, None, area_z(*bbox(parts), 8), [simplify(p, 0.00002) for p in parts])
     print('land', fid[0], round(time.time() - t0), flush=True)
     for parts, (cls, name) in each('gis_osm_waterways_free'):
         add('waterway', cls, name, 10 if cls == 'river' else 13, parts)
@@ -180,6 +202,10 @@ def build(src, dst, metadata):
     dst.commit()
     for parts, (cls, pop, name) in each('gis_osm_places_free', 'fclass,population,name'):
         if name:
+            # Geofabrik uses national_capital for Canberra. The renderer's city
+            # class supplies both city-scale visibility and label priority.
+            if cls == 'national_capital':
+                cls = 'city'
             z = PLACE_Z.get(cls, 14)
             if cls in ('city', 'town') and pop and int(pop) > 300000:
                 z = 5
@@ -203,10 +229,14 @@ def build(src, dst, metadata):
 
 if __name__ == '__main__':
     src, dst = sys.argv[1:3]
+    clip = [float(v) for v in sys.argv[3].split(',')] if len(sys.argv) > 3 else None
+    if clip and (len(clip) != 4 or not all(math.isfinite(v) for v in clip)
+                 or not (-180 <= clip[0] < clip[2] <= 180 and -90 <= clip[1] < clip[3] <= 90)):
+        raise SystemExit('Clip must be west,south,east,north in longitude/latitude degrees')
     with sqlite3.connect(src) as source, sqlite3.connect(dst) as output:
         build(source, output, {
-            'source': 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)',
-            'data_as_of': '2026-10-25T21:21:21Z',
-            'bounds': '-121.36,32.50,-114.10,35.89',
+            'source': sys.argv[4] if len(sys.argv) > 4 else 'OpenStreetMap contributors, via Geofabrik socal-latest-free.gpkg.zip (ODbL 1.0)',
+            'data_as_of': sys.argv[5] if len(sys.argv) > 5 else 'not recorded' if clip else '2026-10-25T21:21:21Z',
+            'bounds': ','.join(f'{v:.6f}' for v in clip) if clip else '-121.36,32.50,-114.10,35.89',
             'built': time.strftime('%Y-%m-%dT%H:%M:%S'),
-        })
+        }, clip=clip)

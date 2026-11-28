@@ -1,0 +1,123 @@
+Review scope: this branch includes the separately reviewed PR38 and PR90 heads
+as ancestors. The shared `PLACE-FINDER-GEOPACKAGE.md`, standalone builder and its
+tests are byte-identical to PR90; regional coverage and Australian metric map
+presentation belong to PR38. The integration-only comparison against the merged
+dependency base contains the map/index build,archive,availability and repair
+lifecycle plus its tests. GitHub's upstream base remains main until dependencies
+land; the PR description links that dependency-only comparison explicitly.
+
+# Regional maps with named-place search
+
+This draft joins the Australian region definitions from #38 and GeoPackage place
+builder from #90 to the map build/release/lifecycle proposed in #30. It complements
+#63's richer PBF path, now merged into main; it does not add address/postcode search, alternate-language
+name tags, new POI classifications or verified emergency facilities.
+
+Twenty of the22 Australian definitions declare `places: True`:the16 mainland/
+metropolitan definitions and four external-territory extracts with named points.
+Ashmore/Cartier and Coral Sea remain geometry-only. An opted-in map build
+uses the same cached Geofabrik inputs and west/south/east/north box for both map
+geometry and named-point search. The country is the public detail label, avoiding
+a capital name matching every row. No second PBF download or spatial dependency
+is needed. Other region definitions retain their existing build unless opted in.
+
+```sh
+python3 -I -B packaging/build_packs.py map au-act
+python3 -I -B packaging/region_maps.py --zip-only au-act
+```
+
+Use the build Python documented in the repository. The source cache is under
+`derived/packs/maps/region-source/`; output is `derived/packs/maps/au-act/` and
+`derived/packs/region-zips/Lastbook-Map-au-act.zip`. A contributor review archive is
+not an official Setup download: the maintainer still scans, publishes and lists
+its whole-archive SHA-256 on the allowed release host.
+
+## Archive and provenance
+
+The legacy four-file contract remains valid. A set may additionally contain
+`derived/geo/places.sqlite`, making five files in total. `map-set.json` lists every
+actual geographic file and exact byte size; its byte total excludes itself. The
+region scanner rejects missing/unlisted files, symbolic links, mismatched
+inventories, invalid place schemas/search queries, out-of-box coordinates and the
+existing private-path/household terms. The same set is zipped and sized for the
+release manifest, so the finder cannot be omitted accidentally.
+
+New opted-in builds add a `sha256` dictionary to map-set.json, covering every
+listed geographic file. The scanner verifies these values against actual bytes.
+Setup continues to verify the entire downloaded ZIP against its release manifest.
+Ordinary staging/startup checks validate file sizes and checksum-metadata shape;
+explicit repair and Check now also read the per-file hashes in cancellable workers. Legacy sets without those hashes
+retain size checking, so they cannot detect same-size corruption this way.
+
+The build records an input-archive receipt. A dated Geofabrik filename supplies
+its snapshot date; a `latest` filename does not establish one. Reused caches may
+carry a reviewed `source-receipt.json` with a snapshot date and matching extracted
+file size. All inputs must supply the same recorded date for the map to claim
+that date. Otherwise `data_as_of` is `not recorded`; the build timestamp is kept
+separately. GeoPackage table-modification times are not treated as OSM snapshot
+dates. Review manifests retain the exact input URLs and hashes.
+
+## Install, refresh and repair
+
+The existing Setup map-file rules already accept places.sqlite. Its inventory
+moves that index with the map during staging, restart activation, content refresh
+and rollback. A failed swap restores the prior index with the prior geometry.
+
+This extends current main's separate installed-map item alongside content and optional AI.
+A healthy set needs no map download. Its hash check still runs as a worker item;
+it is not skipped just because the sizes match. Missing/truncated files or a mismatch in a
+new set's per-file hash fetch only the map archive when content is healthy. When
+content also needs repair, the map is restored inside the same staged library.
+Healthy maps are preserved during content repair, including valid custom sets
+whose download is not currently listed. A damaged custom map without an available
+source reports unavailability instead of reporting success or resetting to the
+base map. Known size damage on an unavailable custom map is refused immediately;
+same-size hash damage is reported by the worker. Check now reports damage without
+downloading or replacing anything. The current library stays in place until normal restart activation.
+Current model-presence checks, custom-map ownership and multipart content handling
+are retained.
+
+Regional finder labels say towns/named places and do not offer US ZIP or address
+support. A legacy regional map without an index disables that search visibly.
+Australian nearby distances use metres/kilometres. Assistant map citations use
+the installed map's or record's source, with no hardcoded US snapshot date.
+
+## Validation scope
+
+The branch combines current main `51658f5`, #30 at `da577d0`, the updated #38
+definitions/converter and #90 builder. It retains separate Canadian provinces,
+current country dispatch, optional map skipping and the callable Spain builder.
+The required source suite plus place-builder, region-source and integration tests
+passed: 828 tests, five skips and eleven upstream expected failures, on Apple
+Silicon macOS with Python 3.14.2. The combined reference/map branch passed 840.
+The focused integration tests use a real synthetic GeoPackage through both actual
+builders, privacy scan, ZIP, Setup unpack, map replacement, refresh and rollback.
+The Setup HTTPS fixture covers healthy/no-download, missing, truncated, same-size
+corrupt, content-only repair, both-components repair and unknown custom sets.
+Source-date, incomplete-digest metadata, cancellation and same-size damage in
+Check now and unavailable custom maps are covered. JS syntax,
+ship_app_files and diff checks pass.
+
+All eight unchanged 17 November integrated review archives were re-audited with
+the current code: privacy/inventory, SQLite/FTS/bounds, per-file hashes, complete
+actual Setup unpack/CRC and 30 town/tile/source-credit queries with sockets
+forbidden. Two separate ACT/NSW corrections built 26 November normalize Canberra
+to a city label visible at zoom 5, from the same 15 November source snapshot.
+Their complete archive checks and zoom-8 capital-label engine checks passed.
+[Correction archives and receipts](https://github.com/pilkster/lastbook/releases/tag/australia-map-label-review-2026-11-26)
+preserve the original downloads.
+
+The combined current source passed the full Mac recipe, including TLS, i18n,
+package/privacy scan and strict ad-hoc signature verification. Its self-contained
+private review app was installed: four Australian guide cards, a first-aid PDF,
+warning reader and Ballarat streets/finder/metric distances were checked natively.
+The corrected ACT city label was also seen at zoom 8; Victoria was restored
+afterward. These checks do not exercise a real production repair download or
+verify the other six broader maps in a native window. No Windows or notarization
+claim is made. The private library and personal-use PDFs are not published.
+
+Original earlier review releases are retained unchanged. This proposal does not
+silently replace their four-file map sets with incompatible downloads, alter
+runtime network hosts, bundle personal-use first-aid PDFs or claim that mapped
+POIs are working emergency facilities. Source data remains © OpenStreetMap
+contributors, ODbL 1.0, via Geofabrik, with the original attribution retained.

@@ -87,6 +87,10 @@ fails as `checksum`, and a 200 to a Range goes on over one connection from the h
   `settings.json` remembers it as before (`app/main.py`).
 - Work in progress: `<parent>/LastbookData.setup/`, holding `downloads/` (partial files with a `.part` suffix and a
   `.json` beside each: url, size, sha256, bytes done, ETag, and `"parallel": true` while pieces may lie past bytes done; a resume then keeps only the hashed run, so at most `AHEAD` pieces are fetched again) and `unpack/` (the new LastbookData being built).
+  A switch that fails leaves `kept-<time>/LastbookData/` there: the person's files (`models/`, `derived/geo/addresses/`)
+  carried into the staged library before it failed, and named in the error. Setup never deletes it: not a later job, its
+  cancel, nor a later successful setup. The person can delete it once the library in use has its AI and address search
+  again (or they no longer want them); the work folder itself goes once no `kept-*` is left.
 - The model goes to `LastbookData/models/<file>`. After its SHA-256 matches, setup calls `llm_local.mark_checked(path)`, so
   the AI does not read 17 GB a second time.
 - Space needed = download size + unpacked size + 2 GB, on the disk that holds the target. A zip is deleted once it is
@@ -119,7 +123,7 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 | `POST /api/setup/start` `{pack, ai: true or false, folder?}` | the new `job`, or `{error, need_bytes, free_bytes}` |
 | `GET /api/setup/job` | `job` |
 | `POST /api/setup/pause`, `/resume`, `/cancel`, `/retry` | `job` |
-| `POST /api/setup/use` `{path, library?}` | uses a library or file already on this computer: `job` (verify, then unpack or activate). With `library: true` (*Open another library folder* in manage mode) only an existing LastbookData, or the folder holding one, is accepted: a file or a folder of pack zips is refused (`code: not_library`) and nothing starts. The library that is open now is refused (`code: current`) |
+| `POST /api/setup/use` `{path, library?, folder?}` | uses a library or file already on this computer: `job` (verify, then unpack or activate). A library zip is installed in `folder` as it is, with nothing downloaded. A model, map or address file in first-run is kept for the next `start`: `{job: null, noted: true, kind}`. With `library: true` (*Open another library folder* in manage mode) only an existing LastbookData, or the folder holding one, is accepted: a file or a folder of pack zips is refused (`code: not_library`) and nothing starts. The library that is open now is refused (`code: current`) |
 | `POST /api/setup/finish` | `{ok: true}`; the app then opens the library (see below) |
 | `POST /api/setup/pick` | `{path}` from the system's folder picker, or `{path: null}`: a place to install (`start {folder}`) or something to `use` (a LastbookData, a folder holding one, or a folder holding a pack zip) |
 | `POST /api/setup/start` `{copy_to}` | manage mode: copies the open library to `<copy_to>/LastbookData` for someone with no internet (#114): the files in `pack-manifest.tsv` (or a state map's `map-set.json`) and the manifest, each written as `.partial`, read back from the drive, and renamed only when what the drive gives back has the right SHA-256; then `START-HERE.txt` beside it (`START-HERE (Lastbook).txt` if the drive already has someone else's). Refused with `code: "fat"` on a FAT drive when a file is 4 GB or more; room is counted in the drive's clusters; a file whose real path leads outside the library refuses the copy. Nothing is downloaded and nothing of the person's own is copied. Item `kind: "copy"`, state `copying`; `result: {files, bytes, folder, start_here}`; cancel keeps what is copied, and copying to the same place again carries on |
@@ -145,7 +149,7 @@ vram_bytes}], disks: [{path, free_bytes, total_bytes}], ai: {fits, needs_bytes, 
 `memory_bytes` and RAM, marked `"estimate": true`. On Windows, RAM plus dedicated VRAM, from DXGI.
 
 `job` = `{id, state, items: [{id, kind: "pack" or "model", title, state, bytes_done, bytes_total, rate_bps, eta_s,
-error}], error, started, folder}`, plus `repair: true` on a job started with `{repair: true}`. Each item also has `source`: `"found"` when its file is already on this computer
+error}], error, started, folder}`, plus `repair: true` on a job started with `{repair: true}`, and `stopping: true` from `cancel` until the cancelled job's worker has stopped (`start`, `resume` and `retry` answer `busy` until then; `resume` or `retry` of a job that is already running return that job). Each item also has `source`: `"found"` when its file is already on this computer
 (it is checked, not downloaded), else `"download"` (it changes to `"download"` when a found file is rejected). After a restart, an
 item that stopped mid-run has `paused_from` (`downloading`, `verifying`, `unpacking` or `activating`), dropped on resume, and its
 `bytes_done`/`bytes_total` describe that step: unpacked bytes of the installed size for `unpacking`, the whole file for a found item. States in order: `waiting`, `downloading`, `paused`, `verifying`, `unpacking`,
@@ -199,6 +203,25 @@ opens with the new one. `state.current.map` reports the installed set (`base`, `
 `map-set.json`). The manage screen lets a person add or change the state later. A pack that already contains a
 detailed map (Medium has California; All has the whole US) shows that, and choosing a state on Medium replaces
 its California map. All needs no state map. The state is chosen by the person; Lastbook does not detect location.
+
+Country maps work exactly the same way, for a European country instead of a US state: the entry's `kind` is
+`"country"`, its `id` is `eu-<iso>` (`eu-at` for Austria — never a bare two-letter code, so a country can never take
+a state's id, as Germany would take Delaware's), and the zip is `Lastbook-Map-eu-at.zip` with the same contents and
+the same rules. `packaging/build_packs.py map eu-at` builds it with the state cutting rules
+(`derived/packs/pack-spec.json` → `map_sets.country`); only the box differs: a state's box comes from its ZIP
+centres, a country's is the bounding box of Geofabrik's OpenStreetMap extract polygon for that country
+(`packaging/europe-countries.json`), with the same 0.15 degree margin. What a country set holds is bounded by the
+source layers' own coverage, exactly as a state's is. Setup needs no change: a map is chosen by its manifest `id`
+either way. Address indexes stay US-only — their source (Overture addresses) is split by US state, so there is no
+country entry to publish until that source is keyed by country.
+
+Publishing a country set is opt-in. `packaging/state_maps.py --order` and `--worker` only include countries listed in
+`packaging/country-publication.json`; that file is empty because the detailed source layers are still US-only. Before
+zipping or uploading a listed country, the publisher checks the built set and fails if it holds no detailed roads,
+help or water points, terrain, buildings, crops or OpenStreetMap place names inside the country box. A base-only build
+therefore never reaches the manifest as an available country map. A country is added to that file only after a source
+snapshot for it passes the check and setup can show the set's attribution. This PR says nothing about the completeness
+of any country's map: with today's sources, a country build is the low-zoom base only.
 
 Built by setup-backend (2026-11-12):
 - Job item `kind: "map"` comes after the pack and before the model: `waiting`, `downloading`, `unpacking` (bytes of

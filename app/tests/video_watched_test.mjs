@@ -101,6 +101,7 @@ function setupEnvironment() {
 
   let clock = 10000;
   const context = vm.createContext({
+    routeSeq: 0, stale: () => false,   // app.js's route counter: this page is always the newest here
     store,
     main,
     fetch: async () => ({ status: 200, ok: true }),

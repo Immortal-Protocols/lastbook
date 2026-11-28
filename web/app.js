@@ -279,8 +279,10 @@ function parse() {
 }
 // The sidebar row each page belongs to. Reading pages stay under Library, articles under Encyclopedias; search results select no row.
 const NAV_OF = { '': 'videos', guides: 'guides', t: 'guides', ask: 'ask', videos: 'videos', watch: 'videos', map: 'map', library: 'library', learn: 'library', browse: 'library', shelf: 'library', collection: 'library', read: 'library', wiki: 'encyclopedias', search: '', saved: 'saved', 'not-found': 'library', encyclopedias: 'encyclopedias', prepare: 'prepare', about: 'about', contribute: 'contribute' };
-let leaving = null;  // cleanup hook for the current view (player, chat stream…)
+let routeSeq = 0, leaving = null;  // routeSeq: the newest route; a slower earlier one stops when it sees it has been passed. leaving: cleanup hook for the current view (player, chat stream…)
+const stale = me => me !== routeSeq;   // a view captures `const me = routeSeq` when it starts and asks stale(me) after each wait, before it touches the page
 async function route() {
+  const seq = ++routeSeq; searchSeq++;   // a search still being answered belongs to the page that asked
   const cameFromSide = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('.side,.tabbar'));
   const { parts, q } = parse();
   const h = here();
@@ -313,6 +315,7 @@ async function route() {
   try {
     if (v !== 'map') MapView.stop();
     await topics().catch(() => { });
+    if (stale(seq)) return;
     if (!v || v === 'guides') await home();
     else if (v === 't') await topicPage(parts[1], parts[2]);
     else if (v === 'ask') await Chat.page(main, parts.slice(1), q);
@@ -324,7 +327,7 @@ async function route() {
     else if (v === 'library' || v === 'learn' || v === 'browse') await library();
     else if (v === 'prepare') await prepareHub();
     else if (v === 'encyclopedias') await encyclopedias(q.get('q') || '');
-    else if (v === 'map') await MapView.page(main, q);
+    else if (v === 'map') await MapView.page(main, q, () => !stale(seq));
     else if (v === 'saved') await savedPage();
     else if (v === 'not-found') await notFoundPage();
     else if (v === 'shelf') await shelfPage(parts[1], q.get('kind') || 'all', q.get('q') || '');
@@ -332,7 +335,8 @@ async function route() {
     else if (v === 'contribute' && CAN_CONTRIBUTE) contributePage();
     else if (v === 'about') await about(q.has('updates'));
     else notFound();
-  } catch (e) { setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
+    if (stale(seq)) return;   // a newer page has been opened meanwhile: it does the rest
+  } catch (e) { if (stale(seq)) return; setTitle(''); document.body.className = 'v-error'; main.innerHTML = emptyState('warn', 'This page could not be opened', e.message || e) }   // v-error: not a reading page, so a phone keeps its tab bar
   translateRendered(); wireRails(); dock(); barState();
   $('#topQ').value = '';
   const big = $('main h1'); if (big) h1seen.observe(big);
@@ -475,8 +479,9 @@ function searchBox(id, value, placeholder, buttonLabel) {
 async function home() {
   setTitle('');
   const tile = t => `<a class="need" href="#/t/${t.id}" ${tcStyle(t.id)}><span class="ico">${ico(t.id)}</span><b>${esc(SHORT[t.id] || t.title)}</b><small>${esc(t.short || '')}</small></a>`;
-  const cont = await continueItems();
+  const me = routeSeq, cont = await continueItems();
   const pins = (await libInfo()).pins !== false;
+  if (stale(me)) return;
   main.innerHTML = `
   <section class="hero">
     <h1>What do you need?</h1>
@@ -578,8 +583,9 @@ async function videosHome() {
     <div class="chips" style="margin-top:8px">${[['short', 'Under 10 min'], ['medium', '10–30 min'], ['long', 'Over 30 min']].map(([k, l]) => `<a class="chip" href="#/videos/all?len=${k}">${ico('clock')}${l}</a>`).join('')}</div>
     <div id="vrows"><p class="loading">Loading videos…</p></div>`;
   $('#vqF').addEventListener('submit', e => { e.preventDefault(); location.hash = '#/videos/all?q=' + encodeURIComponent($('#vq').value.trim()) });
-  const rows = await api('/api/videos');
+  const me = routeSeq, rows = await api('/api/videos');
   const cont = (await resumable(20)).slice(0, 12);
+  if (stale(me)) return;   // the person has gone to another page
   const GCOL = { health: 'hurt', water: 'water', food: 'food', power: 'power', outdoors: 'shelter', repair: 'repair', making: 'land' };
   $('#vrows').innerHTML =
     (cont.length ? secHead('Continue watching') + rail(cont.map(([id, v]) => vcard({ id, title: v.title, thumb: v.thumb, duration: v.d }, { sub: 'Resume at ' + clock(v.t) })).join('')) : '') +
@@ -593,7 +599,8 @@ async function videoRow(row, q) {
   const base = `#/videos/${row}`;
   const qs = o => { const p = new URLSearchParams({ q: qq, len, sort, ...o }); for (const [k, v] of [...p]) if (!v) p.delete(k); const s = p.toString(); return base + (s ? '?' + s : '') };
   let off = 0;
-  const first = await api(`/api/videos/${row}?q=${encodeURIComponent(qq)}&len=${len}&sort=${sort}&offset=0`);
+  const me = routeSeq, first = await api(`/api/videos/${row}?q=${encodeURIComponent(qq)}&len=${len}&sort=${sort}&offset=0`);
+  if (stale(me)) return;   // the person has gone to another page
   setTitle(first.title);
   main.innerHTML = `<div>${backButton('#/videos')}</div><h1 style="margin-top:12px">${esc(qq ? 'Videos: “' + qq + '”' : first.title)}</h1>${first.note ? `<p class="lead">${esc(first.note)}</p>` : ''}
     <div class="vtools">${searchBox('vq', qq, 'Search these videos', ['search.go', 'Go'])}
@@ -651,7 +658,8 @@ async function videoFormats(url) {
 }
 
 async function watch(id, t, from) {
-  const d = await api('/api/doc/' + encodeURIComponent(id));
+  const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
+  if (stale(me)) return;   // the person has gone to another page
   setTitle(d.title);
   const selfHref = `#/watch/${encodeURIComponent(id)}`;
   remember({ key: 'v:' + id, title: d.title, href: selfHref, sub: 'Video · ' + fmtDur(d.duration) });
@@ -769,8 +777,10 @@ async function watch(id, t, from) {
   let cues = [];
   try {
     const tx = await api('/api/transcript/' + encodeURIComponent(id)); cues = tx.cues || [];
+    if (stale(me)) return;
     $('#txnote').textContent = cues.length ? `${tx.source === 'authored' ? 'Captions written by the publisher' : /auto/.test(tx.source || '') ? 'Automatic captions' : 'Captions'} — may contain errors.` : '';
   } catch { }
+  if (stale(me)) return;   // also when the request failed: the page open now has its own transcript
   const box = $('#cues');
   const draw = q => {
     const rx = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig') : null;
@@ -789,7 +799,7 @@ async function watch(id, t, from) {
   });
   try {
     const rel = await api('/api/videos/related/' + encodeURIComponent(id));
-    if (rel.length && $('#morev')) { $('#morev').innerHTML = secHead('More like this') + rail(rel.map(v => vcard(v)).join('')); translateRendered($('#morev')); wireRails($('#morev')) }
+    if (rel.length && !stale(me) && $('#morev')) { $('#morev').innerHTML = secHead('More like this') + rail(rel.map(v => vcard(v)).join('')); translateRendered($('#morev')); wireRails($('#morev')) }
   } catch { }
 }
 
@@ -906,7 +916,8 @@ function wireMoments({ video = null, player = null, available = null, start = nu
 
 /* ------------------------------------------------------------- reader -- */
 async function reader(id, page, from, view) {
-  const d = await api('/api/doc/' + encodeURIComponent(id));
+  const me = routeSeq, d = await api('/api/doc/' + encodeURIComponent(id));
+  if (stale(me)) return;   // the person has gone to another page
   if (d.kind === 'video') { swap('#/watch/' + encodeURIComponent(id) + (from ? '?from=' + encodeURIComponent(from) : '')); return }
   if (d.kind === 'transcript' && d.videoId) { swap('#/watch/' + encodeURIComponent(d.videoId) + (from ? '?from=' + encodeURIComponent(from) : '')); return }
   setTitle(d.title, [d.publisher, d.year, d.trust].filter(Boolean).join(' · '));
@@ -1171,7 +1182,8 @@ const ZIMS = [['mdwiki_en_all_maxi_2025-11.zim', 'Medical encyclopedia', 'MDWiki
 const zimsHere = async () => { const here = (await libInfo()).zims; return here ? ZIMS.filter(z => here.includes(z[0])) : ZIMS };
 async function encyclopedias(q) {
   setTitle('Encyclopedias');
-  const zims = await zimsHere();
+  const me = routeSeq, zims = await zimsHere();
+  if (stale(me)) return;
   if (!zims.length) { main.innerHTML = `<h1>Encyclopedias</h1><p class="lead">This download has no encyclopedias.</p>`; return }
   main.innerHTML = `<h1>Encyclopedias</h1><p class="lead">${['', 'One complete encyclopedia', 'Two complete encyclopedias', 'Three complete encyclopedias', 'Four complete encyclopedias'][zims.length]}. Community-written: good for background — use the guides’ manuals for safety-critical steps.</p>
   <div style="margin:16px 0">${searchBox('zq', q, 'e.g. tetanus, solar panel, sourdough')}</div><div id="zres"></div>
@@ -1312,7 +1324,8 @@ function resultCard(r) {
 async function library() {
   setTitle('Library');
   const saved = store.get('saved', []).length, chats = (window.Chat ? Chat.count() : 0);
-  const zims = await zimsHere();
+  const me = routeSeq, zims = await zimsHere();
+  if (stale(me)) return;   // the person has gone to another page
   main.innerHTML = `<h1>Library</h1><p class="lead">Your saved things, learning routes, encyclopedias and every manual in the collection.</p>
   <div class="cards2 three" style="margin-top:16px">
     <a class="card" href="#/saved"><span class="ico">${ico('save')}</span><b>Saved</b><small>${saved ? saved + ' saved item' + (saved > 1 ? 's' : '') : 'Pages, videos and answers you keep'} on this device</small></a>
@@ -1332,8 +1345,9 @@ async function library() {
   }).catch(() => { });
   try {
     const sh = await api('/api/shelves');
+    if (stale(me)) return;
     $('#shelves').innerHTML = sh.filter(s => s.read + s.video).map(s => `<a class="shelfrow" href="#/shelf/${s.id}"><span><b>${esc(s.title)}</b><small>${s.read ? s.read.toLocaleString() + ' to read' : ''}${s.read && s.video ? ' · ' : ''}${s.video ? s.video.toLocaleString() + ' videos' : ''}</small></span>${ico('right')}</a>`).join('');
-  } catch (e) { $('#shelves').innerHTML = errorBox(e) }
+  } catch (e) { if (!stale(me)) $('#shelves').innerHTML = errorBox(e) }
 }
 async function prepareHub() {
   setTitle('Prepare your household');
@@ -1344,7 +1358,8 @@ async function prepareHub() {
   ${list.map(t => `<details class="more" ${tcStyle(t.id)}><summary><span class="prep-ico">${ico(t.id)}</span><span>${esc(SHORT[t.id] || t.title)} <span class="n">· ${t.prepare.length}</span></span></summary><div class="body"><ul class="list">${t.prepare.map(i => rowItem({ ...i, preview: true })).join('')}</ul><p><a href="#/t/${t.id}">Open the full guide</a></p></div></details>`).join('')}`;
 }
 async function shelfPage(id, kind, q) {
-  const sh = (await api('/api/shelves')).find(s => s.id === id);
+  const me = routeSeq, sh = (await api('/api/shelves')).find(s => s.id === id);
+  if (stale(me)) return;   // the person has gone to another page
   if (!sh) return notFound();
   setTitle(sh.title);
   main.innerHTML = `${backButton('#/library')}${crumbs([['Library', '#/library'], [sh.title]])}<h1>${esc(sh.title)}</h1>
@@ -1354,6 +1369,7 @@ async function shelfPage(id, kind, q) {
   let off = 0;
   const load = async () => {
     const d = await api(`/api/shelf/${id}?kind=${kind}&q=${encodeURIComponent(q)}&offset=${off}`);
+    if (stale(me)) return;
     const html = d.collections.map(c => `<section class="collection"><h3>${esc(c.collection)}</h3><div class="small muted">${esc(c.trust)} · ${c.count} item${c.count > 1 ? 's' : ''}</div><ul class="list">${c.items.map(r => rowItem({ src: r })).join('')}</ul>${c.count > c.items.length ? `<a class="btn ghost" href="#/collection?name=${encodeURIComponent(c.collection)}&${fromQ()}">See all ${c.count}</a>` : ''}</section>`).join('');
     if (!off) $('#shres').innerHTML = d.collections.length ? '' : '<div class="empty">Nothing here matches. Try another word.</div>';
     $('#shres').insertAdjacentHTML('beforeend', html);
@@ -1366,8 +1382,9 @@ async function collectionPage(name, from) {
   setTitle(name);
   main.innerHTML = `<div>${backButton(from, ['nav.library', 'Library'])}</div><h1 style="margin-top:12px">${esc(name)}</h1><ul class="list collection" id="cl"></ul><div id="cm"></div>`;
   let off = 0;
-  const load = async () => {
+  const me = routeSeq, load = async () => {
     const d = await api('/api/collection?name=' + encodeURIComponent(name) + '&offset=' + off);
+    if (stale(me)) return;
     $('#cl').insertAdjacentHTML('beforeend', d.items.map(r => rowItem({ src: r })).join(''));
     $('#cm').innerHTML = d.more ? '<button class="btn plain" id="cmb">Show more</button>' : '';
     if (d.more) $('#cmb').onclick = () => { off += 60; load() };
@@ -1378,6 +1395,7 @@ async function collectionPage(name, from) {
 /* -------------------------------------------------------------- saved -- */
 async function savedPage() {
   setTitle('Saved');
+  const me = routeSeq;
   let all = [], savedError = '';
   try { all = VideoMoments.readSaved() } catch (e) { savedError = e.message }
   const moments = all.filter(VideoMoments.isMoment);
@@ -1385,6 +1403,7 @@ async function savedPage() {
   const li = x => `<li><a class="row" href="${esc(x.href)}"><span class="k">${ico(x.key[0] === 'v' ? 'video' : x.key[0] === 'w' ? 'wiki' : x.key[0] === 't' ? 'book' : x.key[0] === 'a' ? 'ask' : 'page')}</span><span><b>${esc(x.title)}</b><small>${esc(rowSub(x))}</small></span></a></li>`;
   const cont = await resumable();
   const available = new Set(await held([...new Set(moments.map(x => x.videoId))]));
+  if (stale(me)) return;
   main.innerHTML = `<h1>Saved</h1><p class="lead">Kept on this device only.</p>
   ${savedError ? `<div class="err" role="alert">${esc(savedError)}</div>` : moments.length ? momentSection() : ''}
   ${s.length ? `<div class="collection" style="margin-top:18px"><ul class="list">${s.map(li).join('')}</ul></div>` : !moments.length && !savedError ? `<div class="empty"><span class="e-ico">${ico('save')}</span><b>Nothing saved yet</b><p>Choose Save on any page, video, article or answer to keep it here.</p></div>` : ''}
@@ -1397,9 +1416,11 @@ async function savedPage() {
 // Library → Things I couldn't find: the person's own notes, each with Delete, and Delete all (asked first)
 async function notFoundPage(confirmAll) {
   setTitle('Things I couldn’t find');
+  const me = routeSeq;
   let notes;
   try { notes = (await api('/api/not-found')).notes } catch (e) {
-    main.innerHTML = `<h1>Things I couldn’t find</h1>${errorBox(e)}`; return }
+    if (!stale(me)) main.innerHTML = `<h1>Things I couldn’t find</h1>${errorBox(e)}`; return }
+  if (stale(me)) return;   // the person has gone to another page
   const day = s => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) };
   const li = n => { const t = n.guide && topicById(n.guide);
     return `<li class="row nf"><span class="k">${ico('search')}</span><span><b>“${esc(n.words)}”</b><small>${t ? `From the ${esc(SHORT[t.id] || t.title)} guide · ` : ''}${esc(day(n.at))}</small></span><button class="btn plain" data-del="${esc(n.id)}" aria-label="Delete the note “${esc(n.words)}”">Delete</button></li>` };
@@ -1500,10 +1521,11 @@ async function about(showUpdate) {
   setTitle('About this library');
   let dl = {}, st = {};
   LIB = null;   // About shows the counts as they are now
-  const s = await libInfo();
+  const me = routeSeq, s = await libInfo();
   const oldServer = s.zims === undefined;   // it still serves the reports; this code does not
   try { dl = await api('/api/download-status') } catch { }
   try { st = await fetch('/api/assistant/status').then(r => r.json()) } catch { }   // not api(): this answer names an error when no model is running, and still holds what is wanted
+  if (stale(me)) return;
   const ch = dl.channels && dl.channels.counts, ix = st.index || {};
   const updateCard = IN_WINDOW && window.LBUpdate ? LBUpdate.card() : '';
   main.innerHTML = `<h1>About this library</h1>

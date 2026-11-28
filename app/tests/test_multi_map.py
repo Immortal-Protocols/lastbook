@@ -223,8 +223,7 @@ class MultiMapTest(unittest.TestCase):
 
 class ServerMultiMapTest(unittest.TestCase):
     """The server's active-map helpers (server.py): maps_public lists the installed maps, geo_dir follows the
-    active one, and geo_dir_for reaches a specific map. LASTBOOK_DATA is pointed at a temporary folder before
-    server.py is imported, so its DATA (and every map path) is the test library, never the real one."""
+    active one, and geo_dir_for reaches a specific map. Patch the active path even if another suite already imported server."""
 
     @classmethod
     def setUpClass(cls):
@@ -234,7 +233,8 @@ class ServerMultiMapTest(unittest.TestCase):
         os.environ['LASTBOOK_DATA'] = str(cls.data)
         import server  # noqa: E402  imported with LASTBOOK_DATA set, so LIB is the temporary library
         cls.server = server
-        lib = cls.server.lastbook_paths.DATA
+        lib = cls.data
+        cls.enterClassContext(mock.patch.object(server.lastbook_paths, 'DATA', lib))
         install.add_map(lib, 'alpha', make_map_unit(cls.data / 'srcA', 'alpha', b'alpha-bytes'), label='Alpha')
         install.add_map(lib, 'beta', make_map_unit(cls.data / 'srcB', 'beta', b'beta-bytes'), label='Beta')
 

@@ -358,8 +358,10 @@ def run_tool(name, args, sess, extra_msgs, root=None):
         pages = [int(p) for p in (args.get('pages') or [1])][:3]
         pub = S.public(r)
         out = []
+        if not texts:
+            return '(no text in this document — it may be scanned pictures; use view_page for a PDF)', {'doc_id': d, 'title': pub['title'], 'pages': pages}
         for p in pages:
-            if not 1 <= p <= max(1, len(texts)):
+            if not 1 <= p <= len(texts):
                 out.append(f'(page {p} does not exist; the document has {len(texts)} pages)')
                 continue
             body = page_body(texts[p - 1], 3500) or '(no text on this page — it may be a picture; use view_page)'

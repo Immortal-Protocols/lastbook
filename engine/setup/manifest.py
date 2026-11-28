@@ -5,6 +5,7 @@ import json
 import re
 import sys
 import threading
+import time
 from pathlib import Path
 
 from . import download
@@ -12,6 +13,7 @@ from . import download
 REMOTE = 'https://downloads.lastbook.org/manifest-v1.json'
 SHA = re.compile(r'^[0-9a-f]{64}$')
 LIBRARY_HOSTS = frozenset({'downloads.lastbook.org'})   # packs and state maps come from Lastbook's own download site only
+WAIT_S, RETRY_S = 4, 15     # how long the first answer waits for an empty list to fill; how soon a failed fetch is tried again
 MODEL_HOSTS = frozenset({'huggingface.co'})             # the model from Hugging Face only (it redirects to its own CDN hosts)
 
 
@@ -153,13 +155,23 @@ class Manifest:
         self.current = bundled or load_bundled()
         self.source = 'bundled'
         self.remote, self.allowed, self.context = remote, allowed, context
-        self.fetching = None
+        self.fetching, self.tried = None, 0
+        self._lock = threading.Lock()
 
     def fetch_once(self):
-        if self.fetching or not self.remote:
+        """Starts the one fetch. With no packs at all (running from source: nothing bundled) it waits a few seconds for it, so the
+        first answer is not an empty list; and if that fetch failed, a later call tries again (not before RETRY_S)."""
+        if not self.remote:
             return
-        self.fetching = threading.Thread(target=self._fetch, daemon=True, name='setup-manifest')
-        self.fetching.start()
+        empty = not self.current['packs']
+        with self._lock:      # state() is polled: two calls must not both start a fetch (the wait below is outside the lock)
+            t = self.fetching
+            if not t or (empty and not t.is_alive() and time.time() - self.tried >= RETRY_S):
+                self.tried = time.time()
+                t = self.fetching = threading.Thread(target=self._fetch, daemon=True, name='setup-manifest')
+                t.start()
+        if empty and t.is_alive():
+            t.join(WAIT_S)
 
     def _fetch(self):
         data = download.fetch_small(self.remote, allowed=self.allowed, context=self.context)

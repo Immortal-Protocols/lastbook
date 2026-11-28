@@ -52,6 +52,8 @@ html.plat-win{
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--bar-h) + 24px)}
+/* Bouncing past the page edges exposes the Mac window's sidebar material. */
+html.plat-mac.in-app:not(.plat-ipad){overscroll-behavior:none}
 body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.55 var(--font);-webkit-font-smoothing:antialiased}
 a{color:var(--accent)}
 img,video{max-width:100%}

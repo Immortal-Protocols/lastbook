@@ -36,7 +36,7 @@
   "setup.settingsTitle": "资料库与本地 AI",
   "setup.back": "返回资料库",
   "setup.loading": "正在检查这台电脑…",
-  "setup.chooseIntro": "选择你所在的州或地区，以及资料库。Lastbook 会下载相关内容，供离线使用。",
+  "setup.chooseIntro": "选择你的资料库。Lastbook 会下载，供离线使用；州或地区地图是可选的。",
   "setup.changeLibrary": "更换资料库",
   "setup.error": "初始设置无法启动。",
   "setup.tryAgain": "重试",

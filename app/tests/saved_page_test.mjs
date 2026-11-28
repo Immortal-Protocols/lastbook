@@ -29,6 +29,7 @@ function open(raw = valid, denied = false) {
   const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const context = vm.createContext({
     localStorage, main, esc, setTitle() {}, ico: () => '', rowSub: x => x.sub,
+    routeSeq: 0, stale: () => false,   // app.js's route counter: this page is always the newest here
     recents: async () => JSON.parse(localStorage.getItem('sg.recent')),
     resumable: async () => Object.entries(JSON.parse(localStorage.getItem('sg.vprog'))),
     held: async ids => ids,

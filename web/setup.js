@@ -74,7 +74,7 @@
   let view = 'choose';
   const CLOUD_POLL_MS = 3000, CLOUD_POLLS = 20;   // the iCloud count runs in the engine's background: ask again for about a minute
   let cloudPolls = 0, cloudT = null, cloudFor = '';   // one timer for the open library (cloudFor), at most CLOUD_POLLS asks
-  let choice = { pack: null, ai: false, map: null, region: null, country: null };
+  let choice = { pack: null, ai: false, map: null, region: null, country: null };   // map: the selected area, or 'none' to skip
   let mapOnly = false;
   let mapCart = [];
   let mapQueue = null;
@@ -85,8 +85,10 @@
   let folder = '';
   let shortfall = null;   // the answer to a start that had no room: {need_bytes, free_bytes}
   let pollT = 0;
-  let confirmCancel = false, confirmRemove = false, confirmOld = false;
+  let confirmCancel = false, confirmRemove = false, confirmOld = false, cancelling = false;
   let note = '', noteOk = false;
+  let emptyTries = 0;     // times state was asked again because the manifest came back with no libraries
+  let shown = '';         // the state answer the screen last drew: a background answer the same as it draws nothing
   let repair = null;      // a repair under way: {fixed} turns true once it had to download something; {sure}: this page saw it from the start
   let U = null;           // GET updates: {supported, notify}. null (an engine without it, or the server version's {supported: false}): no control
   const expandedMapCountries = new Set();
@@ -152,7 +154,15 @@
   const PACK_MAP = { medium: 'CA', all: 'us' };   // what the packs carry today; a manifest packs[].map, when there, wins
   const packMap = id => { const p = packById(id) || {}; return p.map === 'base' ? null : p.map || PACK_MAP[id] || null };
   const mapNow = () => { const c = cur() || {}; return choice.pack && choice.pack !== c.pack ? packMap(choice.pack) : c.map === 'base' ? null : c.map || packMap(c.pack) };
-  const selectedRegion = () => choice.map !== null ? choice.map : (mapNow() !== 'us' && mapNow()) || ((cur() || {}).address_indexes || [])[0] || '';
+  const canSkipMap = () => { const n = mapNow(); return !n || n === 'us' };   // Small carries no state map, All carries every one; Medium carries its own
+  const skippedMap = () => choice.map === 'none' && canSkipMap();   // the person chose no local map; add one later from Settings
+  const setPack = id => { if (id !== choice.pack && choice.map === 'none') choice.map = null; choice.pack = id };   // 'none' means something different per pack, so a switch drops it and the person chooses again
+  const selectedRegion = () => {
+    if (skippedMap()) return '';
+    if (choice.map !== null && choice.map !== 'none') return choice.map;
+    const current = mapNow();
+    return (current !== 'us' && current) || ((cur() || {}).address_indexes || [])[0] || '';
+  };
   const addresses = () => (S.manifest && S.manifest.address_indexes) || [];
   const addressById = id => addresses().find(a => a.id === id);
   const addressNeedsDownload = id => {
@@ -162,8 +172,8 @@
   const mapGeometryNeedsDownload = id => !regionIncluded(id, mapNow(), maps()) || !!installedMap(id)?.update_available;
   const mapChoiceNeedsDownload = id => mapGeometryNeedsDownload(id) || addressNeedsDownload(id);
   const addressAdds = () => { const a = addressById(selectedRegion()); return a && a.available !== false && !((cur() || {}).address_indexes || []).includes(a.id) ? a : null };
-  const mapMissing = () => !selectedRegion();
-  const mapAdds = () => choice.map && mapNeedsDownload(choice.map) && (installedMap(choice.map) || !regionIncluded(choice.map, mapNow(), maps())) ? mapById(choice.map) : null;
+  const mapMissing = () => !selectedRegion() && !skippedMap();
+  const mapAdds = () => choice.map && choice.map !== 'none' && mapNeedsDownload(choice.map) && (installedMap(choice.map) || !regionIncluded(choice.map, mapNow(), maps())) ? mapById(choice.map) : null;
   const mapSwitches = () => !mapOnly && !!cur() && !!selectedRegion() && selectedRegion() !== cur().map &&
     !!installedMap(selectedRegion()) && !mapAdds();
   function mapSidebar(c) {
@@ -475,7 +485,11 @@
     renderMapCart();
     try {
       if (mapStartPending) await mapStartPending;
-      const result = queue.current ? await call('cancel', {}) : null;
+      let result = queue.current ? await call('cancel', {}) : null;
+      while (result?.stopping) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        result = await call('job');
+      }
       if (result?.error && errCode(result.error) !== 'cancelled') throw new Error(errText(result.error));
       S = await call('state');
       refreshMapSidebar();
@@ -546,7 +560,7 @@
   }
   function packSummary(p) {
     const text = p.summary || '';
-    if (!maps().length) return text;
+    if (!maps().length || skippedMap()) return text;
     // The manifest describes the archive's bundled map; another chosen map is kept alongside it.
     const region = selectedRegion();
     if (p.id === 'medium') return text.replace(/\ba detailed map of California\b/, () => 'a detailed map of ' + (region ? mapName(region) : 'your region'));
@@ -591,15 +605,26 @@
     return { dl, need };
   }
 
-  async function load() {
-    const upd = call('updates').catch(() => null);   // alongside state: a missing route only hides the control
-    try { S = await call('state') }
+  async function load(bg) {
+    const was = view;
+    const upd = bg ? null : call('updates').catch(() => null);   // alongside state: a missing route only hides the control. Not asked again in the background
+    let s;
+    try { s = await call('state') }
     catch (e) {
+      if (bg) return;
       main.innerHTML = `<div class="s-err" role="alert">${ico('warn')}<div><b data-i18n="setup.error">Setup could not start.</b><p>${esc(e.message)}</p><p><button class="btn" id="again" data-i18n="setup.tryAgain">Try again</button></p></div></div>`;
       globalThis.LastbookI18n?.apply(main);
-      $('#again').onclick = load;
+      $('#again').onclick = () => load();
       return;
     }
+    if (bg && view === 'job') return;   // a job started while this was asked: the answer is older than it
+    if (bg && main.querySelector('dialog[open]')) { askAgain(); return }
+    const same = bg && JSON.stringify(s) === shown;
+    shown = JSON.stringify(s);
+    S = s;
+    // The person moved on while this was asked (Copy, say), or is on a screen without the lists: the newer lists wait for
+    // when they come back, and the screen they are on stays.
+    if (bg && (view !== was || (view !== 'manage' && view !== 'choose'))) { askAgain(); return }
     const rf = (S.recommend || {}).folder;
     folder = folder || (cur() && cur().folder) || S.default_folder || (rf ? asData(rf) : '');
     if (!choice.pack) {
@@ -609,20 +634,25 @@
       choice.ai = !!rec.ai && aiFits();
       if (cur()) { choice.pack = cur().pack; choice.ai = !!cur().model }
     }
-    const u = await upd;
-    U = u && !u.error ? u : null;
-    restoreMapQueue();
+    if (!bg) { const u = await upd; U = u && !u.error ? u : null }   // a background answer keeps what the first load found, with no second wait
+    if (!bg) restoreMapQueue();
     const j = S.job;
-    if (mapQueue && cur() && (!j || j.items?.some(it => it.kind === 'map' && it.id === mapQueue.current))) view = 'manage';
-    else if (j && j.state && j.state !== 'done' && !(j.state === 'failed' && errCode(j.error) === 'cancelled')) view = 'job';
+    if (mapQueue && cur() && (!j || j.items?.some(it => (it.kind === 'map' || it.kind === 'addresses') && it.id === mapQueue.current))) view = 'manage';
+    else if (j && j.state && j.state !== 'done' && (j.stopping || !(j.state === 'failed' && errCode(j.error) === 'cancelled'))) view = 'job';
     else if (j && j.state === 'done') view = (j.copy || j.check) && cur() ? 'manage' : 'done';   // a finished copy, or Check now: back to Library and local AI
     else if (cur() || S.mode === 'manage' || MANAGE_ASKED) view = cur() ? 'manage' : 'choose';
     $('#sBack').hidden = !cur();
-    render(true);
-    if (view === 'manage' && mapQueue) {
+    if (!bg) render(true);
+    else if (!same) keepFocus(() => render(false));   // a background answer updates the screen without moving focus or scrolling
+    if (!bg && view === 'manage' && mapQueue) {
       openMapChooser(cur());
       if (!mapQueue.current) nextMapDownload();
     }
+    askAgain();
+  }
+  // From source there is no bundled manifest: the engine may still be fetching it. Ask again while the list is empty.
+  function askAgain() {
+    if (!packs().length && view !== 'job' && emptyTries++ < 8) setTimeout(() => { if (!packs().length && view !== 'job') load(true).then(() => { if (view === 'job') poll() }) }, 2500);
   }
 
   /* ------------------------------------------------------------ views */
@@ -637,6 +667,14 @@
     else if (view === 'done') doneView();
     else if (view === 'copy') copyView();
     if (focus && !languageHasFocus()) { const h = main.querySelector('h1'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }) } scrollTo(0, 0) }
+  }
+  function keepFocus(draw) {   // the control that had focus has it again after the redraw, so a keyboard user stays where they were
+    const a = document.activeElement, inMain = a && a !== main && main.contains(a);
+    const sel = !inMain ? '' : a.id ? '#' + CSS.escape(a.id) : a.dataset && a.dataset.act ? `[data-act="${CSS.escape(a.dataset.act)}"]`
+      : a.name ? `[name="${CSS.escape(a.name)}"][value="${CSS.escape(a.value)}"]` : '';
+    draw();
+    const back = sel && main.querySelector(sel);
+    if (back && !back.disabled) back.focus({ preventScroll: true });
   }
   function go(v) { view = v; confirmCancel = confirmRemove = confirmOld = false; note = ''; srv.open = false; srv.note = ''; if (v === 'manage' || v === 'choose') repair = null; render(true) }
 
@@ -688,7 +726,7 @@
 
     main.innerHTML = `${c ? '<div class="s-map-layout"><div class="s-map-content">' : ''}${c ? `<button class="s-link" id="toManage">${ico('back')}<span data-i18n="setup.settingsTitle">Library and local AI</span></button>` : ''}
       ${c ? '<h1 data-i18n="setup.changeLibrary">Change the library</h1>' : '<h1 data-i18n="setup.title">Set up Lastbook</h1>'}
-      ${c ? '' : '<p class="lead" data-i18n="setup.chooseIntro">Choose your local map and library. Lastbook downloads them for offline use.</p>'}
+      ${c ? '' : '<p class="lead" data-i18n="setup.chooseIntro">Choose your library. Lastbook downloads it for offline use; a state map is optional.</p>'}
       ${computer()}
       ${c ? '' : recommendLine()}
       ${found ? `<h2>Found on this computer</h2><div class="s-founds">${found}</div>` : ''}
@@ -702,8 +740,9 @@
         ${c ? '' : '<button class="s-link" id="haveLib">Choose an existing library folder</button>'}
         <button class="s-link" id="haveFile">Choose a library zip or AI model file</button>
       </div>
+      ${c ? '' : '<p class="s-hint" id="zipHint">A library zip is installed as it is, on its own. The local AI, a map and address search can be added after, from Library and local AI.</p>'}
       <p class="s-note" id="haveNote" hidden></p>${c ? `</div>${mapSidebar(c)}</div>` : ''}`;
-    main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { choice.pack = r.value; shortfall = null; mapSection(); summary() });
+    main.querySelectorAll('input[name=pack]').forEach(r => r.onchange = () => { setPack(r.value); shortfall = null; mapSection(); summary() });
     const box = $('#aiBox'); if (box && !box.disabled) box.onchange = () => { choice.ai = box.checked; shortfall = null; summary() };
     main.querySelectorAll('[data-use]').forEach(b => b.onclick = () => useFile((S.found || [])[+b.dataset.use].path, b));
     if (c) wireMapSidebar(c);
@@ -749,7 +788,7 @@
     const unavailable = selected && addresses().length && (!addressById(selected) || addressById(selected).available === false);
     const addsToBundledUS = now === 'us' && sel && !isUSState(sel);
     const additionNote = addsToBundledUS ? ' The US map bundled with All stays installed.' : '';
-    let hint = !sel ? 'Choose an area to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}${additionNote}` : 'Your map and available address index are already included.';
+    let hint = skippedMap() ? (now === 'us' ? 'No street-address search. You can add it later from Settings.' : 'No local map. You can add one later from Settings.') : !sel ? 'Choose an area to continue.' : bytes ? `${size(bytes)} download · ${size(disk)} on disk${mapIncluded && a ? '. Your map is already included; only the address index downloads.' : ''}${additionNote}` : 'Your map and available address index are already included.';
     if (unavailable) hint = (bytes ? `${size(bytes)} download · ${size(disk)} on disk.` : 'Your map is already included.') + ` Street-address search is not available for this region yet.${additionNote}`;
     box.innerHTML = `<h2>${ico('map')}Your local map</h2>
       <p class="s-mapnote">Local streets, buildings, water and places to get help. Available offline.</p>
@@ -757,7 +796,15 @@
       <div class="${mapOnly ? 's-map-fields' : 's-map-fields s-map-fields-stacked'}">${picker('regionSel', 'Region', region, regions.map(x => `<button type="button" data-pick="region" value="${esc(x)}" aria-label="${esc(x)}"${region === x ? ' aria-current="true"' : ''}>${esc(x)}</button>`).join(''))}
       ${picker('countrySel', 'Country', country, countries.map(x => `<button type="button" data-pick="country" value="${esc(x)}" aria-label="${esc(x)}"${country === x ? ' aria-current="true"' : ''}>${esc(x)}</button>`).join(''), !region)}
       ${picker('mapSel', 'Map area', sel?.title || '', choices.map(option).join(''), !country)}</div>
-      ${mapOnly ? `<div class="s-map-detail"><p class="s-hint" id="mapHint">${hint}</p><button class="btn s-map-download" id="mapStart"></button></div>` : `<p class="s-hint" id="mapHint">${hint}</p>`}`;
+      ${mapOnly ? `<div class="s-map-detail"><p class="s-hint" id="mapHint">${hint}</p><button class="btn s-map-download" id="mapStart"></button></div>` : `${canSkipMap() ? `<button type="button" class="s-link" id="skipMap" aria-pressed="${skippedMap()}">${now === 'us' ? 'No street-address search' : 'No local map'} — skip for now</button>` : ''}
+      <p class="s-hint" id="mapHint">${hint}</p>`}`;
+    if ($('#skipMap')) $('#skipMap').onclick = () => {
+      choice.map = skippedMap() ? null : 'none';
+      shortfall = null;
+      mapSection();
+      summary();
+      $('#skipMap').focus();
+    };
     if (mapOnly) { $('#mapStart').onclick = addMapToCart; renderMapCart() }
     box.querySelectorAll('.s-picker').forEach(p => p.ontoggle = () => {
       const list = p.querySelector('.s-picker-list');
@@ -833,9 +880,18 @@
   async function useFile(path, btn, only) {
     if (btn) btn.disabled = true;
     try {
-      const r = await call('use', { path, ...only });
+      const r = await call('use', { path, folder, ...only });   // a library zip goes to the folder chosen on screen, as it is: nothing is downloaded
       if (r && r.error) throw new Error(r.error);
-      if (r && r.noted) { S = await call('state').catch(() => S); choice.ai = true; chooseView(); const n = $('#haveNote'); n.hidden = false; n.textContent = 'The local AI file will be used. No need to download it.'; return }
+      if (r && r.noted) {   // a model, map or address file kept for the start that follows; only the model is the AI's tick
+        S = await call('state').catch(() => S);
+        const kind = r.kind || 'model';
+        if (kind === 'model') choice.ai = true;
+        chooseView(); const n = $('#haveNote'); n.hidden = false;
+        const what = kind === 'model' ? 'local AI' : kind === 'map' ? 'map' : 'address search';   // the noted file is for the start button, not for a library zip
+        const by = !mapMissing() && $('#start').textContent ? `“${$('#start').textContent}”` : `${cur() ? 'the button above' : '“Download and install”'}, once your state is chosen`;
+        n.textContent = `The ${what} file will be used by ${by}, with nothing to download for it. A library zip is installed without it.`;
+        return;
+      }
       S.job = r; go(r.state === 'done' ? 'done' : 'job'); poll();
     } catch (e) {
       if (btn) btn.disabled = false;
@@ -986,10 +1042,10 @@
     wireUpdates();
     cloudPoll(c);
     $('#otherLib').onclick = () => haveLibrary(false, $('#otherLib'), { library: true });   // only another LastbookData, on a USB stick or another drive (#266)
-    if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { mapOnly = false; choice.pack = c.pack; choice.ai = !!c.model; go('choose') };
-    if ($('#upgrade')) $('#upgrade').onclick = () => { mapOnly = false; choice.pack = bigger[0].id; choice.ai = !!c.model; go('choose') };
+    if ($('#libraryUpdate')) $('#libraryUpdate').onclick = () => { mapOnly = false; setPack(c.pack); choice.ai = !!c.model; go('choose') };
+    if ($('#upgrade')) $('#upgrade').onclick = () => { mapOnly = false; setPack(bigger[0].id); choice.ai = !!c.model; go('choose') };
     wireMapSidebar(c);
-    if ($('#addAi')) $('#addAi').onclick = () => { mapOnly = false; choice.pack = c.pack; choice.ai = true; go('choose') };
+    if ($('#addAi')) $('#addAi').onclick = () => { mapOnly = false; setPack(c.pack); choice.ai = true; go('choose') };
     if ($('#rmAi')) $('#rmAi').onclick = () => { confirmRemove = true; manageView(); $('#rmNo').focus() };
     if ($('#rmNo')) $('#rmNo').onclick = () => { confirmRemove = false; manageView(); $('#rmAi').focus() };
     if ($('#rmYes')) $('#rmYes').onclick = () => act('remove-ai', 'The local AI was removed.');   // the engine stops the AI first
@@ -1176,6 +1232,15 @@
   function jobView(j) {
     if (!j) { go(cur() ? 'manage' : 'choose'); return }
     if (j.state === 'done') { go('done'); return }
+    if (cancelling || j.stopping) {   // the cancelled work has not stopped yet: nothing new can start until it has (#463 review)
+      if (shapeKey !== 'stopping') {
+        shapeKey = 'stopping';
+        main.innerHTML = `<h1>Finishing cancellation…</h1><p class="lead" role="status">${j.copy ? 'Lastbook is stopping the copy.' : j.check ? 'Lastbook is stopping the check.' : 'Lastbook is stopping the download and clearing its files.'} You can choose again once it has stopped.</p>`;
+        if (!languageHasFocus()) { const h = main.querySelector('h1'); h.tabIndex = -1; h.focus({ preventScroll: true }) }
+        live.textContent = 'Finishing cancellation…';
+      }
+      return;
+    }
     syncRepair(j);
     const key = j.state + '|' + errCode(j.error) + '|' + confirmCancel + '|' + j.items.map(i => i.kind + ':' + i.id + ':' + i.state).join(',');
     const head = jobHead(j);
@@ -1229,18 +1294,34 @@
     if (a === 'cancel-no') { confirmCancel = false; jobView(S.job); return }
     if (a === 'cancel-yes') { confirmCancel = false; a = 'cancel' }
     b.disabled = true; lastAct = a;
-    try { const j = await call(a, {}); if (j && j.items) S.job = j } catch { }
-    if (a === 'cancel') { const was = S.job && S.job.copy, wasCheck = S.job && S.job.check; S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose'); live.textContent = wasCheck ? 'The check was stopped. Nothing was changed.' : was ? 'The copy was stopped. What was copied is on the drive.' : 'The download was cancelled.'; return }
+    if (a === 'cancel') { cancelling = true; clearTimeout(pollT); jobView(S.job) }   // "Finishing cancellation…" from the click: cancel waits for the work to stop
+    let ok = false;
+    try {
+      const j = await call(a, {});
+      if (j && j.items) { S.job = j; ok = true }
+      else if (j && j.code === 'busy') { const k = await call('job'); if (k && k.items) S.job = k }   // the job as it is now, to show and poll
+    } catch { }
+    cancelling = false;
+    if (a === 'cancel' && ok && !S.job.stopping) { await cancelled(); return }   // a refused cancel stays on the job, which still runs
     jobView(S.job);
     poll();
   }
+  /* the "Finishing cancellation…" screen is up and the engine now says the work has stopped */
+  function wasStopping(j) { return shapeKey === 'stopping' && j && !j.stopping && j.state === 'failed' && errCode(j.error) === 'cancelled' }
+  /* back to Setup once the cancelled work has stopped */
+  async function cancelled() {
+    const was = S.job && S.job.copy, wasCheck = S.job && S.job.check;
+    S = await call('state').catch(() => S); S.job = null; go(cur() ? 'manage' : 'choose');
+    live.textContent = wasCheck ? 'The check was stopped. Nothing was changed.' : was ? 'The copy was stopped. What was copied is on the drive.' : 'The download was cancelled.';
+  }
   function poll() {
     clearTimeout(pollT);
-    if (!S.job || !ACTIVE.has(S.job.state)) return;
+    if (!S.job || !(ACTIVE.has(S.job.state) || S.job.stopping)) return;
     pollT = setTimeout(async () => {
       try { const j = await call('job'); if (j) S.job = j } catch { pollT = setTimeout(poll, 3000); return }
-      if (view !== 'job') return;
+      if (view !== 'job' || cancelling) return;
       if (S.job && S.job.state === 'done') { go('done'); return }
+      if (wasStopping(S.job)) { await cancelled(); return }
       jobView(S.job);
       poll();
     }, 1000);
@@ -1309,7 +1390,7 @@
     else if (confirmRemove || confirmOld) { const f = confirmRemove ? '#rmAi' : '#rmOld'; confirmRemove = confirmOld = false; manageView(); $(f).focus() }
   });
   /* the window comes back to the front: the job may have moved on, or a restart paused it */
-  addEventListener('focus', () => { if (view === 'job') call('job').then(j => { if (j) { S.job = j; jobView(j); poll() } }).catch(() => { }) });
+  addEventListener('focus', () => { if (view === 'job') call('job').then(j => { if (!j || view !== 'job' || cancelling) return; S.job = j; if (wasStopping(j)) { cancelled(); return } jobView(j); poll() }).catch(() => { }) });
 
   load().then(() => { if (view === 'job') poll() });
 })();

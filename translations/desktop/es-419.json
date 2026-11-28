@@ -50,7 +50,7 @@
   "setup.settingsTitle": "Biblioteca e IA local",
   "setup.back": "Volver a la biblioteca",
   "setup.loading": "Revisando esta computadora…",
-  "setup.chooseIntro": "Elige tu estado o región y tu biblioteca. Lastbook los descarga para usarlos sin conexión.",
+  "setup.chooseIntro": "Elige tu biblioteca. Lastbook la descarga para usarla sin conexión; el mapa de tu estado o región es opcional.",
   "setup.changeLibrary": "Cambiar la biblioteca",
   "setup.error": "No se pudo iniciar la configuración inicial.",
   "setup.tryAgain": "Intentar de nuevo",

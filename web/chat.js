@@ -51,8 +51,10 @@ const Chat = (() => {
     const id = parts[0];
     cur = id ? byId(id) : null;
     if (id && !cur) { swap('#/ask'); return }
-    const about = q.get('about');
-    aboutCtx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
+    const about = q.get('about'), me = routeSeq;
+    const ctx = !cur && about ? await describe(about) : (cur && cur.about ? cur.aboutInfo : null);
+    if (stale(me)) return;   // the person has gone to another page: the chat now open keeps its own context
+    aboutCtx = ctx;
     document.title = (cur ? cur.title : 'Chat') + ' · Lastbook';
     $('#tbTitle').textContent = cur ? cur.title : 'Chat';
     main.innerHTML = `<div class="chat">

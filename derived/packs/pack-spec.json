@@ -693,7 +693,8 @@
   "catalog_rules_in_a_pack": {
     "transcript_with_no_video": "kind becomes html, so the app shows it as text",
     "see_source": "publisher See source becomes the web host of source_url",
-    "ids_and_paths": "id_renames, path_renames, collection_renames and note_edits"
+    "ids_and_paths": "id_renames, path_renames, collection_renames and note_edits",
+    "titles": "title_edits fix titles the source catalog got wrong, in the catalog and in search; IDs and file paths stay as they are. A no-break space in a title becomes a plain one"
   },
   "collection_renames": {
     "Claude-suggested Materials: Independently Validated": "Materials: independently validated",
@@ -708,6 +709,10 @@
     "pages/claude-materials/": "pages/materials/"
   },
   "id_renames": "packaging/ship_edits.json id_prefixes: the same map the shipped guides use, so a guide card and its record carry one ID. text/<id>.txt is renamed with its record.",
+  "title_edits": {
+    "016 15 ustainable Farming": "016 15 Sustainable Farming",
+    "014 13The False Promise": "014 13 The False Promise"
+  },
   "note_edits": {
     "Independently downloaded and validated after Claude source research.": "Independently downloaded and validated."
   },

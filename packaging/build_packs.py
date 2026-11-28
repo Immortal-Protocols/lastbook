@@ -9,7 +9,7 @@ clones, and a page that changes is written as a new file here. Run it again and 
 Writes derived/packs/<pack>/ (the pack: pack.json, pack-manifest.tsv, pack-contents.tsv, the Sources page) and derived/packs/<pack>-build/ (for the owner, never shipped: what was
 left out and why). --sample takes a few records of each kind that are on this computer, into <pack>-sample. A video on a Studio is copied only if it is already under --fetched;
 this tool opens no network connection. Without it the record is left out, reported, and the build exits 1.
-The owner's renames always apply (pack-spec.json collection_renames, path_renames, note_edits, and packaging/ship_edits.json id_prefixes, which the shipped guides use too).
+The owner's renames always apply (pack-spec.json collection_renames, path_renames, title_edits, note_edits, and packaging/ship_edits.json id_prefixes, which the shipped guides use too).
 Needs a Python whose html.parser reads as a browser does: derived/app-build/mac-venv/bin/python3 or the library's own.
 """
 import argparse
@@ -928,10 +928,21 @@ def rename(rel, renames):
     return rel
 
 
+def pack_title(t):
+    """A title as the pack carries it: the title edits made, and no-break spaces as plain ones."""
+    if not t:
+        return t
+    for a, b in SPEC['title_edits'].items():
+        t = t.replace(a, b)
+    return t.replace('\xa0', ' ')
+
+
 def pack_record(r, fields):
-    """A record as the pack carries it: allowed fields only, the owner's renames and note edits, an owner named."""
+    """A record as the pack carries it: allowed fields only, the owner's renames, title and note edits, an owner named."""
     out = {k: r[k] for k in fields if k in r}
     out['id'] = pack_id(r['id'])
+    if out.get('title'):
+        out['title'] = pack_title(out['title'])
     for k in ('path', 'text_path', 'vtt_path', 'video_path', 'thumbnail_path'):
         if out.get(k):
             out[k] = pack_path(out[k])
@@ -1202,7 +1213,7 @@ def build_search(snap, dest, records, sources_text, b):
     src = sqlite3.connect(f'file:{snap}/search.sqlite?immutable=1', uri=True)
     keep = {r['id'] for r in records if r['kind'] != 'metadata'}
     coll = SPEC['collection_renames']
-    rows = ((pack_id(d), t, coll.get(c, c), cat, pack_path(p), pg, body) for d, t, c, cat, p, pg, body in src.execute('SELECT doc_id,title,collection,category,path,page,body FROM pages') if pack_id(d) in keep)
+    rows = ((pack_id(d), pack_title(t), coll.get(c, c), cat, pack_path(p), pg, body) for d, t, c, cat, p, pg, body in src.execute('SELECT doc_id,title,collection,category,path,page,body FROM pages') if pack_id(d) in keep)
     db.executemany('INSERT INTO pages VALUES(?,?,?,?,?,?,?)', rows)
     for r in records:
         if r['id'].startswith('course-') and r['path'].endswith('/index.html'):

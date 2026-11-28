@@ -770,6 +770,20 @@ def strip_controls():
         result(f'stripper: {name}', got == after, got.decode())
 
 
+def title_controls():
+    """Titles the source catalog got wrong are fixed as the pack carries them."""
+    for name, before, after in (
+        ('a lost first letter comes back', '016 15 ustainable Farming', '016 15 Sustainable Farming'),
+        ('a missing space comes back', '014 13The False Promise of Genetically Engineered Foods', '014 13 The False Promise of Genetically Engineered Foods'),
+        ('a no-break space becomes a plain one', '018 17\xa0A Healthy Home', '018 17 A Healthy Home'),
+        ('a good title stays', 'Where There Is No Doctor', 'Where There Is No Doctor'),
+    ):
+        got = build_packs.pack_title(before)
+        result(f'titles: {name}', got == after, repr(got))
+    got = build_packs.pack_record({'id': 'x', 'kind': 'pdf', 'title': '016 15 ustainable Farming', 'path': 'documents/x/016-15-ustainable-farming.pdf'}, SPEC['catalog_fields_allowed'])
+    result('titles: the record keeps its path', got['title'] == '016 15 Sustainable Farming' and got['path'] == 'documents/x/016-15-ustainable-farming.pdf', str(got))
+
+
 def builder_controls(work):
     """What the build would put in Small and Medium, from the newest snapshot and the shipped guides, without building them."""
     import re
@@ -794,6 +808,8 @@ def builder_controls(work):
         recs = [build_packs.pack_record(r, fields) for r in chosen.values() if r['kind'] != 'metadata']
         bad = [(r['id'], k) for r in recs for k, v in r.items() if isinstance(v, str) and household.search(v)]
         result(f'{size}: no household or working word in any record the pack would carry', not bad, str(bad[:4]))
+        bad = [r['title'] for r in recs if '\xa0' in r.get('title', '') or any(a in r.get('title', '') for a in SPEC['title_edits'])]
+        result(f'{size}: no title the pack would carry is one the title edits fix', not bad, str(bad[:4]))
         ids = {r['id'] for r in recs}
         missing = sorted(g for g in guides if g not in ids and g in {build_packs.pack_id(r['id']) for r in catalog} and next(r for r in catalog if build_packs.pack_id(r['id']) == g)['path'] not in gone
                          and next(r for r in catalog if build_packs.pack_id(r['id']) == g)['kind'] != 'video')
@@ -894,6 +910,7 @@ def main():
         print('the base pack does not pass, so the plants would prove nothing')
         return 1
     strip_controls()
+    title_controls()
     builder_controls(work)
     plant_files(work)
     plant_each(work)

@@ -162,6 +162,33 @@ A server that answers 5xx or 429 is waited on longer (5 s rising to 5 minutes, o
 A corrupt download (wrong SHA-256) is deleted and downloaded once more
 automatically, then fails with `checksum`.
 
+Added 2026-11-17 (mirrors and sharing, docs/DOWNLOAD-SHARING.md):
+- A manifest file entry (a pack's, map's or address index's file, or a model) may pin
+  `torrent: {url, pieces_root, infohash_v2, piece_length}` (made by `packaging/make_torrent.py`) and list `mirrors` (https, at
+  most 16). A mirror is used only when the torrent's info has that SHA-256 and its piece hashes add up to `pieces_root`; then
+  every piece is checked as it is read back, whatever sent it. A fetched manifest never adds or changes a pin on a pinned entry;
+  it may change that file's mirrors when it pins the very same file and torrent. `state.manifest` files carry `shareable`, not the
+  torrent or the mirrors.
+- `POST /api/setup/mirrors {add}` or `{remove}`: the person's own mirrors (a copy of the download site's tree; a file's path is
+  added). Answers `{mirrors}` or `{error, code: "mirror"}`.
+- `POST /api/setup/share {on}`: sharing on or off; answers `state.sharing`, or `{error, code: "unavailable"}` in a build without
+  rqbit. With it on, each downloaded file with a pinned torrent is kept in `<library>.share` with its `.torrent` instead of being
+  deleted after unpacking, and is seeded with rqbit while Lastbook is open. `POST /api/setup/share-delete` deletes the kept files
+  (`{…state.sharing, ok, freed_bytes}`).
+- `state.sharing` = `{mirrors, available, on, seeding, kept: [{name, size}], kept_bytes, shared_bytes, missing: [{name, size}],
+  missing_bytes}`. `shared_bytes`: all the bytes rqbit has uploaded to other people, added up across runs in
+  `<settings>/setup/shared.json`. `missing`: the downloads the open library came from that have a pinned torrent but are not
+  kept (it was installed with sharing off, so they were deleted once unpacked).
+- `POST /api/setup/share-get` (manage mode): downloads those `missing` files again to share them, and turns sharing on. It is a
+  job like any other (pause, resume, cancel), whose items have `kind: "share"` and go only through `downloading` and `verifying`;
+  with BitTorrent on, what comes from other people is shared as soon as rqbit has it. Each file is kept in `<library>.share`
+  with its torrent and seeded; the library does not change. Answers the job, or `{error, code}`: `unavailable` (no rqbit),
+  `busy`, `nothing`, or `no_space` (with `need_bytes`, `free_bytes`). A file whose torrent cannot be had fails the job with
+  `unavailable` before it is downloaded. `finish` on such a job answers `{ok, shared: true}` and opens nothing.
+- With sharing on, a file with a pinned torrent of `PARALLEL_MIN` or more also comes from other people while it downloads (an rqbit
+  writing into the same file, in `downloads/swarm/`). The file is judged by a full read once that rqbit has ended. The job item
+  carries `from_peers`: the bytes taken from other people, each piece checked against its torrent hash.
+
 ## Switching to the library
 
 `finish` writes `settings.json` and tells the shell to load `lastbook://app/` (Mac) or `https://lastbook.invalid/` (Windows)

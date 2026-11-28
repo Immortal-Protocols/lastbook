@@ -54,12 +54,22 @@ on an allowed host.
     {"id": "gemma-4-26b-a4b", "title": "Gemma 4 26B A4B", "file": "gemma-4-26B-A4B-it-UD-Q4_K_M.gguf",
      "url": "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/c099eb48e663fd284577b04978a94ffccb261841/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf?download=true",
      "size": 16947541728, "sha256": "f2c28b3dc4776931ac6f879e11f203dec637ea0f14267a86ec8f6165f63f293f",
-     "memory_bytes": 19027384256, "available": true}
+     "memory_bytes": 19027384256, "available": true},
+    {"id": "lfm2.5-2.6b", "title": "LFM2.5 2.6B", "file": "LFM2.5-2.6B-Q4_K_M.gguf",
+     "url": "https://huggingface.co/LiquidAI/LFM2.5-2.6B-GGUF/resolve/e7caca5d835a3901a8e0d63e94009429bafafdfc/LFM2.5-2.6B-Q4_K_M.gguf?download=true",
+     "size": 1674455040, "sha256": "02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed",
+     "memory_bytes": 2164260864, "available": false},
+    {"id": "lfm3-1.7b", "title": "LFM3 1.7B", "file": "LFM3-1.7B-Q4_K_M.gguf",
+     "url": "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/cd0c74c575b5c416f3011b5b4c298077f26ca8c2/LFM3-1.7B-Q4_K_M.gguf?download=true",
+     "size": 1099627808, "sha256": "3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4",
+     "memory_bytes": 1650458624, "available": false}
   ]
 }
 ```
 
 `installed_bytes` is the unpacked size, measured. A pack with `"available": false` shows as *coming later* and can't be chosen.
+The bundled manifest makes only Gemma 4 available. LFM2.5 and LFM3 stay listed with `"available": false` until each is verified; a
+fetched manifest may turn one on, but the app keeps the bundled identity and sizes for anything it was built with.
 Packs may be split into several files later; setup downloads all `files` of a pack, in order.
 
 `ALLOWED_HOSTS`: `downloads.lastbook.org`, the bucket's current `*.r2.dev` host (until the domain is live), `huggingface.co`,

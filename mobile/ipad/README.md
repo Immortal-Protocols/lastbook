@@ -13,13 +13,13 @@ Licence: MIT, like the rest of this repository (see [`/LICENSE`](../../LICENSE))
 - **Videos:** a native home feed, categories, search and a watch page. The watch page has the system player (Picture in Picture), a searchable transcript and Up next.
 - **Map:** the offline map from the desktop app: streets for the chosen state, help and resource points, place search and street-address search.
 - **Chat:** answers from the library with numbered citations that open the exact PDF page or video moment.
-  - With the optional local AI (Gemma 4 26B A4B, run in-process by llama.cpp), Chat writes cited answers.
+  - With the optional local AI (Gemma 4 26B A4B, run in-process by llama.cpp), Chat writes cited answers. Setup offers Gemma. The two smaller Liquid AI models, LFM2.5 2.6B and LFM3 1.7B, are a manually installed developer test path only for now, not offered by Setup.
   - Without the local AI, Chat shows the library pages that match.
 - **Reading:** PDF pages drawn natively, so no PDF reaches the web view, plus saved web pages, transcripts and keyword search.
 - **Setup inside the app:**
   1. Choose a library size: Small is the default.
   2. Choose your state: required; Lastbook never looks up your location.
-  3. Tap Install once. It downloads and installs the library, the state map, that state's street addresses, and, where supported and chosen, the local AI.
+  3. Tap Install once. It downloads and installs the library, the state map, that state's street addresses, and, where supported and chosen, the local AI it offers (Gemma).
 
   Downloads can be cancelled and resumed, and each is checked by SHA-256. The space needed is shown first. You can also bring a library in from Files instead.
 - **A "what's ready" notice** lists anything not yet installed, so a partial setup never looks complete.
@@ -44,7 +44,8 @@ Each download is HTTPS with the system's certificate check plus pinned root cert
 ## Current limitations
 
 - **Development preview.** The local AI has run with the Small library on one physical iPad Pro (M1, 16 GB). Other iPads and longer use are untested.
-- **Local AI memory:** the model file is 17 GB. Setup turns it on by default only on iPads with 16 GB-class memory, and marks smaller iPads "not tested". Lastbook checks the fit after the file is in place.
+- **Local AI memory:** Gemma is the model Setup offers. Its model file is 17 GB. Setup turns it on by default only on iPads with 16 GB-class memory, and marks smaller iPads "not tested". Lastbook checks the fit after the file is in place.
+- **Smaller models are a manual developer test path.** LFM2.5 2.6B (a 1.6 GB file, about 2 GB of memory with its context) and LFM3 1.7B (a 1.1 GB file, about 1.6 GB) are recognised if you put them in place yourself, but Setup does not download or offer them. Neither has run on a physical device, so their memory use and inference on iPad are unverified. They are not ready alternatives in Chat.
 - **Encyclopedias (ZIM files) don't open on iPad yet:** there is no ZIM reader in the app. The rest of the library works.
 - **H.264 video copies** (for iPads that can't play a video's AV1 or VP9 format) are not on the download site for any pack yet.
   - Build them with `tools/videocompat` and `tools/make_video_copies_zip.py`, then import the zip from Files.

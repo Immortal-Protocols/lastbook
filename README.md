@@ -42,6 +42,13 @@ The Linux release was tested on Ubuntu 24.04.5 in WSL2, including installation, 
 PDF reading, offline AI with citations, shutdown and uninstall. AI tests used the CPU. Native Linux GPU performance and
 other Linux distributions have not been validated for this release.
 
+## Saving the library on an external drive
+
+Setup can put the library on an external drive: press **Change…** next to **Saves to**. If setup answers
+"Lastbook cannot save in that folder", the drive is most often a Time Machine backup disk, which macOS keeps for backups
+only. [docs/EXTERNAL-DRIVES.md](docs/EXTERNAL-DRIVES.md) shows how to check the drive and add a second volume for the
+library without erasing the backups, and covers the other causes on Mac, Windows and Linux.
+
 ## What it does
 
 - **Guides first.** Short, curated guides for urgent needs (`content/topics/`), each pointing to real pages in the library
@@ -101,7 +108,7 @@ The setup contract, including state maps, is in [docs/SETUP-API.md](docs/SETUP-A
 | `derived/packs/pack-spec.json` | What goes into each download pack (Small, Medium, All and add-ons) and each state map. Everything else under `derived/` is generated and not kept here. |
 | `tools/` | Builders for the offline map, addresses and place finder, plus curator helpers (`libq.py`, `validate_topics.py`), and `compare_packs.py`, which compares two packs' file lists. |
 | `website/`, `website-next/` | The earlier website and the current static lastbook.org site, respectively. |
-| `docs/` | The setup contract (`SETUP-API.md`), how the offline map is put together (`MAPS.md`) and notes on the library server version (`LIBRARY-SERVER.md`). |
+| `docs/` | The setup contract (`SETUP-API.md`), how the offline map is put together (`MAPS.md`), notes on the library server version (`LIBRARY-SERVER.md`) and help with saving the library on an external drive or a Time Machine disk (`EXTERNAL-DRIVES.md`). |
 
 ## Run from source
 

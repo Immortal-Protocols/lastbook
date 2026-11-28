@@ -76,19 +76,60 @@ class Sheet:
         self.guides = dict(re.findall(r"(\w+): '(#[0-9a-fA-F]{6})'", re.search(r'const TC = \{(.*?)\};', js, re.S).group(1)))
         self.guides['(no guide)'] = re.search(r"TC\[id\] \|\| '(#[0-9a-fA-F]{6})'", js).group(1)
         dark = self.css.index('/* dark mode: the guide colours are dark inks')
-        self.dark = self.css[dark:self.css.index('\n}', dark)]
+        self.dark = self.css[dark:self.css.index('/* rails', dark)]
+
+    def raw_tokens(self, opening):
+        """All custom property declarations in the block that starts with `opening`, as {name: raw_value}."""
+        start = self.css.index(opening)
+        body = self.css[start + len(opening):self.css.index('}', start)]
+        return {k: v.strip() for k, v in re.findall(r'--([\w-]+):([^;]+)', body)}
 
     def tokens(self, opening):
         """The colour tokens of the block that starts with `opening`, as {name: '#rrggbb'}."""
         start = self.css.index(opening)
         return dict(re.findall(r'--([\w-]+):(#[0-9a-fA-F]{6})\b', self.css[start:self.css.index('}', start)]))
 
+    def resolved_looks(self):
+        """Each look with computed linear-light RGB for its tokens, including var() fallbacks and color-mix()."""
+        blocks = [
+            ('Mac light', False, [':root{']),
+            ('Mac dark', True, [':root{', '\n[data-theme="dark"]{']),
+            ('Windows light', False, [':root{', 'html.plat-win{']),
+            ('Windows dark', True, [':root{', '\n[data-theme="dark"]{', 'html.plat-win{', 'html.plat-win[data-theme="dark"]{']),
+        ]
+        out = []
+        for name, dark, openings in blocks:
+            raw = {}
+            for op in openings:
+                raw.update(self.raw_tokens(op))
+            out.append((name, dark, raw))
+        return out
+
+    def resolve_token(self, value, raw):
+        value = value.strip()
+        mix = re.fullmatch(r'color-mix\(in (oklab|srgb),([^,]+) (\d+)%,(.+)\)', value)
+        if mix:
+            a = self.resolve_token(mix.group(2), raw)
+            b = self.resolve_token(mix.group(4), raw)
+            return (mix_oklab if mix.group(1) == 'oklab' else mix_srgb)(a, int(mix.group(3)) / 100, b)
+        var = re.fullmatch(r'var\(--([\w-]+)(?:,([^)]+))?\)', value)
+        if var:
+            key, fallback = var.group(1), var.group(2)
+            if key in raw:
+                return self.resolve_token(raw[key], raw)
+            if fallback is not None:
+                return self.resolve_token(fallback, raw)
+            raise AssertionError(f'unresolved token --{key}')
+        if len(value) == 4 and value.startswith('#'):
+            value = '#' + ''.join(c * 2 for c in value[1:])
+        return linear(value)
+
     def looks(self):
         """Each look the app has: its name, whether it is dark, and its tokens."""
         mac = self.tokens(':root{')
-        mac_dark = {**mac, **self.tokens('@media (prefers-color-scheme:dark){:root{')}
+        mac_dark = {**mac, **self.tokens('\n[data-theme="dark"]{')}
         win = {**mac, **self.tokens('html.plat-win{')}
-        win_dark = {**mac_dark, **self.tokens('@media (prefers-color-scheme:dark){html.plat-win{')}
+        win_dark = {**mac_dark, **self.tokens('html.plat-win[data-theme="dark"]{')}
         return [('Mac light', False, mac), ('Mac dark', True, mac_dark), ('Windows light', False, win), ('Windows dark', True, win_dark)]
 
     def rule(self, selector, where=None):
@@ -128,7 +169,7 @@ class GuideColoursAsText(unittest.TestCase):
     def body(self, selector, dark):
         """The rule that decides a selector's colours: the dark-mode one where there is one, else the ordinary one."""
         if dark:
-            return self.s.rule(':root ' + selector, self.s.dark)
+            return self.s.rule('[data-theme="dark"] ' + selector, self.s.dark)
         return self.s.rule(selector)
 
     def test_the_files_were_read(self):
@@ -171,6 +212,41 @@ class ToolbarSearchFocus(unittest.TestCase):
         for look, _, tok in s.looks()[:2]:
             with self.subTest(look=look):
                 self.assertGreaterEqual(contrast(linear(tok['focus']), linear(tok['bg'])), MARK)
+
+
+class SourceCountAndDarkCascade(unittest.TestCase):
+    def test_source_count_contrast_across_all_four_looks(self):
+        """The 12px source-count badge must meet WCAG AA 4.5:1 on its fill across Mac/browser and Windows, light and dark."""
+        s = Sheet()
+        body = s.rule('.source-count')
+        fg_val = re.search(r'(?:^|;)color:([^;]+)', body).group(1).strip()
+        bg_val = re.search(r'(?:^|;)background:([^;]+)', body).group(1).strip()
+        for look, _, raw in s.resolved_looks():
+            with self.subTest(look=look):
+                fg = s.resolve_token(fg_val, raw)
+                bg = s.resolve_token(bg_val, raw)
+                self.assertGreaterEqual(contrast(fg, bg), TEXT)
+        # Guard: var(--accent) on var(--accent-soft) fell under 4.5:1 in both light looks.
+        for look, dark, raw in s.resolved_looks():
+            if not dark:
+                with self.subTest(guard=look):
+                    self.assertLess(contrast(s.resolve_token('var(--accent)', raw), s.resolve_token('var(--accent-soft)', raw)), TEXT)
+
+    def test_dark_mode_tokens_preserve_platform_semantic_cascade(self):
+        """[data-theme="dark"] must keep (0,1,0) specificity so .plat-mac semantic colours and html.plat-win still win."""
+        s = Sheet()
+        self.assertNotIn(':root[data-theme="dark"]', s.css)
+        root_at = s.css.index(':root{')
+        dark_at = s.css.index('\n[data-theme="dark"]{')
+        mac_at = s.css.index('@supports (color:-apple-system-label){.plat-mac{')
+        win_at = s.css.index('html.plat-win{')
+        win_dark_at = s.css.index('html.plat-win[data-theme="dark"]{')
+        self.assertLess(root_at, dark_at)
+        self.assertLess(dark_at, mac_at)
+        self.assertLess(mac_at, win_at)
+        self.assertLess(win_at, win_dark_at)
+        self.assertIn('color-scheme:light', s.css[root_at:s.css.index('}', root_at)])
+        self.assertIn('color-scheme:dark', s.css[dark_at:s.css.index('}', dark_at)])
 
 
 if __name__ == '__main__':

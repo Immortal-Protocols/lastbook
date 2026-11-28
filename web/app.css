@@ -1,6 +1,7 @@
-/* Lastbook — offline, system fonts only. The look follows the computer: plat-mac or plat-win on <html> (plat.js), light or dark from the system. */
+/* Lastbook — offline, system fonts only. The look follows the computer: plat-mac or plat-win on <html> (plat.js), System, Light or Dark appearance. */
 /* ---------- tokens: Mac, also every browser that is not on Windows ---------- */
 :root{
+  color-scheme:light;
   --side-w:240px; --top-h:52px; --bar-h:var(--top-h); --row-h:34px; --pad:40px;
   --bg:#ffffff; --paper:#f5f5f7; --sunk:#efeff1; --ink:#1d1d1f; --ink2:#55555a; --ink3:#6e6e73; --line:#dcdce0; --line2:#e6e6e9; --desk:#ececee;
   --brand:#14453a; --brand2:#1d5e4e; --brand-ink:#ffffff; --accent:#10805c; --accent-ink:#fff; --accent-soft:#e2f1ea;
@@ -15,13 +16,14 @@
   --serif:"Iowan Old Style","Charter","Georgia",serif;
   --tc:#10805c; --logo:#10805c; --seg-on:#ffffff;
 }
-@media (prefers-color-scheme:dark){:root{
+[data-theme="dark"]{
+  color-scheme:dark;
   --bg:#1e1e1f; --paper:#28282a; --sunk:#232325; --ink:#f2f2f3; --ink2:#c2c2c7; --ink3:#98989d; --line:#3a3a3d; --line2:#313134; --desk:#151516;
   --brand:#0d2c25; --brand2:#174a3d; --accent:#3cc690; --accent-ink:#06170f; --accent-soft:#173a2d;
   --warn:#ffd48f; --warn-bg:#2e2410; --warn-line:#6e5420; --stop:#ff6b5e; --stop-bg:#3a1a18;
   --side-bg:#2a2a2c; --side-line:rgba(255,255,255,.07); --sel:#3cc690; --sel-ink:#06170f; --sel-off:rgba(255,255,255,.1); --logo:#3cc690;
   --bar-bg:rgba(30,30,31,.84); --bar-line:rgba(255,255,255,.09); --field:rgba(255,255,255,.08); --focus:#8ab8ff; --seg-on:#5d5d61;
-}}
+}
 /* the Mac's own label and separator colours, so Increase Contrast follows the system */
 @supports (color:-apple-system-label){.plat-mac{--ink:-apple-system-label;--ink2:-apple-system-secondary-label;--line2:-apple-system-separator}}
 /* in the Mac app, selection takes the accent and highlight chosen in System Settings, as Apple's own apps do */
@@ -41,13 +43,13 @@ html.plat-win{
   --r:8px; --r2:6px; --r-row:5px; --r-ctl:5px;
   --shadow:0 1px 2px rgba(0,0,0,.04);
 }
-@media (prefers-color-scheme:dark){html.plat-win{
+html.plat-win[data-theme="dark"]{
   --bg:#272727; --paper:#2d2d2d; --sunk:#252525; --ink:#ffffff; --ink2:#cfcfcf; --ink3:#9d9d9d; --line:#383838; --line2:#333333; --desk:#1c1c1c;
   --accent:var(--sys-acc-d,#4cc79a); --accent-ink:#05150e; --accent-soft:color-mix(in srgb,var(--accent) 16%,var(--paper));
   --sel:var(--accent); --sel-ink:#000;
   --side-bg:#202020; --row-hover:rgba(255,255,255,.04); --sel-bg:rgba(255,255,255,.065);
   --bar-bg:var(--bg); --field:rgba(255,255,255,.055); --field-line:rgba(255,255,255,.55); --shadow:none;
-}}
+}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -180,7 +182,7 @@ main:focus{outline:none}
   body.v-read main{padding-bottom:28px}   /* a reading page ends with its source note: no tab bar to clear, and no scroll of a few pixels for nothing */
   .side{display:flex;flex-direction:column;position:fixed;z-index:30;left:0;top:0;bottom:0;width:var(--side-w);background:var(--side-bg);overflow:auto;overscroll-behavior:contain;padding-bottom:8px}
   .side-open body::after{content:"";position:fixed;inset:0;z-index:25;background:rgba(0,0,0,.18)}
-  @media (prefers-color-scheme:dark){.side-open body::after{background:rgba(0,0,0,.45)}}
+  [data-theme="dark"].side-open body::after{background:rgba(0,0,0,.45)}
   /* the sidebar button stays put, by the traffic lights in the app */
   #sideBtn{position:fixed;z-index:31;left:12px;top:11px}
   html.plat-mac.in-app #sideBtn{left:84px}
@@ -350,13 +352,11 @@ p{margin:.45em 0}
 .banner.prep{--tc:#a06d14}
 .banner.map{--tc:#1b7a8f}
 /* dark mode: the guide colours are dark inks, so their icons are lifted toward white to stay clear on a dark tile */
-@media (prefers-color-scheme:dark){
-  :root .need .ico,:root .banner .ico,:root .starter .ico{background:color-mix(in srgb,var(--tc) 32%,var(--paper));color:color-mix(in oklab,var(--tc) 38%,#fff)}
-  :root .skill .ico,:root .ghit .ico,:root details.more>summary .prep-ico{color:color-mix(in oklab,var(--tc) 38%,#fff)}
-  /* the same lift for a guide colour used as text: the step count on a skill card and the numbers of a learning route (#237) */
-  :root .skill .steps,:root .step::before{color:color-mix(in oklab,var(--tc) 38%,#fff)}
-  :root .step.done::before{background:color-mix(in oklab,var(--tc) 38%,#fff);border-color:color-mix(in oklab,var(--tc) 38%,#fff);color:var(--bg)}
-}
+[data-theme="dark"] .need .ico,[data-theme="dark"] .banner .ico,[data-theme="dark"] .starter .ico{background:color-mix(in srgb,var(--tc) 32%,var(--paper));color:color-mix(in oklab,var(--tc) 38%,#fff)}
+[data-theme="dark"] .skill .ico,[data-theme="dark"] .ghit .ico,[data-theme="dark"] details.more>summary .prep-ico{color:color-mix(in oklab,var(--tc) 38%,#fff)}
+/* the same lift for a guide colour used as text: the step count on a skill card and the numbers of a learning route (#237) */
+[data-theme="dark"] .skill .steps,[data-theme="dark"] .step::before{color:color-mix(in oklab,var(--tc) 38%,#fff)}
+[data-theme="dark"] .step.done::before{background:color-mix(in oklab,var(--tc) 38%,#fff);border-color:color-mix(in oklab,var(--tc) 38%,#fff);color:var(--bg)}
 
 /* rails (horizontal scrolling rows) */
 .rail-wrap{position:relative}
@@ -512,13 +512,16 @@ details.more>.body{padding:0 12px 14px}
 .pagewrap{position:relative;max-width:1000px;margin:14px auto 0;touch-action:pan-y pinch-zoom}
 .pageimg{display:block;width:100%;background:#fff;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 6px 24px rgba(0,0,0,.08);min-height:320px}
 /* a page is a printed sheet: in the dark it stays light, a little warm and dimmed, never inverted */
-@media (prefers-color-scheme:dark){.pageimg{box-shadow:0 6px 30px rgba(0,0,0,.5)}}
+[data-theme="dark"] .pageimg{box-shadow:0 6px 30px rgba(0,0,0,.5)}
 .pagetext{max-width:66ch;margin:14px auto 0;background:var(--bg);border-radius:var(--r);padding:28px 32px;white-space:pre-wrap;font:20px/1.6 var(--serif);overflow-wrap:anywhere;border:1px solid var(--line2)}
 @media (max-width:639px){.pagetext{padding:18px 18px;font-size:19px}}
 .frame{width:100%;height:calc(100vh - 230px);max-height:none;min-height:420px;border:1px solid var(--line);border-radius:var(--r2);background:#fff;color-scheme:light;display:block;margin-top:12px}
 /* an encyclopedia article is part of the page: no box, and the window's own colour behind it (the article's background is cleared on load) */
-.frame.own{border:0;border-radius:0;background:transparent;color-scheme:light dark}
-.v-wiki .frame{border:0;border-radius:0;background:transparent;color-scheme:light dark;margin-top:8px}
+.frame.own{border:0;border-radius:0;background:transparent;color-scheme:inherit}
+/* OWN_LOOK pages are sandboxed without script access and follow prefers-color-scheme; keep readable contrast when the chosen theme differs from the system */
+@media (prefers-color-scheme:light){[data-theme="dark"] .frame.own{background:#fff;color-scheme:light;border-radius:var(--r2);padding:0 14px}}
+@media (prefers-color-scheme:dark){[data-theme="light"] .frame.own{background:#1e1e1f;color-scheme:dark;border-radius:var(--r2);padding:0 14px}}
+.v-wiki .frame{border:0;border-radius:0;background:transparent;color-scheme:inherit;margin-top:8px}
 .v-wiki main:not(.own-title) .rtitle{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .v-wiki .rsrc{margin-top:8px;text-wrap:balance}   /* two even lines, never one word left on the second */
 .v-wiki main.own-title .rsrc .zn{display:none}   /* the heading names the encyclopedia already */
@@ -526,7 +529,7 @@ body.v-wiki main{padding-bottom:0}
 .v-wiki .frame{min-height:0;transition:box-shadow .15s}
 .v-wiki .frame.scrolled{box-shadow:0 -1px 0 var(--bar-line)}   /* the platform's separator where the text goes under the source line, as a toolbar's once content scrolls under it */
 .rbar{position:sticky;bottom:calc(16px + env(safe-area-inset-bottom));z-index:15;width:max-content;max-width:calc(100% - 8px);margin:18px auto 0;padding:5px;border-radius:999px;background:color-mix(in srgb,var(--paper) 86%,transparent);color:var(--ink);border:1px solid var(--line);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);box-shadow:0 4px 20px rgba(0,0,0,.12);display:flex;gap:6px;align-items:center}
-@media (prefers-color-scheme:dark){.rbar{box-shadow:0 6px 24px rgba(0,0,0,.4)}}
+[data-theme="dark"] .rbar{box-shadow:0 6px 24px rgba(0,0,0,.4)}
 .plat-win .rbar{border-radius:8px}
 .rbar .pnum{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink2);font-size:16px;padding:0 6px}
 .rbar .pnum input{width:58px;height:40px;text-align:center;border:0;border-radius:8px;background:var(--field);color:var(--ink);font-weight:700;font-size:17px}
@@ -657,7 +660,7 @@ html.plat-win.in-app body:not(.v-wiki) .tb-title b{display:none}
 .hit:hover{border-color:var(--accent)}
 .hit b{color:var(--accent)}
 mark{background:#fff0a3;color:inherit;padding:0 1px;border-radius:3px}
-@media (prefers-color-scheme:dark){mark{background:#5b4c12}}
+[data-theme="dark"] mark{background:#5b4c12}
 .ghit{display:flex;gap:14px;align-items:center;padding:13px 14px;border-radius:var(--r);background:var(--paper);border:1px solid var(--line2);border-left:5px solid var(--tc);color:var(--ink);text-decoration:none;margin:8px 0;box-shadow:var(--shadow)}
 .ghit .ico{color:var(--tc)} .ghit .ico svg{width:28px;height:28px}
 .ghit b{display:block;font-size:16.5px}
@@ -760,7 +763,7 @@ body.v-ask main{padding-bottom:0}
    are dark lines on white, so each sits on its own paper tile, which keeps them readable in dark mode too. */
 @font-face{font-family:"Nunito";src:url("/ui/Nunito-Variable.woff2") format("woff2");font-weight:200 1000;font-display:swap}
 :root{--ink-paper:#fbf5e2;--ink-paper-line:#efe4c2}
-@media (prefers-color-scheme:dark){:root{--ink-paper:#f3ead0;--ink-paper-line:#f3ead0}}
+[data-theme="dark"]{--ink-paper:#f3ead0;--ink-paper-line:#f3ead0}
 .chat-main.home{max-width:1060px}
 .chat-main.home .chat-log{flex:none;padding:8px 0 0}
 .chat-main.home .composer{position:static;margin-top:0;padding:18px 0 0;background:none;box-shadow:none}
@@ -1015,3 +1018,87 @@ body.map-maxed{overflow:hidden}
 .contribute-note{margin:2px 0 0}
 #contrib-status{margin:0}
 #contrib-status:empty{display:none}
+
+/* Device appearance and a quieter chat layout. Native controls keep keyboard and touch access. */
+label.appearance{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--ink2);margin:12px 0}
+.appearance select{max-width:140px;min-height:38px;padding:6px 26px 6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:14px}
+.chat-storage{margin:8px 0}
+.chat-storage:empty{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0;border:0}
+.chat-top{flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line2)}
+.chat-status{white-space:normal;line-height:1.4}
+.chat-export{margin-left:auto}
+.chat-empty h1{font-size:30px;letter-spacing:-.025em;margin:6px 0 12px}
+.chat-empty .lead{max-width:36em;color:var(--ink2);line-height:1.6}
+.msg{margin:24px 0}
+.msg.user .bubble{background:var(--accent-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--accent) 18%,var(--line2));border-radius:18px 18px 4px 18px;padding:12px 16px}
+.answer{overflow-wrap:anywhere;max-width:72ch}
+.working{font-size:15px;gap:8px}
+.working>b{flex:1;min-width:120px}
+.working .btn{min-height:36px;padding:4px 12px;font-size:14px}
+.working .work-details{flex-basis:100%;margin:0;border-top:1px solid var(--line2)}
+.chat-sources{border:1px solid var(--line2);border-radius:var(--r2);margin:14px 0;background:var(--paper)}
+.chat-sources>summary{cursor:pointer;min-height:48px;padding:12px 14px;font-size:14px;font-weight:650;color:var(--ink2)}
+.source-count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:20px;background:var(--accent-soft);color:var(--ink);font-size:12px;margin-left:5px}
+.source-hint{font-size:12px;color:var(--ink3);font-weight:400;margin-left:12px}
+.chat-sources>.srcfilter{padding:0 10px}
+.chat-sources>.srccards{padding:0 10px 10px}
+.chat-sources .srccard{background:var(--bg)}
+.chat-sources .sc-body{min-width:0;overflow-wrap:anywhere}
+.chat-sources .srccard:focus-visible{outline:3px solid var(--focus)}
+.comp-row textarea{min-width:0}
+.comp-note{font-size:12px;line-height:1.45;max-width:62em;margin:8px auto 0}
+.composer{padding-top:18px;background:linear-gradient(transparent,var(--bg) 18px)}
+.composer .comp-row{border-radius:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+@media (max-width:699px){
+  .chat-sources .srccards{grid-template-columns:1fr}
+  .chat-sources .srccard,.chat-sources .srccards.compact .srccard{grid-template-columns:32px minmax(0,1fr);gap:9px;padding:10px}
+  .chat-sources .srccard .pv{aspect-ratio:1;max-height:38px}
+  .chat-sources .srccard .pv img,.chat-sources .sc-ex{display:none}
+  .chat-sources .srccard .pg{left:0;bottom:0;right:0;text-align:center;padding:3px 1px;font-size:10px}
+  .chat-sources .srccard .pv.w svg{width:19px;height:19px}
+  .source-hint{display:none}
+}
+@media (max-width:639px){
+  .chat{min-height:calc(100dvh - 140px)}
+  .chat-main{gap:0}
+  .chat-top{gap:4px 6px;margin-bottom:8px}
+  .chat-top .btn{min-height:40px;padding:6px 10px;font-size:14px}
+  .chat-status{order:4;flex-basis:100%;font-size:12px;padding:3px 2px}
+  .chat-empty{padding-top:14px}
+  .chat-empty .ce-mark{width:46px;height:46px;margin-bottom:8px}
+  .chat-empty .ce-mark svg{width:25px;height:25px}
+  .chat-empty .lead{font-size:15px}
+  .starter{font-size:14px;min-height:58px;padding:10px 12px}
+  .msg.bot{font-size:16px;line-height:1.65}
+  .msg.user .bubble{max-width:92%;font-size:16px}
+  .legend{font-size:11px;gap:4px 10px}
+  .ans-actions{gap:4px}
+  .ans-actions .btn{font-size:13px;min-height:40px;padding:6px 10px}
+  .composer{bottom:calc(58px + env(safe-area-inset-bottom));padding:16px 0 8px;margin-top:-12px}
+  .comp-note{font-size:11px;text-align:left;margin:6px 2px 0}
+  .comp-row textarea{font-size:16px;padding:9px 0}
+  .cs-privacy .appearance{margin-bottom:0}
+}
+@media (prefers-reduced-motion:reduce){.srccard{transition:none}}
+
+@media (min-width:640px){.plat-win.compact:not(.side-open) .side .appearance{display:none}}
+
+/* A phone's appearance choice is available from every library view. */
+.top-appearance{display:none}
+@media (max-width:639px){
+  .top-appearance{display:flex;align-items:center;position:relative;flex:none;margin-left:auto}
+  .top-appearance>svg{position:absolute;left:9px;width:16px;height:16px;color:var(--ink2);pointer-events:none}
+  .top-appearance select{width:120px;min-height:40px;padding:6px 5px 6px 30px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:16px;cursor:pointer}
+  .top-search{min-width:0}
+  .top-search input{min-width:0}
+  .cs-privacy .appearance{display:none}
+}
+@media (forced-colors:none){
+  :is(.appearance,.top-appearance){position:relative}
+  :is(.appearance,.top-appearance) select{-webkit-appearance:none;appearance:none;padding-inline-end:29px}
+  :is(.appearance,.top-appearance)::after{
+    content:"";position:absolute;inset-inline-end:13px;top:50%;width:8px;height:8px;
+    border:solid var(--ink);border-width:0 1.5px 1.5px 0;
+    transform:translateY(calc(-50% - 2px)) rotate(45deg);pointer-events:none
+  }
+}

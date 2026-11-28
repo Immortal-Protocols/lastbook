@@ -233,9 +233,12 @@ for (const change of JSON.parse(process.argv[3])) {
   patchStream(el, m);
   const part = c => el.children.find(n => n.classList.contains(c));
   const work = part('working'), stages = work.children.find(n => n.classList.contains('wk-stages')), bar = work.children.find(n => n.classList.contains('wk-bar'));
-  const steps = work.children.find(n => n.classList.contains('steps'));
+  const stop = work.children.find(n => n.getAttribute('data-act') === 'stop');
+  const wd = work.children.find(n => n.classList.contains('work-details'));
+  const steps = work.children.find(n => n.classList.contains('steps')) || (wd && wd.children.find(n => n.classList.contains('steps')));
   const ans = part('answer');
   seen.push({ order: el.children.map(n => n.className), label: work.children[0].html, stages: stages.children.map(li => li.className),
+    stopId: stop ? stop.id : null, wdId: wd ? wd.id : null,
     stageIds: [stages.id, ...stages.children.map(li => li.id)], bar: [bar.id, bar.className, bar.children[0].style.width],
     steps: steps ? steps.html : null, answer: ans ? ans.html : null,
     answerIds: ans ? ans.children.map(n => n.id) : null,
@@ -340,6 +343,20 @@ class Streaming(unittest.TestCase):
         self.assertNotEqual(seen[-1]['answerIds'][1], first_id)
         self.assertIn('covered containers', seen[-1]['answer'])
         # The trailing paragraph may be replaced as it grows; only the finished one has to stay.
+
+    def test_stop_button_and_progress_details_keep_their_nodes_across_updates(self):
+        seen = self.run_steps([
+            {'state': 'searching', 'steps': [{'name': 'found', 'count': 2}]},
+            {'state': 'searching', 'steps': [{'name': 'found', 'count': 2}, {'name': 'search_library', 'args': {'query': 'water'}, 'summary': {'count': 3}}]},
+            {'state': 'reading', 'sources': [self.PAGE]},
+            {'state': 'writing', 'content': 'Boil water [S1].'},
+            {'state': 'writing', 'content': 'Boil water for one minute [S1].'},
+        ])
+        self.assertIsNotNone(seen[0]['stopId'])
+        self.assertEqual({s['stopId'] for s in seen}, {seen[0]['stopId']})
+        self.assertIsNotNone(seen[0]['wdId'])
+        self.assertEqual({s['wdId'] for s in seen}, {seen[0]['wdId']})
+        self.assertIn('Searched “water” — 3 passages', seen[-1]['steps'])
 
 
 # Article names straight from a ZIM file: a ? would cut the address, a bare % makes decodeURIComponent throw, a " would end the attribute.

@@ -146,6 +146,8 @@ as one map.
 [REGIONS-MB.md](REGIONS-MB.md) does the same for the Canadian province of Manitoba.
 [REGIONS-DK.md](REGIONS-DK.md) does the same for Denmark's 5 regions.
 [REGIONS-AT.md](REGIONS-AT.md) does the same for Austria's nine states.
+[REGIONS-NL.md](REGIONS-NL.md) does the same for the Netherlands' 12 provinces, with figures from a trial build of all
+twelve.
 
 [REGIONS-MX.md](REGIONS-MX.md) does the same for Mexico's 32 states (entidades federativas).
 

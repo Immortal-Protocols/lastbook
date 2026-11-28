@@ -1,0 +1,1663 @@
+{
+  "about": "Proposed region definitions for detailed maps of the Netherlands: its 12 provinces, one map region each, with a merged map of the whole country as an option. A proposal for discussion (docs/REGIONS-NL.md); no code reads this file, and it does not ship.",
+  "status": "proposal",
+  "checked": "2026-11-27",
+  "how_checked": "Publishers' pages and public APIs read on 26 and 27 November 2026 by an AI assistant without an account, with a person reviewing the result. Figures marked measured come from a trial build of all twelve provinces (25 and 26 November 2026) and from calling this repository's code at main 51658f5.",
+  "codes": {
+    "proposal": "ISO 3166-2:NL codes NL-DR, NL-FL, NL-FR, NL-GE, NL-GR, NL-LI, NL-NB, NL-NH, NL-OV, NL-UT, NL-ZE, NL-ZH.",
+    "iso_checked": "search only: secondary listings, not iso.org.",
+    "why_the_prefix": "Three of the twelve letter pairs are US state codes in STATE_CODES (engine/address_search.py): FL (Flevoland, Florida), NH (Noord-Holland, New Hampshire), UT (Utrecht, Utah). A bare NL is not.",
+    "index_names": "Address index ids must match [A-Z]{2} (engine/setup/manifest.py line 97), and engine/setup/install.py line 462 carries over only [A-Z]{2}.sqlite and .json. NL-FL does not fit and FL would be Florida. The trial named its indexes addresses/NL-<code>.sqlite and loaded the map set from outside the library, so the manifest was not involved.",
+    "other_codes": "CBS numbers the provinces PV20 to PV31 (StatLine; opened). The BAG writes its own province code in mixed case: ZH, NH, NB, but Gr, Fr, Dr, Ov, Fl, Ge, Ut, Ze, Li (opened, 25 November 2026).",
+    "not_included": "The Caribbean parts of the Kingdom: Bonaire, Sint Eustatius and Saba (NL-BQ1 to NL-BQ3), and Aruba, Curaçao and Sint Maarten (NL-AW, NL-CW, NL-SX). Their sources were not looked at."
+  },
+  "regions": [
+    {
+      "code": "NL-GR",
+      "name": "Groningen",
+      "name_en": "Groningen",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV20",
+      "bag_provincie_afkorting": "Gr",
+      "municipalities": {
+        "count": 10,
+        "names": [
+          "Eemsdelta",
+          "Groningen",
+          "Het Hogeland",
+          "Midden-Groningen",
+          "Oldambt",
+          "Pekela",
+          "Stadskanaal",
+          "Veendam",
+          "Westerkwartier",
+          "Westerwolde"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 199,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 6.16743,
+        "south": 52.8382,
+        "east": 7.2275,
+        "north": 53.57642,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 6.01,
+        "south": 52.68,
+        "east": 7.38,
+        "north": 53.73,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 164063,
+        "with_margin": 405804,
+        "largest": {
+          "code": "NL-DR",
+          "bag_addresses": 139626
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 599725,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV20, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 379059,
+        "without_postcode": 19103,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "groningen-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/groningen-latest-free.gpkg.zip",
+        "bytes": 97105295,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 33,
+        "size": "174 MB"
+      },
+      "islands": [
+        {
+          "name": "Rottumeroog and Rottumerplaat",
+          "note": "uninhabited, no addresses"
+        }
+      ]
+    },
+    {
+      "code": "NL-FR",
+      "name": "Fryslân",
+      "name_en": "Friesland",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV21",
+      "bag_provincie_afkorting": "Fr",
+      "municipalities": {
+        "count": 18,
+        "names": [
+          "Achtkarspelen",
+          "Ameland",
+          "Dantumadiel",
+          "De Fryske Marren",
+          "Harlingen",
+          "Heerenveen",
+          "Leeuwarden",
+          "Noardeast-Fryslân",
+          "Ooststellingwerf",
+          "Opsterland",
+          "Schiermonnikoog",
+          "Smallingerland",
+          "Súdwest-Fryslân",
+          "Terschelling",
+          "Tytsjerksteradiel",
+          "Vlieland",
+          "Waadhoeke",
+          "Weststellingwerf"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 419,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 4.81838,
+        "south": 52.76481,
+        "east": 6.42761,
+        "north": 53.53971,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 4.66,
+        "south": 52.61,
+        "east": 6.58,
+        "north": 53.69,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 110540,
+        "with_margin": 778485,
+        "largest": {
+          "code": "NL-GR",
+          "bag_addresses": 36934
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 665595,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV21, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 415126,
+        "without_postcode": 16596,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "friesland-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/friesland-latest-free.gpkg.zip",
+        "bytes": 175240993,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 95,
+        "size": "259 MB"
+      },
+      "islands": [
+        {
+          "name": "Vlieland",
+          "municipality": "Vlieland",
+          "addresses": 1654,
+          "ferry_terminals": 3
+        },
+        {
+          "name": "Terschelling",
+          "municipality": "Terschelling",
+          "addresses": 5391,
+          "ferry_terminals": 5
+        },
+        {
+          "name": "Ameland",
+          "municipality": "Ameland",
+          "addresses": 4939,
+          "ferry_terminals": 6
+        },
+        {
+          "name": "Schiermonnikoog",
+          "municipality": "Schiermonnikoog",
+          "addresses": 1748,
+          "ferry_terminals": 1
+        }
+      ]
+    },
+    {
+      "code": "NL-DR",
+      "name": "Drenthe",
+      "name_en": "Drenthe",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV22",
+      "bag_provincie_afkorting": "Dr",
+      "municipalities": {
+        "count": 12,
+        "names": [
+          "Aa en Hunze",
+          "Assen",
+          "Borger-Odoorn",
+          "Coevorden",
+          "De Wolden",
+          "Emmen",
+          "Hoogeveen",
+          "Meppel",
+          "Midden-Drenthe",
+          "Noordenveld",
+          "Tynaarlo",
+          "Westerveld"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 227,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 6.11982,
+        "south": 52.6122,
+        "east": 7.09274,
+        "north": 53.20383,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 5.96,
+        "south": 52.46,
+        "east": 7.25,
+        "north": 53.36,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 213054,
+        "with_margin": 707184,
+        "largest": {
+          "code": "NL-GR",
+          "bag_addresses": 157112
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 508822,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV22, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 299633,
+        "without_postcode": 12734,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "drenthe-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/drenthe-latest-free.gpkg.zip",
+        "bytes": 112540636,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 18,
+        "size": "178 MB"
+      }
+    },
+    {
+      "code": "NL-OV",
+      "name": "Overijssel",
+      "name_en": "Overijssel",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV23",
+      "bag_provincie_afkorting": "Ov",
+      "municipalities": {
+        "count": 25,
+        "names": [
+          "Almelo",
+          "Borne",
+          "Dalfsen",
+          "Deventer",
+          "Dinkelland",
+          "Enschede",
+          "Haaksbergen",
+          "Hardenberg",
+          "Hellendoorn",
+          "Hengelo (O)",
+          "Hof van Twente",
+          "Kampen",
+          "Losser",
+          "Oldenzaal",
+          "Olst-Wijhe",
+          "Ommen",
+          "Raalte",
+          "Rijssen-Holten",
+          "Staphorst",
+          "Steenwijkerland",
+          "Tubbergen",
+          "Twenterand",
+          "Wierden",
+          "Zwartewaterland",
+          "Zwolle"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 180,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 5.77775,
+        "south": 52.11807,
+        "east": 7.07276,
+        "north": 52.85421,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 5.62,
+        "south": 51.96,
+        "east": 7.23,
+        "north": 53.01,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 426077,
+        "with_margin": 1055200,
+        "largest": {
+          "code": "NL-GE",
+          "bag_addresses": 247357
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 1205058,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV23, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 691268,
+        "without_postcode": 27637,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "overijssel-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/overijssel-latest-free.gpkg.zip",
+        "bytes": 204277632,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 54,
+        "size": "348 MB"
+      }
+    },
+    {
+      "code": "NL-FL",
+      "name": "Flevoland",
+      "name_en": "Flevoland",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV24",
+      "bag_provincie_afkorting": "Fl",
+      "municipalities": {
+        "count": 6,
+        "names": [
+          "Almere",
+          "Dronten",
+          "Lelystad",
+          "Noordoostpolder",
+          "Urk",
+          "Zeewolde"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 19,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 5.06043,
+        "south": 52.24953,
+        "east": 6.0173,
+        "north": 52.84398,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 4.91,
+        "south": 52.09,
+        "east": 6.17,
+        "north": 53.0,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 342791,
+        "with_margin": 1662736,
+        "largest": {
+          "code": "NL-NH",
+          "bag_addresses": 164770
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 465921,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV24, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 238815,
+        "without_postcode": 5914,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "flevoland-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/flevoland-latest-free.gpkg.zip",
+        "bytes": 66089570,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 25,
+        "size": "117 MB"
+      }
+    },
+    {
+      "code": "NL-GE",
+      "name": "Gelderland",
+      "name_en": "Gelderland",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV25",
+      "bag_provincie_afkorting": "Ge",
+      "municipalities": {
+        "count": 51,
+        "names": [
+          "Aalten",
+          "Apeldoorn",
+          "Arnhem",
+          "Barneveld",
+          "Berg en Dal",
+          "Berkelland",
+          "Beuningen",
+          "Bronckhorst",
+          "Brummen",
+          "Buren",
+          "Culemborg",
+          "Doesburg",
+          "Doetinchem",
+          "Druten",
+          "Duiven",
+          "Ede",
+          "Elburg",
+          "Epe",
+          "Ermelo",
+          "Harderwijk",
+          "Hattem",
+          "Heerde",
+          "Heumen",
+          "Lingewaard",
+          "Lochem",
+          "Maasdriel",
+          "Montferland",
+          "Neder-Betuwe",
+          "Nijkerk",
+          "Nijmegen",
+          "Nunspeet",
+          "Oldebroek",
+          "Oost Gelre",
+          "Oude IJsselstreek",
+          "Overbetuwe",
+          "Putten",
+          "Renkum",
+          "Rheden",
+          "Rozendaal",
+          "Scherpenzeel",
+          "Tiel",
+          "Voorst",
+          "Wageningen",
+          "West Betuwe",
+          "West Maas en Waal",
+          "Westervoort",
+          "Wijchen",
+          "Winterswijk",
+          "Zaltbommel",
+          "Zevenaar",
+          "Zutphen"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 335,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 4.99385,
+        "south": 51.73358,
+        "east": 6.8328,
+        "north": 52.52203,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 4.84,
+        "south": 51.58,
+        "east": 6.99,
+        "north": 52.68,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 1583947,
+        "with_margin": 3265462,
+        "largest": {
+          "code": "NL-UT",
+          "bag_addresses": 719483
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 2179092,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV25, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 1250394,
+        "without_postcode": 44040,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "gelderland-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/gelderland-latest-free.gpkg.zip",
+        "bytes": 326350300,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 143,
+        "size": "590 MB"
+      }
+    },
+    {
+      "code": "NL-UT",
+      "name": "Utrecht",
+      "name_en": "Utrecht",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV26",
+      "bag_provincie_afkorting": "Ut",
+      "municipalities": {
+        "count": 26,
+        "names": [
+          "Amersfoort",
+          "Baarn",
+          "Bunnik",
+          "Bunschoten",
+          "De Bilt",
+          "De Ronde Venen",
+          "Eemnes",
+          "Houten",
+          "IJsselstein",
+          "Leusden",
+          "Lopik",
+          "Montfoort",
+          "Nieuwegein",
+          "Oudewater",
+          "Renswoude",
+          "Rhenen",
+          "Soest",
+          "Stichtse Vecht",
+          "Utrecht",
+          "Utrechtse Heuvelrug",
+          "Veenendaal",
+          "Vijfheerenlanden",
+          "Wijk bij Duurstede",
+          "Woerden",
+          "Woudenberg",
+          "Zeist"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 104,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 4.79204,
+        "south": 51.85736,
+        "east": 5.62731,
+        "north": 52.30368,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 4.64,
+        "south": 51.7,
+        "east": 5.78,
+        "north": 52.46,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 435641,
+        "with_margin": 2267664,
+        "largest": {
+          "code": "NL-NH",
+          "bag_addresses": 220031
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 1418315,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV26, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 801372,
+        "without_postcode": 28221,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "utrecht-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/utrecht-latest-free.gpkg.zip",
+        "bytes": 166184959,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 98,
+        "size": "324 MB"
+      }
+    },
+    {
+      "code": "NL-NH",
+      "name": "Noord-Holland",
+      "name_en": "North Holland",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV27",
+      "bag_provincie_afkorting": "NH",
+      "municipalities": {
+        "count": 44,
+        "names": [
+          "Aalsmeer",
+          "Alkmaar",
+          "Amstelveen",
+          "Amsterdam",
+          "Bergen (NH)",
+          "Beverwijk",
+          "Blaricum",
+          "Bloemendaal",
+          "Castricum",
+          "Den Helder",
+          "Diemen",
+          "Dijk en Waard",
+          "Drechterland",
+          "Edam-Volendam",
+          "Enkhuizen",
+          "Gooise Meren",
+          "Haarlem",
+          "Haarlemmermeer",
+          "Heemskerk",
+          "Heemstede",
+          "Heiloo",
+          "Hilversum",
+          "Hollands Kroon",
+          "Hoorn",
+          "Huizen",
+          "Koggenland",
+          "Landsmeer",
+          "Laren",
+          "Medemblik",
+          "Oostzaan",
+          "Opmeer",
+          "Ouder-Amstel",
+          "Purmerend",
+          "Schagen",
+          "Stede Broec",
+          "Texel",
+          "Uitgeest",
+          "Uithoorn",
+          "Velsen",
+          "Waterland",
+          "Wijdemeren",
+          "Wormerland",
+          "Zaanstad",
+          "Zandvoort"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 239,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 4.47765,
+        "south": 52.16593,
+        "east": 5.37726,
+        "north": 53.21427,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 4.32,
+        "south": 52.01,
+        "east": 5.53,
+        "north": 53.37,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 320486,
+        "with_margin": 1637810,
+        "largest": {
+          "code": "NL-FL",
+          "bag_addresses": 112731
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 3019491,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV27, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 1879854,
+        "without_postcode": 76885,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "noord-holland-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/noord-holland-latest-free.gpkg.zip",
+        "bytes": 317977875,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 207,
+        "size": "669 MB"
+      },
+      "islands": [
+        {
+          "name": "Texel",
+          "municipality": "Texel",
+          "addresses": 15615,
+          "ferry_terminals": 8
+        }
+      ]
+    },
+    {
+      "code": "NL-ZH",
+      "name": "Zuid-Holland",
+      "name_en": "South Holland",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV28",
+      "bag_provincie_afkorting": "ZH",
+      "municipalities": {
+        "count": 50,
+        "names": [
+          "'s-Gravenhage",
+          "Alblasserdam",
+          "Albrandswaard",
+          "Alphen aan den Rijn",
+          "Barendrecht",
+          "Bodegraven-Reeuwijk",
+          "Capelle aan den IJssel",
+          "Delft",
+          "Dordrecht",
+          "Goeree-Overflakkee",
+          "Gorinchem",
+          "Gouda",
+          "Hardinxveld-Giessendam",
+          "Hendrik-Ido-Ambacht",
+          "Hillegom",
+          "Hoeksche Waard",
+          "Kaag en Braassem",
+          "Katwijk",
+          "Krimpen aan den IJssel",
+          "Krimpenerwaard",
+          "Lansingerland",
+          "Leiden",
+          "Leiderdorp",
+          "Leidschendam-Voorburg",
+          "Lisse",
+          "Maassluis",
+          "Midden-Delfland",
+          "Molenlanden",
+          "Nieuwkoop",
+          "Nissewaard",
+          "Noordwijk",
+          "Oegstgeest",
+          "Papendrecht",
+          "Pijnacker-Nootdorp",
+          "Ridderkerk",
+          "Rijswijk",
+          "Rotterdam",
+          "Schiedam",
+          "Sliedrecht",
+          "Teylingen",
+          "Vlaardingen",
+          "Voorne aan Zee",
+          "Voorschoten",
+          "Waddinxveen",
+          "Wassenaar",
+          "Westland",
+          "Zoetermeer",
+          "Zoeterwoude",
+          "Zuidplas",
+          "Zwijndrecht"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 185,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 3.77368,
+        "south": 51.64378,
+        "east": 5.03142,
+        "north": 52.33251,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 3.62,
+        "south": 51.49,
+        "east": 5.19,
+        "north": 52.49,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 506007,
+        "with_margin": 2514526,
+        "largest": {
+          "code": "NL-NH",
+          "bag_addresses": 266411
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 3890837,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV28, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 2293923,
+        "without_postcode": 91506,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "zuid-holland-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/zuid-holland-latest-free.gpkg.zip",
+        "bytes": 348713912,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 199,
+        "size": "793 MB"
+      }
+    },
+    {
+      "code": "NL-ZE",
+      "name": "Zeeland",
+      "name_en": "Zeeland",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV29",
+      "bag_provincie_afkorting": "Ze",
+      "municipalities": {
+        "count": 13,
+        "names": [
+          "Borsele",
+          "Goes",
+          "Hulst",
+          "Kapelle",
+          "Middelburg",
+          "Noord-Beveland",
+          "Reimerswaal",
+          "Schouwen-Duiveland",
+          "Sluis",
+          "Terneuzen",
+          "Tholen",
+          "Veere",
+          "Vlissingen"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 127,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 3.30794,
+        "south": 51.20016,
+        "east": 4.27742,
+        "north": 51.78152,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 3.15,
+        "south": 51.05,
+        "east": 4.43,
+        "north": 51.94,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 35861,
+        "with_margin": 397225,
+        "largest": {
+          "code": "NL-ZH",
+          "bag_addresses": 25581
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 396156,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV29, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 291893,
+        "without_postcode": 21836,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "zeeland-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/zeeland-latest-free.gpkg.zip",
+        "bytes": 81164090,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 53,
+        "size": "143 MB"
+      }
+    },
+    {
+      "code": "NL-NB",
+      "name": "Noord-Brabant",
+      "name_en": "North Brabant",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV30",
+      "bag_provincie_afkorting": "NB",
+      "municipalities": {
+        "count": 56,
+        "names": [
+          "'s-Hertogenbosch",
+          "Alphen-Chaam",
+          "Altena",
+          "Asten",
+          "Baarle-Nassau",
+          "Bergeijk",
+          "Bergen op Zoom",
+          "Bernheze",
+          "Best",
+          "Bladel",
+          "Boekel",
+          "Boxtel",
+          "Breda",
+          "Cranendonck",
+          "Deurne",
+          "Dongen",
+          "Drimmelen",
+          "Eersel",
+          "Eindhoven",
+          "Etten-Leur",
+          "Geertruidenberg",
+          "Geldrop-Mierlo",
+          "Gemert-Bakel",
+          "Gilze en Rijen",
+          "Goirle",
+          "Halderberge",
+          "Heeze-Leende",
+          "Helmond",
+          "Heusden",
+          "Hilvarenbeek",
+          "Laarbeek",
+          "Land van Cuijk",
+          "Loon op Zand",
+          "Maashorst",
+          "Meierijstad",
+          "Moerdijk",
+          "Nuenen, Gerwen en Nederwetten",
+          "Oirschot",
+          "Oisterwijk",
+          "Oosterhout",
+          "Oss",
+          "Reusel-De Mierden",
+          "Roosendaal",
+          "Rucphen",
+          "Sint-Michielsgestel",
+          "Someren",
+          "Son en Breugel",
+          "Steenbergen",
+          "Tilburg",
+          "Valkenswaard",
+          "Veldhoven",
+          "Vught",
+          "Waalre",
+          "Waalwijk",
+          "Woensdrecht",
+          "Zundert"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 279,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 4.19012,
+        "south": 51.22091,
+        "east": 6.04812,
+        "north": 51.83075,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 4.04,
+        "south": 51.07,
+        "east": 6.2,
+        "north": 51.99,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 465411,
+        "with_margin": 2111684,
+        "largest": {
+          "code": "NL-ZH",
+          "bag_addresses": 205313
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 2685101,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV30, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 1556918,
+        "without_postcode": 77905,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "noord-brabant-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/noord-brabant-latest-free.gpkg.zip",
+        "bytes": 356991247,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 78,
+        "size": "692 MB"
+      }
+    },
+    {
+      "code": "NL-LI",
+      "name": "Limburg",
+      "name_en": "Limburg",
+      "country": "Netherlands",
+      "country_iso": "NL",
+      "admin_level": "province",
+      "cbs_code": "PV31",
+      "bag_provincie_afkorting": "Li",
+      "municipalities": {
+        "count": 31,
+        "names": [
+          "Beek",
+          "Beekdaelen",
+          "Beesel",
+          "Bergen (L)",
+          "Brunssum",
+          "Echt-Susteren",
+          "Eijsden-Margraten",
+          "Gennep",
+          "Gulpen-Wittem",
+          "Heerlen",
+          "Horst aan de Maas",
+          "Kerkrade",
+          "Landgraaf",
+          "Leudal",
+          "Maasgouw",
+          "Maastricht",
+          "Meerssen",
+          "Mook en Middelaar",
+          "Nederweert",
+          "Peel en Maas",
+          "Roerdalen",
+          "Roermond",
+          "Simpelveld",
+          "Sittard-Geleen",
+          "Stein",
+          "Vaals",
+          "Valkenburg aan de Geul",
+          "Venlo",
+          "Venray",
+          "Voerendaal",
+          "Weert"
+        ],
+        "source": "distinct bronhouder_naam of the BAG addresses in the trial build (measured)"
+      },
+      "places": {
+        "count": 190,
+        "what": "BAG woonplaatsen, counted as (place, municipality)"
+      },
+      "bbox": {
+        "west": 5.56605,
+        "south": 50.75037,
+        "east": 6.22677,
+        "north": 51.77863,
+        "source": {
+          "dataset": "Kadaster BRK Bestuurlijke Gebieden, provinciegebied",
+          "url": "https://api.pdok.nl/kadaster/brk-bestuurlijke-gebieden/ogc/v1/collections/provinciegebied/items",
+          "licence": "CC-BY-4.0-Kadaster",
+          "method": "Extent of the MultiPolygon, islands and waters included",
+          "served_at": "2026-11-26T06:10:05Z",
+          "verified": "opened"
+        }
+      },
+      "bbox_with_margin_0_15": {
+        "west": 5.41,
+        "south": 50.6,
+        "east": 6.38,
+        "north": 51.93,
+        "rounding": "outward to 0.01 degree"
+      },
+      "other_provinces_in_box": {
+        "bag_addresses": 269076,
+        "with_margin": 901154,
+        "largest": {
+          "code": "NL-NB",
+          "bag_addresses": 258369
+        },
+        "own_addresses_outside_box": 0,
+        "verified": "measured 2026-11-27"
+      },
+      "population": {
+        "value": 1137499,
+        "date": "2026-09-01",
+        "source": "https://opendata.cbs.nl/ODataApi/odata/37230ned/TypedDataSet, table 37230ned, BevolkingAanHetBeginVanDePeriode_1, RegioS PV31, Perioden 2026MM09",
+        "verified": "opened"
+      },
+      "addresses": {
+        "bag_rows": 700384,
+        "without_postcode": 31531,
+        "verified": "measured (trial build, 26 November 2026)"
+      },
+      "osm_extract": {
+        "file": "limburg-latest-free.gpkg.zip",
+        "url": "https://download.geofabrik.de/europe/netherlands/limburg-latest-free.gpkg.zip",
+        "bytes": 169695298,
+        "data_up_to": "2026-11-24T21:21:23Z"
+      },
+      "trial_build": {
+        "ferry_terminals": 46,
+        "size": "315 MB"
+      }
+    }
+  ],
+  "totals": {
+    "provinces": 12,
+    "municipalities": 342,
+    "places": 2503,
+    "place_names": 2428,
+    "population": 18171612,
+    "population_date": "2026-09-01",
+    "bag_addresses": 10798639,
+    "bag_addresses_without_postcode": 453908,
+    "osm_extract_bytes": 2422331807,
+    "municipalities_cbs": "342 on 1 January 2026 (CBS, Gemeentelijke indeling op 1 januari 2026; search only)"
+  },
+  "box_notes": [
+    "Every BAG address of a province lies inside its own box (measured over all 10,798,639).",
+    "The boxes overlap heavily: Gelderland's box holds 1,583,947 addresses of other provinces, more than its own 1,250,394, including 719,483 of Utrecht's 801,372; Flevoland's holds 342,791 against 238,815 of its own. A province cannot be cut from the BAG by its box. The trial asked the BAG by box and kept the records whose provincie_afkorting is the province's, compared without case.",
+    "OpenStreetMap came from Geofabrik's province extracts, cut by the province outline. The BAG holds no foreign addresses, so boxes that reach into Belgium and Germany (Aachen lies inside Limburg's) add no foreign rows from it; sources cut by box would.",
+    "A province's area includes its inland and coastal waters, so Flevoland's box takes in part of the IJsselmeer and Markermeer."
+  ],
+  "osm_extract": {
+    "dataset": "Geofabrik Netherlands extract and its 12 province sub-regions",
+    "url": "https://download.geofabrik.de/europe/netherlands.html",
+    "licence": "ODbL-1.0",
+    "data_up_to": "2026-11-24T21:21:23Z",
+    "verified": "opened (2026-11-25)",
+    "used": "<province>-latest-free.gpkg.zip; sizes per region are the files the trial downloaded (measured)",
+    "note": "Geofabrik names Fryslân friesland. The free GeoPackage has no defibrillator layer."
+  },
+  "layer_keys": {
+    "terrain": "terrain.sqlite",
+    "water": "water.sqlite",
+    "dams": "water.sqlite (nid part today)",
+    "crops": "crops.sqlite",
+    "buildings": "buildings.sqlite",
+    "places": "places.sqlite",
+    "addresses": "derived/geo/addresses/<code>.sqlite",
+    "pois": "poi rows in national.sqlite"
+  },
+  "licences": {
+    "PDM-1.0": {
+      "name": "Creative Commons Public Domain Mark 1.0",
+      "url": "https://creativecommons.org/publicdomain/mark/1.0/deed.nl",
+      "covers": "BAG (PDOK OGC API), BRP Gewaspercelen (PDOK OGC API), RIVM SEH questionnaire 2026",
+      "attribution": "none required",
+      "verified": "2026-11-27 (each landing page or record opened)"
+    },
+    "CC0-1.0": {
+      "name": "Creative Commons Zero 1.0",
+      "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "covers": "BAG downloads; AHN and Rijkswaterstaat's legger of primary flood defences as listed on data.overheid.nl",
+      "verified": "search only"
+    },
+    "Publiek-domein": {
+      "name": "\"Publiek domein\" as listed on data.overheid.nl",
+      "covers": "Nationale Basisbestanden Primaire Waterkeringen (Informatiehuis Water)",
+      "verified": "search only; the dataset page did not load when opened"
+    },
+    "CC-BY-4.0-Kadaster": {
+      "name": "Creative Commons Attribution 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/deed.nl",
+      "covers": "Kadaster BRK Bestuurlijke Gebieden, BRT TOP10NL",
+      "attribution": "Kadaster, with the dataset",
+      "share_alike": false,
+      "verified": "2026-11-27 (PDOK landing pages opened)"
+    },
+    "CC-BY-4.0-CBS": {
+      "name": "Creative Commons Attribution 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/deed.nl",
+      "covers": "CBS Wijken en Buurten (neighbourhood map)",
+      "attribution": "CBS asks that CBS and Kadaster be named as the source (search only)",
+      "share_alike": false,
+      "verified": "2026-11-27 (PDOK landing page opened)"
+    },
+    "CC-BY-4.0-3DBAG": {
+      "name": "Creative Commons Attribution 4.0",
+      "url": "https://docs.3dbag.nl/en/copyright/",
+      "covers": "3DBAG building heights",
+      "attribution": "© 3DBAG by tudelft3d and 3DGI",
+      "share_alike": false,
+      "verified": "2026-11-27 (opened)"
+    },
+    "ODbL-1.0": {
+      "name": "Open Database License 1.0",
+      "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+      "attribution": "© OpenStreetMap contributors",
+      "share_alike": true
+    }
+  },
+  "country_layers": {
+    "terrain": [
+      {
+        "dataset": "AHN, Actueel Hoogtebestand Nederland: DTM (maaiveldmodel) at 0.5 m and 5 m, GeoTIFF",
+        "publisher": "AHN, a collaboration of the water boards, the provinces and Rijkswaterstaat",
+        "url": "https://www.ahn.nl/dataroom",
+        "licence": "CC0-1.0",
+        "verified": "dataroom opened 2026-11-27: \"vrij beschikbaar als open data\", no licence named; CC0 1.0 on data.overheid.nl, search only",
+        "role": "primary",
+        "notes": "AHN4, AHN5 and AHN6 (flown 2025 and 2026) are listed. 0.5 m is far finer than zoom 12, the deepest zoom tools/build_terrain.py writes. The size of a whole-country download was not checked."
+      }
+    ],
+    "water": [
+      {
+        "dataset": "OpenStreetMap water",
+        "publisher": "OpenStreetMap contributors via Geofabrik",
+        "licence": "ODbL-1.0",
+        "role": "primary",
+        "in_trial": true
+      },
+      {
+        "dataset": "BRT TOP10NL water",
+        "publisher": "Kadaster",
+        "url": "https://api.pdok.nl/brt/top10nl/ogc/v1/",
+        "licence": "CC-BY-4.0-Kadaster",
+        "verified": "2026-11-27 (landing page opened)",
+        "role": "alternative"
+      }
+    ],
+    "dams_and_dikes": [
+      {
+        "dataset": "Nationale Basisbestanden Primaire Waterkeringen (dikes, dunes, dams and structures)",
+        "publisher": "Informatiehuis Water",
+        "url": "https://data.overheid.nl/dataset/48540-dataset-nationale-basisbestanden-primaire-waterkeringen",
+        "licence": "Publiek-domein",
+        "verified": "search only; the page did not load when opened",
+        "notes": "No dam register like the NID: the risk is the sea and the rivers. water.sqlite has no kind for a dike."
+      },
+      {
+        "dataset": "RWS legger, ligging primaire keringen",
+        "publisher": "Rijkswaterstaat",
+        "licence": "CC0-1.0",
+        "verified": "search only"
+      }
+    ],
+    "crops": [
+      {
+        "dataset": "BRP Gewaspercelen (declared crop parcels), reference date 15 May each year",
+        "publisher": "RVO, through PDOK",
+        "url": "https://api.pdok.nl/rvo/gewaspercelen/ogc/v1/",
+        "licence": "PDM-1.0",
+        "verified": "2026-11-27 (landing page opened)",
+        "role": "primary",
+        "notes": "Which crop codes are orchards, berries and vines was not mapped."
+      }
+    ],
+    "buildings": [
+      {
+        "dataset": "BAG pand (outlines, construction year)",
+        "publisher": "Kadaster",
+        "url": "https://api.pdok.nl/kadaster/bag/ogc/v2/",
+        "licence": "PDM-1.0",
+        "verified": "2026-11-27 (landing page opened)",
+        "role": "primary",
+        "notes": "No height."
+      },
+      {
+        "dataset": "3DBAG (heights derived from AHN)",
+        "publisher": "TU Delft 3D geoinformation and 3DGI",
+        "url": "https://3dbag.nl",
+        "licence": "CC-BY-4.0-3DBAG",
+        "verified": "2026-11-27 (copyright page opened)",
+        "role": "heights"
+      }
+    ],
+    "places": [
+      {
+        "dataset": "BAG woonplaatsen and municipalities, from the address records",
+        "publisher": "Kadaster",
+        "licence": "PDM-1.0",
+        "role": "primary",
+        "in_trial": true,
+        "notes": "2,503 places with 2,428 names in 342 municipalities (measured)."
+      },
+      {
+        "dataset": "OpenStreetMap named places",
+        "licence": "ODbL-1.0",
+        "role": "supplement",
+        "in_trial": true
+      },
+      {
+        "dataset": "CBS Wijken en Buurten 2025 (neighbourhoods and districts)",
+        "publisher": "CBS",
+        "url": "https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/",
+        "licence": "CC-BY-4.0-CBS",
+        "verified": "2026-11-27 (landing page opened)",
+        "role": "neighbourhood names"
+      }
+    ],
+    "addresses": [
+      {
+        "dataset": "BAG, Basisregistratie Adressen en Gebouwen, collection adres",
+        "publisher": "Kadaster, through PDOK",
+        "url": "https://api.pdok.nl/kadaster/bag/ogc/v2/collections/adres/items",
+        "licence": "PDM-1.0 (the API); CC0-1.0 (the downloads)",
+        "verified": "API landing page opened 2026-11-27; downloads search only",
+        "role": "primary",
+        "in_trial": true,
+        "fields": "openbare_ruimte_naam, huisnummer, huisletter, toevoeging, postcode, woonplaats_naam, bronhouder_naam, provincie_naam, provincie_afkorting, a WGS 84 point (opened)",
+        "notes": "Filtered by box; a request filtered by province failed when tried. Deep pages in dense cells answered HTTP 500, in ten of the twelve provinces on 25 and 26 November 2026; the trial split such cells down to about 200 m. The bulk downloads were not tried."
+      }
+    ],
+    "pois": [
+      {
+        "dataset": "OpenStreetMap",
+        "publisher": "OpenStreetMap contributors via Geofabrik",
+        "licence": "ODbL-1.0",
+        "role": "primary",
+        "in_trial": true
+      },
+      {
+        "dataset": "OpenStreetMap emergency=defibrillator through the Overpass API, one query per province area",
+        "licence": "ODbL-1.0",
+        "in_trial": true,
+        "count": 4260,
+        "as_of": "2026-11-26T19:16:51Z"
+      },
+      {
+        "dataset": "RIVM Vragenlijst aanbod SEH's en Acute Verloskunde 2026 (emergency departments)",
+        "publisher": "RIVM",
+        "url": "https://data.rivm.nl/meta/srv/api/records/afbdf4b9-00f0-4d4e-a67e-fd3bbc8c833c",
+        "published": "2026-07-02",
+        "licence": "PDM-1.0 (\"Geen beperkingen\")",
+        "verified": "2026-11-27 (record opened)",
+        "in_trial": true,
+        "count": 79,
+        "notes": "Each emergency department placed at its BAG address."
+      }
+    ]
+  },
+  "not_open_nationwide": [
+    "Defibrillators: HartslagNu (the Dutch Heart Foundation) is the national register; data is given for research on request under a data access policy (search only), and the foundation has said it may not publish exact AED locations (NOS; search only). The Red Cross closed its open AED database on 28 February 2020 (HartslagNu; search only). A NOS article reports 25,840 registered AEDs (search only; date not checked). OSM has 4,370.",
+    "Sirens: the warning system (WAS) has about 4,278 sirens in towns of 1,000 people or more (a municipal factsheet; search only). The cabinet announced a new siren network on 9 June 2026 (rijksoverheid.nl; search only). OSM has 4,221 emergency=siren; whether they are the WAS sirens was not checked.",
+    "Pharmacies, fire stations and police stations: no open national list was looked for (not checked)."
+  ],
+  "addressing": {
+    "order": "Street, house number with letter and addition, then postcode and place: 'Rotterdamseweg 374A, 2629 HG Delft'. Forms and parcels often ask for postcode and house number alone ('2629 HG 374'), which name one address.",
+    "postal_code": {
+      "format": "Four digits, never starting with 0, then two capital letters, written with a space; stored as 1234AB.",
+      "example_pattern": "0000 AA",
+      "counts": {
+        "four_digit_areas": 4086,
+        "full_postcodes": 471730
+      },
+      "relation_to_provinces": "15 four-digit areas and 14 full postcodes have addresses in two provinces; the largest real case is 7973 (335 in Drenthe, 24 in Overijssel) (measured).",
+      "placeholders": "19 BAG rows carry placeholder postcodes: 9999ZZ (Zwolle, Rotterdam), 9999AA (Someren), 9999XX (Roermond), 1234AB (Finsterwolde), 1234XX (Lemiers). 9999 itself is real, in Stitswerd (measured)."
+    },
+    "house_number": {
+      "digits_only": 8463881,
+      "with_letter": 1287744,
+      "with_addition": 1047014,
+      "examples": [
+        "40A",
+        "4-2C4",
+        "55-BEDR"
+      ],
+      "without_postcode": 453908,
+      "without_postcode_what": "outbuildings with an addition such as ts, berths and caravan pitches"
+    },
+    "places": "The place is the BAG woonplaats, often not the municipality (Ter Apel, in Westerwolde). 2,503 places have 2,428 names. The Hague is 's-Gravenhage in the BAG and Den Haag in speech; 's-Hertogenbosch is Den Bosch.",
+    "streets": {
+      "names": 139219,
+      "streets_by_name_and_place": 248567,
+      "names_in_more_than_one_place": 27409,
+      "most_common": {
+        "Kerkstraat": 513,
+        "Schoolstraat": 459,
+        "Molenstraat": 327,
+        "Dorpsstraat": 319
+      }
+    },
+    "letters": {
+      "street_names_with_accent": 2729,
+      "with_apostrophe": 1069,
+      "with_abbreviated_title": 1846,
+      "ending_in_straat": 49375,
+      "examples": [
+        "Ruïnelaan",
+        "'t Ompad",
+        "'s-Gravendeel",
+        "Burg.",
+        "Fryslân"
+      ]
+    },
+    "counts_source": "the trial build's twelve address indexes, 27 November 2026 (measured)",
+    "current_code": {
+      "read": "engine/address_search.py at main 51658f5, 27 November 2026, by calling its functions",
+      "german_order": "'Rotterdamseweg 374A, 2629 HG Delft' and 'Spui 70, 2511 BT Den Haag' are read by _parts_de with the postcode's digits (2629, 2511) as the house number and 374a in the street.",
+      "number_first": "'2629 HG 374' is a US address for is_address_query: house 2629 on a street called 'hg 374'.",
+      "normalize": "normalize() and normalize_de() keep only a-z and 0-9: 'Ruïnelaan' becomes 'ru nelaan', 'Fryslân' 'frysl n'.",
+      "indexes": "find_addresses reads only indexes whose meta norm is us or de-1.",
+      "build": "tools/build_addresses.py keeps only country = 'US'."
+    },
+    "trial_rule": "norm = nl-1 in the index's meta and norm column: lower case, accents off, punctuation to spaces, a word ending in 'straat' shortened to 'str'. Postcode with or without its space, letter and addition, the postcode-first form, other names for places, no US-state guess."
+  },
+  "help_points_osm_counts": {
+    "source": "taginfo for the Geofabrik Netherlands extract, data until 2026-11-24T21:21:17Z",
+    "verified": "2026-11-27 (opened)",
+    "amenity=pharmacy": 1696,
+    "amenity=hospital": 166,
+    "amenity=doctors": 2485,
+    "amenity=clinic": 643,
+    "amenity=fire_station": 1014,
+    "amenity=police": 463,
+    "amenity=drinking_water": 2778,
+    "amenity=shelter": 12007,
+    "amenity=ferry_terminal": 864,
+    "emergency=defibrillator": 4370,
+    "emergency=siren": 4221,
+    "emergency=fire_hydrant": 8975,
+    "amenity=shelter by shelter_type": {
+      "public_transport": 10510,
+      "source": "taginfo tag combinations, same data date"
+    },
+    "note": "Most amenity=shelter in the Netherlands are bus shelters. tools/build_map.py keeps every shelter under one class, as the trial map does (12,007).",
+    "trial_map": {
+      "pharmacy": 1696,
+      "hospital": 166,
+      "doctors": 2485,
+      "clinic": 643,
+      "fire_station": 1014,
+      "police": 463,
+      "drinking_water": 2778,
+      "shelter": 12007,
+      "ferry_terminal": 860,
+      "defibrillator": 4260,
+      "emergency_department": 79,
+      "verified": "measured 2026-11-27"
+    }
+  },
+  "emergency_numbers": {
+    "note": "National, not per province; proposed in #495 (content/emergency/NL.json).",
+    "numbers": [
+      {
+        "number": "112",
+        "use": "Emergency: ambulance, fire, police"
+      },
+      {
+        "number": "0900 8844",
+        "use": "Police, not urgent"
+      },
+      {
+        "number": "113",
+        "use": "Suicide prevention"
+      },
+      {
+        "number": "0800 9009",
+        "use": "National gas and electricity outage number"
+      }
+    ],
+    "not_checked": "Out-of-hours GP posts (huisartsenposten) each have their own number."
+  },
+  "trial_build": {
+    "code": "https://github.com/sodamos/lastbook/tree/nederland",
+    "files": [
+      "tools/build_region_nl.py",
+      "engine/address_nl.py",
+      "server.py (--map, LASTBOOK_MAP)"
+    ],
+    "not_in_this_pr": true,
+    "built": "2026-11-26, from Geofabrik extracts of 2026-11-24 and the BAG as PDOK served it on 2026-11-25 and 26",
+    "whole_country": {
+      "bag_addresses": 10798639,
+      "defibrillators": 4260,
+      "emergency_departments": 79,
+      "national_sqlite_bytes": 3403014144,
+      "size": "about 4.5 GB"
+    },
+    "address_search": {
+      "addresses": 60,
+      "per_province": 5,
+      "forms": 3,
+      "queries": 180,
+      "right_house_first": 180,
+      "street_and_number_only": {
+        "queries": 60,
+        "house_in_first_eight": 53
+      },
+      "median_ms": 82,
+      "timing_note": "virtual machine reading over a shared folder; not a performance figure",
+      "verified": "measured 2026-11-27"
+    },
+    "tests": {
+      "with_trial_code": 888,
+      "main": 826,
+      "errors_both": 3,
+      "errors_why": "a missing module and PDF rendering in that environment",
+      "python": "3.13"
+    },
+    "known_defects": [
+      "no terrain, crops, building heights or flood defences",
+      "AEDs from OSM only",
+      "bus shelters shown as shelters",
+      "Setup does not offer a province; the map is loaded with --map",
+      "not tried in the installed app"
+    ]
+  },
+  "related": {
+    "issue_31": "The shared design discussion for regions outside the US.",
+    "issue_95": "Other countries' maps; where a short region proposal was suggested as a first step.",
+    "pr_79": "Berlin (DE-BE): the de-1 search rule declared in the index meta table, now in main.",
+    "pr_495": "Dutch emergency numbers (content/emergency/NL.json).",
+    "pr_496": "Dutch interface strings."
+  }
+}

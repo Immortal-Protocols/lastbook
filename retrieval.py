@@ -131,7 +131,7 @@ def vtt_windows(path, span=45):
         cur = [start, '']
         for line in lines:
             t = html.unescape(re.sub(r'<[^>]+>', '', line)).strip()
-            if t and not cur[1].endswith(t):
+            if t and not (cur[1].endswith(t) and (cur[1] == t or cur[1][-len(t) - 1].isspace())):
                 cur[1] = (cur[1] + ' ' + t).strip()
         cues.append(cur)
     out, start, buf, last = [], None, [], ''
@@ -268,7 +268,7 @@ class Index:
                 vtts = ([tx['vtt_path']] if tx and tx.get('vtt_path') else []) + [c for c in r.get('captions', []) if c.endswith('.vtt')]
                 vtt = next((v for v in vtts if (LIB / v).is_file()), None)
                 if vtt:
-                    out.append((r['id'], 'vtt:' + vtt, -self.trust_fn(r)[1], ('vtt', vtt)))
+                    out.append((r['id'], 'vtt:payload-2:' + vtt, -self.trust_fn(r)[1], ('vtt', vtt)))
                 elif tx and (LIB / tx['path']).is_file():
                     out.append((r['id'], 'tx:' + tx['sha256'], -self.trust_fn(r)[1], ('tx', tx)))
         out.sort(key=lambda x: x[2])

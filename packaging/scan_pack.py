@@ -31,7 +31,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 SPEC = json.loads((PROJECT / 'derived/packs/pack-spec.json').read_text(encoding='utf-8'))
 ROOT_FILES = {'pack.json', 'pack-manifest.tsv', 'pack-contents.tsv'}
 LIB_ROOT_FILES = {'catalog.json', 'search.sqlite', 'summary.json', 'reader.css'}
-GEO_FILES = {'national.sqlite', 'map.sqlite', 'water.sqlite', 'terrain.sqlite', 'buildings.sqlite', 'crops.sqlite', 'places.sqlite', 'national-status.json', 'socal-cells.json'}
+GEO_FILES = {'national.sqlite', 'map.sqlite', 'water.sqlite', 'terrain.sqlite', 'buildings.sqlite', 'crops.sqlite', 'places.sqlite', 'national-status.json', 'socal-cells.json', 'detail-cells.json'}
 ATLAS = 'library-data/geography/resources/atlas.sqlite'
 IMAGES = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
 FOLDER_EXT = {

@@ -106,7 +106,7 @@ def validate(m, allowed=None, *, bundled=False):
             if available and not _int(x.get('installed_bytes')):
                 return None
             entries.append({'id': x['id'], 'title': str(x.get('title') or x['id']), 'kind': str(x.get('kind') or 'state'),
-                         'includes': str(x.get('includes') or ''),
+                         'country': str(x.get('country') or ''), 'includes': str(x.get('includes') or ''),
                          'installed_bytes': x.get('installed_bytes') if _int(x.get('installed_bytes')) else None,
                          'download_bytes': sum(f['size'] for f in files), 'available': available, 'files': files})
         collections[key] = entries

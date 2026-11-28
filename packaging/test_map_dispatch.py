@@ -34,7 +34,7 @@ class MapDispatch(unittest.TestCase):
             build_packs.build_map('eu-at')
         region_set.assert_not_called()
         state_set.assert_called_once()
-        self.assertEqual(state_set.call_args.args[1], build_packs.OUT / 'maps' / 'eu-at')
+        self.assertEqual(state_set.call_args.args[1], build_packs.OUT / 'maps' / 'eu-at.building')
         self.assertEqual(state_set.call_args.args[2], 'eu-at')
         self.assertEqual(state_set.call_args.args[3], build_packs.country_box('eu-at'))
 
@@ -44,7 +44,7 @@ class MapDispatch(unittest.TestCase):
             build_packs.build_map('ve-car')
         state_set.assert_not_called()
         region_set.assert_called_once()
-        self.assertEqual(region_set.call_args.args, (build_packs.OUT / 'maps' / 've-car', 've-car'))
+        self.assertEqual(region_set.call_args.args, (build_packs.OUT / 'maps' / 've-car.building', 've-car'))
 
 
 if __name__ == '__main__':

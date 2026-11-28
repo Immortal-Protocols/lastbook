@@ -1569,37 +1569,44 @@ def region_set(dest, code):
 def build_map(name):
     dest = OUT / 'maps' / name
     start = time.time()
-    previous = dest.with_name(dest.name + '.prev')      # the last usable map, kept until the new one is ready
-    shutil.rmtree(previous, ignore_errors=True)
-    had = dest.exists()
-    if had:
-        os.replace(dest, previous)
-    os.makedirs(dest)
+    building = dest.with_name(dest.name + '.building')  # the map being built, promoted only once complete
+    previous = dest.with_name(dest.name + '.prev')      # the last usable map, kept only while the swap runs
+    shutil.rmtree(building, ignore_errors=True)
+
+    # A swap interrupted after the old map moved aside leaves the complete map at .prev.
+    if not (dest / 'map-set.json').exists() and (previous / 'map-set.json').exists():
+        shutil.rmtree(dest, ignore_errors=True)
+        os.replace(previous, dest)
+
+    os.makedirs(building)
     try:
         if name in REGION_SPECS.REGIONS:
-            region_set(dest, name)
+            region_set(building, name)
         else:
             src = geo_source()
             if name == 'base':
-                base_set(src, dest)
+                base_set(src, building)
             elif name == 'us':
-                us_set(src, dest)
+                us_set(src, building)
             elif re.fullmatch(r'[A-Z]{2}', name):
-                state_set(src, dest, name)
+                state_set(src, building, name)
             elif name in COUNTRIES:
-                state_set(src, dest, name, country_box(name))
+                state_set(src, building, name, country_box(name))
             else:
                 raise SystemExit(f'unknown map set {name}')
-        size = {f.relative_to(dest).as_posix(): f.stat().st_size for f in dest.rglob('*') if f.is_file()}
-        (dest / 'map-set.json').write_text(json.dumps({'name': name, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - start)}, indent=1), encoding='utf-8')
+        size = {f.relative_to(building).as_posix(): f.stat().st_size for f in building.rglob('*') if f.is_file()}
+        (building / 'map-set.json').write_text(json.dumps({'name': name, 'files': size, 'bytes': sum(size.values()), 'seconds': round(time.time() - start)}, indent=1), encoding='utf-8')
         print(json.dumps({'map': name, 'bytes': sum(size.values()), 'files': size, 'seconds': round(time.time() - start)}, indent=1))
     except BaseException:
-        shutil.rmtree(dest, ignore_errors=True)
-        if had:
-            os.replace(previous, dest)
+        shutil.rmtree(building, ignore_errors=True)   # a failed build leaves the last usable map in place
         raise
-    if had:
-        shutil.rmtree(previous, ignore_errors=True)
+
+    # The replacement is complete: keep the previous map until the new one is in place.
+    shutil.rmtree(previous, ignore_errors=True)
+    if dest.exists():
+        os.replace(dest, previous)
+    os.replace(building, dest)
+    shutil.rmtree(previous, ignore_errors=True)
 
 
 def main():

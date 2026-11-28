@@ -26,6 +26,11 @@ def _from(url, hosts, allowed):
     import urllib.parse
     return (urllib.parse.urlsplit(url).hostname or '').lower() in hosts
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$')
+# An address index's id, which is also its file name in derived/geo/addresses/: a two-letter US state (CA), or a
+# country code and a region (DE-BE, PT-20, ES-CT). No dot and no slash, so a file named after it stays in that folder.
+# Letters after the hyphen may be lower case (PT-20w), so two ids can differ in case only; on a disk that ignores case
+# (a Mac's, by default) they name the same files, so a manifest lists at most one of them (validate, merge).
+ADDRESS_INDEX_ID = re.compile(r'[A-Z]{2}(-[A-Za-z0-9_]{1,48})?')
 MAX_PACK_PART = 256 * 1024 * 1024
 
 
@@ -94,7 +99,7 @@ def validate(m, allowed=None, *, bundled=False):
         for x in m.get(key) or []:
             if not isinstance(x, dict) or not isinstance(x.get('id'), str) or not NAME.match(x['id']):
                 return None
-            if key == 'address_indexes' and not re.fullmatch(r'[A-Z]{2}', x['id']):
+            if key == 'address_indexes' and not ADDRESS_INDEX_ID.fullmatch(x['id']):
                 return None
             files = []
             for f in x.get('files') or []:
@@ -109,6 +114,8 @@ def validate(m, allowed=None, *, bundled=False):
                          'includes': str(x.get('includes') or ''),
                          'installed_bytes': x.get('installed_bytes') if _int(x.get('installed_bytes')) else None,
                          'download_bytes': sum(f['size'] for f in files), 'available': available, 'files': files})
+        if key == 'address_indexes' and len({x['id'].casefold() for x in entries}) < len(entries):
+            return None      # two entries that name the same files: installing one would replace the other
         collections[key] = entries
     for x in m.get('models') or []:
         if not (isinstance(x, dict) and isinstance(x.get('id'), str) and NAME.match(x['id']) and isinstance(x.get('file'), str)
@@ -139,8 +146,11 @@ def merge(bundled, fetched):
     out = dict(fetched)
     for key in ('packs', 'models', 'maps', 'address_indexes'):
         built = {x['id']: x for x in bundled.get(key, [])}
+        folded = {i.casefold(): i for i in built} if key == 'address_indexes' else {}
         merged = []
         for x in fetched.get(key, []):
+            if folded.get(x['id'].casefold(), x['id']) != x['id']:
+                continue     # the files of a bundled index under other letters (PT-20W for PT-20w): the bundled one stays
             b = built.pop(x['id'], None)
             pinned = b is not None and (b.get('files') or b.get('sha256'))
             merged.append({**b, 'available': bool(x.get('available'))} if pinned else x)

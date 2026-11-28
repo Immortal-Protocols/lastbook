@@ -4516,6 +4516,132 @@ class AddressIndexes(Maps):
         self.assertEqual(merged['address_indexes'][0]['files'], validated['address_indexes'][0]['files'])
 
 
+    def add_index(self, mf, index_id, title):
+        """A second address index in the manifest from address_manifest, as a region's index would be published."""
+        name = f'Lastbook-Addresses-{index_id}.zip'
+        payload = f'{index_id} address index fixture'.encode() * 1000
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as archive:
+            archive.writestr(f'derived/geo/addresses/{index_id}.sqlite', payload)
+        data = buf.getvalue()
+        self.files.data[name] = data
+        mf.current['address_indexes'].append({'id': index_id, 'title': title, 'available': True,
+            'installed_bytes': len(payload), 'download_bytes': len(data),
+            'files': [{'name': name, 'url': f'{self.base}/{name}', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]})
+        return payload, {name: sha(data)}
+
+    def test_regional_index_installs_beside_a_state_and_survives_an_upgrade(self):
+        """#31: a region's index (DE-BE) installs like a state's, and an upgrade carries it and its receipt into the new
+        library together with the state's (CA), so both still check out against the manifest afterwards."""
+        mf, ca = self.address_manifest()
+        berlin, receipt = self.add_index(mf, 'DE-BE', 'Berlin')
+        self.assertEqual([x['id'] for x in manifest.validate(mf.current, ALLOWED)['address_indexes']], ['CA', 'DE-BE'])
+        setup = self.setup(manifest=mf)
+        job = setup.start('small', map_id='CA')
+        self.assertEqual([item['kind'] for item in job['items']], ['pack', 'map', 'addresses'])
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, _ = api.startup(self.settings)
+        setup = self.setup('manage', current=library, manifest=mf)
+        job = setup.start(address_id='DE-BE')
+        self.assertEqual([(item['kind'], item['id']) for item in job['items']], [('addresses', 'DE-BE')])
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        addresses = library / 'derived/geo/addresses'
+        self.assertEqual((addresses / 'DE-BE.sqlite').read_bytes(), berlin)
+        self.assertEqual(json.loads((addresses / 'DE-BE.json').read_text()), {'files': receipt})
+        self.assertEqual(self.setup('manage', current=library, manifest=mf).current_info()['address_indexes'], ['CA', 'DE-BE'])
+
+        new = self.parent / 'LastbookData.setup' / 'unpack' / 'LastbookData'
+        (new / 'library-data').mkdir(parents=True)
+        (new / 'library-data/catalog.json').write_text('{}')
+        shutil.copy2(library / 'pack.json', new / 'pack.json')
+        old = install.switch(new, library)
+        self.assertEqual((addresses / 'CA.sqlite').read_bytes(), ca)
+        self.assertEqual((addresses / 'DE-BE.sqlite').read_bytes(), berlin)
+        self.assertEqual(self.setup('manage', current=library, manifest=mf).current_info()['address_indexes'], ['CA', 'DE-BE'])
+        self.assertEqual(sorted(p.name for p in (old / 'derived/geo/addresses').iterdir()), [])
+
+    def test_upgrade_carries_only_files_named_by_an_address_index_id(self):
+        """carry_over moves an index and its receipt when the name before .sqlite or .json is an address-index id, and
+        leaves anything else in the old library, as it left everything but two letters before #31."""
+        old, new = self.tmp / 'old', self.tmp / 'new'
+        (old / 'derived/geo/addresses').mkdir(parents=True)
+        new.mkdir()
+        carried = ['CA.sqlite', 'CA.json', 'DE-BE.sqlite', 'DE-BE.json', 'PT-20w.sqlite', 'TR-34.json']
+        left = ['de-nw.sqlite', 'DE-BE.sqlite-wal', 'DE.BE.sqlite', 'DE-.sqlite', 'ES-CT.txt', 'notes.json', 'DEU.sqlite']
+        for name in carried + left:      # no two names differ only in case: a Mac's disk would take them for one file
+            (old / 'derived/geo/addresses' / name).write_bytes(name.encode())
+        moved = install.carry_over(old, new)
+        self.assertEqual(sorted(p.name for p in moved), sorted(carried))
+        for name in carried:
+            self.assertEqual((new / 'derived/geo/addresses' / name).read_bytes(), name.encode())
+        self.assertEqual(sorted(p.name for p in (old / 'derived/geo/addresses').iterdir()), sorted(left))
+
+    def test_a_mixed_case_index_id_installs_under_its_own_name(self):
+        """#486 review: lower case after the hyphen stays allowed (PT-20w), and the files carry the id as written."""
+        mf, _ = self.address_manifest()
+        azores, receipt = self.add_index(mf, 'PT-20w', 'Azores')
+        setup = self.setup(manifest=mf)
+        setup.start('small', address_id='PT-20w')
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, _ = api.startup(self.settings)
+        addresses = library / 'derived/geo/addresses'
+        self.assertEqual(sorted(p.name for p in addresses.iterdir()), ['PT-20w.json', 'PT-20w.sqlite'])
+        self.assertEqual((addresses / 'PT-20w.sqlite').read_bytes(), azores)
+        self.assertEqual(self.setup('manage', current=library, manifest=mf).current_info()['address_indexes'], ['PT-20w'])
+
+    def test_two_ids_that_differ_in_case_only_never_share_the_catalog(self):
+        """#486 review: PT-20w and PT-20W name the same files on a disk that ignores case, so installing one would replace
+        the other. A manifest that lists both is refused, and a fetched one that renames a bundled index in other letters
+        leaves the bundled one in place, so the pair cannot overwrite an installed index."""
+        mf, _ = self.address_manifest()
+        azores, _ = self.add_index(mf, 'PT-20w', 'Azores')
+        self.add_index(mf, 'PT-20W', 'Azores')
+        self.assertIsNone(manifest.validate(mf.current, ALLOWED))
+        twice = json.loads(json.dumps(mf.current))
+        twice['address_indexes'] = [twice['address_indexes'][0]] * 2
+        self.assertIsNone(manifest.validate(twice, ALLOWED))
+
+        listed = json.loads(json.dumps(mf.current))
+        bundled = {**listed, 'address_indexes': listed['address_indexes'][:2]}           # CA, PT-20w
+        fetched = {**listed, 'address_indexes': [listed['address_indexes'][0], listed['address_indexes'][2]]}   # CA, PT-20W
+        bundled, fetched = manifest.validate(bundled, ALLOWED), manifest.validate(fetched, ALLOWED)
+        merged = manifest.merge(bundled, fetched)
+        self.assertEqual([x['id'] for x in merged['address_indexes']], ['CA', 'PT-20w'])
+        self.assertEqual(merged['address_indexes'][1]['files'], bundled['address_indexes'][1]['files'])
+
+        mf.current = bundled
+        setup = self.setup(manifest=mf)
+        setup.start('small', address_id='PT-20w')
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        library, _ = api.startup(self.settings)
+        mf.current = merged
+        setup = self.setup('manage', current=library, manifest=mf)
+        self.assertEqual(setup.start(address_id='PT-20W')['code'], 'unavailable')
+        self.assertEqual((library / 'derived/geo/addresses/PT-20w.sqlite').read_bytes(), azores)
+        self.assertEqual(setup.current_info()['address_indexes'], ['PT-20w'])
+
+    def test_address_index_ids_follow_the_shared_rule(self):
+        """#31's rule: two capital letters, then optionally a hyphen and 1 to 48 letters, digits or underscores. One id
+        outside it refuses the whole manifest, as before."""
+        mf, _ = self.address_manifest()
+        accepted = ['CA', 'DE-BE', 'PT-20', 'PT-20w', 'ES-CT', 'CA-ON', 'GB-LON', 'TR-34', 'FR-2A', 'DE-' + 'x' * 48]
+        refused = ['de-be', 'De-BE', 'D', 'DEU', 'DEU-BE', 'DE-', 'DE-BE-', 'DE-B-E', 'DE_BE', 'DE BE', 'DE-BE.x', 'DE-BE/x',
+                   '../DE-BE', 'DE-BE\n', 'DE-' + 'x' * 49]
+        for index_id in accepted + refused:
+            with self.subTest(index_id=index_id):
+                m = json.loads(json.dumps(mf.current))
+                m['address_indexes'][0]['id'] = index_id
+                validated = manifest.validate(m, ALLOWED)
+                if index_id in accepted:
+                    self.assertIsNotNone(validated)
+                    self.assertEqual(validated['address_indexes'][0]['id'], index_id)
+                else:
+                    self.assertIsNone(validated)
+        m = json.loads(json.dumps(mf.current))
+        m['maps'][0]['id'] = 'eu-at'      # a map id keeps its own, wider rule
+        self.assertEqual(manifest.validate(m, ALLOWED)['maps'][0]['id'], 'eu-at')
+
+
 class ContentRevisions(Base):
     def revised_manifest(self, revision='2026-11-13-small-v2', actual_revision=None):
         metadata = {'name': 'small', 'map': 'base', 'content_revision': actual_revision or revision}

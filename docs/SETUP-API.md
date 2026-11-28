@@ -212,8 +212,9 @@ the same rules. `packaging/build_packs.py map eu-at` builds it with the state cu
 centres, a country's is the bounding box of Geofabrik's OpenStreetMap extract polygon for that country
 (`packaging/europe-countries.json`), with the same 0.15 degree margin. What a country set holds is bounded by the
 source layers' own coverage, exactly as a state's is. Setup needs no change: a map is chosen by its manifest `id`
-either way. Address indexes stay US-only — their source (Overture addresses) is split by US state, so there is no
-country entry to publish until that source is keyed by country.
+either way. No address index covers a whole country: their source (Overture addresses) is split by US state, so there
+is no country entry to publish until that source is keyed by country. A region with an address source of its own names
+its index as in "Address-index ids" below.
 
 Publishing a country set is opt-in. `packaging/state_maps.py --order` and `--worker` only include countries listed in
 `packaging/country-publication.json`; that file is empty because the detailed source layers are still US-only. Before
@@ -243,3 +244,24 @@ Built by setup-backend (2026-11-12):
   map installed apart (its name is not `pack.json`'s `map`, or `pack-manifest.tsv` lists no `map-set.json`) is checked against its
   `map-set.json` instead: one that checks out is kept when the pack is fetched again for other files; one that does
   not is repaired with its own `map` item, or Repair answers `{code: "unavailable"}` when that map is not offered.
+
+## Address-index ids (added 2026-11-26)
+
+An entry in the manifest's `address_indexes` has an `id` that matches `[A-Z]{2}(-[A-Za-z0-9_]{1,48})?`: a two-letter US
+state (`CA`), or a country code and a region (`DE-BE`, `PT-20`, `ES-CT`), as proposed in #31. The id names the files:
+the index is `derived/geo/addresses/<id>.sqlite` and its receipt `<id>.json`. The rule has no dot and no slash, so a file
+named after an id stays in that folder. A manifest that lists any other address-index id is refused whole, as before.
+Letters after the hyphen may be lower case (`PT-20w`), so two ids can differ in case only. On a disk that ignores case
+(a Mac's, by default) they name the same files, so a manifest that lists both is refused whole too, and when a fetched
+manifest lists an index under other letters than the bundled one (`PT-20W` for `PT-20w`), the bundled one stays and
+the fetched one is left out.
+When setup switches to a new library, `install.carry_over` moves every `.sqlite` and `.json` in
+`derived/geo/addresses/` whose name before the suffix matches the rule, and leaves other files in the old library. The
+rule is one constant, `ADDRESS_INDEX_ID` in `engine/setup/manifest.py`, which both use.
+
+A desktop app built before this rule (1.1.18 among them) takes two letters only. It refuses a fetched manifest that lists
+a regional index whole, keeps the copy it was built with and does not see options published after it. The iPad app
+fetches nothing: its list is generated from the published manifest (`mobile/ipad/tools/gen_install_catalog.py`) and
+also takes two letters only (`InstallCatalog.swift`, `AddressInstall.swift`). Generated from a manifest with a regional
+index, it would list none of the manifest's packs, maps or indexes, so the iPad needs the same rule before its list is
+generated again.

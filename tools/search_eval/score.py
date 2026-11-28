@@ -131,6 +131,8 @@ def start(code, mode, sections_dir=None):
         from engine import sections
         if sections_dir is None:
             sections.ensure = lambda *a, **k: None     # whole pages, as the code does when it cannot have the file
+            if hasattr(sections, 'ready'):
+                sections.ready = lambda *a, **k: None
         else:
             build = sections.build
 
@@ -156,6 +158,10 @@ def start(code, mode, sections_dir=None):
     retrieval.Index._load = lambda self, truncate=True, db=None: load(self, False, db)
     import server, assistant
     server.catalog()
+    if sections_dir is not None:   # searches never wait for the sections file: have it before the first question
+        from engine import sections
+        if not sections.ensure(server.library.DB, server.kind_of):
+            raise SystemExit(f"--sections given, but the sections file could not be had: {sections.status()['error']}")
     index = None
     if mode == 'hybrid':
         if not retrieval.AVAILABLE:

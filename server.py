@@ -354,8 +354,21 @@ def search_ids(keep):
     return json.dumps(ids)
 
 
-@functools.lru_cache(maxsize=256)
 def find(q, kind='all', limit=30):
+    """Library search. Answers are cached per sections generation (engine/sections.py): whole-page answers given while
+    the sections file was being built, or after it failed, are not served once searches read sections, and back."""
+    while True:
+        gen = sections.generation()
+        out = _find(q, kind, limit, gen)
+        if sections.generation() == gen:   # the file did not change in the middle of this search
+            return out
+
+
+find.cache_clear = lambda: _find.cache_clear()
+
+
+@functools.lru_cache(maxsize=256)
+def _find(q, kind, limit, gen):
     content, groups = query_groups(q)
     if not groups:
         return {'q': q, 'results': [], 'expanded': []}
@@ -626,7 +639,7 @@ def kind_of(doc_id):
 
 def doc_texts(r):
     """A document's pages as search numbers them: a long saved web page by section (engine/sections.py)."""
-    if r['kind'] == 'html' and sections.ensure(library.DB, kind_of):
+    if r['kind'] == 'html' and sections.ready(library.DB, kind_of):
         t = sections.texts(r['id'])
         if t:
             return t
@@ -2030,7 +2043,7 @@ class Handler(library.Handler):
                 return self.send_json(find(qs.get('q', '')[:200], qs.get('kind', 'all')))
             if path.startswith('/api/doc/'):
                 r = catalog()['by_id'].get(path[9:])
-                if r and r['kind'] == 'html' and sections.ensure(library.DB, kind_of) and sections.sectioned(r['id']):
+                if r and r['kind'] == 'html' and sections.ready(library.DB, kind_of) and sections.sectioned(r['id']):
                     return self.send_json(dict(public(r, full=True), sections=sections.sectioned(r['id'])))   # read by section
                 return self.send_json(public(r, full=True) if r else {'error': 'This item is not in the library catalog.'}, 200 if r else 404)
             m = re.fullmatch(r'/api/page/([^/]+)/(\d+)(\.png)?', path)
@@ -2157,7 +2170,7 @@ def init(no_index=False):
     if not no_index:
         threading.Thread(target=INDEX.run_forever, daemon=True).start()
     threading.Thread(target=prewarm_previews, daemon=True).start()
-    threading.Thread(target=lambda: sections.ensure(library.DB, kind_of), daemon=True).start()   # before the first search
+    sections.ready(library.DB, kind_of)   # starts the sections build in the background; searches read whole pages until it is ready
 
 
 class HTTPServer(library.HTTPServer):   # queues 128 connections: opening the map asks for 20 or more tiles at once

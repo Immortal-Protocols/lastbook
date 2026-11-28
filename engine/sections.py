@@ -11,8 +11,9 @@ their own under derived/index/ (like the meaning-based index), sections-<signatu
 of long HTML pages: a `pages` FTS5 table with the same columns and tokenizer as the library's, a `long` table naming the
 library rows they replace, and a `section` table (doc_id, section, start offset, rowid of its text). The signature is
 the size and modification time of search.sqlite with LONG/SECTION/VERSION; when the library index changes, a new file
-is built (a few seconds) on the next search, or at startup (server.init), and older ones are removed. When the file
-cannot be built or read (a read-only data folder, say), keyword search reads the whole pages, as before.
+is built (a few seconds) in the background, started at startup (server.init) or by the next search, and older ones are
+removed. A search never waits for it: until the file is ready, and whenever it cannot be built, read or searched (a
+read-only data folder, a damaged file), keyword search reads the whole pages, as before.
 
 The text cut is norm_ws(body): whitespace runs squashed to one space, as the meaning-based index reads it, so a passage's
 start offset says which section it falls in (retrieval.Index relabels existing passages this way, without re-embedding).
@@ -27,7 +28,9 @@ LONG, SECTION = 20000, 5000
 VERSION = 1
 IDX = lastbook_paths.DATA / 'derived' / 'index'
 _lock = threading.Lock()
-_state = {'sig': None, 'path': None, 'skip': (), 'docs': {}, 'built': None, 'main': None, 'error': None}
+_bg_lock = threading.Lock()
+_bg = {'thread': None}
+_state = {'sig': None, 'path': None, 'skip': (), 'docs': {}, 'built': None, 'main': None, 'error': None, 'gen': 0}
 
 
 def norm_ws(s):
@@ -127,18 +130,72 @@ def build(main_db, kind_of, out):
     return summary
 
 
-def ensure(main_db, kind_of, folder=None):
-    """The current sections file for main_db, built if missing. None when it cannot be had (keyword search then runs on
-    the library index alone, whole pages as before)."""
+def _current(sig, main_db):
+    return _state['sig'] == sig and _state['main'] == str(main_db) and (_state['path'] is None or _state['path'].exists())
+
+
+def _set(**kw):
+    """Change the state; a change of file (or to none) moves the generation on, so cached search answers are dropped."""
+    if kw.get('path') != _state['path']:
+        kw['gen'] = _state['gen'] + 1
+    _state.update(kw)
+
+
+def generation():
+    """Changes whenever searches start or stop reading a sections file (server.find caches by it)."""
+    return _state['gen']
+
+
+def _read(path):
+    """(rowids replaced, {doc_id: (page, nsections)}) from a sections file, after checking its search table answers a
+    query: a file whose metadata reads but whose FTS5 table is damaged must not hide the whole pages."""
+    con = sqlite3.connect(ro_uri(path), uri=True)
+    try:
+        skip = tuple(r[0] for r in con.execute('SELECT rowid_main FROM long'))
+        docs = {d: (p, n) for d, p, n in con.execute('SELECT doc_id, page, nsections FROM long')}
+        if docs:
+            con.execute("SELECT rowid FROM pages WHERE pages MATCH 'the OR a' LIMIT 1").fetchall()
+            con.execute('SELECT count(*) FROM section s JOIN pages p ON p.rowid = s.fts_rowid').fetchone()
+        return skip, docs
+    finally:
+        con.close()
+
+
+def ready(main_db, kind_of):
+    """The current sections file for main_db if it is ready, else None at once: a search never waits for a build. When
+    it is not ready, ensure() is started in the background (one at a time), and searches read whole pages meanwhile."""
     try:
         sig = signature(main_db)
     except OSError:
         return None
-    current = lambda: _state['sig'] == sig and _state['main'] == str(main_db) and (_state['path'] is None or _state['path'].exists())
-    if current():
+    if _current(sig, main_db):
+        return _state['path']
+    with _bg_lock:
+        t = _bg['thread']
+        if t is None or not t.is_alive():
+            t = _bg['thread'] = threading.Thread(target=ensure, args=(main_db, kind_of), daemon=True, name='lastbook-sections')
+            t.start()
+    return None
+
+
+def wait(timeout=None):
+    """Wait for a background build started by ready() (tests, and before a data folder is removed)."""
+    t = _bg['thread']
+    if t is not None:
+        t.join(timeout)
+
+
+def ensure(main_db, kind_of, folder=None):
+    """The current sections file for main_db, built if missing (this call waits for the build; searches use ready()).
+    None when it cannot be had (keyword search then runs on the library index alone, whole pages as before)."""
+    try:
+        sig = signature(main_db)
+    except OSError:
+        return None
+    if _current(sig, main_db):
         return _state['path']
     with _lock:
-        if current():  # also a failure for this signature: not tried again on every search
+        if _current(sig, main_db):  # also a failure for this signature: not tried again on every search
             return _state['path']
         folder = Path(folder or IDX)
         out = _file_for(sig, folder)
@@ -146,14 +203,16 @@ def ensure(main_db, kind_of, folder=None):
             built = None
             if not out.exists():
                 built = build(main_db, kind_of, out)
-            con = sqlite3.connect(ro_uri(out), uri=True)
             try:
-                skip = tuple(r[0] for r in con.execute('SELECT rowid_main FROM long'))
-                docs = {d: (p, n) for d, p, n in con.execute('SELECT doc_id, page, nsections FROM long')}
-            finally:
-                con.close()
+                skip, docs = _read(out)
+            except sqlite3.Error:
+                if built is not None:
+                    raise
+                out.unlink()   # an older file that cannot be searched: built again once
+                built = build(main_db, kind_of, out)
+                skip, docs = _read(out)
         except (OSError, sqlite3.Error) as e:
-            _state.update(sig=sig, path=None, skip=(), docs={}, main=str(main_db), error=f'{type(e).__name__}: {e}'[:200])
+            _set(sig=sig, path=None, skip=(), docs={}, main=str(main_db), error=f'{type(e).__name__}: {e}'[:200])
             return None
         stale = [p for p in folder.glob('sections-*.tmp') if time.time() - p.stat().st_mtime > 3600]   # a build that was stopped
         for old in list(folder.glob('sections-*.sqlite')) + stale:  # files for an earlier library index
@@ -162,8 +221,16 @@ def ensure(main_db, kind_of, folder=None):
                     old.unlink()
                 except OSError:
                     pass  # open in another process; removed next time
-        _state.update(sig=sig, path=out, skip=skip, docs=docs, built=built, main=str(main_db), error=None)
+        _set(sig=sig, path=out, skip=skip, docs=docs, built=built, main=str(main_db), error=None)
         return out
+
+
+def _failed(path, e):
+    """A sections file stopped answering in the middle of use: searches go back to whole pages for this library index
+    (and the file is built again when the library index changes)."""
+    with _lock:
+        if _state['path'] == path:
+            _set(path=None, skip=(), docs={}, error=f'{type(e).__name__}: {e}'[:200])
 
 
 def status():
@@ -186,23 +253,35 @@ def query(main_db, kind_of, select, order, match, limit, ids=None):
 
     ids (a JSON list from server.search_ids), when given, keeps only those documents in the query itself, so the LIMIT
     counts only rows the caller can use (a broad word would fill the LIMIT with manual pages, and the Videos tab would
-    find nothing)."""
-    path = ensure(main_db, kind_of)
+    find nothing).
+
+    Never waits for the sections file (ready()), and when it cannot be searched the whole pages are searched instead:
+    the library index answers on its own, as before."""
+    path = ready(main_db, kind_of)
     skip = _state['skip'] if path else ()
-    where = f" AND rowid NOT IN ({','.join(str(int(r)) for r in skip)})" if skip else ''
     only, args = ('', ()) if ids is None else (' AND doc_id IN (SELECT value FROM json_each(?))', (ids,))
     sql = f'SELECT {select}, {order} FROM pages WHERE pages MATCH ?{{w}} ORDER BY {order} LIMIT ?'
-    con = sqlite3.connect(ro_uri(main_db), uri=True)
-    try:
-        rows = con.execute(sql.format(w=where + only), (match,) + args + (limit,)).fetchall()
-    finally:
-        con.close()
-    if path:
-        con = sqlite3.connect(ro_uri(path), uri=True)
+
+    def library(skip):
+        where = f" AND rowid NOT IN ({','.join(str(int(r)) for r in skip)})" if skip else ''
+        con = sqlite3.connect(ro_uri(main_db), uri=True)
         try:
-            rows += con.execute(sql.format(w=only), (match,) + args + (limit,)).fetchall()
+            return con.execute(sql.format(w=where + only), (match,) + args + (limit,)).fetchall()
         finally:
             con.close()
+
+    rows = library(skip)   # a bad MATCH raises here, before the sections file is read
+    if path:
+        try:
+            con = sqlite3.connect(ro_uri(path), uri=True)
+            try:
+                more = con.execute(sql.format(w=only), (match,) + args + (limit,)).fetchall()
+            finally:
+                con.close()
+        except sqlite3.Error as e:   # the same MATCH worked on the library index: the sections file is at fault
+            _failed(path, e)
+            return [r[:-1] for r in library(())]
+        rows += more
         rows.sort(key=lambda r: r[-1])
     return [r[:-1] for r in rows[:limit]]
 
@@ -212,25 +291,33 @@ def texts(doc_id):
     path = _state['path']
     if not path or doc_id not in _state['docs']:
         return None
-    con = sqlite3.connect(ro_uri(path), uri=True)
     try:
-        return [b for (b,) in con.execute('SELECT p.body FROM section s JOIN pages p ON p.rowid = s.fts_rowid '
-                                          'WHERE s.doc_id=? ORDER BY s.sec', (doc_id,))]
-    finally:
-        con.close()
+        con = sqlite3.connect(ro_uri(path), uri=True)
+        try:
+            return [b for (b,) in con.execute('SELECT p.body FROM section s JOIN pages p ON p.rowid = s.fts_rowid '
+                                              'WHERE s.doc_id=? ORDER BY s.sec', (doc_id,))] or None
+        finally:
+            con.close()
+    except sqlite3.Error as e:   # the reader shows the whole page instead
+        _failed(path, e)
+        return None
 
 
 def text(doc_id, sec):
     path = _state['path']
     if not path or doc_id not in _state['docs']:
         return None
-    con = sqlite3.connect(ro_uri(path), uri=True)
     try:
-        r = con.execute('SELECT p.body FROM section s JOIN pages p ON p.rowid = s.fts_rowid WHERE s.doc_id=? AND s.sec=?',
-                        (doc_id, int(sec))).fetchone()
-        return r[0] if r else None
-    finally:
-        con.close()
+        con = sqlite3.connect(ro_uri(path), uri=True)
+        try:
+            r = con.execute('SELECT p.body FROM section s JOIN pages p ON p.rowid = s.fts_rowid WHERE s.doc_id=? AND s.sec=?',
+                            (doc_id, int(sec))).fetchone()
+            return r[0] if r else None
+        finally:
+            con.close()
+    except sqlite3.Error as e:
+        _failed(path, e)
+        return None
 
 
 def starts(path, doc_id):

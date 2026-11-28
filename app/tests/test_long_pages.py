@@ -64,6 +64,7 @@ def probe(data):
     from engine import sections
     assistant.S = server          # keyword side only: no meaning-based index in this library
     out = {}
+    sections.ensure(server.library.DB, server.kind_of)   # the startup build, done (searches never wait for it)
     main = sqlite3.connect(server.library.DB)
     out['plain_fire'] = [d for (d,) in main.execute("SELECT doc_id FROM pages WHERE pages MATCH 'grease AND fire AND pan'")]
     main.close()
@@ -134,19 +135,113 @@ def probe(data):
     print('PROBE ' + json.dumps(out))
 
 
+def engine(data):
+    os.environ['LASTBOOK_DATA'] = str(data)
+    sys.path.insert(0, str(ROOT))
+    import server, assistant
+    from engine import sections
+    assistant.S = server
+    return server, assistant, sections
+
+
+def answers(server, assistant, q='grease fire pan'):
+    """What Library search, the Chat's keyword retrieval and its hybrid search give for q, and how the book reads."""
+    book = server.catalog()['by_id'][BOOK]
+    return {'find': [(r['id'], [h['page'] for h in r['hits']]) for r in server.find(q)['results']],
+            'fts': [list(r[:2]) for r in assistant._fts(q)],
+            'hybrid': [[h['doc_id'], h['page']] for h in assistant.hybrid(q)],
+            'tq_find': [(r['id'], [h['page'] for h in r['hits']]) for r in server.find('tourniquet limb')['results']],
+            'book_pages': len(server.doc_texts(book))}
+
+
+def probe_delayed(data):
+    """The sections build is held back: searches answer at once from whole pages, then read sections when it is done."""
+    import threading, time
+    server, assistant, sections = engine(data)
+    go, real = threading.Event(), sections.build
+
+    def slow(*a, **k):
+        go.wait(60)
+        return real(*a, **k)
+    sections.build = slow
+    sections.ready(server.library.DB, server.kind_of)   # as server.init does
+    t0 = time.time()
+    out = {'during': answers(server, assistant)}
+    out['during']['seconds'] = round(time.time() - t0, 2)
+    out['during']['ready'] = sections.ready(server.library.DB, server.kind_of) is not None
+    go.set()
+    sections._bg['thread'].join(60)
+    out['after'] = answers(server, assistant)
+    out['after']['ready'] = sections.ready(server.library.DB, server.kind_of) is not None
+    out['tq_section'] = next(i for i, t in enumerate(server.doc_texts(server.catalog()['by_id'][BOOK]), 1) if 'tourniquet' in t)
+    print('PROBE ' + json.dumps(out))
+
+
+def damage(path, how):
+    """Leave the sections file's metadata (long, section) readable and make its search table unusable."""
+    con = sqlite3.connect(path)
+    if how == 'dropped':
+        con.execute('DROP TABLE pages')
+    else:   # 'garbled': the full-text index's own blocks overwritten
+        con.execute("UPDATE pages_data SET block = randomblob(length(block)) WHERE id > 10")
+    con.commit()
+    con.close()
+
+
+def probe_damaged(data, how):
+    """Run 1 builds the sections file; it is damaged; run 2 (this process, reopening it) must still find the pages."""
+    server, assistant, sections = engine(data)
+    out = {}
+    path = sections.ensure(server.library.DB, server.kind_of)
+    out['good'] = answers(server, assistant)
+    damage(path, how)                                   # in the middle of use: searches fall back at once
+    server.find.cache_clear()
+    out['in_use'] = answers(server, assistant)
+    out['in_use']['error'] = sections.status()['error']
+    print('PROBE ' + json.dumps(out))
+
+
+def probe_reopened(data, how, rebuild):
+    """A later start with a damaged sections file already there: rebuilt if it can be, else whole pages."""
+    server, assistant, sections = engine(data)
+    path = next((data / 'derived' / 'index').glob('sections-*.sqlite'))
+    damage(path, how)
+    if rebuild == 'refused':
+        def refuse(*a, **k):
+            raise OSError('read-only')
+        sections.build = refuse
+    sections.ensure(server.library.DB, server.kind_of)
+    out = answers(server, assistant)
+    out['ready'] = sections.ready(server.library.DB, server.kind_of) is not None
+    out['error'] = sections.status()['error']
+    print('PROBE ' + json.dumps(out))
+
+
+def probe_build(data):
+    server, assistant, sections = engine(data)
+    ok = sections.ensure(server.library.DB, server.kind_of) is not None
+    sec = next(i for i, t in enumerate(server.doc_texts(server.catalog()['by_id'][BOOK]), 1) if 'tourniquet' in t)
+    print('PROBE ' + json.dumps({'ready': ok, 'tq_section': sec}))
+
+
+def run_probe(dirname, *args, data=None):
+    if data is None:
+        data = Path(dirname) / 'Lastbook Data #1'
+        make_library(data)
+    e = {k: v for k, v in os.environ.items() if k not in ('LASTBOOK_DATA', 'LASTBOOK_LOCAL_AI')}
+    r = subprocess.run([sys.executable, '-B', __file__, '--probe', *args, str(data)], capture_output=True, text=True,
+                       encoding='utf-8', errors='replace', env=e, cwd=dirname, timeout=300)
+    line = next((l for l in r.stdout.splitlines() if l.startswith('PROBE ')), None)
+    if r.returncode or not line:
+        raise AssertionError(f'probe failed ({r.returncode}):\n{r.stdout[-3000:]}\n{r.stderr[-3000:]}')
+    return json.loads(line[6:])
+
+
 class LongPages(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
-        data = Path(cls.dir.name) / 'Lastbook Data #1'
-        make_library(data)
-        e = {k: v for k, v in os.environ.items() if k not in ('LASTBOOK_DATA', 'LASTBOOK_LOCAL_AI')}
-        r = subprocess.run([sys.executable, '-B', __file__, '--probe', str(data)], capture_output=True, text=True,
-                           encoding='utf-8', errors='replace', env=e, cwd=cls.dir.name)
-        line = next((l for l in r.stdout.splitlines() if l.startswith('PROBE ')), None)
-        if r.returncode or not line:
-            raise AssertionError(f'probe failed ({r.returncode}):\n{r.stdout[-3000:]}\n{r.stderr[-3000:]}')
-        cls.o = json.loads(line[6:])
+        cls.o = run_probe(cls.dir.name, 'main')
 
     @classmethod
     def tearDownClass(cls):
@@ -207,6 +302,65 @@ class LongPages(unittest.TestCase):
         self.assertTrue(rb['same_again'])
 
 
+class NeverInTheWay(unittest.TestCase):
+    """The sections file is optional: while it is built, and when it cannot be searched, Library search and the Chat
+    answer from the whole pages of the library index (#403 review)."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(self.dir.cleanup)
+
+    def whole_pages(self, a):
+        self.assertEqual(a['find'][0][0], KITCHEN)              # the kitchen-fires page is still found
+        self.assertIn(BOOK, [d for d, _ in a['find']])          # and the book, whole, as before sections
+        self.assertEqual(set(dict(a['find'])[BOOK]), {None})
+        self.assertEqual(a['fts'][0][0], KITCHEN)               # the Chat's keyword retrieval too
+        self.assertEqual(a['hybrid'][0][0], KITCHEN)
+        self.assertEqual(a['tq_find'][0][0], BOOK)               # the tourniquet passage: the whole book, no section
+        self.assertEqual(set(a['tq_find'][0][1]), {None})
+        self.assertEqual(a['book_pages'], 1)                    # the reader shows the one whole page
+
+    def in_sections(self, a, sec):
+        self.assertEqual(a['find'][0][0], KITCHEN)
+        self.assertEqual(a['fts'][0][0], KITCHEN)
+        self.assertEqual(a['tq_find'][0], [BOOK, [sec]])
+        self.assertGreater(a['book_pages'], 10)
+
+    def test_a_search_does_not_wait_for_the_build(self):
+        o = run_probe(self.dir.name, 'delayed')
+        self.assertLess(o['during']['seconds'], 10)             # the build is held for up to 60 s
+        self.assertFalse(o['during']['ready'])
+        self.whole_pages(o['during'])
+        self.assertTrue(o['after']['ready'])                    # then sections, without a restart
+        self.in_sections(o['after'], o['tq_section'])
+
+    def test_a_file_that_breaks_in_use(self):
+        for how in ('dropped', 'garbled'):
+            with self.subTest(how=how):
+                o = run_probe(tempfile.mkdtemp(dir=self.dir.name), 'damaged', how)
+                self.assertGreater(o['good']['book_pages'], 10)
+                self.whole_pages(o['in_use'])
+                self.assertIn('Error', o['in_use']['error'])
+
+    def test_a_damaged_file_found_at_start(self):
+        for how in ('dropped', 'garbled'):
+            for rebuild in ('allowed', 'refused'):
+                with self.subTest(how=how, rebuild=rebuild):
+                    d = tempfile.mkdtemp(dir=self.dir.name)
+                    data = Path(d) / 'Lastbook Data #1'
+                    make_library(data)
+                    first = run_probe(d, 'build', data=data)
+                    self.assertTrue(first['ready'])
+                    o = run_probe(d, 'reopened', how, rebuild, data=data)
+                    if rebuild == 'allowed':                    # built again, once
+                        self.assertTrue(o['ready'])
+                        self.assertIsNone(o['error'])
+                        self.in_sections(o, first['tq_section'])
+                    else:                                       # cannot be: whole pages
+                        self.assertFalse(o['ready'])
+                        self.whole_pages(o)
+
+
 class Cut(unittest.TestCase):
     def test_cut_after_sentences(self):
         sys.path[:0] = [str(ROOT), str(ROOT / 'app' / 'tests')]
@@ -225,7 +379,9 @@ class Cut(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3 and sys.argv[1] == '--probe':
-        probe(Path(sys.argv[2]))
+    if len(sys.argv) >= 4 and sys.argv[1] == '--probe':
+        what, args, data = sys.argv[2], sys.argv[3:-1], Path(sys.argv[-1])
+        {'main': probe, 'delayed': probe_delayed, 'damaged': probe_damaged, 'reopened': probe_reopened,
+         'build': probe_build}[what](data, *args)
     else:
         unittest.main()

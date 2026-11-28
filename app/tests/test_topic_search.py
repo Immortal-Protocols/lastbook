@@ -202,6 +202,12 @@ UNDISTURBED = {
     'take shelter': ['disaster', 'shelter-in-place'],
     'pet food': ['food', 'outage'],
     'dentist': ['health', None], 'toothache': ['health', 'teeth'],
+    # These opened the first aid guide with no choice, or the sting or shock choice. The severe allergy choice cites the
+    # reading on using an epinephrine auto-injector. The last three are guards.
+    'anaphylaxis': ['hurt', 'allergy'], 'anaphylactic shock': ['hurt', 'allergy'], 'epinephrine': ['hurt', 'allergy'],
+    'adrenaline': ['hurt', 'allergy'], 'auto-injector': ['hurt', 'allergy'], 'bee sting anaphylaxis': ['hurt', 'allergy'],
+    'epipen': ['hurt', 'allergy'], 'epipens': ['hurt', 'allergy'], 'used an epipen': ['hurt', 'allergy'],
+    'anaphylaxis not breathing': ['hurt', 'breathing'], 'bee sting': ['hurt', 'sting'], 'pale and sweaty': ['hurt', 'shock'],
     'cold frame': ['repair', 'build'], 'freezing': ['shelter', 'cold'],
     # "toilet" tied between the repair guide and the toilets guide, and repair is listed first. An emergency search
     # now opens the toilets guide; a repair search keeps the plumbing choice.

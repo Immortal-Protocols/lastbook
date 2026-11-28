@@ -343,7 +343,7 @@
   {
    "id": "allergy",
    "label": "Severe allergic reaction",
-   "hint": "Swollen lips or throat, trouble breathing or can't breathe, hives after a sting, food or medicine",
+   "hint": "Anaphylaxis or anaphylactic shock, swollen lips or throat, trouble breathing or can't breathe, hives after a sting, food or medicine, epinephrine or adrenaline injector, epipen",
    "read": [
     {
      "doc": "med-443ae5cfaa6ecc68",

@@ -139,7 +139,9 @@ are served by `engine/setup/api.py` alone. In normal mode `server.py` hands `/ap
 Added by setup-backend on 2026-11-12: `pick` (answers `{path, free_bytes, disk}` or `{path: null, cancelled: true}`), `delete-old`, `remove-ai` and repair above; `hardware.disks[].name` (Macintosh HD, "Data (D:)"); `current.old` (old libraries kept after an upgrade);
 `recommend.folder` (where it would go) and `recommend.need_bytes` (`{pack id: bytes}` per pack); each `found` entry is
 `{kind: "library" or "pack" or "model", path, name, id, size, size_ok}`. An error answer is `{error, code}` (with HTTP 400,
-409 for `busy`/`not_done`, 507 for `no_space`). In normal mode the setup page is `/ui/setup.html`, which the bridge now allows as
+409 for `busy`/`not_done`, 507 for `no_space`). An error answer, and a failed job's `error`, may also carry a catalogue
+`key` and `params`: the setup page shows that message in the chosen language and falls back to the English sentence
+([docs/i18n.md](i18n.md)). In normal mode the setup page is `/ui/setup.html`, which the bridge now allows as
 the window's top page; in setup mode it is also served at `/`. An upgrade or a new library is switched to when the app restarts
 after `finish` (the job ends `done` with the switch staged), so nothing is renamed while it is open.
 

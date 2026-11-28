@@ -425,24 +425,32 @@ class Local:
                 events.get_nowait()
             req = {'op': 'gen', 'id': rid, 'segments': segments, 'max_tokens': max_tokens, 'temp': 0.2, 'top_k': 64, 'top_p': 0.95,
                    'min_p': 0.05, 'seed': 1234 + rid, 'stop': ['<|tool_response>']}
-            try:
-                proc.stdin.write((json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8'))
-            except OSError:
-                raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
-            sent_cancel = False
+            line = (json.dumps(req, ensure_ascii=False) + '\n').encode('utf-8')
+
+            def send():
+                try:
+                    proc.stdin.write(line)
+                except (OSError, ValueError):
+                    events.put({'ev': 'exit'})
+            # On its own thread: a question is larger than the pipe holds, so a stuck program would hold the write for good.
+            writer = threading.Thread(target=send, daemon=True, name='local-ai-write')
+            writer.start()
+            stopping, sent_cancel = False, False
             import queue
             limit = FIRST_WAIT + size_of(segments) / SLOWEST_READ
             quiet, seen = 0.0, time.monotonic()    # how long the program has said nothing about this answer
             while True:
                 now = time.monotonic()
                 quiet, seen = quiet + min(now - seen, 1.0), now     # a computer that slept did not use up the wait
-                if quiet >= (CANCEL_WAIT if sent_cancel else limit):
+                if quiet >= (CANCEL_WAIT if stopping else limit):
                     self._drop(proc, 'stopped answering')
-                    if sent_cancel:
+                    if stopping:
                         return {'ev': 'done', 'reason': 'cancel'}
                     raise RuntimeError('The local AI stopped responding, so Lastbook shut it down. Ask again to restart it.')
-                if cancelled() and not sent_cancel:
-                    sent_cancel, quiet = True, 0.0
+                if not stopping and cancelled():
+                    stopping, quiet = True, 0.0
+                if stopping and not sent_cancel and not writer.is_alive():     # never into the middle of the question
+                    sent_cancel = True
                     try:
                         proc.stdin.write(b'{"op":"cancel"}\n')
                     except OSError:

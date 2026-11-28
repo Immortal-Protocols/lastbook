@@ -188,6 +188,26 @@ class Silent(unittest.TestCase):
         thread.join(10)
         self.assertEqual((result[0]['reason'], self.program.killed), ('cancel', False))
 
+    def test_a_program_that_does_not_even_read_the_question(self):
+        # The write blocks once the pipe is full, and only ends when the program does.
+        for cancelled, expected in ((lambda: False, 'stopped responding'), (lambda: True, 'cancel')):
+            self.setUp()
+            ended = threading.Event()
+
+            def write(data, program=self.program, ended=ended):
+                ended.wait(20)
+                raise OSError('the pipe closed')
+
+            def kill(program=self.program, ended=ended):
+                program.killed = True
+                ended.set()
+            self.program.write, self.program.kill = write, kill
+            thread, result, _ = self.ask(cancelled=cancelled)
+            thread.join(10)
+            self.assertFalse(thread.is_alive())
+            self.assertIn(expected, str(result[0]))
+            self.assert_dropped()
+
     def test_stop_while_waiting_behind_another_answer(self):
         self.local.gen_lock.acquire()
         thread, result, _ = self.ask(cancelled=lambda: True)

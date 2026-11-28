@@ -4,7 +4,7 @@
   PYTHONDONTWRITEBYTECODE=1 <venv python> -B app/tests/test_bridge.py [-v]
 
 Uses the made-up library in derived/app-build/testdata (no model) and a stub for chat. Never packaged."""
-import faulthandler, hashlib, io, json, os, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
+import faulthandler, hashlib, io, json, os, re, shutil, socket, statistics, subprocess, sys, tempfile, threading, time, types, unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -1160,6 +1160,39 @@ class AssistantHTTPMessages(unittest.TestCase):
         body = self.round(messages)
         self.assertEqual(body['messages'], messages)
         self.assertNotIn('tools', body)
+
+
+class DrugstoreLabel(unittest.TestCase):
+    """OpenStreetMap's 'chemist' is a drugstore (dm, Rossmann): in Berlin 233 of 260 such points.
+    It may sell no prescription medicine, so the map must not call it a pharmacy."""
+
+    def test_server_label(self):
+        self.assertEqual(server.HELP['pharmacy'], 'Pharmacy')
+        self.assertNotIn('Pharmacy', server.HELP['chemist'])
+
+    def test_nearby_duplicate_keeps_pharmacy_in_both_orders(self):
+        chemist = {'cls': 'chemist', 'name': 'Oak Shop', 'lat': 52.5, 'lon': 13.4}
+        pharmacy = {'cls': 'pharmacy', 'name': 'OAK SHOP', 'lat': 52.5001, 'lon': 13.4001}
+        for rows in ([chemist, pharmacy], [pharmacy, chemist]):
+            with self.subTest(first=rows[0]['cls']):
+                self.assertEqual(server.dedupe_named(rows), [pharmacy])
+
+    def test_map_layer_and_caution(self):
+        src = (ROOT / 'web' / 'map.js').read_text(encoding='utf-8')
+        layer = "['pharmacy', 'Pharmacies & drugstores', 'Rx', '#2e7d32', 'pharmacy,chemist', 'help']"
+        self.assertTrue(layer in src, 'pharmacy layer label in web/map.js')   # assertIn would print the whole file
+        self.assertTrue(re.search(r"chemist: 'Drugstore: [^']*prescription", src), 'chemist caution in web/map.js')
+
+    def test_each_result_names_its_own_kind(self):
+        # The layer switch is shared, but a list row and a detail card say Pharmacy or Drugstore per record.
+        src = (ROOT / 'web' / 'map.js').read_text(encoding='utf-8')
+        self.assertTrue("const KIND = { pharmacy: 'Pharmacy', chemist: 'Drugstore' }" in src, 'per-record kind names')
+        self.assertEqual(server.HELP['chemist'], 'Drugstore')
+        near_row = next(line for line in src.splitlines() if 'box.innerHTML = list.map(' in line)
+        card = next(line for line in src.splitlines() if '<div class="kind">${sym(l, 20)}' in line)
+        self.assertIn('kindOf(p.cls)', near_row)
+        self.assertNotIn('layerOf(p.cls).label', near_row)
+        self.assertIn('kindOf(p.cls)', card)
 
 
 class ServerMode(unittest.TestCase):

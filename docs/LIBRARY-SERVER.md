@@ -88,6 +88,12 @@ as `X-Lastbook-Key` or `Authorization: Bearer …` (for a script or a native cli
 request, including `/` and video Range requests, is 403 — including from this computer over a socket. Delete
 `derived/lan-key` to change the key.
 
+The key file is written readable by this user only, and checked before anything is shared: on macOS and Linux no
+group or other permission bits may remain, and on Windows only this user, SYSTEM and Administrators may be in the
+file's access list. A library folder that cannot keep it private (a user-chosen Windows folder open to Users or
+Everyone, or an exFAT, FAT or other drive with no permissions) is refused: the Share switch stays off and shows why,
+and `server.py --lan` exits with the same message. Move the library to a private folder to share it.
+
 The share switch tracks only this listener. The ordinary local reader (`python3 server.py` without `--lan`,
 loopback, no key) is started and stopped separately and is not affected when you start or stop sharing.
 

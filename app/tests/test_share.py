@@ -3,7 +3,7 @@ socket request, a normalized route for access and dispatch, and Stop that cuts s
 
   python3 -B -m unittest app.tests.test_share
 """
-import io, json, socket, sys, tempfile, threading, time, unittest
+import io, json, os, socket, sys, tempfile, threading, time, unittest
 from http.client import HTTPConnection
 from pathlib import Path
 from unittest import mock
@@ -405,6 +405,317 @@ class ShareListener(unittest.TestCase):
             rt.join(timeout=3)
             if server.SERVER is reader:
                 server.SERVER = None
+
+
+class ShareKeyFile(unittest.TestCase):
+    """The share switch and server.py --lan both go through load_lan_key() / lan_key().
+    Keys in these tests are synthetic, or compared without being printed."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.data = Path(self.dir.name) / 'data'
+        self.settings = Path(self.dir.name) / 'settings'
+        self.data.mkdir()
+        self.here_patch = mock.patch.object(server, 'HERE', self.data)
+        self.ports_patch = mock.patch.object(server, 'SHARE_PORTS', [0])
+        self.here_patch.start()
+        self.ports_patch.start()
+        server.LAN_KEY = None
+        share.configure(self.settings)
+        share._ERROR = None
+        server.stop_lan(wait=True)
+
+    def tearDown(self):
+        try:
+            share.stop(forget=False, wait=True)
+        finally:
+            server.stop_lan(wait=True)
+            server.LAN_KEY = None
+            share._SETTINGS_DIR = None
+            share._ERROR = None
+            self.ports_patch.stop()
+            self.here_patch.stop()
+            self.dir.cleanup()
+
+    def _kf(self):
+        return self.data / 'derived' / 'lan-key'
+
+    def test_fresh_folder_stays_off_and_has_no_key_until_start(self):
+        """A new library, after the launch restore path, must not listen or write derived/lan-key."""
+        self.assertFalse(self._kf().exists())
+        share.restore()
+        self.assertIsNone(server.SHARE_SERVER)
+        self.assertFalse(share.wanted())
+        self.assertFalse(self._kf().exists())
+        self.assertTrue(share.start())
+        kf = self._kf()
+        self.assertTrue(kf.is_file())
+        first = kf.read_text(encoding='utf-8').strip()
+        self.assertGreaterEqual(len(first), 20)
+        self.assertEqual(server.LAN_KEY, first)
+        if os.name != 'nt':
+            self.assertEqual(kf.stat().st_mode & 0o777, 0o600)
+
+    def test_second_start_reuses_the_same_key(self):
+        self.assertTrue(share.start())
+        first = server.LAN_KEY
+        share.stop(forget=True, wait=True)
+        self.assertIsNone(server.SHARE_SERVER)
+        self.assertTrue(share.start())
+        self.assertEqual(server.LAN_KEY, first)
+        self.assertEqual(self._kf().read_text(encoding='utf-8').strip(), first)
+
+    def test_existing_key_from_an_older_version_is_reused_and_served(self):
+        synthetic = 'synthetic-old-key-from-earlier-version'
+        kf = self._kf()
+        kf.parent.mkdir(parents=True, exist_ok=True)
+        kf.write_text(synthetic, encoding='utf-8')
+        if os.name != 'nt':
+            os.chmod(kf, 0o644)
+        self.assertTrue(share.start())
+        self.assertEqual(server.LAN_KEY, synthetic)
+        self.assertEqual(kf.read_text(encoding='utf-8'), synthetic)
+        port = server.SHARE_SERVER.server_address[1]
+        c = HTTPConnection('127.0.0.1', port, timeout=3)
+        c.request('GET', '/sw.js', headers={'X-Lastbook-Key': synthetic})
+        r = c.getresponse(); r.read(); c.close()
+        self.assertEqual(r.status, 200)
+        c = HTTPConnection('127.0.0.1', port, timeout=3)
+        c.request('GET', '/sw.js', headers={'X-Lastbook-Key': 'wrong-synthetic-key'})
+        r = c.getresponse(); r.read(); c.close()
+        self.assertEqual(r.status, 403)
+
+    def test_load_lan_key_wraps_lan_key(self):
+        first = server.load_lan_key()
+        second = server.load_lan_key()
+        self.assertEqual(first, second)
+        self.assertEqual(first, server.lan_key(self._kf()))
+        self.assertEqual(server.LAN_KEY, first)
+
+    def test_stop_closes_the_port_and_leaves_the_local_reader(self):
+        reader = server.bind_http(0, lan=False, handler=server.Handler)
+        server.SERVER = reader
+        rt = threading.Thread(target=reader.serve_forever, daemon=True, name='lastbook-reader-keyfile-test')
+        rt.start()
+        rport = reader.server_address[1]
+        try:
+            self.assertTrue(share.start())
+            sport = server.SHARE_SERVER.server_address[1]
+            self.assertNotEqual(sport, rport)
+            share.stop(forget=True, wait=True)
+            self.assertIsNone(server.SHARE_SERVER)
+            self.assertFalse(listening(sport))
+            self.assertIs(server.SERVER, reader)
+            self.assertTrue(listening(rport))
+            c = HTTPConnection('127.0.0.1', rport, timeout=3)
+            c.request('GET', '/sw.js')
+            r = c.getresponse(); r.read(); c.close()
+            self.assertEqual(r.status, 200)
+        finally:
+            try:
+                reader.shutdown()
+            except Exception:
+                pass
+            try:
+                reader.server_close()
+            except Exception:
+                pass
+            rt.join(timeout=3)
+            if server.SERVER is reader:
+                server.SERVER = None
+
+
+class ShareKeyPrivate(unittest.TestCase):
+    """The key file must be known to be private, or sharing does not start. Every key here is synthetic."""
+
+    FAKE = 'synthetic-key-never-real'
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.data = Path(self.dir.name) / 'data'
+        self.settings = Path(self.dir.name) / 'settings'
+        self.data.mkdir()
+        self.patches = [mock.patch.object(server, 'HERE', self.data), mock.patch.object(server, 'SHARE_PORTS', [0])]
+        for p in self.patches:
+            p.start()
+        server.LAN_KEY = None
+        share.configure(self.settings)
+        share._ERROR = None
+        server.stop_lan(wait=True)
+        self.kf = self.data / 'derived' / 'lan-key'
+
+    def tearDown(self):
+        server.stop_lan(wait=True)
+        server.LAN_KEY = None
+        share._SETTINGS_DIR = None
+        share._ERROR = None
+        for p in self.patches:
+            p.stop()
+        self.dir.cleanup()
+
+    def old_key(self, mode=0o644):
+        self.kf.parent.mkdir(parents=True, exist_ok=True)
+        self.kf.write_text(self.FAKE, encoding='utf-8')
+        os.chmod(self.kf, mode)
+
+    # --- the decision on a POSIX file
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_private_file_passes(self):
+        key = server.load_lan_key()
+        self.assertEqual(server.LAN_KEY, key)
+        self.assertTrue(server.key_file_private(self.kf))
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_group_or_other_bits_are_not_private(self):
+        self.old_key(0o644)
+        self.assertFalse(server.key_file_private(self.kf))
+        os.chmod(self.kf, 0o640)
+        self.assertFalse(server.key_file_private(self.kf))
+        os.chmod(self.kf, 0o600)
+        self.assertTrue(server.key_file_private(self.kf))
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_an_old_readable_key_is_tightened_and_accepted(self):
+        self.old_key(0o644)
+        self.assertEqual(server.load_lan_key(), self.FAKE)
+        self.assertEqual(self.kf.stat().st_mode & 0o777, 0o600)
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_chmod_refused_means_refusal(self):
+        """A drive with no mode bits (exFAT, FAT): the old key stays readable by everyone, so there is no key and no sharing."""
+        self.old_key(0o644)
+        with mock.patch.object(server.os, 'chmod', side_effect=PermissionError('not permitted')):
+            with self.assertRaises(server.KeyNotPrivate) as cm:
+                server.load_lan_key()
+        self.assertIsNone(server.LAN_KEY)
+        self.assertEqual(str(cm.exception), server.KEY_NOT_PRIVATE)
+        self.assertNotIn(self.FAKE, str(cm.exception))
+        self.assertTrue(self.kf.exists())   # the person's own file is not deleted
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_chmod_that_does_nothing_means_refusal(self):
+        """chmod answers yes but the mode is stuck (some network and removable drives)."""
+        self.old_key(0o644)
+        with mock.patch.object(server.os, 'chmod', side_effect=lambda *a, **k: None):
+            with self.assertRaises(server.KeyNotPrivate):
+                server.load_lan_key()
+        self.assertIsNone(server.LAN_KEY)
+
+    def test_a_key_made_for_the_refusal_is_not_left_behind(self):
+        with mock.patch.object(server, 'key_file_private', return_value=False):
+            with self.assertRaises(server.KeyNotPrivate):
+                server.load_lan_key()
+        self.assertFalse(self.kf.exists())
+        self.assertIsNone(server.LAN_KEY)
+
+    def test_a_real_error_is_not_called_a_privacy_refusal(self):
+        with mock.patch.object(server.tempfile, 'mkstemp', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError) as cm:
+                server.load_lan_key()
+        self.assertNotIsInstance(cm.exception, server.KeyNotPrivate)
+
+    # --- Windows: who may open the file (SDDL text from the system; mocked here)
+    USER = 'S-1-5-21-1000-2000-3000-1001'
+
+    def test_windows_acl_only_user_system_admins_is_private(self):
+        for sddl in (
+            f'D:PAI(A;;FA;;;{self.USER})(A;;FA;;;SY)(A;;FA;;;BA)',
+            f'D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;{self.USER})',
+            'D:PAI(A;;FA;;;S-1-5-18)(A;;FA;;;S-1-5-32-544)(A;;FA;;;%s)' % self.USER,
+            f'D:AI(A;ID;FA;;;{self.USER})(A;ID;FA;;;SY)(A;ID;FA;;;BA)(D;;FR;;;WD)',   # a refusal for Everyone only narrows
+        ):
+            with self.subTest(sddl=sddl):
+                self.assertTrue(server.sddl_is_private(sddl, self.USER))
+
+    def test_windows_acl_with_anyone_else_is_not_private(self):
+        for who in ('WD', 'BU', 'AU', 'IU', 'S-1-1-0', 'S-1-5-32-545', 'S-1-5-21-1000-2000-3000-1002', 'CO', 'OW'):
+            sddl = f'D:PAI(A;;FA;;;{self.USER})(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;{who})'
+            with self.subTest(who=who):
+                self.assertFalse(server.sddl_is_private(sddl, self.USER))
+
+    def test_windows_acl_that_cannot_be_read_is_not_private(self):
+        for sddl in ('', None, 'O:BAG:SY', 'D:', 'D:NO_ACCESS_CONTROL', 'D:(A;;FA;;SY)', 'D:(X;;FA;;;SY)', 'D:((A;;FA;;;SY'):
+            with self.subTest(sddl=sddl):
+                self.assertFalse(server.sddl_is_private(sddl, self.USER))
+        self.assertFalse(server.sddl_is_private(f'D:(A;;FA;;;{self.USER})', None))
+
+    def test_windows_access_list_that_cannot_be_asked_is_not_private(self):
+        # Off Windows there is no such call, and on a drive with no access lists the call fails: both count as not private.
+        if os.name != 'nt':
+            self.assertFalse(server._windows_key_private(self.kf))
+
+    def test_windows_uses_the_access_list_not_modes(self):
+        with mock.patch.object(server.os, 'name', 'nt'), mock.patch.object(server, '_windows_key_private', return_value=True) as w:
+            self.assertTrue(server.key_file_private(self.kf))
+            w.assert_called_once_with(self.kf)
+        with mock.patch.object(server.os, 'name', 'nt'), mock.patch.object(server, '_windows_key_private', return_value=False):
+            self.assertFalse(server.key_file_private(self.kf))
+
+    # --- the Share switch
+    def refused_start(self):
+        self.old_key(0o644)
+        return mock.patch.object(server, 'key_file_private', return_value=False)
+
+    def test_share_switch_refuses_without_starting_anything(self):
+        reader = server.bind_http(0, lan=False, handler=server.Handler)
+        server.SERVER = reader
+        rt = threading.Thread(target=reader.serve_forever, daemon=True)
+        rt.start()
+        try:
+            with self.refused_start(), mock.patch.object(server, 'bind_http', wraps=server.bind_http) as bind:
+                self.assertFalse(share.start())
+                bind.assert_not_called()   # no port was opened
+            self.assertIsNone(server.SHARE_SERVER)
+            st = share.status()
+            self.assertFalse(st['on'])
+            self.assertIsNone(st['link'])
+            self.assertEqual(st['error'], server.KEY_NOT_PRIVATE)
+            self.assertFalse(share.wanted())   # nothing was saved as "left on"
+            self.assertTrue(listening(reader.server_address[1]))   # the local reader is untouched
+        finally:
+            reader.shutdown(); reader.server_close(); rt.join(timeout=3)
+            server.SERVER = None
+
+    def test_share_switch_api_returns_the_message(self):
+        with self.refused_start():
+            h = H(body={'on': True})
+            share.handle(h, 'POST')
+        body = json.loads(h.wfile.getvalue())
+        self.assertEqual(body['on'], False)
+        self.assertEqual(body['error'], server.KEY_NOT_PRIVATE)
+        self.assertNotIn(self.FAKE, h.wfile.getvalue().decode())
+        self.assertIsNone(server.SHARE_SERVER)
+
+    def test_restore_after_relaunch_refuses_the_same_way(self):
+        share._save_flag(on=True)
+        with self.refused_start():
+            share.restore()
+        self.assertIsNone(server.SHARE_SERVER)
+        self.assertEqual(share.status()['error'], server.KEY_NOT_PRIVATE)
+
+    def test_refusal_clears_after_the_key_can_be_kept_private(self):
+        with self.refused_start():
+            self.assertFalse(share.start())
+        self.assertTrue(share.start())   # the folder is fixed: the next try works
+        self.assertIsNone(share.status()['error'])
+        self.assertTrue(share.status()['on'])
+
+    def test_the_key_is_never_printed_on_refusal(self):
+        import contextlib
+        out = io.StringIO()
+        with self.refused_start(), contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            share.start()
+        self.assertNotIn(self.FAKE, out.getvalue())
+
+    # --- server.py --lan
+    def test_lan_start_exits_with_the_same_message_and_opens_no_port(self):
+        with self.refused_start(), mock.patch.object(server, 'bind_http') as bind:
+            with self.assertRaises(SystemExit) as cm:
+                server.serve(0, lan=True)
+        bind.assert_not_called()
+        self.assertEqual(str(cm.exception.code), server.KEY_NOT_PRIVATE)
+        self.assertNotIn(self.FAKE, str(cm.exception.code))
+        self.assertIsNone(server.SHARE_SERVER)
 
 
 class SlowShare(server.ShareHandler):

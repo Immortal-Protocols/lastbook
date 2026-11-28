@@ -78,6 +78,10 @@ def start():
         _ERROR = None
         try:
             server.start_lan()
+        except server.KeyNotPrivate as e:
+            _ERROR = str(e)   # no listener was started and no preference is saved; the words are for the person
+            print('share: not started: the access key file cannot be kept private', flush=True)
+            return False
         except OSError as e:
             _ERROR = 'Lastbook could not listen on this network. Another program may already be using the port.'
             print('share: could not start:', type(e).__name__, e, flush=True)

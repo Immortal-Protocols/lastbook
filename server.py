@@ -2316,19 +2316,131 @@ class ShareHandler(Handler):
             return self.internal_error()
 
 
+KEY_NOT_PRIVATE = ("Sharing is off. This library's folder can't keep the access key private, so other devices are not let in. "
+                   "Move the library to a private folder on this computer's own drive (not a shared folder or a USB drive), then turn sharing on again.")
+
+
+class KeyNotPrivate(Exception):
+    """The access key file cannot be kept readable by this user only (and the system's own accounts). The message is for the person."""
+
+
+# The only accounts allowed to read the key file on Windows, besides the person running Lastbook:
+# the system itself and the Administrators group. SDDL spells them as short names or as SIDs.
+_SDDL_SIDS = {'SY': 'S-1-5-18', 'BA': 'S-1-5-32-544'}
+
+
+def sddl_is_private(sddl, user_sid):
+    """True if the file's access list (SDDL text) lets in only user_sid, SYSTEM and Administrators.
+    No access list at all means everyone; anything this cannot read counts as not private. Takes no key, only permissions."""
+    try:
+        if not sddl or not user_sid or 'D:' not in sddl:
+            return False
+        dacl = sddl.split('D:', 1)[1].split('S:', 1)[0]
+        body = dacl[dacl.find('('):] if '(' in dacl else ''
+        if not body.startswith('(') or not body.endswith(')'):
+            return False   # a NULL or empty list: no ACEs to show who is allowed (an empty list shuts everyone out, but cannot be told from a damaged one)
+        allowed = {user_sid.upper(), *_SDDL_SIDS.values()}
+        for ace in body[1:-1].split(')('):
+            f = ace.split(';')
+            if len(f) < 6:
+                return False
+            kind, who = f[0], f[5].strip().upper()
+            if kind in ('D', 'OD', 'XD'):
+                continue   # a refusal only narrows who gets in
+            if kind not in ('A', 'OA', 'XA'):
+                return False
+            if _SDDL_SIDS.get(who, who) not in allowed:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def _windows_key_private(kf):
+    """Ask Windows who may open kf (GetNamedSecurityInfo through ctypes, no other dependency) and judge it with sddl_is_private.
+    Any failure to find out, including a drive with no access lists such as exFAT or FAT, is not private."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        adv = ctypes.WinDLL('advapi32', use_last_error=True)
+        krn = ctypes.WinDLL('kernel32', use_last_error=True)
+        krn.LocalFree.argtypes = [ctypes.c_void_p]
+        krn.GetCurrentProcess.restype = wintypes.HANDLE
+        adv.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+        adv.GetTokenInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+        adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        adv.GetNamedSecurityInfoW.argtypes = [wintypes.LPCWSTR, ctypes.c_int, wintypes.DWORD, ctypes.c_void_p, ctypes.c_void_p,
+                                              ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        adv.ConvertSecurityDescriptorToStringSecurityDescriptorW.argtypes = [ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                                                                             ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+        token = wintypes.HANDLE()
+        if not adv.OpenProcessToken(krn.GetCurrentProcess(), 0x0008, ctypes.byref(token)):   # TOKEN_QUERY
+            return False
+        try:
+            n = wintypes.DWORD()
+            adv.GetTokenInformation(token, 1, None, 0, ctypes.byref(n))   # TokenUser: how big
+            buf = ctypes.create_string_buffer(n.value)
+            if not adv.GetTokenInformation(token, 1, buf, n, ctypes.byref(n)):
+                return False
+            sid_ptr = ctypes.c_void_p.from_buffer(buf).value   # TOKEN_USER begins with a pointer to the SID
+            s = ctypes.c_void_p()
+            if not adv.ConvertSidToStringSidW(sid_ptr, ctypes.byref(s)):
+                return False
+            user_sid = ctypes.wstring_at(s.value)
+            krn.LocalFree(s)
+        finally:
+            krn.CloseHandle(token)
+        sd = ctypes.c_void_p()
+        # SE_FILE_OBJECT = 1, DACL_SECURITY_INFORMATION = 4
+        if adv.GetNamedSecurityInfoW(str(kf), 1, 4, None, None, None, None, ctypes.byref(sd)) != 0:
+            return False
+        try:
+            out = ctypes.c_void_p()
+            if not adv.ConvertSecurityDescriptorToStringSecurityDescriptorW(sd, 1, 4, ctypes.byref(out), None):
+                return False
+            sddl = ctypes.wstring_at(out.value)
+            krn.LocalFree(out)
+        finally:
+            krn.LocalFree(sd)
+        return sddl_is_private(sddl, user_sid)
+    except Exception:
+        return False
+
+
+def key_file_private(kf):
+    """True only if this is known to be readable by this user alone: no group or other mode bits on macOS and Linux
+    (a drive that cannot hold modes, such as exFAT or FAT, shows them stuck on), or the access list checked on Windows."""
+    if os.name == 'nt':
+        return _windows_key_private(kf)
+    try:
+        return kf.stat().st_mode & 0o077 == 0
+    except OSError:
+        return False
+
+
 def load_lan_key():
-    """Create or read derived/lan-key. The same file is used by server.py --lan and the app's share switch."""
+    """Create or read derived/lan-key through lan_key(), the shared helper used by server.py --lan and the share switch,
+    and set LAN_KEY. Raises KeyNotPrivate (and sets no key) if the file cannot be kept private; a key file this call
+    created is then removed. Never prints the key."""
     global LAN_KEY
     kf = HERE / 'derived' / 'lan-key'
     kf.parent.mkdir(parents=True, exist_ok=True)
-    if not kf.exists():
-        kf.write_text(secrets.token_urlsafe(18))
-        try:
-            os.chmod(kf, 0o600)
-        except OSError:
-            pass
-    LAN_KEY = kf.read_text(encoding='utf-8').strip()
-    return LAN_KEY
+    existed = kf.exists()
+    try:
+        key = lan_key(kf)
+        private = key_file_private(kf)
+    except OSError:
+        # lan_key could not tighten the file (chmod refused). A file there that is not private is the refusal; anything else is a real error.
+        if not kf.exists() or key_file_private(kf):
+            raise
+        key, private = None, False
+    if not private:
+        LAN_KEY = None
+        if not existed:
+            kf.unlink(missing_ok=True)
+        raise KeyNotPrivate(KEY_NOT_PRIVATE)
+    LAN_KEY = key
+    return key
 
 
 def lan_address():
@@ -2413,7 +2525,10 @@ def serve(port, lan=False):
     global LAN_KEY, SERVER, SHARE_SERVER
     from engine.share_http import ShareServer
     if lan:
-        load_lan_key()
+        try:
+            load_lan_key()
+        except KeyNotPrivate as e:
+            raise SystemExit(str(e))   # no port is opened; the same words as the Share switch
         SHARE_SERVER = bind_http(port, lan=True, handler=ShareHandler)
         ShareServer(SHARE_SERVER)
         ip = lan_address() or '<this-computer-ip>'

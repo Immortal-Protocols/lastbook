@@ -18,6 +18,9 @@ const Chat = (() => {
   const ABOUT_STARTERS = { doc: ['Explain this page in simple words', 'What are the warnings on this page?', 'Is there a video that shows this?'],
     video: ['Summarise what this video shows', 'What safety points does this video make?', 'Find a manual page that covers the same thing'],
     topic: ['What should I do first?', 'What are the most important warnings?', 'Which video should I watch first?'] };
+  // Said with an answer that did not finish, on screen and in what is copied or saved: its warnings may be what is missing.
+  const CUT = { length: 'It reached the length limit before it finished.', interrupted: 'It stopped before it finished.' };
+  const cutText = m => `This answer is incomplete. ${CUT[m.incomplete]} Steps or warnings may be missing.`;
   const STATES = { starting: 'Starting the local AI…', thinking: 'Thinking…', searching: 'Searching the library…', reading: 'Reading the pages it found…', writing: 'Writing the answer…' };
   // Where an answer is: search, then read, then write (none yet while the local AI starts). A later round can search again, so a step can light up a second time.
   const STAGES = ['Search', 'Read', 'Write'], STAGE_AT = { starting: -1, thinking: 0, searching: 0, reading: 1, writing: 2 };
@@ -339,7 +342,7 @@ const Chat = (() => {
   // sources-finish:start (app/tests/test_chat_steps.py)
   // After a normal `done` event, `cited` is the final list. If the user stops mid-stream,
   // `cited` is empty, so keep the sources already received.
-  const sourcesForFinish = m => m.cited || (m.stopped ? (m.sources || []) : []) || [];
+  const sourcesForFinish = m => m.cited || (m.stopped || m.incomplete ? (m.sources || []) : []) || [];
   // sources-finish:end
   function botHtml(m, i) {
     const l = live[cur.id], running = l && l.running && i === cur.messages.length - 1;
@@ -348,7 +351,11 @@ const Chat = (() => {
     let h = '';
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
+    // A message still marked running that nothing is writing any more was cut off, by a reload for instance.
+    const cut = !running && m.content && (m.incomplete || m.running && 'interrupted');
+    if (cut) { m.incomplete = cut; h += `<div class="ans-error">${ico('warn')}<div><b>${esc(cutText(m))}</b><p>${sourcesForFinish(m).length ? 'Check the linked pages' : 'Check a guide or the library'}, or ask again${cut === 'length' ? ' about one part at a time' : ''}.</p></div></div>` }
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
+    if (cut) h += `<p class="notice small">The answer breaks off here. It is incomplete.</p>`;
     if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
     if (!running && m.content) {
@@ -511,6 +518,7 @@ const Chat = (() => {
   function plain(m) {
     const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
     let t = m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `[${k.replace(/^S/, '')}]` : '');
+    if (m.incomplete) t = `${cutText(m)}\n\n${t}\n\n(The answer breaks off here.)`;
     if ((m.cited || []).length) t += '\n\nSources:\n' + m.cited.map(s => `[${s.key.replace(/^S/, '')}] ${s.title} — ${s.publisher || ''}${s.year ? ', ' + s.year : ''}${s.page ? ', page ' + s.page : ''}${s.t != null ? ', at ' + clock(s.t) : ''}  ${location.origin}/${srcHref(s).replace(/&?from=[^&]*/, '')}`).join('\n');
     return t;
   }
@@ -528,7 +536,7 @@ const Chat = (() => {
     return c.messages.filter(m => m.content).map(m => {
       if (m.role !== 'assistant') return { role: m.role, content: m.content };
       const map = Object.fromEntries((m.cited || []).map(s => [s.key, s]));
-      return { role: 'assistant', content: m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? ', p. ' + map[k].page : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
+      return { role: 'assistant', content: (m.incomplete ? `(${cutText(m)})\n` : '') + m.content.replace(/\[([SM]\d+)\]/g, (_, k) => map[k] ? `(${map[k].title}${map[k].page ? ', p. ' + map[k].page : ''}${map[k].t != null ? ', ' + clock(map[k].t) : ''})` : '') };
     });
   }
 
@@ -551,6 +559,7 @@ const Chat = (() => {
     const idx = c.messages.length - 1, ctl = new AbortController();
     live[c.id] = { running: true, abort: () => ctl.abort() };
     const redraw = throttle(() => { if (cur === c) { updateBot(idx); scrollEnd() } }, 80);
+    let ended = false;      // the server said how the answer ended: `done`, `error` or `stopped`
     try {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
@@ -568,22 +577,26 @@ const Chat = (() => {
           if (!chunk.startsWith('data:')) continue;
           let ev; try { ev = JSON.parse(chunk.slice(5)) } catch { continue }
           onEvent(m, ev);
+          if (ev.type === 'done' || ev.type === 'error' || ev.type === 'stopped') ended = true;
           redraw();
         }
       }
-      if (m.running && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
+      if (!ended && !m.content && !m.error) m.error = 'The answer stopped unexpectedly.';
     } catch (e) {
       if (e.name === 'AbortError') { m.stopped = true; if (!m.content) m.error = 'Stopped.' }
       else if (e.offline || /model_unavailable/.test(e.message)) { m.offline = true; m.error = e.why || 'The local assistant model isn’t running right now.'; await fallback(m, text) }
       else m.error = e.message || 'Something went wrong.';
     }
     m.running = false; delete m.state;
-    if (m.stopped && m.content) {
-      m.content += '\n\n(Stopped.)';
-      // The `done` event never arrives, so `cited` would be empty and the finished view
-      // would say the answer is unverified. Keep the sources already received.
-      if (m.cited == null && (m.sources || []).length) m.cited = m.sources;
+    // Text with no `done` behind it (`done` sets `cited`) is only part of an answer, unless the person stopped it.
+    if (m.content && !m.stopped && m.cited == null) {
+      m.incomplete = 'interrupted';
+      if (!ended) delete m.error;      // a broken connection's own words ("network error") say less than the notice
     }
+    if (m.stopped && m.content) m.content += '\n\n(Stopped.)';
+    // Without a `done` event `cited` would be empty and the finished view would say the answer is unverified.
+    // Keep the sources already received.
+    if ((m.stopped || m.incomplete) && m.content && m.cited == null && (m.sources || []).length) m.cited = m.sources;
     live[c.id].running = false;
     c.updated = Date.now(); persist();
     if (cur === c) { updateBot(idx); setBusy(false); scrollEnd(); const t = $('#chatIn'); if (t && matchMedia('(hover:hover)').matches) t.focus({ preventScroll: true }) }
@@ -595,7 +608,7 @@ const Chat = (() => {
     else if (ev.type === 'sources') m.sources = ev.sources;
     else if (ev.type === 'delta') m.content += ev.text;
     else if (ev.type === 'reset') m.content = '';
-    else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
+    else if (ev.type === 'done') { if (ev.incomplete) m.incomplete = ev.incomplete; m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
       if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
       else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }

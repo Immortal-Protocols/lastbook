@@ -31,6 +31,12 @@ CTX = 16384               # tokens the model holds: the system prompt, sources, 
 RESERVE = 2.5 * 2**30     # memory left for the system and the rest of Lastbook beyond what llama.cpp measures for the model
 IDLE_STOP = int(os.environ.get('LASTBOOK_AI_IDLE_S') or 15 * 60)   # seconds without a question before the model is stopped, to give its memory back
 START_WAIT = 600          # longest a question waits for a load that has stopped getting further; each step forward starts the wait again
+# A running model that says nothing for this long is stuck, and is shut down. The program says nothing while it reads the
+# question, so the first wait grows with the question: processor-only computers can take many minutes over a long one.
+FIRST_WAIT = 600          # seconds for the first piece of the answer, plus the time to read the question at SLOWEST_READ
+SLOWEST_READ = 5          # tokens a second
+NEXT_WAIT = 300           # seconds between one piece of the answer and the next
+CANCEL_WAIT = 60          # seconds to answer a Stop
 
 STATE_FILE = paths.DATA / 'derived' / 'llm' / 'state.json'   # where the file was found, its check, the on/off setting
 
@@ -404,7 +410,10 @@ class Local:
     # -- one model turn ---------------------------------------------------------------------------------------------------
     def generate(self, segments, max_tokens, cancelled, on_text):
         """Streams one answer. on_text(piece). Returns the 'done' event, or raises RuntimeError with a plain sentence."""
-        with self.gen_lock:
+        while not self.gen_lock.acquire(timeout=0.2):     # another answer is being written: Stop still works while waiting
+            if cancelled():
+                return {'ev': 'done', 'reason': 'cancel'}
+        try:
             with self.lock:
                 proc, events = self.proc, self.events
                 if not proc or self.state != 'ready':
@@ -422,9 +431,18 @@ class Local:
                 raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
             sent_cancel = False
             import queue
+            limit = FIRST_WAIT + size_of(segments) / SLOWEST_READ
+            quiet, seen = 0.0, time.monotonic()    # how long the program has said nothing about this answer
             while True:
+                now = time.monotonic()
+                quiet, seen = quiet + min(now - seen, 1.0), now     # a computer that slept did not use up the wait
+                if quiet >= (CANCEL_WAIT if sent_cancel else limit):
+                    self._drop(proc, 'stopped answering')
+                    if sent_cancel:
+                        return {'ev': 'done', 'reason': 'cancel'}
+                    raise RuntimeError('The local AI stopped responding, so Lastbook shut it down. Ask again to restart it.')
                 if cancelled() and not sent_cancel:
-                    sent_cancel = True
+                    sent_cancel, quiet = True, 0.0
                     try:
                         proc.stdin.write(b'{"op":"cancel"}\n')
                     except OSError:
@@ -438,6 +456,7 @@ class Local:
                     raise RuntimeError('The local AI stopped unexpectedly. Ask again to restart it.')
                 if ev.get('id') != rid:
                     continue
+                quiet, limit = 0.0, NEXT_WAIT
                 if kind == 'tok':
                     on_text(ev['t'])
                 elif kind == 'done':
@@ -445,6 +464,21 @@ class Local:
                     return ev
                 elif kind == 'error':
                     raise RuntimeError(_plain_error(ev))
+        finally:
+            self.gen_lock.release()
+
+    def _drop(self, proc, why):
+        """Ends a stuck program at once: it would not read a polite quit. The next question starts a new one."""
+        with self.lock:
+            if self.proc is proc:
+                self.proc = None
+                self.state, self.pct, self.message = 'stopped', None, ''
+        print(f'local AI: stopping ({why})', flush=True)
+        try:
+            proc.kill()
+            proc.wait(10)      # its memory is given back before another starts
+        except (OSError, subprocess.TimeoutExpired) as e:
+            print('local AI: could not end the program:', type(e).__name__, e, flush=True)
 
 
 LOCAL = Local()

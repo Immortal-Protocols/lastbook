@@ -4,7 +4,7 @@ Used by server.py (/api/retrieve, /api/chat, /api/assistant/status). The model i
 MODEL_URL; clients never see it. Tools can read the public survival library (catalog ids, pages, transcripts, map
 gazetteer) and nothing else: no file paths, URLs or shell input are accepted from the model.
 """
-import base64, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
+import base64, http.client, json, re, socket, sqlite3, threading, time, urllib.error, urllib.request
 import retrieval
 from engine import encyclopedias
 from engine.paths import ro_uri
@@ -513,10 +513,12 @@ GROUPED = re.compile(r'\[\s*[SM]\d+(?:\s*[,;]\s*[SM]\d+)+\s*\]')   # how Gemma o
 SYSTEM_TEXT_ONLY = SYSTEM.replace(', view_page when a diagram or table matters', '').replace(
     'scanned pages without text (unless you view the page image)', 'pictures, diagrams or scanned pages without text')
 ROUND_TOKENS = 1800
+PING_S = 5      # while the local AI says nothing, a write this often finds out that the person pressed Stop or left
 
 
 def _http_round(msgs, tools, cancelled, wrote, set_state):
-    """One model turn from the model server at BASE. (content, {index: call}), 'stopped', or a sentence saying what failed."""
+    """One model turn from the model server at BASE. (content, {index: call}), 'stopped', or a sentence saying what failed.
+    A turn that did not finish has a third value saying why: 'length' (the token limit) or 'interrupted'."""
     # Some model templates allow a system message only at the start. Keep later app notes where they occur,
     # marked as ours, without changing the shared history or the local AI's prompt.
     wire = []
@@ -532,7 +534,7 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
         resp = model_open(req, timeout=180)
     except Exception as e:
         return f'The local model is not responding ({type(e).__name__}).'
-    calls, content = {}, ''
+    calls, content, reason, ended = {}, '', None, False
     try:
         for raw in resp:
             if cancelled():
@@ -542,11 +544,13 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
                 continue
             data = line[5:].strip()
             if data == '[DONE]':
+                ended = True
                 break
             try:
                 ch = json.loads(data)['choices'][0]
             except (ValueError, KeyError, IndexError):
                 continue
+            reason = ch.get('finish_reason') or reason
             dl = ch.get('delta') or {}
             if dl.get('reasoning_content'):
                 set_state('thinking')
@@ -559,10 +563,14 @@ def _http_round(msgs, tools, cancelled, wrote, set_state):
                 f = tc.get('function') or {}
                 c['name'] += f.get('name') or ''
                 c['args'] += f.get('arguments') or ''
-    except (socket.timeout, urllib.error.URLError, ConnectionError) as e:
+    except (socket.timeout, urllib.error.URLError, ConnectionError, http.client.HTTPException) as e:
         return f'The local model stopped responding ({type(e).__name__}).'
     finally:
         resp.close()
+    if reason == 'length':
+        return content, calls, 'length'
+    if not ended and not reason:
+        return content, calls, 'interrupted'
     return content, calls
 
 
@@ -588,6 +596,8 @@ def _local_round(msgs, tools, cancelled, wrote, set_state):
         return 'stopped'
     content, found = llm_local.parse_calls(text[0])
     calls = {i: {'id': f'call_{i}', 'name': name, 'args': json.dumps(args)} for i, (name, args) in enumerate(found)} if tools else {}
+    if done.get('reason') == 'length':
+        return content.strip(), calls, 'length'
     return content.strip(), calls
 
 
@@ -650,13 +660,21 @@ def chat(messages, about, emit, cancelled):
         emit({'type': 'found', 'count': len(hits) + len(wiki)})
     if sess.sources:
         emit({'type': 'sources', 'sources': list(sess.sources.values())})
-    answer, first_tok, tool_log, state = '', None, [], [None]
+    answer, incomplete, first_tok, tool_log, state = '', None, None, [], [None]
 
     def set_state(s):
         if s != state[0]:
             state[0] = s
             emit({'type': 'state', 'state': s})
     local = local_on()
+    if local:
+        pinged, asked = [time.monotonic()], cancelled
+
+        def cancelled():   # a Stop is only noticed when something is written to the page
+            if time.monotonic() - pinged[0] >= PING_S:
+                pinged[0] = time.monotonic()
+                emit({'type': 'ping'})
+            return asked()
     tools = [t for t in TOOLS if t['function']['name'] != 'view_page'] if local or CHOSEN else TOOLS   # the local model reads text only
     if local or CHOSEN:
         msgs[0] = {'role': 'system', 'content': SYSTEM_TEXT_ONLY}
@@ -693,10 +711,10 @@ def chat(messages, about, emit, cancelled):
         if isinstance(got, str):
             emit({'type': 'error', 'error': 'model_unavailable', 'text': got})
             return
-        content, calls = got
+        content, calls, *cut = got
         rf = first['at']
         if not calls:
-            answer = content
+            answer, incomplete = content, cut[0] if cut else None
             if content and first_tok is None:
                 first_tok = rf
             if answer.strip() or last:
@@ -730,6 +748,6 @@ def chat(messages, about, emit, cancelled):
         return
     # Validate citations against what the tools actually returned in this turn.
     answer, valid, invalid = validate_citations(answer, sess)
-    emit({'type': 'done', 'answer': answer, 'sources': [sess.sources[k] for k in valid],
+    emit({'type': 'done', **({'incomplete': incomplete} if incomplete else {}), 'answer': answer, 'sources': [sess.sources[k] for k in valid],
           'consulted': [v for k, v in sess.sources.items() if k not in valid], 'invalid': invalid, 'tools': tool_log,
           'latency': {'first_token_s': round(first_tok, 2) if first_tok else None, 'total_s': round(time.time() - t0, 2)}})

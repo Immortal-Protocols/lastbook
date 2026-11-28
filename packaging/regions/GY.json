@@ -1,0 +1,135 @@
+{
+ "id": "GY",
+ "name": "Guyana",
+ "country": "GY",
+ "kind": "country",
+ "bbox": [-61.3939, 1.1714, -56.4808, 8.5576],
+ "bbox_source": {
+  "dataset": "Guyana - Subnational Administrative Boundaries (COD-AB), admin level 0",
+  "publisher": "OCHA Field Information Services Section (source: DEVInfo LAC project)",
+  "url": "https://data.humdata.org/dataset/cod-ab-guy",
+  "licence": "CC BY-IGO",
+  "checked": "2026-11-16",
+  "method": "Shapefile header of guy_admbnd_adm0_2021 (WGS 84). regions.box() adds the 0.15 degree margin the US state maps use."
+ },
+ "includes": "Streets, buildings, terrain, land cover, water, help points and place names for Guyana, and the house addresses mapped in OpenStreetMap (about 1,200, mostly in Georgetown, Rosignol and Belle West). Address search stays off until the engine labels these addresses by their own source; there is no complete open list of addresses for Guyana yet.",
+ "builder": "tools/build_region_guyana.py",
+ "sources": {
+  "streets": [
+   {
+    "file": "national.sqlite",
+    "dataset": "OpenStreetMap roads, land use, waterways and named places (Geofabrik Guyana extract, free GeoPackage)",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://download.geofabrik.de/south-america/guyana.html",
+    "licence": "ODbL 1.0",
+    "attribution": "© OpenStreetMap contributors. Data available under the Open Database License (ODbL)."
+   }
+  ],
+  "pois": [
+   {
+    "file": "national.sqlite (poi)",
+    "dataset": "OpenStreetMap points of interest, the classes in tools/build_map.py POI_KEEP",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL 1.0",
+    "attribution": "© OpenStreetMap contributors. Data available under the Open Database License (ODbL)."
+   }
+  ],
+  "water": [
+   {
+    "file": "water.sqlite",
+    "dataset": "OpenStreetMap water areas (lakes, reservoirs, rivers, wetlands)",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL 1.0",
+    "attribution": "© OpenStreetMap contributors. Data available under the Open Database License (ODbL).",
+    "note": "No open dam inventory for Guyana was found, so there are no dam points."
+   }
+  ],
+  "terrain": [
+   {
+    "file": "terrain.sqlite",
+    "dataset": "Copernicus DEM GLO-30 (Copernicus WorldDEM-30), via the Copernicus DEM open data bucket",
+    "publisher": "European Space Agency / Airbus Defence and Space",
+    "url": "https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM",
+    "licence": "Copernicus WorldDEM-30 licence (free and open)",
+    "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30.",
+    "note": "A surface model: in forest, relief and contour lines follow the tree tops, not the ground."
+   }
+  ],
+  "crops": [
+   {
+    "file": "crops.sqlite",
+    "dataset": "ESA WorldCover 10 m 2021 v200, cropland class",
+    "publisher": "ESA WorldCover consortium",
+    "url": "https://esa-worldcover.org/en/data-access",
+    "licence": "CC BY 4.0",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "note": "Land cover, not crop types: it shows where cropland is, not what grows there."
+   }
+  ],
+  "buildings": [
+   {
+    "file": "buildings.sqlite",
+    "dataset": "Global ML Building Footprints, release 2026-02-03",
+    "publisher": "Microsoft",
+    "url": "https://github.com/microsoft/GlobalMLBuildingFootprints",
+    "licence": "CDLA Permissive 2.0",
+    "attribution": "Building footprints © Microsoft, Global ML Building Footprints, under the Community Data License Agreement - Permissive 2.0.",
+    "note": "Microsoft's README names CDLA Permissive 2.0; Overture's attribution page lists the same dataset under ODbL. Confirm which applies before publishing."
+   }
+  ],
+  "places": [
+   {
+    "file": "places.sqlite",
+    "dataset": "OpenStreetMap named places and named points of interest",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL 1.0",
+    "attribution": "© OpenStreetMap contributors. Data available under the Open Database License (ODbL)."
+   },
+   {
+    "file": "places.sqlite",
+    "dataset": "Guyana COD-AB admin levels 1 and 2 (10 regions, 27 sub-regions)",
+    "publisher": "OCHA Field Information Services Section (source: DEVInfo LAC project)",
+    "url": "https://data.humdata.org/dataset/cod-ab-guy",
+    "licence": "CC BY-IGO",
+    "attribution": "Administrative regions: OCHA, Guyana COD-AB (source: DEVInfo LAC project), CC BY-IGO."
+   },
+   {
+    "file": "places.sqlite",
+    "dataset": "GeoNames GY.zip, populated places (feature class P) that OpenStreetMap lacks, e.g. Georgetown neighbourhoods (PPLX)",
+    "publisher": "GeoNames",
+    "url": "https://download.geonames.org/export/dump/",
+    "licence": "CC BY 4.0",
+    "attribution": "Place names: GeoNames (geonames.org), CC BY 4.0."
+   }
+  ],
+  "addresses": [
+   {
+    "file": "addresses/GY.sqlite",
+    "dataset": "OpenStreetMap house addresses (addr:housenumber and addr:street), Geofabrik Guyana full extract (guyana-latest.osm.pbf)",
+    "publisher": "OpenStreetMap contributors",
+    "url": "https://download.geofabrik.de/south-america/guyana.html",
+    "licence": "ODbL 1.0",
+    "attribution": "© OpenStreetMap contributors. Data available under the Open Database License (ODbL).",
+    "method": "Every OSM node or way with addr:housenumber and addr:street, written in tools/build_addresses.py's addr table (state 'GY'). An address without addr:city takes the nearest town, village or neighbourhood within 5 km."
+   }
+  ]
+ },
+ "attribution": [
+  "© OpenStreetMap contributors. Data available under the Open Database License (ODbL).",
+  "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+  "The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM-30.",
+  "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0).",
+  "Building footprints © Microsoft, Global ML Building Footprints, under the Community Data License Agreement - Permissive 2.0.",
+  "Administrative regions: OCHA, Guyana COD-AB (source: DEVInfo LAC project), CC BY-IGO.",
+  "Place names: GeoNames (geonames.org), CC BY 4.0."
+ ],
+ "address": {
+  "search": false,
+  "postcode": "Guyana has 7-digit postcodes (region, locality, district, post office, sub-locality; Guyana Post Office Corporation and the UPU addressing sheet of August 2025), but no postcode data with terms that allow redistribution was found, so none is included.",
+  "coverage": "OpenStreetMap addresses only (about 1,200 on 2026-11-23). Only sources with terms that allow redistribution are used; postcode directories, gazetteers and registries without such terms are left out.",
+  "engine_note": "Off until engine/address_search.py labels results by the index's meta 'source': it labels every address 'Overture Maps', and these are OpenStreetMap."
+ }
+}

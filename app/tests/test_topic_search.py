@@ -530,6 +530,41 @@ NOT_LANDSLIDE = ['bulging can', 'bulging cans', 'can is bulging', 'bulging disc'
                  'cracks in the wall', 'cracked wall', 'cracks', 'cracks in the foundation']
 TOPS = sorted({*TOPS, *BULGING, *NOT_LANDSLIDE})
 
+# A poisoning is usually told as drinking something, not swallowing it, and the question that follows is whether to
+# make the person vomit. The poison choice's own readings answer both ("Do not induce vomiting or give milk, water
+# or charcoal"), but on 51658f5 no guide held "drank", so a child drinking fuel reached the small-engine guide,
+# "my son drank bleach" reached the guide on disinfecting drinking water, and "induce vomiting" reached shock and
+# diarrhoea. The words live in "phrases", gated by "context", not in the hint.
+DRANK_AND_VOMIT = {
+    'my son drank bleach': ['hurt', 'poison'], 'my daughter drank bleach': ['hurt', 'poison'],
+    'kid drank bleach': ['hurt', 'poison'], 'my son drank gasoline': ['hurt', 'poison'],
+    'he drank petrol': ['hurt', 'poison'], 'she drank kerosene': ['hurt', 'poison'],
+    'drank antifreeze': ['hurt', 'poison'], 'drank detergent': ['hurt', 'poison'],
+    'drank weed killer': ['hurt', 'poison'], 'induce vomiting': ['hurt', 'poison'],
+    'should i make him vomit': ['hurt', 'poison'], 'make him throw up': ['hurt', 'poison'],
+    'give activated charcoal': ['hurt', 'poison'],
+    'activated charcoal for poisoning': ['hurt', 'poison'],
+}
+# Searches those phrases must not disturb: bleach and charcoal are the water guide's when the search is about
+# treating water, and an ant bite is still a bite.
+DRANK_UNDISTURBED = {
+    'bleach': ['water', 'bleach'], 'household bleach': ['water', 'bleach'],
+    'how much bleach to purify water': ['water', 'keepclean'],
+    'activated charcoal water filter': ['water', 'unsafe'], 'charcoal filter': ['water', 'filter'],
+    'ant bites': ['health', 'medicine'], 'swallowed detergent': ['hurt', 'poison'],
+}
+# "weed killer" and "antifreeze" are phrases, never hint words: a hint word is matched by prefix, so "killer" in the
+# hint would send every "kill" search to the poison choice and "antifreeze" would catch "ant". An animal that drank
+# something is not this choice either -- the guide for a person who swallowed a poison is the wrong page for a dog --
+# so the pet words are in "unless", which switches the phrases off. And "activated charcoal" on its own is a water
+# filter as often as a poisoning, so only the phrases that name the poisoning reach the choice. None of these are
+# pinned to a result: #328 gives the crisis searches one, and where a pet search should land is its own question.
+DRANK_NOT_POISON = ['kill myself', 'i want to kill myself', 'she wants to kill herself',
+                    'kill weeds', 'kill bacteria', 'how to kill a chicken', 'ants in the kitchen',
+                    'my dog drank bleach', 'my cat drank antifreeze', 'the dog drank antifreeze',
+                    'activated charcoal', 'activated charcoal water filter']
+TOPS = sorted({*TOPS, *DRANK_AND_VOMIT, *DRANK_UNDISTURBED, *DRANK_NOT_POISON})
+
 CASES = {
     'stop': QSTOP, 'fold': list(FOLD), 'match': [m[:2] for m in MATCH], 'rank': ENGLISH, 'topics': TOPICS,
     'rankOwn': RANK_OWN, 'rankForms': [[q, FORM_TOPICS] for q in RANK_FORMS],
@@ -838,6 +873,16 @@ class TopicSearch(unittest.TestCase):
             for q in NOT_LANDSLIDE:
                 with self.subTest(q=q, segmenter=r['segmenter']):
                     self.assertNotIn(['disaster', 'landslide'], top[q])
+
+    def test_drinking_a_poison_and_whether_to_make_someone_vomit(self):
+        for r in self.modes:
+            top = dict(zip(TOPS, (ok(e) for e in r['tops'])))
+            for q, first in {**DRANK_AND_VOMIT, **DRANK_UNDISTURBED}.items():
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertEqual(top[q][:1], [first])   # an empty result fails, not errors
+            for q in DRANK_NOT_POISON:
+                with self.subTest(q=q, segmenter=r['segmenter']):
+                    self.assertNotIn(['hurt', 'poison'], top[q])
 
     def test_avalanche_landslide_and_volcano(self):
         for r in self.modes:

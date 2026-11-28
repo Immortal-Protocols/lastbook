@@ -1826,6 +1826,20 @@ class Jobs(Base):
         self.assertEqual(first.use(str(zips))['items'][0]['kind'], 'pack')          # first run's "Choose a library zip" as before
         self.wait(first)
 
+    def test_use_zip_is_an_offline_import_in_the_chosen_folder(self):
+        """wonderdawg on #465: a library zip already here installs in the folder chosen on screen with nothing downloaded,
+        even with the AI ticked on screen and a model server that refuses: the AI, a map or addresses are added after."""
+        mine = self.tmp / 'elsewhere' / 'Lastbook-Small.zip'
+        mine.parent.mkdir()
+        mine.write_bytes(self.zip)
+        self.files.data.pop('model.gguf')          # the model download is refused
+        chosen = self.tmp / 'chosen'
+        s = self.setup()
+        j = s.use(str(mine), folder=str(chosen))
+        self.assertIsNone(j.get('error'), j)
+        self.assertEqual(j['folder'], str(chosen / 'LastbookData'))
+        self.assertEqual([i['kind'] for i in j['items']], ['pack'])
+        self.assertEqual(self.wait(s)['state'], 'done')
     def test_restart_mid_download(self):
         """A child process downloads and is killed; a new Setup finds the job paused and resumes with Range."""
         self.files.pace = 0.01
@@ -4354,6 +4368,24 @@ class AddressIndexes(Maps):
             'files': [{'name': name, 'url': f'{self.base}/{name}', 'size': len(data), 'sha256': sha(data), 'kind': 'zip'}]}]
         return mf, payload
 
+    def test_use_zip_of_a_pack_with_a_state_map_downloads_no_addresses(self):
+        """Codex on #465: a library zip whose pack names a state map (pack.map) still installs as it is: the address index the
+        pack's map would bring is not downloaded with it, so the import finishes offline."""
+        mf, _ = self.address_manifest()
+        for p in mf.current['packs']:
+            if p['id'] == 'small':
+                p['map'] = 'CA'
+        mine = self.tmp / 'elsewhere' / 'Lastbook-Small.zip'
+        mine.parent.mkdir()
+        mine.write_bytes(self.files.data['Lastbook-Small.zip'])
+        self.files.log.clear()
+        s = self.setup(manifest=mf)
+        j = s.use(str(mine), folder=str(self.tmp / 'chosen'))
+        self.assertIsNone(j.get('error'), j)
+        self.assertEqual([i['kind'] for i in j['items']], ['pack'])
+        self.assertEqual(self.wait(s)['state'], 'done')
+        self.assertEqual(self.files.log, [])                                   # nothing downloaded
+
     def test_fresh_map_download_includes_addresses(self):
         mf, payload = self.address_manifest()
         setup = self.setup(manifest=mf)
@@ -4373,6 +4405,15 @@ class AddressIndexes(Maps):
         library, _ = api.startup(self.settings)
         info = self.setup('manage', current=library, manifest=mf).current_info()
         self.assertEqual((info['map'], info['address_indexes']), ('base', []))
+
+    def test_noted_map_and_address_files_say_what_they_are(self):
+        mf, _ = self.address_manifest()
+        s = self.setup(manifest=mf)
+        for name, kind in (('Lastbook-Map-CA.zip', 'map'), ('Lastbook-Addresses-CA.zip', 'addresses')):
+            mine = self.tmp / 'elsewhere' / name
+            mine.parent.mkdir(exist_ok=True)
+            mine.write_bytes(self.files.data[name])
+            self.assertEqual(s.use(str(mine)), {'job': None, 'noted': True, 'kind': kind})
 
     def test_existing_map_downloads_only_missing_index(self):
         mf, payload = self.address_manifest()

@@ -473,5 +473,87 @@ class LibraryExtraction(unittest.TestCase):
         self.assertIn('build', result.stdout)
 
 
+class PdfOcrCache(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        for name in ('text', 'ocr', 'documents', 'manifests'):
+            (self.root / name).mkdir()
+        self.record = {'id': 'pdf-example', 'path': 'documents/example.pdf', 'kind': 'pdf',
+                       'title': 'Container labels', 'sha256': 'a' * 64,
+                       'collection': 'Examples', 'category': 'reference'}
+        self.ocrpath = self.root / 'ocr/pdf-example.json'
+        self.textpath = self.root / 'text/pdf-example.txt'
+        self.original = 'Original label 12. ' * 8
+        stream = ('BT /F1 12 Tf 20 200 Td (' + self.original + ') Tj ET').encode('ascii')
+        objects = [b'<</Type/Catalog/Pages 2 0 R>>', b'<</Type/Pages/Kids[3 0 R]/Count 1>>',
+                   b'<</Type/Page/Parent 2 0 R/MediaBox[0 0 600 300]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
+                   b'<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+                   b'<</Length ' + str(len(stream)).encode('ascii') + b'>>\nstream\n' + stream + b'\nendstream']
+        data, offsets = bytearray(b'%PDF-1.4\n'), []
+        for number, obj in enumerate(objects, 1):
+            offsets.append(len(data))
+            data += b'%d 0 obj\n' % number + obj + b'\nendobj\n'
+        xref = len(data)
+        data += b'xref\n0 6\n0000000000 65535 f \n'
+        data += b''.join(b'%010d 00000 n \n' % offset for offset in offsets)
+        data += b'trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n%d\n%%%%EOF\n' % xref
+        self.source = self.root / self.record['path']
+        self.source.write_bytes(data)
+        (self.root / 'manifests/examples.json').write_text(json.dumps([self.record]), encoding='utf-8')
+        for name, value in (('ROOT', self.root), ('DB', self.root / 'search.sqlite')):
+            setting = patch.object(library, name, value)
+            setting.start()
+            self.addCleanup(setting.stop)
+
+    def build(self):
+        with redirect_stdout(io.StringIO()):
+            library.build()
+        catalog = json.loads((self.root / 'catalog.json').read_text(encoding='utf-8'))
+        summary = json.loads((self.root / 'summary.json').read_text(encoding='utf-8'))
+        return catalog[0], summary
+
+    def test_unreadable_ocr_cache_does_not_stop_a_library_rebuild(self):
+        cases = (b'{', b'\xff', b'[]', b'null',
+                 json.dumps({'sha256': self.record['sha256'], 'pages': None}).encode('utf-8'),
+                 json.dumps({'sha256': self.record['sha256'], 'pages': [12]}).encode('utf-8'),
+                 json.dumps({'sha256': self.record['sha256'], 'pages': [{'text': None}]}).encode('utf-8'),
+                 json.dumps({'sha256': self.record['sha256'], 'pages': [{'text': ['bad'] * 101}]}).encode('utf-8'))
+        source = self.source.read_bytes()
+        for cache in cases:
+            with self.subTest(cache=cache):
+                self.textpath.unlink(missing_ok=True)
+                self.textpath.with_suffix('.json').unlink(missing_ok=True)
+                self.ocrpath.write_bytes(cache)
+                record, summary = self.build()
+                self.assertEqual(record['text_path'], 'text/pdf-example.txt')
+                self.assertEqual(record['pages'], 1)
+                self.assertEqual(record['searchability'], 'text')
+                self.assertNotIn('ocr_path', record)
+                self.assertEqual(summary['indexed_units'], 1)
+                self.assertEqual(summary['extraction_errors'], [])
+                self.assertEqual([r['doc_id'] for r in library.search('12')], ['pdf-example'])
+                self.assertEqual(self.ocrpath.read_bytes(), cache)
+                self.assertEqual(self.source.read_bytes(), source)
+
+    def test_valid_ocr_pages_still_take_precedence_over_original_pdf_text(self):
+        pages = ['OCR label 34. ' * 8, 'Deuxième page 56. ' * 8]
+        self.ocrpath.write_text(json.dumps({'sha256': self.record['sha256'],
+                                           'pages': [{'text': page} for page in pages]}), encoding='utf-8')
+        before = (self.ocrpath.read_bytes(), self.source.read_bytes())
+        record, summary = self.build()
+        self.assertEqual(record['pages'], 2)
+        self.assertEqual(record['searchability'], 'OCR text: verify against original page')
+        self.assertEqual(record['ocr_path'], 'ocr/pdf-example.json')
+        self.assertEqual(self.textpath.read_text(encoding='utf-8'), '\n\f\n'.join(pages))
+        self.assertEqual(summary['indexed_units'], 2)
+        self.assertEqual(summary['extraction_errors'], [])
+        self.assertEqual(library.search('12'), [])
+        for query in ('34', '56'):
+            self.assertEqual([r['doc_id'] for r in library.search(query)], ['pdf-example'])
+        self.assertEqual((self.ocrpath.read_bytes(), self.source.read_bytes()), before)
+
+
 if __name__ == '__main__':
     unittest.main()

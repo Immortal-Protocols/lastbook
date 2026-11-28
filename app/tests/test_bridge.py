@@ -1181,17 +1181,68 @@ class LanKey(unittest.TestCase):
         self.kf.write_text('')
         self.assertGreaterEqual(len(server.lan_key(self.kf)), 20)
 
+    def names(self):
+        # Besides the key, only the lock file the starts take turns on (a dot file: packs never ship those).
+        return sorted(p.name for p in self.dir.iterdir() if p.name != '.lan-key.lock')
+
     @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
     def test_only_this_user_can_read_it(self):
         server.lan_key(self.kf)
         self.assertEqual(self.kf.stat().st_mode & 0o777, 0o600)
-        self.assertEqual([p.name for p in self.dir.iterdir()], ['lan-key'])   # no temporary file left
+        self.assertEqual(self.names(), ['lan-key'])   # no temporary file left
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX file modes')
+    def test_a_reused_key_is_made_private(self):
+        # A key written by an older version, or copied in, can be readable by everyone on this computer.
+        self.kf.write_text('synthetic-reused-key', encoding='utf-8')
+        os.chmod(self.kf, 0o644)
+        self.assertEqual(server.lan_key(self.kf), 'synthetic-reused-key')
+        self.assertEqual(self.kf.stat().st_mode & 0o777, 0o600)
+
+    def test_a_start_waits_for_the_one_making_the_key(self):
+        # The app's Share switch and server.py --lan can both find the file missing or empty. The second must
+        # use the key the first saved, not save its own: one of them would refuse every phone.
+        for content in (None, ''):
+            with self.subTest(file='missing' if content is None else 'empty'):
+                self.kf.unlink(missing_ok=True)
+                if content is not None:
+                    self.kf.write_text(content)
+                got = []
+                with server.lan_key_lock(self.kf):
+                    t = threading.Thread(target=lambda: got.append(server.lan_key(self.kf)))
+                    t.start()
+                    t.join(0.3)
+                    self.assertTrue(t.is_alive())   # waiting for the lock
+                    self.kf.write_text('synthetic-key-of-the-first-start', encoding='utf-8')
+                t.join(5)
+                self.assertEqual(got, ['synthetic-key-of-the-first-start'])
+                self.assertEqual(self.kf.read_text(encoding='utf-8'), 'synthetic-key-of-the-first-start')
+
+    def test_starts_at_once_all_get_the_saved_key(self):
+        for content in (None, ''):
+            with self.subTest(file='missing' if content is None else 'empty'):
+                self.kf.unlink(missing_ok=True)
+                if content is not None:
+                    self.kf.write_text(content)
+                n = 8
+                go, got = threading.Barrier(n), []
+                def start():
+                    go.wait()
+                    got.append(server.lan_key(self.kf))
+                ts = [threading.Thread(target=start) for _ in range(n)]
+                for t in ts:
+                    t.start()
+                for t in ts:
+                    t.join(10)
+                self.assertEqual(len(got), n)
+                self.assertEqual(set(got), {self.kf.read_text(encoding='utf-8')})
+                self.assertEqual(self.names(), ['lan-key'])
 
     def test_a_failed_write_leaves_no_temporary_file(self):
         with patch.object(server.os, 'replace', side_effect=OSError('disk full')):
             with self.assertRaises(OSError):
                 server.lan_key(self.kf)
-        self.assertEqual(list(self.dir.iterdir()), [])
+        self.assertEqual(self.names(), [])
 
     def test_an_overlapping_start_keeps_its_own_temporary_file(self):
         # Another start is between writing its temporary file and moving it into place. This start must not remove,
@@ -1205,7 +1256,7 @@ class LanKey(unittest.TestCase):
         self.assertEqual(self.kf.read_text(encoding='utf-8'), key)
         for p in others:
             self.assertEqual(p.read_text(encoding='utf-8'), synthetic)
-        self.assertEqual(sorted(p.name for p in self.dir.iterdir()), sorted(['lan-key'] + [p.name for p in others]))
+        self.assertEqual(self.names(), sorted(['lan-key'] + [p.name for p in others]))
 
 
 class ServerMode(unittest.TestCase):

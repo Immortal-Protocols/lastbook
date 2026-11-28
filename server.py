@@ -22,7 +22,7 @@ requests, and adds a few read-only endpoints:
 
 Nothing in library-data is written. Caches go to derived/cache.
 """
-import argparse, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, tempfile, threading, time, traceback, urllib.parse, zlib
+import argparse, contextlib, functools, html, io, ipaddress, json, math, os, re, sqlite3, struct, sys, tempfile, threading, time, traceback, urllib.parse, zlib
 from array import array
 from pathlib import Path
 
@@ -2155,26 +2155,60 @@ def init(no_index=False):
     threading.Thread(target=prewarm_previews, daemon=True).start()
 
 
+KEY_LOCK_WAIT_S = 10   # a start holds the lock only while it writes about 24 bytes
+
+
+@contextlib.contextmanager
+def lan_key_lock(kf):
+    """Holds the lock file next to kf, so only one start at a time makes the key. The system lets go of it
+    when the process ends, so a start that crashed leaves nothing to clear. A dot file: packs never ship those."""
+    with open(kf.parent / ('.' + kf.name + '.lock'), 'a+b') as f:
+        deadline = time.monotonic() + KEY_LOCK_WAIT_S
+        while True:
+            try:
+                lastbook_paths.try_lock(f)
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            lastbook_paths.unlock(f)
+
+
+def _saved_key(kf):
+    try:
+        return kf.read_text(encoding='utf-8').strip()
+    except FileNotFoundError:
+        return ''
+
+
 def lan_key(kf):
     """The key phones need, kept in kf. A missing or empty file gets a new key, written whole and readable by this user only:
-    an empty key refuses every phone, and a key written first and locked down after is readable by others in between."""
-    try:
-        key = kf.read_text(encoding='utf-8').strip()
-    except FileNotFoundError:
-        key = ''
-    if key:
-        return key
-    key = secrets.token_urlsafe(18)
-    # Each write gets its own new file, readable by this user only, so two starts at once never share or remove
-    # each other's temporary file. A failed write removes its own.
-    fd, tmp = tempfile.mkstemp(prefix='.' + kf.name + '.', suffix='.tmp', dir=kf.parent)
-    try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as f:
-            f.write(key)
-        os.replace(tmp, kf)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+    an empty key refuses every phone, and a key written first and locked down after is readable by others in between.
+    The app's Share switch and server.py --lan can start at once: the second waits and uses the key the first saved."""
+    key = _saved_key(kf)
+    if not key:
+        with lan_key_lock(kf):
+            key = _saved_key(kf)   # another start may have saved one while this one waited
+            if not key:
+                key = secrets.token_urlsafe(18)
+                # Each write gets its own new file, readable by this user only (mkstemp: 0600), so a write never
+                # shares or removes another's temporary file. A failed write removes its own.
+                fd, tmp = tempfile.mkstemp(prefix='.' + kf.name + '.', suffix='.tmp', dir=kf.parent)
+                try:
+                    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                        f.write(key)
+                    os.replace(tmp, kf)
+                except BaseException:
+                    Path(tmp).unlink(missing_ok=True)
+                    raise
+    # A reused key may come from an older version that wrote it readable by everyone on this computer.
+    # Windows has no such mode bits: there the file has the permissions of the folder it is in.
+    if os.name != 'nt' and kf.stat().st_mode & 0o077:
+        os.chmod(kf, 0o600)
     return key
 
 

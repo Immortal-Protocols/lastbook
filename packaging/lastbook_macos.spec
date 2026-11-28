@@ -33,7 +33,7 @@ def clean_sysconfig():
 
 datas = files('web', 'web') + files('content', 'content', 'gaps.json') + files('content/topics', 'content/topics', '*.json')
 binaries = []
-hidden = ['server', 'retrieval', 'assistant', 'llm_local', 'engine.paths', 'engine.library', 'engine.safe_paths', 'engine.encyclopedias', 'engine.saved_pages', 'engine.address_search', 'engine.page_tables', 'engine.notes', 'engine.model_server', 'bridge', 'shell_macos', 'PyObjCTools.AppHelper', 'update_macos']
+hidden = ['server', 'retrieval', 'assistant', 'llm_local', 'engine.paths', 'engine.library', 'engine.safe_paths', 'engine.encyclopedias', 'engine.saved_pages', 'engine.address_search', 'engine.page_tables', 'engine.sections', 'engine.notes', 'engine.model_server', 'bridge', 'shell_macos', 'PyObjCTools.AppHelper', 'update_macos']
 # The optional local AI's runner (packaging/llm/build_llm_macos.sh), in Contents/Frameworks/llm/. The model itself never ships.
 LLM = ROOT / 'derived' / 'llm' / 'bin-mac'
 binaries += [(str(LLM / 'lastbook-llm'), 'llm')]

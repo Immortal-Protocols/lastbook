@@ -12,9 +12,13 @@ Options:
   --sets a,b,...          any of triage, issue128, issue154, issue241, glued, conversations, lists (default: all)
   --rows                  also write every question's result (titles of the top 8) into the output
   --code <checkout>       the code to measure (default: this checkout; or set LASTBOOK_CODE)
+  --sections <folder>     long pages in sections (engine/sections.py): read the sections file from this folder, and
+                          build it there first if it is missing (a few seconds). Without it, long pages are searched
+                          whole, as on main, and the data folder's derived/index is not looked at for a sections file
 
 Nothing is written into the data folder: the meaning index is opened read-only and its vector file never truncated,
-and a sections build (a later module) is refused. Measures are explained in README.md and docs/TRIAGE-SEARCH.md.
+and the sections file is never built or removed there (--sections keeps it in a folder of your choice). Measures are
+explained in README.md and docs/TRIAGE-SEARCH.md.
 """
 import argparse, json, os, re, sqlite3, sys, time
 from pathlib import Path
@@ -114,7 +118,7 @@ def by_colour(rows):
 
 
 # ---------------------------------------------------------------- the engine --
-def start(code, mode):
+def start(code, mode, sections_dir=None):
     """Import the code under test with every write into the data folder turned off."""
     if not os.environ.get('LASTBOOK_DATA'):
         raise SystemExit('set LASTBOOK_DATA to the library folder to measure against')
@@ -123,14 +127,24 @@ def start(code, mode):
     import retrieval
     if mode == 'keyword':
         retrieval.AVAILABLE = False
-    try:     # long pages in sections (a later module): never build the sections file during a measurement
+    try:     # long pages in sections (engine/sections.py): the sections file is never built or removed in the data folder
         from engine import sections
+        if sections_dir is None:
+            sections.ensure = lambda *a, **k: None     # whole pages, as the code does when it cannot have the file
+            if hasattr(sections, 'ready'):
+                sections.ready = lambda *a, **k: None
+        else:
+            build = sections.build
 
-        def refuse(*a, **k):
-            raise OSError('search_eval: sections build refused (read-only run)')
-        sections.build = refuse
+            def guarded(main_db, kind_of, out):
+                if Path(out).parent.resolve() != Path(sections_dir).resolve():
+                    raise OSError('search_eval: sections build refused outside --sections')
+                return build(main_db, kind_of, out)
+            sections.build = guarded
+            sections.IDX = Path(sections_dir)   # read (and if missing, built) here, outside the data folder
     except ImportError:
-        pass
+        if sections_dir is not None:
+            raise SystemExit('--sections given, but this code has no engine/sections.py')
     from engine.paths import ro_uri as plain_ro
 
     def ro_uri(path):
@@ -144,6 +158,10 @@ def start(code, mode):
     retrieval.Index._load = lambda self, truncate=True, db=None: load(self, False, db)
     import server, assistant
     server.catalog()
+    if sections_dir is not None:   # searches never wait for the sections file: have it before the first question
+        from engine import sections
+        if not sections.ensure(server.library.DB, server.kind_of):
+            raise SystemExit(f"--sections given, but the sections file could not be had: {sections.status()['error']}")
     index = None
     if mode == 'hybrid':
         if not retrieval.AVAILABLE:
@@ -155,6 +173,16 @@ def start(code, mode):
     if mode == 'hybrid' and not (index and index.status.get('chunks')):
         raise SystemExit(f'hybrid asked for, but the meaning index is empty (state {state})')
     return server, assistant, {'state': state, 'chunks': index.status.get('chunks') if index else 0}
+
+
+def long_pages_state():
+    """How many long pages were read in sections in this run, and any error (n/a: code without them)."""
+    try:
+        from engine import sections
+    except ImportError:
+        return NA
+    st = sections.status()
+    return {'long_pages': st['long_pages'], 'built_now': bool(st['built']), 'error': st['error']}
 
 
 def searcher(server, assistant, how):
@@ -309,13 +337,14 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--rows', action='store_true')
     ap.add_argument('--code', default=os.environ.get('LASTBOOK_CODE') or str(HERE.parents[1]))
+    ap.add_argument('--sections', default=None)
     a = ap.parse_args()
     sets = [s for s in a.sets.split(',') if s]
     bad = set(sets) - set(SETS)
     if bad:
         raise SystemExit(f'unknown sets: {sorted(bad)}')
     t0 = time.time()
-    server, assistant, semantic = start(Path(a.code).resolve(), a.mode)
+    server, assistant, semantic = start(Path(a.code).resolve(), a.mode, a.sections)
     search = searcher(server, assistant, a.search)
     urgent = urgency(assistant)
     rows_out = []
@@ -337,6 +366,7 @@ def main():
         elif s == 'lists':
             summary[s] = run_lists(search, urgent, rows_out)
         print(s, round(time.time() - t1, 1), 's', flush=True)
+    summary['sections'] = long_pages_state()
     summary['seconds'] = round(time.time() - t0, 1)
     out = {'summary': summary}
     if a.rows:

@@ -240,6 +240,7 @@ class VideoSearch(unittest.TestCase):
             self.addCleanup(p.stop)
         server.find.cache_clear()
         self.addCleanup(server.find.cache_clear)
+        self.addCleanup(server.sections.wait, 60)   # a search starts the sections build in the background; let it end before the folder goes
 
     def test_videos_tab_finds_a_video_past_the_cap(self):
         self.assertIn('video-pump', [r['id'] for r in server.find('water', 'video')['results']])

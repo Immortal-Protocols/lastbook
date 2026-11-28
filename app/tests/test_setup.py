@@ -37,6 +37,21 @@ def make_pack(path, files=None, extra=None):
     return sum(len(v) for v in files.values()) + sum(len(d) for _, d in (extra or []))
 
 
+def path_can_hold(text):
+    """Whether a folder name containing this text can be used on this machine at all.
+
+    A non-UTF-8 locale (LC_ALL=C, and PYTHONUTF8=0) makes the filesystem encoding ASCII. os.lstat then cannot be
+    called with a name holding a \u2019 at all, so a test that needs such a folder cannot even be set up — and that
+    is not what the test is about. Running the suite in that locale is worth keeping easy: it is how the console
+    encoding bug behind #313 was found in the first place.
+    """
+    try:
+        text.encode(sys.getfilesystemencoding())
+        return True
+    except (UnicodeEncodeError, LookupError):
+        return False
+
+
 def sha(b):
     return hashlib.sha256(b).hexdigest()
 
@@ -2523,6 +2538,7 @@ class Switching(Base):
         self.assertEqual(note['old'], str(old))
         self.assertEqual((old / 'library-data' / 'catalog.json').read_text(), 'old')
 
+    @unittest.skipUnless(path_can_hold('\u2019'), 'the filesystem encoding here cannot hold a \u2019 in a path')
     def test_refused_switch_with_a_typographic_path_on_an_ascii_console_is_kept_for_the_next_start(self):
         """#313 with the say() fix: a refusal naming a file under a folder called with ’ is printed on a console that takes
         only ASCII without raising, so the attempt is still recorded and the switch kept for the next start."""

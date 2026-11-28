@@ -52,11 +52,45 @@ except Exception as e:  # semantic search is optional; keyword search keeps work
     IMPORT_ERROR = str(e)
 
 
+GPU_LAYERS = (('cuda', 'CUDAExecutionProvider'),  # onnxruntime-gpu: NVIDIA
+              ('directml', 'DmlExecutionProvider'))  # onnxruntime-directml: any DirectX 12 GPU on Windows
+
+
+def embed_layers(offered, want_gpu=False):
+    """Provider lists to try in turn: CUDA, then DirectML, then the CPU, keeping those the installed onnxruntime offers.
+    Only the index build asks for a GPU. LASTBOOK_EMBED_DEVICE=cpu, cuda or directml keeps the CPU or that one GPU layer
+    (any other value: the CPU). Each GPU layer keeps the CPU provider behind it for anything it cannot run."""
+    want = os.environ.get('LASTBOOK_EMBED_DEVICE', '').strip().lower()
+    layers = []
+    if want_gpu:
+        layers = [[p, 'CPUExecutionProvider'] for name, p in GPU_LAYERS if p in offered and want in ('', 'auto', name)]
+    return layers + [['CPUExecutionProvider']]
+
+
+def session_options(provider):
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
+    if provider == 'DmlExecutionProvider':  # the DirectML provider does not support memory patterns or parallel execution
+        so.enable_mem_pattern = False
+        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+    return so
+
+
 class Embedder:
-    def __init__(self):
-        so = ort.SessionOptions()
-        so.intra_op_num_threads = max(2, (os.cpu_count() or 4) // 2)  # leave CPU for the web server and workers
-        self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), so, providers=['CPUExecutionProvider'])
+    def __init__(self, gpu=False):
+        for providers in embed_layers(ort.get_available_providers(), gpu):
+            try:
+                if providers[0] == 'CUDAExecutionProvider' and hasattr(ort, 'preload_dlls'):
+                    ort.preload_dlls()  # onnxruntime-gpu >= 1.21: finds the CUDA and cuDNN libraries of the pip nvidia-* wheels (needed on Windows)
+                self.sess = ort.InferenceSession(str(MODEL / 'model.onnx'), session_options(providers[0]), providers=providers)
+                break
+            except Exception as e:
+                if providers[0] == 'CPUExecutionProvider':
+                    raise
+                print(f'{providers[0]} could not start ({type(e).__name__}: {e}); trying the next', flush=True)
+        self.provider = self.sess.get_providers()[0]
+        if gpu:
+            print(f'embedding with {self.provider}', flush=True)
         self.tok = Tokenizer.from_file(str(MODEL / 'tokenizer.json'))
         self.tok.enable_truncation(max_length=320)
         self.tok.enable_padding()
@@ -153,7 +187,7 @@ def vtt_windows(path, span=45):
 
 
 class Index:
-    def __init__(self, catalog_fn, trust_fn, fts_db):
+    def __init__(self, catalog_fn, trust_fn, fts_db, gpu=False):
         self.catalog_fn, self.trust_fn, self.fts_db = catalog_fn, trust_fn, fts_db
         IDX.mkdir(parents=True, exist_ok=True)
         self.db_path = IDX / 'semantic.sqlite'
@@ -168,7 +202,7 @@ class Index:
           CREATE TABLE IF NOT EXISTS gaps(doc_id TEXT PRIMARY KEY, reason TEXT);''')
         db.close()
         self.lock = threading.RLock()
-        self.emb = Embedder() if AVAILABLE else None
+        self.emb = (Embedder(gpu=True) if gpu else Embedder()) if AVAILABLE else None
         self.mat = None
         self.active = None
         self.status = {'state': 'starting' if AVAILABLE else 'off', 'chunks': 0, 'docs': 0, 'pending': None, 'rate': None}
@@ -493,7 +527,7 @@ def rrf(lists, k=60):
 if __name__ == '__main__':  # python retrieval.py  -> build/refresh the semantic index once
     sys.path.insert(0, str(lastbook_paths.APP))
     import server
-    ix = Index(server.catalog, server.trust, server.library.DB)
+    ix = Index(server.catalog, server.trust, server.library.DB, gpu=True)  # the one-off build may use the GPU; the running app stays on the CPU
     print('pending documents:', len([1 for s in ix.sources()]), flush=True)
     stop = threading.Event()
     def report():

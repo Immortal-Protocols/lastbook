@@ -1,0 +1,5 @@
+[
+  {"name": "Hà Nội", "aliases": ["Hanoi"], "lat": 21.02450, "lon": 105.84117},
+  {"name": "Đà Nẵng", "aliases": ["Danang"], "lat": 16.06778, "lon": 108.22083},
+  {"name": "Thành phố Hồ Chí Minh", "aliases": ["Ho Chi Minh City", "Hồ Chí Minh", "Sài Gòn", "Saigon"], "lat": 10.82302, "lon": 106.62965}
+]

@@ -271,7 +271,9 @@ class GermanWording(unittest.TestCase):
     def test_setup_and_settings_are_different_words(self):
         self.assertEqual(self.de['setup.title'], 'Lastbook einrichten')
         self.assertEqual(self.de['nav.settings'], 'Einstellungen')
-        self.assertIn('Einrichtung und Einstellungen', self.de['language.preview'])
+        # The sample's own preview and saved notes described an older scope; they fall back to English (docs/i18n.md).
+        self.assertNotIn('language.preview', self.de)
+        self.assertNotIn('language.saved', self.de)
         self.assertIn('Region', self.de['setup.chooseIntro'])
 
     def test_no_message_is_left_in_english(self):
@@ -296,8 +298,9 @@ class SimplifiedChineseWording(unittest.TestCase):
         self.assertEqual(self.zh['nav.settings'], '设置')
         self.assertIn('初始设置', self.zh['setup.title'])
         self.assertNotIn('设置', self.zh['setup.title'].replace('初始设置', ''))
-        self.assertIn('初始设置', self.zh['language.preview'])
-        self.assertIn('设置', self.zh['language.preview'])
+        # The sample's own preview and saved notes described an older scope; they fall back to English (docs/i18n.md).
+        self.assertNotIn('language.preview', self.zh)
+        self.assertNotIn('language.saved', self.zh)
 
     def test_simplified_characters_only(self):
         traditional = '設資庫這個們來時間對話選擇頁題導覽視頻標開關閉啟儲載網線說檔電腦檢區換'

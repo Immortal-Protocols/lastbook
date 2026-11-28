@@ -867,6 +867,7 @@
    "id": "mind",
    "label": "Stress, fear, grief or someone in crisis",
    "hint": "Can't sleep, panic, hopeless, suicidal or talking about suicide, after a disaster",
+   "urgent": ["suicide", "suicidal", "kill myself", "killing myself", "want to die", "wants to die", "end my life", "take my own life", "self harm", "hurt myself"],
    "read": [
     {
      "doc": "med-0faf49d8c0bd8eb2",

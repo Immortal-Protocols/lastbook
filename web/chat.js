@@ -34,6 +34,9 @@ const Chat = (() => {
 
   function load() { try { return JSON.parse(localStorage.getItem('sg.chats')) || [] } catch { return [] } }
   const keep = () => { try { return localStorage.getItem('sg.chatKeep') !== 'no' } catch { return true } };
+  // encyclopedia articles on questions labelled urgent too (assistant.wiki_skipped); off (the default): the manuals alone, and
+  // the "Not an emergency? Add the encyclopedias" button
+  const wikiUrgent = () => { try { return localStorage.getItem('sg.wikiUrgent') === 'yes' } catch { return false } };
   function persist() { if (!keep()) return; try { localStorage.setItem('sg.chats', JSON.stringify(chats.slice(0, 60))) } catch { } }
   const byId = id => chats.find(c => c.id === id);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -65,6 +68,8 @@ const Chat = (() => {
         <div class="cs-privacy">
           <label><input type="checkbox" id="keepChats" ${keep() ? 'checked' : ''}> Keep chat history on this device</label>
           <p class="small muted">Chats stay on this device. Nothing is sent anywhere except this computer’s own assistant.</p>
+          <label><input type="checkbox" id="wikiUrgent" ${wikiUrgent() ? 'checked' : ''}> Encyclopedias on urgent questions too</label>
+          <p class="small muted">Off: urgent questions use the manuals alone.</p>
           <button class="btn plain" id="clearChats">Delete all chats</button>
         </div>
       </aside>
@@ -98,6 +103,10 @@ const Chat = (() => {
     $('#composer').addEventListener('submit', e => { e.preventDefault(); if (busy()) return stop(); send(ta.value) });
     $('#openSide').onclick = () => $('#chatSide').classList.add('open');
     $('#closeSide').onclick = () => $('#chatSide').classList.remove('open');
+    $('#wikiUrgent').onchange = e => {
+      try { localStorage.setItem('sg.wikiUrgent', e.target.checked ? 'yes' : 'no') } catch { }
+      toast(e.target.checked ? 'Urgent questions will use the encyclopedias too' : 'Urgent questions will use the manuals alone');
+    };
     $('#keepChats').onchange = e => {
       try { localStorage.setItem('sg.chatKeep', e.target.checked ? 'yes' : 'no') } catch { }
       if (!e.target.checked) { try { localStorage.removeItem('sg.chats') } catch { } toast('Chats will be forgotten when you close this page') } else { persist(); toast('Chats will be kept on this device') }
@@ -348,17 +357,39 @@ const Chat = (() => {
     let h = '';
     if (running) h += `<div class="working"><b>${esc(STATES[m.state] || 'Working…')}${m.state === 'starting' && m.pct != null ? ` ${m.pct}%` : ''}</b>${progress(m)}${steps ? `<ul class="steps">${steps}</ul>` : ''}</div>`;
     if (m.error) h += `<div class="ans-error">${ico('warn')}<div><b>${esc(m.error)}</b>${m.offline ? '<p>You can keep browsing and searching. Here are the pages that best match your question:</p>' : ''}</div></div>`;
+    // When the search is unsure, or the message was noise, the server offers what the question may be about
+    // (assistant.chat_reply, engine/confidence.py, assistant.turn_hits)
+    let sugg = '';
+    if (!running && (m.suggest || []).length && i === cur.messages.length - 1) {
+      // coloured so they stand out from the page: the emergency choices red, "Still about…" and "Something else" green
+      const sg = c => /^(something else|still about)/i.test(c.label || '') ? 'sg-other' : 'sg-danger';
+      const prompt = `<p class="small muted">${esc(m.suggestPrompt || 'Is this about something else?')}</p>`;
+      sugg = m.suggestStyle === 'compact'   // an everyday question gets the same buttons, smaller (confidence.everyday_level)
+        ? `<div class="suggest compact">${prompt}<div class="chips">${m.suggest.map(c => `<button class="chip ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`
+        : `<div class="suggest${m.suggestStyle === 'urgent' ? ' urgent' : ''}">${prompt}<div class="ans-actions">${m.suggest.map(c => `<button class="btn plain ${sg(c)}" data-say="${esc(c.text || '')}">${esc(c.label || '')}</button>`).join('')}</div></div>`;
+    }
+    if (m.suggestStyle === 'urgent') h += sugg;   // a bare plea ("911", "help"): the emergency buttons first (assistant.chat_reply)
     if (m.content) h += `<div class="answer">${md(m.content, m)}</div>`;
-    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${srcCards(found.slice(0, 6), true)}</div>`;
+    // the library's pages and the encyclopedia articles are two searches, shown apart, each in its own order
+    const [libF, wikiF] = byShelf(found);
+    if (running && found.length) h += `<div class="prefound"><p class="small muted">Pages found so far — you can open them while the answer is written:</p>${libF.length ? srcCards(libF.slice(0, 6), true) : ''}${wikiF.length ? `<p class="small muted">From the encyclopedias (community-written background):</p>${srcCards(wikiF.slice(0, 3), true)}` : ''}</div>`;
     if (m.fallback) h += srcFilter(m.fallback, m.srcType, i) + srcCards(m.fallback, true, m.srcType);
+    if (m.suggestStyle !== 'urgent') h += sugg;
+    // labelled urgent, so the encyclopedias were left out (assistant.wiki_skipped); the person can say it is not an emergency
+    if (!running && m.wikiOffer && i === cur.messages.length - 1) h += `<div class="suggest compact wiki-offer"><div class="chips"><button class="chip sg-other" data-act="wiki">Not an emergency? Add the encyclopedias</button></div></div>`;
     if (!running && m.content) {
       const cited = sourcesForFinish(m);
       if ((m.invalid || []).length) h += `<p class="small" style="color:var(--stop)">The model referred to sources that don’t exist (${m.invalid.join(', ')}); those markers were removed.</p>`;
-      h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
-      if (cited.length) h += `<h3 class="srch">Sources (${cited.length})</h3>${srcFilter(cited, m.srcType, i)}${srcCards(cited, false, m.srcType)}`;
-      else h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
-      const other = (m.consulted || []).filter(s => s.kind !== 'place');
-      if (other.length) h += `<details class="also"><summary>Also looked at (${other.length}, not used)</summary>${srcCards(other.slice(0, 10), true)}</details>`;
+      // a "please say more" reply (engine/confidence.py) is not an answer: no legend, no unverified-answer notice
+      if (!m.unsure) h += `<div class="legend small"><span><span class="lg-c">1</span> linked to a page or video</span><span><span class="lg-u">dotted</span> the model’s own wording, not linked to a source</span></div>`;
+      const [libC, wikiC] = byShelf(cited);
+      // the request to say more gives the pages it found too: not an answer's sources, so named for what they are
+      if (libC.length) h += `<h3 class="srch">${m.unsure ? 'Pages the library found' : 'Sources'} (${libC.length})</h3>${srcFilter(libC, m.srcType, i)}${srcCards(libC, false, m.srcType)}`;
+      else if (!cited.length && !m.unsure) h += `<p class="notice small">This answer has no linked sources. Treat it as unverified.</p>`;
+      const [libO, wikiO] = byShelf((m.consulted || []).filter(s => s.kind !== 'place'));
+      // the encyclopedias' own search, shown whether the answer used it or not: the ones it cited first, then the rest
+      if (wikiC.length || wikiO.length) h += `<h3 class="srch">From the encyclopedias (${wikiC.length + wikiO.length})</h3><p class="small muted">A separate search of the encyclopedias: community-written background${wikiC.length ? '' : ', not used in this answer'}.</p>${wikiC.length ? srcCards(wikiC, false) : ''}${wikiO.length ? srcCards(wikiO.slice(0, 6), true) : ''}`;
+      if (libO.length) h += `<details class="also"><summary>Also looked at (${libO.length}, not used)</summary>${srcCards(libO.slice(0, 10), true)}</details>`;
       if ((m.steps || []).length) h += `<details class="also"><summary>How it searched (${m.steps.length} ${m.steps.length === 1 ? 'step' : 'steps'}${m.latency ? `, ${m.latency.total_s}s` : ''})</summary><ul class="steps">${steps}</ul></details>`;
       h += `<div class="ans-actions"><button class="btn plain" data-act="copy" data-i="${i}">Copy</button><button class="btn plain" data-act="save" data-i="${i}">${ico('save')}Save answer</button><button class="btn plain" data-act="export">Export chat</button>${i === cur.messages.length - 1 ? `<button class="btn plain" data-act="retry">Ask again</button>` : ''}</div>`;
     }
@@ -382,6 +413,8 @@ const Chat = (() => {
     if (s.name === 'found') return `Matched ${s.count} passage${s.count === 1 ? '' : 's'} for your question`;
     return esc(s.name);
   }
+  const isWiki = s => s.kind === 'zim' || !!s.zim;
+  function byShelf(list) { return [list.filter(s => !isWiki(s)), list.filter(isWiki)] }
   function srcHref(s) {
     if (s.kind === 'place') return `#/map?lat=${s.lat}&lon=${s.lon}&z=16&pin=${encodeURIComponent(s.title || s.name || 'Place from the answer')}`;
     if (s.kind === 'video') return `#/watch/${encodeURIComponent(s.doc_id)}?${s.t != null ? 't=' + Math.floor(s.t) + '&' : ''}from=${encodeURIComponent(here())}`;
@@ -403,7 +436,7 @@ const Chat = (() => {
       if (s.kind === 'video') pv = `<span class="pv v">${s.thumb ? `<img loading="lazy" alt="" src="${fileUrl(s.thumb)}">` : ''}<span class="pg">${s.t != null ? clock(s.t) : 'video'}</span></span>`;
       else if (s.kind === 'pdf' && s.page) pv = `<span class="pv"><img loading="lazy" alt="" src="/api/page/${encodeURIComponent(s.doc_id)}/${s.page}.png?w=300" onerror="this.remove()"><span class="pg">p. ${s.page}</span></span>`;
       else pv = `<span class="pv w">${ico(s.kind === 'zim' || s.zim ? 'wiki' : s.kind === 'place' ? 'pin' : 'page')}</span>`;
-      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';
+      const where = s.kind === 'video' ? (s.t != null ? 'at ' + clock(s.t) : '') : s.page && s.kind === 'html' ? `section ${s.page}` : s.page ? `page ${s.page}${s.pages ? ' of ' + s.pages : ''}` : '';   // a long web page is cited by section (engine/sections.py)
       return `<a class="srccard" href="${esc(srcHref(s))}" id="src-${esc(s.key || '')}" data-type="${srcType(s)}"${type && srcType(s) !== type ? ' hidden' : ''}>${pv}<span class="sc-body">${s.key ? `<span class="sc-key">${esc(s.key.replace(/^S/, ''))}</span>` : ''}<b>${esc(s.title)}</b>
         <small>${esc(s.publisher || '')}${s.year ? ' · ' + esc(s.year) : ''}${where ? ' · ' + where : ''}${s.trust ? ' · ' + esc(s.trust) : ''}</small>
         ${!compact && s.excerpt ? `<span class="sc-ex">“${esc(s.excerpt.slice(0, 220))}${s.excerpt.length > 220 ? '…' : ''}”</span>` : ''}
@@ -461,7 +494,8 @@ const Chat = (() => {
     };
     const mark = raw => {  // wrap sentences that carry no citation (main sections only)
       if (section !== 'main' || m.running) return inline(raw);
-      return raw.split(/(?<=[.!?])\s+(?=[A-Z(“"])/).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
+      // a sentence also starts at ¿, ¡ or a capital like É or Ñ (an answer in Spanish)
+      return raw.split(/(?<=[.!?])\s+(?=[\p{Lu}(“"¿¡])/u).map(sn => /\[[SM]\d+\]/.test(sn) || sn.replace(/\*|_/g, '').trim().length < 28 || /:$/.test(sn.trim()) ? inline(sn) : `<span class="uncited" title="Not linked to a source">${inline(sn)}</span>`).join(' ');
     };
     for (let ln of lines) {
       const t = ln.trim();
@@ -471,12 +505,16 @@ const Chat = (() => {
       before = t;
       const head = /^#{1,4}\s+(.*)$/.exec(t) || /^\*\*([^*]+:)\*\*$/.exec(t) || /^\*\*([^*]+)\*\*:?$/.exec(t);
       const hText = head ? head[1] : '';
-      const sec = /not found in the library/i.test(t) ? 'missing' : /sources disagree/i.test(t) ? 'disagree' : /own reasoning/i.test(t) ? 'reasoning' : null;
+      // an answer in Spanish may translate these headings (assistant.LANGUAGE_NOTE asks for the answer in the question's language, not for English headings); only as a heading
+      const es = head ? (/\bbiblioteca\b/i.test(hText) && /(^|\s)(no|sin|falta\w*|fuera)\s/i.test(hText) ? 'missing'
+        : /fuentes (no coinciden|discrepan|difieren|en desacuerdo)|desacuerdo entre (las )?fuentes/i.test(hText) ? 'disagree'
+        : /propio razonamiento|razonamiento propio/i.test(hText) ? 'reasoning' : null) : null;
+      const sec = /not found in the library/i.test(t) ? 'missing' : /sources disagree/i.test(t) ? 'disagree' : /own reasoning/i.test(t) ? 'reasoning' : es;
       if (sec || head) {
         close();
         if (out.includes('<div class="sec-')) out += '</div>';
         section = sec || (head ? 'main' : section);
-        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
+        if (sec) { out += `<div class="sec-${sec}"><h4>${sec === 'missing' ? 'Not found in the library' : sec === 'disagree' ? 'Sources disagree' : 'The model’s own reasoning — not from the library'}</h4>`; const rest = sec === es ? '' : t.replace(/^[#*\s]*(not found in the library|sources disagree|my own reasoning \(not from the library\)|my own reasoning)[:*\s]*/i, ''); if (rest) out += `<p>${inline(rest)}</p>`; continue }
         out += `<h4>${inline(hText.replace(/:$/, ''))}</h4>`; continue;
       }
       const ul = /^[-*•]\s+(.*)$/.exec(t), ol = /^(\d+)[.)]\s+(.*)$/.exec(t);
@@ -502,7 +540,10 @@ const Chat = (() => {
       }
       if (b.dataset.act === 'export') exportChat(cur);
       if (b.dataset.act === 'retry') { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q) }
+      if (b.dataset.act === 'wiki' && !busy()) { const q = cur.messages[cur.messages.length - 2]?.content; cur.messages.splice(-2, 2); send(q, { wiki: true }) }
     });
+    // a suggestion button sends its label as the next message; "Something else" only puts the cursor in the box
+    $$('[data-say]', el).forEach(b => b.onclick = () => { if (busy()) return; if (b.dataset.say) send(b.dataset.say); else $('#chatIn')?.focus() });
     $$('.srcfilter button', el).forEach(b => b.onclick = () => { showType(b.parentNode, b.dataset.type); persist() });
     // citation chips scroll to their card instead of changing the route; a card the filter hides comes back with all the others
     $$('a.cite', el).forEach(a => a.onclick = e => { e.preventDefault(); const c = $('#src-' + a.dataset.key, el.closest('.msg') || el); if (c && c.hidden) { const f = c.parentNode.previousElementSibling; if (f && f.matches('.srcfilter')) { showType(f, ''); persist() } } if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200) } });
@@ -533,8 +574,9 @@ const Chat = (() => {
   }
 
   /* -------------------------------------------------------------- send --- */
-  async function send(text) {
+  async function send(text, opts) {
     text = (text || '').trim();
+    const wiki = !!(opts && opts.wiki) || wikiUrgent();   // the setting, or "Not an emergency? Add the encyclopedias"
     if (!text) return;
     if (!cur) {
       cur = { id: newId(), title: text.slice(0, 70), created: Date.now(), updated: Date.now(), messages: [], about: aboutCtx ? aboutCtx.about : null, aboutInfo: aboutCtx };
@@ -554,7 +596,7 @@ const Chat = (() => {
     try {
       const st = await getStatus();
       if (!st.online) throw Object.assign(new Error('offline'), { offline: true, why: st.local ? localLine(st.local)[1] : st.server && `The model server at ${st.server.address} is not answering. Check that it is running.` });
-      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about }), signal: ctl.signal });
+      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history_(c).slice(0, -1).concat([{ role: 'user', content: text }]), about: c.about, ...(wiki ? { wiki: true } : {}) }), signal: ctl.signal });
       if (!r.ok || !r.body) throw new Error('The server refused the question (' + r.status + ').');
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = '';
@@ -591,11 +633,13 @@ const Chat = (() => {
   function onEvent(m, ev) {
     if (ev.type === 'state') { m.state = ev.state; m.pct = ev.pct }
     else if (ev.type === 'found') m.steps.push({ name: 'found', count: ev.count });
+    else if (ev.type === 'wiki_offer') m.wikiOffer = true;
     else if (ev.type === 'tool') { if (ev.phase === 'start') m.steps.push({ name: ev.name, args: ev.args }); else { const s = [...m.steps].reverse().find(x => x.name === ev.name && !x.summary); if (s) s.summary = ev.summary } m.state = 'searching' }
     else if (ev.type === 'sources') m.sources = ev.sources;
+    else if (ev.type === 'suggest') { m.suggest = Array.isArray(ev.choices) ? ev.choices.slice(0, 8) : null; m.suggestPrompt = typeof ev.prompt === 'string' ? ev.prompt.slice(0, 120) : ''; m.suggestStyle = ev.style === 'compact' || ev.style === 'urgent' ? ev.style : '' }
     else if (ev.type === 'delta') m.content += ev.text;
     else if (ev.type === 'reset') m.content = '';
-    else if (ev.type === 'done') { m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
+    else if (ev.type === 'done') { m.unsure = !!ev.unsure; m.content = ev.answer; m.cited = ev.sources; m.consulted = ev.consulted; m.invalid = ev.invalid; m.latency = ev.latency; m.content = m.content.replace(/\[([SM]\d+)\]/g, (x, k) => (ev.invalid || []).includes(k) ? '' : x) }
     else if (ev.type === 'error') {
       if (ev.error === 'model_unavailable') { m.offline = true; m.error = ev.text; fallback(m, (cur.messages[cur.messages.length - 2] || {}).content || '') }
       else { m.error = ev.text; if (ev.sources) m.fallback = ev.sources.slice(0, 8) }

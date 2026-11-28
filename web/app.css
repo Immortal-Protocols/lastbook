@@ -865,6 +865,17 @@ details.also{margin-top:10px;font-size:15px}
 details.also summary{cursor:pointer;color:var(--ink2);font-weight:650;min-height:40px;display:flex;align-items:center}
 .ans-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .ans-actions .btn{min-height:40px;padding:6px 14px;font-size:14.5px}
+/* The suggestion buttons under an unsure answer, in colour so they don't disappear into the page: the emergency choices
+   red, "Something else" green. An everyday question's buttons are the same ones, smaller (.compact). */
+.suggest{margin-top:10px}
+.suggest .sg-danger,.plat-win .suggest .btn.sg-danger{background:var(--stop-bg);border-color:var(--stop);color:var(--stop);font-weight:650}
+.suggest .sg-other,.plat-win .suggest .btn.sg-other{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:650}
+.suggest .sg-danger:hover{background:color-mix(in srgb,var(--stop) 22%,var(--stop-bg))}
+.suggest .sg-other:hover{background:color-mix(in srgb,var(--accent) 22%,var(--accent-soft))}
+.suggest.urgent{margin:0 0 10px}.suggest.urgent p{font-size:15px;font-weight:650;color:var(--stop)}.suggest.urgent .btn{font-size:16px;padding:10px 16px}   /* a bare plea's buttons: first, and larger */
+.suggest.compact{margin-top:8px}.suggest.compact p{margin:0 0 4px;font-size:12.5px}
+.suggest .chips{flex-wrap:wrap;gap:6px;overflow:visible;padding:0}
+.suggest .chip{min-height:28px;max-width:100%;padding:2px 10px;font-size:12.5px;line-height:1.3;cursor:pointer;overflow:hidden;text-overflow:ellipsis}
 .ans-error{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r2);background:var(--stop-bg);margin:8px 0}
 .ans-error svg{width:22px;height:22px;color:var(--stop);flex:none;margin-top:2px}
 .ans-error p{margin:4px 0 0;font-size:15px}

@@ -137,10 +137,48 @@ class WhatShips(unittest.TestCase):
             self.assertIsNone(mod.HOUSEHOLD.search(mod.numbers(compile('A = (39.0997, 2.5)', 'x', 'exec'))))
 
     def test_shipped_code_names_no_household_place(self):
-        for rel in ('server.py', 'assistant.py', 'retrieval.py', 'engine/library.py', 'engine/saved_pages.py', 'engine/paths.py', 'app/main.py', 'app/bridge.py',
+        for rel in ('server.py', 'assistant.py', 'retrieval.py', 'engine/library.py', 'engine/saved_pages.py', 'engine/paths.py', 'engine/confidence.py', 'app/main.py', 'app/bridge.py',
                     'app/shell_macos.py', 'app/update_macos.py', 'app/shell_windows.py'):
             self.assertIsNone(HOUSEHOLD.search((ROOT / rel).read_text(encoding='utf-8')), rel)
         self.assertNotIn('118.4', (ROOT / 'server.py').read_text(encoding='utf-8'))
+
+    def test_english_words_ship_with_their_licence(self):
+        """engine/typos.py's word list and its licence are in every build and every package scan, and name no household
+        place; the typo code itself names none either."""
+        import gzip
+        with gzip.open(ROOT / 'engine' / 'english_words.txt.gz', 'rt', encoding='utf-8') as f:
+            words = f.read()
+        self.assertGreater(len(words.split()), 50000)
+        self.assertIsNone(HOUSEHOLD.search(words))
+        self.assertIsNone(HOUSEHOLD.search((ROOT / 'engine' / 'typos.py').read_text(encoding='utf-8')))
+        self.assertIn('Kevin Atkinson', (ROOT / 'engine' / 'english_words.LICENSE.txt').read_text(encoding='utf-8'))
+        for rel in ('packaging/build_app_windows.sh', 'packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh',
+                    'packaging/scan_app_package.py', 'packaging/scan_package_macos.py', 'packaging/linux/scan_package_linux.py'):
+            text = (ROOT / rel).read_text(encoding='utf-8')
+            for name in ('english_words.txt.gz', 'english_words.LICENSE.txt'):
+                self.assertIn(name, text, rel)
+        for rel in ('packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh'):
+            for module in ('typos', 'confidence'):      # the modules themselves
+                self.assertIn(module, (ROOT / rel).read_text(encoding='utf-8'), rel)
+
+    def test_meaning_check_ships_its_code_and_manifest_not_its_model(self):
+        """engine/meaning_red.py and engine/urgent_phrases.py are in every build, with the manifest and licence of the meaning
+        check's files (engine/data/); the files themselves (a GGUF and the centroids) are downloaded by setup next to the local AI
+        model, never bundled. The manifest names exactly those two, pinned to a revision, and no household place."""
+        m = json.loads((ROOT / 'engine' / 'data' / 'meaning_red_manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual([f['name'] for f in m['files']], ['bge-small-en-v1.5-q8_0.gguf', 'centroids.npz'])
+        self.assertRegex(m['revision'], r'^[0-9a-f]{40}$')
+        self.assertIn('MIT License', (ROOT / 'engine' / 'data' / 'meaning_red_LICENSE.txt').read_text(encoding='utf-8'))
+        for rel in ('engine/meaning_red.py', 'engine/urgent_phrases.py', 'engine/data/meaning_red_manifest.json'):
+            self.assertIsNone(HOUSEHOLD.search((ROOT / rel).read_text(encoding='utf-8')), rel)
+        for rel in ('packaging/build_app_windows.sh', 'packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh',
+                    'packaging/scan_app_package.py', 'packaging/scan_package_macos.py', 'packaging/linux/scan_package_linux.py'):
+            self.assertIn('meaning_red_manifest.json', (ROOT / rel).read_text(encoding='utf-8'), rel)
+        for rel in ('packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh'):
+            for module in ('urgent_phrases', 'meaning_red'):
+                self.assertIn(module, (ROOT / rel).read_text(encoding='utf-8'), rel)
+        for rel in ('packaging/lastbook_macos.spec', 'packaging/linux/build_app_linux.sh', 'packaging/build_app_windows.sh'):
+            self.assertNotIn('.gguf', (ROOT / rel).read_text(encoding='utf-8'), rel)         # no model is bundled
 
 
 if __name__ == '__main__':

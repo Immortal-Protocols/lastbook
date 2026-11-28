@@ -33,10 +33,12 @@ baseline recorded on `main`. The modules described below arrive in the later pul
 | 1 | Long pages in sections (`engine/sections.py`) | 2 (#403) |
 | 3 | Typo correction (`engine/typos.py`, word list) | 3 (#404) |
 | 2 | Encyclopedia articles by best section (`engine/wiki_pick.py`) | 4 (#405) |
-| 4, 5, 8 | Body signs, confidence estimate, injury guard on everyday phrases (`engine/confidence.py`) | 5 (#406) |
+| 4, 5 | Body signs, confidence estimate (`engine/confidence.py`) | 5 (#406) |
+| 8 | Everyday phrases that hijack injury questions (`confidence.INJURY`, `server.PHRASES`) | 7 (#408) |
 | 6 | The runner's `--embed` mode (`packaging/llm/lastbook_llm.cpp`) | 6 (#407) |
 | 4, 6 | Urgency on one source (`urgent` phrases in the guides, `assistant.is_danger`, `engine/meaning_red.py`) | 7 (#408) |
 | 7 | Conversation handling (`assistant.turn_hits`) | 8 (#409) |
+| 7.1 | English search words for a question in another language (`assistant.english_query`) | 8 (#409) |
 
 Every constant below was read from the code on the author's fork, where the engine was built and measured, or from a
 stored output file, not from memory. Numbers marked "measured on the author's fork" come from there; each pull request
@@ -85,7 +87,8 @@ Numbers (measured on the author's fork):
 | Sections + typo correction + conversation handling | 26 → 4 (both modes); typo questions' useful pages 2.23 → 4.72 of 8 (kw) |
 | Build on the test data folder | 351 pages → 7,623 sections in 4.2 s, at most 1,890 sections in one page (read from the file's `meta` and `long` tables) |
 
-Rerun: `tools/search_eval/score.py --rows` before and after, and count the questions whose top 8 hold that book.
+Rerun: `tools/search_eval/score.py --rows` before, and `--rows --sections <scratch folder>` after, and count the questions whose
+top 8 hold that book.
 The mean hybrid search time per question over the triage set was 0.67 s on the fork; a before/after time for the long
 pages alone was not stored.
 
@@ -96,6 +99,18 @@ pages alone was not stored.
 Code: `engine/wiki_pick.py` (`words_of`, `_pattern`, `best_section`, `score_text`, `pick`), `engine/encyclopedias.py`
 (`search`, `entry_text`, `pick_section`; `INITIAL_LIMIT` = 3, `INITIAL_CHARS` = 2,000, `SEARCH_LIMIT` = 24), caller
 `assistant.first_wiki`. Off with `LASTBOOK_WIKI_PICK=0`.
+
+In pull request 4, `assistant.first_wiki` runs `wiki_pick.pick` on the question after `typos.correct`, and Chat sends
+the library's results and the encyclopedia articles to the model as two messages (`assistant.initial_messages`) and
+shows them apart (`web/chat.js`, "From the encyclopedias"). Pull request 7 skips the articles for an urgent question
+(`assistant.wiki_skipped`: the question is labelled first, with `is_danger`, and the encyclopedias are not searched, so the
+manuals have the first results to themselves; "prefer a manual for safety-critical steps"). The chat then shows "Not an
+emergency? Add the encyclopedias", which asks again with `wiki: true`, and the chat sidebar has a setting, "Encyclopedias
+on urgent questions too" (`sg.wikiUrgent`, off by default). `LASTBOOK_WIKI_URGENT=1` keeps the articles for every client.
+The label is the wide one that never holds pages back, so it also skips the articles for many everyday questions ("how to
+use a fire extinguisher"): hence the button. The author's fork searches the encyclopedias on a thread beside the library
+search; pull request 7 keeps the search in order, because the label is known before it. The vector index of the encyclopedias tried on the author's fork (about 690 MB of memory for
+three files, and a GPU build for each file) is not proposed.
 
 Constants: `PER_FILE` = 6 candidates per encyclopedia file, `SECTION` = 5,000 (= `sections.SECTION`), `MAX_BYTES` =
 800,000, `STEM` = 5, `TITLE_WEIGHT` = 0.25.
@@ -146,6 +161,16 @@ useful words inside the first 2,000 characters for 259 of the 622 articles that 
 Code: `engine/typos.py`. Entry points `correct(q)` (memoised, 2,000 entries), `correct_with(q, words)`, `fix_word`,
 `split_word`, `body_fix`. Switches: `LASTBOOK_TYPO_FIX=0` (all), `LASTBOOK_TYPO_SPLIT=0`, `LASTBOOK_TYPO_ENGLISH=0`,
 `LASTBOOK_BODY_FIX=0`. Called first in `assistant.hybrid`, `server.query_groups` and `assistant.is_danger`.
+`/api/find` and `/api/retrieve` add `corrected` (what was searched) when it differs from the question.
+
+In pull request 3, `body_fix` and `LASTBOOK_BODY_FIX` were not there: they need the body words of
+`engine/confidence.py`. Pull request 5 adds them. `assistant.is_danger` comes in pull request 7.
+
+**Word forms.** The corrector does not change word endings: an English word is never changed, so "tourniquets",
+"fainting" and "choked" are searched as typed. The library search's own form rule is older than this module: a word of
+5+ letters ending in -s is also searched without it (`server.query_groups`). The guide search (`web/words.js`, #287)
+has a wider rule (-s, -es, -ies, -ed, -ing, with a dropped e or a doubled letter undone), used only when a guide search
+finds nothing. The two searches are separate: the corrector runs on the server, the guide search in the page.
 
 **The library's words** (`Words.from_db`, read once per search database, kept until its size or time changes):
 
@@ -192,7 +217,7 @@ are skipped when a machine, food or animal word is in the question. Letters type
 (`unstretch`: "bloooood" → blood).
 
 **Order in `correct_with(q)`:** a question that looks foreign (non-ASCII letters, or more Spanish/Portuguese/French function words
-than English ones) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
+than English ones; "a", "me" and "no" count for neither, added in pull request 3 after test list 4) is returned as typed; then `restore_im` ("im vomiting" → "i'm vomiting", unless a medicine word is beside it);
 then `phrase_slips`; then each token: not plain letters or ALL CAPS (unless most of the question is capitals) or with inner capitals
 ("ODing", "iPhone"): kept (a run with an apostrophe or hyphen inside goes to `glued`); `unstretch`; `split_word`; `fix_word`;
 `body_fix`; capitalisation restored.
@@ -239,17 +264,40 @@ Measured on the author's fork:
 Code: `engine/confidence.py` (`URGENT`, `NOT_URGENT`, `urgent`, `not_urgent_text`, `BODY_WORDS`, `BODY_PHRASES`, `BODY_GLUED`,
 `body_signs`, `body_match`) and `assistant.py` (`DANGER`, `danger_signs`, `is_danger`, `plea`).
 
+In pull request 5, `urgent`, `not_urgent_text` and the body signs are in `engine/confidence.py`, and the chat uses them
+only to decide whether pages may be held back (section 5). Pull request 7 moves the phrases to one source and adds
+`assistant.is_danger` (below). `DANGER` and `danger_signs` are used by the conversation routes (section 7) and `plea` only for a
+first message, so they come in pull request 8, which is where they are added to `is_danger`: on the 2,189 labelled lines of the three
+lists and the triage set, `danger_signs` fires on 258 and every one of them is also urgent by the rules below, so adding it changes
+no label there (it makes the label and the routes of section 7 agree).
+
+**One source for phrases (pull request 7).** A guide choice that is life-threatening lists `urgent` phrases in
+`content/topics/*.json` (`content/SCHEMA.md`; upstream's #167). The guide search (`web/words.js`) uses them to put the choice
+first; `engine/urgent_phrases.py` reads the same fields, with the same word rule (lower case, NFKD, accent marks on Latin
+letters removed, split wherever there is no letter, mark or digit, so "isn't" is "isn" + "t"; whole words in order, stop words
+counted), and `confidence.urgent` takes a phrase as urgent. `app/tests/test_urgent_phrases.py` runs both implementations on
+the same strings and on every phrase. Phrases are the ones that name a person's state or the event ("not breathing", "heavy
+bleeding", "snake bit"), never a bare word with a harmless sense ("choking" and "unresponsive" were taken out of #167 for that
+reason). 87 phrases in 11 choices (#167 had 8, in 1). What a phrase cannot say stays in `engine/confidence.py` as a residual
+list: `URGENT` (word stems, everyday wordings), `NOT_URGENT`, the body signs and the typo handling. A phrase picks its choice
+for a guide the search already found; it does not bring a guide in (`rankTopics` scores by words).
+
 ```
 not_urgent_text(t)   = t with every NOT_URGENT match (72 idiom alternatives) replaced by a space
 urgent(*texts)       = any(URGENT.search(not_urgent_text(t)) for t in texts)  OR  body_signs(*texts) is non-empty
 danger_signs(msg)    = {name of each of the 15 DANGER regexes found in not_urgent_text(msg).lower()}
 is_danger(msg, english, meaning)
-                     = danger_signs(msg + ' ' + english) non-empty
+                     = danger_signs(msg + ' ' + english) non-empty                      (added in pull request 8)
                        OR msg is one of the 5 danger-button labels (Not breathing, Heavy bleeding, Burn, Poison, Fire)
-                       OR urgent(msg, typos.correct(msg), english)
+                       OR urgent(msg, typos.correct(msg), english)       [a guide's `urgent` phrase, URGENT, or a body sign]
                        OR meaning_red.check(typos.correct(msg) or msg)['fired']          (section 6)
-turn_hits: info['danger'] = is_danger(...) OR plea(msg) [a bare "911"/"help"/"sos" as the first message]
+turn_hits: info['danger'] = is_danger(...) OR plea(msg) [a bare "911"/"help"/"sos" as the first message]     (pull request 8)
+           and, inside a conversation, OR is_danger of the earlier message the search was joined with
 ```
+
+In pull request 7, `assistant.question_hits` set `info['danger'] = is_danger(question)`; `chat_level` and `chat_reply` (section 5) read
+it, and `assistant.chat` leaves the encyclopedias out for it (section 2). In pull request 8 `turn_hits` replaces `question_hits`
+(section 7): for a conversation's first message the label is the same, with `danger_signs` and `plea` added.
 
 - `URGENT`: one wide regex, about 275 top-level alternatives, whole-word stems (breath*, chok*, bleed*, fell, face, chest, pills,
   baby, car, help, ...), plus a second block of everyday wordings (out cold, keeled over, tablets, a whole box, crooked smile, can't
@@ -272,12 +320,37 @@ blind. No fitted weights.
 
 Measured (red recall, false flags): section 6's table, definitions in section 9.
 
+Phrases in the guides against the wide words, on the three independent lists and the triage set (1,009 red, 367 yellow, 813 green
+lines; lines flagged; `urgent` as the app calls it, as typed and typo-corrected). #167's 8 phrases: red 59 (5.8%), yellow 0, green 8
+(1.0%). The 87 phrases of pull request 7: red 191 (18.9%), yellow 7 (1.9%), green 42 (5.2%). The wide words and body signs alone:
+red 961 (95.2%), yellow 297 (80.9%), green 395 (48.6%). Phrases and wide words together: red 962 (95.3%), yellow 297, green 395.
+So phrases of this kind do the narrow job (a choice that must come first in the guide search), not the wide one (pages are never
+held back); in the chat's screening they add one red line to the wide words ("his throat is closing after peanuts"). The wide
+net is meant to be wide: it flags half of the green lines, and a flag only means pages are shown.
+
 ---
 
 ## 5. Confidence estimate
 
 Code: `engine/confidence.py` (`MODELS`, `features`, `probability`, `estimate`, `unknown_words`, `thresholds`, `everyday_level`),
 `assistant.py` (`search_confidence`, `chat_level`, `chat_reply`).
+
+In pull request 5, `assistant.hybrid` and `assistant._fts` fill the search trace (word groups, rows with every word, bm25 per
+row, cosines), `assistant.question_hits` reads the first search's estimate, and `assistant.chat` asks for more words or
+offers buttons (`web/chat.js` draws them; `/api/retrieve` returns the estimate as `confidence`). A question counts as urgent
+by `confidence.urgent` alone (the meaning check came in pull request 7, `DANGER` in pull request 8). Before pull request 8 there were no
+conversation routes: only the first question of a chat could be asked to say more; a later message got the buttons and the answer, and
+a bare plea ("911", "help") was not told apart. In pull request 8 `assistant.turn_hits` takes the place of `question_hits` (section 7),
+and `chat_level` / `chat_reply` read its route:
+
+- noise: the level is `sure` (the earlier answer stands) and the buttons are added, with "Still about: <the last sensible question>"
+  first. A first message that is only noise ("ok", "😭") has nothing to fall back on, so it is asked to say more (`unsure`).
+- a plea (`info['plea']`): always `unsure`, action `plea`: the emergency buttons first and full size (`style: 'urgent'`), then `PLEA_TEXT`
+  (call your local emergency number, then say what is happening), then the pages found.
+- `unsure` (ask to say more) only for route `first` or `danger`; for `correct` and `follow` it becomes `buttons`, since a follow-up's
+  first page is often one the earlier answer cited and the model ranks it badly there (AUC 0.43-0.71 inside conversations). Without
+  the routes (another model, or `LASTBOOK_AI_FOLLOWUP=0`) every message after the first is treated so.
+- the body-sign and urgent-answer rules above hold for routes `first` and `danger`.
 
 Model: `p = 1 / (1 + exp(-(bias + sum_k w_k * x_k)))` on the raw (not standardised) signals; one set per mode.
 
@@ -352,6 +425,21 @@ hits. The fitting script is on the author's fork and can come with PR 5 if wante
 Code: `engine/meaning_red.py` (`Embedder`, `Model.score`, `check`, `find`, `fetch`), builder `tools/meaning_red_model.py`, examples
 `engine/data/meaning_red_examples.jsonl`, manifest `engine/data/meaning_red_manifest.json`, runner mode `packaging/llm/lastbook_llm.cpp --embed`.
 
+In pull request 6, only the runner's `--embed` mode is here: `lastbook-llm --model FILE --embed [--cpu-only] [--threads N]`
+reads one JSON line per request on its standard input, says `{"ev":"ready",...,"embed":true,"pooling":"cls","dim":384}`,
+answers `{"op":"embed","id":N,"texts":[...],"max_tokens":320}` with `{"ev":"embedding","id":N,"dim":384,"vectors":[...],...}`
+and leaves on `{"op":"quit"}`. Chat mode is unchanged.
+
+In pull request 7, `engine/meaning_red.py` starts that program a second time (`--embed --cpu-only --threads 2`, from
+`server.init`, on a thread of its own), reads `ready.embed`, and `assistant.is_danger` asks it (`meaning_red.check`) about every
+question. It only adds: until the runner is ready, and whenever anything fails (a file missing or changed, no runner, an older runner
+without `--embed`, a runner that ends or stops answering, `LASTBOOK_MEANING_RED=0`), the words alone decide, and a runner that
+ended is started again up to 3 times. The two files it needs (the GGUF and `centroids.npz`) are not in the app: setup downloads
+them from Hugging Face (`STAirye/lastbook-meaning-red`, revision pinned in `engine/data/meaning_red_manifest.json`, size and
+SHA-256 checked) right after the person's own download of the local AI model, and a source tree may hold them in
+`derived/models/meaning-red/`. `tools/meaning_red_model.py` builds both files from the examples. It uses meaning only to screen the
+question for urgency; search ranking is unchanged.
+
 ```
 text   = typos.correct(question) or question          (cut at 2,000 characters)
 v      = embedding of text: bge-small-en-v1.5, q8_0 GGUF, [CLS] pooling, unit length, max 320 tokens, NO query prefix
@@ -410,8 +498,12 @@ lines as typed, 43/45 (96%) with the English search words the chat's local AI wr
 
 ## 7. Conversation handling
 
-Code: `assistant.turn_hits` (routes), `classify`, `is_noise`, `stock_noise`, `plea`, `danger_signs`, `followup_hits`, `cited_before`.
-No model is used. The newest user message is classified against the earlier ones:
+This section is pull request 8 (in pull request 7 only `assistant.is_danger`, section 4, was there).
+
+Code: `assistant.turn_hits` (routes), `classify`, `is_noise`, `stock_noise`, `plea`, `danger_signs`, `followup_hits`, `cited_before`,
+`earlier_question`. It replaces `question_hits`, the single first search of pull request 5. No model is used. The routes are for the
+local AI's chat: with another model, or with `LASTBOOK_AI_FOLLOWUP=0`, every message is searched alone, as before. The newest user
+message is classified against the earlier ones:
 
 | Route | When | What is searched |
 |---|---|---|
@@ -434,9 +526,59 @@ the test copy), and the group sizes are 14 and 5. The classifier was written alo
 found only through the danger-sign words, 5 of 5), so its accuracy there is optimistic. On `main` the chat searches the newest message alone, which is what
 the baseline measures.
 
+**Run on this branch** with PR 1's scorer (`score.py --sets conversations,triage`, a library pack copy, long pages in sections), the last
+message alone against `turn_hits`. The scorer sends an empty reply for each earlier answer, so `cited_before` finds no carried pages here:
+only the routes and the joined search are measured. Keyword-only: first result right 21 → 22 of 52, a useful page in the top 3 29 → 31,
+every need covered 35 → 45, no useful page at all 13 → 3, mean useful pages of 8 3.46 → 4.25. Hybrid: first result right 27 → **25** of 52
+(corrections 11 → 9), top 3 37 → 36, covered 38 → 46, no useful page 10 → 1, mean useful 4.17 → 5.17. So against searching the newest
+message alone, the routes widen what is found a lot, and do not by themselves put the right page first; the "56% → 64%" above compares
+with an earlier follow-up search that always followed the message before, not with searching the message alone. The triage set's single questions are
+unchanged (first right 153, top 3 204 of 253, keyword-only).
+
+**A bare plea.** `plea(msg)` is true for a first message that is only an emergency word or number ("911", "999", "112", "help", "hlep",
+"HELP ME", "sos", "emergency", "ambulance"), with words such as "please", "me", "now" or "someone" around it (at most 6 words), letters
+typed again and again counted once ("helppp"). There is nothing to search for, so the chat shows the emergency buttons first, full size,
+and asks what is happening (`PLEA_TEXT`), with whatever pages the search found. A plea counts as danger. It only applies to the first
+message: later, "911" is a message like any other.
+
+**The buttons.** `suggest_choices(info)` puts "Still about: <the last sensible question>" first when the message was noise or its own search
+found fewer than 3 pages (`info['buttons']`), then Not breathing, Heavy bleeding, Burn, Poison, Fire, and Something else. A danger button's label
+sent as the next message is a new emergency (`danger` route); "Still about: …" is stripped before searching.
+
+### 7.1 English search words
+
+Code: `assistant.needs_english`, `english_query`, `english_words`, `_mostly_english`, `REWRITE`, `LANGUAGE_NOTE`; `web/chat.js` for the
+Spanish headings. The library and its keyword search are English ("hervir agua" finds nothing), and so are the typo corrector, the urgent
+words and the meaning check. For a question that looks like another language (`needs_english`: more words of `OTHER_WORDS` (Spanish,
+Portuguese, French) or with letters beyond a-z than English function words (`ENGLISH_WORDS`); composed to NFC first, since a phone may send
+"niño" with a combining tilde), the local model, already started for the answer, writes it as English search words: one short call with
+thinking off, at most 32 tokens, `REWRITE` as its prompt (2 to 5 words a page would hold, numbers with their units, the product not the brand,
+no question words). The earlier question goes along, so "¿y de noche?" after a fire question is not read after a water one.
+
+- The first search uses those words (`turn_hits(..., english)`), falling back to the question as typed if they find nothing. The label
+  (`is_danger`), the body signs and the encyclopedia search use them too. A follow-up's joined search uses the earlier question's words.
+- `english_words(text)` takes the model's first line (thinking removed, "English:" and quotes stripped) only if it is not itself foreign
+  (`needs_english`) and `_mostly_english`: at least half its words are in `engine/english_words.txt.gz`. A name or a dish among English words is
+  kept. Without the file, every line passes. If the first reply is not English, the model is asked once more ("Write the words in
+  English"); if that is not English either, the question is searched as typed. Results are kept per (earlier question, question), at most 64.
+- The answer gets one note (`LANGUAGE_NOTE`): the library was searched in English with these words, search again in English, answer in the
+  question's language. `web/chat.js` also knows the three special headings in Spanish, and starts a sentence after ¿, ¡ or a capital like É,
+  so an answer in Spanish still gets its "not found" and "sources disagree" sections and its uncited-sentence marks.
+- English questions skip all of it. `LASTBOOK_AI_ENGLISH_SEARCH=0` turns it off. It needs the local AI; without it nothing is translated.
+
+Measured on the author's fork (not rerun here, since it needs the local model): 8 Spanish questions answered with the local Gemma 4 E4B,
+cited and on topic 8 of 8, against 5 of 8 searched as typed. List 4 (section 10; Qwen3.5-9B, run locally): Spanish red lines recognised as
+urgent 12 of 45 (27%) as typed, 43 of 45 (96%) with the English words; an emergency book in the top 3 for 2%/4% (kw/hy) as typed and
+73%/82% with them. The same words also carry Spanish idioms over ("estoy muerto" → "dead"): counterexamples flagged 7% → 19%. After the
+`_mostly_english` fix, 44 of 45. In section 12, caveat 7.
+
 ---
 
 ## 8. Everyday phrases that hijack injury questions
+
+In pull request 7, the three phrases below (making fire, making water safe, water damage; the author's #128, which was closed) are in
+`server.PHRASES` with the guard, `confidence.INJURY` and `confidence.injury`. The retry without a phrase's helper words
+(`LASTBOOK_PHRASE_RETRY`, off by default on the fork) is not part of this pull request.
 
 Code: `server.PHRASES` (how-to phrases "start/make/light a fire", "make the water safe", marked `HOWTO`), `server.query_groups`, `confidence.INJURY`,
 `confidence.injury(q)`. A HOWTO phrase is skipped when the question matches `INJURY` (breathing, choking, unconscious, bleeding, wound, drowning, lungs,
@@ -523,8 +665,8 @@ bge-small-en-v1.5 in `derived/models/` and, for hybrid runs, a meaning index bui
 uses an index built by main's own indexer (338,910 passages); the measurements of sections 1-10 were made earlier on the
 author's fork, against its own index (337,016 passages). `tools/search_eval/baseline-files.md` identifies every file.
 The scorer reads the data folder and never writes it: it opens the meaning index read-only (immutable when no
-write-ahead log is pending), never truncates `vectors.f16`, refuses the sections build (from PR 2 on), and starts no
-indexer and no local model.
+write-ahead log is pending), never truncates `vectors.f16`, never builds or removes a sections file there (`--sections <folder>`,
+from PR 2 on, keeps it in another folder), and starts no indexer and no local model.
 
 **Commands** (from the repository root):
 
@@ -549,6 +691,8 @@ pack changes the corrected text slightly.
 | `LASTBOOK_CONF`, `_CONF_BUTTONS`, `_CONF_UNSURE`, `_CONF_BUTTONS_EVERYDAY`, `_CONF_UNKNOWN`, `_CONF_URGENT_ANSWER` | confidence switches and cuts |
 | `LASTBOOK_PHRASE_INJURY`, `LASTBOOK_PHRASE_RETRY` | section 8 arms |
 | `LASTBOOK_WIKI_PICK=0` | encyclopedias as upstream |
+| `LASTBOOK_AI_FOLLOWUP=0` | no conversation routes (PR 8): each message is searched alone |
+| `LASTBOOK_AI_ENGLISH_SEARCH=0` | no English search words for a question in another language (PR 8) |
 
 The meaning check's model is rebuilt with `python tools/meaning_red_model.py --cv --out <scratch folder>` (PR 7; the default `--out`
 overwrites `derived/models/meaning-red`), which prints the recomputed thresholds. It needs the Hugging Face copy of bge-small-en-v1.5 and a
@@ -568,6 +712,9 @@ llama.cpp checkout at tag b12032; the runner (`derived/llm/bin-*/lastbook-llm`) 
 7. List 4's results were measured before a change that makes the local AI's English search words count only when they are mostly English
    words (else it is asked once more); it was found through list 4's untranslated words ("respirar humo incendio"). With it, Spanish red 43 → 44 of 45.
 8. The confidence model's cuts 0.75 / 0.25 were superseded by 0.60 / 0.25 and the everyday cut 0.30; the code has the latter.
+9. The conversation routes are measured against the last message alone on the 52 invented conversations, with empty replies (section 7): they
+   widen what is found (covered, no useful page) but do not raise the first page right in hybrid mode (27 → 25 of 52, groups of 14 and 5).
+   The English search words need the local model, so they were not rerun on this branch; the list 4 numbers are from the author's fork.
 
 Not recorded or not determinable:
 

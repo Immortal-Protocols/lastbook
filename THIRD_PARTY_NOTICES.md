@@ -59,6 +59,7 @@ allow. The Vulkan loader (`vulkan-1.dll`) comes with the graphics driver and is 
 |---|---|---|---|---|
 | Gemma 4 26B A4B instruct, GGUF quantization by Unsloth (`gemma-4-26B-A4B-it-UD-Q4_K_M.gguf`) | revision pinned in `llm_local.py` | Apache-2.0, per the model card | https://huggingface.co/unsloth (Google's Gemma 4 release) | Upstream: check the model card and its licence file before release |
 | BAAI bge-small-en-v1.5 (ONNX), meaning-based search | as pinned | MIT, per the model card | https://huggingface.co/BAAI/bge-small-en-v1.5 | Upstream: the local copy has no licence file beside it |
+| BAAI bge-small-en-v1.5 (q8_0 GGUF, with its centroids), the meaning check for urgent questions (`engine/meaning_red.py`) | revision pinned in `engine/data/meaning_red_manifest.json` | MIT, per the model card (`engine/data/meaning_red_LICENSE.txt`) | https://huggingface.co/STAirye/lastbook-meaning-red (a conversion of https://huggingface.co/BAAI/bge-small-en-v1.5) | Upstream: the model card and the repository's files before release |
 
 ## Development and test tools (not bundled, not downloaded by the apps)
 

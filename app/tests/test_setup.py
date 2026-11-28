@@ -4320,6 +4320,23 @@ class Maps(Base):
         merged = manifest.merge(mf.current, {**mf.current, 'maps': []})
         self.assertEqual([x['id'] for x in merged['maps']], ['CA'])
 
+    def test_another_maps_unpacked_files_are_not_reused(self):
+        """#86 for maps: a file left in unpack-map/ by another map is not taken as whole because its size matches."""
+        mf, files = self.map_manifest()
+        cur = self.parent / 'LastbookData'
+        (cur / 'library-data').mkdir(parents=True)
+        (cur / 'library-data/catalog.json').write_text('{}')
+        (cur / 'pack.json').write_text('{"name": "small", "map": "base"}')
+        stale = self.parent / 'LastbookData.setup' / 'unpack-map' / 'LastbookData' / 'derived/geo/map.sqlite'
+        stale.parent.mkdir(parents=True)
+        stale.write_bytes(b'x' * len(files['derived/geo/map.sqlite']))
+        s = self.setup('manage', current=cur, manifest=mf)
+        s.start(None, False, map_id='CA')
+        self.assertEqual(self.wait(s)['state'], 'done')
+        lib, note = api.startup(self.settings)
+        self.assertIsNone(note.get('error'))
+        self.assertEqual((lib / 'derived/geo/map.sqlite').read_bytes(), files['derived/geo/map.sqlite'])
+
 
 class AddressIndexes(Maps):
     def address_manifest(self, wrong_path=False):
@@ -4373,6 +4390,22 @@ class AddressIndexes(Maps):
         self.assertEqual((library / 'derived/geo/map.sqlite').read_bytes(), b'existing map')
         self.assertEqual((library / 'derived/geo/addresses/CA.sqlite').read_bytes(), payload)
         self.assertEqual(setup.start(address_id='CA')['code'], 'nothing')
+
+    def test_another_address_downloads_unpacked_file_is_not_reused(self):
+        """#86 for address indexes: a file left in unpack-addresses/ by another download is not taken as whole."""
+        mf, payload = self.address_manifest()
+        library = self.parent / 'LastbookData'
+        (library / 'library-data').mkdir(parents=True)
+        (library / 'library-data/catalog.json').write_text('{}')
+        (library / 'pack.json').write_text('{"name":"all","map":"us"}')
+        stale = self.parent / 'LastbookData.setup' / 'unpack-addresses' / 'LastbookData' / 'derived/geo/addresses/CA.sqlite'
+        stale.parent.mkdir(parents=True)
+        stale.write_bytes(b'x' * len(payload))
+        setup = self.setup('manage', current=library, manifest=mf)
+        setup.start(address_id='CA')
+        self.assertEqual(self.wait(setup)['state'], 'done')
+        self.assertEqual((library / 'derived/geo/addresses/CA.sqlite').read_bytes(), payload)
+        self.assertEqual(list((self.parent / 'LastbookData.setup').glob('kept-*')), [])   # removed, not set aside as the person's files
 
     def test_all_library_can_add_one_state_addresses(self):
         mf, payload = self.address_manifest()

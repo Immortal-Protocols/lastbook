@@ -345,7 +345,7 @@
   "language.loadFailed": "No se pudo cargar el idioma guardado.",
   "language.preview": "La traducción al español todavía es parcial. Algunos textos de la interfaz y los menús nativos pueden aparecer en inglés.",
   "language.save": "Guardar idioma",
-  "language.saveFailed": "No se pudo guardar el idioma. Intenta de nuevo.",
+  "language.saveFailed": "No se pudo guardar el idioma. Vuelve a intentarlo.",
   "language.saved": "Idioma guardado. Reinicia Lastbook para actualizar los menús.",
   "language.saving": "Guardando el idioma…",
   "language.unavailable": "El idioma guardado no está disponible. Lastbook usa inglés.",

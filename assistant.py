@@ -92,13 +92,23 @@ def _fts(q, limit=80, ids=None):
     sql = ("SELECT doc_id,page,snippet(pages,6,'','',' … ',40) FROM pages WHERE pages MATCH ? " +
            ("AND doc_id IN (SELECT value FROM json_each(?)) " if only else "") +
            "ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT ?")
-    rows = []
+    strict_rows, relaxed_rows, emergency_rows = [], [], []
     try:
-        rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
-        if len(rows) < 10 and len(groups) > 1:
-            rows += con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups),) + only + (limit,)).fetchall()
+        strict_rows = con.execute(sql, (S.fts_expr(groups),) + only + (limit,)).fetchall()
     except sqlite3.OperationalError:
         pass
+    if len(strict_rows) < 10 and len(groups) > 1:
+        try:
+            relaxed_rows = con.execute(sql, (' OR '.join('(' + S.fts_expr([g]) + ')' for g in groups),) + only + (limit,)).fetchall()
+        except sqlite3.OperationalError:
+            pass
+    emergency = S.emergency_fts_expr(q)
+    if emergency:
+        try:
+            emergency_rows = con.execute(sql, (emergency,) + only + (limit,)).fetchall()
+        except sqlite3.OperationalError:
+            pass
+    rows = S.unique_search_rows(strict_rows, relaxed_rows, emergency_rows)
     con.close()
     return rows
 
@@ -107,6 +117,43 @@ def _allowed(kind):
     cat = S.catalog()['by_id']
     ok = {'any': None, 'manual': ('pdf', 'html', 'pptx'), 'video': ('video', 'transcript')}.get(kind or 'any')
     return lambda d: d in cat and cat[d]['kind'] != 'metadata' and (ok is None or cat[d]['kind'] in ok)
+
+
+# Title variants for the same emergency, not arbitrary keyword overlap.
+# Keep this narrow: an emergency title must also identify first-aid guidance.
+EMERGENCY_TITLE_ALIASES = (
+    (r'\bdrown(?:ing|ed)?\b', r'\b(?:drown(?:ing|ed)?|submersion|near[ -]?drowning)\b'),
+    (r'\bhypothermia\b', r'\b(?:hypothermia|cold[ -]?exposure|cold[ -]?injur(?:y|ies))\b'),
+    (r'\bcarbon monoxide\b', r'\b(?:carbon monoxide|\bco[ -]?poisoning)\b'),
+)
+
+
+def promote_emergency_first_aid(out, q, k, cat):
+    """Promote at most one matching emergency guide into the top-k window."""
+    if k <= 0 or not S.emergency_fts_expr(q):
+        return out
+    cleaned = re.sub(r'\bdrown(?:s|ed|ing)?\s+out\b', '', q, flags=re.I)
+    title_patterns = [title_rx for query_rx, title_rx in EMERGENCY_TITLE_ALIASES
+                      if re.search(query_rx, cleaned, re.I)]
+    if not title_patterns:
+        return out
+
+    def first_aid_candidate(item):
+        d = item[1][0]
+        r = cat['by_id'].get(d)
+        if not r:
+            return False
+        title = r['title']
+        return (bool(re.search(r'first[ -]?aid|resuscitat|emergency', title, re.I))
+                and any(re.search(rx, title, re.I) for rx in title_patterns))
+
+    if not any(first_aid_candidate(item) for item in out[:k]):
+        candidate = next((item for item in out[k:] if first_aid_candidate(item)), None)
+        if candidate is not None:
+            out = list(out)
+            out.remove(candidate)
+            out.insert(k - 1, candidate)
+    return out
 
 
 def hybrid(q, k=8, kind='any', doc=None):
@@ -159,6 +206,7 @@ def hybrid(q, k=8, kind='any', doc=None):
             score *= 1.3
         out.append((score, kkey, e))
     out.sort(key=lambda x: -x[0])
+    out = promote_emergency_first_aid(out, q, k, cat)
     res, per_doc = [], {}
     for score, kkey, e in out:
         d, p, _ = kkey

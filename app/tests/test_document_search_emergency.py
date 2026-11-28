@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""Synthetic document-search regression for #154 (no installed pack required).
+
+Run: python3 -B -m unittest app.tests.test_document_search_emergency -v
+
+This is a *baseline* for the document retrieval gap, not a claim that the
+current ranking is fixed. The synthetic pages deliberately distinguish first
+aid from unrelated water/fire how-to content. Keep the cases when changing
+server.find or assistant._fts and remeasure on the Medium pack.
+"""
+import sqlite3
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import assistant
+
+import server
+
+
+CASES = (
+    ("treat water in the lungs after drowning",
+     "drowning resuscitation airway breathing first aid",
+     "water treatment disinfect chlorine drinking water"),
+    ("light a fire to keep him warm with hypothermia",
+     "hypothermia cold exposure first aid warming",
+     "fire tinder kindling firecraft campfire"),
+    ("carbon monoxide from making a fire in the tent",
+     "carbon monoxide poisoning first aid ventilation",
+     "fire starting kindling tinder tent camping"),
+)
+
+# Queries that must keep their ordinary how-to matches.
+CONTROLS = (
+    ("how do i treat water", "treat water treatment disinfect chlorine"),
+    ("how do i light a fire", "light fire tinder kindling firecraft"),
+)
+
+
+def matches(db, query):
+    """Use the same FTS5 MATCH expression builder as the app."""
+    _, groups = server.query_groups(query)
+    expression = server.fts_expr(groups)
+    return [row[0] for row in db.execute(
+        "SELECT title FROM pages WHERE pages MATCH ? ORDER BY rank",
+        (expression,))]
+
+
+class DocumentSearchEmergencyBaseline(unittest.TestCase):
+    def setUp(self):
+        self.db = sqlite3.connect(":memory:")
+        self.db.execute("CREATE VIRTUAL TABLE pages USING fts5(title, body)")
+        for i, (_, urgent, ordinary) in enumerate(CASES):
+            self.db.execute("INSERT INTO pages VALUES (?, ?)", ("urgent" + str(i), urgent))
+            self.db.execute("INSERT INTO pages VALUES (?, ?)", ("ordinary" + str(i), ordinary))
+        for i, (_, ordinary) in enumerate(CONTROLS):
+            self.db.execute("INSERT INTO pages VALUES (?, ?)", ("control" + str(i), ordinary))
+
+    def tearDown(self):
+        self.db.close()
+
+    def test_urgent_pages_exist_and_are_searchable(self):
+        for i, (_, urgent, _) in enumerate(CASES):
+            with self.subTest(i=i):
+                # A source exists for the key medical concept independently of
+                # the unrelated how-to words in the question.
+                medical_term = ("drowning", "hypothermia", "monoxide")[i]
+                titles = [r[0] for r in self.db.execute(
+                    "SELECT title FROM pages WHERE pages MATCH ?", (medical_term,))]
+                self.assertIn("urgent" + str(i), titles)
+
+    def test_strict_match_excludes_relevant_emergency_passages(self):
+        for i, (query, _, _) in enumerate(CASES):
+            with self.subTest(query=query):
+                _, groups = server.query_groups(query)
+                self.assertGreater(len(groups), 1)
+                self.assertIn(" AND ", server.fts_expr(groups))
+                # Reproduce the bug: indexed first-aid material is excluded.
+                self.assertNotIn("urgent" + str(i), matches(self.db, query))
+
+    def test_controls_keep_meaningful_query_terms(self):
+        for query, _ in CONTROLS:
+            with self.subTest(query=query):
+                _, groups = server.query_groups(query)
+                self.assertTrue(groups)
+                self.assertTrue(server.fts_expr(groups))
+
+    def test_emergency_fallback_finds_first_aid_sources(self):
+        for i, (query, _, _) in enumerate(CASES):
+            with self.subTest(query=query):
+                expression = server.emergency_fts_expr(query)
+                self.assertIsNotNone(expression)
+                titles = [r[0] for r in self.db.execute(
+                    'SELECT title FROM pages WHERE pages MATCH ?', (expression,))]
+                self.assertIn('urgent' + str(i), titles)
+
+    def test_non_emergency_has_no_fallback(self):
+        for query, _ in CONTROLS:
+            with self.subTest(query=query):
+                self.assertIsNone(server.emergency_fts_expr(query))
+
+    def test_ordinary_how_to_queries_still_find_their_sources(self):
+        for i, (query, _) in enumerate(CONTROLS):
+            with self.subTest(query=query):
+                # A future fix must not erase the ordinary how-to match.
+                self.assertIn("control" + str(i), matches(self.db, query))
+
+
+class SearchPathIntegration(unittest.TestCase):
+    """Exercise assistant._fts against the real FTS5 SQL query and fallback."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.db_path = str(Path(self.temp.name) / 'pages.db')
+        self.db = sqlite3.connect(self.db_path)
+        self.db.execute('CREATE VIRTUAL TABLE pages USING fts5('
+                        'doc_id UNINDEXED, page UNINDEXED, title, author, tags, collection, body)')
+        self.addCleanup(self.db.close)
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('urgent', 1, 'Hypothermia first aid', '', '', '',
+                         'hypothermia cold exposure warming first aid'))
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('drowning', 1, 'Drowning first aid', '', '', '',
+                         'drowning airway resuscitation first aid'))
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('ordinary', 1, 'Fire making', '', '', '',
+                         'light a fire with tinder kindling'))
+        self.db.commit()
+        server_patch = patch.object(assistant, 'S', server)
+        server_patch.start()
+        self.addCleanup(server_patch.stop)
+        db_patch = patch.object(server.library, 'DB', self.db_path)
+        db_patch.start()
+        self.addCleanup(db_patch.stop)
+
+    def test_emergency_passage_is_present_once_when_queries_overlap(self):
+        # The emergency passage also matches the any-word fallback.
+        rows = assistant._fts('light a fire with hypothermia')
+        keys = [(r[0], r[1]) for r in rows]
+        self.assertIn(('urgent', 1), keys)
+        self.assertIn(('ordinary', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_emergency_rows_do_not_suppress_any_word_fallback(self):
+        # More than ten emergency hits must not hide a useful fire passage.
+        for i in range(12):
+            self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            (f'urgent-extra-{i}', 1, '', '', '', '',
+                             'hypothermia cold exposure warming'))
+        self.db.commit()
+        rows = assistant._fts('light a fire with hypothermia', limit=80)
+        keys = [(r[0], r[1]) for r in rows]
+        self.assertIn(('ordinary', 1), keys)
+        self.assertIn(('urgent', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_drown_out_idiom_is_not_an_emergency(self):
+        self.assertIsNone(server.emergency_fts_expr('drown out generator noise'))
+
+    def test_idiom_does_not_suppress_other_emergency_anchor(self):
+        expr = server.emergency_fts_expr(
+            'drown out generator noise while we look up hypothermia')
+        self.assertIsNotNone(expr)
+        self.assertIn('hypothermia', expr)
+        self.assertNotIn('drowning', expr)
+
+    def test_multiple_emergency_anchors_are_included(self):
+        expr = server.emergency_fts_expr('drowning and hypothermia')
+        self.assertIsNotNone(expr)
+        self.assertIn(' OR ', expr)
+        keys = [(r[0], r[1]) for r in assistant._fts('drowning and hypothermia')]
+        self.assertIn(('drowning', 1), keys)
+        self.assertIn(('urgent', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+    def test_precise_match_precedes_broad_emergency_fallback(self):
+        # A strict hit must not be demoted by a broader emergency match.
+        self.db.execute('INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        ('precise', 1, 'Hypothermia fire first aid', '', '', '',
+                         'light fire hypothermia warming first aid'))
+        self.db.commit()
+        keys = [(r[0], r[1]) for r in assistant._fts('light fire hypothermia')]
+        self.assertEqual(keys[0], ('precise', 1))
+        self.assertIn(('urgent', 1), keys)
+
+    def test_emergency_first_aid_reaches_top_eight(self):
+        # Twelve precise-looking results previously hid a first-aid fallback.
+        cat = {'by_id': {f'precise-{i}': {'title': f'Drowning equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['aid'] = {'title': 'Drowning first aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('aid', 1, None), {}))
+        result = assistant.promote_emergency_first_aid(
+            ranked[:], 'drowning rescue', 8, cat)
+        self.assertIn('aid', [row[1][0] for row in result[:8]])
+        self.assertEqual([row[1][0] for row in result[:7]],
+                         [f'precise-{i}' for i in range(7)])
+
+    def test_cold_exposure_first_aid_is_promoted_for_hypothermia(self):
+        cat = {'by_id': {f'precise-{i}': {'title': f'Hypothermia equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['cold'] = {'title': 'Cold Exposure First Aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('cold', 1, None), {}))
+        result = assistant.promote_emergency_first_aid(
+            ranked, 'hypothermia rescue', 8, cat)
+        self.assertEqual(result[7][1][0], 'cold')
+        self.assertEqual([r[1][0] for r in result[:7]],
+                         [f'precise-{i}' for i in range(7)])
+        self.assertEqual(ranked[12][1][0], 'cold')  # input not mutated
+
+    def test_unrelated_first_aid_is_not_promoted(self):
+        cat = {'by_id': {f'precise-{i}': {'title': f'Hypothermia equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['unrelated'] = {'title': 'Burn First Aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('unrelated', 1, None), {}))
+        self.assertEqual(assistant.promote_emergency_first_aid(
+            ranked, 'hypothermia rescue', 8, cat), ranked)
+
+    def test_precise_ordinary_query_keeps_top_eight(self):
+        cat = {'by_id': {f'precise-{i}': {'title': f'Fire equipment {i}'}
+                         for i in range(12)}}
+        cat['by_id']['aid'] = {'title': 'Drowning first aid'}
+        ranked = [(1.0 - i * .01, (f'precise-{i}', 1, None), {})
+                  for i in range(12)]
+        ranked.append((.1, ('aid', 1, None), {}))
+        result = assistant.promote_emergency_first_aid(
+            ranked[:], 'fire equipment', 8, cat)
+        self.assertEqual(result, ranked)
+
+    def test_auxiliary_query_failure_preserves_strict_results(self):
+        original = server.emergency_fts_expr
+        with patch.object(server, 'emergency_fts_expr', return_value='invalid:fts:expression'):
+            keys = [(r[0], r[1]) for r in assistant._fts('light a fire')]
+        self.assertIn(('ordinary', 1), keys)
+
+    def test_ordinary_query_keeps_search_results(self):
+        keys = [(r[0], r[1]) for r in assistant._fts('light a fire')]
+        self.assertIn(('ordinary', 1), keys)
+        self.assertEqual(len(keys), len(set(keys)))
+
+
+if __name__ == "__main__":
+    unittest.main()

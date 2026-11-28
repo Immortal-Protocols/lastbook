@@ -354,6 +354,41 @@ def search_ids(keep):
     return json.dumps(ids)
 
 
+# Keep a small, explicit medical anchor when a question also mentions
+# unrelated how-to actions. These terms are only a retrieval fallback, not
+# medical advice or a replacement for topic-guide urgency classification.
+EMERGENCY_ANCHORS = (
+    (r"\bdrown(?:ing|ed)?\b", ['drowning', 'resuscitation', 'airway']),
+    (r"\bhypothermia\b", ['hypothermia', 'cold exposure']),
+    (r"\bcarbon monoxide\b", ['carbon monoxide', 'poisoning']),
+)
+
+
+def emergency_fts_expr(q):
+    """Optional, narrow FTS5 query for explicit emergency terminology."""
+    # Suppress only the idiomatic drowning anchor; other medical anchors in
+    # the same question still deserve retrieval.
+    without_idiom = re.sub(r'\bdrown(?:s|ed|ing)?\s+out\b', '', q, flags=re.I)
+    matches = [terms for rx, terms in EMERGENCY_ANCHORS
+               if re.search(rx, without_idiom, re.I)]
+    if not matches:
+        return None
+    return ' OR '.join('(' + fts_expr([terms]) + ')' for terms in matches)
+
+
+def unique_search_rows(*batches):
+    """Preserve search priority while counting each document page only once."""
+    seen = set()
+    result = []
+    for batch in batches:
+        for row in batch:
+            key = (row[0], row[1])
+            if key not in seen:
+                seen.add(key)
+                result.append(row)
+    return result
+
+
 @functools.lru_cache(maxsize=256)
 def find(q, kind='all', limit=30):
     content, groups = query_groups(q)
@@ -369,14 +404,24 @@ def find(q, kind='all', limit=30):
            "FROM pages WHERE pages MATCH ?" + (" AND doc_id IN (SELECT value FROM json_each(?))" if only else "") +
            " ORDER BY bm25(pages,0,6,1,1,0,0,1) LIMIT 600")
     rows, mode = [], 'all words'
+    strict_rows, relaxed_rows, emergency_rows = [], [], []
     try:
-        rows = con.execute(sql, (fts_expr(groups),) + only).fetchall()
-        if len(rows) < 8 and len(groups) > 1:
-            # relax: any of the ideas, rank documents that have more of them higher
-            mode = 'some words'
-            rows += con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),) + only).fetchall()
+        strict_rows = con.execute(sql, (fts_expr(groups),) + only).fetchall()
     except sqlite3.OperationalError:
-        rows = []
+        pass
+    if len(strict_rows) < 8 and len(groups) > 1:
+        try:
+            relaxed_rows = con.execute(sql, (' OR '.join('(' + fts_expr([g]) + ')' for g in groups),) + only).fetchall()
+            mode = 'some words'
+        except sqlite3.OperationalError:
+            pass
+    emergency = emergency_fts_expr(q)
+    if emergency:
+        try:
+            emergency_rows = con.execute(sql, (emergency,) + only).fetchall()
+        except sqlite3.OperationalError:
+            pass
+    rows = unique_search_rows(strict_rows, relaxed_rows, emergency_rows)
     con.close()
     cat = catalog()['by_id']
     docs = {}

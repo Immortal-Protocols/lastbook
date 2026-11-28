@@ -20,11 +20,16 @@
 #include <string>
 #include <vector>
 
-#include <sys/sysctl.h>
-#include <mach/mach.h>
-#include <TargetConditionals.h>
-#if TARGET_OS_IPHONE
-#  include <os/proc.h>
+#if defined(__APPLE__)
+#  include <sys/sysctl.h>
+#  include <mach/mach.h>
+#  include <TargetConditionals.h>
+#  if TARGET_OS_IPHONE
+#    include <os/proc.h>
+#  endif
+#endif
+#if defined(__ANDROID__)
+#  include <fstream>
 #endif
 
 using json = nlohmann::ordered_json;
@@ -55,23 +60,43 @@ static void init_once() {
     });
 }
 
+#if defined(__ANDROID__)
+static void meminfo(uint64_t & total, uint64_t & available) {
+    total = available = 0;
+    std::ifstream f("/proc/meminfo");
+    std::string key; uint64_t value = 0; std::string unit;
+    while (f >> key >> value >> unit) {
+        if (key == "MemTotal:") total = value * 1024;
+        else if (key == "MemAvailable:") available = value * 1024;
+    }
+}
+#endif
+
 static uint64_t ram_total() {
+#if defined(__ANDROID__)
+    uint64_t t = 0, a = 0; meminfo(t, a); return t;
+#else
     uint64_t v = 0;
     size_t n = sizeof(v);
     return sysctlbyname("hw.memsize", &v, &n, nullptr, 0) == 0 ? v : 0;
+#endif
 }
 
 static uint64_t ram_free() {
+#if defined(__ANDROID__)
+    uint64_t t = 0, a = 0; meminfo(t, a); return a;
+#else
     vm_statistics64_data_t s;
     mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
     if (host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info64_t) &s, &count) != KERN_SUCCESS) {
         return 0;
     }
     return (uint64_t) (s.free_count + s.inactive_count + s.purgeable_count) * (uint64_t) vm_page_size;
+#endif
 }
 
-static uint64_t app_available() {   // what iPadOS lets this app still take (0 on a Mac)
-#if TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+static uint64_t app_available() {   // what the OS lets this app still take (0 where it does not say)
+#if defined(__APPLE__) && TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
     return (uint64_t) os_proc_available_memory();
 #else
     return 0;

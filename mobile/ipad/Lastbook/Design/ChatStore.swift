@@ -101,9 +101,9 @@ struct AIStatus: Equatable {
             let line = st == "loading" ? "Loading local AI…" + (pct.map { " \($0)%" } ?? "") : "Preparing local AI…" + (st == "checking" ? pct.map { " \($0)%" } ?? "" : "")
             return .init(ok: online, line: line, busy: true, state: st, tone: .starting)
         case "ready": return .init(ok: online, line: "Local AI ready", busy: false, state: st, tone: .ready)
-        case "unavailable": return .init(ok: false, line: st == "off" ? "Local AI is off" : "No local AI on this iPad", busy: false, state: st, tone: .unavailable)
+        case "unavailable": return .init(ok: false, line: st == "off" ? "Local AI is off" : "No local AI on this \(DeviceName.thisOne)", busy: false, state: st, tone: .unavailable)
         case "incompatible":
-            return .init(ok: false, line: msg.isEmpty ? (st == "too_big" ? "The local AI doesn’t fit this iPad" : "The local AI file isn’t the right one") : msg, busy: false, state: st, tone: .incompatible)
+            return .init(ok: false, line: msg.isEmpty ? (st == "too_big" ? "The local AI doesn’t fit this \(DeviceName.thisOne)" : "The local AI file isn’t the right one") : msg, busy: false, state: st, tone: .incompatible)
         default: return .init(ok: false, line: msg.isEmpty ? "The local AI couldn’t start" : msg, busy: false, state: st, tone: .failed)
         }
     }
@@ -118,10 +118,10 @@ struct AIStatus: Equatable {
         }
     }
     /// Engine messages are shared with the desktop: say iPad, not computer.
-    static func ipad(_ m: String) -> String { m.replacingOccurrences(of: "this computer", with: "this iPad").replacingOccurrences(of: "This computer", with: "This iPad") }
+    static func ipad(_ m: String) -> String { m.replacingOccurrences(of: "this computer", with: "this \(DeviceName.thisOne)").replacingOccurrences(of: "This computer", with: "This \(DeviceName.thisOne)") }
 }
 
-/// Conversations on this iPad only (Application Support), and the one place a question is sent: the in-process /api/chat.
+/// Conversations on this \(DeviceName.thisOne) only (Application Support), and the one place a question is sent: the in-process /api/chat.
 @MainActor final class ChatStore: ObservableObject {
     @Published var chats: [Conversation] = []
     @Published var selection: Conversation.ID?

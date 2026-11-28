@@ -1,9 +1,10 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import Combine
 
 /// Install and manage (minimal wiring; the design task owns the look). One Install action runs the whole plan in order:
-/// the Small library, the chosen state's map (required), its street addresses, the H.264 video copies where this iPad needs
+/// the Small library, the chosen state's map (required), its street addresses, the H.264 video copies where this \(DeviceName.thisOne) needs
 /// them, and the local AI when supported and wanted (Engine/Install/InstallPlan.swift, InstallRun.swift). The state is chosen
 /// by the person first; there is no location lookup. Importing a zip from Files stays as a second way in.
 ///
@@ -40,6 +41,7 @@ struct InstallView: View {
             if case .success(let url) = result { m.picked(url, state: run.state) { run.replan() } }
         }
         .task { run.prepare(); await m.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: .lastbookModelTierChanged)) { _ in run.replan() }
         .alert("Replace the whole-US map?", isPresented: Binding(get: { m.confirm != nil }, set: { if !$0 { m.confirm = nil } })) {
             Button("Replace it", role: .destructive) { m.confirmReplace(state: run.state) { run.replan() } }
             Button("Keep the whole-US map", role: .cancel) { m.confirm = nil }
@@ -86,25 +88,25 @@ struct InstallView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("What will be installed").font(.title2.bold())
             if run.planning && run.plan == nil {
-                HStack { ProgressView(); Text("Checking this iPad’s videos…") }
+                HStack { ProgressView(); Text("Checking this \(DeviceName.thisOne)’s videos…") }
             }
             if let p = run.plan {
-                if run.planning { HStack { ProgressView(); Text("Checking this iPad’s videos…") } }
+                if run.planning { HStack { ProgressView(); Text("Checking this \(DeviceName.thisOne)’s videos…") } }
                 ForEach(p.items) { i in planRow(i) }
                 if InstallCatalog.model != nil, p.items.contains(where: { $0.kind == .model && $0.status != .installed }),
                    !p.items.contains(where: { if case .unsupported = $0.status { return $0.kind == .model }; return false }) {
                     Toggle("Include the local AI", isOn: $run.wantAI).font(.title3).disabled(run.running)
                 }
                 Text("To download: \(bytes(p.downloadBytes)). Room needed: \(bytes(p.spaceNeeded))"
-                     + (p.free.map { ". Free on this iPad: \(bytes($0))." } ?? ".")).font(.body)
+                     + (p.free.map { ". Free on this \(DeviceName.thisOne): \(bytes($0))." } ?? ".")).font(.body)
                 if p.tooBigForDevice, let c = p.capacity {
-                    Text("This iPad holds \(bytes(c)) in all. This install needs \(bytes(p.spaceNeeded)) free at its fullest, so it can’t fit here even on an empty iPad. Choose a smaller library.")
+                    Text("This \(DeviceName.thisOne) holds \(bytes(c)) in all. This install needs \(bytes(p.spaceNeeded)) free at its fullest, so it can’t fit here even on an empty iPad. Choose a smaller library.")
                         .foregroundStyle(.red)
                 } else if !p.fits, let free = p.free {
                     Text("Not enough room: this needs \(bytes(p.spaceNeeded)) free and the iPad has \(bytes(free)). Free some space, then try again.")
                         .foregroundStyle(.red)
                 }
-                ForEach(p.blockers.filter { !p.tooBigForDevice || !$0.hasPrefix("This iPad holds") }, id: \.self) { Text($0).foregroundStyle(.orange) }
+                ForEach(p.blockers.filter { !p.tooBigForDevice || !$0.hasPrefix("This \(DeviceName.thisOne) holds") }, id: \.self) { Text($0).foregroundStyle(.orange) }
                 if p.complete && p.toDo.isEmpty {
                     Label("Everything required is installed.", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.title3)
                 } else {
@@ -164,9 +166,9 @@ struct InstallView: View {
             Text("Already have the files?").font(.title2.bold())
             Text("Choose a Lastbook zip from Files (a pack, a state map, street addresses or video copies), or a LastbookData folder.")
             HStack(spacing: 14) {
-                Button("Choose a zip") { m.pick(folder: false) }.buttonStyle(.bordered)
-                Button("Use a LastbookData folder") { m.pick(folder: true) }.buttonStyle(.bordered)
-            }.controlSize(.large).disabled(run.running || m.busy)
+                Button("Choose a zip") { m.pick(folder: false) }.buttonStyle(.bordered).lineLimit(1)
+                Button("Use a folder") { m.pick(folder: true) }.buttonStyle(.bordered).lineLimit(1)
+            }.controlSize(.large).fixedSize(horizontal: true, vertical: false).disabled(run.running || m.busy)
             if m.busy { HStack { ProgressView(); Text("\(m.phase) \(m.total > 0 ? "\(bytes(m.done)) of \(bytes(m.total))" : "")") } }
         }
     }

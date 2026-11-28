@@ -54,7 +54,9 @@ struct VideosScreen: View {
     @State private var query = ""
     @State private var results: [VCard] = []
     @State private var searching = false
+    @State private var length = ""
     @FocusState private var searchFocused: Bool
+    @Environment(\.horizontalSizeClass) private var hsc
     @ObservedObject private var progress = VideoProgress.shared
 
     var body: some View {
@@ -62,6 +64,7 @@ struct VideosScreen: View {
             VStack(spacing: 0) {
                 if query.trimmingCharacters(in: .whitespaces).isEmpty && !rows.isEmpty {
                     ChipBar(rows: rows, chip: $chip)
+                    if hsc == .compact { LengthBar(length: $length) }
                     Divider()
                 }
                 Group {
@@ -102,7 +105,7 @@ struct VideosScreen: View {
             searching = true
             try? await Task.sleep(for: .milliseconds(200))
             if Task.isCancelled { return }
-            let r = await LocalAPI.rec("/api/videos/all", ["q": q])
+            let r = await LocalAPI.rec("/api/videos/all", ["q": q, "len": length])
             results = ((r?["items"] as? [Rec]) ?? []).map(VCard.init)
             searching = false
         }
@@ -130,14 +133,25 @@ struct VideosScreen: View {
                     }
                 }
                 ForEach(rows) { r in
-                    section(r.title, note: r.note, more: r.count > 6 ? (r.id, r.count) : nil) {
-                        ForEach(r.items.prefix(6)) { v in
+                    let shown = r.items.filter { matchesLength($0) }
+                    let limit = hsc == .compact ? 10 : 6
+                    section(r.title, note: r.note, more: shown.count > limit ? (r.id, r.count) : nil) {
+                        ForEach(shown.prefix(limit)) { v in
                             NavigationLink(value: VideoRoute.watch(id: v.id)) { VideoCardView(v: v) }.buttonStyle(.plain)
                         }
                     }
                 }
             }
             .padding(24)
+        }
+    }
+
+    private func matchesLength(_ v: VCard) -> Bool {
+        switch length {
+        case "short": return v.duration > 0 && v.duration < 600
+        case "medium": return v.duration >= 600 && v.duration < 1800
+        case "long": return v.duration >= 1800
+        default: return true
         }
     }
 
@@ -155,6 +169,29 @@ struct VideosScreen: View {
             }
             LazyVGrid(columns: VideoGrid.columns, alignment: .leading, spacing: 26) { content() }
         }
+    }
+}
+
+/// The length suggestion chips on a phone, under the category bar.
+private struct LengthBar: View {
+    @Binding var length: String
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                c("", "Any length")
+                c("short", "Under 10 min")
+                c("medium", "10–30 min")
+                c("long", "Over 30 min")
+            }.padding(.horizontal, 16).padding(.bottom, 8)
+        }
+    }
+    func c(_ id: String, _ t: String) -> some View {
+        Button { length = id } label: {
+            Text(t).font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 14).frame(minHeight: 38)
+                .foregroundStyle(length == id ? Color(.systemBackground) : Color.primary)
+                .background(length == id ? Color.primary : Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }.buttonStyle(.plain)
     }
 }
 

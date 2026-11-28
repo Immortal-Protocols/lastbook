@@ -17,12 +17,15 @@ Website: <https://lastbook.org>. Contact: hello@lastbook.org.
 | Windows (64-bit, Windows 10 or later) | 1.1.19 | Live on lastbook.org, Authenticode signed |
 | Linux (Ubuntu 24.04 or 26.04 LTS, x86_64) | 1.1.19 | Ubuntu packages; installation instructions below |
 
-## iPad (development preview, source only)
+## Mobile (development preview, source only)
 
-A native iPad app (Videos, Map and Chat, offline, with optional on-device AI) is in [`mobile/ipad/`](mobile/ipad/).
-- It is source for contributors to build and sign themselves.
-- There is no App Store, TestFlight or downloadable iPad build.
-- See [mobile/ipad/README.md](mobile/ipad/README.md) for what works, the current limitations and how to build it.
+Native mobile apps for the same offline library are in `mobile/`. They are source for contributors to build and sign themselves; there is no App Store, Play Store or downloadable mobile build.
+
+- **iPad:** [`mobile/ipad/`](mobile/ipad/README.md) — Videos, Map and Chat, offline, with optional on-device AI. The original three-tab iPad layout and Library sheet are unchanged.
+- **iPhone:** the `LastbookPhone` target in [`mobile/ipad/`](mobile/ipad/README.md) — four destinations (Videos, Map, Chat, Library), native Nearby map sheet, phone AI tiers (26B / 12B / E2B / custom GGUF), PDF and saved-page reading, and an offline ZIM encyclopedia reader.
+- **Android:** [`mobile/android/`](mobile/android/README.md) — a native Compose app with the same four destinations, installer with resumable background downloads, Media3 video, the offline map, local llama.cpp AI via JNI, PDF reading and a libkiwix/libzim encyclopedia reader.
+
+Both phones keep the privacy model: downloads are the only network use, there is no listening port, no location lookup and no analytics.
 
 ## Install on Linux
 

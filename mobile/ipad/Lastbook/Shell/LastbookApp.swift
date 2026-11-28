@@ -77,6 +77,9 @@ struct Welcome: View {
     var body: some View {
         VStack(spacing: 24) {
             Image("Book").resizable().scaledToFit().frame(width: 120, height: 120)
+                .background(Color(red: 248 / 255, green: 243 / 255, blue: 233 / 255),
+                            in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .accessibilityHidden(true)
             Text("Lastbook").font(.largeTitle.bold())
             Text("Your offline survival library: videos, a map and a guide you can ask, with nothing sent anywhere.")
                 .font(.title3).multilineTextAlignment(.center).frame(maxWidth: 560)

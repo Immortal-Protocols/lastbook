@@ -34,11 +34,59 @@ protocol LocalModel: AnyObject {
     func willTerminate()
 }
 
-/// Pinned identity of the one model, copied from desktop llm_local.py.
+/// Pinned identity of the local AI models (26B desktop/iPad default, plus 12B flagship and E2B low/mid mobile tiers).
 enum Gemma4 {
     static let file = "gemma-4-26B-A4B-it-UD-Q4_K_M.gguf"
     static let size: Int64 = 16_947_541_728
     static let sha256 = "f2c28b3dc4776931ac6f879e11f203dec637ea0f14267a86ec8f6165f63f293f"
+
+    struct Tier: Identifiable, Equatable {
+        let id: String
+        let title: String
+        let file: String
+        let size: Int64
+        let sha256: String
+        let memoryBytes: Int64
+        let url: String
+    }
+
+    static let tiers: [Tier] = [
+        Tier(id: "gemma-4-26b-a4b", title: "Gemma 4 26B A4B", file: file, size: size, sha256: sha256,
+             memoryBytes: 19_027_384_256,
+             url: "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/c099eb48e663fd284577b04978a94ffccb261841/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf?download=true"),
+        Tier(id: "gemma-4-12b", title: "Gemma 4 12B", file: "gemma-4-12b-it-UD-Q4_K_XL.gguf", size: 7_366_423_360,
+             sha256: "90fd944d227e9d9b68e7e2c7d5b57b79d4c66ed521b0919fbbd932cf834f6f8e",
+             memoryBytes: 10_100_000_000,
+             url: "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/fc034cfff751157913579611efad8462ac1be606/gemma-4-12b-it-UD-Q4_K_XL.gguf?download=true"),
+        Tier(id: "gemma-4-e2b", title: "Gemma 4 E2B", file: "gemma-4-E2B-it-UD-Q4_K_XL.gguf", size: 3_184_496_736,
+             sha256: "b52f438017efaec5debf1c0d8be690571e212a07c312f1102bbce927258cfc32",
+             memoryBytes: 5_368_709_120,
+             url: "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/0314792d7f1f7e229411f620751375812bb9faf2/gemma-4-E2B-it-UD-Q4_K_XL.gguf?download=true"),
+    ]
+
+    static func tier(forFile name: String) -> Tier? { tiers.first { $0.file == name } }
+    static func tier(id: String) -> Tier? { tiers.first { $0.id == id } }
+    static func bestTier(forRAM ram: UInt64) -> Tier {
+        tiers.filter { UInt64($0.memoryBytes) <= ram }.max(by: { $0.memoryBytes < $1.memoryBytes }) ?? tiers.last!
+    }
+
+    /// The one file discovery may load: the tier or custom file the person chose in Setup. With no choice recorded (the
+    /// regular iPad app) this stays the pinned 26B, as before. "none" means no file.
+    static func selectedFile(_ defaults: UserDefaults = .standard) -> String? {
+        guard let chosen = defaults.string(forKey: "LBPhoneModelTier") else { return file }
+        switch chosen {
+        case "none":
+            return nil
+        case "custom":
+            return defaults.string(forKey: "LBPhoneCustomModel").flatMap { name in
+                name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : name
+            }
+        case "auto":
+            return bestTier(forRAM: ProcessInfo.processInfo.physicalMemory).file
+        default:
+            return tier(id: chosen)?.file ?? file
+        }
+    }
 }
 
 final class LocalAI: @unchecked Sendable {

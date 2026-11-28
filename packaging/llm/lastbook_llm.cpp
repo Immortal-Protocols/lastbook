@@ -250,11 +250,12 @@ static void generate(Engine & e, const json & req) {
     // Gemma's sliding-window layers keep only the last n_swa positions. The first token read next (at position keep) looks
     // back n_swa positions, so the window must still reach that far; after a long answer it no longer does, and
     // llama_memory_seq_rm can succeed anyway, leaving a damaged context the model then carries on from. llama-server makes the
-    // same check (tools/server/server-context.cpp, pos_min_thold) and reprocesses the prompt.
+    // same check (tools/server/server-context.cpp, pos_min_thold) and reprocesses the prompt. A cache that still starts at
+    // position 0 has lost nothing, however short the prompt, so the threshold is never below 1.
     if (keep > 0) {
         const int n_swa = llama_model_n_swa(e.model);
         const llama_pos pos_min = llama_memory_seq_pos_min(mem, 0);
-        const llama_pos thold = std::max(0, n_swa > 0 ? (int) keep - n_swa + 2 : (int) keep);
+        const llama_pos thold = std::max(1, n_swa > 0 ? (int) keep - n_swa + 2 : (int) keep);
         if (pos_min < 0 || pos_min >= thold) {
             llama_memory_clear(mem, true);
             e.cached.clear();

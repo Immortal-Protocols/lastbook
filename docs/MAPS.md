@@ -240,6 +240,9 @@ only pyosmium (already a build-time dependency in `tools/build_coast.py`) and no
 
 The data is OpenStreetMap, ODbL: a pack built from it must carry the attribution the other OSM layers already do.
 
+[MAP-PY-11.md](MAP-PY-11.md) describes a first build from the Paraguay proposal: a detailed map of Central, with
+Asunción.
+
 ## Checking a map change
 
 - A change to a layer in `web/map.js` is a change you can see: include screenshots in light and dark mode.

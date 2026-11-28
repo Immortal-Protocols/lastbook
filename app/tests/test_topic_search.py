@@ -203,6 +203,11 @@ UNDISTURBED = {
     'pet food': ['food', 'outage'],
     'dentist': ['health', None], 'toothache': ['health', 'teeth'],
     'cold frame': ['repair', 'build'], 'freezing': ['shelter', 'cold'],
+    # "toilet" tied between the repair guide and the toilets guide, and repair is listed first. An emergency search
+    # now opens the toilets guide; a repair search keeps the plumbing choice.
+    'toilet': ['sanitation', 'noflush'], 'no toilet': ['sanitation', 'noflush'], 'toilet clogged': ['sanitation', 'noflush'],
+    'toilet overflowing': ['sanitation', 'noflush'], 'toilet keeps running': ['repair', 'plumbing'],
+    'fix toilet': ['repair', 'plumbing'], 'toilet leaking': ['repair', 'plumbing'], 'dripping tap': ['repair', 'plumbing'],
     'fire alarm': ['disaster', 'home-fire'], 'smoke alarm': ['disaster', 'home-fire'], 'smoke': ['disaster', 'smoke'],
     'fires after an earthquake': ['disaster', 'earthquake-after'],
     # Words from readings the throw-out choice already cites (refreezing thawed food, dented cans). The last four are guards.

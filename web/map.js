@@ -107,8 +107,9 @@ const MapView = (() => {
     <div class="mapgrid"><div class="mapwrap" id="mapwrap">
       <canvas id="mapc" tabindex="0" role="application" aria-label="Map. Arrow keys move, plus and minus zoom, Escape closes details. The list beside the map gives the same places as text."></canvas>
       <div class="map-top">
-        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
+        <form class="map-search" id="pf" role="search"><label class="sr" for="pq">Find an address, town, ZIP code or place</label><input id="pq" type="search" placeholder="Find an address, town or ZIP" aria-describedby="place-coverage" autocomplete="off"><button aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button></form>
         <button class="map-layers-btn" id="layers-btn" aria-expanded="false" aria-controls="layers">Layers <b id="layer-count"></b></button>
+        <span class="map-place-coverage" id="place-coverage" hidden></span>
       </div>
       <div class="map-pop" id="pres" hidden></div>
       <div class="map-pop layers" id="layers" hidden></div>
@@ -178,19 +179,32 @@ const MapView = (() => {
     fetch('/api/map/info').then(r => r.json()).then(info => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
-      describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
+      describePlaceCoverage(info); describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
     }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
-      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return; st.national = info.national; coverage();
+      try { const info = await fetch('/api/map/info').then(r => r.json()); if (!st) return; st.national = info.national; describePlaceCoverage(info); coverage();
         if (info.aerial_rev !== st.aerialRev) { st.aerialRev = info.aerial_rev; st.aerialDetail = info.aerial_detail; for (const v of st.aerial?.values() || []) v.close?.(); st.aerial = new Map(); draw() }  // new sharp photos: new URLs
         if (info.version !== st.ver) { st.ver = info.version; st.gen++; st.pinBox = null; draw(); loadPins() } } catch { }
     }, 60000);
     if (!openWhole) { draw(); settle() }
   }
+  function describePlaceCoverage(info) {
+    const note = $('place-coverage'), area = info.place_coverage;
+    if (!note || area === undefined) return;   // older servers omit the field
+    let name = area?.region || area?.country;
+    if (area?.country && typeof Intl.DisplayNames === 'function') {
+      name = new Intl.DisplayNames(['en'], { type: 'region' }).of(area.country);
+    }
+    note.textContent = name ? 'Place names: ' + name : area ? 'Place-name coverage unknown' : 'No place names installed';
+    note.title = note.textContent;
+    note.hidden = false;
+    note.parentElement.classList.add('has-place-coverage');
+  }
+
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
   function describe(info) {
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }

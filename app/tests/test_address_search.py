@@ -657,5 +657,58 @@ class GermanAddressSearchTests(unittest.TestCase):
             self.assertEqual((hit['name'], hit['kind']), ('Unter den Linden 77', 'Street address'))
 
 
+class PlaceIndexCoverageTests(unittest.TestCase):
+    def setUp(self):
+        import server
+        self.area = server.place_index_coverage
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.index = self.root / 'derived' / 'geo' / 'places.sqlite'
+        self.index.parent.mkdir(parents=True)
+        self.enterContext(patch.object(server, 'HERE', self.root))
+        self.enterContext(patch.object(server, 'PLACEDB', self.index))
+
+    def write(self, sql):
+        db = sqlite3.connect(self.index)
+        try:
+            db.executescript(sql)
+        finally:
+            db.close()
+
+    def test_legacy_us_sources_and_mixed_index(self):
+        self.write("""CREATE TABLE place(source, detail);
+            INSERT INTO place VALUES ('USGS GNIS', ''), ('US Census Bureau', ''),
+                ('OpenStreetMap', 'Southern California (OpenStreetMap)');""")
+        self.assertEqual(self.area(), {'country': 'US', 'sources': ['OpenStreetMap', 'US Census Bureau', 'USGS GNIS']})
+        self.write("INSERT INTO place VALUES ('OpenStreetMap', 'Hà Nội');")
+        self.assertEqual(self.area(), {})
+
+    def test_installed_region_and_map_receipt(self):
+        self.write("CREATE TABLE place(source, detail); INSERT INTO place VALUES ('OpenStreetMap', '');")
+        receipt = {'name': 'DE-BE', 'files': {}}
+        manifest = self.root / 'map-set.json'
+        manifest.write_text(json.dumps(receipt), encoding='utf-8')
+        self.assertEqual(self.area(), {})   # the map does not own the place index
+        receipt['files']['derived/geo/places.sqlite'] = self.index.stat().st_size
+        manifest.write_text(json.dumps(receipt), encoding='utf-8')
+        self.assertEqual(self.area(), {'country': 'DE'})
+        receipt.update(name='ES', country='ES')
+        manifest.write_text(json.dumps(receipt), encoding='utf-8')
+        self.assertEqual(self.area(), {'country': 'ES'})
+        receipt['files']['derived/geo/places.sqlite'] += 1
+        manifest.write_text(json.dumps(receipt), encoding='utf-8')
+        self.assertEqual(self.area(), {})
+        self.write("""CREATE TABLE build_meta(key, value);
+            INSERT INTO build_meta VALUES ('region', 'Việt Nam');""")
+        self.assertEqual(self.area(), {'region': 'Việt Nam'})
+
+    def test_missing_empty_and_unreadable(self):
+        self.assertIsNone(self.area())
+        self.assertFalse(self.index.exists())
+        self.write('CREATE TABLE place(source, detail);')
+        self.assertIsNone(self.area())
+        self.index.write_bytes(b'not a database')
+        self.assertEqual(self.area(), {})
+
+
 if __name__ == '__main__':
     unittest.main()

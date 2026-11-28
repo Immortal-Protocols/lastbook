@@ -901,6 +901,8 @@ body.map-maxed{overflow:hidden}
 .msym{display:inline-grid;place-items:center;flex:none;border-radius:50%;color:#fff;font:700 10px/1 -apple-system,Segoe UI,sans-serif;font-style:normal;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.18);box-sizing:border-box;vertical-align:middle}
 .map-top{position:absolute;left:10px;top:10px;right:68px;display:flex;gap:8px;align-items:flex-start;z-index:4;pointer-events:none}
 .map-top>*{pointer-events:auto}
+.map-place-coverage{position:absolute;top:calc(100% + 4px);left:0;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--paper);color:var(--ink);padding:2px 8px;border-radius:5px;font-size:13px;line-height:18px}
+.map-top.has-place-coverage ~ .map-pop{margin-top:26px;max-height:calc(100% - 146px)}
 .map-search{display:flex;flex:0 1 340px;min-width:0;background:var(--paper);border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.25);overflow:hidden}
 .map-search input{flex:1;min-width:0;border:0;padding:0 12px;height:46px;font-size:16px;background:var(--paper);color:var(--ink)}
 .map-search input:focus{outline:none}.map-search:focus-within{box-shadow:0 0 0 3px var(--focus)}

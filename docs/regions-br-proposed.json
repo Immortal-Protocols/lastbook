@@ -8,10 +8,76 @@
   "verified": "The 27 codes were read from the Wikipedia article 'ISO 3166-2:BR' (opened 2026-11-20), which lists the names as in ISO 3166-2 from the ISO 3166/MA. The ISO Online Browsing Platform itself was not opened."
  },
  "boxes": {
-  "source": "IBGE state polygons (malhas territoriais, estadual), read through the IBGE malhas API with qualidade=maxima on 2026-11-20.",
+  "source": "IBGE state polygons (malhas territoriais, estadual), read through the IBGE malhas API with qualidade=maxima on 2026-11-20. Second check: recomputed from IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip, 13,717,460 bytes, SHA-256 282ec7f0f0beeeead45e6609f4ffffce161bda04cb8ee0afcad2316d1c841bcb, SIRGAS 2000, https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2022/Brasil/BR/BR_UF_2022.zip), downloaded 2026-11-18 and 2026-11-24.",
   "method": "Every vertex of every polygon was read; the box was widened by 0.15 degrees and rounded outward to 0.01 degrees (floor for west and south, ceiling for east and north), the same margin map_sets.state uses for US states.",
   "islands": "Detached polygons were checked for all 27 units (any polygon more than 0.5 degrees from the largest one). Two are in the IBGE polygons: Fernando de Noronha (BR-PE, kept) and Trindade and Martim Vaz (BR-ES, left out of the box). Atol das Rocas (RN) and São Pedro e São Paulo (PE) are not in the IBGE polygons.",
-  "licence_status": "Not settled. No explicit open licence was found for the IBGE malhas; the IBGE technical and legal note was not read. Boxes are a proposal until that is checked."
+  "licence_status": "Settled (second check): IBGE releases the Malha Municipal Digital and all products derived from it under CC BY 4.0 (Notas metodológicas 01/2025, liv102169, opened). Credit IBGE.",
+  "cross_check": "Every extent from the full-resolution file equals, to four decimals, the regiao-limitrofe that https://servicodados.ibge.gov.br/api/v3/malhas/estados/{id}/metadados reports (all 27 opened 2026-11-18; the eight changed units again 2026-11-24). The qualidade=maxima outline is simplified: it leaves out small islands and smooths the coast (second check, measured).",
+  "margin_changes_second_check": [
+   {
+    "code": "BR-MA",
+    "edge": "south",
+    "was": -10.41,
+    "now": -10.42,
+    "set_by": "main polygon"
+   },
+   {
+    "code": "BR-RN",
+    "edge": "north",
+    "was": -4.68,
+    "now": -4.66,
+    "set_by": "separate island polygon (5 vertices) missing from the API outline"
+   },
+   {
+    "code": "BR-PE",
+    "edge": "east",
+    "was": -32.24,
+    "now": -32.22,
+    "set_by": "separate Fernando de Noronha polygon (335 vertices)"
+   },
+   {
+    "code": "BR-PE",
+    "edge": "north",
+    "was": -3.68,
+    "now": -3.65,
+    "set_by": "separate Fernando de Noronha polygon (335 vertices)"
+   },
+   {
+    "code": "BR-AL",
+    "edge": "south",
+    "was": -10.65,
+    "now": -10.66,
+    "set_by": "main polygon"
+   },
+   {
+    "code": "BR-BA",
+    "edge": "south",
+    "was": -18.49,
+    "now": -18.5,
+    "set_by": "main polygon"
+   },
+   {
+    "code": "BR-SP",
+    "edge": "south",
+    "was": -25.46,
+    "now": -25.51,
+    "set_by": "separate islet (26 vertices) at -48.04, -25.36 near the Paraná border; main polygon edge -25.3123, also south of the API -25.3089"
+   },
+   {
+    "code": "BR-PR",
+    "edge": "west",
+    "was": -54.77,
+    "now": -54.78,
+    "set_by": "main polygon"
+   },
+   {
+    "code": "BR-SC",
+    "edge": "east",
+    "was": -48.2,
+    "now": -48.17,
+    "set_by": "separate island polygon (83 vertices)"
+   }
+  ]
  },
  "layer_keys": {
   "terrain": "terrain.sqlite",
@@ -33,7 +99,7 @@
   "IBGE-unclear": {
    "name": "No explicit open licence found for IBGE malhas",
    "share_alike": null,
-   "verified": "not settled: the IBGE 'Informações técnicas e legais' note was seen in search only, not opened; the BC250 term describes restricted use (search only)."
+   "verified": "not settled: the IBGE 'Informações técnicas e legais' note was seen in search only, not opened; the BC250 term describes restricted use (search only). Superseded for the malhas by IBGE-malhas-CC-BY-4.0 (second check)."
   },
   "ODbL-1.0": {
    "name": "Open Database License 1.0",
@@ -50,7 +116,7 @@
   },
   "CNES-cc-by": {
    "name": "cc-by, from the CNES dataset licence field",
-   "verified": "opened 2026-11-20 (dadosabertos.saude.gov.br dataset page)."
+   "verified": "opened 2026-11-20 (dadosabertos.saude.gov.br dataset page). Full file parsed (second check): coordinates present."
   },
   "ANA-free-access": {
    "name": "'O acesso ao dado é livre' (no named licence)",
@@ -59,10 +125,64 @@
   "SIAGAS-no-licence": {
    "name": "no licence text found",
    "verified": "siagasweb.sgb.gov.br opened 2026-11-20: no licence or terms text. Fails the test."
+  },
+  "IBGE-malhas-CC-BY-4.0": {
+   "name": "IBGE Malha Municipal Digital and derived products: Creative Commons BY 4.0",
+   "share_alike": false,
+   "quote": "O IBGE disponibiliza a MMD e todos produtos e informações dela derivados sob licença Creative Commons BY 4.0",
+   "url": "https://biblioteca.ibge.gov.br/ (Notas metodológicas 01/2025, liv102169)",
+   "verified": "opened (second check). The note read is the 2024 edition; the 2025 zip README points to it."
+  },
+  "IBGE-BC250-restricted": {
+   "name": "BC250 Termo de Compromisso de Uso (2019)",
+   "derivatives_allowed": null,
+   "verified": "opened (second check): 'vedada a locação ou comercialização' without written permission; use limited to 'apoio a projetos de trabalho'. No licence file in the 2025 folder. Not proposed."
+  },
+  "CNEFE-labels": {
+   "name": "No IBGE statement on the CNEFE files; Overture says CC0, OpenAddresses says attribution required, OSM wiki says no clear statement",
+   "verified": "Overture attribution page, OpenAddresses sources/br and OSM wiki opened (second check).",
+   "proposal": "Use with credit to IBGE under the federal open data policy (Decreto 8.777/2016, art. 4 as amended by Decreto 9.903/2019); satisfies CC0 and an attribution licence alike."
+  },
+  "federal-open-data-policy": {
+   "name": "Decreto 8.777/2016 art. 4 (as amended by Decreto 9.903/2019); CGINDA Resolution nº 2/2017 (dados.gov.br terms)",
+   "verified": "opened (second check): federal executive open data are 'de livre utilização pelos Poderes Públicos e pela sociedade'; dados.gov.br allows use 'para qualquer finalidade' 'desde que citada a devida fonte' unless a dataset has its own licence. Article 1 (scope) not re-read."
+  },
+  "ANA-open-data-statement": {
+   "name": "ANA open data page: 'disponibilizados livremente … sem restrição de licenças, patentes ou mecanismos de controle'",
+   "url": "https://www.gov.br/ana/pt-br/acesso-a-informacao/dados-abertos/dados-abertos/",
+   "verified": "opened (second check). Applies to BHO 6 and SNISB alike; whether it is enough is for the maintainers."
+  },
+  "CDLA-Permissive-2.0": {
+   "name": "Community Data License Agreement – Permissive 2.0",
+   "share_alike": false,
+   "verified": "Microsoft Global ML Building Footprints since commit ef94ee3d on 2026-03-11 (ODbL before); opened (second check). Overture still lists it as ODbL."
+  },
+  "CC-BY-SA-4.0-GeoSampa": {
+   "name": "CC BY-SA 4.0 (GeoSampa, São Paulo city)",
+   "share_alike": true,
+   "verified": "opened (second check): 'Licença para uso de dados do GeoSampa', process SEI 6066.2020/0003044-4. Not the ODbL; mixing into an OSM-based database needs a decision."
   }
  },
  "country_layers": {
   "terrain": [
+   {
+    "dataset": "ANADEM v1.0, 30 m bare-earth DTM of South America (vegetation bias removed from Copernicus GLO-30), EGM2008 heights",
+    "publisher": "IPH-UFRGS with ANA",
+    "url": "https://doi.org/10.5069/G9736P4G",
+    "licence": "CC-BY-4.0",
+    "verified": "OpenTopography record opened (second check); UFRGS page states no licence; vertical accuracy not read",
+    "role": "primary candidate",
+    "notes": "Credit: Distributed by OpenTopography. https://doi.org/10.5069/G9736P4G; ANA (2025); Laipelt et al. 2024, Remote Sensing 16, 2321."
+   },
+   {
+    "dataset": "TOPODATA, 1 arc-second from SRTM, Brazil only, COG",
+    "publisher": "INPE",
+    "url": "https://data.inpe.br/bdc/stac/v1/collections/topodata-1",
+    "licence": "CC-BY-4.0",
+    "verified": "STAC record opened (second check)",
+    "role": "alternative",
+    "notes": "Surface model."
+   },
    {
     "dataset": "Copernicus DEM GLO-30 (as in REGIONS-AR.md and REGIONS-MX.md)",
     "publisher": "ESA / Airbus",
@@ -84,22 +204,24 @@
   ],
   "dams": [
    {
-    "dataset": "No open national dam list identified",
-    "publisher": "not identified",
-    "licence": null,
-    "verified": "not checked",
-    "role": "open question",
-    "notes": "OSM waterway=dam as fallback, not counted."
+    "dataset": "SNISB Barragens Cadastradas (national dam safety register)",
+    "publisher": "ANA, data entered by each inspecting agency",
+    "url": "https://dadosabertos.ana.gov.br/datasets/24d0145e38c545889fd5dd8d7aeaef32_0",
+    "licence": "ANA-open-data-statement",
+    "verified": "item and FeatureServer opened; counts read 2026-11-19 (second check, measured); licenseInfo empty",
+    "role": "candidate",
+    "notes": "Points with height, reservoir capacity, use, risk category and potential damage. 28,127 nationally, 1,515 in São Paulo, all with coordinates. OSM waterway=dam as fallback."
    }
   ],
   "crops": [
    {
-    "dataset": "MapBiomas land cover (candidate)",
+    "dataset": "MapBiomas Brasil Collection 11.0, annual land use and land cover 1985-2025, 30 m",
     "publisher": "MapBiomas",
-    "licence": null,
-    "verified": "not checked",
+    "url": "https://github.com/mapbiomas/user-toolkit",
+    "licence": "CC-BY-4.0",
+    "verified": "toolkit README and Collection 11 legend opened (second check); terms page refused connection, a search result said CC BY-SA",
     "role": "candidate",
-    "notes": "Licence and class list not checked; would need a class mapping to crops.sqlite."
+    "notes": "Classes: 46 Coffee, 47 Citrus, 48 Other perennial crops, 35 Palm oil, 20 Sugar cane, 39 Soybean, 40 Rice, 41 Other temporary crops, 9 Forest plantation. No vineyard or berry class (grapes in 48)."
    }
   ],
   "buildings": [
@@ -107,19 +229,44 @@
     "dataset": "Google Open Buildings V3 (as in REGIONS-MX.md)",
     "publisher": "Google Research",
     "licence": "CC-BY-4.0",
-    "verified": "as REGIONS-MX.md; Brazil coverage not re-checked here",
+    "verified": "as REGIONS-MX.md; Brazil coverage not re-checked here; Brazil in the V3 country list (second check)",
     "role": "primary candidate",
     "notes": "OSM heights and gaps as for the US."
+   },
+   {
+    "dataset": "Google Open Buildings 2.5D Temporal (presence, count and height, 2016-2023)",
+    "publisher": "Google Research",
+    "licence": "CC-BY-4.0",
+    "verified": "page opened (second check); Brazil listed",
+    "role": "heights",
+    "notes": "CC BY 4.0 or ODbL 1.0 at the user's choice, as for V3."
+   },
+   {
+    "dataset": "Microsoft Global ML Building Footprints (1,152 Brazil tiles in the 2026-07-24 dataset-links.csv)",
+    "publisher": "Microsoft",
+    "licence": "CDLA-Permissive-2.0",
+    "verified": "repository and licence history opened (second check)",
+    "role": "fill gaps",
+    "notes": "ODbL before 2026-03-11."
    }
   ],
   "places": [
    {
     "dataset": "IBGE malhas, state layer (used for the boxes); municipality and locality layers",
     "publisher": "IBGE",
-    "licence": "IBGE-unclear",
-    "verified": "state layer opened 2026-11-20; licence not settled",
+    "licence": "IBGE-malhas-CC-BY-4.0",
+    "verified": "state layer opened 2026-11-20; licence not settled; licence opened (second check)",
     "role": "primary candidate",
     "notes": "Municipality and locality layers not opened for this proposal."
+   },
+   {
+    "dataset": "IBGE Localidades do Brasil 2022 (named places as points, with municipality code)",
+    "publisher": "IBGE",
+    "url": "https://geoftp.ibge.gov.br/organizacao_do_territorio/estrutura_territorial/localidades/Localidades_do_Brasil/2022/",
+    "licence": "IBGE-malhas-CC-BY-4.0 (probably, as a derived product; not confirmed)",
+    "verified": "file opened and counted (second check, measured)",
+    "role": "primary candidate",
+    "notes": "96,163 points nationally; 6,710 in São Paulo: 646 cities, 2,848 urban nuclei, 398 vilas, 308 povoados, 103 lugarejos, 83 indigenous, 74 quilombola, 2,201 other."
    },
    {
     "dataset": "OSM named places",
@@ -134,10 +281,19 @@
    {
     "dataset": "Overture addresses (Brazil)",
     "publisher": "Overture Maps Foundation",
-    "licence": null,
-    "verified": "count opened 2026-11-20 (guide per-country table); attribution page not re-read",
+    "licence": "CNEFE-labels",
+    "verified": "count opened 2026-11-20 (guide per-country table); attribution page not re-read; attribution page opened (second check)",
     "role": "candidate",
-    "notes": "89,887,635 Brazilian rows (publisher's count). Per-state counts not computed."
+    "notes": "89,887,635 Brazilian rows (publisher's count). Per-state counts not computed. Source: IBGE CNEFE 2022 via AddressForAll (second check)."
+   },
+   {
+    "dataset": "IBGE CNEFE Censo 2022 (Cadastro Nacional de Endereços para Fins Estatísticos), one file per state",
+    "publisher": "IBGE",
+    "url": "https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/",
+    "licence": "CNEFE-labels",
+    "verified": "folders, dictionary and Acre file opened (second check, measured)",
+    "role": "direct source",
+    "notes": "34 columns incl. COD_UF, COD_MUNICIPIO, CEP, NOM_TIPO_SEGLOGR, NOM_SEGLOGR, NUM_ENDERECO, LATITUDE, LONGITUDE, NV_GEO_COORD. Acre: 410,524 rows, 95% at NV_GEO_COORD 1. São Paulo: CSV 1.0 GB (2024-05-20); coordinates-only file 22,953,725 rows. COD_UF splits by state without a CEP table."
    }
   ],
   "pois": [
@@ -153,32 +309,43 @@
     "dataset": "CNES health establishments",
     "publisher": "Ministério da Saúde (DATASUS)",
     "licence": "CNES-cc-by",
-    "verified": "dataset page opened 2026-11-20; coordinates not verified",
+    "verified": "dataset page opened 2026-11-20; full file parsed, coordinates present (second check, measured)",
     "role": "candidate",
     "notes": "See help_points.cnes_health_establishments."
    }
   ]
  },
  "not_open_nationwide": [
-  "Postcode areas: Brazil has no open CEP area layer that was checked. The CEP is eight digits; no CEP-to-state table was checked.",
-  "Dam inventory: no open national list was identified in this pass.",
-  "Health establishments with coordinates (CNES) and state fire and police station lists were not checked."
+  "Postcode areas: Brazil has no open CEP area layer that was checked. The CEP is eight digits; no CEP-to-state table was checked. Correios DNE is sold (second check). CNEFE carries COD_UF, so splitting by state does not need a CEP table (second check).",
+  "Dam inventory: no open national list was identified in the first pass. Second check: SNISB (ANA), 28,127 dams with coordinates; licence field empty, see ANA-open-data-statement.",
+  "Health establishments with coordinates (CNES) and state fire and police station lists were not checked in the first pass. Second check: CNES has coordinates; no open São Paulo state fire or police station list was found."
  ],
  "addressing": {
   "postal_code": {
    "format": "Eight digits (CEP, Código de Endereçamento Postal), written 00000-000 with a hyphen after the fifth digit, for example 01311-000 (the Correios example). The Correios API accepts eight digits without the hyphen. Keep as text: leading zeros occur.",
-   "verified": "Correios Guia Técnico de Endereçamento de Correspondências (v1.4, 2021): search snippet only, PDF not opened.",
-   "not_a_state_code": "The first digit of a CEP is a broad region, not a state. No CEP-to-state table was checked, so address indexes cannot be split by state yet."
+   "verified": "Correios Guia Técnico de Endereçamento de Correspondências (v1.4, 2021): search snippet only, PDF not opened. Second check: the guide (v1.4, 3 May 2021) and the Correios \"Tudo sobre CEP\" page opened.",
+   "not_a_state_code": "The first digit of a CEP is a broad region, not a state. No CEP-to-state table was checked, so address indexes cannot be split by state yet. Second check: CNEFE carries COD_UF, which answers this.",
+   "structure": "First digit: one of ten postal regions, numbered anticlockwise from São Paulo; next four: sub-region, sector, subsector, subsector divisor. Suffix: 000-899 streets, 900-959 special, 960-969 promotional, 970-989 and 999 Correios units, 990-998 community post boxes (opened, second check).",
+   "dne": "Correios CEP database (DNE) is a licensed, paid product: not open (opened, second check)."
   },
-  "order": "Street type, street name, number, then complement and neighbourhood, then city and state (UF), with the CEP last (Correios guide; search snippet only).",
-  "no_number": "Correios writes SN (sem número) for no number; the CEP complement is then 00000 (search snippet only).",
+  "order": "Street type, street name, number, then complement and neighbourhood, then city and state (UF), with the CEP last (Correios guide; search snippet only). Second check: guide opened; its example is 'Avenida Paulista 123, Loja B / Paraíso / 01311-000 São Paulo/SP'.",
+  "no_number": "Correios writes SN (sem número) for no number; the CEP complement is then 00000 (search snippet only). Second check: the guide recommends 's/n' (opened); the data holds S/N and SN.",
   "code_now": "tools/build_addresses.py keeps only country = 'US'. engine/address_search.py normalize() replaces every character outside a-z and 0-9 with a space, so Portuguese accents split words (for example 'Ação' becomes 'a o'). is_address_query() needs a number first.",
   "overture_brazil_count": {
    "value": 89887635,
    "source": "Overture addresses guide, per-country table",
    "verified": "opened 2026-11-20",
    "note": "Publisher's count, not made for this proposal."
-  }
+  },
+  "street_types": "Correios lists 41 types (rua, avenida, alameda, travessa, praça, estrada, rodovia, largo, viela, ladeira, vila, ...) and no abbreviation table. CNES São Paulo: RUA 57,882; AVENIDA 15,325; AV 9,578; R 5,986; also PRACA, ALAMEDA, AL, AVN, ROD, ESTRADA, TRAVESSA. Kilometres appear in the street field (ROD WASHINGTON LUIZ KM 234) (second check, measured).",
+  "code_tests_second_check": [
+   "Street-first addresses (Av. Paulista, 1578 ...; Rua Conceição, 233 ...) are not treated as addresses; only 1578 Avenida Paulista is.",
+   "Typing without accents gives rua conceicao; the index holds rua concei o: no match.",
+   "normalize() street words are English: av becomes ave, avenida stays avenida, so Av Paulista and Avenida Paulista do not match.",
+   "A CEP is not read as a postcode (01310-200 becomes 01310 200); build_addresses.py left(postcode, 5) keeps 01310.",
+   "The place finder (FTS5 unicode61) already folds accents: sao paulo, ribeirao, conceicao, embu guacu all found.",
+   "Tested 2026-11-18 against main (measured)."
+  ]
  },
  "regions": [
   {
@@ -195,10 +362,10 @@
     "east": -59.7744,
     "north": -7.9759,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -219,13 +386,13 @@
    "bbox": {
     "west": -73.9904,
     "south": -11.1456,
-    "east": -66.6239,
+    "east": -66.6236,
     "north": -7.1118,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -249,10 +416,10 @@
     "east": -56.0976,
     "north": 2.2466,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -276,10 +443,10 @@
     "east": -58.8869,
     "north": 5.2718,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -300,13 +467,13 @@
    "bbox": {
     "west": -58.8983,
     "south": -9.8412,
-    "east": -46.0618,
+    "east": -46.0614,
     "north": 2.591,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -315,7 +482,7 @@
     -45.91,
     2.75
    ],
-   "notes": "Pará has 17 polygons; the box is the union of all of them."
+   "notes": "Pará has 17 polygons; the box is the union of all of them. The full-resolution file has 35 parts (second check)."
   },
   {
    "code": "BR-AP",
@@ -328,13 +495,13 @@
    "bbox": {
     "west": -54.8763,
     "south": -1.2362,
-    "east": -49.8758,
+    "east": -49.8757,
     "north": 4.5088,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -358,10 +525,10 @@
     "east": -45.6993,
     "north": -5.1684,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -381,19 +548,19 @@
    "admin_level": "state (estado)",
    "bbox": {
     "west": -48.7552,
-    "south": -10.2596,
-    "east": -41.7967,
-    "north": -1.0495,
+    "south": -10.2618,
+    "east": -41.7961,
+    "north": -1.0493,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -48.91,
-    -10.41,
+    -10.42,
     -41.64,
     -0.89
    ]
@@ -410,12 +577,12 @@
     "west": -46.0282,
     "south": -10.9288,
     "east": -40.3705,
-    "north": -2.7499,
+    "north": -2.7498,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -434,15 +601,15 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -41.4233,
-    "south": -7.8576,
+    "west": -41.4235,
+    "south": -7.8582,
     "east": -37.2527,
     "north": -2.7843,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -464,19 +631,19 @@
     "west": -38.5821,
     "south": -6.9827,
     "east": -34.9685,
-    "north": -4.8314,
+    "north": -4.8164,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -38.74,
     -7.14,
     -34.81,
-    -4.68
+    -4.66
    ]
   },
   {
@@ -488,15 +655,15 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -38.7652,
+    "west": -38.7656,
     "south": -8.303,
-    "east": -34.7932,
+    "east": -34.7931,
     "north": -6.0259,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -517,22 +684,22 @@
    "bbox": {
     "west": -41.3583,
     "south": -9.4829,
-    "east": -32.3971,
-    "north": -3.8358,
+    "east": -32.3778,
+    "north": -3.8046,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -41.51,
     -9.64,
-    -32.24,
-    -3.68
+    -32.22,
+    -3.65
    ],
-   "notes": "Fernando de Noronha (about 2.4 degrees east of the mainland) is kept; its tight edge is -32.397 W. Without it the box ends at -34.807 W."
+   "notes": "Fernando de Noronha (about 2.4 degrees east of the mainland) is kept; its tight edge is -32.3778 W (second check; the API outline gave -32.397). Without it the box ends at -34.807 W. IBGE lists it as a Distrito Estadual (second check)."
   },
   {
    "code": "BR-AL",
@@ -544,19 +711,19 @@
    "admin_level": "state (estado)",
    "bbox": {
     "west": -38.2376,
-    "south": -10.4986,
-    "east": -35.1527,
-    "north": -8.8161,
+    "south": -10.5004,
+    "east": -35.1519,
+    "north": -8.8131,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -38.39,
-    -10.65,
+    -10.66,
     -35.0,
     -8.66
    ]
@@ -571,14 +738,14 @@
    "admin_level": "state (estado)",
    "bbox": {
     "west": -38.245,
-    "south": -11.5685,
+    "south": -11.5686,
     "east": -36.3959,
     "north": -9.515,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -597,20 +764,20 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -46.5768,
-    "south": -18.3372,
+    "west": -46.5773,
+    "south": -18.3486,
     "east": -37.3411,
     "north": -8.5328,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -46.73,
-    -18.49,
+    -18.5,
     -37.19,
     -8.38
    ]
@@ -627,12 +794,12 @@
     "west": -51.0461,
     "south": -22.9228,
     "east": -39.8568,
-    "north": -14.2333,
+    "north": -14.2332,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -651,15 +818,15 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -41.8796,
-    "south": -21.3011,
-    "east": -39.6678,
+    "west": -41.8798,
+    "south": -21.3018,
+    "east": -39.666,
     "north": -17.8919,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -668,7 +835,7 @@
     -39.51,
     -17.74
    ],
-   "notes": "Trindade and Martim Vaz (about 10 degrees east, around 20.5 S) are left out of the box; see the open questions."
+   "notes": "Trindade and Martim Vaz (about 10 degrees east, around 20.5 S) are left out of the box; see the open questions. With them the box would reach -28.85 W (Martim Vaz, full-resolution file; second check)."
   },
   {
    "code": "BR-RJ",
@@ -680,14 +847,14 @@
    "admin_level": "state (estado)",
    "bbox": {
     "west": -44.8893,
-    "south": -23.3676,
+    "south": -23.3689,
     "east": -40.9579,
     "north": -20.7632,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -707,19 +874,19 @@
    "admin_level": "state (estado)",
    "bbox": {
     "west": -53.1101,
-    "south": -25.3089,
+    "south": -25.358,
     "east": -44.1614,
-    "north": -19.7799,
+    "north": -19.7797,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -53.27,
-    -25.46,
+    -25.51,
     -44.01,
     -19.62
    ]
@@ -733,19 +900,19 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -54.6199,
+    "west": -54.6202,
     "south": -26.7171,
     "east": -48.0235,
     "north": -22.5163,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
-    -54.77,
+    -54.78,
     -26.87,
     -47.87,
     -22.36
@@ -762,19 +929,19 @@
    "bbox": {
     "west": -53.8371,
     "south": -29.3551,
-    "east": -48.3585,
+    "east": -48.3279,
     "north": -25.9558,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
     -53.99,
     -29.51,
-    -48.2,
+    -48.17,
     -25.8
    ]
   },
@@ -788,14 +955,14 @@
    "admin_level": "state (estado)",
    "bbox": {
     "west": -57.6497,
-    "south": -33.7508,
+    "south": -33.7512,
     "east": -49.6914,
     "north": -27.0823,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -814,15 +981,15 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -58.1686,
-    "south": -24.0682,
-    "east": -50.9242,
+    "west": -58.1687,
+    "south": -24.0686,
+    "east": -50.9229,
     "north": -17.1663,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -846,10 +1013,10 @@
     "east": -50.2248,
     "north": -7.349,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -868,15 +1035,15 @@
    "country_iso": "BR",
    "admin_level": "state (estado)",
    "bbox": {
-    "west": -53.2485,
-    "south": -19.4981,
+    "west": -53.2486,
+    "south": -19.4984,
     "east": -45.9072,
-    "north": -12.3954,
+    "north": -12.395,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -895,15 +1062,15 @@
    "country_iso": "BR",
    "admin_level": "federal district",
    "bbox": {
-    "west": -48.2857,
+    "west": -48.2858,
     "south": -16.05,
-    "east": -47.3085,
+    "east": -47.3084,
     "north": -15.5018,
     "source": {
-     "dataset": "IBGE malhas territoriais, state layer (estadual), malhas API with qualidade=maxima",
+     "dataset": "IBGE Malha Municipal Digital 2022, state layer, full resolution (BR_UF_2022.zip)",
      "publisher": "IBGE",
-     "licence": "IBGE-unclear",
-     "verified": "polygons read 2026-11-20; licence not settled"
+     "licence": "IBGE-malhas-CC-BY-4.0",
+     "verified": "computed 2026-11-24 (second check, measured); equals the API regiao-limitrofe to four decimals"
     }
    },
    "box_margin": [
@@ -945,22 +1112,25 @@
    "publisher": "Ministério da Saúde (DATASUS)",
    "url": "https://dadosabertos.saude.gov.br/dataset/cnes-cadastro-nacional-de-estabelecimentos-de-saude",
    "licence": "cc-by ('Creative Commons Atribuição'), from the dataset page's licence field, opened 2026-11-20",
-   "verified": "dataset page opened 2026-11-20; licence field read. Coordinates (latitude and longitude) not verified; check the layout before a build.",
+   "verified": "dataset page opened 2026-11-20; licence field read. Second check (measured): full file cnes_estabelecimentos_csv.zip (57 MB, 233 MB CSV, ; separated, Latin-1, daily; copy of 2026-11-18) has NU_LATITUDE and NU_LONGITUDE; 643,594 rows, 584,475 with coordinates, 503,559 active.",
    "caveat": "The footer of the same portal says the site's content is CC BY-ND 3.0 (Atribuição-SemDerivações). That refers to the site, not to the dataset. The dataset licence field is the one that matters for the data; maintainers should confirm.",
-   "role": "candidate"
+   "role": "candidate",
+   "file_url": "https://s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/CNES/cnes_estabelecimentos_csv.zip",
+   "notes_second_check": "Self-declared coordinates. Drop type 22 (consultório isolado, about 312,000 rows). The separate UBS file writes longitude with a decimal comma and latitude with a decimal point."
   },
   "osm_counts": "Counts for hospital, clinic, fire_station and police are in osm_counts. Fire and police lists from the states were not checked.",
-  "shelters": "Not checked: no open national shelter list was found in this pass; OSM amenity=shelter not counted here."
+  "shelters": "Not checked: no open national shelter list was found in this pass; OSM amenity=shelter not counted here. Second check, São Paulo: of 899 amenity=shelter (Overpass server with data of 2026-06-01), 318 picnic_shelter, 176 lean_to, 159 no type, 133 pavilion, 63 gazebo, 41 public_transport, 9 other; social_facility=shelter mostly homeless (13 of 29). Not emergency shelters."
  },
  "open_questions": [
   "DF inside the BR-GO box: separate maps, or should the Goiás map include DF (as the Argentina proposal suggests for CABA)?",
   "Should BR- hyphenated codes become file and manifest names, with carry_over widened to match? That change touches the upgrade path and needs review.",
-  "Does the IBGE technical and legal note for the state malha allow a copy in a build?",
+  "IBGE licence: the malhas are CC BY 4.0 (second check). Remaining: whether Localidades 2022 is a derived product under the same note, and how the map credits IBGE for CNEFE.",
   "Trindade and Martim Vaz: a separate small map, or no map? No resident population was checked.",
   "Atol das Rocas (RN) and São Pedro e São Paulo (PE): not in the IBGE polygons; should either have a map?",
-  "Is there an open CEP-area or CEP-to-state source with clear rights? Without one, address search cannot split by state.",
-  "Water: ask ANA which licence applies to BHO 6 and ask CPRM for the SIAGAS data licence. Both fail the test until answered.",
-  "CNES: the dataset licence field says cc-by, but the portal footer says CC BY-ND for its site content. Maintainers should confirm which governs."
+  "CEP: no open CEP-area source; Correios DNE is sold. Splitting by state no longer depends on it: CNEFE carries COD_UF (second check). Address search still needs eight-digit CEPs, number after the street, Portuguese street words and accent folding.",
+  "Water: ask ANA which licence applies to BHO 6 and ask CPRM for the SIAGAS data licence. Both fail the test until answered. Second check: ANA's open data page says its data are free of licence restrictions; this covers BHO 6 and SNISB alike, and whether it is enough is for the maintainers.",
+  "CNES: the dataset licence field says cc-by, but the portal footer says CC BY-ND for its site content. Maintainers should confirm which governs. The file has coordinates (second check).",
+  "Crop classes: MapBiomas Collection 11 classes are known (second check); which map to the orchard, vineyard and berry kinds in tools/build_crops.py, and confirm CC BY 4.0 against the CC BY-SA reading of the terms page."
  ],
  "osm_counts": {
   "date": "2026-11-20",
@@ -1274,7 +1444,8 @@
     "dataset": "ANA Base Hidrográfica Ottocodificada (BHO 6)",
     "publisher": "ANA (Agência Nacional de Águas e Saneamento Básico)",
     "reason": "The metadata record (metadados.snirh.gov.br, opened 2026-11-20) states the licence field as 'O acesso ao dado é livre.' ('Access to the data is free.'). No licence is named, and nothing states that adaptation or commercial use is allowed. It fails the test.",
-    "next_step": "Ask ANA which licence applies to the BHO and to its dataset page on dadosabertos.ana.gov.br."
+    "next_step": "Ask ANA which licence applies to the BHO and to its dataset page on dadosabertos.ana.gov.br.",
+    "second_check": "ANA's open data page (opened) says its data are 'disponibilizados livremente … sem restrição de licenças, patentes ou mecanismos de controle'. BHO 6 is v6.2.4 of 2022-10-20 (GeoPackage; drainage 4.06 GB, catchments 20.1 GB: clip per state); BHAE v1.0 (2023-03-28) is a lighter version. Whether ANA's statement is enough is for the maintainers."
    },
    {
     "dataset": "CPRM SIAGAS (groundwater wells)",
@@ -1288,6 +1459,86 @@
     "reason": "Search results say the Ministry's open-data plans are CC BY-NC-SA 4.0 (non-commercial, share-alike). The plan PDFs were not opened. This is not used for any dataset here, and the CNES dataset's own licence field is cc-by.",
     "next_step": "None needed for CNES. Note only."
    }
+  ]
+ },
+ "second_check": {
+  "date": "2026-11-18 to 2026-11-24",
+  "about": "A second contributor checked the proposal again (follow-up to #346), partly with AI research agents reading publisher pages, files and APIs. Facts added carry the mark \"second check\", with \"measured\" where a file was parsed, a query was run or a count was made. São Paulo was worked through in the most detail."
+ },
+ "sao_paulo_detail": {
+  "about": "Second check. OSM counts: Overpass, area BR-SP admin_level 4, nodes+ways+relations, data up to 2026-11-18T21:29:06Z (measured). Official counts: active establishments in São Paulo.",
+  "osm_counts": {
+   "amenity=hospital": 1370,
+   "emergency=ambulance_station": 136,
+   "amenity=clinic": 2660,
+   "amenity=doctors": 541,
+   "amenity=pharmacy": 3403,
+   "amenity=fuel": 6465,
+   "amenity=school": 9046,
+   "waterway=dam": 305,
+   "man_made=water_tower": 3319,
+   "water=reservoir": 5465,
+   "shop=supermarket": 4229,
+   "amenity=community_centre": 689,
+   "amenity=townhall": 603,
+   "emergency=assembly_point": 10
+  },
+  "cnes_active_by_type": {
+   "5 general hospital": 785,
+   "7 specialised hospital": 194,
+   "73 pronto atendimento (incl. UPA)": 458,
+   "20 pronto socorro": 85,
+   "42 mobile emergency (mostly SAMU)": 1086,
+   "2 centro de saúde / UBS": 5340,
+   "1 posto": 267,
+   "43 pharmacy": 4932
+  },
+  "cnes_active_total": 116899,
+  "cnes_note": "All with coordinates; all but one inside the BR-SP box.",
+  "snisb_dams": {
+   "total": 1515,
+   "by_agency": {
+    "SP Águas": 1256,
+    "ANEEL": 169,
+    "ANM": 58,
+    "ANA": 30,
+    "CETESB": 2
+   }
+  },
+  "fuel_anp": {
+   "count": 8389,
+   "coordinates": false,
+   "licence": "none on the dataset page"
+  },
+  "schools_state_network": {
+   "dataset": "Secretaria da Educação SP, ENDERECO_ESCOLAS",
+   "count": 5582,
+   "coordinates": true,
+   "licence": "CC-BY-4.0"
+  },
+  "geosampa_city": {
+   "licence": "CC-BY-SA-4.0-GeoSampa",
+   "points": {
+    "fire stations": 40,
+    "civil police": 93,
+    "military police": 159,
+    "municipal guard": 48,
+    "civil defence": 34
+   },
+   "polygons": {
+    "geological risk": 1404,
+    "flood risk": 793
+   },
+   "also": "flood footprints for 5, 25 and 100 years"
+  },
+  "datageo_state": {
+   "licence": "none stated",
+   "layers": "Instituto Geológico 2014 landslide and flood risk (41 municipalities); 19 civil defence regions (polygons)"
+  },
+  "not_found": [
+   "open São Paulo state fire or police station list",
+   "emergency shelter list",
+   "public drinking water points (state, city or SABESP)"
   ]
  }
 }

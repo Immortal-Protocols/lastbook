@@ -308,8 +308,8 @@ def compare_pack_manifests(installed, new):
     when its size and SHA-256 are both the same, otherwise changed. A path that would leave the library ('..', a drive, a
     root or a backslash, on every system, as in _member_parts) is never kept: it goes in unsafe, apart from the rest, and
     counts toward no total.
-    Lists are sorted by path. fetch_bytes (added plus changed, at their new size) is what would have to come in;
-    reuse_bytes (unchanged) is what is already here."""
+    Lists are sorted by path. fetch_bytes estimates the transfer from added and changed entries at their new size.
+    reuse_bytes totals entries with matching sizes and checksums."""
     def safe(rel):
         parts = PurePosixPath(rel).parts
         return bool(parts) and '..' not in parts and ':' not in parts[0] and not rel.startswith('/') and not set('\\\x00') & set(rel)

@@ -1,0 +1,177 @@
+{
+  "checked": "2026-11-26",
+  "authorship": "Original contributor wording and planning prompts, with short factual references; not an adapted or reproduced agency manual.",
+  "licence": "CC BY4.0 applies only to original contributor writing. No agency body,PDF,map,diagram,media or branding bundled.",
+  "selections": [
+    {
+      "reader_id": "au-wa-local-plan",
+      "sha256": "8d5c5d6f044b630e9cb3e147beb66687f78744570dfd938acc21b696c26b8843",
+      "references": [
+        {
+          "label": "W1",
+          "source_id": "wa-aws"
+        },
+        {
+          "label": "W2",
+          "source_id": "wa-cyclone"
+        },
+        {
+          "label": "W3",
+          "source_id": "wa-animals"
+        },
+        {
+          "label": "W4",
+          "source_id": "wa-rights"
+        },
+        {
+          "label": "W5",
+          "source_id": "wa-roads"
+        }
+      ]
+    },
+    {
+      "reader_id": "au-tas-local-plan",
+      "sha256": "2f750a41cca5e31430ec2c9a5f4a0d96b3cb39114f6ff74136c68f02691c0242",
+      "references": [
+        {
+          "label": "T1",
+          "source_id": "tas-ready"
+        },
+        {
+          "label": "T2",
+          "source_id": "tas-warnings"
+        },
+        {
+          "label": "T3",
+          "source_id": "tas-last-resort"
+        },
+        {
+          "label": "T4",
+          "source_id": "tas-icons"
+        },
+        {
+          "label": "T5",
+          "source_id": "tas-storm"
+        }
+      ]
+    }
+  ],
+  "source_receipts": [
+    {
+      "id": "wa-aws",
+      "url": "https://dfes.wa.gov.au/hazard-information/warning-systems/australian-warning-system",
+      "final_url": "https://dfes.wa.gov.au/hazard-information/warning-systems/australian-warning-system",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 68353,
+      "sha256": "fdb99014553feb88d311be8e0b3927d7d3cd373dac2ee05b454b60546f099b97"
+    },
+    {
+      "id": "wa-cyclone",
+      "url": "https://www.dfes.wa.gov.au/hazard-information/cyclone/prepare",
+      "final_url": "https://www.dfes.wa.gov.au/hazard-information/cyclone/prepare",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 125268,
+      "sha256": "d90cdab8dd1704839ad9bd42c971529266a25dac02dd9fbc7538e5745084a349"
+    },
+    {
+      "id": "wa-bushfire",
+      "url": "https://dfes.wa.gov.au/hazard-information/bushfire/prepare",
+      "final_url": "https://dfes.wa.gov.au/hazard-information/bushfire/prepare",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 109476,
+      "sha256": "a5899f404fdd787d0ecbce65c15f2aea44cbc754e0f105d3bf234b462441fa22"
+    },
+    {
+      "id": "wa-rights",
+      "url": "https://www.dfes.wa.gov.au/copyright",
+      "final_url": "https://www.dfes.wa.gov.au/copyright",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 31888,
+      "sha256": "7994af1e86dbb262b30e256f12e8f989bc60775d1ec418eec2a9cb69fe3c1cac"
+    },
+    {
+      "id": "wa-animals",
+      "url": "https://www.dpird.wa.gov.au/businesses/animal-welfare-businesses/animal-welfare-in-emergencies/",
+      "final_url": "https://www.dpird.wa.gov.au/businesses/animal-welfare-businesses/animal-welfare-in-emergencies/",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 177892,
+      "sha256": "f2fbc6bbf17865c489452f6a5e38b69737222d6ec6341cc1d371862d9abba9d2"
+    },
+    {
+      "id": "wa-roads",
+      "url": "https://www.mainroads.wa.gov.au/travel-information/",
+      "final_url": "https://www.mainroads.wa.gov.au/travel-information/",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 81067,
+      "sha256": "17c48a8aa138a35c9cc5a643f3e6f69127e6518d689ecbcf0b412a8826c10a6c"
+    },
+    {
+      "id": "tas-ready",
+      "url": "https://www.ses.tas.gov.au/plan-prepare/get-ready/",
+      "final_url": "https://www.ses.tas.gov.au/plan-prepare/get-ready/",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 76186,
+      "sha256": "21571512362bf90d212ba93cef6bb1fd2f4895b18f38117c9d6615126f0a8cca"
+    },
+    {
+      "id": "tas-warnings",
+      "url": "https://www.ses.tas.gov.au/keep-safe/warnings/",
+      "final_url": "https://www.ses.tas.gov.au/keep-safe/warnings/",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 76165,
+      "sha256": "e5c652bff903707f9be550f242848a5e6384945ceaf429b442e57099e2cf291e"
+    },
+    {
+      "id": "tas-storm",
+      "url": "https://www.ses.tas.gov.au/about/ses-storm-warning-system/preparing-for-storms/",
+      "final_url": "https://www.ses.tas.gov.au/about/ses-storm-warning-system/preparing-for-storms/",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 61727,
+      "sha256": "2d99bdddf3814760ac53a375725c0595708c9ccd5ab14071a483fe022d70f19e"
+    },
+    {
+      "id": "tas-last-resort",
+      "url": "https://www.fire.tas.gov.au/Show?pageId=colNearBySaferPlaces",
+      "final_url": "https://www.fire.tas.gov.au/Show?pageId=colNearBySaferPlaces",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 33844,
+      "sha256": "22e6476db3f758494fa1c0a9b07b338dca5a720929d658e12873fc1146f5f47a"
+    },
+    {
+      "id": "tas-icons",
+      "url": "https://alert.tas.gov.au/know-your-map-icons",
+      "final_url": "https://alert.tas.gov.au/know-your-map-icons",
+      "status": 200,
+      "retrieved_at": "2026-11-26",
+      "bytes": 513278,
+      "sha256": "c83d69d0af6d4af8f74f4f0a237f2d49ff7820949fbcb2d8d2a31ef9421728da"
+    },
+    {
+      "id": "tas-rights",
+      "url": "https://www.tas.gov.au/codi",
+      "error": "HTTP Error 403: Forbidden"
+    }
+  ],
+  "rights": {
+    "dfes": "Prior written permission required for reproduction/reformatting; no grant claimed. Policy raw receipt wa-rights.",
+    "tasmania": "General licence is noncommercial, not unrestricted redistribution. Current official policy read through web; raw fetch returned403, recorded without fabricated hash. SES links to this general policy.",
+    "dpird": "No unrestricted exact-site grant established; no agency text/manual is reproduced or relicensed.",
+    "permission_enquiries": "None sent."
+  },
+  "factual_scope": {
+    "wa": "2024 warning-system transition/current level names; cyclone wind/surge/flood distinction; animal/assistance-animal accommodation distinction; exact DFES service purposes; Main Roads travel-map role.",
+    "tas": "SES dependency and warning references; TFS last-resort/evacuation distinction; TasALERT icon/incident/road-reporting limits; exact SES service purposes."
+  },
+  "source_date_limits": "TFS footer generates current time on request; not a new clinical/fire-safety review. Retrieval/check date does not establish substantive publication/review date.",
+  "limits": "Not current warnings or verified local route/centre/animal capacity, building/fire/veterinary/accessibility/community approval, a completed personal plan or complete WA/Tas coverage."
+}

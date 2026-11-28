@@ -1,0 +1,162 @@
+{
+  "checked": "2026-11-26",
+  "authorship": "Original Lastbook Australia contributor text, prompts and organisation. CC BY4.0 applies to this new writing. No agency manual/text/artwork reproduced or relicensed.",
+  "sources": [
+    {
+      "id": "beacon-deployment",
+      "url": "https://beacons.amsa.gov.au/activation/deployment.asp",
+      "final_url": "https://beacons.amsa.gov.au/activation/deployment.asp",
+      "retrieved_at": "2026-11-26",
+      "bytes": 21989,
+      "raw_sha256": "30cef5f98524f86298526ce3fcaab5c62687790ca84d9d7c2ec786db510b3e1a"
+    },
+    {
+      "id": "beacon-home",
+      "url": "https://beacons.amsa.gov.au/",
+      "final_url": "https://beacons.amsa.gov.au/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 23941,
+      "raw_sha256": "1da105a3322ca5fb687909b99b254709c7d53e3a74f5102e0eb5327f58812fa6"
+    },
+    {
+      "id": "beacon-maintenance",
+      "url": "https://beacons.amsa.gov.au/maintenance/index.asp",
+      "final_url": "https://beacons.amsa.gov.au/maintenance/index.asp",
+      "retrieved_at": "2026-11-26",
+      "bytes": 21813,
+      "raw_sha256": "137b8fec76b8b5af88f86e010d723f58611622a68d30536cff668d44fbc40c7a"
+    },
+    {
+      "id": "beacon-registration",
+      "url": "https://beacons.amsa.gov.au/registration/index.asp",
+      "final_url": "https://beacons.amsa.gov.au/registration/index.asp",
+      "retrieved_at": "2026-11-26",
+      "bytes": 28147,
+      "raw_sha256": "9ad962d423961ced9f66fdf60c414f30e5e3d906ce42754225197fa862e57974"
+    },
+    {
+      "id": "beacon-response",
+      "url": "https://beacons.amsa.gov.au/about/how-they-work.asp",
+      "final_url": "https://beacons.amsa.gov.au/about/how-they-work.asp",
+      "retrieved_at": "2026-11-26",
+      "bytes": 25054,
+      "raw_sha256": "5573c20d0228c56928cf6c23187f7bb9201d84875e4f70ba3cbd713af29855eb"
+    },
+    {
+      "id": "beacon-use",
+      "url": "https://beacons.amsa.gov.au/activation/",
+      "final_url": "https://beacons.amsa.gov.au/activation/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 21271,
+      "raw_sha256": "036518c02ad463fc0af4db752831affdaeaf7a2cf35853d2cfc50f039a403b07"
+    },
+    {
+      "id": "breakdown-context",
+      "url": "https://parks.qld.gov.au/parks/moorrinya/visiting-safely",
+      "error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "missing-person-report",
+      "url": "https://www.police.tas.gov.au/what-we-do/missing-persons/",
+      "final_url": "https://www.police.tas.gov.au/what-we-do/missing-persons/",
+      "retrieved_at": "2026-11-26",
+      "bytes": 72383,
+      "raw_sha256": "495c2de79df445947d37525986e3925f46a31cdeb1773b285f07a12044f5b279"
+    },
+    {
+      "id": "mygov-remote",
+      "url": "https://my.gov.au/en/services/living-arrangements/coming-to-australia/coming-to-australia-to-visit/tips-when-you-visit/staying-safe-when-you-visit-australia/safety-while-you-re-travelling-in-australia",
+      "final_url": "https://my.gov.au/en/services/living-arrangements/coming-to-australia/coming-to-australia-to-visit/tips-when-you-visit/staying-safe-when-you-visit-australia/safety-while-you-re-travelling-in-australia",
+      "retrieved_at": "2026-11-26",
+      "bytes": 75088,
+      "raw_sha256": "5e7e1872ce047258c0e4feac78629e28dda5963a7530d5e225506e4a18a9ad3f"
+    },
+    {
+      "id": "property-flood",
+      "url": "https://www.nsw.gov.au/regional-and-primary-industries/climate-and-emergencies/flood-advice-for-landholders/prepare-your-farm-and-property-for-flood",
+      "final_url": "https://www.nsw.gov.au/regional-and-primary-industries/climate-and-emergencies/flood-advice-for-landholders/prepare-your-farm-and-property-for-flood",
+      "retrieved_at": "2026-11-26",
+      "bytes": 155438,
+      "raw_sha256": "0a270e5bc27ce8ead4be4cf54814d71e522675c2cff251dc99fcf354c899a8e3"
+    },
+    {
+      "id": "qld-trip",
+      "url": "https://www.getready.qld.gov.au/prepare/travel",
+      "final_url": "https://www.getready.qld.gov.au/prepare/travel",
+      "retrieved_at": "2026-11-26",
+      "bytes": 169682,
+      "raw_sha256": "ce1a5a172b1d27a81347c002e517c70fae5dc759cd55052d0d6e681df00b1fe4"
+    }
+  ],
+  "claims": [
+    {
+      "reading": "au-remote-trip-plan",
+      "facts": "Area research, fuel/rest stops, food/water and communications preparation.",
+      "sources": [
+        "mygov-remote",
+        "qld-trip"
+      ],
+      "distinction": "The leg records and arithmetic are original planning structure, not an agency-approved allowance, formula for a safe trip or supplied minimum."
+    },
+    {
+      "reading": "au-remote-trip-plan",
+      "facts": "No 24-hour wait for a missing-person report; unknown whereabouts plus welfare concerns warrant prompt police contact.",
+      "sources": [
+        "missing-person-report"
+      ],
+      "distinction": "No national police intake number/procedure inferred from the Tasmania page. ACMA bundled emergency source supplies emergency-call scope."
+    },
+    {
+      "reading": "au-remote-trip-plan",
+      "facts": "In remote breakdown context, stay with the vehicle because it is more visible; mobile emergency calls need network coverage.",
+      "sources": [
+        "breakdown-context"
+      ],
+      "distinction": "Raw HTTP403. Primary web-search result on26November exposed full Staying safe and In an emergency sections; factual paraphrase only. No park-specific availability or water-treatment recipe adopted. Immediate-danger caveat prevents treating this as an instruction to remain in fire/flood/traffic."
+    },
+    {
+      "reading": "au-isolation-plan",
+      "facts": "NSW farm flood preparation includes isolation supplies protected above flood levels and early animal movement.",
+      "sources": [
+        "property-flood"
+      ],
+      "distinction": "Specific NSW quantities/rules not nationalised. Dependency worksheet is original; bundled Queensland inclusive/mobility, ESV, NSWwater and food readings are cross-references, not newly copied bodies or clinical/electrical prescriptions."
+    },
+    {
+      "reading": "au-beacon-preparation",
+      "facts": "Registration ceased expiring4November2024; keep details current; borrower contacts/trip details and offline confirmation.",
+      "sources": [
+        "beacon-home",
+        "beacon-registration"
+      ],
+      "distinction": "Battery expiry remains separate; no marine/aviation carriage approval or overseas permission inferred."
+    },
+    {
+      "reading": "au-beacon-preparation",
+      "facts": "Battery label expiry; manufacturer self-test/frequency; excess tests drain battery; manufacturer/certified agent after distress use.",
+      "sources": [
+        "beacon-maintenance"
+      ],
+      "distinction": "No universal test interval, battery lifetime, button sequence or servicing instructions."
+    },
+    {
+      "reading": "au-beacon-preparation",
+      "facts": "Life-threatening distress and unavailable two-way help; group/separated-group distinction; accidental off+AMSA1800641792/no penalty.",
+      "sources": [
+        "beacon-use"
+      ],
+      "distinction": "Activation depends on actual model; group guidance is a factual summary. Accidental cancellation is separated from genuine-distress keep-on instruction."
+    },
+    {
+      "reading": "au-beacon-preparation",
+      "facts": "Land antenna upright/open sky away from obstructions; rescue delay depends on weather/terrain/access/remoteness; genuine alert remains on until rescue authority direction.",
+      "sources": [
+        "beacon-deployment",
+        "beacon-response"
+      ],
+      "distinction": "No numeric sky angle adopted: source prose/image alt differ. No old technical satellite timing/system diagram, guaranteed arrival, dangerous climb or water-deployment instructions."
+    }
+  ],
+  "limits": "Not a route-specific safe allowance, device-specific manual, clinical/electrical/fire/accessibility validation or completion of all Australian coverage. No personal plan entered, itinerary lodged, registration submitted, calls placed or live service/road verification.",
+  "rights_review": "AMSA beacon site copyright requires permission to reproduce its material. This contribution uses independently worded factual summaries with attributed addresses, not copied agency paragraphs/manuals. Tasmania SES general policy is non-commercial; DFES requires permission. Neither manual/body is included."
+}

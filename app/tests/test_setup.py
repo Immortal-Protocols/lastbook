@@ -1299,7 +1299,10 @@ class SplitPacks(Base):
 class Jobs(Base):
     def test_first_run_end_to_end(self):
         s = self.setup()
-        st = s.state()
+        # A synthetic library recommendation must not depend on the real host's
+        # production 5–20 GB free-space reserve.
+        with mock.patch.object(hardware, 'disk_of', return_value=(10 ** 12, 2 * 10 ** 12)):
+            st = s.state()
         self.assertEqual(st['mode'], 'first-run')
         self.assertEqual(st['recommend']['pack'], 'small')
         self.assertNotIn('url', json.dumps(st['manifest']))
@@ -4300,7 +4303,8 @@ class Maps(Base):
             a = s.start('small', False)['need_bytes']
             b = s.start('small', False, map_id='CA')['need_bytes']
         self.assertEqual(b - a, mf.map('CA')['download_bytes'] + mf.map('CA')['installed_bytes'])
-        self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
+        with mock.patch.object(hardware, 'disk_of', return_value=(10 ** 12, 2 * 10 ** 12)):
+            self.assertIn('CA', s.state()['recommend']['map_need_bytes'])
         self.assertIn('maps', s.state()['manifest'])
         self.assertEqual(s.start(None, False, map_id='CA')['code'], 'nothing')    # first run: a library first
 

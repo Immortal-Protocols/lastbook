@@ -1,114 +1,168 @@
 {
- "water": {
-  "missing": [
-   "No current CDC or EPA page on disinfecting drinking water. Every bleach dose here assumes 5–6% bleach, and today's stronger US bleach labels are not covered.",
-   "No guidance on choosing certified filters or tablets, storing water in large barrels, or treating pool or spa water.",
-   "No local water utility's boil-water notice material.",
-   "No source on how tall buildings get their water (roof tanks, booster pumps), or how long taps keep running on upper floors in a blackout.",
-   "No official guide to water in an apartment or high-rise when the power is out; the readings for it here are general.",
-   "No source on how salty or polluted particular city rivers, harbors or canals are, or what home treatment does to a mix of sewage and chemicals beyond the general warnings here."
-  ],
-  "disagree": [
-   "Sources give different bleach drop counts. Each card states the bleach strength its own source assumes — follow one source's method fully rather than mixing them.",
-   "Water-heater water: the FEMA/Red Cross booklet (2004) lists the hot-water tank among safe water sources in the home; the Norwegian civil protection guide (2024) says water from the water heater should not be used for drinking."
-  ]
- },
- "sanitation": {
-  "missing": [
-   "No US (CDC, FEMA or Red Cross) guide to bucket or bag emergency toilets, or to cleaning up sewage backups. The closest are a Norwegian civil-protection guide, WHO notes written for camps and a 1987 book.",
-   "Almost no sanitation videos."
-  ]
- },
- "food": {
-  "missing": [
-   "No USDA FSIS “Keeping Food Safe During an Emergency” or FoodKeeper chart.",
-   "No current guide to long-term bulk storage (grains, oxygen absorbers).",
-   "No CDC carbon monoxide fact sheet in English (the US Fire Administration generator flyer here is in Spanish)."
-  ]
- },
- "preserve": {
-  "missing": [
-   "The book “So Easy to Preserve” is not in the library; NCHFP web pages and the USDA canning guide are."
-  ]
- },
- "hurt": {
-  "missing": [
-   "No simple mass-casualty triage method (such as START) written for the public. The medical encyclopedia’s START article (under Go deeper) explains it, but is written for responders.",
-   "No stand-alone psychological first aid guide. The medical encyclopedia has an overview article (under Go deeper), but not a guide to follow.",
-   "No agency videos on carbon monoxide or burns.",
-   "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available."
-  ],
-  "disagree": [
-   "Heat stroke: the CERT manual says give no fluids; New Where There Is No Doctor says give drinks once the person is alert. Follow trained help if you can reach it.",
-   "CPR: the 2025 Red Cross/Red Crescent guidelines say checking for a pulse is unreliable for first aiders; New Where There Is No Doctor says to check for a pulse.",
-   "Poisoning: this guide follows the 2025 Red Cross/Red Crescent guidelines: do not induce vomiting, and give no milk, water or charcoal unless a poison centre says to. The First Aid chapter of New Where There Is No Doctor (2020) instead advises water and activated charcoal for most poisons."
-  ]
- },
- "health": {
-  "missing": [
-   "The full WHO mhGAP mental-health guide is only here in Arabic; the English item is a one-page update.",
-   "No pharmacy or compounding manual; medicine references (MSF Essential Drugs) are written for clinicians."
-  ]
- },
- "shelter": {
-  "missing": [
-   "No EPA or CDC wildfire smoke health guide. The medical encyclopedia’s Air quality index article (under Go deeper) explains the numbers, but there is no agency explainer.",
-   "Most outdoor-shelter videos are hobbyist channels without captions.",
-   "No city guidance on cooling centers or on heat in apartments without air conditioning."
-  ],
-  "disagree": [
-   "Heat stroke: CERT says no fluids; New Where There Is No Doctor says drinks once alert."
-  ]
- },
- "power": {
-  "missing": [
-   "No manual for EcoFlow, Jackery or similar battery power stations.",
-   "Nothing from FDA or health agencies on keeping CPAP or oxygen machines running in an outage beyond Red Cross/FEMA planning advice.",
-   "No local utility's material on gas meters, seismic shut-off valves or planned power shut-offs.",
-   "No power outage guide written for people living in apartment or high-rise buildings, and nothing for residents on being stuck in an elevator.",
-   "Nothing on camp stoves or generators on apartment balconies specifically; the general 20-foot rule is in the FEMA outage sheet. U.S. Fire Administration guidance says not to store or use a grill on a porch or balcony."
-  ]
- },
- "energy": {
-  "missing": [
-   "Micro-hydro and wind material is mostly old or utility-scale.",
-   "No official, beginner-level guide to pedal power or to charging a battery from it safely. The two Appropedia build guides (route step 7) are community-written and leave out battery gas and ventilation."
-  ]
- },
- "comms": {
-  "missing": [
-   "No text of the FCC amateur radio rules (Part 97) or current GMRS licence guidance; the ham study guide covers the 2014–2018 question pool.",
-   "No modern civilian land-navigation manual."
-  ],
-  "disagree": [
-   "Sources disagree on the GMRS licence term (ARES 2015 vs TACDA)."
-  ]
- },
- "disaster": {
-  "missing": [
-   "No California tsunami inundation maps or local tsunami zone guide.",
-   "No EPA/CDC wildfire smoke guide.",
-   "No guidance on getting out of a subway or other transit during an emergency, or on what to do when transit stops running.",
-   "No fire department guidance on when to stay inside a fire-resistant apartment building during a fire elsewhere in it.",
-   "City guides such as NYC Emergency Management's Ready New York series are not in the library."
-  ]
- },
- "grow": {
-  "missing": [
-   "No current coastal Southern California planting calendar in text form (the UC Ventura chart is a scanned image).",
-   "No extension guides for dry beans, winter squash or home-scale grains; the sweet potato guide is for hotter Sacramento."
-  ]
- },
- "land": {
-  "missing": [
-   "No California Geological Survey liquefaction or fault-zone maps, tsunami inundation maps or FEMA flood maps.",
-   "No regional guide to edible or poisonous wild plants."
-  ]
- },
- "repair": {
-  "missing": [
-   "No general home-repair guide (drywall, outlets, doors and windows); plumbing comes from a Navy manual.",
-   "No modern welding safety standard (ANSI Z49.1 / OSHA); the Steelworker manual is historical."
-  ]
- }
+  "water": {
+    "missing": [
+      "No current CDC or EPA page on disinfecting drinking water. The core overseas bleach readings assume 5–6% bleach; the optional NSW rainwater-tank source has different product strengths and tank quantities. Keep each complete source method within its stated context; stronger household bleach labels are not covered by a universal dose here.",
+      "No guidance on choosing certified filters or tablets, storing water in large barrels, or treating pool or spa water.",
+      "No local water utility's boil-water notice material.",
+      "No source on how tall buildings get their water (roof tanks, booster pumps), or how long taps keep running on upper floors in a blackout.",
+      "No official guide to water in an apartment or high-rise when the power is out; the readings for it here are general.",
+      "No source on how salty or polluted particular city rivers, harbors or canals are, or what home treatment does to a mix of sewage and chemicals beyond the general warnings here."
+    ],
+    "disagree": [
+      "Sources give different bleach drop counts. Each card states the bleach strength its own source assumes — follow one source's method fully rather than mixing them.",
+      "Water-heater water: the FEMA/Red Cross booklet (2004) lists the hot-water tank among safe water sources in the home; the Norwegian civil protection guide (2024) says water from the water heater should not be used for drinking.",
+      "When the Australian sources are installed, the NSW rainwater-tank reading retains different tap-flushing durations in its introduction and FAQs and flags them. Its tank-cleaning and treatment quantities are not a small-container drinking-water recipe."
+    ]
+  },
+  "sanitation": {
+    "missing": [
+      "No US (CDC, FEMA or Red Cross) guide to bucket or bag emergency toilets, or to cleaning up sewage backups. The closest are a Norwegian civil-protection guide, WHO notes written for camps and a 1987 book. The optional Australian supplement adds NSW Health flood-affected septic/AWTS assessment guidance, not a sewage-cleanup or bucket-toilet procedure.",
+      "Almost no sanitation videos."
+    ]
+  },
+  "food": {
+    "missing": [
+      "No USDA FSIS “Keeping Food Safe During an Emergency” or FoodKeeper chart.",
+      "No current guide to long-term bulk storage (grains, oxygen absorbers).",
+      "No CDC carbon monoxide fact sheet in English (the US Fire Administration generator flyer here is in Spanish)."
+    ]
+  },
+  "preserve": {
+    "missing": [
+      "The book “So Easy to Preserve” is not in the library; NCHFP web pages and the USDA canning guide are."
+    ]
+  },
+  "hurt": {
+    "missing": [
+      "No simple mass-casualty triage method (such as START) written for the public. The medical encyclopedia’s START article (under Go deeper) explains it, but is written for responders.",
+      "No full stand-alone psychological first aid manual. The optional nonprofit MHFA adult traumatic-event guideline appears when separately installed; it is not the Australian Red Cross PFA manual. Existing encyclopedia material remains an overview.",
+      "No agency videos on carbon monoxide or burns.",
+      "“New Where There Is No Doctor” is incomplete here: some chapters listed in its contents (mental health, older people, disasters, medicines) were not available.",
+      "Australian ANZCOR CPR,anaphylaxis,snake,spider,marine and pressure-immobilisation originals appear only when separately installed for personal use. Public redistribution rights and complete Australian first-aid coverage remain unresolved; source links do not replace training or clinical assessment."
+    ],
+    "disagree": [
+      "Snakebite: IFRC’s limited-resource section includes washing the wound; ANZCOR’s Australian snakebite guideline advises against washing. These are different source contexts. The unchanged Australian originals appear only when separately installed for personal use; they are not in the public supplement.",
+      "Heat stroke: the CERT manual says give no fluids; New Where There Is No Doctor says give drinks once the person is alert. Follow trained help if you can reach it.",
+      "CPR: the 2025 Red Cross/Red Crescent guidelines say checking for a pulse is unreliable for first aiders; New Where There Is No Doctor says to check for a pulse.",
+      "Poisoning: this guide follows the 2025 Red Cross/Red Crescent guidelines: do not induce vomiting, and give no milk, water or charcoal unless a poison centre says to. The First Aid chapter of New Where There Is No Doctor (2020) instead advises water and activated charcoal for most poisons."
+    ]
+  },
+  "health": {
+    "missing": [
+      "The full WHO mhGAP mental-health guide is only here in Arabic; the English item is a one-page update.",
+      "No pharmacy or compounding manual; medicine references (MSF Essential Drugs) are written for clinicians."
+    ]
+  },
+  "shelter": {
+    "missing": [
+      "No EPA or CDC wildfire-smoke health guide. When the optional Australian sources are installed, this guide links dated NSW Health smoke, higher-risk and mask readings; the offline copy supplies no live air-quality information.",
+      "Most outdoor-shelter videos are hobbyist channels without captions.",
+      "No city guidance on cooling centers or on heat in apartments without air conditioning."
+    ],
+    "disagree": [
+      "Heat stroke: CERT says no fluids; New Where There Is No Doctor says drinks once alert.",
+      "Generator siting sources differ: US FEMA uses a distance rule; the optional Victorian source describes sheltered outdoor locations with exhaust and ventilation conditions. A particular carport or veranda is not assessed here. Read the complete source and equipment instructions; do not combine fragments into a new siting rule."
+    ]
+  },
+  "power": {
+    "missing": [
+      "No manual for EcoFlow, Jackery or similar battery power stations.",
+      "Nothing from FDA or health agencies on keeping CPAP or oxygen machines running in an outage beyond Red Cross/FEMA planning advice.",
+      "No local utility's material on gas meters, seismic shut-off valves or planned power shut-offs.",
+      "No power outage guide written for people living in apartment or high-rise buildings, and nothing for residents on being stuck in an elevator.",
+      "Nothing on camp stoves or generators on apartment balconies specifically; the general 20-foot rule is in the FEMA outage sheet. U.S. Fire Administration guidance says not to store or use a grill on a porch or balcony."
+    ],
+    "disagree": [
+      "Generator siting sources differ: US FEMA uses a distance rule; the optional Victorian source describes sheltered outdoor locations with exhaust and ventilation conditions. A particular carport or veranda is not assessed here. Read the complete source and equipment instructions; do not combine fragments into a new siting rule."
+    ]
+  },
+  "energy": {
+    "missing": [
+      "Micro-hydro and wind material is mostly old or utility-scale.",
+      "No official, beginner-level guide to pedal power or to charging a battery from it safely. The two Appropedia build guides (route step 7) are community-written and leave out battery gas and ventilation."
+    ]
+  },
+  "comms": {
+    "missing": [
+      "No text of the FCC amateur radio rules (Part 97) or current GMRS licence guidance; the ham study guide covers the 2014–2018 question pool.",
+      "No modern civilian land-navigation manual."
+    ],
+    "disagree": [
+      "Sources disagree on the GMRS licence term (ARES 2015 vs TACDA)."
+    ]
+  },
+  "disaster": {
+    "missing": [
+      "No California tsunami inundation maps or local tsunami zone guide.",
+      "No EPA/CDC wildfire-smoke guide. Dated NSW Health smoke, higher-risk and mask readings appear when the optional Australian sources are installed; local warnings and air quality still require current information.",
+      "No guidance on getting out of a subway or other transit during an emergency, or on what to do when transit stops running.",
+      "No fire department guidance on when to stay inside a fire-resistant apartment building during a fire elsewhere in it.",
+      "City guides such as NYC Emergency Management's Ready New York series are not in the library."
+    ]
+  },
+  "grow": {
+    "missing": [
+      "No current coastal Southern California planting calendar in text form (the UC Ventura chart is a scanned image).",
+      "No extension guides for dry beans, winter squash or home-scale grains; the sweet potato guide is for hotter Sacramento."
+    ]
+  },
+  "land": {
+    "missing": [
+      "No California Geological Survey liquefaction or fault-zone maps, tsunami inundation maps or FEMA flood maps.",
+      "No regional guide to edible or poisonous wild plants."
+    ]
+  },
+  "repair": {
+    "missing": [
+      "No general home-repair guide (drywall, outlets, doors and windows); plumbing comes from a Navy manual.",
+      "No modern welding safety standard (ANSI Z49.1 / OSHA); the Steelworker manual is historical."
+    ]
+  },
+  "au-household": {
+    "missing": [
+      "This Australian supplement is a starting collection, not complete survival coverage. It carries dated source snapshots, not live warnings, road closures or open evacuation centres. Seven complete national Get Ready standard English factsheet texts cover bushfire, cyclone, earthquake, flood, heatwave, storm and tsunami preparedness; these short texts do not replace local response plans or the separately illustrated Easy Read editions.",
+      "Most detailed local manuals outside NSW/Queensland still need review. A Victorian generator-usage section is included; the directory covers the other warning authorities.",
+      "External-territory emergency arrangements and maps need separate verification.",
+      "State-wide maps, Australian town/address search, elevation, and verified facility status are not supplied by this text supplement.",
+      "Victorian energy/gas and Queensland disability-planning readings are included. Four short Queensland poster texts in Yumplatok and Wik-Mungkan retain published wording without new translation, but artwork is excluded and these are not validated accessible editions or detailed hazard-response manuals. Other languages, community-specific planning, equipment-specific instructions and independent review remain incomplete.",
+      "Queensland road-condition,motorway-breakdown and seven-step recovery-strap text plus selected2014vehicle/packing checks are included. These retain source dates and regional/equipment limits;they do not supply a model-specific recovery,winching,beacon or vehicle-failure manual,live road/tide conditions or an assessed remote route/supply plan.",
+      "Fourteen publisher-written Chinese national factsheet texts add seven hazards in each of Simplified and Traditional Chinese. Script and published conditions remain; English interface/source notes remain. This does not provide independently reviewed translations, script conversion, Easy Read, offline interpreted audio, other language coverage or community/accessibility review.",
+      "An original Northern Territory planning worksheet connects verified factual NT references to warnings,shelter/animal arrangements and isolation dependencies. SecureNT/NTES reserved agency articles,official shelter maps and translated resources are not bundled;complete NT/local manuals,professional/community review,current openings/routes and actual plans remain incomplete.",
+      "Original WA and Tasmanian local planning readings now cover dated warning-system facts, separate destination/animal arrangements and access dependencies. Full reserved agency manuals, actual local risk/access/opening checks, suitable plans and professional/community review remain incomplete.",
+      "Seven publisher-written Arabic national hazard factsheet texts are included, with source glyph recovery and RTL/numeric rendering. This does not provide a translated interface, independent translation/accessibility/audio review, community review or local warnings/routes/service access.",
+      "Four dated NSW Health smoke/mask/higher-risk and flooded-wastewater readings are included. These do not provide live air quality/warnings, personal clinical plans, external asthma first-aid resources or site-specific wastewater assessment and council approval."
+    ],
+    "disagree": [
+      "Do not silently combine chemical-disinfection recipes from different sources. Only the drinking-water section of Food and drinking water is retained; food guidance comes from the separate Queensland food-safety page."
+    ]
+  },
+  "au-rural": {
+    "missing": [
+      "This Australian supplement is a starting collection, not complete survival coverage. It carries dated source snapshots, not live warnings, road closures or open evacuation centres. Seven complete national Get Ready standard English factsheet texts cover bushfire, cyclone, earthquake, flood, heatwave, storm and tsunami preparedness; source kit quantities do not establish adequacy for a particular remote trip or period of isolation.",
+      "Most detailed local manuals outside NSW/Queensland still need review. A Victorian generator-usage section is included; the directory covers the other warning authorities.",
+      "External-territory emergency arrangements and maps need separate verification.",
+      "State-wide maps, Australian town/address search, elevation, and verified facility status are not supplied by this text supplement.",
+      "National remote-travel basics and original route/supply/check-in, isolation-dependency and land-beacon planning aids are included. The worksheets provide no universal water/fuel allowance, safe route approval or device-specific activation instructions. Four short Queensland poster texts in Yumplatok and Wik-Mungkan are included, but are not detailed response manuals, independently reviewed translations or plans for all First Nations communities. Detailed remote driving/recovery, actual route supplies, manufacturer manuals, pastoral fire planning outside NSW and community-specific planning still need sources and review.",
+      "Queensland road-condition,motorway-breakdown and seven-step recovery-strap text plus selected2014vehicle/packing checks are included. These retain source dates and regional/equipment limits;they do not supply a model-specific recovery,winching,beacon or vehicle-failure manual,live road/tide conditions or an assessed remote route/supply plan.",
+      "Fourteen publisher-written Chinese national factsheet texts add seven hazards in each of Simplified and Traditional Chinese. Script and published conditions remain; English interface/source notes remain. This does not provide independently reviewed translations, script conversion, Easy Read, offline interpreted audio, other language coverage or community/accessibility review.",
+      "An original Northern Territory planning worksheet connects verified factual NT references to warnings,shelter/animal arrangements and isolation dependencies. SecureNT/NTES reserved agency articles,official shelter maps and translated resources are not bundled;complete NT/local manuals,professional/community review,current openings/routes and actual plans remain incomplete.",
+      "Original WA and Tasmanian local planning readings now cover dated warning-system facts, separate destination/animal arrangements and access dependencies. Full reserved agency manuals, actual local risk/access/opening checks, suitable plans and professional/community review remain incomplete.",
+      "Seven publisher-written Arabic national hazard factsheet texts are included, with source glyph recovery and RTL/numeric rendering. This does not provide a translated interface, independent translation/accessibility/audio review, community review or local warnings/routes/service access.",
+      "Four dated NSW Health smoke/mask/higher-risk and flooded-wastewater readings are included. These do not provide live air quality/warnings, personal clinical plans, external asthma first-aid resources or site-specific wastewater assessment and council approval."
+    ]
+  },
+  "au-health": {
+    "missing": [
+      "NSW Health’s complete bat-exposure factsheet appears when installed. Other Australian first-aid topics remain incomplete. ANZCOR originals are separate personal-use copies. The source audits record site-specific rights and remaining clinical-context differences; the Queensland medical candidates are not bundled.",
+      "Queensland’s older general bites-and-stings page was reviewed and not selected; do not use a generic overseas snakebite guide as an Australian substitute.",
+      "The two SCHN CPR videos are existing optional library resources, not new media included in this text supplement."
+    ]
+  },
+  "au-personal-first-aid": {
+    "missing": [
+      "These source PDFs and their extracted text are personal-use copies, not part of the public reference download. Public redistribution needs rights-holder permission.",
+      "The source set does not include every cross-referenced guideline or all first-aid topics. Original publication/review dates and audience restrictions remain in each PDF.",
+      "The guide describes readings and cites original pages; it has not undergone an independent clinical review."
+    ]
+  }
 }

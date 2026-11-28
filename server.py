@@ -207,12 +207,40 @@ def zim_names():
     return encyclopedias.list_files(LIB)
 
 
+def doc_here(doc):
+    """A catalogue entry can outlive a moved or disconnected source folder.
+
+    Check the file on every resolution, independently of the catalogue's mtime,
+    so moving it back also restores its guide links without an index rebuild.
+    Developer libraries may explicitly store their videos on another machine.
+    """
+    record = catalog()['by_id'].get(doc)
+    if not record or not isinstance(record.get('path'), str):
+        return False
+    path = record['path']
+    request_path = '/' + path
+    # Match the reader's library URL scope and decoded-path checks before its
+    # shared on-disk policy. Catalogue paths are filenames, not URLs to unquote.
+    if (not request_path.startswith(Handler.LIBRARY_PREFIXES) or '\0' in path
+            or '/..' in request_path or '\\' in path or not library.segments_ok(request_path)):
+        return False
+    file = LIB / path
+    if not library.library_file_ok(LIB, file, folders=True, served_only=Handler.SERVED_ONLY):
+        return False
+    if record.get('kind') == 'video' and path in remote_records():
+        return True
+    try:
+        return file.is_file()
+    except (OSError, ValueError):
+        return False
+
+
 def item_here(i, zims):
     """Is what this guide item opens in this library? An item that opens nothing is hidden, not sent Home with no message."""
     if i.get('zim'):
         parts = i['zim'].split('/')
         return len(parts) > 1 and parts[1] in zims
-    return not i.get('doc') or i['doc'] in catalog()['by_id']
+    return not i.get('doc') or doc_here(i['doc'])
 
 
 def resolve_item(i):
@@ -240,6 +268,9 @@ def topics_resolved():
         return step.get('goto') or step['read'] or not step['had']
 
     for t in topics():
+        # A regional guide needs its source files, even if their catalogue entries remain.
+        if any(not doc_here(doc) for doc in t.get('requires_docs', [])):
+            continue
         t = dict(t)
         t['gaps'] = gaps.get(t['id'], {})
         for k in ('prepare', 'learn'):

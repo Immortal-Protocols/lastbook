@@ -1,0 +1,1891 @@
+{
+  "mode": "now",
+  "requires_docs": [
+    "au-reference",
+    "au-jurisdictions"
+  ],
+  "route": [],
+  "id": "au-rural",
+  "title": "Prepare for Australian rural isolation",
+  "short": "Rural property, livestock and communications",
+  "intro": "Australian sources for isolated properties, animals, communications and basic remote travel preparation. NSW farm rules and service contacts apply to NSW; route-specific remote travel coverage remains incomplete. South Australian readings retain SA contacts and requirements; they are not national rules.",
+  "keywords": [
+    "australia",
+    "australian",
+    "rural",
+    "remote",
+    "isolation",
+    "outback",
+    "farm",
+    "livestock",
+    "bushfire",
+    "wildfire",
+    "flood",
+    "uhf",
+    "cb",
+    "radio",
+    "000",
+    "warnings",
+    "fire danger",
+    "AusAlert",
+    "South Australia",
+    "Adelaide",
+    "satellite beacon",
+    "EPIRB",
+    "LPG",
+    "LCC27",
+    "POL",
+    "gas leak",
+    "battery",
+    "solar",
+    "working alone",
+    "road trip",
+    "disability",
+    "support needs",
+    "mobility",
+    "low vision",
+    "TTY",
+    "NRS",
+    "SMS Relay",
+    "Victoria",
+    "CFA",
+    "leave early",
+    "radiant heat",
+    "embers",
+    "rainwater",
+    "groundwater",
+    "bore",
+    "tank",
+    "water testing",
+    "non-potable",
+    "ACT",
+    "Canberra",
+    "thunderstorm asthma",
+    "heatwave",
+    "recovery",
+    "itinerary",
+    "check-in",
+    "fuel worksheet",
+    "water worksheet",
+    "beacon registration",
+    "PLB",
+    "dependency",
+    "backup duration",
+    "Yumplatok",
+    "Torres Strait Creole",
+    "Wik-Mungkan",
+    "published-language posters",
+    "earthquake",
+    "tsunami",
+    "national factsheets",
+    "Get Ready Australia",
+    "breakdown",
+    "snatch strap",
+    "road train",
+    "unsealed",
+    "tyre",
+    "简体中文",
+    "繁體中文",
+    "Chinese",
+    "地震",
+    "洪水",
+    "热浪",
+    "熱浪",
+    "海啸",
+    "海嘯",
+    "Northern Territory",
+    "Top End",
+    "NT planning",
+    "storm surge",
+    "car park shelter",
+    "FSANZ",
+    "food safety",
+    "food poisoning",
+    "fridge",
+    "freezer",
+    "food thermometer",
+    "floodwater contamination",
+    "use-by",
+    "Western Australia",
+    "WA planning",
+    "Tasmania",
+    "Tasmanian planning",
+    "Nearby Safer Place",
+    "animal accommodation",
+    "Arabic",
+    "العربية",
+    "الفيضانات",
+    "الزلازل",
+    "موجات الحر",
+    "التسونامي",
+    "smoke",
+    "P2",
+    "N95",
+    "septic",
+    "AWTS",
+    "wastewater"
+  ],
+  "choices": [
+    {
+      "id": "planning-tools",
+      "label": "Make a journey, isolation or beacon plan",
+      "hint": "Original planning worksheets connect the readings to your own route, supplies, support needs and equipment.",
+      "read": [
+        {
+          "doc": "au-remote-trip-plan",
+          "label": "Remote land journey: route, supplies and check-in worksheet",
+          "note": "Original blank route/supply/check-in worksheet. No universal fuel/water allowance; missed-contact welfare concerns need prompt action."
+        },
+        {
+          "doc": "au-isolation-plan",
+          "label": "Home and property isolation: dependency and backup worksheet",
+          "note": "Original dependency/backup worksheet for household needs, support, animals and early departure. Verify actual backup duration and assistance."
+        },
+        {
+          "doc": "au-beacon-preparation",
+          "label": "Land-trip beacon preparation: registration, testing and distress plan",
+          "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+        }
+      ]
+    },
+    {
+      "id": "wa-planning",
+      "label": "Plan for Western Australian hazards and animals",
+      "hint": "Current WA warning system, separate wind/water risks, departure and animal accommodation.",
+      "read": [
+        {
+          "doc": "au-wa-local-plan",
+          "label": "Western Australia: current warnings, departure and animal planning",
+          "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+        },
+        {
+          "doc": "au-getready-cyclones",
+          "label": "National cyclones preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "National floods preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-bushfires",
+          "label": "National bushfires preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        }
+      ]
+    },
+    {
+      "id": "tas-planning",
+      "label": "Plan for Tasmanian hazards and access",
+      "hint": "Access and service failures; evacuation centres and bushfire places of last resort are different.",
+      "read": [
+        {
+          "doc": "au-tas-local-plan",
+          "label": "Tasmania: access, warnings and distinct shelter arrangements",
+          "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "National floods preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-storms",
+          "label": "National storms preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-bushfires",
+          "label": "National bushfires preparedness factsheet",
+          "note": "National English source; use current local instructions for actual decisions."
+        }
+      ]
+    },
+    {
+      "id": "nt-planning",
+      "label": "Plan for Northern Territory hazards and isolation",
+      "hint": "Original local worksheet plus national cyclone,flood and bushfire readings. Confirm NT shelter,animal,route and support arrangements.",
+      "read": [
+        {
+          "doc": "au-nt-local-plan",
+          "label": "Make a Northern Territory local warning, shelter and isolation plan",
+          "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
+        },
+        {
+          "doc": "au-getready-cyclones",
+          "label": "National cyclone preparedness factsheet",
+          "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "National flood preparedness factsheet",
+          "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        },
+        {
+          "doc": "au-getready-bushfires",
+          "label": "National bushfire preparedness factsheet",
+          "note": "Standard English national source text;use current NT/local instructions for actual decisions."
+        }
+      ]
+    },
+    {
+      "id": "smoke-sanitation",
+      "label": "Reduce smoke exposure or check a flooded septic system",
+      "hint": "NSW Health source readings cover higher-risk groups, P2/N95 limitations and wastewater assessment conditions.",
+      "read": [
+        {
+          "doc": "nsw-smoke-protection",
+          "label": "NSW: protect yourself from bushfire smoke",
+          "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+        },
+        {
+          "doc": "nsw-smoke-higher-risk",
+          "label": "NSW: higher risk from bushfire smoke",
+          "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+        },
+        {
+          "doc": "nsw-p2-n95-masks",
+          "label": "NSW: P2/N95 masks, fit and limitations",
+          "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+        },
+        {
+          "doc": "nsw-flooded-wastewater",
+          "label": "NSW: flooded septic and on-site wastewater systems",
+          "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
+        }
+      ]
+    },
+    {
+      "id": "food-safety",
+      "label": "Keep food safe during outages and floods",
+      "hint": "FSANZ consumer readings cover cold storage, food-specific cooking temperatures, flood contamination and cleaning. Source dates and conditions remain.",
+      "read": [
+        {
+          "doc": "fsanz-food-basics",
+          "label": "Food safety basics: FSANZ consumer guidance",
+          "note": "Complete consumer article: use-by/allergens, cleaning, separation, food-specific cooking temperatures, cold/hot storage and washing food. Source dated July 2025; linked vulnerable-person guidance and videos are not bundled."
+        },
+        {
+          "doc": "fsanz-food-emergency",
+          "label": "Food safety in an emergency: FSANZ consumer guidance",
+          "note": "Complete before/during/after article including approximate closed-fridge/freezer times, thawed food, flood/fire disposal and regional link labels. Source dated October 2025; appliance estimates are not measured food temperatures."
+        },
+        {
+          "doc": "fsanz-food-flood",
+          "label": "Floods and food safety: FSANZ consumer guidance",
+          "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
+        }
+      ]
+    },
+    {
+      "id": "national-hazards",
+      "label": "Read national natural-hazard preparedness factsheets",
+      "hint": "Seven standard English source texts cover bushfire, cyclone, earthquake, flood, heatwave, storm and tsunami preparation.",
+      "read": [
+        {
+          "doc": "au-getready-bushfires",
+          "label": "Get Ready Australia: bushfires preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-cyclones",
+          "label": "Get Ready Australia: cyclones preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-earthquakes",
+          "label": "Get Ready Australia: earthquakes preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-floods",
+          "label": "Get Ready Australia: floods preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-heatwaves",
+          "label": "Get Ready Australia: heatwaves preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-storms",
+          "label": "Get Ready Australia: storms preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        },
+        {
+          "doc": "au-getready-tsunamis",
+          "label": "Get Ready Australia: tsunamis preparedness",
+          "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+        }
+      ]
+    },
+    {
+      "id": "simplified-chinese-hazards",
+      "label": "Read Simplified Chinese / 简体中文 hazard factsheets",
+      "hint": "Seven national factsheet texts; English interface and source notes remain. Source script retained.",
+      "read": [
+        {
+          "doc": "au-getready-simplified-chinese-bushfires",
+          "label": "丛林火灾 — Simplified Chinese / bushfires preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-cyclones",
+          "label": "气旋 — Simplified Chinese / cyclones preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-earthquakes",
+          "label": "地震 — Simplified Chinese / earthquakes preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-floods",
+          "label": "洪水 — Simplified Chinese / floods preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-heatwaves",
+          "label": "热浪 — Simplified Chinese / heatwaves preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-storms",
+          "label": "暴风雨 — Simplified Chinese / storms preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-simplified-chinese-tsunamis",
+          "label": "海啸 — Simplified Chinese / tsunamis preparedness",
+          "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        }
+      ]
+    },
+    {
+      "id": "arabic-hazards",
+      "label": "Read Arabic / العربية hazard factsheets",
+      "hint": "Seven national factsheet texts in right-to-left Arabic; English interface and source notes remain.",
+      "read": [
+        {
+          "doc": "au-getready-arabic-bushfires",
+          "label": "حرائق الغابات — Arabic / bushfires preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-03-31. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-cyclones",
+          "label": "الأعاصير المدارية — Arabic / cyclones preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-earthquakes",
+          "label": "الزلازل — Arabic / earthquakes preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-10. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-floods",
+          "label": "الفيضانات — Arabic / floods preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-heatwaves",
+          "label": "موجات الحر — Arabic / heatwaves preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-storms",
+          "label": "العواصف — Arabic / storms preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        },
+        {
+          "doc": "au-getready-arabic-tsunamis",
+          "label": "التسونامي — Arabic / tsunamis preparedness",
+          "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+        }
+      ]
+    },
+    {
+      "id": "traditional-chinese-hazards",
+      "label": "Read Traditional Chinese / 繁體中文 hazard factsheets",
+      "hint": "Seven national factsheet texts; English interface and source notes remain. Source script retained.",
+      "read": [
+        {
+          "doc": "au-getready-traditional-chinese-bushfires",
+          "label": "山火 — Traditional Chinese / bushfires preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-cyclones",
+          "label": "熱帶氣旋 — Traditional Chinese / cyclones preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-earthquakes",
+          "label": "地震 — Traditional Chinese / earthquakes preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-floods",
+          "label": "洪水 — Traditional Chinese / floods preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-heatwaves",
+          "label": "熱浪 — Traditional Chinese / heatwaves preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-storms",
+          "label": "風暴 — Traditional Chinese / storms preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        },
+        {
+          "doc": "au-getready-traditional-chinese-tsunamis",
+          "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
+          "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
+        }
+      ]
+    },
+    {
+      "id": "road-recovery",
+      "label": "Read driving, breakdown and recovery-strap guidance",
+      "hint": "Queensland readings distinguish motorway traffic hazards, unsealed/remote driving, strap precautions and dated packing checks.",
+      "read": [
+        {
+          "doc": "qld-driving-conditions",
+          "label": "Queensland: driving on unsealed, sand and remote roads",
+          "note": "Queensland source;updated 2023-06-07. Unsealed, sand, remote-road, heavy-vehicle and road-train conditions;linked permits/maps excluded."
+        },
+        {
+          "doc": "qld-motorway-breakdown",
+          "label": "Queensland: breakdown safety on motorways and freeways",
+          "note": "Queensland source;updated 2024-01-25. Four steps and two written transcripts retain safe-exit/seat-belt fallback and Queensland help/reporting context;videos excluded."
+        },
+        {
+          "doc": "qld-recovery-straps",
+          "label": "Queensland: recovery-strap safety",
+          "note": "Queensland source;updated 2020-12-17. Seven source steps retain ratings, attachment exclusions, bystander distance and training;not a model-specific recovery procedure."
+        },
+        {
+          "doc": "qld-long-trip-checks",
+          "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
+          "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
+        }
+      ]
+    },
+    {
+      "id": "yumplatok-posters",
+      "label": "Read published Yumplatok preparation posters",
+      "hint": "Queensland poster text for bushfire/heatwave and cyclone/flood preparation. Published words retained; artwork excluded.",
+      "read": [
+        {
+          "doc": "qld-yumplatok-bushfires-poster",
+          "label": "Yumplatok: preparing for bushfires and heatwaves",
+          "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        },
+        {
+          "doc": "qld-yumplatok-cyclones-poster",
+          "label": "Yumplatok: preparing for cyclones and floods",
+          "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        }
+      ]
+    },
+    {
+      "id": "wik-mungkan-posters",
+      "label": "Read published Wik-Mungkan preparation posters",
+      "hint": "Queensland poster text for bushfire/heatwave and cyclone/flood preparation. Published words retained; artwork excluded.",
+      "read": [
+        {
+          "doc": "qld-wik-mungkan-bushfires-poster",
+          "label": "Wik-Mungkan: preparing for bushfires and heatwaves",
+          "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        },
+        {
+          "doc": "qld-wik-mungkan-cyclones-poster",
+          "label": "Wik-Mungkan: preparing for cyclones and floods",
+          "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+        }
+      ]
+    },
+    {
+      "id": "isolation",
+      "label": "A farm could be isolated by flood",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-rural-flood",
+          "label": "Prepare your farm and property for flood",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-emergency-plan",
+          "label": "Prepare your emergency plan",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-emergency-kit",
+          "label": "Emergency kit: essential items, all times",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "support-needs",
+      "label": "Plan for disability or support needs",
+      "hint": "Plan with the person and their support network. Regional services and accessible transport need individual confirmation.",
+      "read": [
+        {
+          "doc": "au-accessible-calls",
+          "label": "Accessible emergency calling: Australian service navigation",
+          "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026."
+        },
+        {
+          "doc": "qld-inclusive-planning",
+          "label": "Disability-inclusive emergency planning: Queensland source sections",
+          "note": "Selected introduction, all four immediate-support cards, network-learning text and four prompts, strengths/planning text and all eight support areas. Lived-experience profiles, linked-resource cards and contact directory are excluded. The linked P-CEP workbook, NDIS resources and Auslan/video content are not bundled. Regional support arrangements require individual confirmation. Checked 26 November 2026."
+        },
+        {
+          "doc": "qld-mobility-planning",
+          "label": "Emergency planning with physical or mobility support needs: Queensland source",
+          "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+        },
+        {
+          "doc": "qld-vision-planning",
+          "label": "Emergency planning with low or no vision: Queensland source",
+          "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "vic-bushfire",
+      "label": "Read Victorian bushfire survival guidance",
+      "hint": "CFA’s dated Victorian guide covers fire risk, preparation, warnings and last-resort dangers. Maps and illustrations are excluded.",
+      "read": [
+        {
+          "doc": "vic-cfa-fire-risk",
+          "label": "Victoria: CFA fire risk, decisions and property preparation",
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 2-7. Fire risk, leave-early decisions and property preparation. Source maps and illustrations are excluded."
+        },
+        {
+          "doc": "vic-cfa-prepare-leave",
+          "label": "Victoria: CFA preparation, kit and leaving checklists",
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions."
+        },
+        {
+          "doc": "vic-cfa-warnings",
+          "label": "Victoria: CFA warning information and watch zones",
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 11-13. Dated warning descriptions, with links to the 2026 NEMA announcement and accessible-calling readings."
+        },
+        {
+          "doc": "vic-cfa-during-fire",
+          "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
+          "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
+        }
+      ]
+    },
+    {
+      "id": "private-water",
+      "label": "Check a rainwater, bore or untreated water supply",
+      "hint": "NSW source guidance covers maintenance,testing,flood contamination and treatment limits. Local water quality needs separate assessment.",
+      "read": [
+        {
+          "doc": "nsw-rainwater-tanks",
+          "label": "NSW: managing rainwater tanks for safe drinking water",
+          "note": "NSW Health; source 2026-09-11. Complete guide and 19 FAQs; tap-flushing differences remain flagged. Read product strengths, conditions and treatment limits."
+        },
+        {
+          "doc": "nsw-groundwater",
+          "label": "NSW: groundwater risks, protection and testing",
+          "note": "NSW Health; source 2022-10-18. Groundwater risks,protection and testing. Older agency/contact labels remain dated."
+        },
+        {
+          "doc": "nsw-tanks-after-flood",
+          "label": "NSW: cleaning rainwater tanks after floods or storms",
+          "note": "NSW Health; source 2023-04-04. Contaminated tanks,electrical/structural risks,cleaning/refill and taps."
+        },
+        {
+          "doc": "nsw-nonpotable-water",
+          "label": "NSW: non-potable supplies and water-use advice",
+          "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
+        }
+      ]
+    },
+    {
+      "id": "act-hazards",
+      "label": "Read ACT bushfire, flood, storm and heatwave guidance",
+      "hint": "Complete ACT portal articles cover preparation, response and recovery. Regional services and source dates remain labelled.",
+      "read": [
+        {
+          "doc": "act-bushfire",
+          "label": "ACT: bushfire preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text, including rural-landowner references, leave-early and smoke cautions. Linked manuals/maps excluded."
+        },
+        {
+          "doc": "act-flooding",
+          "label": "ACT: flood preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;floodwater, powerline, animal and recovery cautions retained."
+        },
+        {
+          "doc": "act-severe-storm",
+          "label": "ACT: severe storm preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;thunderstorm asthma, medication, stay/leave and recovery conditions retained."
+        },
+        {
+          "doc": "act-heatwave",
+          "label": "ACT: heatwave preparation, response and recovery",
+          "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
+        }
+      ]
+    },
+    {
+      "id": "fire",
+      "label": "Prepare a rural property for bushfire",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-rural-bushfire",
+          "label": "Prepare your rural property for bushfire",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "nsw-bushfire",
+          "label": "Preparing for bushfires",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "sa-property-preparation",
+          "label": "Prepare a home and property for bushfire: SA CFS sections",
+          "note": "Complete introduction, Around the house, In the garden and Seasonal preparation tips sections. New-build siting/design/landscaping sections and illustrations are excluded. Source building and vegetation advice is regional reading, not engineering approval or a guarantee of safety. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "animals",
+      "label": "Plan for livestock and pets",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "nsw-animals",
+          "label": "How to prepare pets and livestock for an emergency",
+          "note": "NSW guidance; local services and rules apply."
+        },
+        {
+          "doc": "qld-pets",
+          "label": "Pet emergency plan",
+          "note": "Queensland guidance; local services and rules apply."
+        },
+        {
+          "doc": "sa-animal-planning",
+          "label": "Plan for pets and larger livestock before bushfire: SA CFS sections",
+          "note": "Complete introduction and Small animals section, plus Larger animals Forward planning. The separate If fire threatens and horse-owner sections are excluded, including veterinary treatment and third-party horse-service references. This is preparation reading, not an animal-treatment protocol. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "communications",
+      "label": "Understand Australian phone and CB limits",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-emergency-calls",
+          "label": "Emergency calls",
+          "note": "Australian source directory."
+        },
+        {
+          "doc": "au-cb-radio",
+          "label": "Citizen band radio stations class licence",
+          "note": "Australian source directory."
+        },
+        {
+          "doc": "au-locating-devices",
+          "label": "Emergency locating devices: ACMA explanation",
+          "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "label": "Read drinking-water safety guidance",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "qld-water",
+          "label": "Food and drinking water",
+          "note": "Queensland guidance; local services and rules apply."
+        }
+      ]
+    },
+    {
+      "id": "generator",
+      "label": "Read Victorian portable-generator safety",
+      "hint": "Read the complete source usage section and its cautions.",
+      "read": [
+        {
+          "doc": "vic-generator",
+          "label": "Using a portable generator: Victorian source guidance",
+          "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+        }
+      ]
+    },
+    {
+      "id": "travel",
+      "label": "Prepare for travel in a remote location",
+      "hint": "Basic national source guidance; detailed trip calculations remain a gap.",
+      "read": [
+        {
+          "doc": "au-remote-travel",
+          "label": "Preparing for remote travel: myGov source sections",
+          "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
+        },
+        {
+          "doc": "au-emergency-calls",
+          "label": "Australian emergency-call coverage limits",
+          "note": "ACMA source; a mobile emergency call still needs an available mobile network."
+        },
+        {
+          "doc": "au-locating-devices",
+          "label": "Emergency locating devices: ACMA explanation",
+          "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "qld-road-trip",
+          "label": "Prepare for a Queensland road trip: Get Ready source guidance",
+          "note": "Complete written article, including vehicle preparation, emergency kit, severe-weather tips and caravan sections. Interactive illustrations and linked alerts, caravan and boat pages are not bundled. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "warnings",
+      "label": "Understand warnings, fire-danger ratings and phone alerts",
+      "hint": "Dated explanations of different systems; get current warnings from the issuing authorities.",
+      "read": [
+        {
+          "doc": "nsw-warning-levels",
+          "label": "Warning levels: NSW explanation of the Australian Warning System",
+          "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+        },
+        {
+          "doc": "au-fire-danger-ratings",
+          "label": "Australian fire-danger ratings: NEMA explanation",
+          "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+        },
+        {
+          "doc": "au-ausalert",
+          "label": "AusAlert: NEMA national warning-system explanation",
+          "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+        },
+        {
+          "doc": "au-ausalert-operational",
+          "label": "AusAlert operational announcement: 10 November 2026",
+          "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
+        }
+      ]
+    },
+    {
+      "id": "sa-weather",
+      "label": "Read South Australian storm and flood guidance",
+      "hint": "Before, during and after are separate SA source readings. This library does not receive warnings or road closures.",
+      "read": [
+        {
+          "doc": "sa-storm-before",
+          "label": "Before a storm: South Australian SES source guidance",
+          "note": "Complete written introduction and before-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-storm-during",
+          "label": "During a storm: South Australian SES source guidance",
+          "note": "Complete written introduction and during-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-storm-after",
+          "label": "After a storm: South Australian SES source guidance",
+          "note": "Complete written introduction and after-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-flood-before",
+          "label": "Before a flood: South Australian SES source guidance",
+          "note": "Complete written introduction and before-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-flood-during",
+          "label": "During a flood: South Australian SES source guidance",
+          "note": "Complete written introduction and during-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "sa-flood-after",
+          "label": "After a flood: South Australian SES source guidance",
+          "note": "Complete written introduction and after-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "energy-safety",
+      "label": "Read Victorian gas, LPG and flood-energy safety",
+      "hint": "Read the full source cautions and check the actual appliance, cylinder and regional requirements.",
+      "read": [
+        {
+          "doc": "vic-gas-emergencies",
+          "label": "Gas emergencies: Energy Safe Victoria source guidance",
+          "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor contacts and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Contact rows are grouped by distributor for clear offline reading; all source labels and values are retained. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "vic-flood-energy",
+          "label": "Floods, electricity, solar, batteries and gas: Victorian source guidance",
+          "note": "Complete introduction and written before/after-flood safety sections, including electricity, solar, batteries, gas and LPG cautions. Translation listings/downloads and their separate pages are excluded. Source contacts and evacuation-authority statements apply to Victoria. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "vic-lpg-cylinders",
+          "label": "BBQ and outdoor LPG cylinders: Victorian source guidance",
+          "note": "Complete written article, including old/new connection compatibility, no-adaptor cautions and valve safety. Images, connector diagrams, timeline artwork and third-party videos are not bundled. Read the accompanying FAQ and manufacturer instructions for the actual appliance/valve; this is not a visual connector-identification guide. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "vic-lcc27-faq",
+          "label": "LCC27 and POL compatibility: Victorian source questions and answers",
+          "note": "All nine complete question/answer pairs, with questions retained as headings. The distinction between a new cylinder valve and a new appliance connector, and the no-adaptor cautions, remain. This dated source describes the 2021/2022 transition; manufacturer instructions and relevant gasfitter requirements still apply. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "remote-work",
+      "label": "Plan for working alone or remotely",
+      "hint": "Workplace guidance, including farms and home-based work. Model WHS duties and local laws differ.",
+      "read": [
+        {
+          "doc": "au-remote-work-overview",
+          "label": "Remote and isolated work: Safe Work Australia overview",
+          "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+        },
+        {
+          "doc": "au-remote-work-risks",
+          "label": "Managing remote and isolated work risks: Safe Work Australia",
+          "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+        }
+      ]
+    },
+    {
+      "id": "authority",
+      "label": "Find your state or territory authority",
+      "hint": "Read the source guidance and its regional limits.",
+      "read": [
+        {
+          "doc": "au-jurisdictions",
+          "label": "Australian state and territory emergency information",
+          "note": "Australian source directory."
+        }
+      ]
+    },
+    {
+      "id": "bat-exposure",
+      "label": "Read bat-exposure and lyssavirus guidance",
+      "hint": "NSW Health factsheet covers prevention, exposure circumstances, medical assessment and follow-up.",
+      "read": [
+        {
+          "doc": "nsw-bat-lyssavirus",
+          "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+          "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+        }
+      ]
+    },
+    {
+      "id": "aboriginal-planning",
+      "label": "Plan with Aboriginal communities in NSW",
+      "hint": "NSW Health overview of community-led public health planning and formal partnerships.",
+      "read": [
+        {
+          "doc": "nsw-aboriginal-planning",
+          "label": "NSW: Aboriginal-led public health emergency planning",
+          "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+        }
+      ]
+    },
+    {
+      "id": "adult-traumatic-events",
+      "label": "Support an adult after a traumatic event",
+      "hint": "Read the unchanged MHFA adult guideline and its source conditions.",
+      "read": [
+        {
+          "doc": "au-mhfa-adult-traumatic-events",
+          "page": 1,
+          "label": "Adult traumatic events: unchanged MHFA original",
+          "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations; general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits; not training or independent clinical review."
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "text": "NSW warns against driving, riding or walking through active fire zones.",
+      "doc": "nsw-rural-bushfire"
+    },
+    {
+      "text": "ACMA limits CB operation to the class-licence rules and designated frequencies.",
+      "doc": "au-cb-radio"
+    },
+    {
+      "text": "ACMA says mobile emergency calls require coverage from an available mobile network.",
+      "doc": "au-emergency-calls"
+    }
+  ],
+  "prepare": [
+    {
+      "doc": "nsw-rural-bushfire",
+      "label": "Prepare your rural property for bushfire",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-rural-flood",
+      "label": "Prepare your farm and property for flood",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-animals",
+      "label": "How to prepare pets and livestock for an emergency",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-plan",
+      "label": "Prepare your emergency plan",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "qld-emergency-kit",
+      "label": "Emergency kit: essential items, all times",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "au-cb-radio",
+      "label": "Citizen band radio stations class licence",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+    },
+    {
+      "doc": "au-remote-travel",
+      "label": "Preparing for remote travel: myGov source sections",
+      "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
+    },
+    {
+      "doc": "nsw-warning-levels",
+      "label": "Warning levels: NSW explanation of the Australian Warning System",
+      "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+    },
+    {
+      "doc": "au-fire-danger-ratings",
+      "label": "Australian fire-danger ratings: NEMA explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "sa-storm-before",
+      "label": "Before a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and before-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-during",
+      "label": "During a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and during-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-after",
+      "label": "After a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and after-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-before",
+      "label": "Before a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and before-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-during",
+      "label": "During a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and during-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-after",
+      "label": "After a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and after-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-property-preparation",
+      "label": "Prepare a home and property for bushfire: SA CFS sections",
+      "note": "Complete introduction, Around the house, In the garden and Seasonal preparation tips sections. New-build siting/design/landscaping sections and illustrations are excluded. Source building and vegetation advice is regional reading, not engineering approval or a guarantee of safety. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-animal-planning",
+      "label": "Plan for pets and larger livestock before bushfire: SA CFS sections",
+      "note": "Complete introduction and Small animals section, plus Larger animals Forward planning. The separate If fire threatens and horse-owner sections are excluded, including veterinary treatment and third-party horse-service references. This is preparation reading, not an animal-treatment protocol. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-locating-devices",
+      "label": "Emergency locating devices: ACMA explanation",
+      "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-gas-emergencies",
+      "label": "Gas emergencies: Energy Safe Victoria source guidance",
+      "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor contacts and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Contact rows are grouped by distributor for clear offline reading; all source labels and values are retained. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-flood-energy",
+      "label": "Floods, electricity, solar, batteries and gas: Victorian source guidance",
+      "note": "Complete introduction and written before/after-flood safety sections, including electricity, solar, batteries, gas and LPG cautions. Translation listings/downloads and their separate pages are excluded. Source contacts and evacuation-authority statements apply to Victoria. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lpg-cylinders",
+      "label": "BBQ and outdoor LPG cylinders: Victorian source guidance",
+      "note": "Complete written article, including old/new connection compatibility, no-adaptor cautions and valve safety. Images, connector diagrams, timeline artwork and third-party videos are not bundled. Read the accompanying FAQ and manufacturer instructions for the actual appliance/valve; this is not a visual connector-identification guide. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lcc27-faq",
+      "label": "LCC27 and POL compatibility: Victorian source questions and answers",
+      "note": "All nine complete question/answer pairs, with questions retained as headings. The distinction between a new cylinder valve and a new appliance connector, and the no-adaptor cautions, remain. This dated source describes the 2021/2022 transition; manufacturer instructions and relevant gasfitter requirements still apply. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-overview",
+      "label": "Remote and isolated work: Safe Work Australia overview",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-risks",
+      "label": "Managing remote and isolated work risks: Safe Work Australia",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "qld-road-trip",
+      "label": "Prepare for a Queensland road trip: Get Ready source guidance",
+      "note": "Complete written article, including vehicle preparation, emergency kit, severe-weather tips and caravan sections. Interactive illustrations and linked alerts, caravan and boat pages are not bundled. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-accessible-calls",
+      "label": "Accessible emergency calling: Australian service navigation",
+      "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-inclusive-planning",
+      "label": "Disability-inclusive emergency planning: Queensland source sections",
+      "note": "Selected introduction, all four immediate-support cards, network-learning text and four prompts, strengths/planning text and all eight support areas. Lived-experience profiles, linked-resource cards and contact directory are excluded. The linked P-CEP workbook, NDIS resources and Auslan/video content are not bundled. Regional support arrangements require individual confirmation. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-mobility-planning",
+      "label": "Emergency planning with physical or mobility support needs: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-vision-planning",
+      "label": "Emergency planning with low or no vision: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+    },
+    {
+      "doc": "vic-cfa-fire-risk",
+      "label": "Victoria: CFA fire risk, decisions and property preparation",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 2-7. Fire risk, leave-early decisions and property preparation. Source maps and illustrations are excluded."
+    },
+    {
+      "doc": "vic-cfa-prepare-leave",
+      "label": "Victoria: CFA preparation, kit and leaving checklists",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions."
+    },
+    {
+      "doc": "vic-cfa-warnings",
+      "label": "Victoria: CFA warning information and watch zones",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 11-13. Dated warning descriptions, with links to the 2026 NEMA announcement and accessible-calling readings."
+    },
+    {
+      "doc": "vic-cfa-during-fire",
+      "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
+    },
+    {
+      "doc": "nsw-rainwater-tanks",
+      "label": "NSW: managing rainwater tanks for safe drinking water",
+      "note": "NSW Health; source 2026-09-11. Complete guide and 19 FAQs; tap-flushing differences remain flagged. Read product strengths, conditions and treatment limits."
+    },
+    {
+      "doc": "nsw-groundwater",
+      "label": "NSW: groundwater risks, protection and testing",
+      "note": "NSW Health; source 2022-10-18. Groundwater risks,protection and testing. Older agency/contact labels remain dated."
+    },
+    {
+      "doc": "nsw-tanks-after-flood",
+      "label": "NSW: cleaning rainwater tanks after floods or storms",
+      "note": "NSW Health; source 2023-04-04. Contaminated tanks,electrical/structural risks,cleaning/refill and taps."
+    },
+    {
+      "doc": "nsw-nonpotable-water",
+      "label": "NSW: non-potable supplies and water-use advice",
+      "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
+    },
+    {
+      "doc": "act-bushfire",
+      "label": "ACT: bushfire preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text, including rural-landowner references, leave-early and smoke cautions. Linked manuals/maps excluded."
+    },
+    {
+      "doc": "act-flooding",
+      "label": "ACT: flood preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;floodwater, powerline, animal and recovery cautions retained."
+    },
+    {
+      "doc": "act-severe-storm",
+      "label": "ACT: severe storm preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;thunderstorm asthma, medication, stay/leave and recovery conditions retained."
+    },
+    {
+      "doc": "act-heatwave",
+      "label": "ACT: heatwave preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
+    },
+    {
+      "doc": "au-remote-trip-plan",
+      "label": "Remote land journey: route, supplies and check-in worksheet",
+      "note": "Original blank route/supply/check-in worksheet. No universal fuel/water allowance; missed-contact welfare concerns need prompt action."
+    },
+    {
+      "doc": "au-isolation-plan",
+      "label": "Home and property isolation: dependency and backup worksheet",
+      "note": "Original dependency/backup worksheet for household needs, support, animals and early departure. Verify actual backup duration and assistance."
+    },
+    {
+      "doc": "au-beacon-preparation",
+      "label": "Land-trip beacon preparation: registration, testing and distress plan",
+      "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+    },
+    {
+      "doc": "qld-yumplatok-bushfires-poster",
+      "label": "Yumplatok: preparing for bushfires and heatwaves",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-yumplatok-cyclones-poster",
+      "label": "Yumplatok: preparing for cyclones and floods",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-bushfires-poster",
+      "label": "Wik-Mungkan: preparing for bushfires and heatwaves",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-cyclones-poster",
+      "label": "Wik-Mungkan: preparing for cyclones and floods",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "au-getready-bushfires",
+      "label": "Get Ready Australia: bushfires preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-cyclones",
+      "label": "Get Ready Australia: cyclones preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-earthquakes",
+      "label": "Get Ready Australia: earthquakes preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-floods",
+      "label": "Get Ready Australia: floods preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-heatwaves",
+      "label": "Get Ready Australia: heatwaves preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-storms",
+      "label": "Get Ready Australia: storms preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-tsunamis",
+      "label": "Get Ready Australia: tsunamis preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "qld-driving-conditions",
+      "label": "Queensland: driving on unsealed, sand and remote roads",
+      "note": "Queensland source;updated 2023-06-07. Unsealed, sand, remote-road, heavy-vehicle and road-train conditions;linked permits/maps excluded."
+    },
+    {
+      "doc": "qld-motorway-breakdown",
+      "label": "Queensland: breakdown safety on motorways and freeways",
+      "note": "Queensland source;updated 2024-01-25. Four steps and two written transcripts retain safe-exit/seat-belt fallback and Queensland help/reporting context;videos excluded."
+    },
+    {
+      "doc": "qld-recovery-straps",
+      "label": "Queensland: recovery-strap safety",
+      "note": "Queensland source;updated 2020-12-17. Seven source steps retain ratings, attachment exclusions, bystander distance and training;not a model-specific recovery procedure."
+    },
+    {
+      "doc": "qld-long-trip-checks",
+      "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
+      "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-bushfires",
+      "label": "丛林火灾 — Simplified Chinese / bushfires preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-cyclones",
+      "label": "气旋 — Simplified Chinese / cyclones preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-earthquakes",
+      "label": "地震 — Simplified Chinese / earthquakes preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-floods",
+      "label": "洪水 — Simplified Chinese / floods preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-heatwaves",
+      "label": "热浪 — Simplified Chinese / heatwaves preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-storms",
+      "label": "暴风雨 — Simplified Chinese / storms preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-tsunamis",
+      "label": "海啸 — Simplified Chinese / tsunamis preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-bushfires",
+      "label": "山火 — Traditional Chinese / bushfires preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-cyclones",
+      "label": "熱帶氣旋 — Traditional Chinese / cyclones preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-earthquakes",
+      "label": "地震 — Traditional Chinese / earthquakes preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-floods",
+      "label": "洪水 — Traditional Chinese / floods preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-heatwaves",
+      "label": "熱浪 — Traditional Chinese / heatwaves preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-storms",
+      "label": "風暴 — Traditional Chinese / storms preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-tsunamis",
+      "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-nt-local-plan",
+      "label": "Make a Northern Territory local warning, shelter and isolation plan",
+      "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
+    },
+    {
+      "doc": "fsanz-food-basics",
+      "label": "Food safety basics: FSANZ consumer guidance",
+      "note": "Complete consumer article: use-by/allergens, cleaning, separation, food-specific cooking temperatures, cold/hot storage and washing food. Source dated July 2025; linked vulnerable-person guidance and videos are not bundled."
+    },
+    {
+      "doc": "fsanz-food-emergency",
+      "label": "Food safety in an emergency: FSANZ consumer guidance",
+      "note": "Complete before/during/after article including approximate closed-fridge/freezer times, thawed food, flood/fire disposal and regional link labels. Source dated October 2025; appliance estimates are not measured food temperatures."
+    },
+    {
+      "doc": "fsanz-food-flood",
+      "label": "Floods and food safety: FSANZ consumer guidance",
+      "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
+    },
+    {
+      "doc": "au-wa-local-plan",
+      "label": "Western Australia: current warnings, departure and animal planning",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-tas-local-plan",
+      "label": "Tasmania: access, warnings and distinct shelter arrangements",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-getready-arabic-bushfires",
+      "label": "حرائق الغابات — Arabic / bushfires preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-03-31. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-cyclones",
+      "label": "الأعاصير المدارية — Arabic / cyclones preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-earthquakes",
+      "label": "الزلازل — Arabic / earthquakes preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-10. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-floods",
+      "label": "الفيضانات — Arabic / floods preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-heatwaves",
+      "label": "موجات الحر — Arabic / heatwaves preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-storms",
+      "label": "العواصف — Arabic / storms preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-tsunamis",
+      "label": "التسونامي — Arabic / tsunamis preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "nsw-smoke-protection",
+      "label": "NSW: protect yourself from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-smoke-higher-risk",
+      "label": "NSW: higher risk from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-p2-n95-masks",
+      "label": "NSW: P2/N95 masks, fit and limitations",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-flooded-wastewater",
+      "label": "NSW: flooded septic and on-site wastewater systems",
+      "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
+      "doc": "nsw-aboriginal-planning",
+      "label": "NSW: Aboriginal-led public health emergency planning",
+      "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+    },
+    {
+      "doc": "au-mhfa-adult-traumatic-events",
+      "page": 1,
+      "label": "Adult traumatic events: unchanged MHFA original",
+      "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations; general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits; not training or independent clinical review."
+    }
+  ],
+  "learn": [
+    {
+      "doc": "au-reference",
+      "label": "Australia: household, rural and remote emergency reference",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-jurisdictions",
+      "label": "Australian state and territory emergency information",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-emergency-calls",
+      "label": "Emergency calls",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "au-cb-radio",
+      "label": "Citizen band radio stations class licence",
+      "note": "Australian source directory."
+    },
+    {
+      "doc": "qld-water",
+      "label": "Food and drinking water",
+      "note": "Queensland guidance; local services and rules apply."
+    },
+    {
+      "doc": "nsw-evacuation",
+      "label": "If you have to evacuate",
+      "note": "NSW guidance; local services and rules apply."
+    },
+    {
+      "doc": "vic-generator",
+      "label": "Using a portable generator: Victorian source guidance",
+      "note": "Energy Safe Victoria, usage section reviewed 16 March 2026. Source cautions remain; illustrations and translated PDFs are not included."
+    },
+    {
+      "doc": "au-remote-travel",
+      "label": "Preparing for remote travel: myGov source sections",
+      "note": "Services Australia, page last updated 16 January 2025. Basic planning only; no route-specific water/fuel calculation or PLB manual."
+    },
+    {
+      "doc": "nsw-warning-levels",
+      "label": "Warning levels: NSW explanation of the Australian Warning System",
+      "note": "Only “Know the warning levels” and its Advice/Watch and Act/Emergency Warning definitions are included, unchanged. Media, context-specific action examples, local app links and an older AusAlert launch paragraph are excluded. These are message definitions, not a current warning."
+    },
+    {
+      "doc": "au-fire-danger-ratings",
+      "label": "Australian fire-danger ratings: NEMA explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "au-ausalert",
+      "label": "AusAlert: NEMA national warning-system explanation",
+      "note": "The complete written article-body sections are copied unchanged. This explains a system; it is not a warning for your current location. Online resources and media referred to by the source are not included."
+    },
+    {
+      "doc": "au-ausalert-operational",
+      "label": "AusAlert operational announcement: 10 November 2026",
+      "note": "The complete announcement body is copied unchanged. It distinguishes Critical and Priority alerts and explains the transition alongside SMS-based Emergency Alert. This dated announcement is not an active alert. Related news cards, media and linked resources are not included."
+    },
+    {
+      "doc": "sa-storm-before",
+      "label": "Before a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and before-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-during",
+      "label": "During a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and during-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-storm-after",
+      "label": "After a storm: South Australian SES source guidance",
+      "note": "Complete written introduction and after-storm article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-before",
+      "label": "Before a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and before-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-during",
+      "label": "During a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and during-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-flood-after",
+      "label": "After a flood: South Australian SES source guidance",
+      "note": "Complete written introduction and after-flood article body. Other hazard phases are separate readings. Referenced brochures, checklists, maps, translations and linked authorities are not bundled; SA contacts apply to SA. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-property-preparation",
+      "label": "Prepare a home and property for bushfire: SA CFS sections",
+      "note": "Complete introduction, Around the house, In the garden and Seasonal preparation tips sections. New-build siting/design/landscaping sections and illustrations are excluded. Source building and vegetation advice is regional reading, not engineering approval or a guarantee of safety. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "sa-animal-planning",
+      "label": "Plan for pets and larger livestock before bushfire: SA CFS sections",
+      "note": "Complete introduction and Small animals section, plus Larger animals Forward planning. The separate If fire threatens and horse-owner sections are excluded, including veterinary treatment and third-party horse-service references. This is preparation reading, not an animal-treatment protocol. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-locating-devices",
+      "label": "Emergency locating devices: ACMA explanation",
+      "note": "Complete written article: Beacons, Locating aids, Looking after your EPIRB and Further information. This explains satellite beacons versus short-range locating aids; it is not a PLB activation manual or device recommendation. Linked 2026 class licences and AMSA resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-gas-emergencies",
+      "label": "Gas emergencies: Energy Safe Victoria source guidance",
+      "note": "Complete written gas-emergencies article, including all safe-to-do-so conditions, natural-gas distributor contacts and LPG sections. Distributor numbers apply to Victoria; use the emergency number on the relevant gas bill. Linked resources and videos are not bundled. Contact rows are grouped by distributor for clear offline reading; all source labels and values are retained. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-flood-energy",
+      "label": "Floods, electricity, solar, batteries and gas: Victorian source guidance",
+      "note": "Complete introduction and written before/after-flood safety sections, including electricity, solar, batteries, gas and LPG cautions. Translation listings/downloads and their separate pages are excluded. Source contacts and evacuation-authority statements apply to Victoria. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lpg-cylinders",
+      "label": "BBQ and outdoor LPG cylinders: Victorian source guidance",
+      "note": "Complete written article, including old/new connection compatibility, no-adaptor cautions and valve safety. Images, connector diagrams, timeline artwork and third-party videos are not bundled. Read the accompanying FAQ and manufacturer instructions for the actual appliance/valve; this is not a visual connector-identification guide. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "vic-lcc27-faq",
+      "label": "LCC27 and POL compatibility: Victorian source questions and answers",
+      "note": "All nine complete question/answer pairs, with questions retained as headings. The distinction between a new cylinder valve and a new appliance connector, and the no-adaptor cautions, remain. This dated source describes the 2021/2022 transition; manufacturer instructions and relevant gasfitter requirements still apply. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-overview",
+      "label": "Remote and isolated work: Safe Work Australia overview",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-remote-work-risks",
+      "label": "Managing remote and isolated work risks: Safe Work Australia",
+      "note": "Complete written article body. Workplace/PCBU audience, including farms and home-based work; this is model-WHS guidance, not a statement of identical law in every jurisdiction. Safe Work Australia is not a regulator; contact the relevant state/territory regulator. Linked model Codes and supporting resources are not bundled. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "qld-road-trip",
+      "label": "Prepare for a Queensland road trip: Get Ready source guidance",
+      "note": "Complete written article, including vehicle preparation, emergency kit, severe-weather tips and caravan sections. Interactive illustrations and linked alerts, caravan and boat pages are not bundled. Source typos and source quantities are unchanged; these are Queensland reference amounts, not a route/climate-specific supply calculation. Retrieved 26 November 2026."
+    },
+    {
+      "doc": "au-accessible-calls",
+      "label": "Accessible emergency calling: Australian service navigation",
+      "note": "Original factual navigation note based on current ACMA and Access Hub sources; distinguishes TTY106 from NRS SMS Relay. Not a reproduction of the complete NRS operating manual; linked services need a working connection. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-inclusive-planning",
+      "label": "Disability-inclusive emergency planning: Queensland source sections",
+      "note": "Selected introduction, all four immediate-support cards, network-learning text and four prompts, strengths/planning text and all eight support areas. Lived-experience profiles, linked-resource cards and contact directory are excluded. The linked P-CEP workbook, NDIS resources and Auslan/video content are not bundled. Regional support arrangements require individual confirmation. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-mobility-planning",
+      "label": "Emergency planning with physical or mobility support needs: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+    },
+    {
+      "doc": "qld-vision-planning",
+      "label": "Emergency planning with low or no vision: Queensland source",
+      "note": "Complete written article, including all ten preparedness tips, support-service descriptions and five decision-table rows. Each decision row is displayed as a question with both labelled responses. Queensland service descriptions are source statements, not a guarantee of eligibility, free transport or availability. Confirm accessible alerts, transport and accommodation for the actual person and location. Linked resources are not bundled; this text is not an independently validated Easy Read, braille or Auslan edition. Checked 26 November 2026."
+    },
+    {
+      "doc": "vic-cfa-fire-risk",
+      "label": "Victoria: CFA fire risk, decisions and property preparation",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 2-7. Fire risk, leave-early decisions and property preparation. Source maps and illustrations are excluded."
+    },
+    {
+      "doc": "vic-cfa-prepare-leave",
+      "label": "Victoria: CFA preparation, kit and leaving checklists",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions."
+    },
+    {
+      "doc": "vic-cfa-warnings",
+      "label": "Victoria: CFA warning information and watch zones",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 11-13. Dated warning descriptions, with links to the 2026 NEMA announcement and accessible-calling readings."
+    },
+    {
+      "doc": "vic-cfa-during-fire",
+      "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
+      "note": "CFA, Victoria. Version 6, July 2022; source pages 14-19. Fire behaviour and last-resort procedures with full danger warnings. CFA currently recommends leaving early and does not recommend defending your home."
+    },
+    {
+      "doc": "nsw-rainwater-tanks",
+      "label": "NSW: managing rainwater tanks for safe drinking water",
+      "note": "NSW Health; source 2026-09-11. Complete guide and 19 FAQs; tap-flushing differences remain flagged. Read product strengths, conditions and treatment limits."
+    },
+    {
+      "doc": "nsw-groundwater",
+      "label": "NSW: groundwater risks, protection and testing",
+      "note": "NSW Health; source 2022-10-18. Groundwater risks,protection and testing. Older agency/contact labels remain dated."
+    },
+    {
+      "doc": "nsw-tanks-after-flood",
+      "label": "NSW: cleaning rainwater tanks after floods or storms",
+      "note": "NSW Health; source 2023-04-04. Contaminated tanks,electrical/structural risks,cleaning/refill and taps."
+    },
+    {
+      "doc": "nsw-nonpotable-water",
+      "label": "NSW: non-potable supplies and water-use advice",
+      "note": "NSW Health; source 2026-04-21. Boil, do-not-drink and do-not-use distinctions;chemical/radiological risks need different advice."
+    },
+    {
+      "doc": "act-bushfire",
+      "label": "ACT: bushfire preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text, including rural-landowner references, leave-early and smoke cautions. Linked manuals/maps excluded."
+    },
+    {
+      "doc": "act-flooding",
+      "label": "ACT: flood preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;floodwater, powerline, animal and recovery cautions retained."
+    },
+    {
+      "doc": "act-severe-storm",
+      "label": "ACT: severe storm preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-07-01. Full before/during/after text;thunderstorm asthma, medication, stay/leave and recovery conditions retained."
+    },
+    {
+      "doc": "act-heatwave",
+      "label": "ACT: heatwave preparation, response and recovery",
+      "note": "ACT portal; metadata updated 2026-11-16. Full before/during/after text;outdoor work, animal care and heat/food/water risks. Current snapshot names 1800MEDICARE."
+    },
+    {
+      "doc": "au-remote-trip-plan",
+      "label": "Remote land journey: route, supplies and check-in worksheet",
+      "note": "Original blank route/supply/check-in worksheet. No universal fuel/water allowance; missed-contact welfare concerns need prompt action."
+    },
+    {
+      "doc": "au-isolation-plan",
+      "label": "Home and property isolation: dependency and backup worksheet",
+      "note": "Original dependency/backup worksheet for household needs, support, animals and early departure. Verify actual backup duration and assistance."
+    },
+    {
+      "doc": "au-beacon-preparation",
+      "label": "Land-trip beacon preparation: registration, testing and distress plan",
+      "note": "Original land-trip PLB checklist. Model-specific instructions apply; genuine distress and accidental activation have different responses."
+    },
+    {
+      "doc": "qld-yumplatok-bushfires-poster",
+      "label": "Yumplatok: preparing for bushfires and heatwaves",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-yumplatok-cyclones-poster",
+      "label": "Yumplatok: preparing for cyclones and floods",
+      "note": "Published Yumplatok (Torres Strait Creole) poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-bushfires-poster",
+      "label": "Wik-Mungkan: preparing for bushfires and heatwaves",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "qld-wik-mungkan-cyclones-poster",
+      "label": "Wik-Mungkan: preparing for cyclones and floods",
+      "note": "Published Wik-Mungkan poster wording; PDF metadata March 2024. Text-only; artwork excluded. No new translation or independent language review."
+    },
+    {
+      "doc": "au-getready-bushfires",
+      "label": "Get Ready Australia: bushfires preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-cyclones",
+      "label": "Get Ready Australia: cyclones preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-earthquakes",
+      "label": "Get Ready Australia: earthquakes preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-floods",
+      "label": "Get Ready Australia: floods preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-heatwaves",
+      "label": "Get Ready Australia: heatwaves preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-storms",
+      "label": "Get Ready Australia: storms preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-02-20. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "au-getready-tsunamis",
+      "label": "Get Ready Australia: tsunamis preparedness",
+      "note": "Complete standard English factsheet text; PDF metadata 2026-03-06. Source-specific warnings, planning questions and supply conditions remain. Imagery/original PDF excluded; not the separate Easy Read edition."
+    },
+    {
+      "doc": "qld-driving-conditions",
+      "label": "Queensland: driving on unsealed, sand and remote roads",
+      "note": "Queensland source;updated 2023-06-07. Unsealed, sand, remote-road, heavy-vehicle and road-train conditions;linked permits/maps excluded."
+    },
+    {
+      "doc": "qld-motorway-breakdown",
+      "label": "Queensland: breakdown safety on motorways and freeways",
+      "note": "Queensland source;updated 2024-01-25. Four steps and two written transcripts retain safe-exit/seat-belt fallback and Queensland help/reporting context;videos excluded."
+    },
+    {
+      "doc": "qld-recovery-straps",
+      "label": "Queensland: recovery-strap safety",
+      "note": "Queensland source;updated 2020-12-17. Seven source steps retain ratings, attachment exclusions, bystander distance and training;not a model-specific recovery procedure."
+    },
+    {
+      "doc": "qld-long-trip-checks",
+      "label": "Queensland: vehicle, towing and outback packing checks (2014 source)",
+      "note": "Queensland source;updated 2014-02-07. Selected vehicle/towing/packing sections from 2014;source supply quantities do not establish adequacy for your route."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-bushfires",
+      "label": "丛林火灾 — Simplified Chinese / bushfires preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-cyclones",
+      "label": "气旋 — Simplified Chinese / cyclones preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-earthquakes",
+      "label": "地震 — Simplified Chinese / earthquakes preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-floods",
+      "label": "洪水 — Simplified Chinese / floods preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-heatwaves",
+      "label": "热浪 — Simplified Chinese / heatwaves preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-storms",
+      "label": "暴风雨 — Simplified Chinese / storms preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-simplified-chinese-tsunamis",
+      "label": "海啸 — Simplified Chinese / tsunamis preparedness",
+      "note": "Publisher-written Simplified Chinese / 简体中文 factsheet text; PDF metadata 2026-04-01. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-bushfires",
+      "label": "山火 — Traditional Chinese / bushfires preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-cyclones",
+      "label": "熱帶氣旋 — Traditional Chinese / cyclones preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-earthquakes",
+      "label": "地震 — Traditional Chinese / earthquakes preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-floods",
+      "label": "洪水 — Traditional Chinese / floods preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-heatwaves",
+      "label": "熱浪 — Traditional Chinese / heatwaves preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-storms",
+      "label": "風暴 — Traditional Chinese / storms preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-02. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-getready-traditional-chinese-tsunamis",
+      "label": "海嘯 — Traditional Chinese / tsunamis preparedness",
+      "note": "Publisher-written Traditional Chinese / 繁體中文 factsheet text; PDF metadata 2026-04-08. Source script and conditions retained; no new translation or independent translation/accessibility review."
+    },
+    {
+      "doc": "au-nt-local-plan",
+      "label": "Make a Northern Territory local warning, shelter and isolation plan",
+      "note": "Original worksheet: NT contacts, distinct hazards, shelter opening and pet/car-park limits, supplies and property dependencies. Cited agencies retain their rights;actual local arrangements need confirmation."
+    },
+    {
+      "doc": "fsanz-food-basics",
+      "label": "Food safety basics: FSANZ consumer guidance",
+      "note": "Complete consumer article: use-by/allergens, cleaning, separation, food-specific cooking temperatures, cold/hot storage and washing food. Source dated July 2025; linked vulnerable-person guidance and videos are not bundled."
+    },
+    {
+      "doc": "fsanz-food-emergency",
+      "label": "Food safety in an emergency: FSANZ consumer guidance",
+      "note": "Complete before/during/after article including approximate closed-fridge/freezer times, thawed food, flood/fire disposal and regional link labels. Source dated October 2025; appliance estimates are not measured food temperatures."
+    },
+    {
+      "doc": "fsanz-food-flood",
+      "label": "Floods and food safety: FSANZ consumer guidance",
+      "note": "Complete home preparation, food disposal/salvage, equipment cleaning/sanitising, water and business sections. Preserve not-touched-floodwater condition for potentially salvageable cans/pouches and separate business restrictions. Source dated October 2025; local water safety requires current confirmation."
+    },
+    {
+      "doc": "au-wa-local-plan",
+      "label": "Western Australia: current warnings, departure and animal planning",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-tas-local-plan",
+      "label": "Tasmania: access, warnings and distinct shelter arrangements",
+      "note": "Original local planning prompts and dated factual references; confirm actual warnings, routes, destinations, support and animal arrangements."
+    },
+    {
+      "doc": "au-getready-arabic-bushfires",
+      "label": "حرائق الغابات — Arabic / bushfires preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-03-31. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-cyclones",
+      "label": "الأعاصير المدارية — Arabic / cyclones preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-earthquakes",
+      "label": "الزلازل — Arabic / earthquakes preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-10. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-floods",
+      "label": "الفيضانات — Arabic / floods preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-heatwaves",
+      "label": "موجات الحر — Arabic / heatwaves preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-storms",
+      "label": "العواصف — Arabic / storms preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "au-getready-arabic-tsunamis",
+      "label": "التسونامي — Arabic / tsunamis preparedness",
+      "note": "Publisher-written Arabic / العربية factsheet text; PDF metadata 2026-04-01. Source conditions retained; glyph extraction reviewed 27 November 2026. No new translation or independent translation/accessibility/audio review."
+    },
+    {
+      "doc": "nsw-smoke-protection",
+      "label": "NSW: protect yourself from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-smoke-higher-risk",
+      "label": "NSW: higher risk from bushfire smoke",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-p2-n95-masks",
+      "label": "NSW: P2/N95 masks, fit and limitations",
+      "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled."
+    },
+    {
+      "doc": "nsw-flooded-wastewater",
+      "label": "NSW: flooded septic and on-site wastewater systems",
+      "note": "NSW Health; source 2023-04-04. Professional assessment, local council approval and undamaged temporary-holding conditions retained."
+    },
+    {
+      "doc": "nsw-bat-lyssavirus",
+      "label": "NSW: rabies and Australian bat lyssavirus factsheet (2025)",
+      "note": "NSW Health source, current as at 27 November 2025. Read the complete advice about exposure, previous vaccination, uncertain bat contact and medical assessment. NSW public health arrangements and linked-resource limits remain identified; no treatment methods are combined."
+    },
+    {
+      "doc": "nsw-aboriginal-planning",
+      "label": "NSW: Aboriginal-led public health emergency planning",
+      "note": "NSW Health; source 28 October 2025. Aboriginal-led planning, self-determination, cultural governance and formal health-service partnerships. Overview only; linked guideline/toolkits are not bundled."
+    },
+    {
+      "doc": "au-mhfa-adult-traumatic-events",
+      "page": 1,
+      "label": "Adult traumatic events: unchanged MHFA original",
+      "note": "Seven-page adult source: 2019 guideline, Version 2.3 (2022). Nonprofit reproduction with source credit only. Includes adolescent considerations; general recommendations most suitable for high-income countries with developed health systems. Read complete source context and companion-source limits; not training or independent clinical review."
+    }
+  ],
+  "related": [
+    "au-household",
+    "au-health",
+    "comms",
+    "water"
+  ]
+}

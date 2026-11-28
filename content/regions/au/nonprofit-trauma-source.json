@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "checked": "2026-11-27",
+  "distribution": "nonprofit-only",
+  "source": {
+    "id": "au-mhfa-adult-traumatic-events",
+    "title": "Traumatic Events (Adults): Mental Health First Aid Guidelines",
+    "kind": "pdf",
+    "publisher": "Mental Health First Aid International",
+    "collection": "Australian nonprofit source references",
+    "category": "health",
+    "edition": "Revised 2019; Version 2.3 (2022); checked 27 November 2026",
+    "source_url": "https://mhfainternational.org/guidelines/",
+    "pdf_url": "https://mhfainternational.org/wp-content/uploads/Traumatic-Events-Adult-Mental-Health-First-Aid-Guidelines-2019-1.pdf",
+    "bytes": 223480,
+    "sha256": "4001b126c7940bd75581f7ac5217846646536c5a4bcbfa0907aae2506767b560",
+    "pages": 7,
+    "distribution": "nonprofit-only",
+    "license": "LicenseRef-MHFA-nonprofit-reproduction",
+    "rights": "Copyright retained by Mental Health First Aid International. Reproduction permitted for non-profit purposes with source acknowledgement;no commercial-use grant inferred.",
+    "attribution": "Mental Health First Aid Australia. Traumatic Events: Mental Health First Aid Guidelines (revised 2019). Melbourne: Mental Health First Aid Australia; 2019.",
+    "rights_physical_page": 7,
+    "notes": "Unmodified adult traumatic-event guideline, including adolescent considerations. General recommendations most suitable for high-income countries with developed health systems. Revised 2019, Version 2.3 (2022); retrieval is not a new clinical review. Companion sources are not bundled. Nonprofit reproduction only with source acknowledgement; not training or independent clinical review.",
+    "retrieved_at": "2026-11-27"
+  }
+}

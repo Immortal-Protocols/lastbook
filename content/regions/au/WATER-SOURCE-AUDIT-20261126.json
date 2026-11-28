@@ -1,0 +1,566 @@
+{
+  "checked": "2026-11-26",
+  "rights": {
+    "source": {
+      "id": "nsw-copyright",
+      "url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "final_url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "retrieved_at": "2026-11-26",
+      "bytes": 81203,
+      "raw_sha256": "d2884c289deb417205ac5dcdbf27b195d6646c2640aaaf707115087cb2127928",
+      "links": [
+        {
+          "text": "Copyright Currently selected",
+          "href": "/Pages/copyright.aspx"
+        },
+        {
+          "text": "Request for Copyright Permission form",
+          "href": "/Pages/request-for-copyright.aspx"
+        },
+        {
+          "text": "Copyright",
+          "href": "/pages/copyright.aspx"
+        }
+      ]
+    },
+    "license": "CC-BY-4.0",
+    "explicit_grant": "All NSW Health material on this website is licensed under Creative Commons Attribution4.0 except noted exclusions.",
+    "exceptions": "State symbols/logos/trademarks;third-party material unless expressly licensed;separately restricted material.",
+    "credit": "© State of New South Wales NSW Ministry of Health. For current information go to www.health.nsw.gov.au.",
+    "permission_paragraph": "The complete separate formal-permission enquiry paragraph is retained in the copyright reading,alongside the explicit CC BY4.0 grant. No broader rights to excluded materials are inferred."
+  },
+  "selections": [
+    {
+      "id": "nsw-rainwater-tanks",
+      "raw": {
+        "id": "nsw-rainwater",
+        "url": "https://www.health.nsw.gov.au/environment/water/Pages/rainwater.aspx",
+        "final_url": "https://www.health.nsw.gov.au/environment/water/Pages/rainwater.aspx",
+        "retrieved_at": "2026-11-26",
+        "bytes": 131677,
+        "raw_sha256": "3fb9b8020f8b211bb51aa2e29ef5945ace06c739489ce906233da3a4ccc13c9a",
+        "links": [
+          {
+            "text": "Rainwater and bushfires",
+            "href": "/environment/water/Pages/rainwater-bushfires.aspx"
+          },
+          {
+            "text": "How can I disinfect rainwater before drinking it?​",
+            "href": "/environment/water/Pages/rainwater.aspx#disinfection"
+          },
+          {
+            "text": "what should I do if my rainwater is contaminated?",
+            "href": "/environment/water/Pages/rainwater.aspx#contamination"
+          },
+          {
+            "text": "Rainwater and bushfires",
+            "href": "/environment/water/Pages/rainwater-bushfires.aspx"
+          },
+          {
+            "text": "How do I treat contaminated rainwater in my tank?",
+            "href": "/environment/water/Pages/rainwater.aspx#contaminated-rainwater"
+          },
+          {
+            "text": "Rainwater and bushfires",
+            "href": "/environment/water/Pages/rainwater-bushfires.aspx"
+          },
+          {
+            "text": "cleaning rainwater tanks after floods or storms",
+            "href": "/emergency_preparedness/weather/Pages/rainwater-tanks.aspx"
+          },
+          {
+            "text": "advice on keeping rainwater safe​",
+            "href": "/environment/water/Pages/rainwater.aspx#safe"
+          },
+          {
+            "text": "Quality assurance program - untreated rainwater",
+            "href": "/environment/water/Pages/quality-assurance-program-untreated-rainwater.aspx"
+          },
+          {
+            "text": "Rainwater Treatment",
+            "href": "/environment/water/Documents/Rainwater-Treatment-Fact-Sheet.pdf"
+          },
+          {
+            "text": "bore (groundwater)",
+            "href": "/environment/water/Pages/groundwater.aspx"
+          },
+          {
+            "text": "rainwater and bushfires",
+            "href": "/environment/water/Pages/rainwater-bushfires.aspx"
+          },
+          {
+            "text": "Cleaning rainwater tanks after floods or storms",
+            "href": "/emergency_preparedness/weather/Pages/rainwater-tanks.aspx"
+          },
+          {
+            "text": "NSW Guideline on use of rainwater where a public water supply​",
+            "href": "http://www1.health.nsw.gov.au/PDS/pages/doc.aspx?dn=GL2007_009"
+          },
+          {
+            "text": "Sydney Water Rainwater tank information",
+            "href": "https://www.sydneywater.com.au/your-home/saving-water-at-home/rainwater-tanks.html"
+          },
+          {
+            "text": "Guidance on the use of rainwater tanks (enhealth)",
+            "href": "https://www.health.gov.au/resources/publications/enhealth-guidance-guidance-on-the-use-of-rainwater-tanks"
+          },
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2026-09-11",
+      "selected_blocks": [
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "characters": 2174,
+          "text_sha256": "eb01d14fc6c55d8c234081ec3da1e1455ef0e30852eaca9028bfecb8a87a26e4"
+        },
+        {
+          "selector": "FAQ question:1",
+          "characters": 27,
+          "text_sha256": "fedae1e3006d7fae4921fecd2f91d5e5c94c892782223dab7d40900d615ea5ef"
+        },
+        {
+          "selector": "FAQ answer:1",
+          "characters": 397,
+          "text_sha256": "8c9b483d55be19b3848c99503befa5610ff11b42b4e90ffa5180131c95ac94c7"
+        },
+        {
+          "selector": "FAQ question:2",
+          "characters": 57,
+          "text_sha256": "d2ec2f9d466907414b9a9b4d5b3b2a7a001a09c1ed02d8cb334768a72b347c88"
+        },
+        {
+          "selector": "FAQ answer:2",
+          "characters": 700,
+          "text_sha256": "b4dea4452e1ed12943a1cf98c8214693ae472ee8b144d495f93e7906f0d4ea2c"
+        },
+        {
+          "selector": "FAQ question:3",
+          "characters": 49,
+          "text_sha256": "0ecef4c6a2770dd328f840ed15fdea4a279bef472bcf25ac413b135bbe0dd71f"
+        },
+        {
+          "selector": "FAQ answer:3",
+          "characters": 254,
+          "text_sha256": "ea703ed8feb48ea7717b2048c6e0bb38510062081d6c57453f414767147d15fa"
+        },
+        {
+          "selector": "FAQ question:4",
+          "characters": 43,
+          "text_sha256": "2b6b8ed2745e4bdcfcb6582272c96f56817630bd5ac3bf1c4024c9bb161e3670"
+        },
+        {
+          "selector": "FAQ answer:4",
+          "characters": 1399,
+          "text_sha256": "9416e645214db016aae1d339d4a5a37235ad53af2abecc4d6c15b6c8945399b8"
+        },
+        {
+          "selector": "FAQ question:5",
+          "characters": 30,
+          "text_sha256": "4a682b93c2850b21cbd961506bb296d4dc407a6ad20204cd38f0a8372faa7b10"
+        },
+        {
+          "selector": "FAQ answer:5",
+          "characters": 1524,
+          "text_sha256": "09541d3f4de3e9c2e83e8b543d892def706a172794aacfbcb9ef25fb5ef71ade"
+        },
+        {
+          "selector": "FAQ question:6",
+          "characters": 29,
+          "text_sha256": "ccf1dffe15ed989ab0a3cc28b3f81d112009ae98beaa364df9122c72e7765167"
+        },
+        {
+          "selector": "FAQ answer:6",
+          "characters": 1109,
+          "text_sha256": "05f44a8ca916b01d18447fbb79fab02049a809768df2e530164e5adb2e00820d"
+        },
+        {
+          "selector": "FAQ question:7",
+          "characters": 29,
+          "text_sha256": "f1cfc6455fef0ce5d3cd3fef810e7c659b8a3e6f87ebbabe60ed704778becbf8"
+        },
+        {
+          "selector": "FAQ answer:7",
+          "characters": 997,
+          "text_sha256": "6b08d197a0712a57f4b8b4d1551e4718824d1e47414b6cdcebca89d5b0bdc737"
+        },
+        {
+          "selector": "FAQ question:8",
+          "characters": 67,
+          "text_sha256": "5ee6758df047d0fd109ceaf00a733e434f5d86c6f4d55e3af81e5e6fabb8a273"
+        },
+        {
+          "selector": "FAQ answer:8",
+          "characters": 1140,
+          "text_sha256": "08e379fb0f5e6041ab802d571dd4f7a6271ef345e746f96bbc3d1e1f4e1d389c"
+        },
+        {
+          "selector": "FAQ question:9",
+          "characters": 36,
+          "text_sha256": "af5ce8a45777c47e2f1fcd02d3d0c433c49386934bb1db732b7814805f126aba"
+        },
+        {
+          "selector": "FAQ answer:9",
+          "characters": 641,
+          "text_sha256": "854075f94f4c031810a1b23f0c52ada9a336117f189739c569ecad0917269ce1"
+        },
+        {
+          "selector": "FAQ question:10",
+          "characters": 30,
+          "text_sha256": "8c68482d96a28207991eff93f0c2887e31c0d13253472baf17c725d364c4f05a"
+        },
+        {
+          "selector": "FAQ answer:10",
+          "characters": 511,
+          "text_sha256": "0c26904e63a52707d90968d7e870cc466f15b6f1b66350fc8136887a5ed94528"
+        },
+        {
+          "selector": "FAQ question:11",
+          "characters": 49,
+          "text_sha256": "e6255785446e239fb5a4e18a7dd13a4d3ec317327e90bb223f42e67fe05779c4"
+        },
+        {
+          "selector": "FAQ answer:11",
+          "characters": 1047,
+          "text_sha256": "0246f05d89e0de3c9cc739c90bf80d166d4bbfb3898c9707cdbd901af2cf2ef7"
+        },
+        {
+          "selector": "FAQ question:12",
+          "characters": 49,
+          "text_sha256": "57802372c05676591467b2d46aac21b091f4b359d5de77baf6ed014fa91b839e"
+        },
+        {
+          "selector": "FAQ answer:12",
+          "characters": 2118,
+          "text_sha256": "5b55e77074f0145a728a37475bcef10089f656d5d41bf28b329f21c50838ede6"
+        },
+        {
+          "selector": "FAQ question:13",
+          "characters": 50,
+          "text_sha256": "9e3c0ec457d911f4e7c19dd4db0f94622dcb038c86e75c2b6f5a52c8182f6478"
+        },
+        {
+          "selector": "FAQ answer:13",
+          "characters": 874,
+          "text_sha256": "5c399eb9fe23a507dee921331985a14d171097edeab8b2b74d3e5e137265b927"
+        },
+        {
+          "selector": "FAQ question:13.5",
+          "characters": 20,
+          "text_sha256": "aca24adb63e202b980f9a94785b6a4e040dc1e565556a78665034508ec461bdb"
+        },
+        {
+          "selector": "FAQ answer:13.5",
+          "characters": 971,
+          "text_sha256": "494014f173a8c64c01f00646f56fa0858f4024dc00ff343a6fba964e6a374ada"
+        },
+        {
+          "selector": "FAQ question:14",
+          "characters": 75,
+          "text_sha256": "8d4ea16531fd0e5dc52b8b58773e7540b6bf91304aa3037d0e4863cc3bbe804a"
+        },
+        {
+          "selector": "FAQ answer:14",
+          "characters": 856,
+          "text_sha256": "8f9dca5d259c0547898088f49d39151ce0f73d107c744db928e98cec30f45453"
+        },
+        {
+          "selector": "FAQ question:15",
+          "characters": 76,
+          "text_sha256": "34599165398c244adf9eb1f7eb19be7cc16eb763ab70b70bb78c66b00c308d5d"
+        },
+        {
+          "selector": "FAQ answer:15",
+          "characters": 626,
+          "text_sha256": "3f96febd8dbc0b9d3e0a75a33b911877044ef2f0371ed16392a6df873fab074c"
+        },
+        {
+          "selector": "FAQ question:16",
+          "characters": 32,
+          "text_sha256": "72a9819469b2c3cd4175a9cadab7476f575deaf10fe7c85b0b48d9bbe124e03a"
+        },
+        {
+          "selector": "FAQ answer:16",
+          "characters": 191,
+          "text_sha256": "8963dac2e09059eafedd28411dcfe1442c8c039fd8ff17ddef69b5aea9a3c2de"
+        },
+        {
+          "selector": "FAQ question:17",
+          "characters": 68,
+          "text_sha256": "91937de3fe8cdb244c4d298117bc2cba862bd6cc8929a937449eb21cd7e96a61"
+        },
+        {
+          "selector": "FAQ answer:17",
+          "characters": 1095,
+          "text_sha256": "474f534358a0cc40d9f2756a3f28c258bf954528d31e618573f3ed457ad45e3b"
+        },
+        {
+          "selector": "FAQ question:18",
+          "characters": 65,
+          "text_sha256": "60adc06a38541bf09cdd99b2ae4e63c0b9ae8eaa1199b94363616cf703f27209"
+        },
+        {
+          "selector": "FAQ answer:18",
+          "characters": 556,
+          "text_sha256": "4a1038e1550487aad6a5493d4617893d07e1bda05110253549cc1b369348c2d6"
+        },
+        {
+          "selector": "Useful links",
+          "characters": 979,
+          "text_sha256": "e4248c0cab368c6fbdb54f6062696e13425232d5ca948b53e598a9eefc3a8d59"
+        }
+      ],
+      "sha256": "4b3c0bdf588ada75203ef699fbfc7be804e549502bc2035cb3d9ff29a4317ca2",
+      "scope": "Complete written guide,all 19 FAQ questions/answers and Useful links text. Source has different daily tap-flushing durations in different sections;both are retained. Product strengths,quantities and waiting times remain exactly within their source context."
+    },
+    {
+      "id": "nsw-groundwater",
+      "raw": {
+        "id": "nsw-bore",
+        "url": "https://www.health.nsw.gov.au/environment/water/Pages/groundwater.aspx",
+        "final_url": "https://www.health.nsw.gov.au/environment/water/Pages/groundwater.aspx",
+        "retrieved_at": "2026-11-26",
+        "bytes": 97746,
+        "raw_sha256": "2daf6e0b50d43794fd0c37a1f4be4944ba1fa539fc58150395bbf56d52a362f6",
+        "links": [
+          {
+            "text": "Rainwater and bushfires",
+            "href": "/environment/water/Pages/rainwater-bushfires.aspx"
+          },
+          {
+            "text": "groundwater contamination warnings",
+            "href": "http://www.epa.nsw.gov.au/prclmapp/searchregister.aspx"
+          },
+          {
+            "text": "Rainwater tanks",
+            "href": "/environment/water/Pages/rainwater.aspx"
+          },
+          {
+            "text": "NSW Health Groundwater treatment fact sheet",
+            "href": "/environment/water/Documents/groundwater-treatment-fact-sheet.pdf"
+          },
+          {
+            "text": "Guidance for Local Water Utilities on assessing groundwater source protection",
+            "href": "/environment/water/Pages/Guidance-groundwater-source-protection.aspx"
+          },
+          {
+            "text": "NSW Health Rainwater Tank brochure",
+            "href": "/environment/water/Documents/rainwater_tanks.pdf"
+          },
+          {
+            "text": "Rainwater Treatment Guide",
+            "href": "https://www.health.nsw.gov.au/environment/water/Documents/rainwater-treatment-guide.pdf"
+          },
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2022-10-18",
+      "selected_blocks": [
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "characters": 7835,
+          "text_sha256": "af7c9f5f0ee677cf819142a51c385696fffd05911ad1d74cdd7ead4414d53a1e"
+        }
+      ],
+      "sha256": "e8c2d4c79de6cc98506cf14a72b3fcb07827f3b11255d7105f19f805fe22397b",
+      "scope": "Complete written article,including microbiological/chemical/radiological risks,Naegleria caution,protection,testing and dated regional contact labels. October2022 source;current agency names,phone availability and local contamination are not verified."
+    },
+    {
+      "id": "nsw-tanks-after-flood",
+      "raw": {
+        "id": "nsw-tank-flood",
+        "url": "https://www.health.nsw.gov.au/emergency_preparedness/weather/Pages/rainwater-tanks.aspx",
+        "final_url": "https://www.health.nsw.gov.au/emergency_preparedness/weather/Pages/rainwater-tanks.aspx",
+        "retrieved_at": "2026-11-26",
+        "bytes": 91251,
+        "raw_sha256": "3e4085f1e0fec0cbb6493ba3b5c61121192c9657db7bfdb04aa6e9bb2ac3e16c",
+        "links": [
+          {
+            "text": "Rainwater tanks",
+            "href": "/environment/water/Pages/rainwater.aspx"
+          },
+          {
+            "text": "Rainwater tanks",
+            "href": "/environment/water/Pages/rainwater.aspx"
+          },
+          {
+            "text": "Managing rainwater tanks",
+            "href": "/environment/water/Pages/rainwater.aspx"
+          },
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2023-04-04",
+      "selected_blocks": [
+        {
+          "selector": "summary",
+          "characters": 531,
+          "text_sha256": "9640d9ca9cfa10d6ea0368ac9bb13665baf4aa3773c5668e6409b56a9dda8824"
+        },
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "characters": 2717,
+          "text_sha256": "3fd50cb7ea2109f7e3784e711fed7a4bf0302f9ff8e8f95fb880e3bad14c3765"
+        }
+      ],
+      "sha256": "353ba4a665f121cef0c215f6c3525a289ea25bd5ebef48fdd62e58d3c8b3dc70",
+      "scope": "Complete written summary and body,including electrical/structural/entry risks,clean-safe-refill condition and all four tap-cleaning steps. April2023 source;links to the bundled rainwater reading."
+    },
+    {
+      "id": "nsw-nonpotable-water",
+      "raw": {
+        "id": "nsw-nonpotable",
+        "url": "https://www.health.nsw.gov.au/environment/water/Pages/Non-potable-supplies.aspx",
+        "final_url": "https://www.health.nsw.gov.au/environment/water/Pages/Non-potable-supplies.aspx",
+        "retrieved_at": "2026-11-26",
+        "bytes": 90994,
+        "raw_sha256": "589a2c31f2169d6e1f98f0132a57c6327495aa8a469ad91517f5f43e2f07cf9b"
+      },
+      "source_updated": "2026-04-21",
+      "selected_blocks": [
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "characters": 3265,
+          "text_sha256": "3cf9ff2013690c4b273b3b2b032c85c33fd136e524234d578e516955bb8396f0"
+        }
+      ],
+      "sha256": "55153c07f9d5f36da33086dcd64e3c48eae16d960d91371d19e7920829654053",
+      "scope": "Complete written article. Distinguishes ongoing boil advice from do-not-drink/do-not-use advice for chemical/radiological/algal risks. Includes water-utility audience and private-source testing/treatment conditions."
+    },
+    {
+      "id": "nsw-health-copyright",
+      "raw": {
+        "id": "nsw-copyright",
+        "url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+        "final_url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+        "retrieved_at": "2026-11-26",
+        "bytes": 81203,
+        "raw_sha256": "d2884c289deb417205ac5dcdbf27b195d6646c2640aaaf707115087cb2127928",
+        "links": [
+          {
+            "text": "Copyright Currently selected",
+            "href": "/Pages/copyright.aspx"
+          },
+          {
+            "text": "Request for Copyright Permission form",
+            "href": "/Pages/request-for-copyright.aspx"
+          },
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2023-01-09",
+      "selected_blocks": [
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "characters": 1705,
+          "text_sha256": "5be83708446e9bfce0fac5578a9942394500005918f26fe197e35623a703ade3"
+        }
+      ],
+      "sha256": "f18e0e0ee78a79c1caccb2b88bb74def98bd9e59393a85c30aa8150c900471e3",
+      "scope": "Complete written copyright body,including explicit CC BY 4.0 grant,exceptions,requested credit and separate formal-permission enquiry paragraph. No NSW logos/trademarks or third-party files."
+    }
+  ],
+  "rainwater_faq": [
+    [
+      "Is rainwater safe to drink?",
+      "Rainwater can be safe to drink. A properly maintained rainwater tank can provide good-quality drinking water. Rainwater that is sourced from a well-maintained water catchment area and appears clear with little or no taste or smell is probably safe to drink and unlikely to cause any illness for most users. The roofs and gutters of houses and sheds are the catchment area for rainwater collection."
+    ],
+    [
+      "Can people with a weakened immune system drink rainwater?",
+      "People who have a severely weakened immune system, or who are immunocompromised, should talk to their doctor about potential risks from drinking rainwater or consuming food or beverages that may contain rainwater. These include people with HIV, transplant recipients, dialysis patients, cancer patients, and people who are taking immune suppressing medications to manage chronic conditions, for example rheumatoid arthritis. Elderly people and very young children may also wish to take extra care by using only boiled or bottled water, and avoiding foods and beverages that may contain rainwater that has not been boiled. Please contact your doctor or local Public Health Unit for further information."
+    ],
+    [
+      "How can I disinfect rainwater before drinking it?",
+      "Rainwater can be by disinfected by bringing it to a rolling boil and allowing it to cool before drinking. An electric kettle with an automatic cut off switch is suitable. People should be aware of the dangers of scalding and be careful when boiling water."
+    ],
+    [
+      "What kind of rainwater tanks are available?",
+      "Rainwater tanks are available in a range of materials, including galvanised steel, Aquaplate®, Zincalume®, Colourbond®, fibreglass, plastic, stainless steel, and concrete. All of these materials can be suitable, provided the tanks have been manufactured specifically for the collection of rainwater and preferably have been tested according to Australian Standard/New Zealand Standard (AS/NZS) 4020. Plastics used for tanks should comply with Australian Standard (AS) 2070). It is useful for rainwater tanks to be made from an opaque material that excludes light to prevent algae growth in the water. Rainwater tanks should have at least two openings: one to let the rainwater in (usually on the roof of the tank), and an overflow to release water when the tank is full. Both openings should be screened to prevent animal entry and mosquito breeding. Install close fitting, fine insect-proof screens (e.g. 1 mm) on all inlets and overflows Inspect screens regularly (at least annually) to ensure they remain sealed and undamaged Check for and repair any holes or gaps in the rainwater tank that may allow entry of vermin. Any ground-level covers on in-ground rainwater tanks should also be sealed to prevent stormwater entering. The top of your rainwater tank should also have an access cover to allow inspection and cleaning. Access covers should be tightly sealed to stop animals and children entering."
+    ],
+    [
+      "How can I keep rainwater safe?",
+      "Rainwater in tanks can carry disease-causing microorganisms (pathogens), harmful chemicals (for example, lead) and can also become a breeding ground for mosquitoes. Regular maintenance reduces the risk of contamination from microorganisms and toxic chemicals, and of mosquitoes breeding. It also helps reduce bad tastes and smells in the water. Replace or cover any lead flashings or lead roofing screw washers on your roof. Use lead free plumbing materials for any building or renovation work. All new plumbing installations should use components that are certified to WaterMark, AS/NZS 4020 and have low lead content or are lead free. Daily Run your rainwater tap for 10 seconds at the start of each day, and for at least 2 minutes if you have not used the tap for more than 48 hours. This first-flow of water can have higher concentrations of lead and copper dissolved from plumbing fittings but can still be used for washing up, watering plants or other non-drinking uses. Check your rainwater is clear and smells normal. Three to four monthly Regularly maintain your catchment area and rainwater tank, including cleaning gutters and checking that small animals cannot enter your tank. Remove overhanging branches over the catchment area to limit animal and bird access and prevent droppings from contaminating the water. Make sure that gaps between solar panels and the roof are netted to prevent birds from nesting under the panels. Yearly Look inside your rainwater tank every six to twelve months and remove any sludge."
+    ],
+    [
+      "How can rainwater be treated?",
+      "Rainwater can be treated to improve its quality and safety. The following water treatments may be used with rainwater: Bring the rainwater to a rolling boil and allow it to cool before drinking. This will destroy any disease-causing microorganisms that might be present. An electric kettle with an automatic cut-off switch is suitable. Be careful when boiling water to avoid the dangers of scalding. Disinfect using powdered swimming pool chlorine (calcium hypochlorite, 65% available chlorine) or liquid chlorine (sodium hypochlorite, 12.5% available chlorine). Stabilised chlorine (chlorine cyanurates) should not be used. For more information, refer to How can I disinfect rainwater before drinking it?. Ultraviolet light (UV) disinfection from an appropriately sized UV disinfection unit. Filtering is also useful before disinfecting with ultraviolet light or chlorine. Few filters remove all harmful microorganisms. Filters should meet an appropriate standard such as AS/NZS 4348 or ANSI/NSF 53. If your rainwater is contaminated and needs treatment, refer to what should I do if my rainwater is contaminated?"
+    ],
+    [
+      "What is a first flush device?",
+      "The first water that flows from a roof during rainfall carries most of the dust and leaf litter that has gathered there. Keeping this material out of your rainwater tank will help to keep your tank cleaner. The first flush device (or first flush diverter) captures the first water from a rain shower before it reaches your rainwater tank. The device is typically installed on the down pipe between the roof gutter and the tank inlet. Many first flush diverters are designed to be self-emptying, but need some maintenance: After each rainfall, empty your first flush device so that it can catch the next first flush. Occasional cleaning can prevent your diverter blocking: Clean your first flush diverter by removing the end cap and rinsing the bottom cap, ensuring the weep hole is cleared. Rinse the filter and ball. Replace the ball in the downpipe before putting the cap back in place. For further information on maintaining your first flush device, refer to maintaining your first flush device."
+    ],
+    [
+      "How do I minimise exposure to hazardous chemicals and heavy metals?",
+      "Lead roof flashing or roofing screws with lead washers should be replaced with non-lead alternatives, like aluminium flashing or plastic washers, or painted over where they cannot be replaced. Run your rainwater tap for 10 seconds at the start of each day before using the taps for drinking or cooking. This 'first-flow' of water can be used for washing up, watering plants or other non-drinking uses. Install a first flush device to reduce the amount of dust being washed into rainwater tanks. Plastic pipes and fittings should be of a grade suitable for drinking water purposes. Some PVC pipes may contain lead (usually in pipes described as 'stormwater', 'wastewater' or 'rural' grade). Do not use pesticide-treated timber on rainwater catchments. If your house is oversprayed by aerial chemical spraying (crop dusting), disconnect the down pipe from your rainwater tank to prevent any rain carrying chemicals from entering the tank. Clean the roof or wait until after the next rainfall before reconnecting your drinking water tank to your roof. To protect your rainwater supply before and after a bushfire, refer to Rainwater and bushfires."
+    ],
+    [
+      "How do I desludge my rainwater tank?",
+      "Sludge is a layer of dirt that collects at the bottom of a tank over time. It is made of debris like leaf litter, dust and bird droppings. A first flush diverter can reduce the amount of sludge that accumulates, Some rainwater tanks are fitted with self-cleaning systems that can help in preventing and removing sludge accumulation Sludge can be removed by syphoning or having the tank professionally cleaned. Your can syphon sludge from your rainwater tank using an inverted funnel at the end of a hose. Once the hose is charged and a syphon has been established, move the funnel carefully across the bottom of the tank to suck up the sludge."
+    ],
+    [
+      "Can I clean my rainwater tank?",
+      "It is strongly recommended you engage a professional tank cleaner to clean your rainwater tank, rather than cleaning it yourself, especially if cleaning involves getting inside the tank. Professional cleaners can better handle the risks involved in cleaning rainwater tanks. These risks include: Heat exhaustion Loss of consciousness, impairment, injury or death Poisoning from carbon monoxide Accidental falls on slippery surfaces or when using ladders for entry and exit Electric shocks if using extension cords."
+    ],
+    [
+      "What should I do if my rainwater is contaminated?",
+      "Vermin in the tank - Firstly, remove any small animals. Find and fix the hole through which they entered. You may want to empty your tank and have it refilled by a water carter if the water smells strongly. Otherwise, you can disinfect your tank with chlorine. For more information on using chlorine, refer to How do I treat contaminated rainwater in my tank?. Removing sources of chemical contamination, such as lead flashings, from your catchment area should manage chemical risks without the need for testing. If your house is oversprayed by aerial chemical spraying (crop dusting), disconnect the down pipe from your rainwater tank to prevent any rain carrying pesticides from entering the tank. Clean the roof or wait until after the next rainfall before reconnecting your drinking water tank to your roof. For more information on contamination from bushfires, refer to Rainwater and bushfires. For more information on cleaning rainwater tanks after contamination from floods or storms, refer to cleaning rainwater tanks after floods or storms."
+    ],
+    [
+      "How do I treat contaminated rainwater in my tank?",
+      "If you suspect that water in your rainwater tank is contaminated, it can be disinfected by adding powdered swimming pool chlorine (calcium hypochlorite, 65% available chlorine) or liquid chlorine (sodium hypochlorite, 12.5% available chlorine). Unscented household bleach (containing 4-5% available chlorine) may also be used. Avoid using stabilised pool chlorine, which contains cyanuric acid or sodium dichloroisocyanurate. Here are some tips to help treat your contaminated rainwater: It takes about 5 milligrams of chlorine per litre to disinfect your tank. This is equivalent to 7 grams of calcium hypochlorite (approximately a level dessert spoon) or 40 millilitres of sodium hypochlorite per 1000 litres of water. Note that milligrams per litre (mg/L) is the same as parts per million (ppm). It is important to mix the chlorine in a plastic bucket in the open air before adding it to the rainwater tank. Mix it thoroughly with the tank water and allow to stand for a minimum of two hours Do not pour water into chlorine; always add chlorine to water. A lot of the chlorine may be used up during disinfection. There should be at least 0.5 milligrams per litre of free chlorine, 30 minutes after the chlorine is added. A pool chlorine test kit can be used to measure how much chlorine is in the water. You should be able to smell the chlorine faintly an hour or so after treating the water if you don't have equipment for measuring the concentration. You may need to add a similar amount of chlorine again if you can't smell chlorine in the rainwater. Ideally, you should not use your rainwater tank for at least 24 hours to allow the chlorine taste and smell to disappear and for harmful microorganisms to be destroyed. However, the water should be safe to drink, provided the chlorine smell is not too strong. Rainwater can also be disinfected by bringing it to a rolling boil and allowing it to cool before drinking. An electric kettle with an automatic cut-off switch is suitable. Be careful when boiling water to avoid the dangers of scalding. For further information about safe chemical handling, contact SafeWork NSW."
+    ],
+    [
+      "How do I keep mosquitoes out of my rainwater tank?",
+      "The openings on your rainwater tank should be screened to prevent animal entry and mosquito breeding: Install closely fitting, fine insect-proof screens (e.g. 1 mm) on all inlets and overflows Inspect screens regularly (at least annually) to ensure they remain sealed and undamaged Check for and repair any holes or gaps in the tank that may allow entry of mosquitoes Treating tank water for mosquitoes should only be required when prevention measures fail. The Australian Drinking Water Guidelines recommend the use of the pesticide s-methoprene for mosquito control in rainwater tanks. A range of products containing s-methoprene for treating mosquito larvae in rainwater tanks are available. Adding kerosene or liquid paraffin to tanks to kill mosquito larvae is not recommended, as these may interact with plastic tanks or tank liners, and can affect the taste of the water."
+    ],
+    [
+      "What about bird flu?",
+      "The risk of bird flu (H5N1) to rainwater is considered low. The virus could enter rainwater tanks from bird droppings or dead birds on your roof and gutters, or from birds entering your tank. Influenza viruses are easily treated by boiling or disinfection using either chlorine or ultraviolet light. It is important to follow advice on keeping rainwater safe and regularly checking roofs, gutters and first flush diverters. If you find dead birds on your roof report the incident to the Emergency Animal Disease Hotline at 1800 675 888. If safe to do so, carefully remove the bird, and any droppings, without touching it and wearing suitable personal protective equipment (PPE). Information regarding PPE requirements are detailed on the NSW Government website. Follow the Department of Planning, Industry and Regional Development (DPIRD) advice on how to store the bird if it is to be collected. If the bird is to be disposed of please follow the DPIRD disposal factsheet."
+    ],
+    [
+      "Do I need to test my rainwater tank water to know that it is safe to drink?",
+      "As a householder, you should not need to send your rainwater tank water to a laboratory for testing. However, sometimes you may want your water tested if you have noticed a bad smell or taste, or found small animals in your tank. Removing the source of contamination, disinfecting your rainwater tank with chlorine, and fixing any holes by which animals could enter, should address the problem without the need for laboratory testing. Similarly, removing sources of chemical contamination, such as lead flashings, from your catchment area should manage chemical risks without the need for testing. Should you wish to have your water tested, many analytical laboratories can advise on chemical and microbiological testing. Your local Public Health Unit can also help you find a NATA-accredited laboratory and provide guidance on your drinking water results."
+    ],
+    [
+      "What if I own a business and use rainwater in food or drinks for the public?",
+      "Premises that serve the public or employees and use rainwater for drinking and/or cooking must comply with the NSW Public Health Act 2010 and have a quality assurance program. You can find a template for a QAP for a small supply at Quality assurance program - untreated rainwater. Food manufacturers and larger businesses should apply the NSW Health Private Water Supplies Guidelines to develop a QAP It is recommended that businesses that use rainwater in food or drinks for the public should test their tank water regularly. Further information can be found on the Private Water Supplies and the Rainwater Treatment webpages."
+    ],
+    [
+      "Does rainwater contain fluoride?",
+      "Rainwater does not contain fluoride. Advice about alternative sources of fluoride, such as use of fluoride-containing toothpaste, should be sought from your local dentist or dental therapist."
+    ],
+    [
+      "How do I refill my rainwater tank from a safe drinking water supply?",
+      "You may need to have water delivered by a water carter if you haven't had enough rain, or after emptying and cleaning your rainwater tank. Ensure that you are being supplied with clean drinking water from a public water supply delivered in a clean water carting tank. Water carters must be authorised by the local council to carry drinking water. Contact your local council for advice on local authorised water carters. Water carters must comply with the NSW Public Health Act 2010 by having a quality assurance program following the NSW Guidelines for Water Carters and keeping records of deliveries. Filling your rainwater tank with carted water can leave your water cloudy by stirring up sediment from the bottom of the tank. The sediment should settle over time. For peace of mind, you may want to boil your water while it remains cloudy or disinfect your rainwater tank. Water from other sources, such as rivers, creeks and dams (surface water) or bore (groundwater), is generally not safe for drinking without additional treatment. These sources should not be used to top up rainwater tanks."
+    ],
+    [
+      "What if my rainwater tank is connected to a water heating system?",
+      "Rainwater may cause corrosion in water heating systems. Suppliers can provide advice on modifying water heating systems to suit rainwater. Hot water taps are not recommended for drinking or cooking as hot water can have higher concentrations of metals dissolved from plumbing fittings. Water heating systems that operate between 60 and 70°C will kill disease causing microorganisms. The temperature should be 50°C or less at hot water taps. Water from a hot water system working at these temperatures is safe for bathing, washing up and other domestic uses."
+    ]
+  ],
+  "comparison": "All selected normalized written blocks compare exactly before/after technical HTML simplification;zero-width formatting characters removed,whitespace normalized for comparison. FAQ question/answer pairs remain ordered.",
+  "source_variation": "Intro daily tap-flush2–3min differs from FAQ10sec daily/2min after48h;both retained and flagged. Product strengths/volumes/waiting times remain within exact source contexts;no new dosage or merged procedure.",
+  "excluded": [
+    {
+      "id": "nsw-tank-bushfire",
+      "reason": "January2020 linked page has separate emergency treatment/chemical-contamination context;body not bundled in this increment. No recipe is silently combined with2026rainwater."
+    },
+    {
+      "id": "nsw-retardants",
+      "reason": "November2019 linked page acknowledges NSW RFS/Victorian contributions;source/context checked,but body and listed products/first-aid instructions not bundled. No inferred third-party grant."
+    }
+  ],
+  "not_claimed": "Independent clinical/water-safety review,current local quality,contact/service availability,every linked manual,building/installation approval or actual water testing."
+}

@@ -1,0 +1,224 @@
+{
+  "checked": "2026-11-27",
+  "selections": [
+    {
+      "id": "nsw-smoke-protection",
+      "raw": {
+        "id": "nsw-smoke-protection",
+        "url": "https://www.health.nsw.gov.au/environment/bushfire/Pages/bushfire-protection.aspx",
+        "final_url": "https://www.health.nsw.gov.au/environment/bushfire/Pages/bushfire-protection.aspx",
+        "retrieved_at": "2026-11-27",
+        "bytes": 88225,
+        "raw_sha256": "4d2c5e0685feea81588df7a422578344a3e720474db57a652f15899b43a741b7",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2025-03-17",
+      "blocks": [
+        {
+          "selector": "help box",
+          "source_text": "Get help and information Call Triple Zero 000 in an emergency. Call 1800Medicare on 1800 633 422 for medical advice (24-hour helpline). Check the air quality near you and follow the recommended health advice Check fire alerts and warnings Download the Hazards Near Me NSW app",
+          "text_sha256": "f6dc9cad7db5ed5edf74793f2c8c120e1d15a24e711ad5c39635a4c61e053864"
+        },
+        {
+          "selector": "protection body",
+          "source_text": "Bushfire smoke contains fine particles that can irritate your eyes, nose, throat and lungs. It is important that you take steps to reduce your time in smoky air. Some people are more sensitive to bushfire smoke and should take extra precautions to protect their health. If it is smoky and you live in an area where a bushfire is possible, check and follow any emergency warnings associated with threats from bushfires. Visit NSW Rural Fire Service - Fires Near Me to check for active warnings in your area. Steps you can take to be protected from bushfire smoke Monitor the air quality in your area and follow health advice Follow your doctor’s advice about how to stay safe if you are more sensitive to smoke. Actively monitor for symptoms and follow your health action plan (for example an Asthma Action Plan), if you have one. Keep your medication close by. Spend more time indoors and avoid outdoor activity as much as possible. Keep the air inside your home as clean as possible. To do this: close windows and doors and open them when air quality improves switch your air conditioner to recirculate if it has this function do not use evaporative coolers because they bring outdoor air inside avoid indoor sources of air pollution like cigarettes, vapes, candles and incense sticks consider using an air purifier with a high efficiency particle air (HEPA) filter to remove smoke from your indoor air. To work well, the purifier must be used in small, well-sealed areas. Humidifiers, negative ion generators and odour absorbers do not remove fine particles in bushfire smoke. Spend time in air-conditioned venues like public libraries and shopping centres. If bushfire smoke is affecting you inside your home, consider spending time at the home of a friend or family member where there is less smoke. Consider using a P2/N95 mask to protect you from bushfire smoke if you are unable to avoid exposure. P2/N95 masks must fit properly with an air-tight seal to work well. Surgical and cloth masks do not protect you from smoke. Learn if a mask is right for you and how to fit your mask. Call Triple Zero 000 if you or anyone in your care is experiencing a medical emergency, such as trouble breathing or chest pain or tightness.",
+          "text_sha256": "2a4adf523b7946f03d7259f1b1482341ed7fe61364ca3084fc12776050db6768"
+        }
+      ],
+      "sha256": "9b85113660897a86bb08a9f2996fe905c625308e1e0fe10e848020d0d5063e2c"
+    },
+    {
+      "id": "nsw-smoke-higher-risk",
+      "raw": {
+        "id": "nsw-smoke-higher-risk",
+        "url": "https://www.health.nsw.gov.au/environment/bushfire/Pages/know-high-risk.aspx",
+        "final_url": "https://www.health.nsw.gov.au/environment/bushfire/Pages/know-high-risk.aspx",
+        "retrieved_at": "2026-11-27",
+        "bytes": 99503,
+        "raw_sha256": "30cb68f3c855928b53b6a51deaf05ee82134af531e710458cf5c56a4359f14ac",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2025-03-17",
+      "blocks": [
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "source_text": "Bushfire smoke can make some people’s existing health conditions worse. You may be more sensitive to the health effects of bushfire smoke if you:have a pre-existing heart or lung condition like asthma, emphysema and angina are pregnantare aged over 65are an infant or a young child have diabetes.If you or your child is at higher risk, talk to your doctor now about how bushfire smoke might impact your health.There are some helpful resources below to help you plan for managing your health and your family’s health when it is smoky.",
+          "text_sha256": "ea5bcf9034114b8eb5a27d545ab4724934d51c8e8eb88f42c38d65ffbcbd4358"
+        },
+        {
+          "selector": "FAQ heading:Asthma",
+          "source_text": "Asthma",
+          "text_sha256": "d83cf5e912a99a50810dddfb8d442ee0bb5c59758217819e25f2e85f299ae8ed"
+        },
+        {
+          "selector": "FAQ answer:Asthma",
+          "source_text": "Talk to your doctor about your Asthma Action Plan and know how to manage your asthma if you experience a flare-up due to bushfire smoke.If your child has asthma, discuss their Asthma Action Plan with their doctor. Provide any updated plans to your child’s preschool, childcare centre or school.Check that your and/or your child’s asthma reliever medication is up-to-date and stored with a spacer in an easy spot for you or a responsible adult to get quickly.Know the warning signs of worsening asthma and when to seek medical advice or call Triple Zero (000).Visit Sydney Children’s Hospital Network’s Asthma factsheet which includes a good asthma control checklist.For more information about asthma, visit Asthma Australia or speak to an asthma educator on 1800 ASTHMA (1800 278 462).",
+          "text_sha256": "2b13bd616f77e8af836b9eae5835ec09d3a2613a576e901826ea42016b70d18b"
+        },
+        {
+          "selector": "FAQ heading:heart",
+          "source_text": "Heart and lung conditions",
+          "text_sha256": "bda6c45f2b3de3f3be3d1cc0cc2d193f95362aeafcb735dc98322989088cdc3e"
+        },
+        {
+          "selector": "FAQ answer:heart",
+          "source_text": "Bushfire smoke can worsen heart and lung conditions such as angina and emphysema (chronic obstructive pulmonary disease).This may lead to symptoms such as chest pain, shortness of breath or heart palpitations, and may increase the risk of heart attacks.Things you can do to protect your health:talk to your doctor about managing your heart or lung condition when there is bushfire smoke, including completing any action plans you should followknow the symptoms to watch out for and when to seek medical advice or call Triple Zero (000)visit Heart Foundation - Bushfire smoke and your health for further information.",
+          "text_sha256": "6c25373d900a2e8683bb759c9c6ee36ac588e2f1d3d861ae7ce3165ca5178b2c"
+        },
+        {
+          "selector": "FAQ heading:preg",
+          "source_text": "Pregnancy",
+          "text_sha256": "d9caea730c50507387a88f3b7d8943f606e211f5adc8000ba9bdd6b8553cc184"
+        },
+        {
+          "selector": "FAQ answer:preg",
+          "source_text": "If you are pregnant, you may be more sensitive to the effects of smoke.Brief exposure to bushfire smoke during pregnancy is unlikely to affect you or your baby. If you are continuously exposed to smoke for more than one week, it may increase the risk of outcomes such as preterm birth, lower birth weight and developing gestational diabetes.Things you can do to protect you and your baby:talk to your doctor or midwife about managing your health when there is bushfire smoke abouttake steps to reduce your exposure to all sources of smoke during pregnancyknow what to do if the air quality is impacted by bushfire smoke in your area.",
+          "text_sha256": "a38cec79c964f5ef7785e3693d8787cded1dfc15106e972268ddc211838cfb5a"
+        },
+        {
+          "selector": "FAQ heading:infants",
+          "source_text": "Infants and young children",
+          "text_sha256": "0a495dbb39a851cb7411851d887f06d44fa7fbc328dad5f800c9e0baaf4006fa"
+        },
+        {
+          "selector": "FAQ answer:infants",
+          "source_text": "Children are more vulnerable to the effects of smoke because they spend more time outdoors engaged in physical activity, have developing airways and breathe more air relative to their body weight.It is important to reduce your child’s exposure to bushfire smoke.Children with lung conditions, such as asthma, may be more sensitive to smoke.Things you can do to protect your child:Monitor the air quality near you regularly and follow the health advice on protecting yourself from bushfire smoke.Reduce your child’s exposure to smoke. You may need to postpone some outdoor activities while it is smoky.If your child has asthma, follow the advice for people with asthma.Childcare centres are also encouraged to monitor air quality for their local area and follow the health advice to protect children from bushfire smoke.Learn more on protecting yourself and others from bushfire smoke.If children in your care display symptoms of asthma such as difficulty breathing, a wheeze or persistent cough, follow their written Asthma Action Plan. If they do not have a plan, provide asthma first aid, contact their parents or carers and monitor the child closely. Call Triple Zero (000) if symptoms are not improving or get worse.",
+          "text_sha256": "4c061385506078778a3b9d3aaf052e1f0fbba5cb91731cdefcb04fe6e336953a"
+        },
+        {
+          "selector": "FAQ heading:Diabet​​​es",
+          "source_text": "Diabetes",
+          "text_sha256": "c3311c4ca6df58c509e76fba2049d3d2e8c7256cd84fa19d2c3ccda6b372fb6d"
+        },
+        {
+          "selector": "FAQ answer:Diabet​​​es",
+          "source_text": "Bushfire smoke may affect blood glucose levels and make them harder to manage. During an emergency, your body processes glucose differently. Stress, changes in physical activity and the food you eat, may mean you need to adjust your medication during and after a bushfire emergency. Things you can do to protect your health: talk to your doctor about managing your diabetes when there is bushfire smoke or during a bushfireask your doctor to help you prepare a diabetes management planvisit National Diabetes Services Scheme (Diabetes Australia) for help preparing a diabetes emergency plan and kit.",
+          "text_sha256": "d0d691c85c50aa1acfbf3e03495f2bb556957dac84848b0a228a36498ced5f27"
+        },
+        {
+          "selector": "help box",
+          "source_text": "Get help and information Call Triple Zero 000 in an emergency. Call 1800Medicare on 1800 633 422 for medical advice (24-hour helpline). Check the air quality near you and follow the recommended health advice Check fire alerts and warnings Download the Hazards Near Me NSW app",
+          "text_sha256": "f6dc9cad7db5ed5edf74793f2c8c120e1d15a24e711ad5c39635a4c61e053864"
+        }
+      ],
+      "sha256": "81805a299453756bfb0e1cd7ae33155337eed3a169462641c47fe2a217ac836f"
+    },
+    {
+      "id": "nsw-p2-n95-masks",
+      "raw": {
+        "id": "nsw-p2-n95-masks",
+        "url": "https://www.health.nsw.gov.au/environment/factsheets/Pages/face-mask.aspx",
+        "final_url": "https://www.health.nsw.gov.au/environment/factsheets/Pages/face-mask.aspx",
+        "retrieved_at": "2026-11-27",
+        "bytes": 81897,
+        "raw_sha256": "fd8f1c722c647e41dde08035a81a7d3a8e0c310657cc5e8cbed09fcaca43e832",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2025-03-17",
+      "blocks": [
+        {
+          "selector": "summary",
+          "source_text": "P2/N95 face masks can help filter out the fine particles in smoke. To be effective, they must be fitted according to the manufacturer’s instructions and form a tight seal around the face. It can be difficult to maintain a tight seal, particularly for people with facial hair.",
+          "text_sha256": "762403799858817293b56cfafe95527f369052db628bc0b904ff4fae905d4c01"
+        },
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "source_text": "What is a P2/N95 mask?P2/N95 rated face masks can help filter out the fine particles found in bushfire smoke when worn correctly. They are disposable masks so should be replaced after each use. Why wear a P2/N95 mask?P2/N95 masks help to protect you from bushfire smoke and poor air quality if you are unable to avoid exposure.People returning to fire-damaged homes after bushfires should wear a P2/N95 face mask, as well as protective clothing such as sturdy footwear, heavy-duty work gloves and disposable coveralls. For more information, refer to health advice for returning home safely,Are P2/N95 masks suitable for everyone?To be effective, P2/N95 masks must form an air-tight seal around the face.However, some people might find this difficult:If you have a beard, you should shave before using a P2/N95 mask to achieve a good seal between the mask and your face.If you have a pre-existing heart and lung condition, P2/N95 masks can make it harder to breathe. Speak to your doctor before wearing one.If you have difficulty breathing, feel dizzy, faint or have other symptoms while wearing a face mask, remove the mask and go indoors or to a place where there is better air quality.P2/N95 masks are not designed to fit the smaller face of children. Where can I get a P2/N95 mask?Face masks are available at most pharmacies and many hardware stores and other safety equipment suppliers. Ring ahead before you visit to make sure there is stock. How to wear a P2/N95 maskMake sure the mask has formed a tight seal over the bridge of the nose and mouth.Check there are no gaps in the seal between the mask and the face before entering an unsafe environment. Always follow the manufacturer’s instructions. How long should I wear a P2/N95 mask?Masks become less effective with repeated use, consider changing regularly.Replace a mask when:It becomes moistIt becomes hard to breathe through",
+          "text_sha256": "0242e6186b27ed430316738403aabc7c7bf53700922bd0c4e900766f1022447f"
+        }
+      ],
+      "sha256": "81f512b66f00c8663b29e178c1e02eea419aedfa7037e9fcff93d73d0b1c9494"
+    },
+    {
+      "id": "nsw-flooded-wastewater",
+      "raw": {
+        "id": "nsw-flooded-wastewater",
+        "url": "https://www.health.nsw.gov.au/emergency_preparedness/weather/Pages/floods-onsite-wastewater-systems.aspx",
+        "final_url": "https://www.health.nsw.gov.au/emergency_preparedness/weather/Pages/floods-onsite-wastewater-systems.aspx",
+        "retrieved_at": "2026-11-27",
+        "bytes": 92687,
+        "raw_sha256": "8276d49cf5a0b683837e81f869b1f61f395587f4df022d9b95a379520127ef93",
+        "copyright_links": [
+          {
+            "text": "Copyright",
+            "href": "/pages/copyright.aspx"
+          }
+        ]
+      },
+      "source_updated": "2023-04-04",
+      "blocks": [
+        {
+          "selector": "summary",
+          "source_text": "On-site wastewater systems, such as septic tanks and aerated wastewater treatment systems (AWTS), and their land application systems, for example sprinklers and below ground drippers, can be affected by flood waters. Avoid using flood-affected wastewater systems until assessed by a licensed plumber or service technician familiar with on-site wastewater systems. Contact with effluent or untreated wastewater from damaged on-site wastewater systems can cause illness and should be avoided at all times.",
+          "text_sha256": "7e6d250a4e6176d63d33c1461a3832d21f8d0fa84cc0edb686636e3c7923678b"
+        },
+        {
+          "selector": "#ctl00_PlaceHolderMain_contentc1__ControlWrapper_RichHtmlField",
+          "source_text": "Flood water damage Most on-site wastewater systems should not be structurally damaged by flooding, because they are below ground. If a wastewater system has been under flood water the tank and land application field can fill with silt and debris. If you suspect the wastewater system is damaged, do not use any toilets, laundry, kitchen, bathroom or clean-up equipment connected to the onsite wastewater disposal system until:all parts of the wastewater treatment and disposal system have been inspected and repaired by a licenced plumber or authorised service technician familiar with on-site systemsyour onsite wastewater treatment and disposal system has been inspected and approved for use by the local council. Indicators of damageFlooding of wastewater systems may wash out solids from the tank causing blockages or system damage. Safety issues that need checking include open covers or pits, ruptured and leaking tanks and pipes, and damaged or exposed pipes. Failed systems are not easy to identify, but some indicators of damage include a pungent odour around the tank and land application area, sewage overflowing from toilets and sinks, and high sludge levels within the primary tank. If your system is damaged and presents an immediate safety risk, action should be taken as soon as practicable to make it safe. For example, if the lid is missing, place a temporary cover or fencing around the system to prevent access to the area. The system may need to be pumped out after a flood to remove silt and debris; however, it is advisable to only leave the tank empty for a short time to avoid the tank floating out of the ground and damaging inlet and outlet pipes. Wastewater systemsPlastic and fibreglass on-site wastewater systems, or systems made with plastic components, are more susceptible to damage than concrete tanks particularly if installed above ground. This includes shallow PVC pipes, plastic tanks and sumps, and plastic irrigation pipework which may be installed above or below ground. Pumps and other equipment with electrical components may also be damaged.It is recommended that damaged on-site wastewater systems are not used until repaired or replaced.ActionsDue to the risks associated with using systems after a flood, the following actions are recommended: Avoid using the wastewater system until flood water has subsided to at least the level of the land application field.If the on-site wastewater system is damaged, arrange repair of the system as soon as possible.Repair or replace damaged electrical components and pumps as soon as possible.Reduce water use as much as possible until the system is inspected and repaired by: Reducing the frequency of toilet flushing for liquid wasteTaking shorter showers or shower elsewhereLimiting laundry and dishwashing as much as possible. If possible avoid using automatic clothes washers and dishwashers.If the power has not been restored, the septic tank can be used as a temporary holding tank and pumped out periodically, provided the tank is not damaged.You may need to disconnect the pump (if present) and block the outlet to the land application area. If the tank is significantly damaged and can’t be used as a temporary holding tank, do not use the system until it is repaired or replaced.Once power is restored, ponding may occur near the wastewater system and these areas should be avoided. Contact a licenced plumber or authorised service technician to reassess the system.Further advice The manufacturers of on-site wastewater systems should have information and user manuals about their systems on their web sites. Sanitation is very important for the whole community. Your local Council is able to provide further advice about measures that can be taken while on-site wastewater systems are repaired or replaced.For further information Contact your local councilContact your local Public Health Unit by calling 1300 066 055Refer to the NSW Health guidelines for On-site single domestic wastewater management",
+          "text_sha256": "38976e20eac39732ed8021dfe4885825c6c95fc7fea7f9970ecd7a430023c6ad"
+        }
+      ],
+      "sha256": "555e4329c81a8d2dc3b12dde6cdf82edd4c7c402e38c75c2fde8443fdaba99e4"
+    }
+  ],
+  "higher_risk_faq": [
+    [
+      "Asthma",
+      "Talk to your doctor about your Asthma Action Plan and know how to manage your asthma if you experience a flare-up due to bushfire smoke.If your child has asthma, discuss their Asthma Action Plan with their doctor. Provide any updated plans to your child’s preschool, childcare centre or school.Check that your and/or your child’s asthma reliever medication is up-to-date and stored with a spacer in an easy spot for you or a responsible adult to get quickly.Know the warning signs of worsening asthma and when to seek medical advice or call Triple Zero (000).Visit Sydney Children’s Hospital Network’s Asthma factsheet which includes a good asthma control checklist.For more information about asthma, visit Asthma Australia or speak to an asthma educator on 1800 ASTHMA (1800 278 462)."
+    ],
+    [
+      "Heart and lung conditions",
+      "Bushfire smoke can worsen heart and lung conditions such as angina and emphysema (chronic obstructive pulmonary disease).This may lead to symptoms such as chest pain, shortness of breath or heart palpitations, and may increase the risk of heart attacks.Things you can do to protect your health:talk to your doctor about managing your heart or lung condition when there is bushfire smoke, including completing any action plans you should followknow the symptoms to watch out for and when to seek medical advice or call Triple Zero (000)visit Heart Foundation - Bushfire smoke and your health for further information."
+    ],
+    [
+      "Pregnancy",
+      "If you are pregnant, you may be more sensitive to the effects of smoke.Brief exposure to bushfire smoke during pregnancy is unlikely to affect you or your baby. If you are continuously exposed to smoke for more than one week, it may increase the risk of outcomes such as preterm birth, lower birth weight and developing gestational diabetes.Things you can do to protect you and your baby:talk to your doctor or midwife about managing your health when there is bushfire smoke abouttake steps to reduce your exposure to all sources of smoke during pregnancyknow what to do if the air quality is impacted by bushfire smoke in your area."
+    ],
+    [
+      "Infants and young children",
+      "Children are more vulnerable to the effects of smoke because they spend more time outdoors engaged in physical activity, have developing airways and breathe more air relative to their body weight.It is important to reduce your child’s exposure to bushfire smoke.Children with lung conditions, such as asthma, may be more sensitive to smoke.Things you can do to protect your child:Monitor the air quality near you regularly and follow the health advice on protecting yourself from bushfire smoke.Reduce your child’s exposure to smoke. You may need to postpone some outdoor activities while it is smoky.If your child has asthma, follow the advice for people with asthma.Childcare centres are also encouraged to monitor air quality for their local area and follow the health advice to protect children from bushfire smoke.Learn more on protecting yourself and others from bushfire smoke.If children in your care display symptoms of asthma such as difficulty breathing, a wheeze or persistent cough, follow their written Asthma Action Plan. If they do not have a plan, provide asthma first aid, contact their parents or carers and monitor the child closely. Call Triple Zero (000) if symptoms are not improving or get worse."
+    ],
+    [
+      "Diabetes",
+      "Bushfire smoke may affect blood glucose levels and make them harder to manage. During an emergency, your body processes glucose differently. Stress, changes in physical activity and the food you eat, may mean you need to adjust your medication during and after a bushfire emergency. Things you can do to protect your health: talk to your doctor about managing your diabetes when there is bushfire smoke or during a bushfireask your doctor to help you prepare a diabetes management planvisit National Diabetes Services Scheme (Diabetes Australia) for help preparing a diabetes emergency plan and kit."
+    ]
+  ],
+  "rights": {
+    "policy": {
+      "id": "nsw-health-copyright",
+      "url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "final_url": "https://www.health.nsw.gov.au/Pages/copyright.aspx",
+      "retrieved_at": "2026-11-27",
+      "bytes": 80813,
+      "raw_sha256": "4aad99c0553af19f3f971742835e786ac325a52809b0fb3560f0f00762654a1f",
+      "copyright_links": [
+        {
+          "text": "Copyright",
+          "href": "/pages/copyright.aspx"
+        }
+      ]
+    },
+    "body_identical_to_existing_bundled_policy": true,
+    "grant": "Explicit NSW Health website CC BY 4.0 grant, subject to its exclusions. Selected page footer links checked individually; no separate text reservation or third-party text credit observed in selected bodies.",
+    "exceptions": "Coat of Arms, symbols, logos, trademarks, third-party and separately restricted material excluded. Linked third-party articles, images, video, manuals and downloads not included.",
+    "credit": "© State of New South Wales NSW Ministry of Health. For current information go to www.health.nsw.gov.au.",
+    "separate_permission_paragraph": "Retained unchanged in the existing complete copyright reading alongside the explicit CC BY 4.0 grant. No enquiry sent."
+  },
+  "comparison": "Every selected normalized written block matches before/after technical simplification. Five FAQ headings/answers expanded in original order; nested lists and complete conditions retained. Zero-width formatting removed; no medical wording editing.",
+  "not_claimed": "Independent clinical,engineering,translation,accessibility or community review; current warnings/air quality; service availability; safe use/approval of an actual wastewater system; complete Australian coverage."
+}

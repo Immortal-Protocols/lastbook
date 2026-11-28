@@ -49,7 +49,8 @@
   "bombing",
   "explosions",
   "dirty bomb",
-  "go bag", "documents",
+  "go bag",
+  "documents",
   "kit",
   "family plan",
   "high-rise",
@@ -149,6 +150,16 @@
    "hint": "Evacuation order, forest fires approaching, trapped at home or in a car",
    "read": [
     {
+     "doc": "vic-cfa-prepare-leave",
+     "label": "Victoria: CFA preparation, kit and leaving checklists",
+     "note": "CFA, Victoria. Version 6, July 2022; source pages 8-10. Preparation, pets, emergency kit and leaving checklists, including the source conditions. Retrieved 2026-11-26; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "vic-cfa-during-fire",
+     "label": "Victoria: CFA fire behaviour and last-resort survival warnings",
+     "note": "Victorian CFA source, version 6 July 2022. Fire behaviour and last-resort survival warnings; these are not approval to stay or a substitute for an assessed plan and current warnings."
+    },
+    {
      "doc": "2848f4bffb8109",
      "page": 8,
      "label": "Ready.gov: before you evacuate from a wildfire",
@@ -173,6 +184,21 @@
    "label": "Wildfire smoke is making the air bad",
    "hint": "Smoky air from a wildfire or forest fire, not ordered to evacuate, N95 respirator",
    "read": [
+    {
+     "doc": "nsw-smoke-protection",
+     "label": "New South Wales: NSW: protect yourself from bushfire smoke",
+     "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled. Retrieved 2026-11-27; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "nsw-smoke-higher-risk",
+     "label": "New South Wales: NSW: higher risk from bushfire smoke",
+     "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled. Retrieved 2026-11-27; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "nsw-p2-n95-masks",
+     "label": "New South Wales: NSW: P2/N95 masks, fit and limitations",
+     "note": "NSW Health; source 2025-03-17. Read exposure, higher-risk and mask limitations together; external resources and live air quality are not bundled. Retrieved 2026-11-27; source and retrieval dates are distinct."
+    },
     {
      "doc": "a90ff7e6f3cf01",
      "label": "Ready.gov: protecting yourself from smoke",
@@ -244,6 +270,16 @@
    "label": "Flooding or a flood warning",
    "hint": "Rising water, flooded roads, storm, cyclone or monsoon",
    "read": [
+    {
+     "doc": "sa-flood-during",
+     "label": "South Australia: During a flood: South Australian SES source guidance",
+     "note": "South Australian SES source retrieved 26 November 2026. Complete during-flood body; South Australian contacts and requirements apply to SA."
+    },
+    {
+     "doc": "sa-flood-after",
+     "label": "South Australia: After a flood: South Australian SES source guidance",
+     "note": "South Australian SES source retrieved 26 November 2026. Complete after-flood body; South Australian contacts and requirements apply to SA."
+    },
     {
      "doc": "d0fbb2e051cd46",
      "page": 13,
@@ -556,9 +592,39 @@
    "id": "pack",
    "label": "What to pack for an evacuation",
    "hint": "Checklist, the 5 Ps",
-   "phrases": ["pack", "packing", "go bag", "bug out bag", "grab bag"],
-   "context": ["bag", "bags", "evacuate", "evacuating", "leave", "leaving", "emergency", "hurry", "quickly", "list", "family", "kids", "car"],
+   "phrases": [
+    "pack",
+    "packing",
+    "go bag",
+    "bug out bag",
+    "grab bag"
+   ],
+   "context": [
+    "bag",
+    "bags",
+    "evacuate",
+    "evacuating",
+    "leave",
+    "leaving",
+    "emergency",
+    "hurry",
+    "quickly",
+    "list",
+    "family",
+    "kids",
+    "car"
+   ],
    "read": [
+    {
+     "doc": "nsw-evacuation",
+     "label": "New South Wales: If you have to evacuate",
+     "note": "NSW guidance; local services and rules apply. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
+    {
+     "doc": "qld-emergency-kit",
+     "label": "Queensland: Emergency kit: essential items, all times",
+     "note": "Queensland guidance; local services and rules apply. Retrieved 2026-11-17; source and retrieval dates are distinct."
+    },
     {
      "doc": "2848f4bffb8109",
      "page": 7,

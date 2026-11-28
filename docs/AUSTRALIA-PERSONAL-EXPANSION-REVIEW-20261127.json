@@ -1,0 +1,71 @@
+{
+  "checked": "2026-11-27",
+  "selection": "bls-first-aid",
+  "PDF_documents": 35,
+  "PDF_pages": 263,
+  "personal_records": 36,
+  "personal_search_units": 264,
+  "default": {
+    "documents": 6,
+    "pages": 41,
+    "manifest_and_records": "unchanged",
+    "actual_seven_reader_files_and_personal_marker": "byte-identical to prior installed basic collection"
+  },
+  "source_scope": "All7Basic Life Support and28First Aid entries on the checked ANZCOR section indexes;other sections and externally cited resources not included.",
+  "PDF_QA": "All263pages yielded nonempty text and rendered;all35first pages inspected on contact sheets;selected full pages and airway physical9 cross-rendered in Poppler. This is source/layout inspection,not clinical approval.",
+  "full_checks": {
+    "content": 872,
+    "combined": 1020,
+    "skips_each": 5,
+    "upstream_expected_failures_each": 11
+  },
+  "focused": {
+    "development_python": "3.14",
+    "app_python": "3.11.18",
+    "checks_each": 29
+  },
+  "real_cli": "Isolated Python3.11 command composed439→475using cache,with snapshot verifier and source/base guards. No source originals are published.",
+  "engine": {
+    "records": 475,
+    "all_AU_reader_hashes": 161,
+    "all35physical_page_sequences": "passed",
+    "search_snippets_scoped_retrieval_libq": "passed",
+    "network_socket_attempts": 0,
+    "AU_guide_references": 725
+  },
+  "native": {
+    "checked": "2026-11-27",
+    "status": "passed",
+    "new_source_groups": 5,
+    "original_choices_retained": 5,
+    "checked_groups": [
+      "six injury cards",
+      "six additional BLS cards"
+    ],
+    "selected_originals": [
+      "bleeding physical1of10",
+      "burns physical1and3of10",
+      "airway physical1and9of11"
+    ],
+    "page_text": "burns physical3 opens in Page/Text and remains context for Ask",
+    "ask_back": "burns physical3 and airway physical9 retain correct source/page;no question submitted",
+    "diagram": "Airway physical9 full diagram and25November2026source footer visible after scrolling",
+    "source_details": "ANZCOR,personal-use only;source PDF audiences/dates retained",
+    "left_open": "Airway PDF physical9 Page view,scrolled to diagram/footer",
+    "audio_used": false,
+    "all263_native_pages_claim": false
+  },
+  "preservation": {
+    "records": 475,
+    "public_records": 125,
+    "personal_records": 36,
+    "verified_AU_hashes": 161,
+    "personal_FTS_units": 264,
+    "base_public_rows_unchanged": 12875,
+    "default_PDF_rows_unchanged": 41,
+    "public_assets_in_profile": "byte-identical",
+    "victoria": "per-file hashes passed;3054names"
+  },
+  "source_handling": "Unmodified PDFs are acquired separately by explicit user request or read from an existing cache;public source contains metadata/tools/conditional guide links only.",
+  "limits": "No written public redistribution permission,independent clinical review,all263native-page check or official Setup listing. Initial addition only;recreate from retained original if personal sources already exist."
+}

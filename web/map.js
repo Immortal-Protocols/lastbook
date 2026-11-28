@@ -80,7 +80,7 @@ const MapView = (() => {
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)) };
   const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = id => document.getElementById(id);
-  const dist = km => km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
+  const dist = km => st?.region?.startsWith('au-') ? (km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(km < 10 ? 1 : 0) + ' km') : km < 1.6 ? Math.round(km * 1000) + ' m' : (km / 1.609).toFixed(km < 16 ? 1 : 0) + ' mi';
   const kmBetween = (a, b, c, d) => { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)) };
   const sym = (l, size = 22) => `<i class="msym" style="background:${l.col};width:${size}px;height:${size}px">${escH(l.sym)}</i>`;
   const layerOf = cls => BY_CLS[cls] || { sym: '•', col: '#555', label: cls };
@@ -91,7 +91,14 @@ const MapView = (() => {
     if (!askedHome && !IN_WINDOW) { askedHome = true; try { const r = await fetch('/ui/home-area.json'); if (r.ok) HOME = await r.json() } catch { } }
     return HOME;
   }
-  const wholeMap = () => st.bounds || US;
+  function regionExtent(info) {
+    const text = info.meta?.bounds;
+    if (typeof text !== 'string') return null;
+    const parts = text.split(','), b = parts.map(Number);
+    return parts.length === 4 && parts.every(v => v.trim() !== '') && b.every(Number.isFinite) &&
+      -180 <= b[0] && b[0] < b[2] && b[2] <= 180 && -90 <= b[1] && b[1] < b[3] && b[3] <= 90 ? b : null;
+  }
+  const wholeMap = () => st.bounds || st.regionBounds || (st.region ? [-180, -80, 180, 80] : US);
   async function page(main, q, current = () => true) {   // current(): false once the router has moved on
     await localHome();
     if (!current()) return;   // left while the home area loaded: build nothing
@@ -178,10 +185,10 @@ const MapView = (() => {
     fetch('/api/map/info').then(r => r.json()).then(info => {
       if (!st) return;
       st.national = info.national; st.ver = info.version; st.aerialDetail = info.aerial_detail; st.aerialRev = info.aerial_rev; st.terrainCircle = info.terrain_circle;
-      describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw();
+      describe(info); if (openWhole) fit(wholeMap(), 0.92, true); coverage(); draw(); nearby();
       $('mdata').innerHTML = info.datasets.map(d => `<li class="row" style="display:block"><b>${escH(d.label)}</b><span class="muted">${escH(d.status)}</span>${d.bytes ? ` · ${(d.bytes / 1073741824).toFixed(1)} GB` : ''}</li>`).join('') +
         (st.have && !st.have.size ? '' : `<li class="row small muted" style="display:block">${st.have ? '' : 'Not drawn yet: forest types. '}Resource layers are records — fish, wells, mines and crops show where they were recorded or mapped, not proof of what is there now.</li>`);
-    }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(US, 0.92, true) });
+    }).catch(() => { $('mdata').innerHTML = '<li class="muted">Map details unavailable.</li>'; if (openWhole && st) fit(wholeMap(), 0.92, true) });
     // When map data changes (national build, water import), quietly refresh visible tiles; old tiles stay up until new ones arrive.
     st.nationalTimer = setInterval(async () => {
       if (!st) return;
@@ -193,6 +200,12 @@ const MapView = (() => {
   }
   // What this map really holds, when the server says (an older one sends none of this, and everything stays offered).
   function describe(info) {
+    st.region = info.region || null;
+    st.regionBounds = st.region ? regionExtent(info) : null;
+    if (info.region) {
+      document.querySelector('.maphead p').textContent = 'Offline map. Current damage, closures and hazards are not shown.';
+      document.querySelector('.mapattr').textContent = '© OpenStreetMap contributors · ODbL 1.0 · Natural Earth';
+    }
     if (info.aerial === false) { st.noAerial = true; st.style.aerial = false; $('map-photo')?.remove() }
     st.noContours = info.contours === false;
     if (!info.layers) return;
@@ -200,7 +213,9 @@ const MapView = (() => {
     st.on = new Set([...st.on].filter(id => offered(LAYERS.find(l => l.id === id))));
     layerCount();
     if (!st.have.size) $('near').closest('section').hidden = true;
-    if (info.bounds) { const b = $('map-us'); b.textContent = 'All'; b.title = 'Whole map'; b.setAttribute('aria-label', 'Whole map') }
+    const b = $('map-us'), regional = Boolean(info.bounds || st.region);
+    b.textContent = regional ? 'All' : 'US'; b.title = regional ? 'Whole map' : 'Whole US';
+    b.setAttribute('aria-label', regional ? 'Whole map' : 'Whole United States');
   }
   const offered = l => !st.have || (l && l.cls.some(c => st.have.has(c)));
   function toastMap(m) { if (typeof toast === 'function') toast(m) }
@@ -384,6 +399,8 @@ const MapView = (() => {
     if (!photo) {
       poly(L.ocean, C.ocean); poly(L.island, C.land);
       poly(L.land, cls => C[cls] || C.res); poly(L.beach, C.beach); poly(L.wet, C.wet); poly(L.water, C.water);
+      // A protected area may include ocean; show its boundary without a land fill.
+      g.setLineDash([3 * R, 3 * R]); poly(L.protected, 'rgba(0,0,0,0)', '#73935f'); g.setLineDash([]);
       if (L.waterway) for (const [cls, , parts] of L.waterway) { g.strokeStyle = C.waterway; g.lineWidth = (cls === 'river' ? (z < 9 ? 1.6 : 3) : z < 12 ? 0.7 : 1.2) * R; for (const p of parts) { line(p); g.stroke() } }
       if (z >= 15) poly(L.bldg, C.bldg, C.bldgLine);
     }
@@ -856,7 +873,7 @@ const MapView = (() => {
       const r = await fetch(`/api/map/near?lat=${st.lat}&lon=${st.lon}&cls=${ks.join(',')}&limit=${Math.max(3, Math.ceil(14 / ks.length))}`).then(r => r.json());
       if (st !== state || serial !== st.serial.near) return;
       box.classList.remove('busy');
-      if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">Nothing from your layers within about 100 miles of the map center.</p>'; return }
+      if (!Array.isArray(r) || !r.length) { box.innerHTML = '<p class="muted small">' + (st.region ? 'Nothing from your selected layers was found near the map centre.' : 'Nothing from your layers within about 100 miles of the map center.') + '</p>'; return }
       const list = r.sort((a, b) => a.km - b.km).slice(0, 14);
       box.innerHTML = list.map((p, i) => `<button data-i="${i}">${sym(layerOf(p.cls), 24)}<span><b>${escH(unnamed(p))}</b><small>${escH(layerOf(p.cls).label)} · ${dist(p.km)} ${escH(p.dir)}</small>${p.detail ? `<small>${escH(p.detail)}</small>` : ''}</span></button>`).join('');
       box.querySelectorAll('button').forEach(b => b.onclick = () => {

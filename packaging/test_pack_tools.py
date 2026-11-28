@@ -883,6 +883,12 @@ def make_base(work):
     return code == 0
 
 
+def region_controls():
+    """The non-US region map contract (docs/MAPS.md, "Region maps"): its detail-cells.json is allowed, and the Caracas spec is present."""
+    result("scan_pack allows a region map's detail-cells.json", 'detail-cells.json' in scan_pack.GEO_FILES)
+    result('the Caracas region spec is present', build_packs.REGION_SPECS.REGIONS.get('ve-a', {}).get('country') == 'Venezuela')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('sample')
@@ -895,6 +901,7 @@ def main():
         return 1
     strip_controls()
     builder_controls(work)
+    region_controls()
     plant_files(work)
     plant_each(work)
     no_false_pass(work)

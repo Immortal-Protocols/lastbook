@@ -818,16 +818,19 @@ class Bridge:
         """The only thing the window's top level may show is the app's own page, at any of its # routes, or its setup page."""
         return url.split('#', 1)[0] in (self.origin, self.origin + '/', self.origin + '/ui/setup.html')
 
-    def new_window(self, url, from_top, gesture):
+    def new_window(self, url, from_top, gesture, *, popup=False):
         """Every new-window request is cancelled by the shell. This says what, if anything, happens instead:
         ('inside', url)   navigate the one window there: an address on the app's own page
         ('nothing', None)
         from_top: the request came from the app's top frame. A frame, or a shell that cannot tell, passes False.
         gesture: True for a real user gesture, False for none, None when the shell cannot tell.
         A gesture the shell cannot tell apart is accepted only from the top frame, and saved pages cannot be the top frame.
-        A web address does nothing: this app never hands anything to a browser, and the UI shows such an address as text."""
+        Web addresses do nothing. The Contribute control is a local action that can only launch a fixed address.
+        """
         if not from_top or gesture is False:
             return 'nothing', None
+        if popup and gesture is True and url == self.origin + '/contribute/github':
+            return 'contribute', None
         if self.target_of(url) is not None:
             route = self.inside_route(url)
             return ('inside', self.origin + '/' + route) if route else ('nothing', None)

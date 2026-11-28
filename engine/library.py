@@ -115,9 +115,12 @@ def extract(r):
  if kind=='zim':return r,[],None
  ocr=ROOT/'ocr'/f'{uid}.json'
  if kind=='pdf' and ocr.exists():
-  data=json.loads(ocr.read_text(encoding='utf-8'))
-  if data.get('sha256')==r.get('sha256') and sum(len(p.get('text','')) for p in data.get('pages',[]))>100:
-   pages=[p.get('text','') for p in data['pages']]
+  try:
+   data=json.loads(ocr.read_text(encoding='utf-8'))
+   pages=[p.get('text','') for p in data.get('pages',[])] if data.get('sha256')==r.get('sha256') else []
+   if not all(isinstance(p,str) for p in pages):pages=[]
+  except (OSError,ValueError,TypeError,AttributeError):pages=[]  # use the original when the OCR cache is unreadable
+  if sum(len(p) for p in pages)>100:
    r.update(pages=len(pages),searchability='OCR text: verify against original page',ocr_path=ocr.relative_to(ROOT).as_posix())
    textpath.write_text('\n\f\n'.join(pages),encoding='utf-8');r['text_path']=textpath.relative_to(ROOT).as_posix()
    return r,pages,None
@@ -128,11 +131,11 @@ def extract(r):
   except Exception as e:
    # A failed refresh must not remove usable cached pages from the rebuilt index.
    try:
-    m=json.loads(meta.read_text(encoding='utf-8'))
-    if m.get('sha256')==r.get('sha256'):
+    m=json.loads(meta.read_text(encoding='utf-8'));details=m.get('details',{})
+    if isinstance(details,dict) and m.get('sha256')==r.get('sha256'):
      pages=textpath.read_text(encoding='utf-8').split('\n\f\n')
      if any(page.strip() for page in pages):
-      r.update(m.get('details',{}));r['text_path']=textpath.relative_to(ROOT).as_posix()
+      r.update(details);r['text_path']=textpath.relative_to(ROOT).as_posix()
       return r,pages,str(e)
    except (OSError,ValueError,TypeError,AttributeError):pass  # missing or unreadable cache
    return r,[],str(e)
@@ -140,9 +143,13 @@ def extract(r):
   caption_inputs={'version':2,'files':[[c,hashlib.sha256(data).hexdigest()] for c,data in captions],
                   'fallback':[r['title'],r.get('notes','')]}
  if meta.exists() and textpath.exists():
-  m=json.loads(meta.read_text(encoding='utf-8'))
-  if m.get('sha256')==r.get('sha256') and (not video or m.get('caption_inputs')==caption_inputs):
-   text=textpath.read_text(encoding='utf-8');pages=text.split('\n\f\n');r.update(m.get('details',{}));r['text_path']=textpath.relative_to(ROOT).as_posix();return r,pages,None
+  try:
+   m=json.loads(meta.read_text(encoding='utf-8'));details=m.get('details',{})
+   if isinstance(details,dict) and m.get('sha256')==r.get('sha256') and (not video or m.get('caption_inputs')==caption_inputs):
+    text=textpath.read_text(encoding='utf-8');pages=text.split('\n\f\n')
+    if not video or any(page.strip() for page in pages):
+     r.update(details);r['text_path']=textpath.relative_to(ROOT).as_posix();return r,pages,None
+  except (OSError,ValueError,TypeError,AttributeError):pass  # an unreadable cache is rebuilt from the original below
  pages=[]
  try:
   if kind=='pdf':

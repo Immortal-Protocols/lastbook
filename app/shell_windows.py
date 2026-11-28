@@ -3,7 +3,7 @@
 Every request for https://lastbook.invalid goes to bridge.py through WebResourceRequested; that host never resolves anywhere else.
 On purpose absent: AddHostObjectToScript, WebMessageReceived, PostWebMessage. IsWebMessageEnabled and AreHostObjectsAllowed are off too.
 
-One window. A new-window request is always cancelled; what happens instead comes from Bridge.new_window. Nothing is ever handed to a browser or another program.
+One window. A new-window request is always cancelled; what happens instead comes from Bridge.new_window. Only the explicit Contribute action opens the project repository in the system browser.
 Frames show library content only (Bridge.frame_url_ok) and the top level shows the app's own page only (Bridge.top_url_ok).
 Nothing is saved to disk without the person choosing where, and a page's memory has a limit (MEMORY_LIMIT).
 The runtime's crash reports stay on this computer (IsCustomCrashReportingEnabled), and its right-click menu keeps only editing (MENU_KEEP): the rest of that menu can reach other programs.
@@ -19,6 +19,7 @@ import traceback
 from pathlib import Path
 
 import bridge as B
+from contribute import launch_project_repository
 
 # Audit W6: in the packaged app, nothing outside may steer WebView2 or pythonnet. WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS could open a
 # debugging port on this no-port app, WEBVIEW2_BROWSER_EXECUTABLE_FOLDER could swap the runtime, PYTHONNET_* the .NET runtime.
@@ -988,7 +989,9 @@ class Shell:
     # ---- what may go where
     def act(self, what, where):
         note(kind='act', what=what, where=(where or '')[:300])
-        if what == 'inside':
+        if what == 'contribute':
+            self.ui(launch_project_repository)
+        elif what == 'inside':
             self.ui(lambda: self.core.Navigate(where))
 
     def on_nav(self, sender, args):
@@ -1037,7 +1040,7 @@ class Shell:
         from_top = source is not None and source.FrameKind == self.n.Core.CoreWebView2FrameKind.MainFrame
         gesture = bool(args.IsUserInitiated)
         note(kind='new-window', uri=uri[:300], from_top=from_top, user=gesture)
-        self.act(*self.b.new_window(uri, from_top, gesture))
+        self.act(*self.b.new_window(uri, from_top, gesture, popup=True))
 
     def on_permission(self, sender, args):
         Core = self.n.Core

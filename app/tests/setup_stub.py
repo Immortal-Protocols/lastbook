@@ -119,6 +119,37 @@ SCENARIOS = {
 
 SCENARIOS['hostile']['hardware']['disks'][0]['name'] = X
 
+
+def _item(id_, kind, title, state, done, total, **kw):
+    return {'id': id_, 'kind': kind, 'title': title, 'state': state, 'bytes_done': done, 'bytes_total': total, 'rate_bps': 0, 'eta_s': None,
+            'error': None, 'source': 'download', **kw}
+
+
+SCENARIOS['sharing'] = dict(mode='manage', hardware=hw('windows', ram=32, free=2000), current={'folder': WIN, 'pack': 'medium', 'model': None, 'map': 'base'},
+                            recommend={'pack': 'medium', 'ai': False, 'why': ''},
+                            sharing={'on': True, 'seeding': 2, 'kept': [{'name': 'Lastbook-Medium.zip', 'size': 66400000000}], 'kept_bytes': 66400000000,
+                                     'shared_bytes': 214_700_000_000, 'mirrors': ['https://mirror.example/lastbook']})
+# Installed before sharing was on: the All library's download was not kept, so Library and local AI offers to download it to share
+SCENARIOS['share-missing'] = dict(mode='manage', hardware=hw('windows', ram=32, free=4000), current={'folder': WIN, 'pack': 'all', 'model': None, 'map': 'base'},
+                                  recommend={'pack': 'all', 'ai': False, 'why': ''},
+                                  sharing={'on': False, 'missing': [{'name': 'Lastbook-All.zip', 'size': 387_878_571_619}], 'missing_bytes': 387_878_571_619})
+# ... and that download, to share, under way: what comes from other people is shared as soon as it is in
+SCENARIOS['share-job'] = dict(mode='manage', hardware=hw('windows', ram=32, free=4000), current={'folder': WIN, 'pack': 'all', 'model': None, 'map': 'base'},
+                              recommend={'pack': 'all', 'ai': False, 'why': ''}, sharing={'on': True},
+                              snapshot={'id': 'j1', 'state': 'downloading', 'error': None, 'folder': WIN, 'items': [
+                                  _item('Lastbook-All.zip', 'share', 'All library', 'downloading', 141_300_000_000, 387_878_571_619,
+                                        rate_bps=31_400_000, eta_s=7_850, from_peers=118_600_000_000)]})
+SCENARIOS['share-done'] = dict(SCENARIOS['share-job'], snapshot={**SCENARIOS['share-job']['snapshot'], 'state': 'done', 'items': [
+    {**SCENARIOS['share-job']['snapshot']['items'][0], 'state': 'done', 'bytes_done': 387_878_571_619, 'rate_bps': 0, 'eta_s': None}]})
+# BitTorrent on while the All library downloads, part of it from other people. A fixed picture of a job, which does not move:
+# `snapshot` is the job as the engine sends it.
+SCENARIOS['swarm'] = dict(hardware=hw('windows', ram=32, free=2000), recommend={'pack': 'all', 'ai': False, 'why': ''},
+                          sharing={'on': True},
+                          snapshot={'id': 'j1', 'state': 'downloading', 'error': None, 'folder': WIN, 'items': [
+                              _item('all', 'pack', 'All', 'downloading', 141_300_000_000, 387_878_571_619, rate_bps=31_400_000, eta_s=7_850,
+                                    from_peers=118_600_000_000),
+                              _item('AZ', 'map', 'Arizona', 'waiting', 0, 1_536_419_242)]})
+
 RATE = 2.2 * GB        # pretend bytes per second, so a whole run takes about half a minute
 STEP_S = 2.5           # seconds each of checking, unpacking and finishing takes
 CHECK_S = 12           # seconds a repair's check of each item takes, long enough to watch it count
@@ -137,6 +168,11 @@ class Stub:
         self.found = s.get('found', [])
         self.notify = s.get('notify', False)     # as engine/update.py: off unless turned on
         self.folder = (self.current or {}).get('folder') or (WIN if s['hardware']['os'] == 'windows' else MAC)
+        self.sharing = {'mirrors': [], 'available': True, 'on': False, 'seeding': 0, 'kept': [], 'kept_bytes': 0}
+        if s.get('sharing'):
+            self.sharing.update(s['sharing'])
+        if 'snapshot' in s:
+            self.job = {**copy.deepcopy(s['snapshot']), 'frozen': True, 'started': time.time()}
         if 'job' in s:
             j = s['job']
             self._make(j['pack'], j['ai'])
@@ -150,7 +186,7 @@ class Stub:
         self.tick()
         return {'mode': self.s.get('mode', 'first-run'), 'hardware': self.s['hardware'], 'manifest': self.M,
                 'current': self.current, 'found': self.found, 'recommend': {**self.s['recommend'], 'folder': self.folder.rsplit('\\' if '\\' in self.folder else '/', 1)[0]},
-                'job': self.public()}
+                'job': self.public(), 'sharing': self.sharing}
 
     def _make(self, pack, ai, use=None, map_=None):
         items = []
@@ -224,6 +260,8 @@ class Stub:
 
     def tick(self):
         j = self.job
+        if j and j.get('frozen'):
+            return
         if not j or j['state'] in ('paused', 'failed', 'done'):
             if j:
                 self.last = time.time()
@@ -270,7 +308,7 @@ class Stub:
                     if self.fault and self.fault[0] == it['state']:
                         return self._fail(it)
                     order = ['verifying', 'unpacking', 'activating', 'done'] if it['kind'] == 'pack' else ['unpacking', 'done'] if it['kind'] == 'map' else ['verifying', 'activating', 'done']
-                    if j.get('repair'):
+                    if j.get('repair') or it['kind'] == 'share':   # a share item, as the engine's: downloading, verifying, done
                         order = ['verifying', 'done']
                     it['state'] = order[order.index(it['state']) + 1]
                     if it['state'] == 'unpacking':
@@ -333,6 +371,29 @@ class Stub:
             self.last = time.time()
             self.phase_t = 0
         return self.public()
+
+    def share_get(self):
+        """As engine/setup/api.py share_get: a job that downloads the missing files again to share them, and sharing turned on."""
+        if self.job and self.job['state'] not in ('done', 'failed'):
+            return {'error': 'A download is already under way. Pause or cancel it first.', 'code': 'busy'}
+        if not self.sharing.get('missing'):
+            return {'error': 'Everything this library came from is kept to share already.', 'code': 'nothing'}
+        title = next(p['title'] for p in self.M['packs'] if p['id'] == self.current['pack']) + ' library'
+        self.job = {'id': 'j1', 'state': 'waiting', 'error': None, 'started': time.time(), 'folder': self.folder,
+                    'items': [{'id': f['name'], 'kind': 'share', 'title': title, 'state': 'waiting', 'bytes_done': 0, 'bytes_total': f['size'],
+                               'rate_bps': 0, 'eta_s': None, 'error': None, 'source': 'download'} for f in self.sharing['missing']]}
+        self.last, self.phase_t = time.time(), 0.0
+        self.sharing.update(on=True, seeding=len(self.sharing['kept']))
+        return self.public()
+
+    def share_kept(self):
+        """A share job finished: the library is as it was, and what it downloaded is kept and seeded."""
+        got = {i['id'] for i in self.job['items']}
+        kept = self.sharing['kept'] + [f for f in self.sharing.get('missing', []) if f['name'] in got]
+        missing = [f for f in self.sharing.get('missing', []) if f['name'] not in got]
+        self.sharing.update(kept=kept, kept_bytes=sum(f['size'] for f in kept), missing=missing, missing_bytes=sum(f['size'] for f in missing),
+                            seeding=len(kept) if self.sharing['on'] else 0)
+        self.job = None
 
     def public(self):
         if not self.job:
@@ -422,6 +483,27 @@ class H(BaseHTTPRequestHandler):
             STUB.notify = body.get('notify') is True
             print('stub: notify =', STUB.notify, flush=True)     # what a reviewer can watch: only a click on the box writes it
             return self.send(200, {'supported': True, 'notify': STUB.notify, 'available': None, 'checking': False})
+        if a == 'share':          # as engine/setup/api.py: on keeps and seeds what is kept
+            on = body.get('on') is True
+            STUB.sharing.update(on=on, seeding=len(STUB.sharing['kept']) if on else 0)
+            return self.send(200, STUB.sharing)
+        if a == 'share-get':
+            r = STUB.share_get()
+            return self.send(400 if r.get('error') else 200, r)
+        if a == 'share-delete':
+            freed = STUB.sharing['kept_bytes']
+            STUB.sharing.update(kept=[], kept_bytes=0, seeding=0)
+            return self.send(200, {**STUB.sharing, 'ok': True, 'freed_bytes': freed})
+        if a == 'mirrors':
+            add, ms = body.get('add'), STUB.sharing['mirrors']
+            if add is not None:
+                if not str(add).startswith('https:') or '@' in str(add):
+                    return self.send(400, {'error': 'That is not an https address Lastbook can use as a mirror.', 'code': 'mirror'})
+                if add not in ms:
+                    ms.append(add)
+            if body.get('remove') is not None:
+                STUB.sharing['mirrors'] = [m for m in ms if m != body['remove']]
+            return self.send(200, {'mirrors': STUB.sharing['mirrors']})
         if a == 'remove-ai':
             if STUB.current:
                 STUB.current['model'] = None
@@ -433,6 +515,8 @@ class H(BaseHTTPRequestHandler):
         if a == 'finish':
             if STUB.job and STUB.job['state'] == 'done' and STUB.job.get('repair'):
                 STUB.job = None              # a repair leaves the library what it was
+            elif STUB.job and STUB.job['state'] == 'done' and all(i['kind'] == 'share' for i in STUB.job['items']):
+                STUB.share_kept()
             elif STUB.job and STUB.job['state'] == 'done':
                 cur = STUB.current or {'folder': STUB.folder, 'pack': None, 'model': None, 'map': 'base'}
                 for it in STUB.job['items']:

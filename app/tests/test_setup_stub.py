@@ -72,5 +72,33 @@ class RepairScenario(unittest.TestCase):
             self.assertTrue(all(e is not None for _, e in s[1:]), kind)
 
 
+class ShareMissingScenario(unittest.TestCase):
+    def test_download_to_share_turns_sharing_on_and_keeps_the_file(self):
+        """share-missing, Download to share: sharing goes on as the job starts; the job only downloads and verifies; once it is
+        finished the file is kept and seeded, nothing is missing, and asking again has nothing to do."""
+        now = [1000.0]
+        with mock.patch.object(setup_stub.time, 'time', lambda: now[0]):
+            stub = setup_stub.Stub('share-missing')
+            self.assertFalse(stub.sharing['on'])
+            j = stub.share_get()
+            self.assertTrue(stub.sharing['on'])
+            self.assertEqual([(i['kind'], i['title'], i['state']) for i in j['items']], [('share', 'All library', 'waiting')])
+            self.assertEqual(stub.share_get()['code'], 'busy')
+            seen = set()
+            for _ in range(400):
+                now[0] += 1
+                stub.tick()
+                seen.add(stub.public()['items'][0]['state'])
+                if stub.public()['state'] == 'done':
+                    break
+            self.assertEqual(stub.public()['state'], 'done')
+            self.assertEqual(seen, {'downloading', 'verifying', 'done'})
+            stub.share_kept()
+        self.assertIsNone(stub.public())
+        self.assertEqual((stub.sharing['missing'], stub.sharing['missing_bytes'], stub.sharing['seeding']), ([], 0, 1))
+        self.assertEqual(stub.sharing['kept_bytes'], 387_878_571_619)
+        self.assertEqual(stub.share_get()['code'], 'nothing')
+
+
 if __name__ == '__main__':
     unittest.main()

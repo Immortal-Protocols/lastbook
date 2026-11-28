@@ -35,7 +35,7 @@ TOPICS = [json.loads(p.read_text(encoding='utf-8')) for p in sorted((ROOT / 'con
 QSTOP = re.search(r"const QSTOP = new Set\('([^']*)'\.split", (ROOT / 'web' / 'app.js').read_text(encoding='utf-8')).group(1).split(' ')
 
 # upstream/main when these were measured. Re-measure on a new main and record the new one.
-BASELINE = '0fae169'
+BASELINE = '51658f5'
 
 #   (search, the unrelated first result it gets on BASELINE, the first results that would be right, the short word
 #    and the longer word it starts). The right results are choices that name the subject in their own label or hint
@@ -48,20 +48,31 @@ FALSE_MATCHES = [
     ('want to die', ['food', 'special'], (['health', 'mind'],), 'die / diets'),
     ('the loo wont flush', ['hurt', 'bone'], (['sanitation', 'noflush'],), 'loo / looks ("looks bent")'),
     ('rat bite', ['hurt', 'snakebite'], (['hurt', 'animal-bite'],), 'rat / rattlesnake'),
-    ('rat poison', ['hurt', 'snakebite'], (), 'rat / rattlesnake; someone poisoned, or rats to get rid of'),
+    ('rat poison', ['hurt', 'snakebite'], (['hurt', 'poison'],), 'rat / rattlesnake'),
     ('ear infection', ['disaster', 'earthquake-now'], (), 'ear / earthquake'),
     ('head lice', ['comms', 'ham'], (), 'lice / license'),
     ('bat in house', ['power', 'batteries-solar'], (), 'bat / batteries'),
     ('car stuck in snow', ['hurt', 'breathing'], (), 'car / cardiac, with stuck from "food stuck in throat"'),
     ('war', ['shelter', 'cold'], (), 'war / warm'),
-    ('what to pack', ['disaster', 'explosion'], (), 'pack / package ("suspicious package"); no packing choice on BASELINE'),
+    ('what to pack', ['disaster', 'explosion'], (['disaster', 'pack'],), 'pack / package ("suspicious package")'),
     ('out of formula', ['food', 'outage'], (['food', 'special'],), 'out / outage'),
     ('ran out of insulin', ['food', 'outage'], (['health', 'chronic'],), 'out / outage'),
     ('high fever', ['disaster', 'highrise-fire'], (['health', 'start'],), 'high / high-rise'),
 ]
 # The false matches still present on BASELINE. Taking a row out of here pins its fix; nothing is ever added
-# without a new row above and a reason.
-KNOWN = {q for q, _, _, _ in FALSE_MATCHES}
+# without a new row above and a reason. Eleven rows have left: each one now lands on a result its row lists as
+# right, and putting it back on the wrong result fails test_false_matches_only_shrink.
+FIXED = {
+    'stomach pain', 'left arm pain',    # #326, "pain" is a keyword of the health and hurt guides
+    'fall from ladder', 'elderly fall',  # #327, "fall" and "fell" are keywords of the first aid guide
+    'the loo wont flush',               # the plumbing hint names a leaking toilet
+    'rat bite',                         # #455, phrases on the animal bite choice
+    'rat poison',                       # #331, the poison hint names rat poison
+    'out of formula', 'ran out of insulin',   # #455, phrases on the feeding and chronic illness choices
+    'high fever',                       # #330, the health start hint names a high fever
+    'what to pack',                     # #432, the evacuation guide has a packing choice of its own
+}
+KNOWN = {q for q, _, _, _ in FALSE_MATCHES} - FIXED
 
 #   (search, the first result that must hold, the short word and the longer word it relies on)
 KEEP = [

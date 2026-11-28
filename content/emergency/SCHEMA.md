@@ -72,9 +72,10 @@ what to show when the country is unknown are still being discussed in the issue.
 Each claim has its own source, so an editor can check one claim without the others: `source` for the number and its
 name, `works_from_source` for where it can be dialled from, `free_source` for the cost. A claim no page backs is left
 unknown (`works_from: []`, `free: null`), never filled in from memory. The sources may be different pages: in
-`CL.json`, 130 to 134 and 136 to 138 are read in Subtel's numbering appendix (Resolución 1534), the dialling in
-Decreto 747 art. 15 and the cost in Decreto 18 art. 21; 147 and 1455 are in the same appendix, but no source says how
-they can be dialled or whether they are free, so those stay unknown. `when` holds only what a person needs to know; it does not carry the legal
+`CL.json`, 130 to 134 and 136 to 138 are read in Subtel's numbering appendix (Resolución 1534) and the dialling in
+Decreto 747 art. 15. Decreto 18 art. 21 makes the call to these numbers free, but says nothing about the service, so
+it is not enough for `free: true` on its own: 132 cites Ley 20.564 art. 2, under which Bomberos attend emergencies free
+of charge, and the rest of 130 to 138 stay `null` until a page says their service is free too. `when` holds only what a person needs to know; it does not carry the legal
 basis. It stays within what the row's cited pages say: advice such as "call another service first" goes in only with
 a source of its own.
 

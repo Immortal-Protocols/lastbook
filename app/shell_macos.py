@@ -576,6 +576,12 @@ class Shell:
             return POLICY_CANCEL
         if not self.bridge.frame_url_ok(url):
             return POLICY_CANCEL
+        if not from_top and action.sourceFrame() is not None and action.navigationType() == LINK_ACTIVATED and gesture is not False:
+            current = self.view.URL()
+            route = self.bridge.linked_reading(url, str(current.absoluteString()) if current else '', True)
+            if route:
+                self.view.evaluateJavaScript_completionHandler_('location.hash=' + json.dumps(route), None)
+                return POLICY_CANCEL
         if from_top:
             self.bridge.give_ticket(url)   # only the app's own page earns a whole large answer
         return POLICY_ALLOW
